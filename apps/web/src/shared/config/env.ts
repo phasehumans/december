@@ -52,6 +52,53 @@ export const getClientEnv = (key: string): string | undefined => {
     return undefined
 }
 
+export const getWebUrl = (): string => {
+    // 1. Explicit environment overrides
+    const explicitWebUrl =
+        getClientEnv('WEB_URL') ?? getClientEnv('DOCS_URL') ?? getClientEnv('LANDING_URL')
+
+    if (explicitWebUrl) {
+        return explicitWebUrl.endsWith('/') ? explicitWebUrl.slice(0, -1) : explicitWebUrl
+    }
+
+    // 2. Browser runtime: dynamically adapt to host
+    if (typeof window !== 'undefined' && window.location) {
+        const hostname = window.location.hostname
+        if (hostname === 'trydecember.com' || hostname.endsWith('.trydecember.com')) {
+            return 'https://trydecember.com'
+        }
+        return 'http://localhost:2000'
+    }
+
+    // 3. Fallback for SSR / test / node runtime
+    return typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
+        ? 'https://trydecember.com'
+        : 'http://localhost:2000'
+}
+
+export const getAppUrl = (): string => {
+    // 1. Explicit environment overrides
+    const explicitAppUrl = getClientEnv('APP_URL')
+
+    if (explicitAppUrl) {
+        return explicitAppUrl.endsWith('/') ? explicitAppUrl.slice(0, -1) : explicitAppUrl
+    }
+
+    // 2. Browser runtime: dynamically adapt to host
+    if (typeof window !== 'undefined' && window.location) {
+        const hostname = window.location.hostname
+        if (hostname === 'trydecember.com' || hostname.endsWith('.trydecember.com')) {
+            return 'https://app.trydecember.com'
+        }
+        return 'http://localhost:3000'
+    }
+
+    // 3. Fallback for SSR / test / node runtime
+    return typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
+        ? 'https://app.trydecember.com'
+        : 'http://localhost:3000'
+}
+
 export const getApiBaseUrl = (): string => {
     // 1. Browser runtime: dynamically adapt to host
     if (typeof window !== 'undefined' && window.location) {

@@ -4,6 +4,12 @@ import { rm, cp } from 'fs/promises'
 import path from 'path'
 
 import plugin from 'bun-plugin-tailwind'
+import dotenv from 'dotenv'
+
+const rootDir = path.resolve(process.cwd(), '../../')
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env'
+dotenv.config({ path: path.join(rootDir, envFile) })
+dotenv.config({ path: path.join(rootDir, '.env') })
 
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
     console.log(`
@@ -202,9 +208,9 @@ if (existsSync(robotsPath)) {
     await Bun.write(path.join(outdir, 'robots.txt'), Bun.file(robotsPath))
 }
 
-const sitemapPath = path.resolve('assets', 'sitemap.xml')
-if (existsSync(sitemapPath)) {
-    await Bun.write(path.join(outdir, 'sitemap.xml'), Bun.file(sitemapPath))
+const faviconPath = path.resolve('assets', 'favicon.ico')
+if (existsSync(faviconPath)) {
+    await Bun.write(path.join(outdir, 'favicon.ico'), Bun.file(faviconPath))
 }
 
 const redirectsPath = path.resolve('assets', '_redirects')

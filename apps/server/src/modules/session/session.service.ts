@@ -557,7 +557,7 @@ const streamSearchResponse = async (data: StreamSearchResponse) => {
     })
     if (!hasBalance) {
         throw new AppError(
-            'Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing to continue using Search.',
+            'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue using Search.',
             402
         )
     }

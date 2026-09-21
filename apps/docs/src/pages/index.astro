@@ -12,11 +12,10 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
   hideFooter={false}
 >
   <!-- Page Container: Generous left & right margins with compact vertical rhythm -->
-  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-6 sm:pt-12 sm:pb-8">
+  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-2 sm:pt-12 sm:pb-3">
     
     <!-- Hero Section -->
-    <section class="mb-16 sm:mb-20">
-
+    <section class="mb-11 sm:mb-14">
       <!-- Headline -->
       <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-medium tracking-[-0.035em] text-[#090a0f] leading-[1.1] max-w-3xl">
         december, a coding agent<br class="hidden sm:inline" /> for terminal and cloud.
@@ -31,17 +30,17 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       <div class="mt-7 max-w-2xl">
         <div class="flex flex-wrap items-center gap-3">
           <!-- Command Bar with Package Manager Dropdown -->
-          <div class="relative flex-1 min-w-[280px] max-w-[420px]" id="hero-install-container">
-            <div class="flex items-center justify-between border border-[#e2e8f0] bg-white rounded-none pl-3.5 pr-1.5 py-2 shadow-xs transition-all hover:border-[#cbd5e1]">
+          <div class="relative flex-1 min-w-0 w-full sm:w-auto sm:min-w-[280px] max-w-[420px]" id="hero-install-container">
+            <div class="h-10 flex items-center justify-between border border-[#e2e8f0] bg-white rounded-none pl-3 sm:pl-3.5 pr-1.5 shadow-xs transition-all hover:border-[#cbd5e1]">
               <!-- Command Text button -->
               <button
                 id="hero-copy-cmd-btn"
                 type="button"
-                class="flex-1 flex items-center gap-2 font-mono text-xs sm:text-[13px] text-[#1e293b] text-left cursor-pointer focus:outline-none"
+                class="flex-1 min-w-0 flex items-center gap-2 font-mono text-xs sm:text-[13px] text-[#1e293b] text-left cursor-pointer focus:outline-none overflow-hidden"
                 title="Click to copy command"
               >
-                <span class="text-[#87b2f4] select-none font-semibold">$</span>
-                <span id="hero-display-cmd" class="font-normal text-[#0f172a]">npm install -g @trydecember/cli</span>
+                <span class="text-[#87b2f4] select-none font-semibold shrink-0">$</span>
+                <span id="hero-display-cmd" class="font-normal text-[#0f172a] truncate">npm install -g @trydecember/cli</span>
               </button>
 
               <!-- Actions: Copy Button + Dropdown Toggle -->
@@ -156,7 +155,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           <!-- Cloud / Web: Get Started Button -->
           <a
             href={`${appUrl}/login`}
-            class="corner-brackets relative inline-flex items-center gap-2 border border-[#e2e8f0] bg-white px-4 py-2 font-mono text-xs uppercase tracking-wider text-[#1e293b] font-medium active:scale-[0.98] shrink-0"
+            class="corner-brackets relative h-10 inline-flex items-center gap-2 border border-[#e2e8f0] bg-[#EDF4FE] px-4 font-mono text-xs uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] hover:shadow-xs transition-all active:scale-[0.98] shrink-0"
           >
             <span class="corner-brackets-tr"></span>
             <span class="corner-brackets-bl"></span>
@@ -167,9 +166,9 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           </a>
         </div>
 
-                <!-- USE API KEYS FOR Strip -->
-        <div class="mt-6 flex flex-wrap items-center gap-x-2 sm:gap-x-2.5 gap-y-2">
-          <span class="font-mono text-[11px] sm:text-xs text-[#64748b] font-medium tracking-wider shrink-0 mr-0.5 sm:mr-1">USE API KEYS FOR</span>
+        <!-- USE API KEYS FOR Strip -->
+        <div class="mt-6 border border-[#e2e8f0] bg-[#f8fafc]/50 px-3 sm:px-3.5 py-2 flex flex-nowrap sm:flex-wrap items-center gap-x-2 sm:gap-x-2.5 gap-y-2 overflow-x-hidden sm:overflow-visible transition-colors hover:border-[#cbd5e1]">
+          <span class="font-mono text-[10px] sm:text-xs text-[#64748b] font-medium tracking-wider shrink-0 mr-0.5 sm:mr-1">USE API KEYS FOR</span>
             <!-- OpenAI -->
             <span title="OpenAI" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#10a37f">
@@ -199,49 +198,49 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </span>
 
             <!-- Mistral AI -->
-            <span title="Mistral AI" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
+            <span title="Mistral AI" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path d="M3.428 3.4h3.429v3.428H3.428V3.4zm13.714 0h3.43v3.428h-3.43V3.4z" fill="gold"></path><path d="M3.428 6.828h6.857v3.429H3.429V6.828zm10.286 0h6.857v3.429h-6.857V6.828z" fill="#FFAF00"></path><path d="M3.428 10.258h17.144v3.428H3.428v-3.428z" fill="#FF8205"></path><path d="M3.428 13.686h3.429v3.428H3.428v-3.428zm6.858 0h3.429v3.428h-3.429v-3.428zm6.856 0h3.43v3.428h-3.43v-3.428z" fill="#FA500F"></path><path d="M0 17.114h10.286v3.429H0v-3.429zm13.714 0H24v3.429H13.714v-3.429z" fill="#E10500"></path>
               </svg>
             </span>
 
             <!-- Meta (Llama) -->
-            <span title="Meta (Llama)" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
+            <span title="Meta (Llama)" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#0081fb">
                 <path d="M6.897 4c1.915 0 3.516.932 5.43 3.376l.282-.373c.19-.246.383-.484.58-.71l.313-.35C14.588 4.788 15.792 4 17.225 4c1.273 0 2.469.557 3.491 1.516l.218.213c1.73 1.765 2.917 4.71 3.053 8.026l.011.392.002.25c0 1.501-.28 2.759-.818 3.7l-.14.23-.108.153c-.301.42-.664.758-1.086 1.009l-.265.142-.087.04a3.493 3.493 0 01-.302.118 4.117 4.117 0 01-1.33.208c-.524 0-.996-.067-1.438-.215-.614-.204-1.163-.56-1.726-1.116l-.227-.235c-.753-.812-1.534-1.976-2.493-3.586l-1.43-2.41-.544-.895-1.766 3.13-.343.592C7.597 19.156 6.227 20 4.356 20c-1.21 0-2.205-.42-2.936-1.182l-.168-.184c-.484-.573-.837-1.311-1.043-2.189l-.067-.32a8.69 8.69 0 01-.136-1.288L0 14.468c.002-.745.06-1.49.174-2.23l.1-.573c.298-1.53.828-2.958 1.536-4.157l.209-.34c1.177-1.83 2.789-3.053 4.615-3.16L6.897 4zm-.033 2.615l-.201.01c-.83.083-1.606.673-2.252 1.577l-.138.199-.01.018c-.67 1.017-1.185 2.378-1.456 3.845l-.004.022a12.591 12.591 0 00-.207 2.254l.002.188c.004.18.017.36.04.54l.043.291c.092.503.257.908.486 1.208l.117.137c.303.323.698.492 1.17.492 1.1 0 1.796-.676 3.696-3.641l2.175-3.4.454-.701-.139-.198C9.11 7.3 8.084 6.616 6.864 6.616zm10.196-.552l-.176.007c-.635.048-1.223.359-1.82.933l-.196.198c-.439.462-.887 1.064-1.367 1.807l.266.398c.18.274.362.56.55.858l.293.475 1.396 2.335.695 1.114c.583.926 1.03 1.6 1.408 2.082l.213.262c.282.326.529.54.777.673l.102.05c.227.1.457.138.718.138.176.002.35-.023.518-.073.338-.104.61-.32.813-.637l.095-.163.077-.162c.194-.459.29-1.06.29-1.785l-.006-.449c-.08-2.871-.938-5.372-2.2-6.798l-.176-.189c-.67-.683-1.444-1.074-2.27-1.074z"></path>
               </svg>
             </span>
 
             <!-- xAI (Grok) -->
-            <span title="xAI (Grok)" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
+            <span title="xAI (Grok)" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#090a0f">
                 <path d="M6.469 8.776L16.512 23h-4.464L2.005 8.776H6.47zm-.004 7.9l2.233 3.164L6.467 23H2l4.465-6.324zM22 2.582V23h-3.659V7.764L22 2.582zM22 1l-9.952 14.095-2.233-3.163L17.533 1H22z"></path>
               </svg>
             </span>
 
             <!-- Cohere -->
-            <span title="Cohere" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
+            <span title="Cohere" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path clip-rule="evenodd" d="M8.128 14.099c.592 0 1.77-.033 3.398-.703 1.897-.781 5.672-2.2 8.395-3.656 1.905-1.018 2.74-2.366 2.74-4.18A4.56 4.56 0 0018.1 1H7.549A6.55 6.55 0 001 7.55c0 3.617 2.745 6.549 7.128 6.549z" fill="#39594D" fill-rule="evenodd"></path><path clip-rule="evenodd" d="M9.912 18.61a4.387 4.387 0 012.705-4.052l3.323-1.38c3.361-1.394 7.06 1.076 7.06 4.715a5.104 5.104 0 01-5.105 5.104l-3.597-.001a4.386 4.386 0 01-4.386-4.387z" fill="#D18EE2" fill-rule="evenodd"></path><path d="M4.776 14.962A3.775 3.775 0 001 18.738v.489a3.776 3.776 0 007.551 0v-.49a3.775 3.775 0 00-3.775-3.775z" fill="#FF7759"></path>
               </svg>
             </span>
 
             <!-- Perplexity -->
-            <span title="Perplexity" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
+            <span title="Perplexity" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path d="M19.785 0v7.272H22.5V17.62h-2.935V24l-7.037-6.194v6.145h-1.091v-6.152L4.392 24v-6.465H1.5V7.188h2.884V0l7.053 6.494V.19h1.09v6.49L19.786 0zm-7.257 9.044v7.319l5.946 5.234V14.44l-5.946-5.397zm-1.099-.08l-5.946 5.398v7.235l5.946-5.234V8.965zm8.136 7.58h1.844V8.349H13.46l6.105 5.54v2.655zm-8.982-8.28H2.59v8.195h1.8v-2.576l6.192-5.62zM5.475 2.476v4.71h5.115l-5.115-4.71zm13.219 0l-5.115 4.71h5.115v-4.71z" fill="#22B8CD" fill-rule="nonzero"></path>
               </svg>
             </span>
 
             <!-- Groq -->
-            <span title="Groq" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
+            <span title="Groq" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#f55036">
                 <path d="M12.036 2c-3.853-.035-7 3-7.036 6.781-.035 3.782 3.055 6.872 6.908 6.907h2.42v-2.566h-2.292c-2.407.028-4.38-1.866-4.408-4.23-.029-2.362 1.901-4.298 4.308-4.326h.1c2.407 0 4.358 1.915 4.365 4.278v6.305c0 2.342-1.944 4.25-4.323 4.279a4.375 4.375 0 01-3.033-1.252l-1.851 1.818A7 7 0 0012.029 22h.092c3.803-.056 6.858-3.083 6.879-6.816v-6.5C18.907 4.963 15.817 2 12.036 2z"></path>
               </svg>
             </span>
 
             <!-- Qwen (Alibaba) -->
-            <span title="Qwen (Alibaba)" class="hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center shrink-0">
+            <span title="Qwen (Alibaba)" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path d="M12.604 1.34c.393.69.784 1.382 1.174 2.075a.18.18 0 00.157.091h5.552c.174 0 .322.11.446.327l1.454 2.57c.19.337.24.478.024.837-.26.43-.513.864-.76 1.3l-.367.658c-.106.196-.223.28-.04.512l2.652 4.637c.172.301.111.494-.043.77-.437.785-.882 1.564-1.335 2.34-.159.272-.352.375-.68.37-.777-.016-1.552-.01-2.327.016a.099.099 0 00-.081.05 575.097 575.097 0 01-2.705 4.74c-.169.293-.38.363-.725.364-.997.003-2.002.004-3.017.002a.537.537 0 01-.465-.271l-1.335-2.323a.09.09 0 00-.083-.049H4.982c-.285.03-.553-.001-.805-.092l-1.603-2.77a.543.543 0 01-.002-.54l1.207-2.12a.198.198 0 000-.197 550.951 550.951 0 01-1.875-3.272l-.79-1.395c-.16-.31-.173-.496.095-.965.465-.813.927-1.625 1.387-2.436.132-.234.304-.334.584-.335a338.3 338.3 0 012.589-.001.124.124 0 00.107-.063l2.806-4.895a.488.488 0 01.422-.246c.524-.001 1.053 0 1.583-.006L11.704 1c.341-.003.724.032.9.34zm-3.432.403a.06.06 0 00-.052.03L6.254 6.788a.157.157 0 01-.135.078H3.253c-.056 0-.07.025-.041.074l5.81 10.156c.025.042.013.062-.034.063l-2.795.015a.218.218 0 00-.2.116l-1.32 2.31c-.044.078-.021.118.068.118l5.716.008c.046 0 .08.02.104.061l1.403 2.454c.046.081.092.082.139 0l5.006-8.76.783-1.382a.055.055 0 01.096 0l1.424 2.53a.122.122 0 00.107.062l2.763-.02a.04.04 0 00.035-.02.041.041 0 000-.04l-2.9-5.086a.108.108 0 010-.113l.293-.507 1.12-1.977c.024-.041.012-.062-.035-.062H9.2c-.059 0-.073-.026-.043-.077l1.434-2.505a.107.107 0 000-.114L9.225 1.774a.06.06 0 00-.053-.031zm6.29 8.02c.046 0 .058.02.034.06l-.832 1.465-2.613 4.585a.056.056 0 01-.05.029.058.058 0 01-.05-.029L8.498 9.841c-.02-.034-.01-.052.028-.054l.216-.012 6.722-.012z" fill="url(#qwen-grad)" fill-rule="nonzero"></path><defs><linearGradient id="qwen-grad" x1="0%" x2="100%" y1="0%" y2="0%"><stop offset="0%" stop-color="#6336E7" stop-opacity=".84"></stop><stop offset="100%" stop-color="#6F69F7" stop-opacity=".84"></stop></linearGradient></defs>
               </svg>
@@ -257,32 +256,14 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           <!-- and 50+ more providers -->
           <a
             href="/docs/integrations"
-            class="font-mono text-[11px] sm:text-xs text-[#64748b] hover:text-[#090a0f] transition-colors whitespace-nowrap shrink-0 ml-0.5 sm:ml-1"
+            class="font-mono text-[10px] sm:text-xs text-[#64748b] hover:text-[#090a0f] transition-colors whitespace-nowrap shrink-0 ml-0.5 sm:ml-1"
           >
-            and 50+ more providers
+            <span class="sm:hidden">+50 more</span><span class="hidden sm:inline">and 50+ more providers</span>
           </a>
         </div>
       </div>
     </section>
 
-    <!-- Video Player Showcase (Hero Demo) -->
-    <section class="mb-20 sm:mb-24">
-      <div class="relative w-full mx-auto">
-        <!-- Video Container with 16:9 Aspect Ratio (Sharp edges, no curve radius) -->
-        <div
-          id="hero-video-container"
-          class="relative w-full aspect-video rounded-none border border-[#e2e8f0] bg-black shadow-xl overflow-hidden"
-        >
-          <iframe
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-            title="December Demo Video"
-            class="w-full h-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen
-          ></iframe>
-        </div>
-      </div>
-    </section>
 
     <!-- How It Works Section -->
     <section class="mb-16 sm:mb-20">
@@ -293,12 +274,15 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
           Everything you need to write, test, and ship code.
         </h3>
-        <div class="mt-3 space-y-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+        <div class="mt-3 space-y-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
           <p>
-            December runs inside your repository to edit files, execute shell commands, and run tests.
+            December runs directly inside your local repository. It indexes your codebase, plans multi-file changes, edits code with precision, and executes shell commands and test suites to verify every fix.
           </p>
           <p>
-            It works locally in your terminal using your own API keys or Ollama. Use /handoff to continue any session in a cloud sandbox.
+            Bring the tools and subscriptions you already have: December connects seamlessly to your existing plans — including <strong class="font-medium text-[#090a0f]">Claude Code</strong>, <strong class="font-medium text-[#090a0f]">Codex plan</strong>, <strong class="font-medium text-[#090a0f]">Antigravity plan</strong>, and <strong class="font-medium text-[#090a0f]">Copilot plan</strong>. It also supports <strong class="font-medium text-[#090a0f]">50+ model providers via BYOK</strong> and fully offline local models with <strong class="font-medium text-[#090a0f]">Ollama</strong>.
+          </p>
+          <p>
+            Need cloud compute or live browser previews? Simply type <code class="px-1.5 py-0.5 bg-[#f1f5f9] border border-[#e2e8f0] font-mono text-xs text-[#090a0f]">/handoff</code> to move any local terminal session into an isolated cloud sandbox for instant collaboration and visual verification.
           </p>
         </div>
       </div>
@@ -589,15 +573,6 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </div>
       </div>
 
-      <!-- Testimonial Quote Callout with Brand Blue Border (Compact) -->
-      <div class="mt-6 sm:mt-8 pl-4 border-l-2 border-[#87b2f4] py-0.5">
-        <blockquote class="text-base sm:text-lg text-[#090a0f] font-normal leading-snug tracking-tight">
-          “Reduced avg response time from <span class="font-semibold text-[#87b2f4]">40s &rarr; 12s</span>. Using about <span class="font-semibold text-[#87b2f4]">40–50% fewer tokens</span>.”
-        </blockquote>
-        <div class="mt-1.5 text-sm text-[#64748b]">
-          Founder, Chatarmin · <a href="https://x.com" target="_blank" rel="noopener noreferrer" class="text-[#87b2f4] hover:text-[#090a0f] transition-colors">on X ↗</a>
-        </div>
-      </div>
     </section>
 
     <!-- Environments Section -->
@@ -689,148 +664,187 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
 
     <!-- FAQ Section -->
-    <section id="faq" class="mb-8 sm:mb-10">
-      <div class="max-w-2xl mb-8">
+    <section id="faq" class="mb-16 sm:mb-20">
+      <div class="max-w-2xl mb-6 sm:mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           FAQ
         </h2>
-        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f]">
+        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
           Frequently Asked Questions
         </h3>
+        <p class="mt-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+          Everything you need to know about using December in your terminal, bringing your own models, data privacy, and cloud handoff.
+        </p>
+        <div class="mt-2">
+          <a
+            href="/docs"
+            class="inline-flex items-center gap-1 text-sm font-mono font-medium text-[#87b2f4] hover:text-[#090a0f] transition-colors"
+          >
+            Documentation &amp; guides ↗
+          </a>
+        </div>
       </div>
 
-      <div id="faq-list" class="space-y-3 sm:space-y-3.5 font-mono">
-        <!-- Question 1 -->
-        <div class="faq-item">
+      <div id="faq-list" class="space-y-3 sm:space-y-3.5">
+        <!-- 01 Overview -->
+        <div class="faq-item border border-[#e2e8f0] bg-white transition-all hover:border-[#87b2f4]">
           <button
             type="button"
-            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
+            class="faq-toggle w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 cursor-pointer group"
             aria-expanded="false"
           >
-            <span class="faq-icon text-[#64748b] group-hover:text-[#87b2f4] text-sm select-none w-3 shrink-0 transition-colors font-bold">
-              +
-            </span>
-            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#87b2f4] transition-colors">
-              What is December?
+            <div>
+              <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
+                <span class="text-[#87b2f4] font-semibold">01</span>
+                <span class="text-[#cbd5e1]">/</span>
+                <span>Overview</span>
+              </div>
+              <h4 class="text-sm sm:text-base font-semibold text-[#090a0f] group-hover:text-[#87b2f4] transition-colors leading-snug">
+                What is December?
+              </h4>
+            </div>
+            <span class="faq-icon-box shrink-0 w-6 h-6 mt-0.5 border border-[#e2e8f0] group-hover:border-[#87b2f4] flex items-center justify-center font-mono text-xs text-[#64748b] group-hover:text-[#87b2f4] transition-all select-none">
+              <span class="faq-icon font-bold leading-none">+</span>
             </span>
           </button>
-          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
-            December is an autonomous coding agent that lives directly in your terminal. It understands your codebase, plans multi-file edits, runs native commands and tests, and fixes bugs with zero latency.
+          <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed border-t border-[#f1f5f9] mt-0">
+            <p class="pt-3">
+              December is an open-source autonomous coding agent designed for your terminal and the cloud. It indexes and understands your codebase, plans multi-file refactors, writes code, fixes bugs, and executes native terminal commands and tests with zero artificial friction. Use it directly in your terminal or alongside your favorite IDE.
+            </p>
           </div>
         </div>
 
-        <!-- Question 2 -->
-        <div class="faq-item">
+        <!-- 02 Installation -->
+        <div class="faq-item border border-[#e2e8f0] bg-white transition-all hover:border-[#87b2f4]">
           <button
             type="button"
-            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
+            class="faq-toggle w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 cursor-pointer group"
             aria-expanded="false"
           >
-            <span class="faq-icon text-[#64748b] group-hover:text-[#87b2f4] text-sm select-none w-3 shrink-0 transition-colors font-bold">
-              +
-            </span>
-            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#87b2f4] transition-colors">
-              How do I get started with December?
+            <div>
+              <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
+                <span class="text-[#87b2f4] font-semibold">02</span>
+                <span class="text-[#cbd5e1]">/</span>
+                <span>Installation</span>
+              </div>
+              <h4 class="text-sm sm:text-base font-semibold text-[#090a0f] group-hover:text-[#87b2f4] transition-colors leading-snug">
+                How do I get started with December?
+              </h4>
+            </div>
+            <span class="faq-icon-box shrink-0 w-6 h-6 mt-0.5 border border-[#e2e8f0] group-hover:border-[#87b2f4] flex items-center justify-center font-mono text-xs text-[#64748b] group-hover:text-[#87b2f4] transition-all select-none">
+              <span class="faq-icon font-bold leading-none">+</span>
             </span>
           </button>
-          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
-            Install December globally using npm install -g @trydecember/cli, navigate to any git repository in your shell, and run december. You can prompt in plain English or use slash commands like /handoff.
+          <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed border-t border-[#f1f5f9] mt-0">
+            <p class="pt-3">
+              Install December globally using your preferred package manager:
+            </p>
+            <div class="mt-2.5 p-3 bg-[#f8fafc] border border-[#e2e8f0] font-mono text-xs text-[#090a0f] flex items-center justify-between">
+              <span>npm install -g @trydecember/cli</span>
+              <span class="text-[#94a3b8] text-[11px]">or bun / pnpm</span>
+            </div>
+            <p class="mt-2.5">
+              Then navigate to any git repository in your shell and run <code class="px-1.5 py-0.5 bg-[#f1f5f9] border border-[#e2e8f0] font-mono text-xs text-[#090a0f]">december</code> to start an interactive session, or launch with an initial instruction like <code class="px-1.5 py-0.5 bg-[#f1f5f9] border border-[#e2e8f0] font-mono text-xs text-[#090a0f]">december "fix failing unit tests"</code>.
+            </p>
           </div>
         </div>
 
-        <!-- Question 3 -->
-        <div class="faq-item">
+        <!-- 03 Models & BYOK -->
+        <div class="faq-item border border-[#e2e8f0] bg-white transition-all hover:border-[#87b2f4]">
           <button
             type="button"
-            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
+            class="faq-toggle w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 cursor-pointer group"
             aria-expanded="false"
           >
-            <span class="faq-icon text-[#64748b] group-hover:text-[#87b2f4] text-sm select-none w-3 shrink-0 transition-colors font-bold">
-              +
-            </span>
-            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#87b2f4] transition-colors">
-              Do I need extra AI subscriptions to use December?
+            <div>
+              <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
+                <span class="text-[#87b2f4] font-semibold">03</span>
+                <span class="text-[#cbd5e1]">/</span>
+                <span>Models &amp; BYOK</span>
+              </div>
+              <h4 class="text-sm sm:text-base font-semibold text-[#090a0f] group-hover:text-[#87b2f4] transition-colors leading-snug">
+                Do I need extra AI subscriptions or proprietary credits?
+              </h4>
+            </div>
+            <span class="faq-icon-box shrink-0 w-6 h-6 mt-0.5 border border-[#e2e8f0] group-hover:border-[#87b2f4] flex items-center justify-center font-mono text-xs text-[#64748b] group-hover:text-[#87b2f4] transition-all select-none">
+              <span class="faq-icon font-bold leading-none">+</span>
             </span>
           </button>
-          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
-            No! You can bring your own API keys for Claude 3.7, OpenAI, Gemini 2.5, DeepSeek, or run local offline models with Ollama with 0% token markup. If you prefer zero configuration, you can also sign in to December Cloud to use bundled monthly credits.
+          <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed border-t border-[#f1f5f9] mt-0">
+            <p class="pt-3">
+              No! December is 100% model-agnostic with zero token markup. Bring your own API keys for Claude 3.7 Sonnet, OpenAI (GPT-4o, o3-mini), Google Gemini 2.5, DeepSeek, or run local offline models privately with Ollama.
+            </p>
+            <p class="mt-2">
+              If you prefer zero setup, you can also sign in to December Cloud to use bundled monthly credits across top-tier models. Configure your keys anytime by running <code class="px-1.5 py-0.5 bg-[#f1f5f9] border border-[#e2e8f0] font-mono text-xs text-[#090a0f]">december login</code>.
+            </p>
           </div>
         </div>
 
-        <!-- Question 4 -->
-        <div class="faq-item">
+        <!-- 04 Privacy & Security -->
+        <div class="faq-item border border-[#e2e8f0] bg-white transition-all hover:border-[#87b2f4]">
           <button
             type="button"
-            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
+            class="faq-toggle w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 cursor-pointer group"
             aria-expanded="false"
           >
-            <span class="faq-icon text-[#64748b] group-hover:text-[#87b2f4] text-sm select-none w-3 shrink-0 transition-colors font-bold">
-              +
-            </span>
-            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#87b2f4] transition-colors">
-              Can I only use December in the terminal?
+            <div>
+              <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
+                <span class="text-[#87b2f4] font-semibold">04</span>
+                <span class="text-[#cbd5e1]">/</span>
+                <span>Privacy &amp; Security</span>
+              </div>
+              <h4 class="text-sm sm:text-base font-semibold text-[#090a0f] group-hover:text-[#87b2f4] transition-colors leading-snug">
+                What about data privacy and codebase security?
+              </h4>
+            </div>
+            <span class="faq-icon-box shrink-0 w-6 h-6 mt-0.5 border border-[#e2e8f0] group-hover:border-[#87b2f4] flex items-center justify-center font-mono text-xs text-[#64748b] group-hover:text-[#87b2f4] transition-all select-none">
+              <span class="faq-icon font-bold leading-none">+</span>
             </span>
           </button>
-          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
-            Not anymore! December is available in your terminal, as a companion in your IDE, and on the <a href="https://app.trydecember.com" target="_blank" rel="noopener noreferrer" class="underline text-[#090a0f] hover:text-[#87b2f4] transition-colors">web</a> with live cloud preview environments!
+          <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed border-t border-[#f1f5f9] mt-0">
+            <p class="pt-3">
+              December operates locally on your machine. Your codebase, git history, and local environment files never leave your system. When you use BYOK mode, requests travel directly from your machine to your configured LLM endpoint (or stay completely offline when using Ollama).
+            </p>
+            <p class="mt-2">
+              Code is only synchronized to an isolated cloud micro-VM when you explicitly execute the <code class="px-1.5 py-0.5 bg-[#f1f5f9] border border-[#e2e8f0] font-mono text-xs text-[#090a0f]">/handoff</code> command.
+            </p>
           </div>
         </div>
 
-        <!-- Question 5 -->
-        <div class="faq-item">
-          <button
-            type="button"
-            class="faq-toggle flex items-start gap-2.5 w-full text-left group cursor-pointer py-1"
-            aria-expanded="false"
-          >
-            <span class="faq-icon text-[#64748b] group-hover:text-[#87b2f4] text-sm select-none w-3 shrink-0 transition-colors font-bold">
-              +
-            </span>
-            <span class="text-xs sm:text-sm font-semibold text-[#090a0f] group-hover:text-[#87b2f4] transition-colors">
-              What about data and privacy?
-            </span>
-          </button>
-          <div class="faq-content hidden mt-1.5 pl-5.5 text-xs text-[#52525b] leading-relaxed font-mono">
-            December operates locally on your machine. Your codebase and files never leave your system, and requests travel directly to your configured LLM endpoint (or stay completely offline when using Ollama). Only when you explicitly run /handoff is code synced to secure cloud micro-VMs.
-          </div>
-        </div>
       </div>
     </section>
 
     <!-- Brand Banner above Footer -->
-    <div class="mt-0 mb-0">
-      <div class="relative w-full bg-white overflow-hidden group transition-all">
-        <!-- Light Dithered Sky Background Image spanning full width with smooth left fade -->
+    <div class="mt-3 sm:mt-4 mb-1 sm:mb-2">
+      <div class="relative w-full bg-[#f0f7ff] overflow-hidden group transition-all">
+        <!-- Blue Particle F1 Car Background Image spanning full width -->
         <img
           src="/illustrations/december-sky.png"
-          alt="December Sky"
-          class="absolute inset-0 w-full h-full object-cover object-center select-none pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+          alt="Start building with December"
+          class="absolute inset-0 w-full h-full object-cover object-center select-none pointer-events-none opacity-95 group-hover:opacity-100 transition-opacity duration-300"
           loading="lazy"
         />
 
-        <!-- Banner Content -->
-        <div class="relative z-10 p-5 sm:p-6 md:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-          <div class="max-w-xl">
-            <h3 class="text-base sm:text-lg font-semibold text-[#090a0f] tracking-tight leading-snug">
+        <!-- Soft gradient overlay ensuring optimal contrast for text on the left -->
+        <div class="absolute inset-0 bg-gradient-to-r from-white/90 via-white/40 to-transparent pointer-events-none"></div>
+
+        <!-- Banner Content: Compact text layout to maximize focus on the car image -->
+        <div class="relative z-10 p-5 sm:p-6 md:p-7 flex flex-col justify-center min-h-[160px] sm:min-h-[180px] md:min-h-[200px]">
+          <div class="max-w-xs sm:max-w-sm">
+            <h3 class="text-base sm:text-lg font-medium text-[#090a0f] tracking-tight leading-snug">
               Start building with December.
             </h3>
-            <p class="mt-1.5 text-xs sm:text-sm text-[#52525b] leading-relaxed max-w-lg">
-              Run coding tasks locally in your shell with any LLM, or hand off to an isolated cloud sandbox for live browser previews.
+            <p class="mt-1.5 text-xs sm:text-[13px] text-[#475569] leading-relaxed">
+              A coding agent for terminal and cloud.
             </p>
             <div class="mt-3">
               <a
                 href="/docs/quickstart"
-                class="inline-flex items-center gap-1 font-mono text-xs sm:text-[13px] font-medium text-[#87b2f4] hover:text-[#090a0f] transition-colors"
+                class="inline-flex items-center gap-1.5 font-mono text-xs font-medium text-[#2563eb] hover:text-[#1d4ed8] hover:underline transition-all"
               >
                 Quickstart guide ↗
               </a>
             </div>
-          </div>
-
-          <!-- Brand Tag (Right) -->
-          <div class="flex items-center gap-1.5 font-mono text-xs text-[#64748b] self-end sm:self-auto shrink-0 bg-white/70 backdrop-blur-xs px-2.5 py-1">
-            <span class="text-[#87b2f4]">✱</span>
-            <span class="font-medium text-[#090a0f]">december</span>
           </div>
         </div>
       </div>
@@ -921,16 +935,25 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
         const content = item.querySelector('.faq-content');
         const icon = item.querySelector('.faq-icon');
+        const iconBox = item.querySelector('.faq-icon-box');
         if (!content || !icon) return;
 
         const isHidden = content.classList.contains('hidden');
         if (isHidden) {
           content.classList.remove('hidden');
           icon.textContent = '—';
+          item.classList.add('border-[#87b2f4]', 'shadow-xs');
+          if (iconBox) {
+            iconBox.classList.add('border-[#87b2f4]', 'text-[#87b2f4]', 'bg-[#87b2f4]/10');
+          }
           toggleBtn.setAttribute('aria-expanded', 'true');
         } else {
           content.classList.add('hidden');
           icon.textContent = '+';
+          item.classList.remove('border-[#87b2f4]', 'shadow-xs');
+          if (iconBox) {
+            iconBox.classList.remove('border-[#87b2f4]', 'text-[#87b2f4]', 'bg-[#87b2f4]/10');
+          }
           toggleBtn.setAttribute('aria-expanded', 'false');
         }
       };

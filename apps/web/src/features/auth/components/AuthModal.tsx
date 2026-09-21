@@ -71,12 +71,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="fixed inset-0 z-[100] bg-[#141414] flex flex-col items-center justify-center font-roboto overflow-y-auto"
+                    className="fixed inset-0 z-[100] bg-[#141414] flex flex-col items-center justify-center font-sans overflow-y-auto"
                 >
                     <button
                         type="button"
                         onClick={onClose}
-                        className="hidden md:flex items-center justify-center absolute top-5 left-5 text-[#888888] hover:text-[#EDEDED] p-2 rounded-lg hover:bg-white/5 transition-colors z-50 outline-none cursor-pointer"
+                        className="flex items-center justify-center absolute top-5 right-5 text-[#888888] hover:text-[#EDEDED] p-2 rounded-lg hover:bg-white/5 transition-colors z-50 outline-none cursor-pointer"
                         aria-label="Close"
                         title="Close"
                     >

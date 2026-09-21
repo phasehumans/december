@@ -27,6 +27,6 @@ export const MESSAGES = {
     },
     ERROR: {
         RATE_LIMIT:
-            'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing\n\n',
+            'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://app.trydecember.com/settings/billing\n\n',
     },
 }

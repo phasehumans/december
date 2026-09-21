@@ -17,10 +17,10 @@ export const AuthModalForgotEmailStep: React.FC<AuthModalForgotEmailStepProps> =
             <div className="mb-5 text-white">
                 <Icons.DecemberLogo className="w-[42px] h-[42px] text-white" />
             </div>
-            <h2 className="text-[22px] font-normal text-white tracking-tight mb-1">
+            <h2 className="text-[22px] sm:text-[24px] font-medium text-white tracking-[-0.025em] leading-snug mb-1.5">
                 Forgot password
             </h2>
-            <p className="text-[13px] text-[#A3A3A3]">
+            <p className="text-[13px] text-[#A1A1A6] leading-relaxed">
                 Enter your email and we&apos;ll send a reset code.
             </p>
         </div>
@@ -33,29 +33,31 @@ export const AuthModalForgotEmailStep: React.FC<AuthModalForgotEmailStepProps> =
                 value={email}
                 onChange={(event) => onEmailChange(event.target.value)}
                 disabled={isPending}
-                className="w-full bg-[#141414] border border-[#2A2A2A] rounded-full h-[42px] px-4 text-[14px] text-white placeholder-[#666666] outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A2A] focus:shadow-none shadow-none"
+                className="w-full bg-[#141414] border border-[#2A2A2A] rounded-none h-10 px-3.5 font-mono text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
             />
 
             {errorMessage && (
-                <p className="text-[13px] text-red-500 px-1 text-center">{errorMessage}</p>
+                <p className="font-mono text-xs text-red-400 px-1 text-center">{errorMessage}</p>
             )}
 
             <button
                 type="submit"
                 disabled={!email.trim() || isPending}
-                className="w-full bg-[#EDEDED] hover:bg-white text-[#111111] font-medium h-[42px] rounded-full flex items-center justify-center text-[14px] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mt-1 shadow-sm"
+                className="w-full bg-[#EDEDED] hover:bg-white text-[#090a0f] font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1"
             >
-                {isPending ? 'Please wait...' : 'Get OTP'}
+                {isPending ? 'Sending code...' : 'Get reset code →'}
             </button>
 
-            <button
-                type="button"
-                onClick={onBack}
-                disabled={isPending}
-                className="self-center mt-4 text-[13px] text-[#888888] hover:text-white transition-colors underline decoration-transparent hover:decoration-white/50 underline-offset-4"
-            >
-                Back to login
-            </button>
+            <div className="mt-3 pt-4 border-t border-[#262626] flex justify-center">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    disabled={isPending}
+                    className="font-mono text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
+                >
+                    ← Back to login
+                </button>
+            </div>
         </form>
     </div>
 )

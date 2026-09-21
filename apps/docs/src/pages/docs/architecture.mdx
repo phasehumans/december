@@ -9,27 +9,93 @@ currentSlug: 'architecture'
 
 December is engineered as a hybrid terminal and cloud software development platform. It consists of four distinct architectural layers:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                       December CLI                          │
-│         Local Filesystem · Native Bash · Git Trees          │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                        [/handoff sync]
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      December Cloud                         │
-│       Session State · Artifact Storage · Auth Cookies       │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                 [Zero-Config Sandbox Provisioning]
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 Isolated Micro-VM Sandboxes                 │
-│      Root Linux Environment · Node / Bun / Python Runtimes  │
-│                  Live Web Preview Ports (Vite)              │
-└─────────────────────────────────────────────────────────────┘
-```
+<div class="my-8 p-4 sm:p-6 border border-[#e2e8f0] bg-[#f8fafc]/50 relative">
+  <span class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#87b2f4]"></span>
+  <span class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#87b2f4]"></span>
+  <span class="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-[#87b2f4]"></span>
+  <span class="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-[#87b2f4]"></span>
+
+  <div class="flex flex-col items-center max-w-xl mx-auto space-y-0">
+    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
+      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
+        <div class="flex items-center gap-1.5 font-medium">
+          <span class="text-[#87b2f4] font-semibold">01</span>
+          <span class="text-[#cbd5e1]">/</span>
+          <span class="text-[#090a0f]">Local Runtime</span>
+        </div>
+        <span class="text-[10px] uppercase tracking-wider text-[#64748b] bg-[#f8fafc] px-2 py-0.5 border border-[#e2e8f0]">Client Machine</span>
+      </div>
+      <h4 class="text-base font-semibold text-[#090a0f] tracking-tight">December CLI</h4>
+      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
+        <span>Local Filesystem</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>Native Bash</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>Git Trees &amp; Diffs</span>
+      </div>
+    </div>
+
+    <div class="flex flex-col items-center py-1 select-none">
+      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <div class="px-2.5 py-1 border border-[#e2e8f0] bg-white font-mono text-[11px] text-[#090a0f] shadow-2xs flex items-center gap-1.5 my-0.5">
+        <span class="text-[#87b2f4] font-semibold">$</span>
+        <span>/handoff sync</span>
+      </div>
+      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <svg class="w-3 h-3 text-[#87b2f4] -mt-0.5" viewBox="0 0 12 12" fill="currentColor">
+        <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
+      </svg>
+    </div>
+
+    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
+      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
+        <div class="flex items-center gap-1.5 font-medium">
+          <span class="text-[#87b2f4] font-semibold">02</span>
+          <span class="text-[#cbd5e1]">/</span>
+          <span class="text-[#090a0f]">Control Plane</span>
+        </div>
+        <span class="text-[10px] uppercase tracking-wider text-[#87b2f4] bg-[#87b2f4]/10 px-2 py-0.5 border border-[#87b2f4]/30">app.trydecember.com</span>
+      </div>
+      <h4 class="text-base font-semibold text-[#090a0f] tracking-tight">December Cloud</h4>
+      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
+        <span>Session State</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>Artifact Storage</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>Auth &amp; Encryption</span>
+      </div>
+    </div>
+
+    <div class="flex flex-col items-center py-1 select-none">
+      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <div class="px-2.5 py-1 border border-[#e2e8f0] bg-white font-mono text-[11px] text-[#64748b] shadow-2xs my-0.5">Zero-Config Sandbox Provisioning</div>
+      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <svg class="w-3 h-3 text-[#87b2f4] -mt-0.5" viewBox="0 0 12 12" fill="currentColor">
+        <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
+      </svg>
+    </div>
+
+    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
+      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
+        <div class="flex items-center gap-1.5 font-medium">
+          <span class="text-[#87b2f4] font-semibold">03</span>
+          <span class="text-[#cbd5e1]">/</span>
+          <span class="text-[#090a0f]">Execution Layer</span>
+        </div>
+        <span class="text-[10px] uppercase tracking-wider text-[#64748b] bg-[#f8fafc] px-2 py-0.5 border border-[#e2e8f0]">Isolated Linux Micro-VM</span>
+      </div>
+      <h4 class="text-base font-semibold text-[#090a0f] tracking-tight">Isolated Sandboxes</h4>
+      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
+        <span>Root Linux Environment</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>Node / Bun / Python Runtimes</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>Live Web Previews (Vite / TLS)</span>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 ## The Dual-Surface Bridge
 

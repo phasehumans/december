@@ -6,6 +6,7 @@ import { useAppStore } from '@/app/store'
 import { getPathForView, type ViewState } from '@/app/types'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
+import { getWebUrl } from '@/shared/config/env'
 
 export const useNavigationController = () => {
     const navigate = useNavigate()
@@ -88,10 +89,6 @@ export const useNavigationController = () => {
 
     const handleNavigate = React.useCallback(
         (target: ViewState) => {
-            if (target === 'docs') {
-                navigate(getPathForView(target))
-                return
-            }
             requireAuthOr(() => {
                 navigate(getPathForView(target))
             })
@@ -100,7 +97,7 @@ export const useNavigationController = () => {
     )
 
     const handleSignOut = React.useCallback(async () => {
-        const landingUrl = process.env.WEB_URL || 'https://trydecember.com'
+        const landingUrl = getWebUrl()
         try {
             document.cookie =
                 'december_logged_in=; Path=/; Domain=.trydecember.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'

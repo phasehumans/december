@@ -79,7 +79,7 @@ describe('ErrorMessage Component (Unit)', () => {
 
     it('parses multi-line error strings automatically via parseTuiError and renders without Error: or Cause:', () => {
         const multiLine =
-            'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing\n429 Too Many Requests: RESOURCE_EXHAUSTED'
+            'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://app.trydecember.com/settings/billing\n429 Too Many Requests: RESOURCE_EXHAUSTED'
         const parsed = parseTuiError(multiLine)
 
         expect(parsed.message).toBe('Rate limit or quota exhausted from LLM provider.')

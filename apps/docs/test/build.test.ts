@@ -1,10 +1,17 @@
+import { execSync } from 'child_process'
 import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 
-import { describe, expect, it } from 'bun:test'
+import { beforeAll, describe, expect, it } from 'bun:test'
 
 describe('apps/docs static build verification', () => {
     const distDir = join(__dirname, '../dist')
+
+    beforeAll(() => {
+        if (!existsSync(distDir) || !existsSync(join(distDir, 'index.html'))) {
+            execSync('bun run build', { cwd: join(__dirname, '..'), stdio: 'pipe' })
+        }
+    })
 
     it('generates dist directory with required HTML pages', () => {
         const requiredPages = [
@@ -53,5 +60,22 @@ describe('apps/docs static build verification', () => {
         expect(docsHtml).toContain('Introducing December')
         expect(docsHtml).toContain('/docs/quickstart')
         expect(docsHtml).toContain('/docs/cli')
+    })
+
+    it('generates robots.txt, sitemap.xml, and favicon static assets', () => {
+        expect(existsSync(join(distDir, 'robots.txt'))).toBe(true)
+        expect(existsSync(join(distDir, 'sitemap.xml'))).toBe(true)
+        expect(existsSync(join(distDir, 'favicon.ico'))).toBe(true)
+        expect(existsSync(join(distDir, 'favicon.svg'))).toBe(true)
+        expect(existsSync(join(distDir, 'favicon.png'))).toBe(true)
+
+        const robotsTxt = readFileSync(join(distDir, 'robots.txt'), 'utf-8')
+        expect(robotsTxt).toContain('Sitemap: https://trydecember.com/sitemap.xml')
+
+        const sitemapXml = readFileSync(join(distDir, 'sitemap.xml'), 'utf-8')
+        expect(sitemapXml).toContain('https://trydecember.com/')
+        expect(sitemapXml).toContain('https://trydecember.com/docs')
+        expect(sitemapXml).toContain('https://trydecember.com/privacy')
+        expect(sitemapXml).toContain('https://trydecember.com/terms')
     })
 })

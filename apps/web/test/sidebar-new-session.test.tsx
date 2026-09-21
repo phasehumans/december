@@ -20,6 +20,7 @@ describe('Sidebar Navigation - Create New Session', () => {
     let queryClient: QueryClient
 
     beforeEach(() => {
+        cleanup()
         queryClient = new QueryClient({
             defaultOptions: {
                 queries: { retry: false },
@@ -177,7 +178,14 @@ describe('Sidebar Navigation - Create New Session', () => {
     })
 
     test('useAppController handleNewThread resets all session and generation state', async () => {
+        const { profileAPI } = await import('../src/features/profile/api/profile')
+        const originalQuickInfo = profileAPI.getQuickInfo
+        profileAPI.getQuickInfo = async () =>
+            ({ id: 'u1', fullName: 'User', email: 'user@example.com' }) as any
+
         useAppStore.setState({
+            isAuthenticated: true,
+            isAuthRestored: true,
             activeProjectId: 'sess-to-clear',
             activeProjectName: 'To Clear',
             activeProjectVersionId: 'v1',
@@ -199,28 +207,32 @@ describe('Sidebar Navigation - Create New Session', () => {
             )
         }
 
-        render(
-            <QueryClientProvider client={queryClient}>
-                <MemoryRouter initialEntries={['/sessions/to-clear']}>
-                    <Routes>
-                        <Route path="*" element={<TestConsumer />} />
-                    </Routes>
-                </MemoryRouter>
-            </QueryClientProvider>
-        )
+        try {
+            render(
+                <QueryClientProvider client={queryClient}>
+                    <MemoryRouter initialEntries={['/sessions/to-clear']}>
+                        <Routes>
+                            <Route path="*" element={<TestConsumer />} />
+                        </Routes>
+                    </MemoryRouter>
+                </QueryClientProvider>
+            )
 
-        expect(screen.getByTestId('path').textContent).toBe('/sessions/to-clear')
+            expect(screen.getByTestId('path').textContent).toBe('/sessions/to-clear')
 
-        await act(async () => {
-            controllerInstance!.handleNewThread()
-        })
+            await act(async () => {
+                controllerInstance!.handleNewThread()
+            })
 
-        expect(screen.getByTestId('path').textContent).toBe('/')
-        expect(screen.getByTestId('is-home').textContent).toBe('true')
-        expect(useAppStore.getState().activeProjectId).toBeNull()
-        expect(useAppStore.getState().messages).toHaveLength(0)
-        expect(useAppStore.getState().isGenerating).toBe(false)
-        expect(useAppStore.getState().projectLoadError).toBeNull()
+            expect(screen.getByTestId('path').textContent).toBe('/')
+            expect(screen.getByTestId('is-home').textContent).toBe('true')
+            expect(useAppStore.getState().activeProjectId).toBeNull()
+            expect(useAppStore.getState().messages).toHaveLength(0)
+            expect(useAppStore.getState().isGenerating).toBe(false)
+            expect(useAppStore.getState().projectLoadError).toBeNull()
+        } finally {
+            profileAPI.getQuickInfo = originalQuickInfo
+        }
     })
 
     test('HomeHero resets prompt state and switches to agent mode on december:new-session event', async () => {

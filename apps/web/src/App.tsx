@@ -7,6 +7,7 @@ import { useAppController } from './app/hooks/useAppController'
 import { AuthModal } from './features/auth/components/AuthModal'
 
 import { Icons } from '@/shared/components/ui/Icons'
+import { getWebUrl } from '@/shared/config/env'
 
 const App: React.FC = () => {
     const {
@@ -58,12 +59,12 @@ const App: React.FC = () => {
     if (!isAuthenticated) {
         if (location.pathname === '/login' || location.pathname === '/signup') {
             return (
-                <div className="fixed inset-0 z-[100] bg-[#141414] flex flex-col items-center justify-center font-roboto overflow-y-auto">
+                <div className="fixed inset-0 z-[100] bg-[#141414] flex flex-col items-center justify-center font-sans overflow-y-auto">
                     <AuthModal
                         isOpen={true}
                         initialMode={location.pathname === '/signup' ? 'signup' : 'login'}
                         onClose={() => {
-                            const landingUrl = process.env.WEB_URL || 'https://trydecember.com'
+                            const landingUrl = getWebUrl()
                             if (typeof window !== 'undefined') {
                                 window.location.replace(landingUrl)
                             }

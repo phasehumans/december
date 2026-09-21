@@ -309,7 +309,7 @@ describe('Agent Loop Integration', () => {
 
         const errEvent = events.find((e) => e.type === 'AgentError')
         expect(errEvent).toBeDefined()
-        expect((errEvent as any).error).toContain('https://trydecember.com/settings/billing')
+        expect((errEvent as any).error).toContain('https://app.trydecember.com/settings/billing')
         expect((errEvent as any).error).toContain('Bring Your Own Key (BYOK)')
     })
 
@@ -335,7 +335,7 @@ describe('Agent Loop Integration', () => {
 
         const errEvent = events.find((e) => e.type === 'AgentError')
         expect(errEvent).toBeDefined()
-        expect((errEvent as any).error).toContain('https://trydecember.com/pricing')
+        expect((errEvent as any).error).toContain('https://app.trydecember.com/settings/billing')
     }, 65000)
 
     it('should emit AgentInterrupt when aborted during execution loop', async () => {

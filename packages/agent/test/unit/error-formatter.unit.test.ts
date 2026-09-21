@@ -118,7 +118,7 @@ describe('Agent Error Formatter & Edge Cases (Unit)', () => {
         )
         expect(errorEvent.error).toContain('Insufficient credits.')
         expect(errorEvent.error).not.toContain('December Wallet')
-        expect(errorEvent.error).not.toContain('https://trydecember.com/settings/billing')
+        expect(errorEvent.error).not.toContain('https://app.trydecember.com/settings/billing')
     })
 
     it('formats Meta BYOK insufficient credits error with Meta platform link and not December Wallet', async () => {
@@ -151,7 +151,7 @@ describe('Agent Error Formatter & Edge Cases (Unit)', () => {
         )
         expect(errorEvent.error).toContain('Insufficient credits.')
         expect(errorEvent.error).not.toContain('December Wallet')
-        expect(errorEvent.error).not.toContain('https://trydecember.com/settings/billing')
+        expect(errorEvent.error).not.toContain('https://app.trydecember.com/settings/billing')
     })
 
     it('formats OpenRouter BYOK insufficient credits error with OpenRouter settings link', async () => {
@@ -211,7 +211,7 @@ describe('Agent Error Formatter & Edge Cases (Unit)', () => {
         const errorEvent = events.find((e) => e.type === 'AgentError')
         expect(errorEvent).toBeDefined()
         expect(errorEvent.error).toContain('Insufficient credits in December Wallet')
-        expect(errorEvent.error).toContain('https://trydecember.com/settings/billing')
+        expect(errorEvent.error).toContain('https://app.trydecember.com/settings/billing')
         expect(errorEvent.error).toContain('Bring Your Own Key (BYOK)')
     })
 
@@ -241,7 +241,7 @@ describe('Agent Error Formatter & Edge Cases (Unit)', () => {
         expect(errorEvent.error).toContain('Rate limit or quota exhausted from Agnes AI.')
         expect(errorEvent.error).toContain('https://platform.agnes-ai.com/settings/apiKeys')
         expect(errorEvent.error).not.toContain('OpenAI, Anthropic, Gemini')
-        expect(errorEvent.error).not.toContain('https://trydecember.com/pricing')
+        expect(errorEvent.error).not.toContain('https://app.trydecember.com/settings/billing')
     })
 
     it('emits Agnes AI rate limit retry status with clean provider name, countdown delay, and attempt count', async () => {

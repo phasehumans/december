@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Icons } from '@/shared/components/ui/Icons'
+import { getWebUrl } from '@/shared/config/env'
 import { cn } from '@/shared/lib/utils'
 
 interface SearchModalProps {
@@ -112,7 +113,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 keywords: ['docs', 'help', 'guide', 'manual', 'reference', 'cli', 'architecture'],
                 action: () => {
                     onClose()
-                    navigate('/docs')
+                    window.open(`${getWebUrl()}/docs`, '_blank')
                 },
             },
 

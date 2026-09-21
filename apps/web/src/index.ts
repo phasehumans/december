@@ -1,8 +1,14 @@
 import path from 'path'
 
 import { serve } from 'bun'
+import dotenv from 'dotenv'
 
 import index from './index.html'
+
+const rootDir = path.resolve(import.meta.dir, '../../')
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env'
+dotenv.config({ path: path.join(rootDir, envFile) })
+dotenv.config({ path: path.join(rootDir, '.env') })
 
 const isProd = process.env.NODE_ENV === 'production'
 const SERVER_URL =
@@ -36,10 +42,23 @@ const proxyBackendApi = (req: Request) => {
 const NPM_PACKAGE_URL = 'https://www.npmjs.com/package/@trydecember/cli'
 
 const server = serve({
-    port: Number(process.env.WEB_PORT || 3000),
+    port: Number(process.env.APP_PORT || process.env.WEB_PORT || 3000),
     routes: {
         '/install.sh': () => Response.redirect(NPM_PACKAGE_URL, 302),
         '/install': () => Response.redirect(NPM_PACKAGE_URL, 302),
+        '/docs': () => {
+            const targetBase =
+                process.env.WEB_URL ||
+                (isProd ? 'https://trydecember.com' : 'http://localhost:2000')
+            return Response.redirect(`${targetBase}/docs`, 302)
+        },
+        '/docs/*': (req: Request) => {
+            const url = new URL(req.url)
+            const targetBase =
+                process.env.WEB_URL ||
+                (isProd ? 'https://trydecember.com' : 'http://localhost:2000')
+            return Response.redirect(`${targetBase}${url.pathname}${url.search}`, 302)
+        },
         '/robots.txt': () => {
             const file = Bun.file(path.join(import.meta.dir, '../assets/robots.txt'))
             return new Response(file, {

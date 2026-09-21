@@ -27,7 +27,7 @@ const generateHandoffUrl = async (data: GenerateHandoffUrl) => {
     const hasBalance = await usageService.hasMinimumBalance({ userId })
     if (!hasBalance) {
         throw new AppError(
-            'Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing to continue using December Cloud.',
+            'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue using December Cloud.',
             402
         )
     }
@@ -243,7 +243,7 @@ const completeHandoff = async (data: CompleteHandoff) => {
     const hasBalance = await usageService.hasMinimumBalance({ userId })
     if (!hasBalance) {
         throw new AppError(
-            'Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing to continue using December Cloud.',
+            'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue using December Cloud.',
             402
         )
     }

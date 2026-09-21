@@ -7,6 +7,7 @@ import { AuthModalGoogleIcon } from './AuthModalGoogleIcon'
 import type { AuthModalAuthStepProps } from '@/features/auth/types'
 
 import { Icons } from '@/shared/components/ui/Icons'
+import { getWebUrl } from '@/shared/config/env'
 
 export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     authMode,
@@ -34,46 +35,48 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                 <div className="mb-5 text-white">
                     <Icons.DecemberLogo className="w-[42px] h-[42px] text-white" />
                 </div>
-                <h2 className="text-[22px] font-normal text-white tracking-tight mb-1">
+                <h2 className="text-[22px] sm:text-[24px] font-medium text-white tracking-[-0.025em] leading-snug">
                     {authMode === 'login' ? 'Sign in to continue building' : 'Create an account'}
                 </h2>
-                <p className="text-[13px] text-gray-400 tracking-wider">turn ideas into reality.</p>
             </div>
 
+            {/* Social OAuth Buttons with sharp landing page styling */}
             <div className="flex flex-col gap-2.5 mb-1">
                 <button
                     type="button"
                     onClick={onGithubLogin}
-                    disabled={isAuthPending}
-                    className="w-full bg-[#222222] hover:bg-[#2A2A2A] text-white font-medium h-[42px] rounded-full flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] shadow-none disabled:opacity-50 border border-[#333333]"
+                    disabled={isAuthPending || isGithubPending}
+                    className="w-full bg-[#1e1e1e] hover:bg-[#252525] text-white font-mono text-xs sm:text-[13px] font-medium h-10 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-none flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
                 >
-                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                    <div className="w-4 h-4 flex items-center justify-center shrink-0">
                         <AuthModalGithubIcon />
                     </div>
-                    <span className="text-[14px]">Continue with GitHub</span>
+                    <span>Continue with GitHub</span>
                 </button>
 
                 <button
                     type="button"
                     onClick={onGoogleLogin}
-                    disabled={isAuthPending}
-                    className="w-full bg-white hover:bg-[#F5F5F5] text-[#111111] font-medium h-[42px] rounded-full flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] shadow-none disabled:opacity-50"
+                    disabled={isAuthPending || isGooglePending}
+                    className="w-full bg-white hover:bg-[#EDEDED] text-[#090a0f] font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
                 >
-                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                    <div className="w-4 h-4 flex items-center justify-center shrink-0">
                         <AuthModalGoogleIcon />
                     </div>
-                    <span className="text-[14px]">Continue with Google</span>
+                    <span>Continue with Google</span>
                 </button>
             </div>
 
-            <div className="flex items-center my-5">
-                <div className="flex-1 border-t border-white/10"></div>
-                <span className="px-3 text-[10px] text-[#888888] font-semibold uppercase tracking-widest">
+            {/* Minimal divider */}
+            <div className="flex items-center my-4">
+                <div className="flex-1 border-t border-[#262626]"></div>
+                <span className="px-3 font-mono text-[10px] text-[#737373] uppercase tracking-widest">
                     or continue with email
                 </span>
-                <div className="flex-1 border-t border-white/10"></div>
+                <div className="flex-1 border-t border-[#262626]"></div>
             </div>
 
+            {/* Form with sharp inputs and buttons */}
             <form onSubmit={onSubmit} className="flex flex-col gap-3">
                 <input
                     type="email"
@@ -82,7 +85,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     value={email}
                     onChange={(event) => onEmailChange(event.target.value)}
                     disabled={isAuthPending}
-                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-full h-[42px] px-4 text-[14px] text-white placeholder-[#666666] outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A2A] focus:shadow-none shadow-none"
+                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-none h-10 px-3.5 font-mono text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
                 />
 
                 <div className="relative w-full">
@@ -93,15 +96,15 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                         value={password}
                         onChange={(event) => onPasswordChange(event.target.value)}
                         disabled={isAuthPending}
-                        className="w-full bg-[#141414] border border-[#2A2A2A] rounded-full h-[42px] pl-4 pr-11 text-[14px] text-white placeholder-[#666666] outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A2A] focus:shadow-none shadow-none"
+                        className="w-full bg-[#141414] border border-[#2A2A2A] rounded-none h-10 pl-3.5 pr-10 font-mono text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
                     />
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#888888] hover:text-[#EDEDED] transition-colors p-1.5 rounded-full hover:bg-white/5"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#737373] hover:text-[#EDEDED] transition-colors p-1 cursor-pointer"
                         tabIndex={-1}
                     >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                 </div>
 
@@ -110,56 +113,81 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                         type="button"
                         onClick={onForgotPassword}
                         disabled={isAuthPending}
-                        className="self-end text-[13px] text-[#A3A3A3] hover:text-white transition-colors underline decoration-transparent hover:decoration-white/50 underline-offset-2 pr-1"
+                        className="self-end font-mono text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer pr-0.5"
                     >
                         Forgot password?
                     </button>
                 )}
 
                 {errorMessage && (
-                    <p className="text-[13px] text-red-500 px-1 text-center">{errorMessage}</p>
+                    <p className="font-mono text-xs text-red-400 px-1 text-center">
+                        {errorMessage}
+                    </p>
                 )}
 
                 <button
                     type="submit"
                     disabled={isAuthPending}
-                    className={`w-full font-medium h-[42px] rounded-full flex items-center justify-center text-[14px] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mt-1 shadow-sm ${
+                    className={`w-full font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1 border ${
                         isFormFilled
-                            ? 'bg-[#EDEDED] hover:bg-white text-[#111111]'
-                            : 'bg-[#222222] hover:bg-transparent text-[#888888]'
+                            ? 'bg-[#EDEDED] hover:bg-white text-[#090a0f] border-transparent'
+                            : 'bg-[#202020] hover:bg-[#252525] text-[#888888] border-[#2A2A2A]'
                     }`}
                 >
                     {isAuthPending
                         ? 'Please wait...'
                         : authMode === 'login'
-                          ? 'Continue with email'
-                          : 'Sign up with email'}
+                          ? 'Continue with email →'
+                          : 'Sign up with email →'}
                 </button>
             </form>
 
-            <div className="mt-5 flex flex-col items-center gap-4 text-center">
+            {/* Bottom mode switch */}
+            <div className="mt-5 pt-4 border-t border-[#262626] text-center">
                 <button
                     type="button"
                     onClick={onToggleAuthMode}
-                    className="text-[13px] text-[#888888] cursor-pointer"
+                    className="font-mono text-xs text-[#888888] hover:text-[#EDEDED] transition-colors cursor-pointer"
                 >
                     {authMode === 'login' ? (
                         <span>
                             Don't have an account?{' '}
-                            <span className="text-[#EDEDED] underline underline-offset-4 hover:text-white font-medium transition-colors">
+                            <span className="text-[#87b2f4] underline underline-offset-2">
                                 Sign up
                             </span>
                         </span>
                     ) : (
                         <span>
                             Already have an account?{' '}
-                            <span className="text-[#EDEDED] underline underline-offset-4 hover:text-white font-medium transition-colors">
+                            <span className="text-[#87b2f4] underline underline-offset-2">
                                 Log in
                             </span>
                         </span>
                     )}
                 </button>
             </div>
+
+            <p className="mt-4 text-[11px] font-mono text-[#737373] text-center leading-relaxed">
+                By continuing, you agree to our{' '}
+                <a
+                    href={`${getWebUrl()}/terms`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#a3a3a3] hover:text-white underline underline-offset-2 transition-colors"
+                >
+                    Terms
+                </a>{' '}
+                and{' '}
+                <a
+                    href={`${getWebUrl()}/privacy`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#a3a3a3] hover:text-white underline underline-offset-2 transition-colors"
+                >
+                    Privacy Policy
+                </a>
+                .
+            </p>
         </div>
     )
 }

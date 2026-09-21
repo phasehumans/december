@@ -1,14 +1,9 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
-Allow: /docs
-Allow: /docs/*
-Allow: /privacy
-Allow: /terms
 Disallow: /api/
 Disallow: /auth/
 Disallow: /sessions
 Disallow: /profile
+Disallow: /settings
 Disallow: /search
-
-Sitemap: https://trydecember.com/sitemap.xml

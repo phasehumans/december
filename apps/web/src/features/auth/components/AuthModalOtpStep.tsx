@@ -22,18 +22,18 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
                 <div className="mb-5 text-white">
                     <Icons.DecemberLogo className="w-[42px] h-[42px] text-white" />
                 </div>
-                <h2 className="text-[22px] font-normal text-white tracking-tight mb-1">
+                <h2 className="text-[22px] sm:text-[24px] font-medium text-white tracking-[-0.025em] leading-snug mb-1.5">
                     Verify your email
                 </h2>
-                <p className="text-[13px] text-[#A3A3A3]">
+                <p className="text-[13px] text-[#A1A1A6] leading-relaxed">
                     We sent a verification code to{' '}
-                    <span className="text-[#f5f5f5] font-medium">{email}</span>. Enter it below to
-                    create your account.
+                    <span className="text-white font-mono font-medium">{email}</span>.
                 </p>
             </div>
 
-            <form onSubmit={onSubmit} className="flex flex-col gap-3">
-                <div className="flex gap-2.5 justify-center mb-2">
+            <form onSubmit={onSubmit} className="flex flex-col gap-4">
+                {/* Monospace sharp OTP input boxes */}
+                <div className="flex gap-2 sm:gap-2.5 justify-center my-1">
                     {otp.map((digit, index) => (
                         <input
                             key={index}
@@ -45,31 +45,33 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
                             onKeyDown={(event) => onKeyDown(index, event)}
                             onPaste={index === 0 ? onPaste : undefined}
                             disabled={isPending}
-                            className="w-[50px] h-[52px] text-center text-[20px] font-semibold bg-[#141414] border border-[#2A2A2A] rounded-2xl text-white caret-white outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A2A] focus:shadow-none shadow-none"
+                            className="w-11 h-12 sm:w-12 sm:h-13 text-center font-mono text-xl font-medium bg-[#141414] border border-[#2A2A2A] rounded-none text-white caret-[#87b2f4] outline-none focus:border-[#87b2f4] transition-all"
                         />
                     ))}
                 </div>
 
                 {errorMessage && (
-                    <p className="text-[13px] text-red-500 px-1 text-center">{errorMessage}</p>
+                    <p className="font-mono text-xs text-red-400 px-1 text-center">
+                        {errorMessage}
+                    </p>
                 )}
 
                 <button
                     type="submit"
                     disabled={otp.some((digit) => !digit) || isPending}
-                    className="w-full bg-[#EDEDED] hover:bg-white text-[#111111] font-medium h-[42px] rounded-full flex items-center justify-center text-[14px] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mt-1 shadow-sm"
+                    className="w-full bg-[#EDEDED] hover:bg-white text-[#090a0f] font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1"
                 >
-                    {isPending ? 'Please wait...' : 'Verify & Continue'}
+                    {isPending ? 'Verifying code...' : 'Verify & Continue →'}
                 </button>
 
-                <div className="mt-4 flex justify-center">
+                <div className="mt-2 pt-4 border-t border-[#262626] flex justify-center">
                     <button
                         type="button"
                         onClick={onBack}
-                        className="text-[13px] text-[#888888] hover:text-white transition-colors underline decoration-transparent hover:decoration-white/50 underline-offset-4"
+                        className="font-mono text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
                         disabled={isPending}
                     >
-                        Back to Sign Up
+                        ← Back to Sign Up
                     </button>
                 </div>
             </form>

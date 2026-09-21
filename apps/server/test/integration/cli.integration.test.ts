@@ -70,7 +70,7 @@ describe('CLI Handoff API Endpoints', () => {
 
         expect(res.status).toBe(402)
         expect(res.body.message).toContain('Insufficient credits in December Wallet')
-        expect(res.body.message).toContain('https://trydecember.com/settings/billing')
+        expect(res.body.message).toContain('https://app.trydecember.com/settings/billing')
 
         // Restore credits for subsequent tests
         await prisma.user.update({
@@ -108,7 +108,7 @@ describe('CLI Handoff API Endpoints', () => {
 
         expect(res.status).toBe(402)
         expect(res.body.message).toContain('Insufficient credits in December Wallet')
-        expect(res.body.message).toContain('https://trydecember.com/settings/billing')
+        expect(res.body.message).toContain('https://app.trydecember.com/settings/billing')
         expect(res.body.message).toContain('Bring Your Own Key (BYOK)')
     })
 
@@ -174,7 +174,7 @@ describe('CLI Handoff API Endpoints', () => {
 
         expect(res.status).toBe(402)
         expect(res.body.message).toContain('Insufficient credits in December Wallet')
-        expect(res.body.message).toContain('https://trydecember.com/settings/billing')
+        expect(res.body.message).toContain('https://app.trydecember.com/settings/billing')
 
         // Restore credits for subsequent tests
         await prisma.user.update({

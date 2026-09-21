@@ -1,40 +1,496 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Privacy Policy Page
+// Styled with high-craft docs layout, light theme typography, and structured sections
 ---
 
 <BaseLayout
   title="Privacy Policy — December"
-  description="Privacy Policy and Data Protection standards for December."
+  description="Privacy Policy and Data Protection standards for December CLI and Cloud."
   canonicalUrl="https://trydecember.com/privacy"
+  activePath="/privacy"
+  hideHeader={false}
+  hideFooter={false}
 >
-  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 py-16">
-    <h1 class="text-3xl font-semibold tracking-tight text-white mb-2">Privacy Policy</h1>
-    <p class="text-sm font-mono text-[#888888] mb-8">Last Updated: September 2026</p>
+  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24">
+    <!-- Breadcrumb Navigation Bar -->
+    <nav class="flex items-center font-mono text-xs text-[#64748b] mb-8">
+      <div class="flex items-center gap-2">
+        <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
+        <span class="text-[#cbd5e1]">/</span>
+        <span class="text-[#64748b]">legal</span>
+        <span class="text-[#cbd5e1]">/</span>
+        <span class="text-[#090a0f] font-medium">[privacy]</span>
+      </div>
+    </nav>
 
-    <div class="prose prose-invert max-w-none text-[#cccccc] space-y-6 text-[15px] leading-relaxed">
-      <p>
-        Phasehumans ("December", "we", "us", or "our") respects your privacy and is committed to protecting your personal and codebase data. This Privacy Policy explains how we collect, use, and protect information when you use the December CLI, December Cloud, and related services.
+    <!-- Document Header -->
+    <header class="mb-10 pb-6 border-b border-[#e2e8f0]">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div class="inline-flex items-center gap-2 font-mono text-xs text-[#64748b] bg-[#f8fafc] border border-[#e2e8f0] px-2.5 py-1">
+          <span class="inline-block w-1.5 h-1.5 bg-[#87b2f4]"></span>
+          <span>LEGAL & DATA PROTECTION</span>
+        </div>
+        <div class="flex items-center gap-3 font-mono text-xs text-[#64748b]">
+          <span>Effective: September 2026</span>
+          <span class="text-[#cbd5e1]">/</span>
+          <span>v2.1</span>
+        </div>
+      </div>
+      <h1 class="text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight text-[#090a0f] leading-snug">
+        Privacy Policy
+      </h1>
+      <p class="mt-3 text-sm sm:text-base text-[#52525b] leading-relaxed max-w-2xl">
+        Phasehumans Inc. ("Phasehumans", "December", "we", "us", or "our") is dedicated to transparency
+        and developer privacy. This Privacy Policy details how we collect, handle, isolate, and protect
+        codebase files, personal identifiers, and credentials across the December CLI and cloud platforms.
       </p>
+    </header>
 
-      <h2 class="text-xl font-semibold text-white mt-8 mb-4 border-b border-[#222222] pb-2">1. Information We Collect</h2>
-      <p>
-        <strong>Account Information:</strong> When creating an account, we collect your email address and authentication identifiers provided by identity providers such as Google or GitHub.
-      </p>
-      <p>
-        <strong>Codebase & Session Data:</strong> When you invoke December Cloud or use the <code>/handoff</code> command, we process the codebase files and instruction history necessary to execute agent runs within isolated cloud sandboxes.
-      </p>
-      <p>
-        <strong>Bring Your Own Key (BYOK):</strong> If you provide your own API keys for OpenAI, Anthropic, Gemini, or OpenRouter, these keys are stored encrypted and used solely to route requests on your behalf.
-      </p>
+    <!-- Key Privacy Principles Summary Card -->
+    <section class="border border-[#e2e8f0] bg-[#f8fafc] p-5 sm:p-6 mb-10 corner-brackets relative">
+      <div class="flex items-center justify-between mb-4">
+        <span class="font-mono text-xs text-[#64748b] uppercase tracking-wider flex items-center gap-2">
+          <span class="text-[#87b2f4] font-semibold">//</span>
+          <span>00 / Privacy Guarantees at a Glance</span>
+        </span>
+        <span class="font-mono text-[11px] text-[#87b2f4] bg-white border border-[#e2e8f0] px-2 py-0.5">
+          ZERO CODE TRAINING
+        </span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-[13px] text-[#52525b]">
+        <div class="border border-[#e2e8f0] bg-white p-3.5 space-y-1.5">
+          <div class="font-semibold text-[#090a0f] flex items-center gap-1.5">
+            <span class="text-[#10b981]">✓</span>
+            <span>Local Stays Local</span>
+          </div>
+          <p class="leading-relaxed">
+            When running December CLI on your machine, your files never touch Phasehumans servers unless you trigger <code>/handoff</code>.
+          </p>
+        </div>
+        <div class="border border-[#e2e8f0] bg-white p-3.5 space-y-1.5">
+          <div class="font-semibold text-[#090a0f] flex items-center gap-1.5">
+            <span class="text-[#10b981]">✓</span>
+            <span>Zero Foundation Training</span>
+          </div>
+          <p class="leading-relaxed">
+            We never train, fine-tune, or license private codebase files, diffs, or prompts to foundation model providers.
+          </p>
+        </div>
+        <div class="border border-[#e2e8f0] bg-white p-3.5 space-y-1.5">
+          <div class="font-semibold text-[#090a0f] flex items-center gap-1.5">
+            <span class="text-[#10b981]">✓</span>
+            <span>AES-256 BYOK Encryption</span>
+          </div>
+          <p class="leading-relaxed">
+            API keys and credentials are encrypted at rest using hardware KMS and transmitted strictly over TLS 1.3.
+          </p>
+        </div>
+        <div class="border border-[#e2e8f0] bg-white p-3.5 space-y-1.5">
+          <div class="font-semibold text-[#090a0f] flex items-center gap-1.5">
+            <span class="text-[#10b981]">✓</span>
+            <span>Ephemeral Micro-VMs</span>
+          </div>
+          <p class="leading-relaxed">
+            Remote cloud execution sandboxes are destroyed automatically upon session completion.
+          </p>
+        </div>
+      </div>
+    </section>
 
-      <h2 class="text-xl font-semibold text-white mt-8 mb-4 border-b border-[#222222] pb-2">2. How We Use Information</h2>
-      <p>We use your information strictly to provide, maintain, and secure the December software development platform. We do not sell your personal data or codebase contents to third parties.</p>
+    <!-- Table of Contents Jump Grid -->
+    <div class="border border-[#e2e8f0] bg-white p-4 sm:p-5 mb-10">
+      <div class="flex items-center justify-between text-xs font-mono text-[#64748b] uppercase tracking-wider mb-3">
+        <span>Table of Contents</span>
+        <span class="text-[#94a3b8]">8 Sections</span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 font-mono text-xs text-[#52525b]">
+        <a href="#architecture" class="hover:text-[#87b2f4] transition-colors flex items-center gap-2">
+          <span class="text-[#87b2f4]">01 /</span>
+          <span>Architecture & Data Minimization</span>
+        </a>
+        <a href="#information-collected" class="hover:text-[#87b2f4] transition-colors flex items-center gap-2">
+          <span class="text-[#87b2f4]">02 /</span>
+          <span>Information We Collect</span>
+        </a>
+        <a href="#byok-security" class="hover:text-[#87b2f4] transition-colors flex items-center gap-2">
+          <span class="text-[#87b2f4]">03 /</span>
+          <span>BYOK Key Encryption</span>
+        </a>
+        <a href="#cloud-handoff" class="hover:text-[#87b2f4] transition-colors flex items-center gap-2">
+          <span class="text-[#87b2f4]">04 /</span>
+          <span>Cloud Sandboxes & Handoff</span>
+        </a>
+        <a href="#model-providers" class="hover:text-[#87b2f4] transition-colors flex items-center gap-2">
+          <span class="text-[#87b2f4]">05 /</span>
+          <span>Third-Party AI Providers</span>
+        </a>
+        <a href="#retention-deletion" class="hover:text-[#87b2f4] transition-colors flex items-center gap-2">
+          <span class="text-[#87b2f4]">06 /</span>
+          <span>Data Retention & Deletion</span>
+        </a>
+        <a href="#security-auditing" class="hover:text-[#87b2f4] transition-colors flex items-center gap-2">
+          <span class="text-[#87b2f4]">07 /</span>
+          <span>Security & Auditing</span>
+        </a>
+        <a href="#compliance-contact" class="hover:text-[#87b2f4] transition-colors flex items-center gap-2">
+          <span class="text-[#87b2f4]">08 /</span>
+          <span>Your Rights & Inquiries</span>
+        </a>
+      </div>
+    </div>
 
-      <h2 class="text-xl font-semibold text-white mt-8 mb-4 border-b border-[#222222] pb-2">3. Data Retention & Deletion</h2>
-      <p>You can delete your account, session histories, and uploaded artifacts at any time via the account settings panel or by contacting team@trydecember.com.</p>
+    <!-- Main Privacy Content Body -->
+    <article class="docs-prose w-full">
+      <!-- Section 1 -->
+      <section id="architecture">
+        <h2>
+          <span class="font-mono text-xs text-[#87b2f4] mr-2">01 /</span>
+          Architecture & Data Minimization
+        </h2>
+        <p>
+          December is engineered from the ground up around the principle of data minimization. The tool
+          is split into two operational modes:
+        </p>
+        <ul>
+          <li>
+            <strong>Local Workstation Runtime:</strong> In local mode, the CLI executes tools directly on
+            your machine using native Bash and your system runtime. Your local file paths, environment
+            variables, and repository commits remain exclusively on your device.
+          </li>
+          <li>
+            <strong>Cloud Execution Layer:</strong> When you initiate a cloud handoff (via <code>/handoff</code>),
+            only the specific files and branch state necessary to run the task in the remote sandbox are
+            transferred via an encrypted TLS 1.3 pipeline to an ephemeral micro-VM.
+          </li>
+        </ul>
+      </section>
 
-      <h2 class="text-xl font-semibold text-white mt-8 mb-4 border-b border-[#222222] pb-2">4. Contact Us</h2>
-      <p>If you have any questions regarding this Privacy Policy, please email <a href="mailto:team@trydecember.com" class="text-blue-400 hover:underline">team@trydecember.com</a>.</p>
+      <!-- Section 2 -->
+      <section id="information-collected">
+        <h2>
+          <span class="font-mono text-xs text-[#87b2f4] mr-2">02 /</span>
+          Information We Collect & Process
+        </h2>
+        <p>
+          We strictly limit data collection to what is required to authenticate users and fulfill agent runs:
+        </p>
+        <ul>
+          <li>
+            <strong>Account Identifiers:</strong> Email address, name, and OAuth identifiers provided by
+            trusted authentication providers (GitHub, Google).
+          </li>
+          <li>
+            <strong>BYOK API Keys:</strong> API keys you choose to store for routing queries to OpenAI,
+            Anthropic, Google Gemini, DeepSeek, or OpenRouter. Keys are encrypted at rest using AES-256-GCM.
+          </li>
+          <li>
+            <strong>Session & Instruction History:</strong> Conversation prompts, tool call logs, and diff
+            summaries generated during cloud sessions to display in your web session timeline.
+          </li>
+          <li>
+            <strong>Diagnostic Telemetry:</strong> Optional anonymous CLI performance metrics (command
+            latency, crash reports, version checks). Telemetry never captures file contents, usernames,
+            or repository secrets, and can be disabled at any time.
+          </li>
+        </ul>
+
+        <!-- Data Retention Matrix Table -->
+        <table>
+          <thead>
+            <tr>
+              <th>Data Type</th>
+              <th>Collection Point</th>
+              <th>Storage & Encryption</th>
+              <th>Retention Period</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Account Data</strong></td>
+              <td>Sign-up / OAuth</td>
+              <td>AES-256 at rest, TLS 1.3</td>
+              <td>Until account deletion</td>
+            </tr>
+            <tr>
+              <td><strong>BYOK API Keys</strong></td>
+              <td>User Settings</td>
+              <td>Hardware KMS (AES-256-GCM)</td>
+              <td>Deleted immediately upon removal</td>
+            </tr>
+            <tr>
+              <td><strong>Local Codebase</strong></td>
+              <td>Workstation CLI</td>
+              <td>Never leaves local machine</td>
+              <td>Zero Phasehumans retention</td>
+            </tr>
+            <tr>
+              <td><strong>Cloud Sandboxes</strong></td>
+              <td><code>/handoff</code> execution</td>
+              <td>Isolated RAM / Ephemeral disk</td>
+              <td>Purged upon session completion</td>
+            </tr>
+            <tr>
+              <td><strong>Anonymous Telemetry</strong></td>
+              <td>CLI command runs</td>
+              <td>Aggregated & Anonymized</td>
+              <td>30-day rolling purge (Opt-out available)</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Section 3 -->
+      <section id="byok-security">
+        <h2>
+          <span class="font-mono text-xs text-[#87b2f4] mr-2">03 /</span>
+          Bring Your Own Key (BYOK) Security
+        </h2>
+        <blockquote>
+          <strong>Zero Key Sharing:</strong> Your personal AI model credentials belong solely to your account.
+          They are never combined across users, never logged in plaintext, and never visible to Phasehumans employees.
+        </blockquote>
+        <p>
+          When you configure your provider keys (e.g., <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code>),
+          the keys are encrypted immediately with envelope encryption using AWS KMS before persisting in our database.
+          During agent tool loops, requests are dispatched directly to the specified model provider endpoints.
+        </p>
+      </section>
+
+      <!-- Section 4 -->
+      <section id="cloud-handoff">
+        <h2>
+          <span class="font-mono text-xs text-[#87b2f4] mr-2">04 /</span>
+          Cloud Sandboxes & Handoff Isolation
+        </h2>
+        <p>
+          Remote cloud sessions spawned via <code>/handoff</code> utilize lightweight micro-virtualization.
+          Each session runs inside an isolated micro-VM container with dedicated kernel isolation:
+        </p>
+        <ul>
+          <li><strong>Tenant Isolation:</strong> No cross-session memory sharing, shared disk volumes, or cross-tenant networking.</li>
+          <li><strong>Ephemeral Lifecycle:</strong> Sandboxes exist solely for the duration of the active build or agent run. Upon completion or timeout, the container is destroyed and its volume zeroed out.</li>
+          <li><strong>Live Previews:</strong> Ephemeral port-forwarding proxies are protected by TLS certificates with unique cryptographic subdomains.</li>
+        </ul>
+      </section>
+
+      <!-- Section 5 -->
+      <section id="model-providers">
+        <h2>
+          <span class="font-mono text-xs text-[#87b2f4] mr-2">05 /</span>
+          Third-Party AI Model Providers
+        </h2>
+        <p>
+          To complete code generation, refactoring, and bug fixes, December sends prompts and relevant code context
+          to the model provider you select (e.g., Anthropic, OpenAI, Google Cloud, DeepSeek, or OpenRouter).
+        </p>
+        <p>
+          Under commercial terms with these providers, zero-data-retention (ZDR) and no-training policies are
+          maintained for API requests. When using BYOK, your organization's direct agreements and data processing terms
+          with the respective model provider apply.
+        </p>
+      </section>
+
+      <!-- Section 6 -->
+      <section id="retention-deletion">
+        <h2>
+          <span class="font-mono text-xs text-[#87b2f4] mr-2">06 /</span>
+          Data Retention & Instant Deletion
+        </h2>
+        <p>
+          You maintain unconditional authority to delete your data at any time:
+        </p>
+        <ul>
+          <li><strong>Session Timeline Deletion:</strong> You can purge individual sessions or clear complete cloud histories directly from the web dashboard.</li>
+          <li><strong>Account Termination:</strong> Deleting your account immediately purges all associated credentials, BYOK tokens, session archives, and billing records.</li>
+          <li><strong>Automated Purging:</strong> Inactive cloud snapshots and log entries are automatically deleted on a rolling 30-day lifecycle.</li>
+        </ul>
+      </section>
+
+      <!-- Section 7 -->
+      <section id="security-auditing">
+        <h2>
+          <span class="font-mono text-xs text-[#87b2f4] mr-2">07 /</span>
+          Security Architecture & Auditing
+        </h2>
+        <p>
+          We employ defense-in-depth engineering practices to safeguard developer infrastructure:
+        </p>
+        <ul>
+          <li><strong>Transport Layer Security:</strong> All traffic between the CLI, web app, and cloud sandboxes is encrypted using TLS 1.3 with strict HSTS headers.</li>
+          <li><strong>Least Privilege Access:</strong> Production infrastructure requires hardware MFA and multi-party authorization for deployment.</li>
+          <li><strong>Responsible Disclosure:</strong> We welcome security audits and vulnerability reports. Discoveries can be reported directly to our security response team at <a href="mailto:security@trydecember.com">security@trydecember.com</a>.</li>
+        </ul>
+      </section>
+
+      <!-- Section 8 -->
+      <section id="compliance-contact">
+        <h2>
+          <span class="font-mono text-xs text-[#87b2f4] mr-2">08 /</span>
+          Your Rights, GDPR / CCPA & Inquiries
+        </h2>
+        <p>
+          Depending on your location, you may have rights under the General Data Protection Regulation (GDPR),
+          California Consumer Privacy Act (CCPA), or other regional privacy laws, including the right to access,
+          correct, port, or erase your personal information.
+        </p>
+        <p>
+          To exercise any of these rights, request a Data Processing Addendum (DPA), or ask privacy-related questions:
+        </p>
+      </section>
+    </article>
+
+    <!-- Bottom Contact & Cross-Links Card -->
+    <div class="mt-12 pt-8 border-t border-[#e2e8f0]">
+      <div class="border border-[#e2e8f0] bg-[#f8fafc] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="font-mono text-xs text-[#64748b] uppercase tracking-wider mb-1">
+            Data Privacy & Security Officer
+          </div>
+          <div class="text-sm font-medium text-[#090a0f]">
+            Email our privacy and compliance desk at <a href="mailto:team@trydecember.com" class="text-[#87b2f4] hover:underline">team@trydecember.com</a>.
+          </div>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <a
+            href="/terms"
+            class="px-3.5 py-2 border border-[#e2e8f0] bg-white text-xs font-mono text-[#090a0f] hover:border-[#87b2f4] transition-colors"
+          >
+            Terms of Service →
+          </a>
+          <a
+            href="/docs/security"
+            class="px-3.5 py-2 border border-[#e2e8f0] bg-white text-xs font-mono text-[#090a0f] hover:border-[#87b2f4] transition-colors"
+          >
+            Security Model →
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </BaseLayout>
+
+<style is:global>
+  .docs-prose {
+    color: #52525b;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .docs-prose section {
+    scroll-margin-top: 5rem;
+    margin-bottom: 2.25rem;
+  }
+
+  .docs-prose h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #090a0f;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  .docs-prose h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #090a0f;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .docs-prose p {
+    margin-bottom: 1.15rem;
+    color: #52525b;
+    line-height: 1.7;
+  }
+
+  .docs-prose ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+    color: #52525b;
+  }
+
+  .docs-prose ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+    color: #52525b;
+  }
+
+  .docs-prose li {
+    margin-bottom: 0.4rem;
+  }
+
+  .docs-prose code {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.88em;
+    color: #090a0f;
+    font-weight: 500;
+  }
+
+  .docs-prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  }
+
+  .docs-prose th {
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.65rem 0.85rem;
+    text-align: left;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    font-weight: 600;
+  }
+
+  .docs-prose td {
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 0.85rem;
+  }
+
+  .docs-prose tr:last-child td {
+    border-bottom: none;
+  }
+
+  .docs-prose tr:hover td {
+    background-color: #f8fafc;
+  }
+
+  .docs-prose blockquote {
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #87b2f4;
+    background-color: #f8fafc;
+    padding: 0.85rem 1.15rem;
+    margin: 1.25rem 0;
+    border-radius: 0;
+    color: #52525b;
+  }
+
+  .docs-prose strong {
+    color: #090a0f;
+    font-weight: 600;
+  }
+
+  .docs-prose a {
+    color: #87b2f4;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .docs-prose a:hover {
+    color: #3b82f6;
+  }
+</style>

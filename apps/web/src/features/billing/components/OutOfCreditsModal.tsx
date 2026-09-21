@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import sidebarPng from '../../../../assets/sidebar.png'
+import outCreditsPng from '../../../../assets/outcredits.png'
 
 import { Modal } from '@/shared/components/ui/Modal'
 
@@ -35,7 +35,7 @@ export const OutOfCreditsModal: React.FC<OutOfCreditsModalProps> = ({
             banner={
                 <div className="w-full h-[180px] relative overflow-hidden">
                     <img
-                        src={bannerImage || sidebarPng}
+                        src={bannerImage || outCreditsPng}
                         alt={title}
                         decoding="async"
                         className="w-full h-full object-cover object-center absolute inset-0"

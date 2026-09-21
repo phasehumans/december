@@ -157,7 +157,7 @@ export const COMMANDS: Command[] = [
                             ctx.toast.show({
                                 variant: 'error',
                                 message:
-                                    'Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing to continue.',
+                                    'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue.',
                             })
                             return
                         }
@@ -189,7 +189,7 @@ export const COMMANDS: Command[] = [
                         ctx.toast.show({
                             variant: 'error',
                             message:
-                                'Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing to continue.',
+                                'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue.',
                         })
                         return
                     }

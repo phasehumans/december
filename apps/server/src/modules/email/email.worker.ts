@@ -11,7 +11,8 @@ import type { EmailJobData, ProcessEmailJobResult } from './email.types'
 export const processEmailJob = async (job: Job<EmailJobData>): Promise<ProcessEmailJobResult> => {
     const data = job.data
     const fromEmail = env.SENDER_EMAIL || 'onboarding@resend.dev'
-    const webUrl = env.APP_URL || 'https://app.trydecember.com'
+    const appUrl = (env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')
+    const webUrl = (env.WEB_URL || 'https://trydecember.com').replace(/\/+$/, '')
 
     if (data.type === 'otp') {
         const { to, otp, otpType = 'verification' } = data
@@ -19,7 +20,7 @@ export const processEmailJob = async (job: Job<EmailJobData>): Promise<ProcessEm
             otp,
             type: otpType,
             supportEmail: fromEmail,
-            webUrl,
+            webUrl: appUrl,
         })
 
         try {
@@ -75,6 +76,7 @@ export const processEmailJob = async (job: Job<EmailJobData>): Promise<ProcessEm
             name,
             supportEmail: fromEmail,
             webUrl,
+            appUrl,
         })
 
         try {

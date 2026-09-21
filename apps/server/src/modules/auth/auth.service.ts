@@ -627,7 +627,7 @@ const generateDeviceCode = async () => {
             return {
                 deviceCode,
                 userCode,
-                verificationUri: `${process.env.APP_URL || 'https://app.trydecember.com'}/activate`,
+                verificationUri: `${(env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')}/activate`,
                 expiresIn,
                 interval: 5,
             }

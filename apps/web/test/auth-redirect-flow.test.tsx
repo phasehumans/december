@@ -9,6 +9,7 @@ import App from '../src/App'
 import { useAppStore } from '../src/app/store'
 import { useNavigationController } from '../src/features/navigation/hooks/useNavigationController'
 import { profileAPI } from '../src/features/profile/api/profile'
+import { getWebUrl } from '../src/shared/config/env'
 
 if (!globalThis.document) {
     GlobalRegistrator.register()
@@ -83,7 +84,7 @@ describe('Authentication & Multi-Domain Redirection Flow', () => {
         expect(container.querySelector('nav')).toBeNull()
     })
 
-    test('unauthenticated visitor on / redirects to landingUrl (trydecember.com) without rendering app frame', () => {
+    test('unauthenticated visitor on / redirects to /login and renders login modal without application frame', () => {
         useAppStore.setState({
             isAuthenticated: false,
             isAuthRestored: true,
@@ -99,9 +100,7 @@ describe('Authentication & Multi-Domain Redirection Flow', () => {
             </MemoryRouter>
         )
 
-        const expectedLandingUrl = process.env.WEB_URL || 'https://trydecember.com'
-
-        expect(window.location.replace).toHaveBeenCalledWith(expectedLandingUrl)
+        expect(screen.getByText(/Sign in to continue building/i)).not.toBeNull()
         expect(container.querySelector('[aria-label="New Thread"]')).toBeNull()
         expect(container.querySelector('nav')).toBeNull()
     })
@@ -134,7 +133,7 @@ describe('Authentication & Multi-Domain Redirection Flow', () => {
         expect(capturedSignOut).not.toBeNull()
         await capturedSignOut!()
 
-        const expectedLandingUrl = process.env.WEB_URL || 'https://trydecember.com'
+        const expectedLandingUrl = getWebUrl()
 
         expect(signoutMock).toHaveBeenCalledTimes(1)
         expect(useAppStore.getState().isAuthenticated).toBe(false)

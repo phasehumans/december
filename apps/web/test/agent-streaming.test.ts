@@ -292,7 +292,7 @@ describe('Native Agent Streaming & Chat Slice', () => {
             .getState()
             .setAssistantError(
                 assistantMsgId,
-                'Insufficient wallet credits. Please add credits at https://trydecember.com/settings/billing to continue.'
+                'Insufficient wallet credits. Please add credits at https://app.trydecember.com/settings/billing to continue.'
             )
 
         const state = useAppStore.getState()

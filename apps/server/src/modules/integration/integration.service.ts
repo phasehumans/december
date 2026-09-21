@@ -23,6 +23,11 @@ const connectVercel = async (data: ConnectVercel) => {
         throw new AppError('user not found', 404)
     }
 
+    const redirectUri =
+        env.VERCEL_REDIRECT_URI ||
+        process.env.VERCEL_REDIRECT_URI ||
+        `${env.SERVER_URL}/api/v1/integrations/vercel/connect`
+
     const tokenResponse = await fetch('https://api.vercel.com/v2/oauth/access_token', {
         method: 'POST',
         headers: {
@@ -33,7 +38,7 @@ const connectVercel = async (data: ConnectVercel) => {
             client_id: process.env.VERCEL_CLIENT_ID!,
             client_secret: process.env.VERCEL_CLIENT_SECRET!,
             code,
-            redirect_uri: process.env.VERCEL_REDIRECT_URI!,
+            redirect_uri: redirectUri,
         }).toString(),
     })
 
@@ -150,12 +155,17 @@ const connectNotion = async (data: ConnectNotion) => {
         throw new AppError('user not found', 404)
     }
 
+    const redirectUri =
+        env.NOTION_REDIRECT_URI ||
+        process.env.NOTION_REDIRECT_URI ||
+        `${env.SERVER_URL}/api/v1/integrations/notion/connect`
+
     const response = await axios.post(
         'https://api.notion.com/v1/oauth/token',
         {
             grant_type: 'authorization_code',
             code,
-            redirect_uri: process.env.NOTION_REDIRECT_URI!,
+            redirect_uri: redirectUri,
         },
         {
             headers: {

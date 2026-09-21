@@ -102,13 +102,13 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
   title={`${title} — December Documentation`}
   description={description}
   activePath="/docs"
-  hideFooter={true}
+  hideFooter={false}
 >
   <!-- Main Container: Identical horizontal gap/margins to landing page and header -->
-  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-4 pb-16 sm:pt-6 sm:pb-24">
+  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24">
     
     <!-- Breadcrumb Navigation Bar -->
-    <nav class="flex items-center justify-between font-mono text-xs text-[#64748b] mb-8">
+    <nav class="flex items-center font-mono text-xs text-[#64748b] mb-8">
       <div class="flex items-center gap-2">
         <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
         <span class="text-[#cbd5e1]">/</span>
@@ -122,21 +122,12 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
           </>
         )}
       </div>
-
-      {!isIndex && (
-        <a
-          href="/docs"
-          class="inline-flex items-center gap-1.5 text-[#64748b] hover:text-[#87b2f4] transition-colors font-mono text-xs"
-        >
-          <span>← Back to Docs</span>
-        </a>
-      )}
     </nav>
 
-    <!-- Compact Article Layout (No Sidebar) -->
-    <article class="max-w-3xl">
+    <!-- Article Layout: Spans full width matching landing page structure -->
+    <article class="w-full">
       <!-- Document Header -->
-      <header class="mb-8">
+      <header class="mb-8 max-w-3xl">
         <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] leading-snug">
           {title}
         </h1>
@@ -236,6 +227,76 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
   </div>
 </BaseLayout>
 
+<script>
+  function setupDocsCodeBlocks() {
+    const codeBlocks = document.querySelectorAll<HTMLElement>('.docs-prose pre');
+    codeBlocks.forEach((pre) => {
+      if (pre.dataset.hasCopyBtn === 'true') return;
+      pre.dataset.hasCopyBtn = 'true';
+
+      const code = pre.querySelector('code');
+      if (!code) return;
+
+      // Wrap pre inside container so copy button lives outside pre without causing overflow/scrollbars
+      let wrapper = pre.parentElement;
+      if (!wrapper || !wrapper.classList.contains('code-block-wrapper')) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'code-block-wrapper';
+        pre.parentNode?.insertBefore(wrapper, pre);
+        wrapper.appendChild(pre);
+      }
+
+      // Ensure zero overflow scrollbars and wrap text
+      pre.style.overflowX = 'hidden';
+      pre.style.overflowY = 'hidden';
+      pre.style.scrollbarWidth = 'none';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'code-copy-btn';
+      btn.title = 'Copy code';
+      btn.setAttribute('aria-label', 'Copy code to clipboard');
+      btn.innerHTML = `
+        <svg class="code-copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+      `;
+
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const text = code.innerText.trim();
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.classList.add('copied');
+          btn.innerHTML = `
+            <svg class="code-copy-icon" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          `;
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = `
+              <svg class="code-copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            `;
+          }, 2000);
+        } catch (err) {
+          console.error('Failed to copy code block:', err);
+        }
+      });
+
+      wrapper.appendChild(btn);
+    });
+  }
+
+  setupDocsCodeBlocks();
+  document.addEventListener('astro:page-load', setupDocsCodeBlocks);
+</script>
+
 <style is:global>
   .docs-prose {
     color: #52525b;
@@ -287,32 +348,179 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
 
   .docs-prose code {
     font-family: var(--font-mono, monospace);
-    font-size: 0.85em;
-    background-color: #f8fafc;
+    font-size: 0.88em;
     color: #090a0f;
-    padding: 0.15rem 0.35rem;
-    border-radius: 0;
-    border: 1px solid #e2e8f0;
+    font-weight: 500;
   }
 
-  .docs-prose pre {
-    background-color: #0c1017 !important;
-    border: 1px solid #1e293b;
-    border-radius: 0;
-    padding: 1rem;
-    overflow-x: auto;
+  .docs-prose :not(pre) > code {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.84em;
+    color: #090a0f;
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    padding: 0.15rem 0.35rem;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+
+  /* Minimalist Code Block Container & Pre - Zero Scrollbars, Clean Wrapping */
+  .docs-prose .code-block-wrapper {
+    position: relative;
     margin: 1.25rem 0;
   }
 
+  .docs-prose pre,
+  .docs-prose .code-block-wrapper pre,
+  pre.astro-code {
+    position: relative;
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 0;
+    padding: 0.75rem 2.75rem 0.75rem 1rem;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+    margin: 1.25rem 0;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+    transition: border-color 0.15s ease;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .docs-prose pre::-webkit-scrollbar,
+  .docs-prose .code-block-wrapper pre::-webkit-scrollbar,
+  pre.astro-code::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .docs-prose .code-block-wrapper pre {
+    margin: 0;
+  }
+
+  .docs-prose .code-block-wrapper:hover pre {
+    border-color: #cbd5e1;
+  }
+
   .docs-prose pre code {
-    background-color: transparent;
+    background-color: transparent !important;
     padding: 0;
     border: none;
+    font-size: 0.8125rem;
+    color: #090a0f;
+    line-height: 1.6;
+    font-family: var(--font-mono, monospace);
+    display: block;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .docs-prose pre code .line {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* Clean Minimal Copy Button */
+  .code-copy-btn {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: #94a3b8;
+    border-radius: 2px;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.15s ease;
+    user-select: none;
+    z-index: 5;
+    padding: 0;
+    outline: none;
+  }
+
+  @media (hover: none) {
+    .code-copy-btn {
+      opacity: 0.5;
+    }
+  }
+
+  .code-block-wrapper:hover .code-copy-btn,
+  .code-copy-btn:focus-visible {
+    opacity: 1;
+  }
+
+  .code-copy-btn:hover {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+    color: #090a0f;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  .code-copy-btn.copied {
+    opacity: 1;
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #10b981;
+  }
+
+  .code-copy-icon {
+    width: 13px;
+    height: 13px;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+
+  /* Table styling matching landing page cards */
+  .docs-prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  }
+
+  .docs-prose th {
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.65rem 0.85rem;
+    text-align: left;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    font-weight: 600;
+  }
+
+  .docs-prose td {
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
     font-size: 0.85rem;
-    color: #e2e8f0;
+  }
+
+  .docs-prose tr:last-child td {
+    border-bottom: none;
+  }
+
+  .docs-prose tr:hover td {
+    background-color: #f8fafc;
   }
 
   .docs-prose blockquote {
+    border: 1px solid #e2e8f0;
     border-left: 3px solid #87b2f4;
     background-color: #f8fafc;
     padding: 0.75rem 1rem;

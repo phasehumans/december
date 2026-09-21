@@ -592,8 +592,8 @@ export function startOfNextUtcMonth(date: Date = new Date()): Date {
 }
 
 export const PROVIDER_BILLING_LINKS: Record<string, string> = {
-    december: 'https://trydecember.com/settings/billing',
-    december_proxy: 'https://trydecember.com/settings/billing',
+    december: 'https://app.trydecember.com/settings/billing',
+    december_proxy: 'https://app.trydecember.com/settings/billing',
     google: 'https://aistudio.google.com/app/usage',
     gemini: 'https://aistudio.google.com/app/usage',
     anthropic: 'https://console.anthropic.com/settings/billing',
@@ -801,7 +801,7 @@ export function formatInsufficientCreditsNotice(
         rawLower.includes('trydecember.com')
 
     if (isDecember || (!normalized && !model)) {
-        return 'Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
+        return 'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
     }
 
     if (normalized === 'arcee' || normalized === 'arceeai' || normalized === 'arcee-ai') {
@@ -939,7 +939,7 @@ export function formatRateLimitNotice(
         return `Rate limit or quota exhausted from ${displayName}. Please check your account limits at ${billingLink} or switch models using /model.`
     }
 
-    return 'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing'
+    return 'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://app.trydecember.com/settings/billing'
 }
 
 export function getCleanProviderDisplayName(providerId?: string, model?: string): string {

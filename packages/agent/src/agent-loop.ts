@@ -812,7 +812,7 @@ async function streamAssistantResponse(
             errorMsg.toLowerCase().includes('capacity')
         ) {
             errorMsg =
-                'This model is currently experiencing high demand or capacity limits from the provider. Spikes in demand are usually temporary. Please try again in a few moments or switch to a different model at https://trydecember.com/pricing\n' +
+                'This model is currently experiencing high demand or capacity limits from the provider. Spikes in demand are usually temporary. Please try again in a few moments or switch to a different model at https://app.trydecember.com/settings/billing\n' +
                 errorMsg
         }
 

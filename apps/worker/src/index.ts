@@ -142,7 +142,7 @@ export const worker = new Worker(
                             code: 'INSUFFICIENT_CREDITS',
                             error: 'Insufficient wallet credits',
                             message:
-                                'Insufficient wallet credits. Please add credits at https://trydecember.com/settings/billing to continue.',
+                                'Insufficient wallet credits. Please add credits at https://app.trydecember.com/settings/billing to continue.',
                         },
                     })
                     return { status: 'FAILED', error: 'Insufficient credits' }

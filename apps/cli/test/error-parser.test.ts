@@ -98,18 +98,18 @@ describe('error-parser', () => {
 
     test('preserves CTA links in error messages', () => {
         const ctaErr =
-            'Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
+            'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
         expect(parseErrorMessage(ctaErr)).toBe(ctaErr)
     })
 
     test('does not attach OpenRouter notice to December Wallet 402 error', () => {
         const decemberWallet402 =
-            '402 Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.\n402 status code (no body)'
+            '402 Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.\n402 status code (no body)'
         const parsed = parseErrorMessage(decemberWallet402)
         expect(parsed).not.toContain('OpenRouter credits exhausted or insufficient')
         expect(parsed).not.toContain('https://openrouter.ai/settings/credits')
         expect(parsed).toContain('Insufficient credits in December Wallet')
-        expect(parsed).toContain('https://trydecember.com/settings/billing')
+        expect(parsed).toContain('https://app.trydecember.com/settings/billing')
         expect(parsed).toContain('Bring Your Own Key (BYOK)')
     })
 
@@ -118,7 +118,7 @@ describe('error-parser', () => {
             'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash'
         const parsed = parseErrorMessage(rawQuotaErr)
         expect(parsed).toContain(
-            'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://trydecember.com/pricing'
+            'Rate limit or quota exhausted from LLM provider. Please upgrade your API key tier with your provider (OpenAI, Anthropic, Gemini) or switch to December Cloud Subscription at https://app.trydecember.com/settings/billing'
         )
         expect(parsed).toContain('generativelanguage.googleapis.com')
     })
@@ -224,7 +224,7 @@ describe('error-parser', () => {
             const parsed = parseError(rawQuotaErr)
             expect(parsed.message).toBe('Rate limit or quota exhausted from LLM provider.')
             expect(parsed.cause).toContain('generativelanguage.googleapis.com')
-            expect(parsed.hint).toContain('https://trydecember.com/pricing')
+            expect(parsed.hint).toContain('https://app.trydecember.com/settings/billing')
         })
 
         test('extracts structured details from OpenRouter 402 credits errors', () => {
@@ -465,7 +465,7 @@ describe('error-parser', () => {
                 'Please check your account limits at https://platform.agnes-ai.com/settings/apiKeys or switch models using /model.'
             )
             expect(parsed.hint).not.toContain('OpenAI, Anthropic, Gemini')
-            expect(parsed.hint).not.toContain('https://trydecember.com/pricing')
+            expect(parsed.hint).not.toContain('https://app.trydecember.com/settings/billing')
         })
 
         test('extracts provider-specific rate limit message and dashboard link for DeepSeek', () => {

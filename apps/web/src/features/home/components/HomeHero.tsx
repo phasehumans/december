@@ -15,7 +15,7 @@ import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
-import { getGithubAppName } from '@/shared/config/env'
+import { getGithubAppName, getWebUrl } from '@/shared/config/env'
 
 // Toggle to temporarily disable onboarding / welcome modal for users until turned back on
 const SHOW_ONBOARDING_MODAL = false
@@ -340,7 +340,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                             </p>
                                         </div>
                                         <a
-                                            href="/docs"
+                                            href={`${getWebUrl()}/docs`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] text-[#9A9998] hover:text-[#E8E8E8] text-[11.5px] font-sans font-medium text-center cursor-pointer block select-none transition-transform duration-75 active:scale-[0.98] active:translate-y-[0.5px]"

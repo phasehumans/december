@@ -117,7 +117,7 @@ export const PromptInput: React.FC<
                             className={`
                     w-full bg-transparent text-[#D6D5D4] placeholder-[#949494] caret-white
                     resize-none focus:outline-none z-10 font-sans font-medium leading-relaxed p-0 m-0 border-none
-                    [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20
+                    [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
                   `}
                             rows={minimized ? 1 : 3}
                         />

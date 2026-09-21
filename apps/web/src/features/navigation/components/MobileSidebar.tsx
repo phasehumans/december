@@ -47,7 +47,6 @@ export const MobileSidebar: React.FC<
         path.startsWith('/integrations') ||
         path.startsWith('/connections') ||
         path.startsWith('/connectors')
-    const isDocsActive = path.startsWith('/docs')
 
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
     const [isRecentMenuOpen, setIsRecentMenuOpen] = React.useState(false)
@@ -66,7 +65,6 @@ export const MobileSidebar: React.FC<
     } else if (!isHomeActive) {
         if (isProjectsActive) activeIndex = 2
         else if (isSettingsActive) activeIndex = 3
-        else if (isDocsActive) activeIndex = 4
         else activeIndex = -1
     } else {
         activeIndex = 0
@@ -126,15 +124,6 @@ export const MobileSidebar: React.FC<
             icon: <Icons.Settings className="w-[18px] h-[18px]" />,
             onClick: () => {
                 onProfile()
-                onClose()
-            },
-        },
-        {
-            id: 'docs',
-            label: 'Documentation',
-            icon: <Icons.DocsBook className="w-[18px] h-[18px]" />,
-            onClick: () => {
-                navigate('/docs')
                 onClose()
             },
         },

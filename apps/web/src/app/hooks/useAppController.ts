@@ -117,15 +117,6 @@ export const useAppController = () => {
     React.useEffect(() => {
         if (!isAuthRestored || isAuthenticated) return
 
-        const landingUrl = process.env.WEB_URL || 'https://trydecember.com'
-
-        if (location.pathname === '/') {
-            if (typeof window !== 'undefined') {
-                window.location.replace(landingUrl)
-            }
-            return
-        }
-
         if (location.pathname !== '/login' && location.pathname !== '/signup') {
             const redirectTarget = encodeURIComponent(location.pathname + location.search)
             navigate(`/login?redirect=${redirectTarget}`, { replace: true })
@@ -147,7 +138,7 @@ export const useAppController = () => {
     }, [location.pathname])
 
     const isHome = view === 'chat' && !activeProjectId && !hasMessages
-    const showSidebar = view !== 'profile' && view !== 'docs'
+    const showSidebar = view !== 'profile'
     const { handleNavigate, handleSignOut } = useNavigationController()
 
     const { openProject, handleOpenProject, handleSelectVersion, lastAutoFixSignatureRef } =

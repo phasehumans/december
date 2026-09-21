@@ -6,6 +6,7 @@ export interface RenderWelcomeEmailOptions {
     name?: string
     supportEmail: string
     webUrl: string
+    appUrl?: string
     npmUrl?: string
     githubUrl?: string
 }
@@ -14,6 +15,7 @@ export const renderWelcomeEmail = ({
     name,
     supportEmail,
     webUrl,
+    appUrl = webUrl,
     npmUrl = 'https://www.npmjs.com/package/@trydecember/cli',
     githubUrl = 'https://github.com/phasehumans/december',
 }: RenderWelcomeEmailOptions): RenderedEmail => {
@@ -44,7 +46,7 @@ export const renderWelcomeEmail = ({
           </p>
           <ul class='text-secondary' style='margin: 0 0 16px 0; padding-left: 20px; font-size: 14px; line-height: 22px; color: #57534e;'>
             <li style='margin-bottom: 8px;'><strong>Writes code &amp; runs commands:</strong> Ask it to build features, fix bugs, or run tests directly in your terminal or web dashboard.</li>
-            <li style='margin-bottom: 8px;'><strong>Cloud Handoff:</strong> Use <code style='font-family: Menlo, Monaco, Consolas, monospace; font-size: 13px;'>/handoff</code> in your terminal to continue your session seamlessly on <a class='link' href='${webUrl}' target='_blank' style='color: #1c1917; text-decoration: underline;'>trydecember.com</a>.</li>
+            <li style='margin-bottom: 8px;'><strong>Cloud Handoff:</strong> Use <code style='font-family: Menlo, Monaco, Consolas, monospace; font-size: 13px;'>/handoff</code> in your terminal to continue your session seamlessly on <a class='link' href='${appUrl}' target='_blank' style='color: #1c1917; text-decoration: underline;'>trydecember.com</a>.</li>
             <li style='margin-bottom: 8px;'><strong>Bring your own AI:</strong> Plug in API keys for OpenAI, Anthropic, Gemini, and 20+ others, or use December credits.</li>
           </ul>
           <p class='text-secondary' style='margin: 0 0 16px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
@@ -55,7 +57,7 @@ export const renderWelcomeEmail = ({
           <table role='presentation' cellspacing='0' cellpadding='0' border='0' style='margin: 24px 0;'>
             <tr>
               <td align='left' style='border-radius: 8px; background-color: #1c1917;' class='btn-bg'>
-                <a href='${webUrl}' target='_blank' class='btn-text' style='border: 1px solid #1c1917; border-radius: 8px; color: #fafaf9; display: inline-block; font-size: 14px; font-weight: 600; line-height: 20px; padding: 12px 24px; text-decoration: none;'>
+                <a href='${appUrl}' target='_blank' class='btn-text' style='border: 1px solid #1c1917; border-radius: 8px; color: #fafaf9; display: inline-block; font-size: 14px; font-weight: 600; line-height: 20px; padding: 12px 24px; text-decoration: none;'>
                   Start building now
                 </a>
               </td>
@@ -99,7 +101,7 @@ Here is what you can do:
 
 Run "npm install -g @trydecember/cli" to get started locally, or launch a session in your browser.
 
-Start building now: ${webUrl}
+Start building now: ${appUrl}
 
 If you ever have any questions or feedback, feel free to reply to this email or reach out to our team at ${supportEmail}.
 

@@ -2,6 +2,13 @@
 
 ### Features
 
+- _(auth)_ Enforce strict authentication isolation and multi-domain redirects
+- _(env)_ Standardize url env vars to web_url, app_url, and server_url
+
+## [0.3.31] - 2026-09-20
+
+### Features
+
 - _(agent)_ Implement dynamic tool discovery and subagent skill delegation
 - _(tui)_ Remove /grill and /logout, add delete shortcut to /switch menu
 - _(docs)_ Separate landing page and docs to apps/docs and point web app to app.trydecember.com
@@ -24,6 +31,7 @@
 - Remove docs from git tracking and add to gitignore
 - _(distribution)_ Standardize on npm distribution and remove curl installer
 - _(env)_ Configure web_url, docs_url, landing_url, and local dev port 2000
+- _(release)_ V0.3.31
 
 ## [0.3.30] - 2026-09-18
 

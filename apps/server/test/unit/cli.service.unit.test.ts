@@ -28,7 +28,7 @@ describe('CLI Service - Unit Tests', () => {
             spyOn(usageService, 'hasMinimumBalance').mockImplementation((async () => false) as any)
 
             await expect(cliService.generateHandoffUrl({ userId: 'user-1' })).rejects.toThrow(
-                'Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing to continue using December Cloud.'
+                'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue using December Cloud.'
             )
         })
 
@@ -72,7 +72,7 @@ describe('CLI Service - Unit Tests', () => {
                     objectKey: 'handoffs/user-1/key.tar.gz',
                 })
             ).rejects.toThrow(
-                'Insufficient credits in December Wallet. Please add credits at https://trydecember.com/settings/billing to continue using December Cloud.'
+                'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue using December Cloud.'
             )
         })
 

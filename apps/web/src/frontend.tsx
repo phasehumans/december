@@ -4,17 +4,30 @@
  *
  * it is included in `src/index.html`.
  */
+if (typeof window !== 'undefined') {
+    ;(window as any).process = (window as any).process || { env: {} }
+}
 
 import { GoogleOAuthProvider } from '@react-oauth/google'
+import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import App from './App'
 import { CliLogin } from './features/auth/components/CliLogin'
 import { DeviceActivate } from './features/auth/components/DeviceActivate'
 import { GithubCallback } from './features/auth/components/GithubCallback'
-import { getGoogleClientId } from './shared/config/env'
+import { getGoogleClientId, getWebUrl } from './shared/config/env'
 import { QueryProvider } from './shared/providers/query-provider'
+
+const DocsRedirect: React.FC = () => {
+    React.useEffect(() => {
+        const landingUrl = getWebUrl()
+        const target = `${landingUrl}${window.location.pathname}${window.location.search}`
+        window.location.replace(target)
+    }, [])
+    return null
+}
 
 const elem = document.getElementById('root')!
 const app = (
@@ -25,6 +38,9 @@ const app = (
                     <Route path="/cli/login" element={<CliLogin />} />
                     <Route path="/activate" element={<DeviceActivate />} />
                     <Route path="/github/callback" element={<GithubCallback />} />
+                    <Route path="/pricing" element={<Navigate to="/settings/billing" replace />} />
+                    <Route path="/docs" element={<DocsRedirect />} />
+                    <Route path="/docs/*" element={<DocsRedirect />} />
                     <Route path="*" element={<App />} />
                 </Routes>
             </GoogleOAuthProvider>

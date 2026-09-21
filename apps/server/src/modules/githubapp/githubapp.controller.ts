@@ -62,7 +62,8 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
         })
     }
 
-    let redirectTarget = `${env.APP_URL}${returnUrl.startsWith('/') ? returnUrl : `/${returnUrl}`}`
+    const baseAppUrl = (env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')
+    let redirectTarget = `${baseAppUrl}${returnUrl.startsWith('/') ? returnUrl : `/${returnUrl}`}`
     if (returnUrl.startsWith('http://') || returnUrl.startsWith('https://')) {
         try {
             const parsed = new URL(returnUrl)
