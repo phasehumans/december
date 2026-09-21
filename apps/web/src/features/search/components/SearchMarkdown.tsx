@@ -58,7 +58,7 @@ const getMermaid = async () => {
                     sequenceNumberColor: '#FFFFFF',
 
                     fontFamily:
-                        'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        "'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                     fontSize: '13px',
                 },
                 sequence: {

@@ -20,13 +20,11 @@ import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { ProfileGeneralSettings } from './ProfileGeneralSettings'
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
-import { ProfilePrivacySettings } from './ProfilePrivacySettings'
 import { ProfileRepositoriesSettings } from './ProfileRepositoriesSettings'
 import { ProfileSecretsSettings } from './ProfileSecretsSettings'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import { ProfileSignOutAllSessionsModal } from './ProfileSignOutAllSessionsModal'
-import { ProfileTermsSettings } from './ProfileTermsSettings'
 import { ProfileUsageSettings } from './ProfileUsageSettings'
 
 import type { ProfileSettingsProps } from '@/features/profile/types'
@@ -36,6 +34,7 @@ import { getProfileTabFromSlug, getSlugForProfileTab } from '@/app/types'
 import { MobileBreadcrumbsHeader } from '@/features/navigation/components/MobileBreadcrumbsHeader'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
+import { getWebUrl } from '@/shared/config/env'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
 
@@ -91,16 +90,18 @@ const SETTINGS_NAV_GROUPS = [
         title: 'Resources',
         items: [
             {
-                tab: 'Privacy',
                 slug: 'privacy',
                 label: 'Privacy Policy',
                 icon: FileText,
+                isExternal: true,
+                href: `${getWebUrl()}/privacy`,
             },
             {
-                tab: 'Terms',
                 slug: 'terms',
                 label: 'Terms of Service',
                 icon: FileText,
+                isExternal: true,
+                href: `${getWebUrl()}/terms`,
             },
             {
                 slug: 'changelog',
@@ -123,8 +124,6 @@ const TAB_LABEL_MAP: Record<string, string> = {
     Billing: 'Billing',
     Usage: 'Usage',
     Analytics: 'Usage',
-    Privacy: 'Privacy Policy',
-    Terms: 'Terms of Service',
 }
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack }) => {
@@ -145,8 +144,17 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     ) {
         activeTabSlug = 'integrations'
     }
+
+    React.useEffect(() => {
+        if (activeTabSlug === 'privacy' || activeTabSlug === 'terms') {
+            const landingUrl = getWebUrl()
+            window.open(`${landingUrl}/${activeTabSlug}`, '_blank', 'noopener,noreferrer')
+            navigate('/settings', { replace: true })
+        }
+    }, [activeTabSlug, navigate])
+
     const activeTab = getProfileTabFromSlug(activeTabSlug)
-    const isPublicTab = activeTab === 'Terms' || activeTab === 'Privacy'
+    const isPublicTab = activeTabSlug === 'privacy' || activeTabSlug === 'terms'
 
     React.useEffect(() => {
         if (isAuthRestored && !isAuthenticated && !isPublicTab) {
@@ -317,10 +325,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 )
             case 'Secrets':
                 return <ProfileSecretsSettings />
-            case 'Terms':
-                return <ProfileTermsSettings />
-            case 'Privacy':
-                return <ProfilePrivacySettings />
             default:
                 return (
                     <div className="flex flex-col gap-6">
@@ -442,74 +446,56 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         Resources
                     </div>
                     {/* Privacy Policy */}
-                    <button
-                        onClick={() => {
-                            navigate(`/settings/${getSlugForProfileTab('Privacy')}`)
+                    <a
+                        href={`${getWebUrl()}/privacy`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                            e.preventDefault()
+                            window.open(`${getWebUrl()}/privacy`, '_blank', 'noopener,noreferrer')
                             setIsMobileDrawerOpen(false)
                         }}
-                        className={cn(
-                            'relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none cursor-pointer',
-                            activeTab === 'Privacy' ? 'bg-[#1F1F1F]' : 'hover:bg-[#1C1C1C]'
-                        )}
+                        className="relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none hover:bg-[#1C1C1C] cursor-pointer"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div
-                                className={cn(
-                                    'transition-colors flex items-center justify-center shrink-0',
-                                    activeTab === 'Privacy'
-                                        ? 'text-[#D6D5D4]'
-                                        : 'text-[#919191] group-hover:text-[#D6D5D4]'
-                                )}
-                            >
+                            <div className="text-[#919191] group-hover:text-[#D6D5D4] transition-colors flex items-center justify-center shrink-0">
                                 <FileText className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             </div>
-                            <span
-                                className={cn(
-                                    'font-medium text-[14px] tracking-wide transition-colors truncate',
-                                    activeTab === 'Privacy'
-                                        ? 'text-[#D6D5D4]'
-                                        : 'text-[#919191] group-hover:text-[#D6D5D4]'
-                                )}
-                            >
+                            <span className="font-medium text-[14px] tracking-wide transition-colors truncate text-[#919191] group-hover:text-[#D6D5D4]">
                                 Privacy Policy
                             </span>
                         </div>
-                    </button>
+                        <ArrowUpRight
+                            className="w-[14px] h-[14px] text-[#7B7A79]"
+                            strokeWidth={1.5}
+                        />
+                    </a>
 
                     {/* Terms of Service */}
-                    <button
-                        onClick={() => {
-                            navigate(`/settings/${getSlugForProfileTab('Terms')}`)
+                    <a
+                        href={`${getWebUrl()}/terms`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                            e.preventDefault()
+                            window.open(`${getWebUrl()}/terms`, '_blank', 'noopener,noreferrer')
                             setIsMobileDrawerOpen(false)
                         }}
-                        className={cn(
-                            'relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none cursor-pointer',
-                            activeTab === 'Terms' ? 'bg-[#1F1F1F]' : 'hover:bg-[#1C1C1C]'
-                        )}
+                        className="relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none hover:bg-[#1C1C1C] cursor-pointer"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div
-                                className={cn(
-                                    'transition-colors flex items-center justify-center shrink-0',
-                                    activeTab === 'Terms'
-                                        ? 'text-[#D6D5D4]'
-                                        : 'text-[#919191] group-hover:text-[#D6D5D4]'
-                                )}
-                            >
+                            <div className="text-[#919191] group-hover:text-[#D6D5D4] transition-colors flex items-center justify-center shrink-0">
                                 <FileText className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             </div>
-                            <span
-                                className={cn(
-                                    'font-medium text-[14px] tracking-wide transition-colors truncate',
-                                    activeTab === 'Terms'
-                                        ? 'text-[#D6D5D4]'
-                                        : 'text-[#919191] group-hover:text-[#D6D5D4]'
-                                )}
-                            >
+                            <span className="font-medium text-[14px] tracking-wide transition-colors truncate text-[#919191] group-hover:text-[#D6D5D4]">
                                 Terms of Service
                             </span>
                         </div>
-                    </button>
+                        <ArrowUpRight
+                            className="w-[14px] h-[14px] text-[#7B7A79]"
+                            strokeWidth={1.5}
+                        />
+                    </a>
 
                     {/* Changelog */}
                     <a
@@ -639,32 +625,48 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mt-4 mb-1">
                             Resources
                         </div>
-                        <button
-                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Privacy')}`)}
-                            className={`flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Privacy'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
+                        <a
+                            href={`${getWebUrl()}/privacy`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                                e.preventDefault()
+                                window.open(
+                                    `${getWebUrl()}/privacy`,
+                                    '_blank',
+                                    'noopener,noreferrer'
+                                )
+                            }}
+                            className="flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group whitespace-nowrap shrink-0 cursor-pointer"
                         >
                             <div className="flex items-center gap-3">
                                 <FileText className="w-[18px] h-[18px]" strokeWidth={1.5} />
                                 Privacy Policy
                             </div>
-                        </button>
-                        <button
-                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Terms')}`)}
-                            className={`flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Terms'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
+                            <ArrowUpRight
+                                className="w-[14px] h-[14px] text-[#7B7A79]"
+                                strokeWidth={1.5}
+                            />
+                        </a>
+                        <a
+                            href={`${getWebUrl()}/terms`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                                e.preventDefault()
+                                window.open(`${getWebUrl()}/terms`, '_blank', 'noopener,noreferrer')
+                            }}
+                            className="flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group whitespace-nowrap shrink-0 cursor-pointer"
                         >
                             <div className="flex items-center gap-3">
                                 <FileText className="w-[18px] h-[18px]" strokeWidth={1.5} />
                                 Terms of Service
                             </div>
-                        </button>
+                            <ArrowUpRight
+                                className="w-[14px] h-[14px] text-[#7B7A79]"
+                                strokeWidth={1.5}
+                            />
+                        </a>
                         <a
                             href="https://github.com/phasehumans/december/blob/main/CHANGELOG.md"
                             target="_blank"

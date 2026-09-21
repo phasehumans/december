@@ -27,12 +27,12 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
                 </h2>
                 <p className="text-[13px] text-[#A1A1A6] leading-relaxed">
                     We sent a verification code to{' '}
-                    <span className="text-white font-mono font-medium">{email}</span>.
+                    <span className="text-white font-sans font-medium">{email}</span>.
                 </p>
             </div>
 
             <form onSubmit={onSubmit} className="flex flex-col gap-4">
-                {/* Monospace sharp OTP input boxes */}
+                {/* Monospace OTP input boxes with unified rounded corners */}
                 <div className="flex gap-2 sm:gap-2.5 justify-center my-1">
                     {otp.map((digit, index) => (
                         <input
@@ -45,13 +45,13 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
                             onKeyDown={(event) => onKeyDown(index, event)}
                             onPaste={index === 0 ? onPaste : undefined}
                             disabled={isPending}
-                            className="w-11 h-12 sm:w-12 sm:h-13 text-center font-mono text-xl font-medium bg-[#141414] border border-[#2A2A2A] rounded-none text-white caret-[#87b2f4] outline-none focus:border-[#87b2f4] transition-all"
+                            className="w-11 h-12 sm:w-12 sm:h-13 text-center font-mono text-xl font-medium bg-[#141414] border border-[#2A2A2A] rounded-lg text-white caret-[#87b2f4] outline-none focus:border-[#87b2f4] transition-all"
                         />
                     ))}
                 </div>
 
                 {errorMessage && (
-                    <p className="font-mono text-xs text-red-400 px-1 text-center">
+                    <p className="font-sans text-xs text-red-400 px-1 text-center">
                         {errorMessage}
                     </p>
                 )}
@@ -59,7 +59,7 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
                 <button
                     type="submit"
                     disabled={otp.some((digit) => !digit) || isPending}
-                    className="w-full bg-[#EDEDED] hover:bg-white text-[#090a0f] font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1"
+                    className="w-full bg-[#EDEDED] hover:bg-white text-[#090a0f] font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1"
                 >
                     {isPending ? 'Verifying code...' : 'Verify & Continue →'}
                 </button>
@@ -68,7 +68,7 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
                     <button
                         type="button"
                         onClick={onBack}
-                        className="font-mono text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
+                        className="font-sans text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
                         disabled={isPending}
                     >
                         ← Back to Sign Up

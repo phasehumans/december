@@ -277,22 +277,26 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             },
             {
                 id: 'go-settings-privacy',
-                label: 'Privacy & Security',
-                subtitle: 'Settings / Privacy',
+                label: 'Privacy Policy',
+                subtitle: 'Legal / Privacy Policy',
                 category: 'Settings Subpages',
                 icon: <Icons.Lock className="w-4 h-4 text-neutral-400" />,
-                keywords: [
-                    'privacy',
-                    'security',
-                    'data',
-                    'encryption',
-                    'gdpr',
-                    'compliance',
-                    'terms',
-                ],
+                keywords: ['privacy', 'security', 'data', 'encryption', 'gdpr', 'compliance'],
                 action: () => {
                     onClose()
-                    navigate('/settings/privacy')
+                    window.open(`${getWebUrl()}/privacy`, '_blank', 'noopener,noreferrer')
+                },
+            },
+            {
+                id: 'go-settings-terms',
+                label: 'Terms of Service',
+                subtitle: 'Legal / Terms of Service',
+                category: 'Settings Subpages',
+                icon: <Icons.BookOpen className="w-4 h-4 text-neutral-400" />,
+                keywords: ['terms', 'tos', 'conditions', 'agreement', 'legal', 'compliance'],
+                action: () => {
+                    onClose()
+                    window.open(`${getWebUrl()}/terms`, '_blank', 'noopener,noreferrer')
                 },
             },
         ],

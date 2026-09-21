@@ -59,6 +59,30 @@ const server = serve({
                 (isProd ? 'https://trydecember.com' : 'http://localhost:2000')
             return Response.redirect(`${targetBase}${url.pathname}${url.search}`, 302)
         },
+        '/privacy': () => {
+            const targetBase =
+                process.env.WEB_URL ||
+                (isProd ? 'https://trydecember.com' : 'http://localhost:2000')
+            return Response.redirect(`${targetBase}/privacy`, 302)
+        },
+        '/terms': () => {
+            const targetBase =
+                process.env.WEB_URL ||
+                (isProd ? 'https://trydecember.com' : 'http://localhost:2000')
+            return Response.redirect(`${targetBase}/terms`, 302)
+        },
+        '/settings/privacy': () => {
+            const targetBase =
+                process.env.WEB_URL ||
+                (isProd ? 'https://trydecember.com' : 'http://localhost:2000')
+            return Response.redirect(`${targetBase}/privacy`, 302)
+        },
+        '/settings/terms': () => {
+            const targetBase =
+                process.env.WEB_URL ||
+                (isProd ? 'https://trydecember.com' : 'http://localhost:2000')
+            return Response.redirect(`${targetBase}/terms`, 302)
+        },
         '/robots.txt': () => {
             const file = Bun.file(path.join(import.meta.dir, '../assets/robots.txt'))
             return new Response(file, {

@@ -40,13 +40,13 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                 </h2>
             </div>
 
-            {/* Social OAuth Buttons with sharp landing page styling */}
+            {/* Social OAuth Buttons with clean sans styling */}
             <div className="flex flex-col gap-2.5 mb-1">
                 <button
                     type="button"
                     onClick={onGithubLogin}
                     disabled={isAuthPending || isGithubPending}
-                    className="w-full bg-[#1e1e1e] hover:bg-[#252525] text-white font-mono text-xs sm:text-[13px] font-medium h-10 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-none flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full bg-[#1e1e1e] hover:bg-[#252525] text-white font-sans text-xs sm:text-[13px] font-medium h-10 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-lg flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
                 >
                     <div className="w-4 h-4 flex items-center justify-center shrink-0">
                         <AuthModalGithubIcon />
@@ -58,7 +58,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     type="button"
                     onClick={onGoogleLogin}
                     disabled={isAuthPending || isGooglePending}
-                    className="w-full bg-white hover:bg-[#EDEDED] text-[#090a0f] font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full bg-white hover:bg-[#EDEDED] text-[#090a0f] font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
                 >
                     <div className="w-4 h-4 flex items-center justify-center shrink-0">
                         <AuthModalGoogleIcon />
@@ -70,13 +70,13 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
             {/* Minimal divider */}
             <div className="flex items-center my-4">
                 <div className="flex-1 border-t border-[#262626]"></div>
-                <span className="px-3 font-mono text-[10px] text-[#737373] uppercase tracking-widest">
+                <span className="px-3 font-sans text-[11px] text-[#737373] uppercase tracking-wider">
                     or continue with email
                 </span>
                 <div className="flex-1 border-t border-[#262626]"></div>
             </div>
 
-            {/* Form with sharp inputs and buttons */}
+            {/* Form with clean inputs and buttons */}
             <form onSubmit={onSubmit} className="flex flex-col gap-3">
                 <input
                     type="email"
@@ -85,7 +85,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     value={email}
                     onChange={(event) => onEmailChange(event.target.value)}
                     disabled={isAuthPending}
-                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-none h-10 px-3.5 font-mono text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
+                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-lg h-10 px-3.5 font-sans text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
                 />
 
                 <div className="relative w-full">
@@ -96,7 +96,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                         value={password}
                         onChange={(event) => onPasswordChange(event.target.value)}
                         disabled={isAuthPending}
-                        className="w-full bg-[#141414] border border-[#2A2A2A] rounded-none h-10 pl-3.5 pr-10 font-mono text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
+                        className="w-full bg-[#141414] border border-[#2A2A2A] rounded-lg h-10 pl-3.5 pr-10 font-sans text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
                     />
                     <button
                         type="button"
@@ -113,14 +113,14 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                         type="button"
                         onClick={onForgotPassword}
                         disabled={isAuthPending}
-                        className="self-end font-mono text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer pr-0.5"
+                        className="self-end font-sans text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer pr-0.5"
                     >
                         Forgot password?
                     </button>
                 )}
 
                 {errorMessage && (
-                    <p className="font-mono text-xs text-red-400 px-1 text-center">
+                    <p className="font-sans text-xs text-red-400 px-1 text-center">
                         {errorMessage}
                     </p>
                 )}
@@ -128,7 +128,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                 <button
                     type="submit"
                     disabled={isAuthPending}
-                    className={`w-full font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1 border ${
+                    className={`w-full font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1 border ${
                         isFormFilled
                             ? 'bg-[#EDEDED] hover:bg-white text-[#090a0f] border-transparent'
                             : 'bg-[#202020] hover:bg-[#252525] text-[#888888] border-[#2A2A2A]'
@@ -147,7 +147,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                 <button
                     type="button"
                     onClick={onToggleAuthMode}
-                    className="font-mono text-xs text-[#888888] hover:text-[#EDEDED] transition-colors cursor-pointer"
+                    className="font-sans text-xs text-[#888888] hover:text-[#EDEDED] transition-colors cursor-pointer"
                 >
                     {authMode === 'login' ? (
                         <span>
@@ -167,7 +167,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                 </button>
             </div>
 
-            <p className="mt-4 text-[11px] font-mono text-[#737373] text-center leading-relaxed">
+            <p className="mt-4 text-[11px] font-sans text-[#737373] text-center leading-relaxed">
                 By continuing, you agree to our{' '}
                 <a
                     href={`${getWebUrl()}/terms`}

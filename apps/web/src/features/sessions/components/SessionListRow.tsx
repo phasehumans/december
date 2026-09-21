@@ -174,7 +174,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                 </span>
 
                 {/* Metadata row: Date, creator, tags, PR */}
-                <div className="flex items-center justify-between text-[11.5px] text-[#7B7A79] pt-0.5">
+                <div className="flex items-center justify-between font-sans text-[11.5px] text-[#7B7A79] pt-0.5">
                     <div className="flex items-center gap-2 min-w-0">
                         <span>{formatDate(updatedDate)}</span>
                         {session.createdBy && (
@@ -186,7 +186,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
 
                     <div className="flex items-center gap-1.5 shrink-0">
                         {session.tags && session.tags.length > 0 && (
-                            <span className="truncate rounded-md bg-[#202020] px-1.5 py-0.5 font-medium text-[#949494]">
+                            <span className="truncate rounded-md bg-[#202020] border border-white/5 px-1.5 py-0.5 font-sans text-[11px] font-medium text-[#949494]">
                                 {session.tags[0]}
                             </span>
                         )}
@@ -235,7 +235,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
 
                 {/* created at */}
                 <Tooltip position="top" content={formatTooltipDate(session.createdAt, 'Created')}>
-                    <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
+                    <div className="truncate pr-2 font-sans text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
                         {formatDate(createdDate)}
                     </div>
                 </Tooltip>
@@ -245,7 +245,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                     position="top"
                     content={formatTooltipDate(session.updatedAt || session.createdAt, 'Updated')}
                 >
-                    <div className="truncate pr-2 text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
+                    <div className="truncate pr-2 font-sans text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
                         {formatDate(updatedDate)}
                     </div>
                 </Tooltip>
@@ -260,7 +260,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                                         e.stopPropagation()
                                         onOpenTags(session, e)
                                     }}
-                                    className="truncate rounded-md bg-[#202020] hover:bg-[#272727] transition-colors px-2 py-0.5 text-[11px] font-medium text-[#949494] cursor-pointer hover:text-white"
+                                    className="truncate rounded-md bg-[#202020] hover:bg-[#272727] border border-white/5 transition-colors px-2 py-0.5 font-sans text-[11px] font-medium text-[#949494] cursor-pointer hover:text-white"
                                     title="Double-click to edit tag"
                                 >
                                     {session.tags[0]}
@@ -276,7 +276,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                     position="top"
                     content={`Created by: ${session.createdByName || session.createdBy || 'User'}`}
                 >
-                    <div className="truncate text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
+                    <div className="truncate font-sans text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
                         {session.createdBy || '--'}
                     </div>
                 </Tooltip>

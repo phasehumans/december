@@ -55,14 +55,14 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                                 type={showCurrentPass ? 'text' : 'password'}
                                 value={currentPassword}
                                 onChange={(e) => onCurrentPasswordChange(e.target.value)}
-                                className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200 pr-10"
+                                className="w-full bg-[#141414] border border-[#2A2A2A] rounded-lg px-3.5 py-2 text-white font-sans text-xs sm:text-[13px] placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors pr-10"
                                 placeholder="Current password"
                                 disabled={isPending}
                             />
                             <button
                                 type="button"
                                 onClick={onToggleShowCurrentPass}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B7A79] hover:text-white transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B7A79] hover:text-white transition-colors cursor-pointer"
                             >
                                 {showCurrentPass ? <EyeOff size={14} /> : <Eye size={14} />}
                             </button>
@@ -77,14 +77,14 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                             type={showNewPass ? 'text' : 'password'}
                             value={newPassword}
                             onChange={(e) => onNewPasswordChange(e.target.value)}
-                            className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200 pr-10"
+                            className="w-full bg-[#141414] border border-[#2A2A2A] rounded-lg px-3.5 py-2 text-white font-sans text-xs sm:text-[13px] placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors pr-10"
                             placeholder="New password"
                             disabled={isPending}
                         />
                         <button
                             type="button"
                             onClick={onToggleShowNewPass}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B7A79] hover:text-white transition-colors"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B7A79] hover:text-white transition-colors cursor-pointer"
                         >
                             {showNewPass ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
@@ -97,14 +97,14 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => onConfirmPasswordChange(e.target.value)}
-                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200"
+                        className="w-full bg-[#141414] border border-[#2A2A2A] rounded-lg px-3.5 py-2 text-white font-sans text-xs sm:text-[13px] placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
                         placeholder="Confirm new password"
                         disabled={isPending}
                     />
                 </div>
 
                 {errorMessage && (
-                    <p className="text-[12px] text-red-500 font-medium px-1">{errorMessage}</p>
+                    <p className="font-sans text-xs text-red-400 px-1">{errorMessage}</p>
                 )}
 
                 <div className="mt-1 flex items-center justify-end gap-2.5">
@@ -112,14 +112,14 @@ export const ProfilePasswordModal: React.FC<ProfilePasswordModalProps> = ({
                         type="button"
                         onClick={onClose}
                         disabled={isPending}
-                        className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
+                        className="bg-transparent text-[#9A9998] hover:text-white active:scale-95 transition-all font-sans text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50 cursor-pointer"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         disabled={isPending}
-                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[140px]"
+                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-all font-sans text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[140px] cursor-pointer"
                     >
                         {isPending ? (
                             <div className="flex items-center gap-1.5 justify-center">

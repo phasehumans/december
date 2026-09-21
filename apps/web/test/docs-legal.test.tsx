@@ -1,10 +1,11 @@
+import fs from 'fs'
+import path from 'path'
+
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
 import { expect, test, describe, afterEach } from 'bun:test'
 import React from 'react'
 
 import { getProfileTabFromSlug, getSlugForProfileTab, getViewForPath } from '../src/app/types'
-import { PrivacyPolicyContent } from '../src/shared/components/legal/PrivacyPolicyContent'
-import { TermsOfServiceContent } from '../src/shared/components/legal/TermsOfServiceContent'
 
 if (!globalThis.document) {
     GlobalRegistrator.register()
@@ -17,7 +18,7 @@ afterEach(() => {
 })
 
 describe('Google OAuth Verification, Privacy & Terms', () => {
-    test('getViewForPath correctly routes legal, connections, and settings URLs to profile / settings view', () => {
+    test('getViewForPath correctly routes settings and connections URLs, and leaves standalone legal to default', () => {
         expect(getViewForPath('/settings/privacy')).toBe('profile')
         expect(getViewForPath('/settings/terms')).toBe('profile')
         expect(getViewForPath('/settings/usage')).toBe('profile')
@@ -27,8 +28,9 @@ describe('Google OAuth Verification, Privacy & Terms', () => {
         expect(getViewForPath('/settings/connections')).toBe('profile')
         expect(getViewForPath('/connections')).toBe('profile')
         expect(getViewForPath('/connectors')).toBe('profile')
-        expect(getViewForPath('/privacy')).toBe('profile')
-        expect(getViewForPath('/terms')).toBe('profile')
+        // Standalone /privacy and /terms are now external landing page redirects, not internal profile views
+        expect(getViewForPath('/privacy')).toBe('chat')
+        expect(getViewForPath('/terms')).toBe('chat')
     })
 
     test('getProfileTabFromSlug and getSlugForProfileTab resolve connections, billing, and usage correctly', () => {
@@ -42,36 +44,48 @@ describe('Google OAuth Verification, Privacy & Terms', () => {
         expect(getSlugForProfileTab('Billing')).toBe('billing')
     })
 
-    test('PrivacyPolicyContent contains all mandatory Google OAuth verification disclosures', () => {
-        render(<PrivacyPolicyContent />)
+    test('Landing page privacy policy contains all mandatory Google OAuth verification disclosures', () => {
+        const privacyPath = path.resolve(__dirname, '../../docs/src/pages/privacy.astro')
+        const content = fs.readFileSync(privacyPath, 'utf8')
 
         // App Name and website
-        expect(screen.getAllByText(/December/i).length).toBeGreaterThan(0)
-        expect(screen.getAllByText(/https:\/\/trydecember\.com/i).length).toBeGreaterThan(0)
+        expect(content).toContain('December')
+        expect(content).toContain('https://trydecember.com')
 
         // Google OAuth & Limited Use compliance statement
-        expect(screen.getByText(/Google API Services User Data Policy/i)).toBeDefined()
-        expect(screen.getByText(/Limited Use/i)).toBeDefined()
+        expect(content).toContain('Google API Services User Data Policy')
+        expect(content).toContain('Limited Use')
 
         // Privacy contact email
-        expect(screen.getAllByText(/team@trydecember.com/i).length).toBeGreaterThan(0)
+        expect(content).toContain('team@trydecember.com')
 
         // No model training on private user data
-        expect(screen.getByText(/No Model Training:/i)).toBeDefined()
+        expect(content).toContain('No Model Training')
     })
 
-    test('TermsOfServiceContent contains December terms and code ownership terms', () => {
-        render(<TermsOfServiceContent />)
+    test('Landing page terms contains December terms and code ownership terms', () => {
+        const termsPath = path.resolve(__dirname, '../../docs/src/pages/terms.astro')
+        const content = fs.readFileSync(termsPath, 'utf8')
 
         // App Name and website
-        expect(screen.getAllByText(/December/i).length).toBeGreaterThan(0)
-        expect(screen.getAllByText(/https:\/\/trydecember\.com/i).length).toBeGreaterThan(0)
+        expect(content).toContain('December')
+        expect(content).toContain('https://trydecember.com')
 
         // Ownership clause
-        expect(screen.getByText(/Ownership of Code & Intellectual Property/i)).toBeDefined()
+        expect(content).toContain('Code Ownership & IP')
 
         // Support contact email
-        expect(screen.getAllByText(/team@trydecember.com/i).length).toBeGreaterThan(0)
+        expect(content).toContain('team@trydecember.com')
+    })
+
+    test('Assets _redirects file has 302 redirects for legal pages to landing page', () => {
+        const redirectsPath = path.resolve(__dirname, '../assets/_redirects')
+        const content = fs.readFileSync(redirectsPath, 'utf8')
+
+        expect(content).toMatch(/\/privacy\s+https:\/\/trydecember\.com\/privacy\s+302/)
+        expect(content).toMatch(/\/terms\s+https:\/\/trydecember\.com\/terms\s+302/)
+        expect(content).toMatch(/\/settings\/privacy\s+https:\/\/trydecember\.com\/privacy\s+302/)
+        expect(content).toMatch(/\/settings\/terms\s+https:\/\/trydecember\.com\/terms\s+302/)
     })
 
     test('ProfileConnectionsSettings renders Connections section without mock MCP servers', async () => {

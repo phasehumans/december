@@ -63,7 +63,7 @@ export const RedeemCodeModal: React.FC<RedeemCodeModalProps> = ({ onClose }) => 
                 <div>
                     <label
                         htmlFor="redeem-code-input"
-                        className="text-[11px] font-medium text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
+                        className="font-sans text-[11px] font-medium text-[#8F8E8D] uppercase tracking-wider mb-1.5 block"
                     >
                         Code
                     </label>
@@ -79,7 +79,7 @@ export const RedeemCodeModal: React.FC<RedeemCodeModalProps> = ({ onClose }) => 
                         onKeyDown={(e: React.KeyboardEvent) => {
                             if (e.key === 'Enter' && !isRedeeming && !successMessage) handleRedeem()
                         }}
-                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow]"
+                        className="w-full bg-[#141414] border border-[#2A2A2A] rounded-lg px-3.5 py-2 text-white font-mono text-xs sm:text-[13px] tracking-wider placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
                         placeholder="K47B9X2P"
                         disabled={isRedeeming || !!successMessage}
                         autoComplete="off"
@@ -89,11 +89,9 @@ export const RedeemCodeModal: React.FC<RedeemCodeModalProps> = ({ onClose }) => 
                     />
                 </div>
 
-                {error && <p className="text-[12px] text-red-500 font-medium px-1">{error}</p>}
+                {error && <p className="font-sans text-xs text-red-400 px-1">{error}</p>}
                 {successMessage && (
-                    <p className="text-[12px] text-emerald-500 font-medium px-1">
-                        {successMessage}
-                    </p>
+                    <p className="font-sans text-xs text-emerald-400 px-1">{successMessage}</p>
                 )}
 
                 <div className="mt-1 flex items-center justify-end gap-2.5">
@@ -101,7 +99,7 @@ export const RedeemCodeModal: React.FC<RedeemCodeModalProps> = ({ onClose }) => 
                         type="button"
                         onClick={onClose}
                         disabled={isRedeeming || !!successMessage}
-                        className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50 cursor-pointer"
+                        className="bg-transparent text-[#9A9998] hover:text-white active:scale-95 transition-all font-sans text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50 cursor-pointer"
                     >
                         Cancel
                     </button>
@@ -109,7 +107,7 @@ export const RedeemCodeModal: React.FC<RedeemCodeModalProps> = ({ onClose }) => 
                         type="button"
                         onClick={handleRedeem}
                         disabled={!code.trim() || isRedeeming || !!successMessage}
-                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[110px] cursor-pointer"
+                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-all font-sans text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[110px] cursor-pointer"
                     >
                         {isRedeeming ? (
                             <div className="flex items-center gap-1.5 justify-center">

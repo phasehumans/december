@@ -59,6 +59,27 @@ describe('Auth Flow Typography & Landing Page Font Alignment', () => {
         expect(loginHeading.className).toContain('font-medium')
         expect(loginHeading.className).toContain('tracking-[-0.025em]')
         expect(loginHeading.className).toContain('text-white')
+
+        // Option A: Clean Geist Sans and rounded-lg on interactive controls
+        const githubBtn = screen.getByRole('button', { name: /Continue with GitHub/i })
+        expect(githubBtn.className).toContain('font-sans')
+        expect(githubBtn.className).toContain('rounded-lg')
+        expect(githubBtn.className).not.toContain('font-mono')
+        expect(githubBtn.className).not.toContain('rounded-none')
+
+        const googleBtn = screen.getByRole('button', { name: /Continue with Google/i })
+        expect(googleBtn.className).toContain('font-sans')
+        expect(googleBtn.className).toContain('rounded-lg')
+        expect(googleBtn.className).not.toContain('font-mono')
+        expect(googleBtn.className).not.toContain('rounded-none')
+
+        const emailInput = screen.getByPlaceholderText(/Enter your email/i)
+        expect(emailInput.className).toContain('font-sans')
+        expect(emailInput.className).toContain('rounded-lg')
+
+        const submitBtn = screen.getByRole('button', { name: /Continue with email/i })
+        expect(submitBtn.className).toContain('font-sans')
+        expect(submitBtn.className).toContain('rounded-lg')
     })
 
     it('AuthModalAuthStep matches landing page heading typography for signup', () => {

@@ -234,7 +234,7 @@ export const ProfileUsageSettings: React.FC = () => {
                     ) : (
                         <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1 min-h-[380px]">
                             {/* Table Header */}
-                            <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2.5 text-[12px] text-[#7B7A79] font-medium">
+                            <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2 font-sans text-[11px] text-[#7B7A79] uppercase tracking-wider font-medium">
                                 {/* Mobile Header (< md) */}
                                 <div className="flex md:hidden items-center justify-between">
                                     <span>Project / Date</span>
@@ -277,7 +277,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                                         ${(row.costInCents / 100).toFixed(2)}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center justify-between text-[11.5px] text-[#7B7A79]">
+                                                <div className="flex items-center justify-between font-sans text-[11.5px] text-[#7B7A79]">
                                                     <div className="flex items-center gap-1.5 truncate">
                                                         <span>{formatRowDate(row.createdAt)}</span>
                                                         <span>•</span>
@@ -293,7 +293,7 @@ export const ProfileUsageSettings: React.FC = () => {
 
                                             {/* Desktop row (>= md) */}
                                             <div className="hidden md:grid grid-cols-[130px_200px_1fr_100px_70px] items-center px-4 py-3 text-[13px]">
-                                                <div className="text-[#7B7A79]">
+                                                <div className="font-sans text-[13px] text-[#7B7A79]">
                                                     {formatRowDate(row.createdAt)}
                                                 </div>
                                                 <div className="text-[#D6D5C9] truncate pr-2 font-medium">

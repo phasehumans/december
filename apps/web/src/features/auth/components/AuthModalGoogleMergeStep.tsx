@@ -37,7 +37,7 @@ export const AuthModalGoogleMergeStep: React.FC<AuthModalGoogleMergeStepProps> =
                 type="button"
                 onClick={onGoogleLogin}
                 disabled={isPending}
-                className="w-full bg-white hover:bg-[#EDEDED] text-[#090a0f] font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
+                className="w-full bg-white hover:bg-[#EDEDED] text-[#090a0f] font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
             >
                 <div className="w-4 h-4 flex items-center justify-center shrink-0">
                     <AuthModalGoogleIcon />
@@ -49,7 +49,7 @@ export const AuthModalGoogleMergeStep: React.FC<AuthModalGoogleMergeStepProps> =
                 type="button"
                 onClick={onCreatePassword}
                 disabled={isPending}
-                className="w-full bg-[#1e1e1e] hover:bg-[#252525] text-white font-mono text-xs sm:text-[13px] font-medium h-10 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-none flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
+                className="w-full bg-[#1e1e1e] hover:bg-[#252525] text-white font-sans text-xs sm:text-[13px] font-medium h-10 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
             >
                 {isPending ? 'Please wait...' : 'Create Email Password'}
             </button>
@@ -59,7 +59,7 @@ export const AuthModalGoogleMergeStep: React.FC<AuthModalGoogleMergeStepProps> =
                     type="button"
                     onClick={onBack}
                     disabled={isPending}
-                    className="font-mono text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
+                    className="font-sans text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
                 >
                     ← Back to login
                 </button>

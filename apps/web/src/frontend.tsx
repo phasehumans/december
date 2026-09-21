@@ -29,6 +29,15 @@ const DocsRedirect: React.FC = () => {
     return null
 }
 
+const ExternalRedirect: React.FC<{ targetPath: string }> = ({ targetPath }) => {
+    React.useEffect(() => {
+        const landingUrl = getWebUrl()
+        const target = `${landingUrl}${targetPath}${window.location.search}`
+        window.location.replace(target)
+    }, [targetPath])
+    return null
+}
+
 const elem = document.getElementById('root')!
 const app = (
     <BrowserRouter>
@@ -39,6 +48,16 @@ const app = (
                     <Route path="/activate" element={<DeviceActivate />} />
                     <Route path="/github/callback" element={<GithubCallback />} />
                     <Route path="/pricing" element={<Navigate to="/settings/billing" replace />} />
+                    <Route path="/privacy" element={<ExternalRedirect targetPath="/privacy" />} />
+                    <Route path="/terms" element={<ExternalRedirect targetPath="/terms" />} />
+                    <Route
+                        path="/settings/privacy"
+                        element={<ExternalRedirect targetPath="/privacy" />}
+                    />
+                    <Route
+                        path="/settings/terms"
+                        element={<ExternalRedirect targetPath="/terms" />}
+                    />
                     <Route path="/docs" element={<DocsRedirect />} />
                     <Route path="/docs/*" element={<DocsRedirect />} />
                     <Route path="*" element={<App />} />

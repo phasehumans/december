@@ -274,7 +274,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             }`}
                         >
                             <span
-                                className={`text-[12px] font-medium transition-colors ${
+                                className={`font-sans text-[12px] font-medium transition-colors ${
                                     isThinkingMode
                                         ? 'text-[#87B2F4]'
                                         : 'text-[#8E8E8E] hover:text-white'

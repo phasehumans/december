@@ -173,7 +173,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                             className="w-7 h-7 md:w-9 md:h-9 text-white"
                             strokeWidth={1}
                         />
-                        <h1 className="text-[24px] md:text-[32px] font-sohne font-medium tracking-tight text-[#D6D5D4]">
+                        <h1 className="text-[24px] md:text-[32px] font-sans font-medium tracking-[-0.025em] text-[#D6D5D4]">
                             December
                         </h1>
                     </div>
@@ -185,7 +185,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 className={`w-[22px] h-[22px] md:w-[26px] md:h-[26px] text-white transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLogoAnimating ? '-rotate-12 scale-95' : 'rotate-0 scale-100'}`}
                                 strokeWidth={1}
                             />
-                            <h2 className="text-[20px] md:text-[23px] font-sohne font-normal tracking-tight text-white flex items-center gap-1.5 leading-none">
+                            <h2 className="text-[20px] md:text-[23px] font-sans font-normal tracking-[-0.025em] text-white flex items-center gap-1.5 leading-none">
                                 December
                                 <span className="text-[#87B2F4] font-normal relative inline-grid overflow-hidden py-1">
                                     <span
@@ -219,7 +219,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
 
                             <button
                                 onClick={() => setChatMode('agent')}
-                                className={`relative z-10 flex-1 flex justify-center items-center py-[5px] rounded-full text-[11px] transition-colors duration-300 ${
+                                className={`relative z-10 flex-1 flex justify-center items-center py-[5px] rounded-full font-sans text-[11.5px] transition-colors duration-300 ${
                                     chatMode === 'agent'
                                         ? 'text-[#111111] font-semibold'
                                         : 'text-[#B4B4B4] hover:text-[#E8E8E8] font-medium'
@@ -229,7 +229,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                             </button>
                             <button
                                 onClick={() => setChatMode('search')}
-                                className={`relative z-10 flex-1 flex justify-center items-center py-[5px] rounded-full text-[11px] transition-colors duration-300 ${
+                                className={`relative z-10 flex-1 flex justify-center items-center py-[5px] rounded-full font-sans text-[11.5px] transition-colors duration-300 ${
                                     chatMode === 'search'
                                         ? 'text-[#111111] font-semibold'
                                         : 'text-[#B4B4B4] hover:text-[#E8E8E8] font-medium'
@@ -311,7 +311,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                             onClick={
                                                 isAuthenticated ? handleConnectGithub : onOpenAuth
                                             }
-                                            className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] text-[#9A9998] hover:text-[#E8E8E8] text-[11.5px] font-sans font-medium text-center cursor-pointer select-none transition-transform duration-75 active:scale-[0.98] active:translate-y-[0.5px]"
+                                            className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] hover:border-[#3A3A3A] text-[#9A9998] hover:text-[#EDEDED] text-[11.5px] font-sans font-medium text-center cursor-pointer select-none transition-all active:scale-[0.98] active:translate-y-[0.5px]"
                                         >
                                             {isAuthenticated
                                                 ? 'Install Integration'
@@ -343,7 +343,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                             href={`${getWebUrl()}/docs`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] text-[#9A9998] hover:text-[#E8E8E8] text-[11.5px] font-sans font-medium text-center cursor-pointer block select-none transition-transform duration-75 active:scale-[0.98] active:translate-y-[0.5px]"
+                                            className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] hover:border-[#3A3A3A] text-[#9A9998] hover:text-[#EDEDED] text-[11.5px] font-sans font-medium text-center cursor-pointer block select-none transition-all active:scale-[0.98] active:translate-y-[0.5px]"
                                         >
                                             Read Docs
                                         </a>
@@ -375,7 +375,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                                     ? () => setShowFeedbackModal(true)
                                                     : onOpenAuth
                                             }
-                                            className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] text-[#9A9998] hover:text-[#E8E8E8] text-[11.5px] font-sans font-medium text-center cursor-pointer select-none transition-transform duration-75 active:scale-[0.98] active:translate-y-[0.5px]"
+                                            className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] hover:border-[#3A3A3A] text-[#9A9998] hover:text-[#EDEDED] text-[11.5px] font-sans font-medium text-center cursor-pointer select-none transition-all active:scale-[0.98] active:translate-y-[0.5px]"
                                         >
                                             Share feedback
                                         </button>

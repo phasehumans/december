@@ -3,6 +3,10 @@
 /youtube    https://www.youtube.com/@phasehumans    302
 /yt         https://www.youtube.com/@phasehumans    302
 /changelog  https://github.com/phasehumans/december/blob/main/CHANGELOG.md    302
+/privacy    https://trydecember.com/privacy         302
+/terms      https://trydecember.com/terms           302
+/settings/privacy  https://trydecember.com/privacy  302
+/settings/terms    https://trydecember.com/terms    302
 /docs/*     https://trydecember.com/docs/:splat     302
 /docs       https://trydecember.com/docs            302
 /*          /index.html                             200

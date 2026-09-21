@@ -35,7 +35,7 @@ export const AuthModalForgotResetStep: React.FC<AuthModalForgotResetStepProps> =
                 value={newPassword}
                 onChange={(event) => onNewPasswordChange(event.target.value)}
                 disabled={isPending}
-                className="w-full bg-[#141414] border border-[#2A2A2A] rounded-none h-10 px-3.5 font-mono text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
+                className="w-full bg-[#141414] border border-[#2A2A2A] rounded-lg h-10 px-3.5 font-sans text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
             />
             <input
                 type="password"
@@ -44,17 +44,17 @@ export const AuthModalForgotResetStep: React.FC<AuthModalForgotResetStepProps> =
                 value={confirmPassword}
                 onChange={(event) => onConfirmPasswordChange(event.target.value)}
                 disabled={isPending}
-                className="w-full bg-[#141414] border border-[#2A2A2A] rounded-none h-10 px-3.5 font-mono text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
+                className="w-full bg-[#141414] border border-[#2A2A2A] rounded-lg h-10 px-3.5 font-sans text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors"
             />
 
             {errorMessage && (
-                <p className="font-mono text-xs text-red-400 px-1 text-center">{errorMessage}</p>
+                <p className="font-sans text-xs text-red-400 px-1 text-center">{errorMessage}</p>
             )}
 
             <button
                 type="submit"
                 disabled={!newPassword || !confirmPassword || isPending}
-                className="w-full bg-[#EDEDED] hover:bg-white text-[#090a0f] font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1"
+                className="w-full bg-[#EDEDED] hover:bg-white text-[#090a0f] font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1"
             >
                 {isPending ? 'Updating password...' : 'Update password →'}
             </button>
@@ -64,7 +64,7 @@ export const AuthModalForgotResetStep: React.FC<AuthModalForgotResetStepProps> =
                     type="button"
                     onClick={onBack}
                     disabled={isPending}
-                    className="font-mono text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
+                    className="font-sans text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
                 >
                     ← Back
                 </button>

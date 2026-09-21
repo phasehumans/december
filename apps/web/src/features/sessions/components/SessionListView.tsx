@@ -173,7 +173,9 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
         <>
             <div className="mb-6 flex items-start justify-between gap-4">
                 <div className="flex flex-col">
-                    <h1 className="text-[24px] font-medium text-[#D6D5C9] mb-1">Sessions</h1>
+                    <h1 className="text-[24px] font-sans font-medium tracking-[-0.025em] text-[#D6D5C9] mb-1">
+                        Sessions
+                    </h1>
                     <p className="text-[13px] text-[#7B7A79]">Manage and view all your sessions.</p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
@@ -207,7 +209,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                     <div className="relative" ref={sortDropdownRef}>
                         <button
                             onClick={(e) => toggleDropdown('sort', e)}
-                            className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-[#282828] bg-[#202020] px-2.5 sm:px-4 py-1.5 text-[12px] sm:text-[13px] text-[#949494] transition-colors hover:bg-[#282828]"
+                            className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-[#282828] hover:border-[#3A3A3A] bg-[#202020] px-2.5 sm:px-4 py-1.5 font-sans text-[12px] sm:text-[13px] text-[#949494] hover:text-[#EDEDED] transition-colors"
                         >
                             <span className="hidden sm:inline">Sort:</span>{' '}
                             {SORT_LABELS[sortOption]}{' '}
@@ -217,7 +219,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                             <div
                                 className={`absolute right-0 ${dropdownDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} z-50 w-48 rounded-xl border border-[#383736] bg-[#1E1E1E] py-2 shadow-xl`}
                             >
-                                <div className="mb-1 border-b border-[#383736] px-3 pb-2 text-[12px] font-medium text-[#7B7A79]">
+                                <div className="mb-1 border-b border-[#383736] px-3 pb-2 font-sans text-[11px] font-medium uppercase tracking-wider text-[#7B7A79]">
                                     Sort by
                                 </div>
                                 <button
@@ -225,7 +227,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                                         onSortChange('newest')
                                         setActiveDropdown(null)
                                     }}
-                                    className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
+                                    className="flex w-full items-center justify-between px-3 py-1.5 font-sans text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
                                 >
                                     Newest first{' '}
                                     {sortOption === 'newest' && <Icons.Check className="h-4 w-4" />}
@@ -235,7 +237,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                                         onSortChange('oldest')
                                         setActiveDropdown(null)
                                     }}
-                                    className="flex w-full items-center justify-between px-3 py-1.5 text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
+                                    className="flex w-full items-center justify-between px-3 py-1.5 font-sans text-[13px] text-[#D6D5C9] hover:bg-[#242323]"
                                 >
                                     Oldest first{' '}
                                     {sortOption === 'oldest' && <Icons.Check className="h-4 w-4" />}

@@ -133,9 +133,9 @@ const ViewTabItem: React.FC<{
             onDragEnd={onDragEnd}
             onClick={onSelect}
             className={cn(
-                'group flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-normal transition-colors outline-none select-none relative cursor-pointer border-none',
+                'group flex items-center gap-1.5 px-2.5 py-1 rounded-md font-sans text-xs font-medium transition-colors outline-none select-none relative cursor-pointer border-none',
                 isActive
-                    ? 'bg-[#202020] text-white shadow-none font-medium'
+                    ? 'bg-[#202020] text-white shadow-none'
                     : 'bg-transparent text-[#91908F] hover:text-[#EDEDED] hover:bg-white/[0.04]',
                 isDraggingThis && 'opacity-30',
                 isDragOver && 'bg-[#2A2A2D] text-white'

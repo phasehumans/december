@@ -84,10 +84,10 @@ export const PromptInput: React.FC<
                     {selectedRepos.map((repo, idx) => (
                         <div
                             key={idx}
-                            className="flex items-center gap-1.5 text-[#E8E8E8] font-sans font-medium mr-1.5 mb-1 bg-[#2A2928] px-2 py-0.5 rounded-[6px]"
+                            className="flex items-center gap-1.5 text-[#E8E8E8] font-sans text-xs font-medium mr-1.5 mb-1 bg-[#2A2928] px-2 py-0.5 rounded-[6px]"
                         >
                             <Icons.Github className="w-3.5 h-3.5 text-white" />
-                            <span className="text-[14px] leading-relaxed">
+                            <span className="text-[12.5px] leading-relaxed">
                                 {repo.owner.login}/{repo.name}
                             </span>
                         </div>

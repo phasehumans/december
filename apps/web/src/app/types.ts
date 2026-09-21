@@ -79,7 +79,7 @@ export const getViewForPath = (pathname: string): ViewState => {
     const simple = simplePathToView[pathname]
     if (simple) return simple
 
-    // /settings or /settings/*, /profile, /integrations, /connections, /connectors, /privacy, /terms → profile
+    // /settings or /settings/*, /profile, /integrations, /connections, /connectors → profile
     if (
         pathname === '/settings' ||
         pathname.startsWith('/settings/') ||
@@ -90,9 +90,7 @@ export const getViewForPath = (pathname: string): ViewState => {
         pathname === '/connections' ||
         pathname.startsWith('/connections/') ||
         pathname === '/connectors' ||
-        pathname.startsWith('/connectors/') ||
-        pathname === '/privacy' ||
-        pathname === '/terms'
+        pathname.startsWith('/connectors/')
     )
         return 'profile'
 

@@ -128,7 +128,7 @@ export const GithubCallback = () => {
                             onClick={() => {
                                 window.location.href = '/login'
                             }}
-                            className="w-full bg-white hover:bg-[#EDEDED] text-[#090a0f] font-mono text-xs sm:text-[13px] font-medium h-10 rounded-none flex items-center justify-center transition-all cursor-pointer"
+                            className="w-full bg-white hover:bg-[#EDEDED] text-[#090a0f] font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer"
                         >
                             Back to Login
                         </button>

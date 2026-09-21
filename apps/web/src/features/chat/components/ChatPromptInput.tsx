@@ -102,7 +102,7 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
                             className="overflow-hidden border-b border-[#27272A] bg-white/[0.02]"
                         >
                             <div className="flex items-center gap-2 px-3 py-2">
-                                <span className="text-[9px] font-bold bg-white/10 text-white border border-white/10 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                <span className="font-mono text-[9px] font-medium bg-white/10 text-white border border-white/10 px-1.5 py-0.5 rounded uppercase tracking-wider">
                                     {selectedElement.tagName}
                                 </span>
                                 <span className="text-xs text-neutral-300 truncate max-w-[200px] font-medium">
