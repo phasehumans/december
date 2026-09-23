@@ -201,18 +201,22 @@ export const getCuratedProviderModels = (provider: string) => {
         case 'mistralai':
         case 'mistral-ai':
             return [
-                { label: 'Magistral Medium', value: 'magistral-medium-latest' },
-                { label: 'Magistral Small', value: 'magistral-small' },
-                { label: 'Devstral 2', value: 'devstral-2512' },
                 { label: 'Mistral Large', value: 'mistral-large-latest' },
+                { label: 'Codestral', value: 'codestral-latest' },
+                { label: 'Devstral 2', value: 'devstral-2512' },
+                { label: 'Devstral', value: 'devstral-latest' },
+                { label: 'Devstral Medium', value: 'devstral-medium-latest' },
                 { label: 'Mistral Medium', value: 'mistral-medium-latest' },
                 { label: 'Mistral Small', value: 'mistral-small-latest' },
-                { label: 'Codestral', value: 'codestral-latest' },
-                { label: 'Devstral', value: 'devstral-latest' },
+                { label: 'Magistral Medium', value: 'magistral-medium-latest' },
+                { label: 'Magistral Small', value: 'magistral-small' },
                 { label: 'Ministral 8B', value: 'ministral-8b-latest' },
                 { label: 'Ministral 3B', value: 'ministral-3b-latest' },
+                { label: 'Open Mistral Nemo', value: 'open-mistral-nemo' },
                 { label: 'Mistral Nemo', value: 'mistral-nemo' },
                 { label: 'Pixtral Large', value: 'pixtral-large-latest' },
+                { label: 'Pixtral 12B', value: 'pixtral-12b' },
+                { label: 'Open Mixtral 8x22B', value: 'open-mixtral-8x22b' },
             ]
         case 'xai':
             return [
@@ -3304,6 +3308,9 @@ export const getDefaultModelForProvider = (provider: string): string => {
     }
     if (normalized === 'mixlayer') {
         return 'qwen/qwen3.5-9b'
+    }
+    if (normalized === 'mistral' || normalized === 'mistralai' || normalized === 'mistral-ai') {
+        return 'mistral-large-latest'
     }
     if (normalized === 'moark') {
         return 'MiniMax-M2.1'

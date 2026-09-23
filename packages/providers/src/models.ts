@@ -24,31 +24,35 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'claude-haiku-4-5': 200000,
     'claude-opus-4.8': 1000000,
     'claude-opus-4-8': 1000000,
-    'claude-opus-4.7': 200000,
-    'claude-opus-4-7': 200000,
-    'claude-sonnet-4.6': 200000,
-    'claude-sonnet-4-6': 200000,
-    'claude-opus-4.6': 200000,
-    'claude-opus-4-6': 200000,
+    'claude-opus-4.7': 1000000,
+    'claude-opus-4-7': 1000000,
+    'claude-sonnet-4.6': 1000000,
+    'claude-sonnet-4-6': 1000000,
+    'claude-opus-4.6': 1000000,
+    'claude-opus-4-6': 1000000,
     'claude-opus-4.5': 200000,
     'claude-opus-4-5': 200000,
-    'claude-sonnet-4.5': 200000,
-    'claude-sonnet-4-5': 200000,
+    'claude-sonnet-4.5': 1000000,
+    'claude-sonnet-4-5': 1000000,
     'gpt-5.6-sol': 1050000,
     'gpt-5.6-terra': 1050000,
     'gpt-5.6-luna': 1050000,
     'gpt-5.5-pro': 1050000,
     'gpt-5.5': 1050000,
-    'gpt-5.4-pro': 400000,
-    'gpt-5.4': 400000,
+    'gpt-5.4-pro': 1050000,
+    'gpt-5.4': 1050000,
     'gpt-5.4-mini': 400000,
+    'gpt-5.4-nano': 400000,
+    'gpt-6-luna': 1050000,
+    'gpt-6-sol': 1050000,
     'o4-mini': 200000,
     'o3-pro': 200000,
     o3: 200000,
     'o3-mini': 200000,
     'o1-pro': 200000,
-    'gpt-4.1': 128000,
-    'gpt-4.1-mini': 128000,
+    'gpt-4.1': 1047576,
+    'gpt-4.1-mini': 1047576,
+    'gpt-4.1-nano': 1047576,
     'gpt-4o': 128000,
     'gpt-4o-mini': 128000,
     'deepseek-v4-pro': 1000000,
@@ -111,15 +115,16 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
 
     'sonar-deep-research': 128000,
     'sonar-reasoning-pro': 128000,
-    'sonar-pro': 128000,
+    'sonar-pro': 200000,
     sonar: 128000,
-    'command-a-plus-05-2026': 256000,
+    'perplexity/sonar-pro': 200000,
+    'command-a-plus-05-2026': 128000,
     'command-a-reasoning-08-2025': 256000,
     'trinity-large-thinking': 262144,
     'thinkingmachines/inkling-small': 262144,
     'deepseek/deepseek-v4-flash-latest': 1000000,
     'deepseek/deepseek-v4-pro-0813': 1000000,
-    'deepseek/deepseek-v4-pro': 512000,
+    'deepseek/deepseek-v4-pro': 1000000,
     'zai-org/glm-5.2': 262144,
     'moonshotai/kimi-k3': 1000000,
     'kimi-k3': 1048576,
@@ -131,16 +136,75 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'codestral-2501': 256000,
     'devstral-2512': 262144,
     'devstral-latest': 262144,
+    'devstral-medium-latest': 262144,
+    'devstral-medium-2507': 128000,
+    'devstral-small-2505': 128000,
+    'devstral-small-2507': 128000,
+    'labs-devstral-small-2512': 256000,
     'mistral-large-latest': 262144,
     'mistral-large-2512': 262144,
+    'mistral-large-2411': 131072,
     'mistral-medium-latest': 262144,
     'mistral-medium-2604': 262144,
+    'mistral-medium-2508': 262144,
+    'mistral-medium-2505': 131072,
     'mistral-small-latest': 256000,
     'mistral-small-2603': 256000,
+    'mistral-small-2506': 128000,
     'magistral-medium-latest': 128000,
     'magistral-small': 128000,
     'ministral-8b-latest': 128000,
     'ministral-3b-latest': 128000,
+    'mistral-nemo': 128000,
+    'open-mistral-nemo': 128000,
+    'open-mixtral-8x22b': 64000,
+    'open-mixtral-8x7b': 32000,
+    'open-mistral-7b': 8000,
+    'pixtral-large-latest': 128000,
+    'pixtral-12b': 128000,
+    'voxtral-small-latest': 32000,
+    'mistral-embed': 8000,
+    'mistral/codestral-latest': 256000,
+    'mistral/codestral-2501': 256000,
+    'mistral/devstral-2512': 262144,
+    'mistral/devstral-latest': 262144,
+    'mistral/devstral-medium-latest': 262144,
+    'mistral/devstral-small-2505': 128000,
+    'mistral/devstral-small-2507': 128000,
+    'mistral/mistral-large-latest': 262144,
+    'mistral/mistral-large-2512': 262144,
+    'mistral/mistral-large-2411': 131072,
+    'mistral/mistral-medium-latest': 262144,
+    'mistral/mistral-medium-2604': 262144,
+    'mistral/mistral-medium-2508': 262144,
+    'mistral/mistral-medium-2505': 131072,
+    'mistral/mistral-small-latest': 256000,
+    'mistral/mistral-small-2603': 256000,
+    'mistral/mistral-small-2506': 128000,
+    'mistral/magistral-medium-latest': 128000,
+    'mistral/magistral-small': 128000,
+    'mistral/ministral-8b-latest': 128000,
+    'mistral/ministral-3b-latest': 128000,
+    'mistral/mistral-nemo': 128000,
+    'mistral/open-mistral-nemo': 128000,
+    'mistral/open-mixtral-8x22b': 64000,
+    'mistral/open-mixtral-8x7b': 32000,
+    'mistral/open-mistral-7b': 8000,
+    'mistral/pixtral-large-latest': 128000,
+    'mistral/pixtral-12b': 128000,
+    'mistralai/mistral-nemotron': 128000,
+    'mistralai/mistral-7b-instruct-v0.3': 65536,
+    'mistralai/mistral-large-3-675b-instruct-2512': 262144,
+    'mistralai/magistral-small-2506': 128000,
+    'mistralai/mistral-small-4-119b-2603': 256000,
+    'mistralai/mixtral-8x7b-instruct': 32768,
+    'mistralai/mistral-medium-3.5-128b': 262144,
+    'mistralai/ministral-14b-instruct-2512': 262144,
+    'mistralai/mixtral-8x22b-instruct': 65536,
+    'mistralai/mistral-medium-3-instruct': 131072,
+    'mistralai/Pixtral-12B-2409': 128000,
+    'mistralai/Ministral-8B-Instruct-2410': 128000,
+    'mistralai/Codestral-22B-v0.1': 128000,
     'muse-spark-1.3': 1048576,
     'muse-spark-1.3-contributor': 1048576,
     'muse-spark-1.2': 1048576,
@@ -165,9 +229,13 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'sakana/fugu-ultra': 1000000,
     'sakana/sakana-namazu': 262144,
     'solar-pro4': 524288,
-    'solar-pro3': 524288,
-    'solar-pro2': 524288,
-    'solar-mini': 65536,
+    'solar-pro3': 131072,
+    'solar-pro2': 65536,
+    'solar-mini': 32768,
+    'upstage/solar-pro4': 524288,
+    'upstage/solar-pro3': 131072,
+    'upstage/solar-pro2': 65536,
+    'upstage/solar-mini': 32768,
     'thinkingmachines/Inkling': 131072,
     'thinkingmachines/Inkling:peft:262144': 262144,
     inkling: 131072,
@@ -843,8 +911,8 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'jiekou/claude-opus-4-1-20250805': 200000,
     'claude-opus-4-20250514': 200000,
     'jiekou/claude-opus-4-20250514': 200000,
-    'claude-sonnet-4-5-20250929': 200000,
-    'jiekou/claude-sonnet-4-5-20250929': 200000,
+    'claude-sonnet-4-5-20250929': 1000000,
+    'jiekou/claude-sonnet-4-5-20250929': 1000000,
     'claude-sonnet-4-20250514': 200000,
     'jiekou/claude-sonnet-4-20250514': 200000,
     'kenari/claude-sonnet-4-6': 1000000,
@@ -1599,6 +1667,37 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'zenmux/anthropic/claude-opus-4.6': 1000000,
     'zenmux/anthropic/claude-fable-5': 1000000,
     'zenmux/anthropic/claude-sonnet-4.5': 1000000,
+
+    // Additional curated BYOK and models.dev mappings
+    'DeepSeek-R1': 128000,
+    'DeepSeek-V3': 128000,
+    'deepseek-ai/DeepSeek-R1': 128000,
+    'deepseek-ai/DeepSeek-V3': 128000,
+    'deepseek-ai/DeepSeek-V3.1': 128000,
+    'Meta-Llama-3.1-405B-Instruct': 128000,
+    'Meta-Llama-3.1-8B-Instruct': 128000,
+    'Meta-Llama-3.3-70B-Instruct': 128000,
+    'Qwen/Qwen2.5-72B-Instruct': 131072,
+    'Qwen/Qwen2.5-Coder-32B-Instruct': 131072,
+    'Qwen2.5-Coder-32B-Instruct': 131072,
+    'accounts/fireworks/models/deepseek-r1': 160000,
+    'accounts/fireworks/models/deepseek-v3': 160000,
+    'accounts/fireworks/models/deepseek-v4-flash-0731': 1048576,
+    'accounts/fireworks/models/deepseek-v4-pro-0813': 1048576,
+    'accounts/fireworks/models/glm-5p3-flash': 1048576,
+    'accounts/fireworks/models/gpt-oss-120b': 131072,
+    'accounts/fireworks/models/kimi-k3': 1048576,
+    'accounts/fireworks/models/llama-v3p1-405b-instruct': 131072,
+    'accounts/fireworks/models/llama-v3p3-70b-instruct': 131072,
+    'accounts/fireworks/models/minimax-m3': 1048576,
+    'accounts/fireworks/models/qwen2p5-72b-instruct': 131072,
+    'accounts/fireworks/models/qwen2p5-coder-32b-instruct': 131072,
+    'command-a-03-2025': 256000,
+    'command-r-08-2024': 128000,
+    'command-r-plus-08-2024': 128000,
+    'gemma-4-31b': 262144,
+    'groq/compound': 131072,
+    'groq/compound-mini': 131072,
 }
 
 export function getModelContextWindow(value: string): number {
@@ -1618,9 +1717,17 @@ export function getModelContextWindow(value: string): number {
         lower.includes('sonnet-5') ||
         lower.includes('fable-5') ||
         lower.includes('opus-4.8') ||
-        lower.includes('opus-4-8')
-    )
+        lower.includes('opus-4-8') ||
+        ((lower.includes('claude-4.7') ||
+            lower.includes('claude-4-7') ||
+            lower.includes('claude-4.6') ||
+            lower.includes('claude-4-6') ||
+            lower.includes('claude-4.5') ||
+            lower.includes('claude-4-5')) &&
+            !lower.includes('haiku'))
+    ) {
         return 1000000
+    }
     if (lower.includes('claude')) return 200000
     if (lower.includes('grok-4.1-fast')) return 2000000
     if (lower.includes('grok-4.3') || lower.includes('grok-4.20')) return 1000000
@@ -1636,6 +1743,25 @@ export function getModelContextWindow(value: string): number {
     if (lower.includes('ambient/large') || lower.includes('glm-5.2-fp8')) return 202000
     if (lower.includes('glm5.3-754b')) return 524288
 
+    // Solar / Upstage models
+    if (lower.includes('solar-pro4')) return 524288
+    if (lower.includes('solar-pro3')) return 131072
+    if (lower.includes('solar-pro2')) return 65536
+    if (lower.includes('solar-mini')) return 32768
+    if (lower.includes('solar')) return 131072
+
+    // Mistral family exceptions before generic mistral defaults
+    if (lower.includes('mistral-large-2411')) return 131072
+    if (lower.includes('mistral-medium-2505')) return 131072
+    if (lower.includes('mistral-small-2506')) return 128000
+    if (lower.includes('devstral-small')) return 128000
+    if (lower.includes('devstral-medium-2507')) return 128000
+    if (lower.includes('open-mixtral-8x22b') || lower.includes('mixtral-8x22b')) return 64000
+    if (lower.includes('open-mixtral-8x7b') || lower.includes('mixtral-8x7b')) return 32000
+    if (lower.includes('open-mistral-7b')) return 8000
+    if (lower.includes('pixtral')) return 128000
+    if (lower.includes('voxtral')) return 32000
+
     if (
         lower.includes('codestral') ||
         lower.includes('mistral-large') ||
@@ -1649,16 +1775,21 @@ export function getModelContextWindow(value: string): number {
         lower.includes('inkling') ||
         lower.includes('kimi-k2') ||
         lower.includes('kimi-for-coding')
-    )
+    ) {
+        if (lower.includes('command-a-plus-05-2026')) return 128000
         return 262144
+    }
     if (lower.includes('muse-spark') || lower.includes('muse')) return 1048576
     if (lower.includes('laguna-s')) return 1048576
     if (lower.includes('laguna')) return 262144
     if (lower.includes('fugu')) return 1000000
     if (lower.includes('namazu')) return 262144
+    if (lower.includes('gpt-6')) return 1050000
     if (lower.includes('gpt-5.6') || lower.includes('gpt-5.5')) return 1050000
-    if (lower.includes('gpt-5.4')) return 400000
+    if (lower.includes('gpt-5.4-mini') || lower.includes('gpt-5.4-nano')) return 400000
+    if (lower.includes('gpt-5.4')) return 1050000
     if (lower.includes('gpt-5')) return 200000
+    if (lower.includes('gpt-4.1')) return 1047576
     if (lower.includes('o4') || lower.includes('o3') || lower.includes('o1')) return 200000
     if (lower.includes('deepseek-v4')) return 1000000
     if (lower.includes('glm-5')) return 1000000
@@ -1674,6 +1805,7 @@ export function getModelContextWindow(value: string): number {
     if (lower.includes('gpt-4.5')) return 128000
     if (lower.includes('gpt-4')) return 128000
     if (lower.includes('gpt-3.5')) return 16385
+    if (lower.includes('sonar-pro')) return 200000
     if (lower.includes('deepseek') || lower.includes('glm')) return 128000
     if (
         lower.includes('llama-4') ||
