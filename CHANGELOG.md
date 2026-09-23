@@ -2,8 +2,33 @@
 
 ### Features
 
+- _(cli)_ Support 142 direct byok providers from models.dev (#525)
+
+### Bug Fixes
+
+- _(docs)_ Align page margins, harmonize legal pages with docs, and clean up provider strip
+- _(tui)_ Sanitize december key urls and remove stale object properties (#525)
+- _(providers)_ Sync model context windows and curated models with models.dev (#525)
+
+### Refactor
+
+- Move legal pages to docs site and clean up auth ui
+- _(providers)_ Split extended-providers into individual provider files (#525)
+
+### Documentation
+
+- Update cloud cta on landing page and footer links
+
+## [0.3.32] - 2026-09-21
+
+### Features
+
 - _(auth)_ Enforce strict authentication isolation and multi-domain redirects
 - _(env)_ Standardize url env vars to web_url, app_url, and server_url
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.32
 
 ## [0.3.31] - 2026-09-20
 
