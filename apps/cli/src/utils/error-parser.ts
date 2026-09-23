@@ -53,6 +53,196 @@ export function isCreditOrBalanceError(combined: string): boolean {
 
 export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
     {
+        id: 'deepinfra',
+        name: 'Deep Infra',
+        match: (str) =>
+            (str.includes('deepinfra') || str.includes('deepinfra.com')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Deep Infra account. Top up balance at https://deepinfra.com/dash/billing\n',
+        message: 'Insufficient balance in your Deep Infra account.',
+        hint: 'Please top up your balance at https://deepinfra.com/dash/billing or switch models using /model.',
+    },
+    {
+        id: 'novita-ai',
+        name: 'Novita AI',
+        match: (str) =>
+            (str.includes('novita-ai') || str.includes('novita.ai')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Novita AI account. Top up balance at https://novita.ai/settings/billing\n',
+        message: 'Insufficient balance in your Novita AI account.',
+        hint: 'Please top up your balance at https://novita.ai/settings/billing or switch models using /model.',
+    },
+    {
+        id: 'vultr',
+        name: 'Vultr',
+        match: (str) =>
+            (str.includes('vultr') || str.includes('vultrinference.com')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Vultr account. Top up balance at https://my.vultr.com/billing/\n',
+        message: 'Insufficient balance in your Vultr account.',
+        hint: 'Please top up your balance at https://my.vultr.com/billing/ or switch models using /model.',
+    },
+    {
+        id: 'digitalocean',
+        name: 'DigitalOcean',
+        match: (str) =>
+            (str.includes('digitalocean') || str.includes('inference.do-ai.run')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your DigitalOcean account. Top up balance at https://cloud.digitalocean.com/billing\n',
+        message: 'Insufficient balance in your DigitalOcean account.',
+        hint: 'Please top up your balance at https://cloud.digitalocean.com/billing or switch models using /model.',
+    },
+    {
+        id: 'hetzner',
+        name: 'Hetzner',
+        match: (str) =>
+            (str.includes('hetzner') || str.includes('inference.hetzner.com')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Hetzner account. Top up balance at https://console.hetzner.cloud/billing\n',
+        message: 'Insufficient balance in your Hetzner account.',
+        hint: 'Please top up your balance at https://console.hetzner.cloud/billing or switch models using /model.',
+    },
+    {
+        id: 'scaleway',
+        name: 'Scaleway',
+        match: (str) =>
+            (str.includes('scaleway') || str.includes('scaleway.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Scaleway account. Top up balance at https://console.scaleway.com/billing/accounting\n',
+        message: 'Insufficient balance in your Scaleway account.',
+        hint: 'Please top up your balance at https://console.scaleway.com/billing/accounting or switch models using /model.',
+    },
+    {
+        id: 'modal',
+        name: 'Modal',
+        match: (str) =>
+            (str.includes('modal') || str.includes('modal.direct')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Modal account. Top up balance at https://modal.com/settings/billing\n',
+        message: 'Insufficient balance in your Modal account.',
+        hint: 'Please top up your balance at https://modal.com/settings/billing or switch models using /model.',
+    },
+    {
+        id: 'crusoe',
+        name: 'Crusoe Cloud',
+        match: (str) =>
+            (str.includes('crusoe') || str.includes('crusoecloud.com')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Crusoe Cloud account. Top up balance at https://console.crusoecloud.com/billing\n',
+        message: 'Insufficient balance in your Crusoe Cloud account.',
+        hint: 'Please top up your balance at https://console.crusoecloud.com/billing or switch models using /model.',
+    },
+    {
+        id: 'nebius',
+        name: 'Nebius',
+        match: (str) =>
+            (str.includes('nebius') || str.includes('nebius.com')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Nebius account. Top up balance at https://tokenfactory.nebius.com/billing\n',
+        message: 'Insufficient balance in your Nebius account.',
+        hint: 'Please top up your balance at https://tokenfactory.nebius.com/billing or switch models using /model.',
+    },
+    {
+        id: 'friendli',
+        name: 'Friendli AI',
+        match: (str) =>
+            (str.includes('friendli') || str.includes('friendli.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Friendli AI account. Top up balance at https://suite.friendli.ai/billing\n',
+        message: 'Insufficient balance in your Friendli AI account.',
+        hint: 'Please top up your balance at https://suite.friendli.ai/billing or switch models using /model.',
+    },
+    {
+        id: 'chutes',
+        name: 'Chutes',
+        match: (str) =>
+            (str.includes('chutes') || str.includes('chutes.ai')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Chutes account. Top up balance at https://chutes.ai/billing\n',
+        message: 'Insufficient balance in your Chutes account.',
+        hint: 'Please top up your balance at https://chutes.ai/billing or switch models using /model.',
+    },
+    {
+        id: 'io-net',
+        name: 'IO.NET',
+        match: (str) =>
+            (str.includes('io-net') || str.includes('io.solutions')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your IO.NET account. Top up balance at https://cloud.io.net/billing\n',
+        message: 'Insufficient balance in your IO.NET account.',
+        hint: 'Please top up your balance at https://cloud.io.net/billing or switch models using /model.',
+    },
+    {
+        id: 'ai21',
+        name: 'AI21 Labs',
+        match: (str) =>
+            (str.includes('ai21') || str.includes('ai21.com')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your AI21 Labs account. Top up balance at https://studio.ai21.com/account/billing\n',
+        message: 'Insufficient balance in your AI21 Labs account.',
+        hint: 'Please top up your balance at https://studio.ai21.com/account/billing or switch models using /model.',
+    },
+    {
+        id: 'morph',
+        name: 'Morph LLM',
+        match: (str) =>
+            (str.includes('morph') || str.includes('morphllm.com')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Morph LLM account. Top up balance at https://morphllm.com/billing\n',
+        message: 'Insufficient balance in your Morph LLM account.',
+        hint: 'Please top up your balance at https://morphllm.com/billing or switch models using /model.',
+    },
+    {
+        id: 'venice',
+        name: 'Venice AI',
+        match: (str) =>
+            (str.includes('venice') || str.includes('venice.ai')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Venice AI account. Top up balance at https://venice.ai/settings/billing\n',
+        message: 'Insufficient balance in your Venice AI account.',
+        hint: 'Please top up your balance at https://venice.ai/settings/billing or switch models using /model.',
+    },
+    {
+        id: 'poe',
+        name: 'Poe',
+        match: (str) =>
+            (str.includes('poe') || str.includes('poe.com')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Poe account. Top up balance at https://poe.com/subscribe\n',
+        message: 'Insufficient balance in your Poe account.',
+        hint: 'Please top up your balance at https://poe.com/subscribe or switch models using /model.',
+    },
+    {
+        id: 'opencode',
+        name: 'OpenCode Zen',
+        match: (str) =>
+            (str.includes('opencode') || str.includes('opencode.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your OpenCode Zen account. Top up balance at https://opencode.ai/pricing\n',
+        message: 'Insufficient balance in your OpenCode Zen account.',
+        hint: 'Please top up your balance at https://opencode.ai/pricing or switch models using /model.',
+    },
+    {
+        id: 'requesty',
+        name: 'Requesty',
+        match: (str) =>
+            (str.includes('requesty') || str.includes('requesty.ai')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Requesty account. Top up balance at https://requesty.ai/billing\n',
+        message: 'Insufficient balance in your Requesty account.',
+        hint: 'Please top up your balance at https://requesty.ai/billing or switch models using /model.',
+    },
+    {
+        id: 'abacus',
+        name: 'Abacus RouteLLM',
+        match: (str) =>
+            (str.includes('abacus') || str.includes('abacus.ai')) && isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Abacus RouteLLM account. Top up balance at https://abacus.ai/pricing\n',
+        message: 'Insufficient balance in your Abacus RouteLLM account.',
+        hint: 'Please top up your balance at https://abacus.ai/pricing or switch models using /model.',
+    },
+    {
+        id: 'volcengine',
+        name: 'Volcengine Ark',
+        match: (str) =>
+            (str.includes('volcengine') || str.includes('volces.com')) &&
+            isCreditOrBalanceError(str),
+        notice: 'Insufficient balance in your Volcengine Ark account. Top up balance at https://console.volcengine.com/finance/overview\n',
+        message: 'Insufficient balance in your Volcengine Ark account.',
+        hint: 'Please top up your balance at https://console.volcengine.com/finance/overview or switch models using /model.',
+    },
+    {
         id: 'minimax',
         name: 'MiniMax',
         match: (str) =>

@@ -8,8 +8,8 @@ import {
 import { PROVIDER_MENU_ITEMS } from '../../src/components/menus/byok-provider-menu'
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
-    it('ensures all 44 BYOK providers have corresponding key URLs starting with https://', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(44)
+    it('ensures all BYOK providers have corresponding key URLs starting with https://', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(186)
 
         for (const item of PROVIDER_MENU_ITEMS) {
             const url = PROVIDER_KEY_URLS[item.value]
@@ -19,7 +19,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         }
     })
 
-    it('ensures all 44 BYOK providers have a display name defined in PROVIDER_NAMES', () => {
+    it('ensures all BYOK providers have a display name defined in PROVIDER_NAMES', () => {
         for (const item of PROVIDER_MENU_ITEMS) {
             const name = PROVIDER_NAMES[item.value]
             expect(name).toBeDefined()
@@ -50,9 +50,9 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         expect(PROVIDER_KEY_URLS['deepseek']).toBe('https://platform.deepseek.com/api_keys')
         expect(PROVIDER_KEY_URLS['groq']).toBe('https://console.groq.com/keys')
         expect(PROVIDER_KEY_URLS['sakana']).toBe('https://console.sakana.ai/api-keys')
-        expect(PROVIDER_KEY_URLS['sarvam']).toBe('https://indus.sarvam.ai/')
+        expect(PROVIDER_KEY_URLS['sarvam']).toBe('https://dashboard.sarvam.ai/api-keys')
         expect(PROVIDER_KEY_URLS['stepfun']).toBe('https://platform.stepfun.ai/interface-key')
-        expect(PROVIDER_KEY_URLS['upstage']).toBe('https://console.upstage.ai')
+        expect(PROVIDER_KEY_URLS['upstage']).toBe('https://console.upstage.ai/api-keys')
         expect(PROVIDER_KEY_URLS['thinkingmachines']).toBe('https://tinker.thinkingmachines.ai/')
         expect(PROVIDER_KEY_URLS['dashscope']).toBe('https://dashscope.console.aliyun.com/apiKey')
         expect(PROVIDER_KEY_URLS['minimax']).toBe('https://platform.minimax.io/console/access')
@@ -61,6 +61,6 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         expect(PROVIDER_KEY_URLS['ollama']).toBe('https://ollama.com/download')
         expect(PROVIDER_KEY_URLS['xiaomi']).toBe('https://platform.xiaomimimo.com/console/api-keys')
         expect(PROVIDER_KEY_URLS['xai']).toBe('https://console.x.ai/')
-        expect(PROVIDER_KEY_URLS['zai']).toBe('https://open.bigmodel.cn/usercenter/apikeys')
+        expect(PROVIDER_KEY_URLS['zai']).toBe('https://z.ai/manage-apikey/apikey-list')
     })
 })

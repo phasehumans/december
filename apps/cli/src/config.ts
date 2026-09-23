@@ -59,6 +59,148 @@ export interface ProviderConfig {
         | 'baseten'
         | 'basetenco'
         | 'baseten-co'
+        | '302ai'
+        | 'abacus'
+        | 'above'
+        | 'ai21'
+        | 'aihubmix'
+        | 'ainetcafe'
+        | 'aixy'
+        | 'amd'
+        | 'anyapi'
+        | 'bailing'
+        | 'berget'
+        | 'blueclaw'
+        | 'bothub'
+        | 'chutes'
+        | 'clarifai'
+        | 'claudinio'
+        | 'cline-pass'
+        | 'cloudferro-sherlock'
+        | 'cloudflare-ai-gateway'
+        | 'coralbricks'
+        | 'cortecs'
+        | 'crof'
+        | 'crossmodel'
+        | 'crusoe'
+        | 'daoxe'
+        | 'deepinfra'
+        | 'digitalocean'
+        | 'dinference'
+        | 'drun'
+        | 'ebcloud'
+        | 'echo'
+        | 'edenai'
+        | 'empiriolabs'
+        | 'evroc'
+        | 'fastrouter'
+        | 'freemodel'
+        | 'friendli'
+        | 'frogbot'
+        | 'gmicloud'
+        | 'greenpt'
+        | 'helicone'
+        | 'hetzner'
+        | 'hpc-ai'
+        | 'hyper'
+        | 'iflowcn'
+        | 'impossibl'
+        | 'inception'
+        | 'inceptron'
+        | 'inco'
+        | 'infer'
+        | 'inference'
+        | 'inferx'
+        | 'io-net'
+        | 'iteracompute'
+        | 'jalapeno'
+        | 'jiekou'
+        | 'kenari'
+        | 'kilo'
+        | 'kimi-code-plan-cn'
+        | 'kimi-code-plan-global'
+        | 'klokintegration'
+        | 'kosmik'
+        | 'lilac'
+        | 'llama'
+        | 'llmgateway'
+        | 'llmgateway-providers'
+        | 'llmtech'
+        | 'llmtr'
+        | 'longcat'
+        | 'lucidquery'
+        | 'meganova'
+        | 'melious'
+        | 'merge-gateway'
+        | 'mixlayer'
+        | 'moark'
+        | 'modal'
+        | 'model-oracle-ai'
+        | 'modelis'
+        | 'modelscope'
+        | 'morph'
+        | 'nan'
+        | 'nano-gpt'
+        | 'nearai'
+        | 'nebius'
+        | 'neosmith'
+        | 'neuralwatt'
+        | 'nova'
+        | 'novita-ai'
+        | 'ofox'
+        | 'ollama-cloud'
+        | 'opencode'
+        | 'opencode-go'
+        | 'openreason'
+        | 'opper'
+        | 'orcarouter'
+        | 'ovhcloud'
+        | 'pendra'
+        | 'perplexity-agent'
+        | 'pioneer'
+        | 'poe'
+        | 'qihang-ai'
+        | 'qiniu-ai'
+        | 'qvac'
+        | 'regolo-ai'
+        | 'requesty'
+        | 'routing-run'
+        | 'runinfra'
+        | 'salad-cloud'
+        | 'scaleway'
+        | 'scx-ai'
+        | 'sensenova'
+        | 'stackit'
+        | 'standardcompute'
+        | 'subconscious'
+        | 'submodel'
+        | 'synthetic'
+        | 'tempr'
+        | 'tencent-tokenhub'
+        | 'tensorx'
+        | 'the-grid-ai'
+        | 'tinfoil'
+        | 'tokengo'
+        | 'tokenrouter'
+        | 'trustedrouter'
+        | 'umans-ai'
+        | 'unorouter'
+        | 'v0'
+        | 'vancine'
+        | 'venice'
+        | 'vercel'
+        | 'vispark'
+        | 'vivgrid'
+        | 'volcengine'
+        | 'vultr'
+        | 'wafer.ai'
+        | 'wallaby'
+        | 'wandb'
+        | 'watsonx'
+        | 'xpersona'
+        | 'zeldoc'
+        | 'zenifra'
+        | 'zenmux'
         | 'nvidia'
         | 'sambanova'
         | 'cerebras'
@@ -564,6 +706,290 @@ export function formatProviderName(provider: string): string {
         case 'basetenco':
         case 'baseten-co':
             return 'Baseten'
+        case '302ai':
+            return '302.AI'
+        case 'abacus':
+            return 'Abacus'
+        case 'above':
+            return 'above.dev'
+        case 'ai21':
+            return 'AI21 Labs'
+        case 'aihubmix':
+            return 'AIHubMix'
+        case 'ainetcafe':
+            return 'ainetcafe'
+        case 'aixy':
+            return 'Aixy'
+        case 'amd':
+            return 'AMD'
+        case 'anyapi':
+            return 'AnyAPI'
+        case 'bailing':
+            return 'Bailing'
+        case 'berget':
+            return 'Berget.AI'
+        case 'blueclaw':
+            return 'Blue Claw'
+        case 'bothub':
+            return 'Bothub'
+        case 'chutes':
+            return 'Chutes'
+        case 'clarifai':
+            return 'Clarifai'
+        case 'claudinio':
+            return 'Claudinio'
+        case 'cline-pass':
+            return 'ClinePass'
+        case 'cloudferro-sherlock':
+            return 'CloudFerro Sherlock'
+        case 'cloudflare-ai-gateway':
+            return 'Cloudflare AI Gateway'
+        case 'coralbricks':
+            return 'CoralBricks'
+        case 'cortecs':
+            return 'Cortecs'
+        case 'crof':
+            return 'CrofAI'
+        case 'crossmodel':
+            return 'CrossModel'
+        case 'crusoe':
+            return 'Crusoe'
+        case 'daoxe':
+            return 'DaoXE'
+        case 'deepinfra':
+            return 'Deep Infra'
+        case 'digitalocean':
+            return 'DigitalOcean'
+        case 'dinference':
+            return 'DInference'
+        case 'drun':
+            return 'D.Run (China)'
+        case 'ebcloud':
+            return 'EBCloud'
+        case 'echo':
+            return 'Echo'
+        case 'edenai':
+            return 'Eden AI'
+        case 'empiriolabs':
+            return 'EmpirioLabs AI'
+        case 'evroc':
+            return 'evroc'
+        case 'fastrouter':
+            return 'FastRouter'
+        case 'freemodel':
+            return 'FreeModel'
+        case 'friendli':
+            return 'Friendli'
+        case 'frogbot':
+            return 'FrogBot'
+        case 'gmicloud':
+            return 'GMI Cloud'
+        case 'greenpt':
+            return 'GreenPT'
+        case 'helicone':
+            return 'Helicone'
+        case 'hetzner':
+            return 'Hetzner'
+        case 'hpc-ai':
+            return 'HPC-AI'
+        case 'hyper':
+            return 'Charm Hyper'
+        case 'iflowcn':
+            return 'iFlow'
+        case 'impossibl':
+            return 'Impossibl'
+        case 'inception':
+            return 'Inception'
+        case 'inceptron':
+            return 'Inceptron'
+        case 'inco':
+            return 'Inco'
+        case 'infer':
+            return 'Infer by Flow7'
+        case 'inference':
+            return 'Inference'
+        case 'inferx':
+            return 'InferX'
+        case 'io-net':
+            return 'IO.NET'
+        case 'iteracompute':
+            return 'IteraCompute'
+        case 'jalapeno':
+            return 'Jalapeno Cloud'
+        case 'jiekou':
+            return 'Jiekou.AI'
+        case 'kenari':
+            return 'Kenari'
+        case 'kilo':
+            return 'Kilo Gateway'
+        case 'kimi-code-plan-cn':
+            return 'Kimi For Coding (kimi.com)'
+        case 'kimi-code-plan-global':
+            return 'Kimi For Coding (kimi.ai)'
+        case 'klokintegration':
+            return 'klokintegration.se'
+        case 'kosmik':
+            return 'Kosmik Compute'
+        case 'lilac':
+            return 'Lilac'
+        case 'llama':
+            return 'Llama'
+        case 'llmgateway':
+            return 'DevPass (LLM Gateway)'
+        case 'llmgateway-providers':
+            return 'LLM Gateway'
+        case 'llmtech':
+            return 'LLM Tech'
+        case 'llmtr':
+            return 'LLMTR'
+        case 'longcat':
+            return 'LongCat'
+        case 'lucidquery':
+            return 'LucidQuery'
+        case 'meganova':
+            return 'Meganova'
+        case 'melious':
+            return 'Melious'
+        case 'merge-gateway':
+            return 'Merge Gateway'
+        case 'mixlayer':
+            return 'Mixlayer'
+        case 'moark':
+            return 'Moark'
+        case 'modal':
+            return 'Modal'
+        case 'model-oracle-ai':
+            return 'Model Oracle AI'
+        case 'modelis':
+            return 'Modelis'
+        case 'modelscope':
+            return 'ModelScope'
+        case 'morph':
+            return 'Morph'
+        case 'nan':
+            return 'NaN'
+        case 'nano-gpt':
+            return 'NanoGPT'
+        case 'nearai':
+            return 'NEAR AI Cloud'
+        case 'nebius':
+            return 'Nebius Token Factory'
+        case 'neosmith':
+            return 'NeoSmith'
+        case 'neuralwatt':
+            return 'Neuralwatt'
+        case 'nova':
+            return 'Nova'
+        case 'novita-ai':
+            return 'NovitaAI'
+        case 'ofox':
+            return 'Ofox'
+        case 'ollama-cloud':
+            return 'Ollama Cloud'
+        case 'opencode':
+            return 'OpenCode Zen'
+        case 'opencode-go':
+            return 'OpenCode Go'
+        case 'openreason':
+            return 'OpenReason'
+        case 'opper':
+            return 'Opper'
+        case 'orcarouter':
+            return 'OrcaRouter'
+        case 'ovhcloud':
+            return 'OVHcloud AI Endpoints'
+        case 'pendra':
+            return 'Pendra'
+        case 'perplexity-agent':
+            return 'Perplexity Agent'
+        case 'pioneer':
+            return 'Pioneer'
+        case 'poe':
+            return 'Poe'
+        case 'qihang-ai':
+            return 'QiHang'
+        case 'qiniu-ai':
+            return 'Qiniu'
+        case 'qvac':
+            return 'QVAC'
+        case 'regolo-ai':
+            return 'Regolo AI'
+        case 'requesty':
+            return 'Requesty'
+        case 'routing-run':
+            return 'routing.run'
+        case 'runinfra':
+            return 'RunInfra'
+        case 'salad-cloud':
+            return 'SaladCloud AI Gateway'
+        case 'scaleway':
+            return 'Scaleway'
+        case 'scx-ai':
+            return 'SCX.ai'
+        case 'sensenova':
+            return 'SenseNova (China)'
+        case 'stackit':
+            return 'STACKIT'
+        case 'standardcompute':
+            return 'Standard Compute'
+        case 'subconscious':
+            return 'Subconscious'
+        case 'submodel':
+            return 'submodel'
+        case 'synthetic':
+            return 'Synthetic'
+        case 'tempr':
+            return 'Tempr'
+        case 'tencent-tokenhub':
+            return 'Tencent TokenHub'
+        case 'tensorx':
+            return 'TensorX'
+        case 'the-grid-ai':
+            return 'The Grid AI'
+        case 'tinfoil':
+            return 'Tinfoil'
+        case 'tokengo':
+            return 'TokenGo'
+        case 'tokenrouter':
+            return 'TokenRouter'
+        case 'trustedrouter':
+            return 'TrustedRouter'
+        case 'umans-ai':
+            return 'Umans AI'
+        case 'unorouter':
+            return 'UnoRouter'
+        case 'v0':
+            return 'v0'
+        case 'vancine':
+            return 'Vancine'
+        case 'venice':
+            return 'Venice AI'
+        case 'vercel':
+            return 'Vercel AI Gateway'
+        case 'vispark':
+            return 'Vispark'
+        case 'vivgrid':
+            return 'Vivgrid'
+        case 'volcengine':
+            return 'Volcengine Ark'
+        case 'vultr':
+            return 'Vultr'
+        case 'wafer.ai':
+            return 'Wafer'
+        case 'wallaby':
+            return 'Wallaby'
+        case 'wandb':
+            return 'CoreWeave'
+        case 'watsonx':
+            return 'watsonx.ai'
+        case 'xpersona':
+            return 'Xpersona'
+        case 'zeldoc':
+            return 'Zeldoc'
+        case 'zenifra':
+            return 'Zenifra'
+        case 'zenmux':
+            return 'ZenMux'
         case 'claude':
             return 'Claude'
         case 'copilot':

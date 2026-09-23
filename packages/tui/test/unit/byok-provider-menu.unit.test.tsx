@@ -9,19 +9,19 @@ import {
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('ByokProviderMenu Component (Unit)', () => {
-    it('has 44 total API key and local provider items without subscriptions', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(44)
-        expect(PROVIDER_MENU_ITEMS[0].value).toBe('abliteration')
-        expect(PROVIDER_MENU_ITEMS[1].value).toBe('agentrouter')
-        expect(PROVIDER_MENU_ITEMS[2].value).toBe('agnes')
-        expect(PROVIDER_MENU_ITEMS[3].value).toBe('airouter')
-        expect(PROVIDER_MENU_ITEMS[4].value).toBe('aiand')
-        expect(PROVIDER_MENU_ITEMS[5].value).toBe('aki')
-        expect(PROVIDER_MENU_ITEMS[6].value).toBe('ambient')
-        expect(PROVIDER_MENU_ITEMS[7].value).toBe('anthropic')
-        expect(PROVIDER_MENU_ITEMS[8].value).toBe('arcee')
-        expect(PROVIDER_MENU_ITEMS[9].value).toBe('auriko')
-        expect(PROVIDER_MENU_ITEMS[10].value).toBe('baseten')
+    it('has 186 total API key and local provider items without subscriptions', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(186)
+        expect(PROVIDER_MENU_ITEMS[0].value).toBe('302ai')
+        expect(PROVIDER_MENU_ITEMS[1].value).toBe('abacus')
+        expect(PROVIDER_MENU_ITEMS[2].value).toBe('abliteration')
+        expect(PROVIDER_MENU_ITEMS[3].value).toBe('above')
+        expect(PROVIDER_MENU_ITEMS[4].value).toBe('agentrouter')
+        expect(PROVIDER_MENU_ITEMS[5].value).toBe('agnes')
+        expect(PROVIDER_MENU_ITEMS[6].value).toBe('airouter')
+        expect(PROVIDER_MENU_ITEMS[7].value).toBe('aiand')
+        expect(PROVIDER_MENU_ITEMS[8].value).toBe('ai21')
+        expect(PROVIDER_MENU_ITEMS[9].value).toBe('aihubmix')
+        expect(PROVIDER_MENU_ITEMS[10].value).toBe('ainetcafe')
     })
 
     it('renders 7 visible items with down more indicator initially', () => {
@@ -34,14 +34,14 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frame = lastFrame() || ''
         expect(frame).toContain('Select API Provider (BYOK):')
+        expect(frame).toContain('302.AI')
+        expect(frame).toContain('Abacus')
         expect(frame).toContain('Abliteration AI')
+        expect(frame).toContain('above.dev')
         expect(frame).toContain('AgentRouter')
         expect(frame).toContain('Agnes AI')
         expect(frame).toContain('AI Router')
-        expect(frame).toContain('AI&')
-        expect(frame).toContain('AKI.IO')
-        expect(frame).toContain('Ambient')
-        expect(frame).toContain('↓ 37 more')
+        expect(frame).toContain('↓ 179 more')
     })
 
     it('navigates through items with arrow keys and updates more indicators', async () => {
@@ -56,7 +56,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('❭ Abliteration AI')
+        expect(lastFrame()).toContain('❭ 302.AI')
 
         // Move down 7 times to shift window
         for (let i = 0; i < 7; i++) {
@@ -66,13 +66,13 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterScroll = lastFrame() || ''
         expect(frameAfterScroll).toContain('↑ 1 more')
-        expect(frameAfterScroll).toContain('↓ 36 more')
+        expect(frameAfterScroll).toContain('↓ 178 more')
 
-        // Press Enter to select current item (Anthropic)
+        // Press Enter to select current item (AI&)
         stdin.write('\r')
         await new Promise((resolve) => setTimeout(resolve, 10))
         expect(selectedItem).toBeDefined()
-        expect(selectedItem?.value).toBe('anthropic')
+        expect(selectedItem?.value).toBe('aiand')
     })
 
     it('renders search prompt and Search in footer initially', () => {
@@ -176,7 +176,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         await new Promise((r) => setTimeout(r, 50))
 
         const output = lastFrame() || ''
-        expect(output).toContain('Ambient')
+        expect(output).toContain('302.AI')
         expect(output).toContain('AgentRouter')
         expect(setAuthMode).not.toHaveBeenCalled()
 
