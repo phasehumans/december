@@ -979,7 +979,7 @@ export function formatProviderName(provider: string): string {
         case 'wallaby':
             return 'Wallaby'
         case 'wandb':
-            return 'CoreWeave'
+            return 'Weights & Biases'
         case 'watsonx':
             return 'watsonx.ai'
         case 'xpersona':
