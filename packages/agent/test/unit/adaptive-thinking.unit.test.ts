@@ -24,13 +24,15 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
     })
 
     it('returns off for slash commands', () => {
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/handoff' }])).toBe('off')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/login' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/help' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/commit' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/settings' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/model gpt-4' }])).toBe('off')
     })
 
-    it('returns off for simple greetings and short conversational queries', () => {
+    it('returns off for simple conversational greetings', () => {
         const greetings = [
             'hi',
             'hello',
@@ -44,6 +46,10 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
             'bye',
             'ping',
             'help',
+            'hi!',
+            'hello!',
+            'thanks.',
+            'yes!',
         ]
         for (const greeting of greetings) {
             expect(getAdaptiveThinkingLevel([{ role: 'user', content: greeting }])).toBe('off')
@@ -52,11 +58,21 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
 
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'what can you do' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'who are you' }])).toBe('off')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'short query' }])).toBe('off')
+    })
+
+    it('does not classify arbitrary short non-greeting queries as off', () => {
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'short query' }])).toBe('auto')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'add test' }])).toBe('auto')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix button' }])).toBe('auto')
+        expect(isSimpleConversationalTurn([{ role: 'user', content: 'short query' }])).toBe(false)
     })
 
     it('returns minimal for simple read-only lookup queries without refactor or fix keywords', () => {
         const lookupQueries = [
+            'read file.ts',
+            'view src',
+            'find user',
+            'list files',
             'read the config file',
             'view the auth routes',
             'show me the error in logs',
@@ -67,6 +83,8 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
             'where is the entry point defined',
             'what is the port number',
             'how to run the dev script',
+            'please read the config file',
+            'can you list the directory contents',
         ]
 
         for (const query of lookupQueries) {
@@ -75,8 +93,34 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
         }
     })
 
+    it('does not return minimal for lookups that contain fix or refactor keywords', () => {
+        expect(
+            getAdaptiveThinkingLevel([{ role: 'user', content: 'read this and fix the typo' }])
+        ).toBe('auto')
+        expect(
+            getAdaptiveThinkingLevel([{ role: 'user', content: 'view the code and Fix it' }])
+        ).toBe('auto')
+        expect(
+            getAdaptiveThinkingLevel([
+                { role: 'user', content: 'read this and refactor the class' },
+            ])
+        ).toBe('high')
+        expect(
+            getAdaptiveThinkingLevel([
+                { role: 'user', content: 'find how to fix error ECONNRESET' },
+            ])
+        ).toBe('high')
+    })
+
     it('returns high for queries containing heavy refactoring, debugging, or architecture keywords', () => {
         const heavyQueries = [
+            'refactor',
+            'debug',
+            'architect',
+            'rewrite',
+            'fix error',
+            'fix test',
+            'fix tests',
             'please refactor the auth middleware to support oauth2 and jwt',
             'debug the memory leak in the websocket connection handler',
             'architect a new distributed caching layer with redis cluster',

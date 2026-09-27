@@ -24,18 +24,25 @@ describe('Performance & Schema Trimming (Unit)', () => {
     })
 
     test('getAdaptiveThinkingLevel routes task complexity to 4 distinct tiers', () => {
-        // Tier 1: Off
+        // Tier 1: Off (Slash commands and simple greetings)
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/handoff' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/login' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hi' }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hello' }])).toBe('off')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'yes' }])).toBe('off')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'thanks' }])).toBe('off')
 
-        // Tier 2: Minimal for simple lookups
+        // Tier 2: Minimal for simple lookups (<100 chars, no fix/refactor)
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'read package.json' }])).toBe(
             'minimal'
         )
         expect(
             getAdaptiveThinkingLevel([{ role: 'user', content: 'find function main in index.ts' }])
         ).toBe('minimal')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'view routes.ts' }])).toBe(
+            'minimal'
+        )
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'list src' }])).toBe('minimal')
 
         // Tier 3: Auto (default for code edits)
         expect(
@@ -43,12 +50,23 @@ describe('Performance & Schema Trimming (Unit)', () => {
                 { role: 'user', content: 'Add a new utility function to file' },
             ])
         ).toBe('auto')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix button styling' }])).toBe(
+            'auto'
+        )
 
         // Tier 4: High for refactoring/debugging/multi-file prompts
         expect(
             getAdaptiveThinkingLevel([
                 { role: 'user', content: 'refactor the module architecture and fix broken tests' },
             ])
+        ).toBe('high')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix error' }])).toBe('high')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'debug memory leak' }])).toBe(
+            'high'
+        )
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'rewrite parser' }])).toBe('high')
+        expect(
+            getAdaptiveThinkingLevel([{ role: 'user', content: 'architect distributed cache' }])
         ).toBe('high')
     })
 })

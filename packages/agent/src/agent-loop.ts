@@ -31,40 +31,45 @@ export function getAdaptiveThinkingLevel(
     if (text.startsWith('/')) return 'off'
 
     const lower = text.toLowerCase()
-    const simpleGreetings = [
+    const normalizedGreeting = lower.replace(/[!?.,:;]+$/, '').trim()
+    const simpleGreetings = new Set([
         'hi',
         'hello',
         'hey',
+        'hi there',
+        'hello there',
+        'good morning',
+        'good afternoon',
+        'good evening',
         'thanks',
         'thank you',
+        'thx',
         'yes',
         'no',
         'ok',
         'okay',
         'bye',
+        'goodbye',
         'who are you',
         'what can you do',
         'ping',
         'status',
         'help',
-    ]
+        'yo',
+        'sup',
+    ])
 
-    if (
-        simpleGreetings.includes(lower) ||
-        (text.length < 15 && !text.includes('```') && !text.includes('\n'))
-    ) {
+    if (simpleGreetings.has(normalizedGreeting)) {
         return 'off'
     }
 
     // Tier 2: Minimal for simple lookups / read-only questions without code edits
-    const isLookup = /^(read|view|show|find|search|list|check|where|what is|how to)\b/i.test(text)
-    if (
-        isLookup &&
-        text.length < 100 &&
-        !text.includes('```') &&
-        !text.includes('fix') &&
-        !text.includes('refactor')
-    ) {
+    const isLookup =
+        /^(?:(?:can you|could you|please)\s+)?(read|view|show|find|search|list|check|where|what is|how to)\b/i.test(
+            text
+        )
+    const hasFixOrRefactor = /\b(fix|refactor)\b/i.test(text)
+    if (isLookup && text.length < 100 && !text.includes('```') && !hasFixOrRefactor) {
         return 'minimal'
     }
 
