@@ -47,7 +47,14 @@ describe('GitHubApp Module Integration Tests', () => {
     afterAll(async () => {
         if (testUserId) {
             await prisma.githubAppInstallation
-                .deleteMany({ where: { userId: testUserId } })
+                .deleteMany({
+                    where: {
+                        OR: [
+                            { userId: testUserId },
+                            { installationId: { in: ['88888', '98765', '98766', '77777'] } },
+                        ],
+                    },
+                })
                 .catch(() => {
                     // Intentionally swallowed: test cleanup fallback
                 })
@@ -131,10 +138,51 @@ describe('GitHubApp Module Integration Tests', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.success).toBe(true)
-            expect(processInstallCalledWith).toEqual({ installationId: '88888', userId: 'system' })
+            expect(processInstallCalledWith).toEqual({ installationId: '88888', userId: null })
         } finally {
             githubAppService.processInstallation = originalProcess
         }
+    })
+
+    it('5b. POST /api/v1/githubapp/webhook - creates installation with null userId in db without FK error when user is unmatched (200)', async () => {
+        const payloadObj = {
+            action: 'created',
+            installation: {
+                id: 77777,
+                account: {
+                    login: 'unclaimed-org-or-user',
+                    type: 'User',
+                },
+                target_type: 'User',
+                permissions: { issues: 'write' },
+            },
+            sender: {
+                login: 'unclaimed-sender',
+            },
+        }
+        const payloadStr = JSON.stringify(payloadObj)
+
+        const secret = env.GITHUB_APP_WEBHOOK_SECRET || 'secret'
+        const hmac = crypto.createHmac('sha256', secret)
+        hmac.update(payloadStr)
+        const signature = `sha256=${hmac.digest('hex')}`
+
+        const res = await request(app)
+            .post('/api/v1/githubapp/webhook')
+            .set('Content-Type', 'application/json')
+            .set('x-hub-signature-256', signature)
+            .set('x-github-event', 'installation')
+            .send(payloadStr)
+
+        expect(res.status).toBe(200)
+        expect(res.body.success).toBe(true)
+
+        const createdInstallation = await prisma.githubAppInstallation.findUnique({
+            where: { installationId: '77777' },
+        })
+        expect(createdInstallation).toBeDefined()
+        expect(createdInstallation?.userId).toBeNull()
+        expect(createdInstallation?.accountLogin).toBe('unclaimed-org-or-user')
     })
 
     it('6. POST /api/v1/githubapp/webhook - processes installation deleted event (200)', async () => {
@@ -201,6 +249,38 @@ describe('GitHubApp Module Integration Tests', () => {
 
         expect(res.status).toBe(302)
         expect(res.headers.location).toBe('http://localhost:3000/settings/connections')
+    })
+
+    it('7c. GET /api/v1/githubapp/callback - claims and associates previously unmatched installation (userId null -> testUserId) (302)', async () => {
+        // installation 77777 was created by test 5b with userId: null
+        const beforeClaim = await prisma.githubAppInstallation.findUnique({
+            where: { installationId: '77777' },
+        })
+        expect(beforeClaim?.userId).toBeNull()
+
+        const state = encodeURIComponent(`${testUserId}|/settings/repositories`)
+        const res = await request(app)
+            .get(
+                `/api/v1/githubapp/callback?installation_id=77777&setup_action=install&state=${state}`
+            )
+            .set('x-forwarded-for', getRandomIP())
+
+        expect(res.status).toBe(302)
+        expect(res.headers.location).toContain('/settings/repositories')
+
+        const afterClaim = await prisma.githubAppInstallation.findUnique({
+            where: { installationId: '77777' },
+        })
+        expect(afterClaim).toBeDefined()
+        expect(afterClaim?.userId).toBe(testUserId)
+        expect(afterClaim?.accountLogin).toBe('unclaimed-org-or-user')
+
+        const user = await prisma.user.findUnique({
+            where: { id: testUserId },
+        })
+        expect(user?.githubAppInstall).toBe(true)
+        expect(user?.githubConnected).toBe(true)
+        expect(user?.githubUsername).toBe('unclaimed-org-or-user')
     })
 
     it('8. GET /api/v1/githubapp/status - returns installation status for authenticated user (200)', async () => {

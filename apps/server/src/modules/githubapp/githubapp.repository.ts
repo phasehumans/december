@@ -14,7 +14,7 @@ const upsertInstallation = async (data: ProcessInstallation) => {
             ? userId
             : existing?.userId && existing.userId !== 'system'
               ? existing.userId
-              : userId || 'system'
+              : null
 
     const installation = await prisma.githubAppInstallation.upsert({
         where: { installationId },
@@ -35,14 +35,15 @@ const upsertInstallation = async (data: ProcessInstallation) => {
         },
     })
 
-    if (effectiveUserId && effectiveUserId !== 'system') {
+    if (effectiveUserId) {
+        const username = accountLogin || existing?.accountLogin
         await prisma.user.update({
             where: { id: effectiveUserId },
             data: {
                 githubAppInstall: true,
                 githubCardDone: true,
                 githubConnected: true,
-                githubUsername: accountLogin || undefined,
+                ...(username ? { githubUsername: username } : {}),
             },
         })
     }
@@ -64,7 +65,7 @@ const deleteInstallation = async (installationId: string) => {
         where: { installationId },
     })
 
-    if (installation.userId && installation.userId !== 'system') {
+    if (installation.userId) {
         const count = await prisma.githubAppInstallation.count({
             where: { userId: installation.userId },
         })

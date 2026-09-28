@@ -17,7 +17,7 @@ export type GitHubAppInstallationPayload = {
 
 export type ProcessInstallation = {
     installationId: string
-    userId: string
+    userId?: string | null
     accountLogin?: string
     accountType?: string
     targetType?: string

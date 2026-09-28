@@ -116,7 +116,7 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
         const targetType = payload.installation.target_type
         const permissions = payload.installation.permissions
 
-        let userId = 'system'
+        let userId: string | null = null
         if (accountLogin) {
             const matchedUser = await prisma.user.findFirst({
                 where: {
@@ -132,7 +132,7 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
             }
         }
 
-        if (userId === 'system' && payload.sender?.login) {
+        if (!userId && payload.sender?.login) {
             const senderUser = await prisma.user.findFirst({
                 where: {
                     OR: [

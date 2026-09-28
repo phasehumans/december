@@ -12,7 +12,7 @@ December is a coding agent that lives in your terminal. It understands your code
 
 - **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
 - **Cloud Handoff:** Use _/handoff_ to continue your session on **<a href="https://trydecember.com" target="_blank">trydecember.com</a>**
-- **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 50+ others, or log in via December to use December credits.
+- **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 150+ others, or log in via December to use December credits.
 
 ### Get Started
 
