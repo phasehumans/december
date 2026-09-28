@@ -32,7 +32,7 @@ await $`git-cliff -o CHANGELOG.md`
 await $`git add .`
 await $`git commit -m ${`chore(release): v${version}`}`
 
-await $`git tag -a ${`v${version}`} -m ${`December v${version}`}`
+await $`git tag -a ${`v${version}`} -m ${`december v${version}`}`
 
 // await $`git push origin main`
 // await $`git push origin ${`v${version}`}`

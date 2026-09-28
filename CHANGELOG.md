@@ -1,5 +1,11 @@
 ## [unreleased]
 
+### Bug Fixes
+
+- _(githubapp)_ Make userid nullable and update provider count to 150+ (#534)
+
+## [0.3.33] - 2026-09-23
+
 ### Features
 
 - _(cli)_ Support 142 direct byok providers from models.dev (#525)
@@ -18,6 +24,10 @@
 ### Documentation
 
 - Update cloud cta on landing page and footer links
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.33
 
 ## [0.3.32] - 2026-09-21
 
