@@ -49,11 +49,11 @@ export function DialogProvider({ children }: DialogProviderProps) {
 
     const value: DialogContextValue = { open, close, isOpen: currentDialog !== null, currentDialog }
 
-    // dialog always renders alongside children — never replaces the screen
+    // dialog always renders alongside children - never replaces the screen
     return <DialogContext.Provider value={value}>{children}</DialogContext.Provider>
 }
 
-// inline dialog panel — rendered beside the input area, above the prompt
+// inline dialog panel - rendered beside the input area, above the prompt
 type InlineDialogProps = {
     config: DialogConfig
     close: () => void

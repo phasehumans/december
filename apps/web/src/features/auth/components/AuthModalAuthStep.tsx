@@ -137,34 +137,36 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                     {isAuthPending
                         ? 'Please wait...'
                         : authMode === 'login'
-                          ? 'Continue with email →'
-                          : 'Sign up with email →'}
+                          ? 'Continue with email'
+                          : 'Sign up with email'}
                 </button>
             </form>
 
             {/* Bottom mode switch */}
-            <div className="mt-5 pt-4 border-t border-[#262626] text-center">
-                <button
-                    type="button"
-                    onClick={onToggleAuthMode}
-                    className="font-sans text-xs text-[#888888] hover:text-[#EDEDED] transition-colors cursor-pointer"
-                >
-                    {authMode === 'login' ? (
-                        <span>
-                            Don't have an account?{' '}
-                            <span className="text-[#87b2f4] underline underline-offset-2">
-                                Sign up
-                            </span>
-                        </span>
-                    ) : (
-                        <span>
-                            Already have an account?{' '}
-                            <span className="text-[#87b2f4] underline underline-offset-2">
-                                Log in
-                            </span>
-                        </span>
-                    )}
-                </button>
+            <div className="mt-5 pt-4 border-t border-[#262626] text-center font-sans text-xs text-[#888888]">
+                {authMode === 'login' ? (
+                    <span>
+                        Don't have an account?{' '}
+                        <button
+                            type="button"
+                            onClick={onToggleAuthMode}
+                            className="text-[#87b2f4] hover:text-[#a5c7f8] underline underline-offset-2 transition-colors cursor-pointer"
+                        >
+                            Sign up
+                        </button>
+                    </span>
+                ) : (
+                    <span>
+                        Already have an account?{' '}
+                        <button
+                            type="button"
+                            onClick={onToggleAuthMode}
+                            className="text-[#87b2f4] hover:text-[#a5c7f8] underline underline-offset-2 transition-colors cursor-pointer"
+                        >
+                            Log in
+                        </button>
+                    </span>
+                )}
             </div>
 
             <p className="mt-4 text-[11px] font-sans text-[#737373] text-center leading-relaxed">

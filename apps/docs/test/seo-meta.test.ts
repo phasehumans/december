@@ -30,6 +30,10 @@ describe('apps/docs built HTML SEO & metadata verification', () => {
         'docs/prompting/index.html',
         'docs/integrations/index.html',
         'docs/security/index.html',
+        'blog/index.html',
+        'blog/context-rot/index.html',
+        'blog/how-to-build-tools-for-ai-agents/index.html',
+        'blog/self-improving-agents/index.html',
     ]
 
     for (const page of allPages) {
@@ -103,8 +107,9 @@ describe('apps/docs built HTML SEO & metadata verification', () => {
 
                 expect(html).toContain('December')
                 expect(html).toContain(version)
+                expect(html).toContain('[blog]')
                 expect(html).toContain('[docs]')
-                expect(html).toContain('[login]')
+                expect(html).not.toContain('[login]')
             })
         })
     }

@@ -14,6 +14,7 @@ interface Props {
   hideHeader?: boolean;
   hideFooter?: boolean;
   showLoader?: boolean;
+  preloadBannerImage?: boolean;
 }
 
 const {
@@ -24,6 +25,7 @@ const {
   hideHeader = false,
   hideFooter = false,
   showLoader = false,
+  preloadBannerImage = false,
 } = Astro.props;
 
 const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
@@ -59,6 +61,142 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     <meta property="twitter:description" content={description} />
     <meta property="twitter:image" content="https://trydecember.com/og.png" />
 
+    <!-- LLM and AI Crawling Discovery (https://llmstxt.org/) -->
+    <link rel="help" type="text/plain" href="/llms.txt" title="LLM documentation index" />
+
+    <!-- Structured Data (JSON-LD) for Google Search, Sitelinks, Knowledge Graph & Google AI Mode -->
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Person",
+          "@id": "https://trydecember.com/me#person",
+          "name": "Chaitanya Sonawane",
+          "alternateName": ["Chetan Sonawane", "phasehumans"],
+          "jobTitle": "Software Engineer",
+          "worksFor": {
+            "@id": "https://trydecember.com/#organization"
+          },
+          "url": "https://trydecember.com/me",
+          "sameAs": [
+            "https://github.com/phasehumans",
+            "https://x.com/phasehumans",
+            "https://www.youtube.com/@phasehumans",
+            "https://www.linkedin.com/in/phasehumans/",
+            "https://www.npmjs.com/~phasehumans",
+            "https://codeforces.com/profile/phasehumans"
+          ],
+          "description": "Chaitanya Sonawane | software engineer @december"
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://trydecember.com/#organization",
+          "name": "December",
+          "url": "https://trydecember.com",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://trydecember.com/favicon.svg"
+          },
+          "founder": {
+            "@id": "https://trydecember.com/me#person"
+          },
+          "sameAs": [
+            "https://github.com/phasehumans/december",
+            "https://x.com/phasehumans",
+            "https://www.linkedin.com/in/phasehumans/",
+            "https://www.youtube.com/@phasehumans",
+            "https://www.npmjs.com/package/@trydecember/cli"
+          ],
+          "description": "Open-source autonomous coding agent for terminal and cloud environments."
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://trydecember.com/#website",
+          "url": "https://trydecember.com",
+          "name": "December",
+          "publisher": {
+            "@id": "https://trydecember.com/#organization"
+          },
+          "hasPart": [
+            {
+              "@type": "SiteNavigationElement",
+              "name": "Documentation",
+              "url": "https://trydecember.com/docs"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "Quickstart",
+              "url": "https://trydecember.com/docs/quickstart"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "CLI Reference",
+              "url": "https://trydecember.com/docs/cli"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "Architecture",
+              "url": "https://trydecember.com/docs/architecture"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "Blog",
+              "url": "https://trydecember.com/blog"
+            }
+          ]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://trydecember.com/#application",
+          "name": "December",
+          "applicationCategory": "DeveloperApplication",
+          "operatingSystem": "macOS, Linux, Windows",
+          "author": {
+            "@id": "https://trydecember.com/me#person"
+          },
+          "creator": {
+            "@id": "https://trydecember.com/me#person"
+          },
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "description": "An open-source autonomous coding agent for terminal and cloud. It writes code, fixes bugs, and runs commands with seamless terminal-to-cloud handoff."
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://trydecember.com/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Who built December?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "December was created and built by Chaitanya Sonawane (also known as Chetan Sonawane), a software engineer. You can follow his work on GitHub at https://github.com/phasehumans, on X (Twitter) at https://x.com/phasehumans, and on YouTube at https://www.youtube.com/@phasehumans."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is December?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "December is an open-source coding agent designed for both terminal and cloud environments. It writes code, fixes bugs, and runs shell commands with seamless terminal-to-cloud handoff and verifiable git checkpoints."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does terminal-to-cloud handoff work in December?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Using the /handoff command, December synchronizes your local terminal session, uncommitted file diffs, and conversation state to a sandboxed cloud MicroVM without losing context."
+              }
+            }
+          ]
+        }
+      ]
+    })} />
+
     <!-- Typography (Geist & Geist Mono) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -66,6 +204,11 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Inter:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+
+    <!-- Preload footer banner image if requested -->
+    {preloadBannerImage && (
+      <link rel="preload" as="image" href="/illustrations/december-sky.webp" type="image/webp" />
+    )}
 
     <!-- Astro View Transitions for instant client navigation -->
     <ClientRouter />

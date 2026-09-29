@@ -42,15 +42,22 @@ describe('apps/docs page content & layout tests', () => {
         it('renders full footer with legal and social links', () => {
             const html = getLandingHtml()
 
+            expect(html).toContain('built by')
+            expect(html).toContain('href="/me"')
+            expect(html).toContain('@chaitanya')
+            expect(html).toMatch(/<a[^>]*href="\/me"[^>]*target="_blank"[^>]*>@chaitanya<\/a>/)
             expect(html).toContain('href="/privacy"')
             expect(html).toContain('href="/terms"')
-            expect(html).toContain('https://github.com/phasehumans/december/blob/main/CHANGELOG.md')
-            expect(html).toContain('changelog')
             expect(html).toContain('https://github.com/phasehumans/december')
             expect(html).toContain('https://www.npmjs.com/package/@trydecember/cli')
             expect(html).toContain('https://x.com/phasehumans')
+            expect(html).toContain('twitter')
+            expect(html).toContain('https://www.linkedin.com/in/phasehumans/')
+            expect(html).toContain('linkedin')
             expect(html).toContain('https://www.youtube.com/@phasehumans')
-            expect(html).toContain('id="back-to-top-btn"')
+            expect(html).toContain('id="faq-copy-btn"')
+            expect(html).not.toContain('or bun / pnpm')
+            expect(html).not.toContain('id="back-to-top-btn"')
         })
     })
 
@@ -120,10 +127,8 @@ describe('apps/docs page content & layout tests', () => {
             const html = readFileSync(join(distDir, 'privacy/index.html'), 'utf-8')
 
             expect(html).toContain('Privacy Policy')
-            expect(html).toContain('security@trydecember.com')
             expect(html).toContain('team@trydecember.com')
             expect(html).toContain('href="/terms"')
-            expect(html).toContain('href="/docs/security"')
         })
 
         it('terms page renders terms sections and contact information', () => {
@@ -132,7 +137,26 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('Terms of Service')
             expect(html).toContain('team@trydecember.com')
             expect(html).toContain('href="/privacy"')
-            expect(html).toContain('href="/docs/security"')
+        })
+    })
+
+    describe('portfolio page (me/index.html)', () => {
+        it('renders minimal centered 2-line portfolio without header or footer', () => {
+            const html = readFileSync(join(distDir, 'me/index.html'), 'utf-8')
+
+            expect(html).toContain('Chaitanya Sonawane')
+            expect(html).toContain('software engineer')
+            expect(html).toContain('@december')
+            expect(html).toContain('https://github.com/phasehumans')
+            expect(html).toContain('https://www.youtube.com/@phasehumans')
+            expect(html).toContain('https://x.com/phasehumans')
+            expect(html).toContain('https://www.linkedin.com/in/phasehumans/')
+            expect(html).toContain('https://www.npmjs.com/~phasehumans')
+            expect(html).toContain('https://codeforces.com/profile/phasehumans')
+            expect(html).toContain('href="/blog"')
+            expect(html).toContain('mailto:chetan@trydecember.com')
+            // Minimal: Header and footer should be hidden
+            expect(html).not.toContain('<footer')
         })
     })
 })

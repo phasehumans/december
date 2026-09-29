@@ -37,7 +37,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
     }
 
     if (error instanceof Error) {
-        // don't show generic "validation failed" — we already tried details above
+        // don't show generic "validation failed" - we already tried details above
         if (error.message.toLowerCase() === 'validation failed') {
             return fallback
         }

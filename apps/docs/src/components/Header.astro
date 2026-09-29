@@ -6,7 +6,6 @@ interface Props {
 }
 
 const { activePath = '/' } = Astro.props;
-const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
 
 <header class="w-full bg-white pt-4 sm:pt-6">
@@ -17,25 +16,26 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       <span class="text-[#64748b]">{version}</span>
     </a>
 
-    <!-- Nav Items (Right): [github], [docs], and [login] -->
+    <!-- Nav Items (Right): [blog] and [docs] -->
     <div class="flex items-center gap-1.5 sm:gap-2.5 font-mono text-xs sm:text-sm">
+      <!-- [blog] in bracket format -->
+      <a 
+        href="/blog" 
+        class={`transition-colors py-1 px-1 ${
+          activePath.startsWith('/blog') ? 'text-[#87b2f4]' : 'text-[#475569] hover:text-[#87b2f4]'
+        }`}
+      >
+        [blog]
+      </a>
 
       <!-- [docs] in bracket format -->
       <a 
         href="/docs" 
         class={`transition-colors py-1 px-1 ${
-          activePath.startsWith('/docs') ? 'text-[#090a0f] font-semibold' : 'text-[#475569] hover:text-[#090a0f]'
+          activePath.startsWith('/docs') ? 'text-[#87b2f4]' : 'text-[#475569] hover:text-[#87b2f4]'
         }`}
       >
         [docs]
-      </a>
-
-      <!-- [login] in bracket format -->
-      <a
-        href={`${appUrl}/login`}
-        class="transition-colors py-1 px-1 text-[#475569] hover:text-[#090a0f]"
-      >
-        [login]
       </a>
     </div>
   </div>

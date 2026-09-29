@@ -26,6 +26,7 @@ authRouter.post('/signout/all', authMiddleware, authController.signoutAll)
 authRouter.delete('/account', authMiddleware, authController.deleteAccount)
 
 authRouter.get('/cli-token', authMiddleware, authController.getCliToken)
+authRouter.get('/device/status', authMiddleware, authController.getDeviceStatus)
 authRouter.post('/device/code', deviceCodeLimiter, authController.generateDeviceCode)
 authRouter.post('/device/token', deviceTokenPollLimiter, authController.pollDeviceToken)
 authRouter.post('/device/verify', authMiddleware, authController.verifyUserCode)

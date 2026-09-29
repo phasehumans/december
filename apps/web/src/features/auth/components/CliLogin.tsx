@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Check, ChevronLeft } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import React, { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
@@ -92,33 +92,17 @@ export const CliLogin: React.FC = () => {
                 <div className="w-full max-w-[380px] relative z-10 flex flex-col">
                     {status === 'success' ? (
                         <div className="flex flex-col items-center text-center py-2 animate-in fade-in duration-200">
-                            <div className="w-12 h-12 rounded-full bg-[#10b981]/10 border border-[#10b981]/25 flex items-center justify-center text-[#10b981] mb-4">
-                                <Check className="w-6 h-6" strokeWidth={2} />
+                            <div className="mb-5 text-white">
+                                <Icons.DecemberLogo className="w-[42px] h-[42px] text-white" />
                             </div>
 
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/25 mb-3">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
-                                Authorized
-                            </span>
-
                             <h2 className="text-[22px] sm:text-[24px] font-medium text-white tracking-[-0.025em] leading-snug mb-2">
-                                CLI Authorized Successfully
+                                CLI Authorized
                             </h2>
                             <p className="text-xs sm:text-[13px] text-[#888888] font-sans leading-relaxed mb-6">
                                 Your session token has been securely transferred to your terminal.
                                 You can close this tab and resume coding.
                             </p>
-
-                            <div className="w-full rounded-lg border border-[#2A2A2A] bg-[#181818] p-3.5 font-mono text-xs text-[#a09f9d] flex items-center justify-between mb-5">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[#87b2f4]">$</span>
-                                    <span className="text-[#EDEDED]">december ready</span>
-                                </div>
-                                <span className="inline-flex items-center gap-1.5 text-[11px] text-[#10b981]">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
-                                    connected
-                                </span>
-                            </div>
 
                             <button
                                 type="button"
@@ -132,7 +116,7 @@ export const CliLogin: React.FC = () => {
                                 href="/"
                                 className="mt-3 font-sans text-xs text-[#888888] hover:text-[#EDEDED] transition-colors"
                             >
-                                Return to Dashboard →
+                                Return to Dashboard
                             </a>
                         </div>
                     ) : (
@@ -145,35 +129,11 @@ export const CliLogin: React.FC = () => {
                                     Authorize December CLI
                                 </h2>
                                 <p className="text-xs sm:text-[13px] text-[#888888] font-sans leading-relaxed">
-                                    Link your terminal development environment to your account.
+                                    {profile?.email
+                                        ? `Link your terminal development environment to ${profile.email}.`
+                                        : 'Link your terminal development environment to your account.'}
                                 </p>
                             </div>
-
-                            {profile && (
-                                <div className="mb-5 rounded-lg border border-[#2A2A2A] bg-[#181818] p-3 flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                                        <div className="w-7 h-7 rounded-full bg-[#262626] border border-[#333333] flex items-center justify-center text-white text-xs font-medium shrink-0">
-                                            {(profile.name ||
-                                                profile.email ||
-                                                'U')[0].toUpperCase()}
-                                        </div>
-                                        <div className="flex flex-col min-w-0 text-left">
-                                            <span className="text-white text-xs font-medium truncate">
-                                                {profile.name || profile.email}
-                                            </span>
-                                            {profile.name && profile.email && (
-                                                <span className="text-[#888888] text-[11px] truncate">
-                                                    {profile.email}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/25 shrink-0">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
-                                        Active
-                                    </span>
-                                </div>
-                            )}
 
                             <div className="flex flex-col gap-3">
                                 {isLoading ? (
@@ -188,23 +148,10 @@ export const CliLogin: React.FC = () => {
                                         className="w-full font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 shadow-none bg-[#EDEDED] hover:bg-white text-[#090a0f] border border-transparent"
                                     >
                                         {status === 'authorizing'
-                                            ? 'Authorizing CLI...'
+                                            ? 'Authorizing...'
                                             : profile
-                                              ? `Authorize as ${profile.name || profile.email} →`
-                                              : 'Sign in to Authorize →'}
-                                    </button>
-                                )}
-
-                                {profile && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAuthModal(true)}
-                                        className="text-center font-sans text-xs text-[#888888] hover:text-[#EDEDED] transition-colors cursor-pointer mt-0.5"
-                                    >
-                                        Want to use a different account?{' '}
-                                        <span className="text-[#87b2f4] underline underline-offset-2">
-                                            Switch account
-                                        </span>
+                                              ? 'Authorize'
+                                              : 'Sign in to Authorize'}
                                     </button>
                                 )}
 

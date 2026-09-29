@@ -54,14 +54,14 @@ export const AuthModalGoogleMergeStep: React.FC<AuthModalGoogleMergeStepProps> =
                 {isPending ? 'Please wait...' : 'Create Email Password'}
             </button>
 
-            <div className="mt-3 pt-4 border-t border-[#262626] flex justify-center">
+            <div className="mt-4 flex justify-center">
                 <button
                     type="button"
                     onClick={onBack}
                     disabled={isPending}
                     className="font-sans text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
                 >
-                    ← Back to login
+                    Back to login
                 </button>
             </div>
         </div>

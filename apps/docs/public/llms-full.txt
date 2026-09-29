@@ -1,0 +1,148 @@
+# December Documentation
+
+December is an open-source coding agent for your terminal and the cloud. It edits files, fixes bugs, and runs shell commands with git checkpoints and terminal-to-cloud handoff.
+
+- Website: https://trydecember.com
+- Repository: https://github.com/phasehumans/december
+- CLI Package: @trydecember/cli (npm)
+
+---
+
+## 1. Installation & CLI Usage
+
+### Install
+```bash
+npm install -g @trydecember/cli
+# or:
+bun add -g @trydecember/cli
+pnpm add -g @trydecember/cli
+```
+
+### Setup
+```bash
+# Log in to December Cloud (optional, enables cloud handoff and previews)
+december login
+
+# Pick your model provider and add API keys
+december config
+```
+
+### Running Tasks
+```bash
+# Run a single task
+december "fix failing unit tests in packages/server"
+
+# Start an interactive terminal session
+december
+```
+
+### Flags
+- `--model <name>`: Model to use (e.g. `claude-3-5-sonnet-latest`, `gpt-4o`, `gemini-2.0-flash`).
+- `--temperature <num>`: Temperature (default: `0.2`).
+- `--verbose`: Show full reasoning and tool output.
+- `--checkpoint`: Make a git checkpoint after every file edit.
+- `--steer`: Ask before making file edits or running bash commands.
+
+---
+
+## 2. Slash Commands
+
+Use these commands inside an interactive `december` session:
+
+- `/handoff`: Move current task, diffs, and chat history to a cloud sandbox.
+- `/checkpoint [message]`: Save a git commit on the shadow branch.
+- `/undo`: Revert the last file edits made by the agent.
+- `/diff`: Show uncommitted changes.
+- `/clear`: Clear conversation history.
+- `/model`: Switch models mid-session.
+- `/help`: List all commands.
+
+---
+
+## 3. Architecture
+
+December has three parts:
+
+### 3.1 Terminal CLI
+- Node.js CLI tool.
+- Reads project files and runs edits locally.
+- Creates git commits on a shadow branch so you can undo changes at any time.
+
+### 3.2 API Server
+- Node.js backend.
+- Manages user sessions, encrypted keys, and WebSocket streaming between CLI and cloud.
+
+### 3.3 Cloud Sandboxes
+- Isolated Linux microVMs (E2B / Firecracker).
+- Runs commands in disposable containers.
+- Generates live web preview URLs with port forwarding.
+
+---
+
+## 4. Agent Loop
+
+December runs a 5-step loop:
+1. **Inspect**: Read files, search symbols, check git diffs.
+2. **Plan**: Pick the smallest set of edits needed.
+3. **Execute**: Call tools (`view_file`, `replace_file_content`, `write_to_file`, `run_command`).
+4. **Verify**: Run tests or compiler (`tsc`, `npm test`) to check work.
+5. **Checkpoint**: Commit verified edits before moving to the next step.
+
+---
+
+## 5. Supported Models (BYOK)
+
+Bring your own API keys for 150+ providers:
+- **Anthropic**: Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus.
+- **OpenAI**: GPT-4o, GPT-4o-mini, o1.
+- **Google**: Gemini 2.0 Flash, Gemini 1.5 Pro.
+- **DeepSeek**: DeepSeek-V3, DeepSeek-R1.
+- **Groq**: Fast open-weights inference (Llama 3.3 70B, Qwen 2.5 Coder).
+- **Ollama**: Run offline on `localhost:11434`.
+
+---
+
+## 6. Privacy & Security
+
+- **No Training**: Your code is never used to train models.
+- **Disposable Sandboxes**: Cloud microVMs are destroyed when a task ends.
+- **Secret Masking**: `.env` files and API keys are automatically hidden from logs.
+- **Runs Locally**: You can run 100% locally with your own API key.
+
+---
+
+## 7. FAQ
+
+### Who built December?
+December was built by software engineer **Chaitanya Sonawane** (also known as Chetan Sonawane).
+- Portfolio: https://trydecember.com/me
+- GitHub: https://github.com/phasehumans
+- LinkedIn: https://www.linkedin.com/in/phasehumans/
+- X (Twitter): https://x.com/phasehumans
+- YouTube: https://www.youtube.com/@phasehumans
+- npm: https://www.npmjs.com/~phasehumans
+- Codeforces: https://codeforces.com/profile/phasehumans
+- Email: chetan@trydecember.com
+
+### What is December?
+December is an open-source coding agent that runs in your terminal and can hand off tasks to cloud microVM sandboxes.
+
+### How does December compare to Cursor or Devin?
+Unlike Cursor (which is a VS Code fork), December runs directly in your existing terminal and works with any editor (Neovim, VS Code, JetBrains). Unlike Devin, December can run 100% locally with zero latency, handing off to the cloud only when you want background runs or shareable previews.
+
+### How does terminal-to-cloud handoff work?
+Run `/handoff` in your terminal. December sends your uncommitted diffs and session history to a cloud microVM. You get a URL to continue the task in your browser.
+
+---
+
+## 8. Creator
+
+- **Creator**: Chaitanya Sonawane
+- **Portfolio**: https://trydecember.com/me
+- **GitHub**: https://github.com/phasehumans
+- **LinkedIn**: https://www.linkedin.com/in/phasehumans/
+- **X (Twitter)**: https://x.com/phasehumans
+- **YouTube**: https://www.youtube.com/@phasehumans
+- **npm**: https://www.npmjs.com/~phasehumans
+- **Codeforces**: https://codeforces.com/profile/phasehumans
+- **Email**: chetan@trydecember.com

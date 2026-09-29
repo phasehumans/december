@@ -47,6 +47,7 @@ Reference gold standard modules: `auth`, `notification`, `session`.
 - **No `require()` Imports**: Never use CommonJS `require()`. Always use top-level ES module `import` statements (`import ... from '...'`).
 - **Scoped Switch Cases**: Always enclose `case` blocks in curly braces `{ ... }` when declaring `const` or `let` variables inside a `switch` statement.
 - **Complete React Hook Dependencies**: Ensure all `useEffect`, `useCallback`, and `useMemo` hooks have complete dependency arrays or explicitly documented refs.
+- **No Em Dashes (`—`)**: Never use em dashes (`—`) anywhere across the repository (docs, blog, landing page, terms, privacy, UI text, or code comments). Use regular hyphens (`-`), colons, commas, or parentheses instead.
 
 ## Git & Pull Request Guidelines
 

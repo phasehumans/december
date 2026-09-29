@@ -24,6 +24,7 @@ export const useNavigationController = () => {
         setProjectVersions,
         setImportState,
         setIsAuthenticated,
+        setIsAuthRestored,
         setShowAuthModal,
         isAuthenticated,
     } = useAppStore()
@@ -110,13 +111,14 @@ export const useNavigationController = () => {
         } catch {
             // Intentionally swallowed: Proceed with client signout and redirect even if network fails
         }
+        setIsAuthRestored(false)
         setIsAuthenticated(false)
         queryClient.removeQueries({ queryKey: ['sessions'] })
         queryClient.removeQueries({ queryKey: ['profile'] })
         if (typeof window !== 'undefined') {
             window.location.replace(landingUrl)
         }
-    }, [setIsAuthenticated, queryClient])
+    }, [setIsAuthRestored, setIsAuthenticated, queryClient])
 
     const onOpenAuth = React.useCallback(() => {
         setShowAuthModal(true)

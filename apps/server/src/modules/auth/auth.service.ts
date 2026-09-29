@@ -2,6 +2,7 @@ import crypto from 'crypto'
 
 import bcrypt from 'bcrypt'
 
+import { redisClient } from '../../config/redis'
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { getUsername } from '../../shared/username'
@@ -35,6 +36,9 @@ import type {
     GetCliToken,
     PollDeviceToken,
     VerifyUserCode,
+    VerifyUserCodeResult,
+    GetDeviceStatus,
+    GetDeviceStatusResult,
     PurgeSessions,
 } from './auth.types'
 
@@ -632,7 +636,7 @@ const generateDeviceCode = async () => {
                 interval: 5,
             }
         } catch (error: any) {
-            // prisma unique constraint violation — retry with a new code
+            // prisma unique constraint violation - retry with a new code
             if (error?.code === 'P2002' && attempt < maxRetries - 1) {
                 continue
             }
@@ -684,6 +688,12 @@ const pollDeviceToken = async (data: PollDeviceToken) => {
             expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         })
 
+        if (redisClient && redisClient.status === 'ready') {
+            redisClient.set(`device:consumed:${codeRecord.userCode}`, '1', 'EX', 3600).catch(() => {
+                // Intentionally swallowed: fallback handled if redis is unavailable
+            })
+        }
+
         await authRepository.deleteDeviceCode(codeRecord.id)
 
         return {
@@ -695,17 +705,38 @@ const pollDeviceToken = async (data: PollDeviceToken) => {
     throw new AppError('authorization_pending', 400)
 }
 
-const verifyUserCode = async (data: VerifyUserCode) => {
+const isDeviceCodeConsumed = async (userCode: string): Promise<boolean> => {
+    if (redisClient && redisClient.status === 'ready') {
+        try {
+            const consumed = await redisClient.get(`device:consumed:${userCode}`)
+            if (consumed) {
+                return true
+            }
+        } catch {
+            // Intentionally swallowed: fallback handled if redis is unavailable
+        }
+    }
+    return false
+}
+
+const verifyUserCode = async (data: VerifyUserCode): Promise<VerifyUserCodeResult> => {
     const { userCode, userId } = data
 
     const codeRecord = await authRepository.findDeviceCodeByUserCode(userCode)
 
     if (!codeRecord) {
+        if (await isDeviceCodeConsumed(userCode)) {
+            return { status: 'already_activated' }
+        }
         throw new AppError('Invalid code', 404)
     }
 
     if (codeRecord.expiresAt < new Date()) {
         throw new AppError('This code has expired', 400)
+    }
+
+    if (codeRecord.status === 'APPROVED') {
+        return { status: 'already_activated' }
     }
 
     if (codeRecord.status !== 'PENDING') {
@@ -716,6 +747,38 @@ const verifyUserCode = async (data: VerifyUserCode) => {
         status: 'APPROVED',
         user: { connect: { id: userId } },
     })
+
+    return { status: 'approved' }
+}
+
+const getDeviceStatus = async (data: GetDeviceStatus): Promise<GetDeviceStatusResult> => {
+    const { userId, userCode } = data
+
+    if (userCode) {
+        const codeRecord = await authRepository.findDeviceCodeByUserCode(userCode)
+        if (!codeRecord) {
+            if (await isDeviceCodeConsumed(userCode)) {
+                return { activated: true, status: 'already_activated' }
+            }
+            return { activated: true, status: 'already_activated' }
+        }
+
+        if (codeRecord.status === 'APPROVED') {
+            return { activated: true, status: 'already_activated' }
+        }
+
+        if (codeRecord.expiresAt < new Date()) {
+            return { activated: false, status: 'expired' }
+        }
+
+        return { activated: false, status: 'pending' }
+    }
+
+    const activeSession = await authRepository.findActiveDeviceSession(userId)
+    return {
+        activated: Boolean(activeSession),
+        status: activeSession ? 'already_activated' : 'idle',
+    }
 }
 
 const purgeExpiredAndRevokedSessions = async (data: PurgeSessions = {}) => {
@@ -754,6 +817,7 @@ export const authService = {
     generateDeviceCode,
     pollDeviceToken,
     verifyUserCode,
+    getDeviceStatus,
     purgeExpiredAndRevokedSessions,
     startSessionCleanupScheduler,
 }

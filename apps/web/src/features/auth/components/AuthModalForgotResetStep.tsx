@@ -56,17 +56,17 @@ export const AuthModalForgotResetStep: React.FC<AuthModalForgotResetStepProps> =
                 disabled={!newPassword || !confirmPassword || isPending}
                 className="w-full bg-[#EDEDED] hover:bg-white text-[#090a0f] font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1"
             >
-                {isPending ? 'Updating password...' : 'Update password →'}
+                {isPending ? 'Updating password...' : 'Update password'}
             </button>
 
-            <div className="mt-3 pt-4 border-t border-[#262626] flex justify-center">
+            <div className="mt-4 flex justify-center">
                 <button
                     type="button"
                     onClick={onBack}
                     disabled={isPending}
                     className="font-sans text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
                 >
-                    ← Back
+                    Back
                 </button>
             </div>
         </form>

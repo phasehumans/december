@@ -28,6 +28,8 @@ export default defineConfig({
         '/youtube': 'https://www.youtube.com/@phasehumans',
         '/yt': 'https://www.youtube.com/@phasehumans',
         '/changelog': 'https://github.com/phasehumans/december/blob/main/CHANGELOG.md',
+        '/blogs': '/blog',
+        '/llm.txt': '/llms.txt',
     },
     integrations: [mdx()],
     markdown: {

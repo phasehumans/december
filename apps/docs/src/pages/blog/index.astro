@@ -1,0 +1,77 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const posts = [
+  {
+    slug: 'self-improving-agents',
+    title: 'Building Self-Improving Agents: From One-Shot Prompts to Closed Reasoning Loops',
+    desc: 'How coding agents evolve from brittle single-pass code generators into self-correcting systems using iterative refinement and environment feedback.',
+    date: '29 Sept 2026',
+    timestamp: new Date('2026-09-29').getTime(),
+  },
+  {
+    slug: 'how-to-build-tools-for-ai-agents',
+    title: 'Building Tools for AI Agents',
+    desc: 'Field guide on tool atomicity, schema validation, and actionable error feedback for agents.',
+    date: '3 Sept 2026',
+    timestamp: new Date('2026-09-03').getTime(),
+  },
+  {
+    slug: 'context-rot',
+    title: 'Context Rot in Long-Context LLMs',
+    desc: 'Why expanding token budgets degrades retrieval accuracy and how coding agents avoid distractors.',
+    date: '20 Aug 2026',
+    timestamp: new Date('2026-08-20').getTime(),
+  },
+].sort((a, b) => b.timestamp - a.timestamp);
+---
+
+<BaseLayout
+  title="Blog | December"
+  description="Technical notes on autonomous agent architectures, context retrieval, and developer tooling."
+  activePath="/blog"
+  hideFooter={false}
+>
+  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-8 sm:pt-12 sm:pb-10 min-w-0">
+    <!-- Breadcrumb Navigation Bar -->
+    <nav class="flex items-center flex-wrap font-mono text-xs text-[#64748b] mb-8">
+      <div class="flex items-center flex-wrap gap-2">
+        <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
+        <span class="text-[#cbd5e1]">/</span>
+        <span class="text-[#87b2f4]">[blog]</span>
+      </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="mb-8 max-w-3xl min-w-0">
+      <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] leading-snug">
+        Blog
+      </h1>
+      <p class="mt-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+        Technical notes on autonomous agent architectures, context retrieval, and developer tooling.
+      </p>
+    </header>
+
+    <!-- 1 Column Cards (Matching Docs Page Card Language) -->
+    <div class="grid grid-cols-1 gap-3 max-w-3xl">
+      {posts.map((post) => (
+        <a
+          href={`/blog/${post.slug}`}
+          class="group block p-4 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
+        >
+          <div class="flex items-start sm:items-center justify-between gap-2 sm:gap-4 font-mono text-xs">
+            <span class="text-[13px] sm:text-sm font-sans font-medium text-[#090a0f] group-hover:text-[#87b2f4] transition-colors leading-snug">
+              {post.title}
+            </span>
+            <time class="text-[#94a3b8] font-normal shrink-0 pt-0.5 sm:pt-0">
+              {post.date}
+            </time>
+          </div>
+          <p class="mt-1.5 text-xs text-[#52525b] leading-relaxed">
+            {post.desc}
+          </p>
+        </a>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

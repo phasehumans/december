@@ -439,7 +439,7 @@ export const InputBar = React.memo(function InputBar({
             paddingRight={paddingRight}
             marginTop={1}
         >
-            {/* inline dialog — shown on right above prompt when open */}
+            {/* inline dialog - shown on right above prompt when open */}
             {dialog.isOpen && dialog.currentDialog && (
                 <Box justifyContent="flex-end">
                     <InlineDialog config={dialog.currentDialog} close={dialog.close} />
@@ -539,7 +539,7 @@ export const InputBar = React.memo(function InputBar({
                         </Text>
                     </Box>
 
-                    {/* status row — clean & minimal: <model> (<authMethod>)                  <tokens> / <max> (<pct>%) */}
+                    {/* status row - clean & minimal: <model> (<authMethod>)                  <tokens> / <max> (<pct>%) */}
                     {!showCommandMenu && !showShortcutsMenu && showExitConfirm && (
                         <Box width="100%" justifyContent="space-between">
                             <Box gap={2} alignItems="center" flexShrink={1}>

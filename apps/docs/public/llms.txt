@@ -1,0 +1,85 @@
+# December
+
+> December is an open-source coding agent for terminal and cloud. It writes code, fixes bugs, and runs shell commands with git checkpoints and terminal-to-cloud handoff.
+
+## Overview
+
+December runs in two places:
+1. **Terminal (CLI)**: Runs locally in your repository, makes file edits, runs tests, and creates git checkpoints.
+2. **Cloud**: Runs tasks in sandboxed microVMs with live web previews.
+Run `/handoff` in your terminal to continue a task in the cloud without losing diffs or chat history.
+
+## Quickstart
+
+Install the CLI:
+```bash
+npm install -g @trydecember/cli
+# or:
+bun add -g @trydecember/cli
+pnpm add -g @trydecember/cli
+```
+
+Log in and run a task:
+```bash
+december login
+december "fix failing unit tests in packages/server"
+```
+
+Start an interactive terminal session:
+```bash
+december
+```
+
+## Commands & Slash Commands
+
+- `december [prompt]`: Run a task.
+- `december login`: Log in to December Cloud.
+- `december logout`: Remove local credentials.
+- `december config`: Change model and provider settings.
+- `/handoff`: Move current terminal task to a cloud microVM sandbox.
+- `/checkpoint`: Save a git checkpoint commit.
+- `/undo`: Revert the last file edits made by the agent.
+- `/diff`: Show uncommitted changes.
+- `/clear`: Clear conversation history.
+- `/help`: List all commands.
+
+## How It Works
+
+- **Loop**: Inspect files -> plan edits -> edit files -> run tests -> save checkpoint.
+- **Git Checkpoints**: Commits changes to a shadow branch before editing so you can undo anytime.
+- **MicroVMs**: Cloud sessions run in isolated Linux containers with port forwarding for previews.
+- **Models (BYOK)**: Supports 150+ providers: Anthropic (Claude 3.5 Sonnet), OpenAI (GPT-4o), Google (Gemini 2.0 / 1.5 Pro), DeepSeek, Groq, and Ollama.
+
+## Creator
+
+Built by **Chaitanya Sonawane** ([trydecember.com/me](https://trydecember.com/me)).
+- **GitHub**: [github.com/phasehumans](https://github.com/phasehumans)
+- **LinkedIn**: [linkedin.com/in/phasehumans](https://www.linkedin.com/in/phasehumans/)
+- **X (Twitter)**: [x.com/phasehumans](https://x.com/phasehumans)
+- **YouTube**: [youtube.com/@phasehumans](https://www.youtube.com/@phasehumans)
+- **npm**: [npmjs.com/~phasehumans](https://www.npmjs.com/~phasehumans)
+- **Codeforces**: [codeforces.com/profile/phasehumans](https://codeforces.com/profile/phasehumans)
+- **Email**: chetan@trydecember.com
+
+## Docs Links
+
+- [Documentation](https://trydecember.com/docs): Main documentation.
+- [Quickstart](https://trydecember.com/docs/quickstart): 60-second setup.
+- [Architecture](https://trydecember.com/docs/architecture): How the CLI, server, and microVMs connect.
+- [Agent Loop](https://trydecember.com/docs/agent-loop): Inspect-plan-execute-verify cycle.
+- [Git Checkpoints](https://trydecember.com/docs/checkpoints): Rollback and diff safety.
+- [Cloud Previews](https://trydecember.com/docs/previews): Dev servers and public preview URLs.
+- [CLI Reference](https://trydecember.com/docs/cli): CLI flags and options.
+- [Slash Commands](https://trydecember.com/docs/slash-commands): Interactive REPL commands.
+- [Prompting Guide](https://trydecember.com/docs/prompting): Tips for directing the agent.
+- [Model Providers](https://trydecember.com/docs/integrations): Setting up API keys.
+- [Security](https://trydecember.com/docs/security): Sandbox isolation and secret redaction.
+
+## Blog & Notes
+
+- [Context Rot in Long-Context LLMs](https://trydecember.com/blog/context-rot): Why long prompts fail on code search and how to fix it.
+- [Building Tools for AI Agents](https://trydecember.com/blog/how-to-build-tools-for-ai-agents): How to write tools that LLMs call reliably.
+
+## Full Context
+
+- [Full Documentation](https://trydecember.com/llms-full.txt): Complete documentation in a single file.

@@ -1,0 +1,158 @@
+---
+layout: ../../layouts/BlogLayout.astro
+title: 'Building Tools for AI Agents'
+description: 'A production field guide on tool atomicity, schema validation, and actionable error feedback for autonomous agents.'
+publishDate: '3 Sept 2026'
+author: 'December Engineering'
+readTime: '4 min read'
+currentSlug: 'how-to-build-tools-for-ai-agents'
+---
+
+When building autonomous agents, developers spend weeks tuning prompts and temperatures. Yet in production, the most frequent failure point is tool invocation.
+
+An analysis of agent traces by Composio ([_How to build great tools for AI agents_](https://composio.dev/blog/how-to-build-tools-for-ai-agents-a-field-guide)) demonstrates that tool failures are primarily API design failures. Below are the key rules for designing high-reliability tools for agents.
+
+## 1. Predictable Naming Conventions
+
+LLMs rely on semantic pattern recognition. Mixed casings and ambiguous verbs cause models to second-guess tool choices:
+
+- **Avoid**: `fetch_user_profile`, `getProjectDetails`, `User_Settings_Update`
+- **Use**: `get_user_profile`, `get_project_details`, `update_user_settings`
+
+Standardizing on lowercase `snake_case` with a clear `<verb>_<noun>` structure establishes a consistent invocation model.
+
+## 2. Atomic Tool Scope
+
+Broad "Swiss Army knife" tools create parameter ambiguity:
+
+- **Avoid**: A monolithic `manage_files(action="read"|"edit"|"delete", path, ...)` tool.
+- **Use**: Dedicated primitives like `view_file(path, start_line, end_line)`, `write_to_file(path, content)`, and `replace_file_content(path, target, replacement)`.
+
+Single-concern tools reduce the parameter space and prevent conflicting arguments.
+
+## 3. Constraint-First Descriptions
+
+Tool descriptions should function as strict contracts rather than marketing copy:
+
+1. **Action**: Exactly what the tool modifies or reads.
+2. **Trigger**: When the agent should choose this tool over alternatives.
+3. **Constraints**: Immediate preconditions, line limits, and formatting rules.
+
+Placing hard constraints at the start of the description gives them higher attention weight during schema evaluation.
+
+## 4. Strict Typing and Enums
+
+- **Use finite enums**: Avoid open strings when valid options are known (`"mode": ["fast", "precise"]`).
+- **Cap top-level arguments**: Tools with more than 4-5 top-level arguments have higher failure rates. Group optional settings into nested objects.
+- **Specify formats**: Use explicit schema formats like `"format": "uri"` or line-indexed integers.
+
+## 5. Actionable Error Returns
+
+Generic error codes leave agents blind, often triggering infinite retry loops:
+
+- **Avoid**: `{"error": "500 Internal Server Error"}`
+- **Use**: `{"success": false, "error": "Target content not found in lines 40-55. Found partial match on line 48. Re-read the file before retrying."}`
+
+Returning corrective diagnostics allows the agent to self-heal deterministically.
+
+## Tool Execution & Verification Loop
+
+High-reliability agent architectures structure tool operations into a closed loop with actionable error channels:
+
+<div class="my-8 p-4 sm:p-6 border border-[#e2e8f0] bg-[#f8fafc]/50 relative">
+  <span class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#87b2f4]"></span>
+  <span class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#87b2f4]"></span>
+  <span class="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-[#87b2f4]"></span>
+  <span class="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-[#87b2f4]"></span>
+
+  <div class="flex flex-col items-center max-w-xl mx-auto space-y-0">
+    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
+      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
+        <div class="flex items-center gap-1.5 font-medium">
+          <span class="text-[#87b2f4] font-semibold">01</span>
+          <span class="text-[#cbd5e1]">/</span>
+          <span class="text-[#090a0f]">Agent Reasoning Loop</span>
+        </div>
+        <span class="text-[10px] uppercase tracking-wider text-[#64748b] bg-[#f8fafc] px-2 py-0.5 border border-[#e2e8f0]">Planning</span>
+      </div>
+      <h4 class="text-sm sm:text-base font-semibold text-[#090a0f] tracking-tight">Structured Tool Call</h4>
+      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
+        <span>Strict Zod Schema</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>Targeted Arguments</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>Finite Enums</span>
+      </div>
+    </div>
+
+    <div class="flex flex-col items-center py-1 select-none">
+      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <div class="px-2.5 py-1 border border-[#e2e8f0] bg-white font-mono text-[11px] text-[#090a0f] shadow-2xs flex items-center gap-1.5 my-0.5">
+        <span class="text-[#87b2f4] font-semibold">→</span>
+        <span>Atomic Invocation</span>
+      </div>
+      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <svg class="w-3 h-3 text-[#87b2f4] -mt-0.5" viewBox="0 0 12 12" fill="currentColor">
+        <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
+      </svg>
+    </div>
+
+    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
+      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
+        <div class="flex items-center gap-1.5 font-medium">
+          <span class="text-[#87b2f4] font-semibold">02</span>
+          <span class="text-[#cbd5e1]">/</span>
+          <span class="text-[#090a0f]">Execution Runtime</span>
+        </div>
+        <span class="text-[10px] uppercase tracking-wider text-[#87b2f4] bg-[#87b2f4]/10 px-2 py-0.5 border border-[#87b2f4]/30">Sandboxed Primitives</span>
+      </div>
+      <h4 class="text-sm sm:text-base font-semibold text-[#090a0f] tracking-tight">Isolated Execution</h4>
+      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
+        <span>view_file</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>replace_file_content</span>
+        <span class="text-[#cbd5e1]">·</span>
+        <span>run_command</span>
+      </div>
+    </div>
+
+    <div class="flex flex-col items-center py-1 select-none">
+      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <div class="px-2.5 py-1 border border-[#e2e8f0] bg-white font-mono text-[11px] text-[#64748b] shadow-2xs my-0.5">Verification &amp; Output Analysis</div>
+      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <svg class="w-3 h-3 text-[#87b2f4] -mt-0.5" viewBox="0 0 12 12" fill="currentColor">
+        <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
+      </svg>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+      <div class="p-4 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
+        <div class="flex items-center justify-between font-mono text-xs mb-1">
+          <span class="text-[#64748b] font-medium">On Failure</span>
+          <span class="text-[10px] uppercase tracking-wider text-amber-700 bg-amber-50 px-1.5 py-0.5 border border-amber-200">Self-Heal</span>
+        </div>
+        <h5 class="text-sm font-semibold text-[#090a0f]">Actionable Diagnostic</h5>
+        <p class="mt-1.5 text-xs text-[#52525b] leading-relaxed">Exact line offsets, compiler hints, and partial match suggestions feed directly back to loop.</p>
+      </div>
+
+      <div class="p-4 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
+        <div class="flex items-center justify-between font-mono text-xs mb-1">
+          <span class="text-[#64748b] font-medium">On Success</span>
+          <span class="text-[10px] uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200">Verified</span>
+        </div>
+        <h5 class="text-sm font-semibold text-[#090a0f]">Git Checkpoint</h5>
+        <p class="mt-1.5 text-xs text-[#52525b] leading-relaxed">Atomic diff recorded, clean compiler exit (0), and state locked before next instruction.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+## How December Implements Tooling
+
+December structures its agent tool harness on these principles:
+
+- **Targeted edits**: File modifications require exact `StartLine`, `EndLine`, and matching `TargetContent`.
+- **Isolated execution**: Shell commands run inside MicroVM sandboxes with exit codes and raw stderr returned directly to the reasoning loop.
+- **Immediate lint feedback**: Syntax and compiler errors are fed back on each step for zero-overhead correction.
+
+_Reference: [Composio Field Guide](https://composio.dev/blog/how-to-build-tools-for-ai-agents-a-field-guide)._

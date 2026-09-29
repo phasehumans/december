@@ -5,7 +5,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
 <BaseLayout
-  title="Privacy Policy — December"
+  title="Privacy Policy | December"
   description="Privacy Policy for December CLI and Cloud."
   canonicalUrl="https://trydecember.com/privacy"
   activePath="/privacy"
@@ -29,12 +29,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     <article class="w-full min-w-0">
       <!-- Document Header -->
       <header class="mb-8 max-w-3xl min-w-0">
-        <div class="font-mono text-xs text-[#64748b] mb-2">Effective: September 2026</div>
         <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] leading-snug">
           Privacy Policy
         </h1>
         <p class="mt-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
-          Phasehumans Inc. (&ldquo;Phasehumans&rdquo;, &ldquo;December&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) is committed to transparency
+          December (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) is committed to transparency
           and developer privacy. This policy details how we collect, handle, and protect your data
           across the December CLI and cloud platforms.
         </p>
@@ -45,9 +44,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <section>
           <h2>Architecture & Data Minimization</h2>
           <p>
-            December operates in two modes. In <strong>local mode</strong>, the CLI executes tools directly on
-            your machine — your file paths, environment variables, and repository commits remain exclusively
-            on your device. When you initiate a <strong>cloud handoff</strong> (via <code>/handoff</code>),
+            December operates in two modes. In local mode, the CLI executes tools directly on
+            your machine: your file paths, environment variables, and repository commits remain exclusively
+            on your device. When you initiate a cloud handoff (via <code>/handoff</code>),
             only the specific files necessary for the task are transferred via encrypted TLS 1.3 to an
             ephemeral micro-VM.
           </p>
@@ -57,10 +56,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <h2>Information We Collect</h2>
           <p>We strictly limit data collection to what is required to authenticate users and fulfill agent runs:</p>
           <ul>
-            <li><strong>Account Identifiers:</strong> Email, name, and OAuth identifiers from authentication providers (GitHub, Google).</li>
-            <li><strong>BYOK API Keys:</strong> API keys you store for routing queries to model providers. Keys are encrypted at rest using AES-256-GCM.</li>
-            <li><strong>Session History:</strong> Conversation prompts, tool call logs, and diff summaries generated during cloud sessions.</li>
-            <li><strong>Diagnostic Telemetry:</strong> Optional anonymous CLI performance metrics. Telemetry never captures file contents, usernames, or repository secrets, and can be disabled at any time.</li>
+            <li>Account identifiers: Email, name, and OAuth identifiers from authentication providers (GitHub, Google).</li>
+            <li>BYOK API keys: API keys you store for routing queries to model providers. Keys are encrypted at rest using AES-256-GCM.</li>
+            <li>Session history: Conversation prompts, tool call logs, and diff summaries generated during cloud sessions.</li>
+            <li>Diagnostic telemetry: Optional anonymous CLI performance metrics. Telemetry never captures file contents, usernames, or repository secrets, and can be disabled at any time.</li>
           </ul>
         </section>
 
@@ -70,7 +69,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             December's use and transfer to any other app of information received from Google APIs adheres to the
             <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" class="text-[#87b2f4] hover:underline">
               Google API Services User Data Policy
-            </a>, including the <strong>Limited Use</strong> requirements.
+            </a>, including the Limited Use requirements.
           </p>
           <p>
             When you sign in to December using Google OAuth, we access your profile information (full name, email address, profile photo URL, and unique Google ID) solely to authenticate your identity, create and maintain your account, and communicate essential notifications. We do not sell Google user data, share Google user data with data brokers, or use Google user data for advertising.
@@ -88,7 +87,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <h2>BYOK Key Security</h2>
           <p>
             Your personal AI model credentials belong solely to your account. They are never combined across users,
-            never logged in plaintext, and never visible to Phasehumans employees. Keys are encrypted with envelope
+            never logged in plaintext, and never visible to December employees. Keys are encrypted with envelope
             encryption using hardware KMS before persisting in our database.
           </p>
         </section>
@@ -127,7 +126,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <p>
             All traffic between the CLI, web app, and cloud sandboxes is encrypted using TLS 1.3 with strict HSTS headers.
             Production infrastructure requires hardware MFA and multi-party authorization. Security reports can be sent to
-            <a href="mailto:security@trydecember.com">security@trydecember.com</a>.
+            <a href="mailto:team@trydecember.com">team@trydecember.com</a>.
           </p>
         </section>
 

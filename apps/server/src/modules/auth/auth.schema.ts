@@ -85,3 +85,7 @@ export const pollDeviceTokenSchema = z.object({
 export const verifyUserCodeSchema = z.object({
     userCode: z.string({ message: 'user code is required' }).min(1, 'user code is required'),
 })
+
+export const getDeviceStatusSchema = z.object({
+    code: z.string().optional(),
+})

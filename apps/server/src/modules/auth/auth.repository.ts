@@ -183,6 +183,17 @@ async function purgeExpiredAndRevokedSessions() {
     })
 }
 
+async function findActiveDeviceSession(userId: string) {
+    return prisma.authSession.findFirst({
+        where: {
+            userId,
+            userAgent: { contains: 'cli', mode: 'insensitive' },
+            isRevoked: false,
+            expiresAt: { gt: new Date() },
+        },
+    })
+}
+
 export const authRepository = {
     findUserByEmail,
     findUserById,
@@ -202,5 +213,6 @@ export const authRepository = {
     findDeviceCodeByUserCode,
     updateDeviceCode,
     deleteDeviceCode,
+    findActiveDeviceSession,
     purgeExpiredAndRevokedSessions,
 }

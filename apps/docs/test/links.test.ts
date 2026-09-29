@@ -37,6 +37,11 @@ describe('apps/docs link integrity verification', () => {
         '/docs/prompting',
         '/docs/integrations',
         '/docs/security',
+        '/blog',
+        '/blog/context-rot',
+        '/blog/how-to-build-tools-for-ai-agents',
+        '/blog/self-improving-agents',
+        '/me',
     ])
 
     const files = getAllSourceFiles(srcDir)
@@ -127,7 +132,11 @@ describe('apps/docs link integrity verification', () => {
         }
 
         expect(mailtoLinks.length).toBeGreaterThan(0)
-        const allowedEmails = new Set(['team@trydecember.com', 'security@trydecember.com'])
+        const allowedEmails = new Set([
+            'team@trydecember.com',
+            'security@trydecember.com',
+            'chetan@trydecember.com',
+        ])
         for (const email of mailtoLinks) {
             expect(allowedEmails.has(email)).toBe(true)
             expect(email.endsWith('@trydecember.com')).toBe(true)

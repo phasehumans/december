@@ -76,6 +76,16 @@ describe('Auth Device CLI Flow Integration Tests', () => {
 
         expect(res.status).toBe(200)
         expect(res.body.message).toBe('device successfully authorized')
+
+        // Re-verifying an already approved code should succeed with already_activated
+        const repeatRes = await request(app)
+            .post('/api/v1/auth/device/verify')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${userAccessToken}`)
+            .send({ userCode })
+
+        expect(repeatRes.status).toBe(200)
+        expect(repeatRes.body.data.status).toBe('already_activated')
     })
 
     it('4. POST /api/v1/auth/device/token - returns access token once approved', async () => {
@@ -87,5 +97,25 @@ describe('Auth Device CLI Flow Integration Tests', () => {
         expect(res.status).toBe(200)
         expect(res.body.data.token).toBeDefined()
         expect(res.body.data.email).toBe(testEmail)
+    })
+
+    it('5. GET /api/v1/auth/device/status - checks active device status and code status', async () => {
+        const statusRes = await request(app)
+            .get('/api/v1/auth/device/status')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${userAccessToken}`)
+
+        expect(statusRes.status).toBe(200)
+        expect(statusRes.body.data.activated).toBe(true)
+        expect(statusRes.body.data.status).toBe('already_activated')
+
+        const codeStatusRes = await request(app)
+            .get(`/api/v1/auth/device/status?code=${userCode}`)
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${userAccessToken}`)
+
+        expect(codeStatusRes.status).toBe(200)
+        expect(codeStatusRes.body.data.activated).toBe(true)
+        expect(codeStatusRes.body.data.status).toBe('already_activated')
     })
 })

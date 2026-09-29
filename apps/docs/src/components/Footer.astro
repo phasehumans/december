@@ -1,5 +1,4 @@
 ---
-import { version } from '../lib/version';
 // Footer Component
 // Ultra-minimal developer-focused footer matching the page content width and design language
 ---
@@ -7,15 +6,13 @@ import { version } from '../lib/version';
 <footer class="w-full bg-white text-[#64748b] mt-auto">
   <!-- Constrained container matching landing page content width -->
   <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12">
-    <!-- Content-aligned top divider line: no edge bleed to left or right -->
-    <div class="border-t border-[#e2e8f0] pt-5 sm:pt-6 pb-8 sm:pb-10">
+    <div class="pt-5 sm:pt-6 pb-8 sm:pb-10">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-mono text-xs sm:text-[13px]">
-        <!-- Left: Brand & Legal -->
-        <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <a href="/" class="flex items-center gap-1.5 text-[#090a0f] hover:text-[#87b2f4] transition-colors font-medium">
-            <span>December</span>
-            <span class="text-[#64748b] font-normal">{version}</span>
-          </a>
+        <!-- Left: Creator & Legal -->
+        <div class="flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-2">
+          <span class="text-[#64748b]">
+            built by <a href="/me" target="_blank" rel="noopener noreferrer" class="text-[#090a0f] hover:text-[#87b2f4] transition-colors font-medium">@chaitanya</a>
+          </span>
           <span class="text-[#cbd5e1] hidden sm:inline">/</span>
           <a href="/privacy" class="hover:text-[#090a0f] transition-colors">privacy</a>
           <a href="/terms" class="hover:text-[#090a0f] transition-colors">terms</a>
@@ -45,7 +42,15 @@ import { version } from '../lib/version';
             rel="noopener noreferrer"
             class="hover:text-[#090a0f] transition-colors"
           >
-            x
+            twitter
+          </a>
+          <a
+            href="https://www.linkedin.com/in/phasehumans/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="hover:text-[#090a0f] transition-colors"
+          >
+            linkedin
           </a>
           <a
             href="https://www.youtube.com/@phasehumans"
@@ -55,30 +60,8 @@ import { version } from '../lib/version';
           >
             youtube
           </a>
-          <button
-            type="button"
-            id="back-to-top-btn"
-            class="hover:text-[#090a0f] transition-colors cursor-pointer ml-1"
-          >
-            top ↑
-          </button>
         </div>
       </div>
     </div>
   </div>
 </footer>
-
-<script>
-  function setupBackToTop() {
-    const backToTopBtn = document.getElementById('back-to-top-btn');
-    if (backToTopBtn && !backToTopBtn.dataset.bound) {
-      backToTopBtn.dataset.bound = 'true';
-      backToTopBtn.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
-    }
-  }
-
-  setupBackToTop();
-  document.addEventListener('astro:page-load', setupBackToTop);
-</script>

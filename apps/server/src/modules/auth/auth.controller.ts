@@ -18,6 +18,7 @@ import {
     githubAuthSchema,
     pollDeviceTokenSchema,
     verifyUserCodeSchema,
+    getDeviceStatusSchema,
 } from './auth.schema'
 import { authService } from './auth.service'
 
@@ -340,7 +341,12 @@ const generateDeviceCode = asyncHandler(async (req: Request, res: Response) => {
 const pollDeviceToken = asyncHandler(async (req: Request, res: Response) => {
     const parseData = pollDeviceTokenSchema.parse(req.body)
 
-    const userAgent = req.get('user-agent') || 'device-cli'
+    const rawUserAgent = req.get('user-agent')
+    const userAgent = rawUserAgent
+        ? rawUserAgent.toLowerCase().includes('cli')
+            ? rawUserAgent
+            : `device-cli (${rawUserAgent})`
+        : 'device-cli'
     const ipAddress =
         (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
         req.socket.remoteAddress ||
@@ -359,9 +365,22 @@ const verifyUserCode = asyncHandler(async (req: Request, res: Response) => {
         throw new AppError('Unauthorized', 401)
     }
 
-    await authService.verifyUserCode({ ...parseData, userId })
+    const result = await authService.verifyUserCode({ ...parseData, userId })
 
-    return sendSuccess(res, 'Device successfully authorized')
+    return sendSuccess(res, 'device successfully authorized', result)
+})
+
+const getDeviceStatus = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = getDeviceStatusSchema.parse(req.query)
+    const userId = req.user?.userId
+
+    if (!userId) {
+        throw new AppError('Unauthorized', 401)
+    }
+
+    const result = await authService.getDeviceStatus({ userId, userCode: parseData.code })
+
+    return sendSuccess(res, 'device status retrieved', result)
 })
 
 export const authController = {
@@ -381,4 +400,5 @@ export const authController = {
     generateDeviceCode,
     pollDeviceToken,
     verifyUserCode,
+    getDeviceStatus,
 }

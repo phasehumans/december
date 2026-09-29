@@ -1,0 +1,94 @@
+---
+layout: ../../layouts/BlogLayout.astro
+title: 'Context Rot in Long-Context LLMs'
+description: 'Why expanding input token budgets degrades retrieval accuracy and how coding agents avoid semantic distractors.'
+publishDate: '20 Aug 2026'
+author: 'December Research Desk'
+readTime: '4 min read'
+currentSlug: 'context-rot'
+---
+
+Modern LLMs advertise context windows scaling from 128k to 1M+ tokens. The common assumption is that models process this space uniformly - that a rule or interface placed at token 100k is recalled as reliably as one at token 100.
+
+Empirical research by Chroma ([_Context Rot_](https://www.trychroma.com/research/context-rot)) shows this assumption fails in practice. As input length expands, retrieval accuracy degrades sharply under semantic ambiguity, a phenomenon known as **Context Rot**.
+
+## The Uniformity Myth
+
+In theory, self-attention connects all tokens pairwise. In reality, attention weights dilute across massive sequences. When an agent dumps whole directories into a prompt, probability mass spreads across irrelevant tokens, leading to:
+
+1. **Instruction drift**: Early system constraints are deprioritized.
+2. **Attribution blending**: Disparate code snippets merge into invalid implementations.
+3. **Hallucination**: The model invents missing details when context density exceeds retrieval limits.
+
+## Semantic Degradation vs. Standard NIAH
+
+Standard Needle in a Haystack (NIAH) tests measure **exact lexical overlap** - searching for a specific string inside unrelated text. This behaves like an optimized grep search and yields deceptively high scores.
+
+When tested against **non-lexical semantic relationships** (where concepts are referenced indirectly without identical keywords), retrieval accuracy drops rapidly as context expands:
+
+```
+Retrieval Accuracy
+ 100% |===============\
+      |                \   Lexical Matching (Standard NIAH)
+  50% |         \       \---------------------------
+      |          \--- Semantic Non-Lexical Matching
+   0% +---------------------------------------------
+      1K        16K        64K       128K      256K+
+                      Input Tokens
+```
+
+## Distractors in Codebases
+
+The Chroma study highlights the critical distinction between **orthogonal noise** and **distractors**:
+
+- **Noise**: Completely unrelated text (e.g. documentation mixed with history essays). Models ignore this relatively well.
+- **Distractors**: Topically related content that looks like the target but is incorrect.
+
+Codebases are filled with distractors: overloaded signatures (`getUser`, `getUserById`), outdated legacy modules, and test mock fixtures. When an agent floods context with 50 unpruned files, the model frequently selects the wrong signature or imports deprecated utilities.
+
+## How December Mitigates Context Rot
+
+Rather than relying on oversized prompt dumps, December uses targeted context pruning:
+
+- **Localized AST extraction**: Only referenced symbols and type interfaces are loaded into context, not entire files.
+- **Pruned agent reasoning loop**: Diagnostic terminal output and intermediate planning traces are discarded once verified.
+- **Deterministic checkpoints**: Verification uses compiler diagnostics and test exits in isolated sandboxes rather than prompt memory.
+
+<div class="my-8 p-4 sm:p-6 border border-[#e2e8f0] bg-[#f8fafc]/50 relative">
+  <span class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#87b2f4]"></span>
+  <span class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#87b2f4]"></span>
+  <span class="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-[#87b2f4]"></span>
+  <span class="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-[#87b2f4]"></span>
+
+  <div class="space-y-4 max-w-xl mx-auto">
+    <div class="p-4 sm:p-5 border border-red-200 bg-white shadow-2xs">
+      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
+        <span class="text-red-600 font-semibold">Naive Context Pipeline</span>
+        <span class="text-[10px] uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 border border-red-200">Context Rot</span>
+      </div>
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 font-mono text-xs text-[#090a0f] mt-2">
+        <span class="bg-[#f8fafc] px-2 py-1 border border-[#e2e8f0]">Entire Repo Dump</span>
+        <span class="text-[#cbd5e1] hidden sm:inline">→</span>
+        <span class="bg-[#f8fafc] px-2 py-1 border border-[#e2e8f0]">128K+ Distractors</span>
+        <span class="text-[#cbd5e1] hidden sm:inline">→</span>
+        <span class="text-red-600 font-medium">Wrong Imports &amp; Drift</span>
+      </div>
+    </div>
+
+    <div class="p-4 sm:p-5 border border-[#87b2f4] bg-white shadow-2xs">
+      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
+        <span class="text-[#87b2f4] font-semibold">December Pruned Pipeline</span>
+        <span class="text-[10px] uppercase tracking-wider text-[#87b2f4] bg-[#87b2f4]/10 px-2 py-0.5 border border-[#87b2f4]/30">High Accuracy</span>
+      </div>
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 font-mono text-xs text-[#090a0f] mt-2">
+        <span class="bg-[#f8fafc] px-2 py-1 border border-[#e2e8f0]">AST Symbol Index</span>
+        <span class="text-[#87b2f4] hidden sm:inline">→</span>
+        <span class="bg-[#87b2f4]/10 text-[#090a0f] px-2 py-1 border border-[#87b2f4]/30">~4K Focused Tokens</span>
+        <span class="text-[#87b2f4] hidden sm:inline">→</span>
+        <span class="text-emerald-600 font-medium">Deterministic Edits</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+_Reference: [Chroma Technical Report: Context Rot](https://www.trychroma.com/research/context-rot)._

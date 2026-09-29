@@ -87,6 +87,27 @@ export type VerifyUserCode = {
     userId: string
 }
 
+export type DeviceActivationStatus =
+    | 'already_activated'
+    | 'approved'
+    | 'expired'
+    | 'pending'
+    | 'idle'
+
+export type VerifyUserCodeResult = {
+    status: 'approved' | 'already_activated'
+}
+
+export type GetDeviceStatus = {
+    userId: string
+    userCode?: string
+}
+
+export type GetDeviceStatusResult = {
+    activated: boolean
+    status: DeviceActivationStatus
+}
+
 export type CachedSessionData = {
     id: string
     userId: string
