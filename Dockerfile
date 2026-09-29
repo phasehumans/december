@@ -12,7 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     python3 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/certs \
+    && curl -fsSL -o /app/certs/global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && cp /app/certs/global-bundle.pem /usr/local/share/ca-certificates/aws-rds-global-bundle.crt \
+    && update-ca-certificates
 
 COPY --from=pruner /app/out/json/ .
 RUN bun install --frozen-lockfile --ignore-scripts
