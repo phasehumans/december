@@ -62,7 +62,7 @@ services:
         volumes:
             - ./certs:/app/certs:ro
         ports:
-            - '4000:4000'
+            - '127.0.0.1:4000:4000'
         logging: *default-logging
 
     worker:
