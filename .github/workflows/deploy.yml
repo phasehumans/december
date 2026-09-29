@@ -96,7 +96,8 @@ jobs:
                       echo "==> Pulling latest changes from main branch..."
                       cd /var/www/december
                       git sparse-checkout set --no-cone '/docker-compose.yml'
-                      git pull origin main
+                      git fetch origin main
+                      git reset --hard origin/main
 
                       echo "==> Pulling pre-built images from GHCR..."
                       sudo docker compose pull
