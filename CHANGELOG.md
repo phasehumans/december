@@ -1,8 +1,27 @@
 ## [unreleased]
 
+### Features
+
+- _(auth,docs)_ Enhance device activation flow, expand docs, and enforce repo standards
+- _(tui)_ Transition to default fullscreen mode
+- _(infra)_ Configure aws rds postgresql connection
+- _(infra)_ Mount certs volume in docker-compose for immediate ssl verification
+
+### Bug Fixes
+
+- _(tui)_ Retain status bar on slash menu, remove command footer, and disable mouse tracking
+- _(tui)_ Remove streaming below indicator on scroll
+- _(infra)_ Bind server port 4000 to localhost to restrict direct public access
+
+## [0.3.34] - 2026-09-28
+
 ### Bug Fixes
 
 - _(githubapp)_ Make userid nullable and update provider count to 150+ (#534)
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.3.34
 
 ## [0.3.33] - 2026-09-23
 

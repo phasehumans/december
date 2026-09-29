@@ -10,7 +10,7 @@ currentSlug: 'self-improving-agents'
 
 The early wave of AI code generation treated programming as a single-pass text completion problem. You provided a prompt, the model generated 200 lines of code in a single inference burst, and the developer was left to debug the hallucinations.
 
-While single-pass generation works for boilerplate snippets, it breaks down on non-trivial software engineering tasks: multi-file refactoring, asynchronous state reconciliation, and dependency migrations. 
+While single-pass generation works for boilerplate snippets, it breaks down on non-trivial software engineering tasks: multi-file refactoring, asynchronous state reconciliation, and dependency migrations.
 
 The breakthrough in agent reliability comes from shifting from **single-pass prompting** to **closed reasoning loops**, grounded by research such as the foundational _Self-Refine_ paper ([Madaan et al., arXiv:2303.17651](https://arxiv.org/abs/2303.17651)) and agentic architectures like Nous Hermes.
 
@@ -26,7 +26,7 @@ This leads to three failure modes in complex software tasks:
 
 ## The Self-Refine Framework (arXiv:2303.17651)
 
-In *Self-Refine: Iterative Refinement with Self-Feedback*, Madaan et al. demonstrated that LLMs achieve up to ~20% higher performance when structured into an iterative three-phase cycle:
+In _Self-Refine: Iterative Refinement with Self-Feedback_, Madaan et al. demonstrated that LLMs achieve up to ~20% higher performance when structured into an iterative three-phase cycle:
 
 - **Generate**: Produce an initial candidate implementation.
 - **Feedback**: Inspect the generated output against functional constraints and edge cases.
@@ -42,10 +42,10 @@ When an LLM is asked to review its own generated code in a vacuum, it frequently
 
 In production coding agents, self-refinement must be **environment-grounded**:
 
-| Feedback Mechanism | Grounding Source | Failure Mode |
-| :--- | :--- | :--- |
-| **Prompt Self-Reflection** | Pure LLM token probability | Confirmation bias, sycophancy, missed runtime errors |
-| **Compiler Feedback** | `tsc`, `rustc`, `gcc` exit codes | Syntax-only (does not verify semantic logic) |
+| Feedback Mechanism         | Grounding Source                                | Failure Mode                                              |
+| :------------------------- | :---------------------------------------------- | :-------------------------------------------------------- |
+| **Prompt Self-Reflection** | Pure LLM token probability                      | Confirmation bias, sycophancy, missed runtime errors      |
+| **Compiler Feedback**      | `tsc`, `rustc`, `gcc` exit codes                | Syntax-only (does not verify semantic logic)              |
 | **Test-Driven Refinement** | Unit test assertions, linters, MicroVM runtimes | True deterministic verification of behavioral correctness |
 
 By substituting speculative text critiques with **hard compiler diagnostics and test execution outputs**, the agent reasoning loop gains ground truth.
@@ -139,6 +139,7 @@ Modern autonomous agents structure test-time refinement into an automated closed
         <p class="mt-1.5 text-xs text-[#52525b] leading-relaxed">All tests exit with 0; immutable commit created. Ready for next user instruction.</p>
       </div>
     </div>
+
   </div>
 </div>
 
@@ -165,5 +166,6 @@ By anchoring test-time compute to verifiable compiler and test outputs, autonomo
 ---
 
 _References:_
+
 - _[Madaan et al., Self-Refine: Iterative Refinement with Self-Feedback (arXiv:2303.17651)](https://arxiv.org/abs/2303.17651)_
 - _[Nous Research, Hermes Agent Framework & Structured Function Calling](https://nousresearch.com)_
