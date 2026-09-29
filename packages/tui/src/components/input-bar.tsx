@@ -482,7 +482,7 @@ export const InputBar = React.memo(function InputBar({
 
             {/* command dropdown */}
             {showCommandMenu && (
-                <Box paddingBottom={1}>
+                <Box>
                     <CommandMenu
                         query={commandQuery}
                         selectedIndex={selectedIndex}
@@ -499,7 +499,7 @@ export const InputBar = React.memo(function InputBar({
 
             {/* shortcuts dropdown */}
             {showShortcutsMenu && (
-                <Box paddingBottom={1}>
+                <Box>
                     <ShortcutsMenu
                         onClose={() => {
                             setShowShortcutsMenu(false)
@@ -572,7 +572,7 @@ export const InputBar = React.memo(function InputBar({
                     </Box>
 
                     {/* status row - clean & minimal: <model> (<authMethod>)                  <tokens> / <max> (<pct>%) */}
-                    {!showCommandMenu && !showShortcutsMenu && showExitConfirm && (
+                    {showExitConfirm ? (
                         <Box width="100%" justifyContent="space-between">
                             <Box gap={2} alignItems="center" flexShrink={1}>
                                 <Box gap={1} flexShrink={1}>
@@ -597,9 +597,7 @@ export const InputBar = React.memo(function InputBar({
                                 </Box>
                             </Box>
                         </Box>
-                    )}
-
-                    {!showCommandMenu && !showShortcutsMenu && !showExitConfirm && (
+                    ) : (
                         <Box width="100%" justifyContent="space-between">
                             <Box gap={2} alignItems="center" flexShrink={1}>
                                 <Box gap={1} flexShrink={1}>

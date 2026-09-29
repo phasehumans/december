@@ -437,14 +437,10 @@ async function main() {
     const isFullscreen = !parsedArgs.isInline
 
     if (process.stdout.isTTY) {
-        if (isFullscreen) {
-            process.stdout.write('\x1b[?1000h\x1b[?1006h\x1b[?2004h')
-        } else {
-            process.stdout.write('\x1b[?2004h')
-        }
+        process.stdout.write('\x1b[?2004h')
         const cleanupTerminal = () => {
             try {
-                process.stdout.write('\x1b[?1000l\x1b[?1006l\x1b[?2004l')
+                process.stdout.write('\x1b[?2004l')
             } catch {
                 // Intentionally swallowed: cleanup terminal escape sequences on exit
             }

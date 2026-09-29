@@ -2,7 +2,6 @@ import { Box, Text } from 'ink'
 import React from 'react'
 
 import { THEME } from '../../theme'
-import { MenuFooter } from '../menus/menu-footer'
 
 import { getFilteredCommands } from './filter-commands'
 
@@ -76,18 +75,6 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
                     <Text color={THEME.colors.muted}>↓ {itemsBelow} more</Text>
                 </Box>
             )}
-
-            {/* footer */}
-            <Box paddingLeft={2} paddingBottom={1}>
-                <MenuFooter
-                    items={[
-                        { key: '↑/↓', label: 'Navigate' },
-                        { key: 'enter', label: 'Select' },
-                        { key: 'tab', label: 'Complete' },
-                        { key: 'esc', label: 'Cancel' },
-                    ]}
-                />
-            </Box>
         </Box>
     )
 }

@@ -246,4 +246,24 @@ describe('TextArea Component (Unit)', () => {
         stdin.write('\x1b[13;2u')
         expect(textValue).toBe('first line\n')
     })
+
+    it('ignores terminal mouse reporting escape sequences', () => {
+        let textValue = 'hello'
+        const { stdin } = render(
+            <TextArea
+                value={textValue}
+                onChange={(val) => {
+                    textValue = val
+                }}
+                onSubmit={() => {}}
+                focus={true}
+            />
+        )
+
+        // SGR mouse down and up events
+        stdin.write('[<0;24;15M')
+        stdin.write('[<0;24;15m')
+        stdin.write('\x1b[<0;24;15M')
+        expect(textValue).toBe('hello')
+    })
 })

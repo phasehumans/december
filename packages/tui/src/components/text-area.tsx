@@ -92,6 +92,11 @@ export function TextArea({
     useInput((input, key) => {
         if (!focus) return
 
+        // Ignore terminal mouse reporting escape sequences
+        if (input.startsWith('[<') || input.startsWith('\x1b[<') || input.startsWith('\x1b[M')) {
+            return
+        }
+
         const offset = Math.min(Math.max(0, cursorOffset), value.length)
 
         // Bracketed paste detection fallback (for mock stdin / testing environments)

@@ -18,7 +18,6 @@ describe('CommandMenu Integration', () => {
         )
 
         const frame = lastFrame()
-        expect(frame).toContain('Navigate')
-        expect(frame).toContain('Select')
+        expect(frame).toContain('/ask')
     })
 })
