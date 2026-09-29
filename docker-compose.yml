@@ -38,6 +38,8 @@ services:
         restart: 'no'
         env_file:
             - .env.production
+        volumes:
+            - ./certs:/app/certs:ro
         working_dir: /app/packages/database
         command: bun run db:deploy
         logging: *default-logging
@@ -57,6 +59,8 @@ services:
                 condition: service_healthy
         env_file:
             - .env.production
+        volumes:
+            - ./certs:/app/certs:ro
         ports:
             - '4000:4000'
         logging: *default-logging
@@ -76,6 +80,8 @@ services:
                 condition: service_healthy
         env_file:
             - .env.production
+        volumes:
+            - ./certs:/app/certs:ro
         logging: *default-logging
 
 volumes:
