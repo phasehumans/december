@@ -24,10 +24,10 @@ describe('ScrollViewport Component (Unit)', () => {
         expect(frame).toContain('Line 3')
     })
 
-    it('renders reading mode indicator when lines below are present', () => {
+    it('does not render streaming below indicator when lines below are present', () => {
         const { lastFrame } = render(
             <RootLayout>
-                <ScrollViewport height={3} scrollFromBottom={5} showIndicator={true}>
+                <ScrollViewport height={3} scrollFromBottom={5}>
                     <Text>Line 1</Text>
                     <Text>Line 2</Text>
                 </ScrollViewport>
@@ -35,9 +35,8 @@ describe('ScrollViewport Component (Unit)', () => {
         )
 
         const frame = lastFrame()
-        expect(frame).toContain('lines streaming below')
-        expect(frame).toContain('PageDown')
-        expect(frame).toContain('End')
+        expect(frame).not.toContain('lines streaming below')
+        expect(frame).toContain('Line 1')
     })
 
     it('navigates with mouse wheel up and down', async () => {

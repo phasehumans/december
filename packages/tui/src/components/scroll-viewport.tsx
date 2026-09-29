@@ -1,7 +1,5 @@
-import { Box, measureElement, Text, useInput } from 'ink'
+import { Box, measureElement, useInput } from 'ink'
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-
-import { THEME } from '../theme'
 
 export interface ScrollState {
     scrollFromBottom: number
@@ -107,10 +105,6 @@ export const ScrollViewport = React.memo(function ScrollViewport({
     }, [maxScrollTop, isReadingMode])
 
     const scrollTop = Math.min(internalScrollTop, maxScrollTop)
-    const linesBelow =
-        controlledScrollFromBottom !== undefined && controlledScrollFromBottom > 0
-            ? controlledScrollFromBottom
-            : Math.max(0, maxScrollTop - scrollTop)
 
     const notifyStateChange = useCallback(
         (newScrollTop: number) => {
@@ -241,42 +235,20 @@ export const ScrollViewport = React.memo(function ScrollViewport({
     )
 
     return (
-        <Box flexDirection="column" width="100%" flexGrow={1} flexShrink={1}>
-            <Box
-                ref={viewportRef}
-                height={explicitHeight}
-                flexGrow={1}
-                flexShrink={1}
-                overflowY="hidden"
-                flexDirection="column"
-                width="100%"
-            >
-                <Box flexShrink={0} marginTop={-scrollTop} flexDirection="column" width="100%">
-                    <Box ref={contentRef} flexShrink={0} flexDirection="column" width="100%">
-                        {children}
-                    </Box>
+        <Box
+            ref={viewportRef}
+            height={explicitHeight}
+            flexGrow={1}
+            flexShrink={1}
+            overflowY="hidden"
+            flexDirection="column"
+            width="100%"
+        >
+            <Box flexShrink={0} marginTop={-scrollTop} flexDirection="column" width="100%">
+                <Box ref={contentRef} flexShrink={0} flexDirection="column" width="100%">
+                    {children}
                 </Box>
             </Box>
-
-            {showIndicator && linesBelow > 0 && (
-                <Box justifyContent="center" width="100%" paddingY={0} flexShrink={0}>
-                    <Text>
-                        <Text color={THEME.colors.muted}>[</Text>
-                        <Text color={THEME.colors.warning}>
-                            ▼ {linesBelow} lines streaming below
-                        </Text>
-                        <Text color={THEME.colors.muted}> · press </Text>
-                        <Text color={THEME.colors.text} bold>
-                            PageDown
-                        </Text>
-                        <Text color={THEME.colors.muted}> / </Text>
-                        <Text color={THEME.colors.text} bold>
-                            End
-                        </Text>
-                        <Text color={THEME.colors.muted}> to jump]</Text>
-                    </Text>
-                </Box>
-            )}
         </Box>
     )
 })
