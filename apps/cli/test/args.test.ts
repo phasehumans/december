@@ -72,6 +72,11 @@ describe('parseCliArgs', () => {
         expect(parsed.cwd).toBe('/workspace')
     })
 
+    it('parses --inline flag for classic inline mode', () => {
+        expect(parseCliArgs(['--inline']).isInline).toBe(true)
+        expect(parseCliArgs([]).isInline).toBe(false)
+    })
+
     it('returns formatted help text', () => {
         const help = getHelpText('0.2.20')
         expect(help).toContain('a coding agent that lives in your terminal.')
@@ -80,6 +85,7 @@ describe('parseCliArgs', () => {
         expect(help).toContain('december ask')
         expect(help).toContain('--help')
         expect(help).toContain('--version')
+        expect(help).toContain('--inline')
         expect(help).toContain('--scope')
         expect(help).toContain('--cwd')
     })

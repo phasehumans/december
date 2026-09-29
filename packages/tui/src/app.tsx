@@ -10,6 +10,8 @@ import { GrillQuestionMenu } from './components/menus/grill-question-menu'
 import { PlanApproveMenu } from './components/menus/plan-approve-menu'
 import { ToolPermissionMenu } from './components/menus/tool-permission-menu'
 import { MessageList } from './components/message-list'
+import { ScrollViewport } from './components/scroll-viewport'
+import { useTerminalColumns, useTerminalRows } from './hooks/use-terminal-columns'
 import { extractPlanSummary } from './utils/pager'
 
 export function ChatApp({
@@ -22,6 +24,7 @@ export function ChatApp({
     onLogin,
     onUpdateSuccess,
     session,
+    isInline = false,
 }: {
     agent: Agent
     isAuthenticated: boolean
@@ -34,6 +37,7 @@ export function ChatApp({
     ) => Promise<{ token: string; email: string | null }>
     onUpdateSuccess?: () => Promise<void>
     session: any
+    isInline?: boolean
 }) {
     const [exitConfirm, setExitConfirm] = useState(false)
     const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -162,70 +166,99 @@ export function ChatApp({
         return acc
     }, 0)
 
-    return (
-        <Box flexDirection="column" width="100%">
-            <GlobalShortcuts {...session} agent={agent} />
-            <MessageList
-                staticKey={staticKey}
-                staticMessages={staticMessages}
-                activeMessages={activeMessages}
-                isAuthenticated={isAuthenticated}
-                cliVersion={cliVersion}
-                latestVersion={latestVersion}
-                userEmail={currentEmail || userEmail}
-                expandCommands={session.expandCommands}
-            />
+    const rows = useTerminalRows()
+    const columns = useTerminalColumns()
 
-            <InputBar
-                onSubmit={handleFormSubmit}
-                disabled={authMode !== 'none' || (Boolean(workflowUI) && !session.customInputMode)}
-                onCopy={() => {
-                    import('./utils/clipboard')
-                        .then((cb) => {
-                            const allMsgs = [...staticMessages, ...activeMessages]
-                            const lastAssistant = [...allMsgs]
-                                .reverse()
-                                .find((m) => m.role === 'assistant' && m.blocks)
-                            if (lastAssistant) {
-                                const text =
-                                    lastAssistant.blocks
-                                        ?.map((b: any) => b.content || '')
-                                        .join('\n') || ''
-                                cb.writeToClipboard(text)
-                            }
-                        })
-                        .catch(console.error)
-                }}
-                placeholder="Ask December to build features, fix bugs, or work on your code..."
-                activeModel={
-                    session.activeModel || agent?.modelOptions?.model || 'gemini-3.7-flash'
-                }
-                contextTokens={totalTokens}
-                authMethod={session.authMethod}
-                isAuthenticated={isAuthenticated}
-                hasBothAuth={session.hasBothAuth}
-                authUI={authUI}
-                workflowUI={workflowUI}
-                planWorkflowPhase={workflowPhase}
-                interactivePlanGoalMode={session.interactivePlanGoalMode}
-                agent={agent}
-                toasts={session.toasts}
-                resetChat={() => {
-                    console.clear()
-                    setStaticMessages([{ id: 'header-' + Date.now(), role: 'header' }])
-                    setStaticKey((k: number) => k + 1)
-                    setActiveMessages([])
-                    session.setQueuedPrompts?.([])
-                    session.addToast?.('Started a new conversation.', 'success')
-                }}
-                onUpdateSuccess={onUpdateSuccess}
-                queuedPrompts={session.queuedPrompts}
-                grillMode={grillMode}
-                planRefineMode={session.planRefineMode}
-                customInputMode={session.customInputMode || false}
-                showExitConfirm={exitConfirm}
-                tasks={session.tasks}
-            />
+    const inputBarElement = (
+        <InputBar
+            onSubmit={handleFormSubmit}
+            disabled={authMode !== 'none' || (Boolean(workflowUI) && !session.customInputMode)}
+            onCopy={() => {
+                import('./utils/clipboard')
+                    .then((cb) => {
+                        const allMsgs = [...staticMessages, ...activeMessages]
+                        const lastAssistant = [...allMsgs]
+                            .reverse()
+                            .find((m) => m.role === 'assistant' && m.blocks)
+                        if (lastAssistant) {
+                            const text =
+                                lastAssistant.blocks?.map((b: any) => b.content || '').join('\n') ||
+                                ''
+                            cb.writeToClipboard(text)
+                        }
+                    })
+                    .catch(console.error)
+            }}
+            placeholder="Ask December to build features, fix bugs, or work on your code..."
+            activeModel={session.activeModel || agent?.modelOptions?.model || 'gemini-3.7-flash'}
+            contextTokens={totalTokens}
+            authMethod={session.authMethod}
+            isAuthenticated={isAuthenticated}
+            hasBothAuth={session.hasBothAuth}
+            authUI={authUI}
+            workflowUI={workflowUI}
+            planWorkflowPhase={workflowPhase}
+            interactivePlanGoalMode={session.interactivePlanGoalMode}
+            agent={agent}
+            toasts={session.toasts}
+            resetChat={() => {
+                console.clear()
+                setStaticMessages([{ id: 'header-' + Date.now(), role: 'header' }])
+                setStaticKey((k: number) => k + 1)
+                setActiveMessages([])
+                session.setQueuedPrompts?.([])
+                session.addToast?.('Started a new conversation.', 'success')
+            }}
+            onUpdateSuccess={onUpdateSuccess}
+            queuedPrompts={session.queuedPrompts}
+            grillMode={grillMode}
+            planRefineMode={session.planRefineMode}
+            customInputMode={session.customInputMode || false}
+            showExitConfirm={exitConfirm}
+            tasks={session.tasks}
+        />
+    )
+
+    if (isInline) {
+        return (
+            <Box flexDirection="column" width="100%">
+                <GlobalShortcuts {...session} agent={agent} />
+                <MessageList
+                    staticKey={staticKey}
+                    staticMessages={staticMessages}
+                    activeMessages={activeMessages}
+                    isAuthenticated={isAuthenticated}
+                    cliVersion={cliVersion}
+                    latestVersion={latestVersion}
+                    userEmail={currentEmail || userEmail}
+                    expandCommands={session.expandCommands}
+                    fullscreen={false}
+                />
+                {inputBarElement}
+            </Box>
+        )
+    }
+
+    return (
+        <Box flexDirection="column" height={rows} width={columns} overflow="hidden">
+            <GlobalShortcuts {...session} agent={agent} />
+            <ScrollViewport isGenerating={session.isStreaming} isActive={authMode === 'none'}>
+                <MessageList
+                    staticKey={staticKey}
+                    staticMessages={staticMessages}
+                    activeMessages={activeMessages}
+                    isAuthenticated={isAuthenticated}
+                    cliVersion={cliVersion}
+                    latestVersion={latestVersion}
+                    userEmail={currentEmail || userEmail}
+                    expandCommands={session.expandCommands}
+                    fullscreen={true}
+                />
+            </ScrollViewport>
+
+            <Box flexDirection="column" flexShrink={0} width="100%">
+                {inputBarElement}
+            </Box>
         </Box>
     )
 }

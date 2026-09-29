@@ -12,6 +12,7 @@ export interface ParsedCliArgs {
     isGlobal: boolean
     isLocal: boolean
     resume: boolean
+    isInline: boolean
     model?: string
     provider?: string
     sessionId?: string
@@ -34,6 +35,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 global: { type: 'boolean', short: 'g' },
                 local: { type: 'boolean', short: 'l' },
                 resume: { type: 'boolean', short: 'r' },
+                inline: { type: 'boolean' },
                 model: { type: 'string', short: 'm' },
                 provider: { type: 'string', short: 'p' },
                 'session-id': { type: 'string' },
@@ -53,6 +55,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const isGlobal = Boolean(values.global)
         const isLocal = Boolean(values.local)
         const isResume = Boolean(values.resume)
+        const isInline = Boolean(values.inline)
         const model = values.model as string | undefined
         const provider = values.provider as string | undefined
         const sessionId = values['session-id'] as string | undefined
@@ -96,6 +99,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             isGlobal,
             isLocal,
             resume: isResume || command === 'resume',
+            isInline,
             model,
             provider,
             sessionId,
@@ -115,6 +119,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             isGlobal: false,
             isLocal: false,
             resume: false,
+            isInline: false,
             positionals: [],
         }
     }
@@ -144,6 +149,7 @@ Options:
   -v, --version                     Show CLI version and exit
   -r, --resume                      Resume the most recent session
   -y, --yes                         Auto-approve tool permissions (non-interactive mode)
+  --inline                          Run in classic inline mode (standard terminal scrollback)
   --json                            Output structured JSON events
   --fix                             Automatically fix detected PATH collisions and stale links
   -m, --model <model>               Override target LLM model

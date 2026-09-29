@@ -434,24 +434,30 @@ async function main() {
 
     const userEmail = config.decemberToken ? config.email : undefined
 
+    const isFullscreen = !parsedArgs.isInline
+
     if (process.stdout.isTTY) {
-        process.stdout.write('\x1b[?2004h')
-        const cleanupBracketedPaste = () => {
+        if (isFullscreen) {
+            process.stdout.write('\x1b[?1000h\x1b[?1006h\x1b[?2004h')
+        } else {
+            process.stdout.write('\x1b[?2004h')
+        }
+        const cleanupTerminal = () => {
             try {
-                process.stdout.write('\x1b[?2004l')
+                process.stdout.write('\x1b[?1000l\x1b[?1006l\x1b[?2004l')
             } catch {
-                // Intentionally swallowed: cleanup bracketed paste on terminal exit
+                // Intentionally swallowed: cleanup terminal escape sequences on exit
             }
         }
-        process.on('exit', cleanupBracketedPaste)
-        process.on('SIGINT', cleanupBracketedPaste)
-        process.on('SIGTERM', cleanupBracketedPaste)
+        process.on('exit', cleanupTerminal)
+        process.on('SIGINT', cleanupTerminal)
+        process.on('SIGTERM', cleanupTerminal)
     }
 
     render(
         React.createElement(
             RootLayout,
-            null,
+            { fullscreen: isFullscreen },
             React.createElement(AppWrapper, {
                 agent,
                 isAuthenticated,
@@ -461,13 +467,17 @@ async function main() {
                 cliVersion: pkg.version,
                 userEmail,
                 sessionRepository,
+                isInline: parsedArgs.isInline,
                 onLogin: (onCode: (code: string, uri: string) => void) =>
                     import('./auth').then(({ loginViaDeviceCode }) =>
                         loginViaDeviceCode(undefined, onCode)
                     ),
             })
         ),
-        { exitOnCtrlC: false }
+        {
+            alternateScreen: isFullscreen,
+            exitOnCtrlC: false,
+        }
     )
 }
 

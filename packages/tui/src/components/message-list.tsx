@@ -62,6 +62,7 @@ export const MessageList = React.memo(function MessageList({
     latestVersion,
     userEmail,
     expandCommands,
+    fullscreen = true,
 }: {
     staticKey: number
     staticMessages: Message[]
@@ -71,7 +72,27 @@ export const MessageList = React.memo(function MessageList({
     latestVersion?: string
     userEmail?: string
     expandCommands?: boolean
+    fullscreen?: boolean
 }) {
+    if (fullscreen) {
+        const allMessages = [...staticMessages, ...activeMessages]
+        return (
+            <Box flexDirection="column" width="100%">
+                {allMessages.map((msg, index) =>
+                    renderSingleMessage(
+                        msg,
+                        index,
+                        allMessages,
+                        cliVersion,
+                        latestVersion,
+                        userEmail,
+                        expandCommands
+                    )
+                )}
+            </Box>
+        )
+    }
+
     return (
         <Box flexDirection="column" width="100%">
             {staticMessages.length > 0 && (

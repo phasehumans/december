@@ -1,4 +1,5 @@
 export * from './components/input-bar'
+export * from './components/scroll-viewport'
 export * from './hooks/use-terminal-columns'
 export * from './providers/toast'
 export * from './components/messages/bot-message'

@@ -477,6 +477,38 @@ export const InputBar = React.memo(function InputBar({
                 </Box>
             )}
 
+            {/* auth ui & workflow ui */}
+            {(workflowUI || authUI) && <Box paddingBottom={1}>{workflowUI || authUI}</Box>}
+
+            {/* command dropdown */}
+            {showCommandMenu && (
+                <Box paddingBottom={1}>
+                    <CommandMenu
+                        query={commandQuery}
+                        selectedIndex={selectedIndex}
+                        windowStart={windowStart}
+                        totalFiltered={0}
+                        onSelect={setSelectedIndex}
+                        onExecute={(index) => {
+                            const command = resolveCommand(index)
+                            handleCommand(command)
+                        }}
+                    />
+                </Box>
+            )}
+
+            {/* shortcuts dropdown */}
+            {showShortcutsMenu && (
+                <Box paddingBottom={1}>
+                    <ShortcutsMenu
+                        onClose={() => {
+                            setShowShortcutsMenu(false)
+                            setValue('')
+                        }}
+                    />
+                </Box>
+            )}
+
             {!isOverlayActive && (
                 <>
                     {/* top separator */}
@@ -611,34 +643,6 @@ export const InputBar = React.memo(function InputBar({
                         </Box>
                     )}
                 </>
-            )}
-
-            {/* auth ui & workflow ui */}
-            {(workflowUI || authUI) && <Box paddingBottom={1}>{workflowUI || authUI}</Box>}
-
-            {/* command dropdown */}
-            {showCommandMenu && (
-                <CommandMenu
-                    query={commandQuery}
-                    selectedIndex={selectedIndex}
-                    windowStart={windowStart}
-                    totalFiltered={0}
-                    onSelect={setSelectedIndex}
-                    onExecute={(index) => {
-                        const command = resolveCommand(index)
-                        handleCommand(command)
-                    }}
-                />
-            )}
-
-            {/* shortcuts dropdown */}
-            {showShortcutsMenu && (
-                <ShortcutsMenu
-                    onClose={() => {
-                        setShowShortcutsMenu(false)
-                        setValue('')
-                    }}
-                />
             )}
         </Box>
     )

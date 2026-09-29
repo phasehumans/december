@@ -6,8 +6,9 @@ import { ToastProvider } from '../providers/toast'
 import type { ReactNode } from 'react'
 
 type Props = {
-    children: ReactNode
+    children?: ReactNode
     onToast?: (options: any) => void
+    fullscreen?: boolean
 }
 
 export function RootLayout({ children, onToast }: Props) {

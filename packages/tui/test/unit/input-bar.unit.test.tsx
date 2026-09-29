@@ -320,13 +320,21 @@ describe('InputBar Component (Unit)', () => {
         expect(frame).toContain('24k / 200k (12%)')
     })
 
-    it('renders 0% context usage by default when no tokens consumed', () => {
-        const { lastFrame } = render(
+    it('renders command menu above prompt separator in drop-up placement', async () => {
+        const { stdin, lastFrame } = render(
             <RootLayout>
-                <InputBar onSubmit={mock(() => {})} activeModel="gemini-3.7-flash" />
+                <InputBar onSubmit={mock(() => {})} />
             </RootLayout>
         )
+
+        stdin.write('/')
+        await new Promise((resolve) => setTimeout(resolve, 30))
         const frame = lastFrame() || ''
-        expect(frame).toContain('0 / 1M (0%)')
+        expect(frame).toContain('❭ /ask')
+        expect(frame).toContain('❭ /')
+        const cmdIndex = frame.indexOf('❭ /ask')
+        const promptIndex = frame.lastIndexOf('❭ /')
+        // Command menu must appear above the prompt text
+        expect(cmdIndex).toBeLessThan(promptIndex)
     })
 })
