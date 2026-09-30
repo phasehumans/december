@@ -60,8 +60,32 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'minimax-m2.1': { name: 'minimax-m2.1', inputRate: 0.3, outputRate: 1.2 },
     'minimax-m2.1-highspeed': { name: 'minimax-m2.1-highspeed', inputRate: 0.6, outputRate: 2.4 },
     'minimax-m2': { name: 'minimax-m2', inputRate: 0.3, outputRate: 1.2 },
-    'minimax-text-01': { name: 'minimax-text-01', inputRate: 0.15, outputRate: 1.2 },
-    'minimax-vl-01': { name: 'minimax-vl-01', inputRate: 0.15, outputRate: 1.2 },
+    // Groq / Meta Llama
+    'llama-3.3-70b-versatile': {
+        name: 'llama-3.3-70b-versatile',
+        inputRate: 0.59,
+        outputRate: 0.79,
+    },
+    'llama-3.1-8b-instant': {
+        name: 'llama-3.1-8b-instant',
+        inputRate: 0.05,
+        outputRate: 0.08,
+    },
+    'llama-3.2-1b-preview': {
+        name: 'llama-3.2-1b-preview',
+        inputRate: 0.04,
+        outputRate: 0.04,
+    },
+    'llama-3.2-3b-preview': {
+        name: 'llama-3.2-3b-preview',
+        inputRate: 0.06,
+        outputRate: 0.06,
+    },
+    'mixtral-8x7b-32768': {
+        name: 'mixtral-8x7b-32768',
+        inputRate: 0.24,
+        outputRate: 0.24,
+    },
 }
 
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000 // 12 hours
@@ -146,6 +170,20 @@ export function resolveModelRate(modelName: string): ModelRate {
     }
     if (OFFICIAL_MODEL_RATES[stripped]) {
         return OFFICIAL_MODEL_RATES[stripped]
+    }
+
+    // 3. Local or free models (zero token cost)
+    if (
+        normalized.startsWith('local') ||
+        normalized.startsWith('ollama') ||
+        normalized.includes('local/') ||
+        normalized.endsWith(':free')
+    ) {
+        return {
+            name: modelName,
+            inputRate: 0,
+            outputRate: 0,
+        }
     }
 
     // 4. Default fallback rates ($2.00 / $8.00 per 1M tokens or custom fallback env)

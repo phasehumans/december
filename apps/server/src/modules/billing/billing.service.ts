@@ -45,7 +45,9 @@ const getOverview = async (data: GetOverview) => {
         typeof billingRepository.findGiftedCreditsSum === 'function'
             ? await billingRepository.findGiftedCreditsSum(userId)
             : claims.reduce((sum: number, claim: any) => sum + claim.amountInCents, 0)
-    const USD_TO_INR_RATE = env.USD_TO_INR_RATE ?? 95.26
+    const USD_TO_INR_RATE = process.env.USD_TO_INR_RATE
+        ? Number(process.env.USD_TO_INR_RATE)
+        : (env.USD_TO_INR_RATE ?? 95.26)
 
     return {
         creditBalance: user.creditBalance,
@@ -75,7 +77,9 @@ const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
 
     // razorpay requires inr to enable upi and domestic payment options.
     // convert usd cents to inr paise using configurable USD_TO_INR_RATE.
-    const USD_TO_INR_RATE = env.USD_TO_INR_RATE ?? 95.26
+    const USD_TO_INR_RATE = process.env.USD_TO_INR_RATE
+        ? Number(process.env.USD_TO_INR_RATE)
+        : (env.USD_TO_INR_RATE ?? 95.26)
     const amountInPaise = Math.round(amountInCents * USD_TO_INR_RATE)
     const keyId = getRazorpayKeyId()
 
@@ -116,6 +120,10 @@ const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
         currency: 'USD',
         provider: 'RAZORPAY',
         providerOrderId: order.id,
+        metadata: {
+            amountInPaise,
+            usdToInrRate: USD_TO_INR_RATE,
+        },
     })
 
     return {

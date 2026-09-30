@@ -60,10 +60,62 @@ describe('Usage Rates & Cost Calculation - Unit Tests', () => {
             expect(r1Rate.outputRate).toBe(2.19)
         })
 
+        it('resolves official rates for groq models', () => {
+            const llama70bRate = resolveModelRate('llama-3.3-70b-versatile')
+            expect(llama70bRate.inputRate).toBe(0.59)
+            expect(llama70bRate.outputRate).toBe(0.79)
+
+            const llama8bRate = resolveModelRate('groq/llama-3.1-8b-instant')
+            expect(llama8bRate.inputRate).toBe(0.05)
+            expect(llama8bRate.outputRate).toBe(0.08)
+
+            const mixtralRate = resolveModelRate('mixtral-8x7b-32768')
+            expect(mixtralRate.inputRate).toBe(0.24)
+            expect(mixtralRate.outputRate).toBe(0.24)
+        })
+
+        it('resolves zero cost for local and free models', () => {
+            const ollamaRate = resolveModelRate('ollama/qwen2.5')
+            expect(ollamaRate.inputRate).toBe(0)
+            expect(ollamaRate.outputRate).toBe(0)
+
+            const localRate = resolveModelRate('local/llama3')
+            expect(localRate.inputRate).toBe(0)
+            expect(localRate.outputRate).toBe(0)
+
+            const freeRate = resolveModelRate('openai/gpt-oss-20b:free')
+            expect(freeRate.inputRate).toBe(0)
+            expect(freeRate.outputRate).toBe(0)
+        })
+
         it('falls back to default rates for unknown models', () => {
             const fallback = resolveModelRate('unknown-custom-model')
             expect(fallback.inputRate).toBe(2.0)
             expect(fallback.outputRate).toBe(8.0)
+        })
+
+        it('respects custom fallback rate environment variables', () => {
+            const originalInput = process.env.FALLBACK_MODEL_INPUT_RATE
+            const originalOutput = process.env.FALLBACK_MODEL_OUTPUT_RATE
+            process.env.FALLBACK_MODEL_INPUT_RATE = '1.50'
+            process.env.FALLBACK_MODEL_OUTPUT_RATE = '6.00'
+
+            try {
+                const fallback = resolveModelRate('another-custom-model')
+                expect(fallback.inputRate).toBe(1.5)
+                expect(fallback.outputRate).toBe(6.0)
+            } finally {
+                if (originalInput !== undefined) {
+                    process.env.FALLBACK_MODEL_INPUT_RATE = originalInput
+                } else {
+                    delete process.env.FALLBACK_MODEL_INPUT_RATE
+                }
+                if (originalOutput !== undefined) {
+                    process.env.FALLBACK_MODEL_OUTPUT_RATE = originalOutput
+                } else {
+                    delete process.env.FALLBACK_MODEL_OUTPUT_RATE
+                }
+            }
         })
     })
 
@@ -138,6 +190,92 @@ describe('Usage Rates & Cost Calculation - Unit Tests', () => {
                 outputTokens: 0,
             })
             expect(cost).toBe(0.001)
+        })
+
+        it('resolves auto model via DEFAULT_MODEL env variable', () => {
+            const originalDefault = process.env.DEFAULT_MODEL
+            process.env.DEFAULT_MODEL = 'claude-3-5-haiku'
+
+            try {
+                // claude-3-5-haiku: 0.8 input, 4.0 output per 1M tokens
+                const cost = usageService.calculateGenerationCost({
+                    modelName: 'auto',
+                    inputTokens: 10000,
+                    outputTokens: 10000,
+                })
+                // 10000 * 0.8/10000 + 10000 * 4.0/10000 = 0.8 + 4.0 = 4.8 cents
+                expect(cost).toBe(4.8)
+            } finally {
+                if (originalDefault !== undefined) {
+                    process.env.DEFAULT_MODEL = originalDefault
+                } else {
+                    delete process.env.DEFAULT_MODEL
+                }
+            }
+        })
+
+        it('resolves auto model via AUTO_MODEL env variable if DEFAULT_MODEL is unset', () => {
+            const originalDefault = process.env.DEFAULT_MODEL
+            const originalAuto = process.env.AUTO_MODEL
+            delete process.env.DEFAULT_MODEL
+            process.env.AUTO_MODEL = 'gemini-3.6-flash'
+
+            try {
+                const cost = usageService.calculateGenerationCost({
+                    modelName: 'auto',
+                    inputTokens: 10000,
+                    outputTokens: 10000,
+                })
+                // 10000 * 0.1/10000 + 10000 * 0.4/10000 = 0.1 + 0.4 = 0.5 cents
+                expect(cost).toBe(0.5)
+            } finally {
+                if (originalDefault !== undefined) process.env.DEFAULT_MODEL = originalDefault
+                if (originalAuto !== undefined) {
+                    process.env.AUTO_MODEL = originalAuto
+                } else {
+                    delete process.env.AUTO_MODEL
+                }
+            }
+        })
+
+        it('defaults auto model to free model when neither env var is configured', () => {
+            const originalDefault = process.env.DEFAULT_MODEL
+            const originalAuto = process.env.AUTO_MODEL
+            delete process.env.DEFAULT_MODEL
+            delete process.env.AUTO_MODEL
+
+            try {
+                const cost = usageService.calculateGenerationCost({
+                    modelName: 'auto',
+                    inputTokens: 10000,
+                    outputTokens: 10000,
+                })
+                // defaults to openai/gpt-oss-20b:free which has 0 cost
+                expect(cost).toBe(0)
+            } finally {
+                if (originalDefault !== undefined) process.env.DEFAULT_MODEL = originalDefault
+                if (originalAuto !== undefined) process.env.AUTO_MODEL = originalAuto
+            }
+        })
+
+        it('returns 0 cost for local models regardless of token volume', () => {
+            const cost = usageService.calculateGenerationCost({
+                modelName: 'ollama/llama3.3',
+                inputTokens: 50000,
+                outputTokens: 25000,
+            })
+            expect(cost).toBe(0)
+        })
+
+        it('calculates cost accurately for groq model family', () => {
+            // llama-3.1-8b-instant: 0.05 input / 0.08 output per 1M tokens
+            const cost = usageService.calculateGenerationCost({
+                modelName: 'llama-3.1-8b-instant',
+                inputTokens: 100000,
+                outputTokens: 50000,
+            })
+            // 100000 * 0.05/10000 + 50000 * 0.08/10000 = 0.5 + 0.4 = 0.9 cents
+            expect(cost).toBe(0.9)
         })
     })
 })

@@ -10,8 +10,11 @@ import { razorpay } from '../../src/config/razorpay'
 describe('Billing Integration Tests', () => {
     let testUserId: string
     let testEmail: string
+    let testUserBId: string
+    let testEmailB: string
     const testPassword = 'Password123!'
     let accessToken: string
+    let accessTokenB: string
     const razorpaySecret = 'test_razorpay_secret_key_123'
 
     beforeAll(async () => {
@@ -19,6 +22,7 @@ describe('Billing Integration Tests', () => {
         process.env.RAZORPAY_KEY_SECRET = razorpaySecret
 
         testEmail = `billingtest-${Date.now()}@example.com`
+        testEmailB = `billingtest-b-${Date.now()}@example.com`
 
         const bcrypt = await import('bcrypt')
         const { env } = await import('../../src/env')
@@ -36,6 +40,18 @@ describe('Billing Integration Tests', () => {
         })
         testUserId = user.id
 
+        const userB = await prisma.user.create({
+            data: {
+                name: 'Billing Test User B',
+                username: `billinguser_b_${Date.now()}`,
+                email: testEmailB,
+                password: hashedPassword,
+                emailVerified: true,
+                creditBalance: 500, // $5 initial balance
+            },
+        })
+        testUserBId = userB.id
+
         const { generateAccessToken } = await import('../../src/modules/auth/auth.utils')
         const session = await prisma.authSession.create({
             data: {
@@ -44,21 +60,40 @@ describe('Billing Integration Tests', () => {
                 expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             },
         })
-
         accessToken = generateAccessToken({ userId: testUserId, sessionId: session.id })
+
+        const sessionB = await prisma.authSession.create({
+            data: {
+                userId: testUserBId,
+                refreshTokenHash: 'test-hash-b-' + Date.now(),
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
+        })
+        accessTokenB = generateAccessToken({ userId: testUserBId, sessionId: sessionB.id })
     })
 
     afterAll(async () => {
-        if (testUserId) {
-            await prisma.redeemCodeClaim
-                .deleteMany({ where: { userId: testUserId } })
-                .catch(() => {})
-            await prisma.walletTransaction
-                .deleteMany({ where: { userId: testUserId } })
-                .catch(() => {})
-            await prisma.usageEvent.deleteMany({ where: { userId: testUserId } }).catch(() => {})
-            await prisma.authSession.deleteMany({ where: { userId: testUserId } }).catch(() => {})
-            await prisma.user.delete({ where: { id: testUserId } }).catch(() => {})
+        for (const uid of [testUserId, testUserBId]) {
+            if (uid) {
+                await prisma.notification.deleteMany({ where: { userId: uid } }).catch(() => {
+                    // Intentionally swallowed: test cleanup fallback
+                })
+                await prisma.redeemCodeClaim.deleteMany({ where: { userId: uid } }).catch(() => {
+                    // Intentionally swallowed: test cleanup fallback
+                })
+                await prisma.walletTransaction.deleteMany({ where: { userId: uid } }).catch(() => {
+                    // Intentionally swallowed: test cleanup fallback
+                })
+                await prisma.usageEvent.deleteMany({ where: { userId: uid } }).catch(() => {
+                    // Intentionally swallowed: test cleanup fallback
+                })
+                await prisma.authSession.deleteMany({ where: { userId: uid } }).catch(() => {
+                    // Intentionally swallowed: test cleanup fallback
+                })
+                await prisma.user.delete({ where: { id: uid } }).catch(() => {
+                    // Intentionally swallowed: test cleanup fallback
+                })
+            }
         }
     })
 
@@ -88,9 +123,68 @@ describe('Billing Integration Tests', () => {
         expect(res.status).toBe(400)
     })
 
+    it('POST /api/v1/billing/wallet/order/razorpay - rejects amount above maximum ($50.00 / 5000 cents)', async () => {
+        const res = await request(app)
+            .post('/api/v1/billing/wallet/order/razorpay')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ amountInCents: 5001 })
+
+        expect(res.status).toBe(400)
+    })
+
+    it('POST /api/v1/billing/wallet/order/razorpay - rejects non-integer amount', async () => {
+        const res = await request(app)
+            .post('/api/v1/billing/wallet/order/razorpay')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ amountInCents: 150.5 })
+
+        expect(res.status).toBe(400)
+    })
+
+    it('POST /api/v1/billing/wallet/order/razorpay - handles payment gateway 401 authentication error mapped to HTTP 502', async () => {
+        const originalOrdersCreate = razorpay.orders.create
+        razorpay.orders.create = (async () => {
+            const err: any = new Error('Unauthorized')
+            err.statusCode = 401
+            err.error = { description: 'Authentication failed' }
+            throw err
+        }) as any
+
+        try {
+            const res = await request(app)
+                .post('/api/v1/billing/wallet/order/razorpay')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({ amountInCents: 1000 })
+
+            expect(res.status).toBe(502)
+            expect(res.body.message).toContain('Payment gateway authentication failed')
+        } finally {
+            razorpay.orders.create = originalOrdersCreate
+        }
+    })
+
+    it('POST /api/v1/billing/wallet/order/razorpay - handles payment gateway timeout error mapped to HTTP 502', async () => {
+        const originalOrdersCreate = razorpay.orders.create
+        razorpay.orders.create = (async () => {
+            throw new Error('Gateway connection timeout')
+        }) as any
+
+        try {
+            const res = await request(app)
+                .post('/api/v1/billing/wallet/order/razorpay')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({ amountInCents: 1000 })
+
+            expect(res.status).toBe(502)
+            expect(res.body.message).toContain('Failed to create payment order')
+        } finally {
+            razorpay.orders.create = originalOrdersCreate
+        }
+    })
+
     let createdOrderId = ''
 
-    it('POST /api/v1/billing/wallet/order/razorpay - creates Razorpay order and pending wallet transaction', async () => {
+    it('POST /api/v1/billing/wallet/order/razorpay - creates Razorpay order and pending wallet transaction with provider metadata', async () => {
         createdOrderId = `order_${Date.now()}`
         spyOn(razorpay.orders, 'create').mockImplementation((async () => ({
             id: createdOrderId,
@@ -114,6 +208,52 @@ describe('Billing Integration Tests', () => {
         expect(dbTx).not.toBeNull()
         expect(dbTx?.status).toBe('PENDING')
         expect(dbTx?.amountInCents).toBe(2000)
+        expect(dbTx?.currency).toBe('USD')
+        expect(dbTx?.provider).toBe('RAZORPAY')
+        expect((dbTx?.metadata as any)?.amountInPaise).toBe(190520)
+    })
+
+    it('POST /api/v1/billing/wallet/order/razorpay - respects USD_TO_INR_RATE environment variable override', async () => {
+        const customOrderId = `order_rate_override_${Date.now()}`
+        const originalEnvRate = process.env.USD_TO_INR_RATE
+        process.env.USD_TO_INR_RATE = '100.0'
+
+        let passedAmountInPaise = 0
+        const originalOrdersCreate = razorpay.orders.create
+        razorpay.orders.create = (async (data: any) => {
+            passedAmountInPaise = data.amount
+            return {
+                id: customOrderId,
+                amount: data.amount,
+                currency: 'INR',
+            }
+        }) as any
+
+        try {
+            const res = await request(app)
+                .post('/api/v1/billing/wallet/order/razorpay')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({ amountInCents: 1500 }) // $15 USD
+
+            expect(res.status).toBe(201)
+            expect(res.body.data.usdToInrRate).toBe(100.0)
+            expect(res.body.data.amount).toBe(150000)
+            expect(passedAmountInPaise).toBe(150000)
+
+            const dbTx = await prisma.walletTransaction.findFirst({
+                where: { providerOrderId: customOrderId },
+            })
+            expect(dbTx).not.toBeNull()
+            expect(dbTx?.amountInCents).toBe(1500)
+            expect((dbTx?.metadata as any)?.usdToInrRate).toBe(100.0)
+        } finally {
+            razorpay.orders.create = originalOrdersCreate
+            if (originalEnvRate !== undefined) {
+                process.env.USD_TO_INR_RATE = originalEnvRate
+            } else {
+                delete process.env.USD_TO_INR_RATE
+            }
+        }
     })
 
     it('POST /api/v1/billing/wallet/verify/razorpay - rejects invalid signature', async () => {
@@ -129,7 +269,49 @@ describe('Billing Integration Tests', () => {
         expect(res.status).toBe(400)
     })
 
-    it('POST /api/v1/billing/wallet/verify/razorpay - verifies payment, updates status & credit balance', async () => {
+    it('POST /api/v1/billing/wallet/verify/razorpay - rejects non-existent order lookup with 404', async () => {
+        const fakeOrderId = 'order_non_existent_999'
+        const fakePaymentId = 'pay_fake_999'
+        const signature = crypto
+            .createHmac('sha256', razorpaySecret)
+            .update(`${fakeOrderId}|${fakePaymentId}`)
+            .digest('hex')
+
+        const res = await request(app)
+            .post('/api/v1/billing/wallet/verify/razorpay')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({
+                razorpay_order_id: fakeOrderId,
+                razorpay_payment_id: fakePaymentId,
+                razorpay_signature: signature,
+            })
+
+        expect(res.status).toBe(404)
+        expect(res.body.message).toBe('transaction order not found')
+    })
+
+    it('POST /api/v1/billing/wallet/verify/razorpay - rejects cross-user authorization attempt with 403', async () => {
+        const paymentId = `pay_cross_${Date.now()}`
+        const signature = crypto
+            .createHmac('sha256', razorpaySecret)
+            .update(`${createdOrderId}|${paymentId}`)
+            .digest('hex')
+
+        // User B attempts to verify User A's order
+        const res = await request(app)
+            .post('/api/v1/billing/wallet/verify/razorpay')
+            .set('Authorization', `Bearer ${accessTokenB}`)
+            .send({
+                razorpay_order_id: createdOrderId,
+                razorpay_payment_id: paymentId,
+                razorpay_signature: signature,
+            })
+
+        expect(res.status).toBe(403)
+        expect(res.body.message).toBe('unauthorized to verify this transaction')
+    })
+
+    it('POST /api/v1/billing/wallet/verify/razorpay - verifies payment, updates status & credit balance, and creates notification', async () => {
         const paymentId = `pay_${Date.now()}`
         const signature = crypto
             .createHmac('sha256', razorpaySecret)
@@ -153,9 +335,20 @@ describe('Billing Integration Tests', () => {
             where: { providerOrderId: createdOrderId },
         })
         expect(dbTx?.status).toBe('SUCCESS')
+
+        const notif = await prisma.notification.findFirst({
+            where: { userId: testUserId, title: 'Credits Added' },
+        })
+        expect(notif).not.toBeNull()
+        expect(notif?.message).toContain('$20.00')
     })
 
-    it('POST /api/v1/billing/wallet/verify/razorpay - is idempotent on already verified order', async () => {
+    it('POST /api/v1/billing/wallet/verify/razorpay - is idempotent on already verified order without double-crediting balance', async () => {
+        const userBefore = await prisma.user.findUnique({
+            where: { id: testUserId },
+            select: { creditBalance: true },
+        })
+
         const paymentId = `pay_dup_${Date.now()}`
         const signature = crypto
             .createHmac('sha256', razorpaySecret)
@@ -174,6 +367,12 @@ describe('Billing Integration Tests', () => {
         expect(res.status).toBe(200)
         expect(res.body.data.success).toBe(true)
         expect(res.body.data.alreadyProcessed).toBe(true)
+
+        const userAfter = await prisma.user.findUnique({
+            where: { id: testUserId },
+            select: { creditBalance: true },
+        })
+        expect(userAfter?.creditBalance).toBe(userBefore?.creditBalance)
     })
 
     it('POST /api/v1/billing/wallet/verify/razorpay - recovers and fulfills order previously marked FAILED by failed attempt', async () => {
@@ -301,6 +500,100 @@ describe('Billing Integration Tests', () => {
         await prisma.redeemCode.delete({ where: { id: redeemCode.id } })
     })
 
+    it('POST /api/v1/billing/redeem-code - case-insensitively redeems code', async () => {
+        const rawCode = `PROMO${Date.now()}`
+        const codeHash = crypto.createHash('sha256').update(rawCode.toUpperCase()).digest('hex')
+
+        const redeemCode = await prisma.redeemCode.create({
+            data: {
+                codeHash,
+                creditAmount: 800,
+                maxRedemptions: 5,
+            },
+        })
+
+        // Send with lowercase code
+        const res = await request(app)
+            .post('/api/v1/billing/redeem-code')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ code: rawCode.toLowerCase() })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.creditAmount).toBe(800)
+
+        // Cleanup
+        await prisma.redeemCodeClaim.deleteMany({ where: { redeemCodeId: redeemCode.id } })
+        await prisma.redeemCode.delete({ where: { id: redeemCode.id } })
+    })
+
+    it('POST /api/v1/billing/redeem-code - rejects expired codes with 400', async () => {
+        const rawCode = `EXPIRED-${Date.now()}`
+        const codeHash = crypto.createHash('sha256').update(rawCode.toUpperCase()).digest('hex')
+
+        const redeemCode = await prisma.redeemCode.create({
+            data: {
+                codeHash,
+                creditAmount: 1000,
+                expiresAt: new Date(Date.now() - 3600 * 1000), // expired 1 hour ago
+            },
+        })
+
+        const res = await request(app)
+            .post('/api/v1/billing/redeem-code')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ code: rawCode })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toBe('this redeem code has expired')
+
+        // Cleanup
+        await prisma.redeemCode.delete({ where: { id: redeemCode.id } })
+    })
+
+    it('POST /api/v1/billing/redeem-code - rejects code that reached max redemptions with 400', async () => {
+        const rawCode = `MAXED-${Date.now()}`
+        const codeHash = crypto.createHash('sha256').update(rawCode.toUpperCase()).digest('hex')
+
+        const redeemCode = await prisma.redeemCode.create({
+            data: {
+                codeHash,
+                creditAmount: 1000,
+                maxRedemptions: 1,
+                redemptionCount: 1, // already at max
+            },
+        })
+
+        const res = await request(app)
+            .post('/api/v1/billing/redeem-code')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ code: rawCode })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toBe('this redeem code has reached its maximum redemptions')
+
+        // Cleanup
+        await prisma.redeemCode.delete({ where: { id: redeemCode.id } })
+    })
+
+    it('POST /api/v1/billing/redeem-code - rejects non-existent code with 404', async () => {
+        const res = await request(app)
+            .post('/api/v1/billing/redeem-code')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ code: 'COMPLETELY_INVALID_CODE_999' })
+
+        expect(res.status).toBe(404)
+        expect(res.body.message).toBe('invalid or expired redeem code')
+    })
+
+    it('POST /api/v1/billing/redeem-code - rejects empty or whitespace code with 400', async () => {
+        const res = await request(app)
+            .post('/api/v1/billing/redeem-code')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ code: '   ' })
+
+        expect(res.status).toBe(400)
+    })
+
     it('POST /api/v1/billing/webhook/razorpay - rejects missing or invalid signature', async () => {
         process.env.RAZORPAY_WEBHOOK_SECRET = 'test_webhook_secret_key'
 
@@ -368,5 +661,56 @@ describe('Billing Integration Tests', () => {
 
         expect(resDup.status).toBe(200)
         expect(resDup.body.data.status).toBe('already_processed')
+    })
+
+    it('POST /api/v1/billing/webhook/razorpay - gracefully handles payment.failed event', async () => {
+        const webhookSecret = 'test_webhook_secret_key'
+        process.env.RAZORPAY_WEBHOOK_SECRET = webhookSecret
+
+        const webhookFailOrderId = `order_wh_fail_${Date.now()}`
+        const webhookFailPaymentId = `pay_wh_fail_${Date.now()}`
+
+        // Create pending transaction
+        await prisma.walletTransaction.create({
+            data: {
+                userId: testUserId,
+                amountInCents: 1500,
+                currency: 'USD',
+                provider: 'RAZORPAY',
+                providerOrderId: webhookFailOrderId,
+                status: 'PENDING',
+            },
+        })
+
+        const payload = {
+            event: 'payment.failed',
+            payload: {
+                payment: {
+                    entity: {
+                        id: webhookFailPaymentId,
+                        order_id: webhookFailOrderId,
+                        error_description: 'Payment was declined by issuing bank',
+                    },
+                },
+            },
+        }
+
+        const rawBody = JSON.stringify(payload)
+        const signature = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex')
+
+        const res = await request(app)
+            .post('/api/v1/billing/webhook/razorpay')
+            .set('x-razorpay-signature', signature)
+            .send(payload)
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.status).toBe('failed_recorded')
+
+        const dbTx = await prisma.walletTransaction.findFirst({
+            where: { providerOrderId: webhookFailOrderId },
+        })
+        expect(dbTx?.status).toBe('FAILED')
+        expect(dbTx?.providerPaymentId).toBe(webhookFailPaymentId)
+        expect((dbTx?.metadata as any)?.error).toBe('Payment was declined by issuing bank')
     })
 })

@@ -124,6 +124,95 @@ describe('Billing Service - Unit Tests', () => {
                 billingRepository.createWalletTransaction = originalCreateTx
             }
         })
+
+        it('should handle USD_TO_INR_RATE override via process.env', async () => {
+            process.env.RAZORPAY_KEY_ID = 'rzp_test_key_123'
+            const originalEnvRate = process.env.USD_TO_INR_RATE
+            process.env.USD_TO_INR_RATE = '100.0'
+
+            const originalOrdersCreate = razorpay.orders.create
+            const originalCreateTx = billingRepository.createWalletTransaction
+
+            let createdAmount = 0
+            razorpay.orders.create = (async (data: any) => {
+                createdAmount = data.amount
+                return {
+                    id: 'order_rzp_override',
+                    amount: data.amount,
+                    currency: 'INR',
+                }
+            }) as any
+            billingRepository.createWalletTransaction = (async (data: any) => ({
+                id: 'tx-override',
+                ...data,
+            })) as any
+
+            try {
+                const res = await billingService.createRazorpayOrder({
+                    userId: 'user-1',
+                    amountInCents: 1500, // $15 USD
+                })
+
+                // $15 * 100 = 1500.0 INR = 150000 Paise
+                expect(createdAmount).toBe(150000)
+                expect(res.amount).toBe(150000)
+                expect(res.usdToInrRate).toBe(100.0)
+            } finally {
+                razorpay.orders.create = originalOrdersCreate
+                billingRepository.createWalletTransaction = originalCreateTx
+                if (originalEnvRate !== undefined) {
+                    process.env.USD_TO_INR_RATE = originalEnvRate
+                } else {
+                    delete process.env.USD_TO_INR_RATE
+                }
+            }
+        })
+
+        it('should throw AppError 502 with authentication message if Razorpay returns 401 error', async () => {
+            const originalOrdersCreate = razorpay.orders.create
+            razorpay.orders.create = (async () => {
+                const err: any = new Error('Unauthorized')
+                err.statusCode = 401
+                err.error = { description: 'Authentication failed' }
+                throw err
+            }) as any
+
+            try {
+                await expect(
+                    billingService.createRazorpayOrder({
+                        userId: 'user-1',
+                        amountInCents: 1000,
+                    })
+                ).rejects.toThrow(
+                    new AppError(
+                        'Payment gateway authentication failed. Please verify RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET credentials.',
+                        502
+                    )
+                )
+            } finally {
+                razorpay.orders.create = originalOrdersCreate
+            }
+        })
+
+        it('should throw AppError 502 if Razorpay returns timeout or generic error', async () => {
+            const originalOrdersCreate = razorpay.orders.create
+            razorpay.orders.create = (async () => {
+                throw new Error('Gateway timeout')
+            }) as any
+
+            try {
+                await expect(
+                    billingService.createRazorpayOrder({
+                        userId: 'user-1',
+                        amountInCents: 1000,
+                    })
+                ).rejects.toThrow(
+                    new AppError('Failed to create payment order: Gateway timeout', 502)
+                )
+            } finally {
+                razorpay.orders.create = originalOrdersCreate
+            }
+        })
     })
 
     describe('verifyRazorpayPayment', () => {
@@ -294,6 +383,60 @@ describe('Billing Service - Unit Tests', () => {
                 notificationService.sendNotificationToUser = originalSendNotif
             }
         })
+
+        it('should recover and fulfill order in FAILED status when valid signature is provided', async () => {
+            const secret = 'secret_123'
+            process.env.RAZORPAY_KEY_SECRET = secret
+
+            const orderId = 'order_failed_1'
+            const paymentId = 'pay_retry_1'
+            const signature = crypto
+                .createHmac('sha256', secret)
+                .update(`${orderId}|${paymentId}`)
+                .digest('hex')
+
+            const originalFindTx = billingRepository.findWalletTransactionByOrderId
+            const originalVerifyUpdate = billingRepository.verifyAndUpdateWalletTransaction
+            const originalSendNotif = notificationService.sendNotificationToUser
+
+            billingRepository.findWalletTransactionByOrderId = (async () => ({
+                id: 'tx-failed',
+                userId: 'user-1',
+                status: 'FAILED',
+                amountInCents: 2000,
+            })) as any
+
+            billingRepository.verifyAndUpdateWalletTransaction = (async () => ({
+                user: {
+                    id: 'user-1',
+                    creditBalance: 5000,
+                },
+                alreadyProcessed: false,
+            })) as any
+
+            let notificationSent = false
+            notificationService.sendNotificationToUser = (async () => {
+                notificationSent = true
+                return {} as any
+            }) as any
+
+            try {
+                const res = await billingService.verifyRazorpayPayment({
+                    userId: 'user-1',
+                    razorpay_order_id: orderId,
+                    razorpay_payment_id: paymentId,
+                    razorpay_signature: signature,
+                })
+
+                expect(res.success).toBe(true)
+                expect(res.newBalance).toBe(5000)
+                expect(notificationSent).toBe(true)
+            } finally {
+                billingRepository.findWalletTransactionByOrderId = originalFindTx
+                billingRepository.verifyAndUpdateWalletTransaction = originalVerifyUpdate
+                notificationService.sendNotificationToUser = originalSendNotif
+            }
+        })
     })
 
     describe('getCreditsHistory', () => {
@@ -398,6 +541,68 @@ describe('Billing Service - Unit Tests', () => {
             } finally {
                 billingRepository.redeemCode = originalRedeem
                 notificationService.sendNotificationToUser = originalSendNotif
+            }
+        })
+
+        it('should propagate AppError 400 when code is expired', async () => {
+            const originalRedeem = billingRepository.redeemCode
+            billingRepository.redeemCode = (async () => {
+                throw new AppError('this redeem code has expired', 400)
+            }) as any
+
+            try {
+                await expect(
+                    billingService.redeemCode({ userId: 'user-1', code: 'EXPIRED10' })
+                ).rejects.toThrow(new AppError('this redeem code has expired', 400))
+            } finally {
+                billingRepository.redeemCode = originalRedeem
+            }
+        })
+
+        it('should propagate AppError 400 when code reaches maximum redemptions', async () => {
+            const originalRedeem = billingRepository.redeemCode
+            billingRepository.redeemCode = (async () => {
+                throw new AppError('this redeem code has reached its maximum redemptions', 400)
+            }) as any
+
+            try {
+                await expect(
+                    billingService.redeemCode({ userId: 'user-1', code: 'MAXEDOUT' })
+                ).rejects.toThrow(
+                    new AppError('this redeem code has reached its maximum redemptions', 400)
+                )
+            } finally {
+                billingRepository.redeemCode = originalRedeem
+            }
+        })
+
+        it('should propagate AppError 409 when code was already claimed by user', async () => {
+            const originalRedeem = billingRepository.redeemCode
+            billingRepository.redeemCode = (async () => {
+                throw new AppError('you have already redeemed this code', 409)
+            }) as any
+
+            try {
+                await expect(
+                    billingService.redeemCode({ userId: 'user-1', code: 'ALREADYCLAIMED' })
+                ).rejects.toThrow(new AppError('you have already redeemed this code', 409))
+            } finally {
+                billingRepository.redeemCode = originalRedeem
+            }
+        })
+
+        it('should propagate AppError 404 when code does not exist', async () => {
+            const originalRedeem = billingRepository.redeemCode
+            billingRepository.redeemCode = (async () => {
+                throw new AppError('invalid or expired redeem code', 404)
+            }) as any
+
+            try {
+                await expect(
+                    billingService.redeemCode({ userId: 'user-1', code: 'NONEXISTENT' })
+                ).rejects.toThrow(new AppError('invalid or expired redeem code', 404))
+            } finally {
+                billingRepository.redeemCode = originalRedeem
             }
         })
     })

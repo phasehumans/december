@@ -122,18 +122,10 @@ const redeemCode = (code: string) => {
     })
 }
 
-const addCredits = (amountInCents: number, paymentMethod: string) => {
-    return apiRequest<{ success: boolean; newBalance: number }>('/billing/credits/add', {
-        method: 'POST',
-        body: JSON.stringify({ amountInCents, paymentMethod }),
-    })
-}
-
 export const billingAPI = {
     getOverview,
     createRazorpayOrder,
     verifyRazorpayPayment,
     getCreditsHistory,
     redeemCode,
-    addCredits,
 }

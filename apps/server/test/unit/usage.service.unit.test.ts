@@ -292,12 +292,128 @@ describe('Usage Service - Unit Tests', () => {
                 usageRepository.createUsageEvent = originalCreateEvent
             }
         })
+
+        it('should allow soft overdraft transition into negative balance', async () => {
+            const originalGet = usageRepository.getUsageUser
+            const originalFindExt = usageRepository.findExternalUsageEvent
+            const originalTx = usageRepository.runTransaction
+            const originalFindCredits = usageRepository.findUserCredits
+            const originalUpdateCredits = usageRepository.updateUserCredits
+            const originalCreateEvent = usageRepository.createUsageEvent
+
+            usageRepository.getUsageUser = (async () => ({ id: 'u1', creditBalance: 1 })) as any
+            usageRepository.findExternalUsageEvent = (async () => null) as any
+            usageRepository.runTransaction = (async (cb: any) => cb({})) as any
+
+            let updatedBalance = 0
+            usageRepository.findUserCredits = (async () => ({
+                id: 'u1',
+                creditBalance: 1, // Only 1 cent remaining
+            })) as any
+            usageRepository.updateUserCredits = (async (data: any) => {
+                updatedBalance = data.creditBalance
+                return data
+            }) as any
+            usageRepository.createUsageEvent = (async (data: any) => ({
+                id: 'new-event-overdraft',
+                ...data,
+            })) as any
+
+            try {
+                // gpt-4o: 1000 input, 1000 output -> 2.5/10 + 10.0/10 = 0.25 + 1.0 = 1.25 cents cost
+                const res = await usageService.recordUsageEvent({
+                    userId: 'u1',
+                    model: 'gpt-4o',
+                    inputTokens: 1000,
+                    outputTokens: 1000,
+                    totalTokens: 2000,
+                })
+
+                expect(res.idempotent).toBe(false)
+                // 1 - 1.25 = -0.25 cents (negative overdraft)
+                expect(updatedBalance).toBeCloseTo(-0.25)
+            } finally {
+                usageRepository.getUsageUser = originalGet
+                usageRepository.findExternalUsageEvent = originalFindExt
+                usageRepository.runTransaction = originalTx
+                usageRepository.findUserCredits = originalFindCredits
+                usageRepository.updateUserCredits = originalUpdateCredits
+                usageRepository.createUsageEvent = originalCreateEvent
+            }
+        })
+
+        it('should handle P2002 race condition by returning existing event if same user', async () => {
+            const originalGet = usageRepository.getUsageUser
+            const originalFindExt = usageRepository.findExternalUsageEvent
+            const originalTx = usageRepository.runTransaction
+
+            usageRepository.getUsageUser = (async () => ({ id: 'u1', creditBalance: 100 })) as any
+            // Initially null before concurrent insert completes
+            let findCount = 0
+            usageRepository.findExternalUsageEvent = (async () => {
+                findCount++
+                if (findCount === 1) return null
+                return { id: 'race-event-1', userId: 'u1', externalRequestId: 'race-req-1' }
+            }) as any
+
+            const p2002Error: any = new Error('Unique constraint failed')
+            p2002Error.code = 'P2002'
+            usageRepository.runTransaction = (async () => {
+                throw p2002Error
+            }) as any
+
+            try {
+                const res = await usageService.recordUsageEvent({
+                    userId: 'u1',
+                    model: 'gpt-4o',
+                    inputTokens: 10,
+                    outputTokens: 10,
+                    totalTokens: 20,
+                    externalRequestId: 'race-req-1',
+                })
+
+                expect(res.idempotent).toBe(true)
+                expect(res.event.id).toBe('race-event-1')
+            } finally {
+                usageRepository.getUsageUser = originalGet
+                usageRepository.findExternalUsageEvent = originalFindExt
+                usageRepository.runTransaction = originalTx
+            }
+        })
+
+        it('should rethrow error if non-P2002 error occurs during transaction', async () => {
+            const originalGet = usageRepository.getUsageUser
+            const originalFindExt = usageRepository.findExternalUsageEvent
+            const originalTx = usageRepository.runTransaction
+
+            usageRepository.getUsageUser = (async () => ({ id: 'u1', creditBalance: 100 })) as any
+            usageRepository.findExternalUsageEvent = (async () => null) as any
+            usageRepository.runTransaction = (async () => {
+                throw new Error('Database connection failed')
+            }) as any
+
+            try {
+                await expect(
+                    usageService.recordUsageEvent({
+                        userId: 'u1',
+                        model: 'gpt-4o',
+                        inputTokens: 10,
+                        outputTokens: 10,
+                        totalTokens: 20,
+                    })
+                ).rejects.toThrow('Database connection failed')
+            } finally {
+                usageRepository.getUsageUser = originalGet
+                usageRepository.findExternalUsageEvent = originalFindExt
+                usageRepository.runTransaction = originalTx
+            }
+        })
     })
 
     describe('canRunSelfCorrection', () => {
-        it('should return true if balance >= threshold', async () => {
+        it('should return true if balance >= default threshold (5 cents)', async () => {
             const originalFind = usageRepository.findUserCredits
-            usageRepository.findUserCredits = (async () => ({ id: 'u1', creditBalance: 10 })) as any
+            usageRepository.findUserCredits = (async () => ({ id: 'u1', creditBalance: 5 })) as any
 
             try {
                 const res = await usageService.canRunSelfCorrection({ userId: 'u1' })
@@ -307,9 +423,44 @@ describe('Usage Service - Unit Tests', () => {
             }
         })
 
-        it('should return false if balance < threshold or error occurs', async () => {
+        it('should return false if balance < threshold', async () => {
             const originalFind = usageRepository.findUserCredits
-            usageRepository.findUserCredits = (async () => ({ id: 'u1', creditBalance: 2 })) as any
+            usageRepository.findUserCredits = (async () => ({ id: 'u1', creditBalance: 4 })) as any
+
+            try {
+                const res = await usageService.canRunSelfCorrection({ userId: 'u1' })
+                expect(res).toBe(false)
+            } finally {
+                usageRepository.findUserCredits = originalFind
+            }
+        })
+
+        it('should respect custom SELF_CORRECTION_CREDIT_THRESHOLD env variable', async () => {
+            const originalFind = usageRepository.findUserCredits
+            const originalEnv = process.env.SELF_CORRECTION_CREDIT_THRESHOLD
+            process.env.SELF_CORRECTION_CREDIT_THRESHOLD = '15'
+
+            usageRepository.findUserCredits = (async () => ({ id: 'u1', creditBalance: 10 })) as any
+
+            try {
+                // 10 is below 15 threshold
+                const res = await usageService.canRunSelfCorrection({ userId: 'u1' })
+                expect(res).toBe(false)
+            } finally {
+                usageRepository.findUserCredits = originalFind
+                if (originalEnv !== undefined) {
+                    process.env.SELF_CORRECTION_CREDIT_THRESHOLD = originalEnv
+                } else {
+                    delete process.env.SELF_CORRECTION_CREDIT_THRESHOLD
+                }
+            }
+        })
+
+        it('should return false when user is not found or error occurs', async () => {
+            const originalFind = usageRepository.findUserCredits
+            usageRepository.findUserCredits = (async () => {
+                throw new Error('DB timeout')
+            }) as any
 
             try {
                 const res = await usageService.canRunSelfCorrection({ userId: 'u1' })
