@@ -2,8 +2,35 @@
 
 ### Features
 
+- _(tui)_ Enable mouse wheel, pageup/down, and arrow scrolling
+- _(docs)_ Add youtube and x social links to footer and creator navigation schema
+
+### Bug Fixes
+
+- _(tui)_ Remove empty line between tool calls and active loader
+- _(tui)_ Make background tasks non-intrusive and dismissible via context menu
+- _(cli)_ Align ambient models and preserve low-credit status during auth probe
+- _(tui)_ Render active loader and command details during parallel tool execution (#521)
+- _(docs)_ Remove youtube link from footer
+
+### Performance
+
+- _(tui)_ Eliminate scroll jitter and enable 60fps streaming
+
+### Testing
+
+- _(billing)_ Verify billing and usage workflows and expand test coverage
+
+## [0.4.1] - 2026-09-30
+
+### Features
+
 - _(cache)_ Implement client and server side caching with redis
 - _(auth)_ Redis session cache, rate limiting, and token auth (#349)
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.1
 
 ## [0.4.0] - 2026-09-29
 

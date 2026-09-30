@@ -1,9 +1,10 @@
 {
-    "version": "0.4.1",
-    "title": "What's New in v0.4.1",
+    "version": "0.4.2",
+    "title": "What's New in v0.4.2",
     "bullets": [
-        "*(cache)* Implement client and server side caching with redis",
-        "*(auth)* Redis session cache, rate limiting, and token auth"
+        "*(tui)* Enable mouse wheel, pageup/down, and arrow scrolling",
+        "*(docs)* Add youtube and x social links to footer and creator navigation schema",
+        "*(tui)* Remove empty line between tool calls and active loader"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }
