@@ -214,24 +214,24 @@ describe('InputBar Component (Unit)', () => {
         )
 
         stdin.write('/res')
-        await new Promise((resolve) => setTimeout(resolve, 30))
+        await new Promise((resolve) => setTimeout(resolve, 50))
 
         // First Enter: autofills '/resume '
         stdin.write('\r')
-        await new Promise((resolve) => setTimeout(resolve, 30))
+        await new Promise((resolve) => setTimeout(resolve, 50))
 
         expect(handleSubmit).not.toHaveBeenCalled()
         expect(lastFrame()).toContain('/resume')
 
         // Type additional prompt
         stdin.write('feature-branch')
-        await new Promise((resolve) => setTimeout(resolve, 30))
+        await new Promise((resolve) => setTimeout(resolve, 50))
 
         expect(lastFrame()).toContain('/resume feature-branch')
 
         // Second Enter: submits '/resume feature-branch'
         stdin.write('\r')
-        await new Promise((resolve) => setTimeout(resolve, 30))
+        await new Promise((resolve) => setTimeout(resolve, 50))
 
         expect(handleSubmit).toHaveBeenCalledWith('/resume feature-branch')
     })
@@ -358,5 +358,47 @@ describe('InputBar Component (Unit)', () => {
         stdin.write('\u001B[B') // Down arrow
         await new Promise((resolve) => setTimeout(resolve, 30))
         expect(onScrollDown).toHaveBeenCalledWith(1)
+    })
+
+    it('renders compact background tasks indicator in status row and avoids rendering static task tree above prompt', () => {
+        const runningTasks = [
+            {
+                id: 'task-1',
+                command: 'bun test',
+                status: 'running' as const,
+                createdAt: new Date(),
+            },
+        ]
+        const { lastFrame } = render(
+            <RootLayout>
+                <InputBar onSubmit={mock(() => {})} tasks={runningTasks} />
+            </RootLayout>
+        )
+        const frame = lastFrame()
+        expect(frame).toContain('1 running (Ctrl+T)')
+        expect(frame).not.toContain('Background Tasks (1 running)')
+
+        const completedTasks = [
+            {
+                id: 'task-1',
+                command: 'echo done',
+                status: 'completed' as const,
+                createdAt: new Date(),
+            },
+            {
+                id: 'task-2',
+                command: 'sleep 10',
+                status: 'killed' as const,
+                createdAt: new Date(),
+            },
+        ]
+        const { lastFrame: lastFrameCompleted } = render(
+            <RootLayout>
+                <InputBar onSubmit={mock(() => {})} tasks={completedTasks} />
+            </RootLayout>
+        )
+        const frameCompleted = lastFrameCompleted()
+        expect(frameCompleted).toContain('2 tasks (Ctrl+T)')
+        expect(frameCompleted).not.toContain('Background Tasks')
     })
 })

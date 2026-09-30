@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect, mock } from 'bun:test'
 import { render } from 'ink-testing-library'
 import React from 'react'
 
@@ -144,5 +144,49 @@ describe('TasksModeMenu Component (Unit)', () => {
         )
         const output = lastFrame() || ''
         expect(output).toContain('No background tasks.')
+    })
+
+    it('closes menu on Escape or Ctrl+T in list mode', async () => {
+        const onClose = mock()
+        const { stdin } = render(
+            <TasksModeMenu
+                tasksData={[{ id: 'task-1', status: 'running', command: 'sleep 10' }]}
+                onClose={onClose}
+            />
+        )
+
+        stdin.write('\u001B') // Escape
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        expect(onClose).toHaveBeenCalledTimes(1)
+
+        stdin.write('\x14') // Ctrl+T
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        expect(onClose).toHaveBeenCalledTimes(2)
+    })
+
+    it('exits detail view on Escape or Ctrl+T', async () => {
+        const setTaskViewingId = mock()
+        const { stdin } = render(
+            <TasksModeMenu
+                tasksData={[
+                    {
+                        id: 'task-1',
+                        status: 'running',
+                        command: 'sleep 10',
+                        output: 'running...',
+                    },
+                ]}
+                taskViewingId="task-1"
+                setTaskViewingId={setTaskViewingId}
+            />
+        )
+
+        stdin.write('\u001B') // Escape
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        expect(setTaskViewingId).toHaveBeenCalledWith(null)
+
+        stdin.write('\x14') // Ctrl+T
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        expect(setTaskViewingId).toHaveBeenCalledWith(null)
     })
 })

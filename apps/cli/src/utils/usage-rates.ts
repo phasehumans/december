@@ -353,48 +353,25 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'aki/qwen3.6-35b': { name: 'aki/qwen3.6-35b', inputRate: 0.15, outputRate: 0.5 },
 
     // Ambient
-    'deepseek/deepseek-v4-flash': {
-        name: 'deepseek/deepseek-v4-flash',
-        inputRate: 0.14,
-        outputRate: 0.28,
-    },
-    'deepseek/deepseek-v4-flash-0731': {
-        name: 'deepseek/deepseek-v4-flash-0731',
-        inputRate: 0.08,
-        outputRate: 0.18,
-    },
     'ambient/large': { name: 'ambient/large', inputRate: 0.6, outputRate: 2.0 },
-    'zai-org/GLM-5.2-FP8': { name: 'zai-org/GLM-5.2-FP8', inputRate: 1.2, outputRate: 4.2 },
-    'ambient/deepseek/deepseek-v4-flash': {
-        name: 'ambient/deepseek/deepseek-v4-flash',
-        inputRate: 0.14,
-        outputRate: 0.28,
-    },
-    'ambient/deepseek/deepseek-v4-flash-0731': {
-        name: 'ambient/deepseek/deepseek-v4-flash-0731',
-        inputRate: 0.08,
-        outputRate: 0.18,
-    },
+    'z-ai/glm-5.2': { name: 'z-ai/glm-5.2', inputRate: 0.6, outputRate: 2.0 },
     'ambient/ambient/large': { name: 'ambient/ambient/large', inputRate: 0.6, outputRate: 2.0 },
+    'ambient/z-ai/glm-5.2': { name: 'ambient/z-ai/glm-5.2', inputRate: 0.6, outputRate: 2.0 },
+    'ambient/qwen/qwen3.6-27b': {
+        name: 'ambient/qwen/qwen3.6-27b',
+        inputRate: 0.32,
+        outputRate: 3.2,
+    },
+    'ambient/qwen/qwen3.8-27b': {
+        name: 'ambient/qwen/qwen3.8-27b',
+        inputRate: 0.32,
+        outputRate: 3.2,
+    },
+    'zai-org/GLM-5.2-FP8': { name: 'zai-org/GLM-5.2-FP8', inputRate: 0.6, outputRate: 2.0 },
     'ambient/zai-org/GLM-5.2-FP8': {
         name: 'ambient/zai-org/GLM-5.2-FP8',
-        inputRate: 1.2,
-        outputRate: 4.2,
-    },
-    'ambient/moonshotai/kimi-k2.7-code': {
-        name: 'ambient/moonshotai/kimi-k2.7-code',
-        inputRate: 0.69,
-        outputRate: 3.49,
-    },
-    'ambient/xiaomi/mimo-v2.5': {
-        name: 'ambient/xiaomi/mimo-v2.5',
-        inputRate: 0.4,
+        inputRate: 0.6,
         outputRate: 2.0,
-    },
-    'ambient/stepfun/step-3.7-flash': {
-        name: 'ambient/stepfun/step-3.7-flash',
-        inputRate: 0.19,
-        outputRate: 1.14,
     },
 
     // Auriko

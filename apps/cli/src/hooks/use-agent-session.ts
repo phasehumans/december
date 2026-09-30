@@ -284,6 +284,16 @@ export function useAgentSession({
                 clearInterval(interval)
             }
         }
+
+        update()
+        taskManager.on('task:added', update)
+        taskManager.on('task:completed', update)
+        taskManager.on('task:killed', update)
+        return () => {
+            taskManager.off('task:added', update)
+            taskManager.off('task:completed', update)
+            taskManager.off('task:killed', update)
+        }
     }, [authMode, setTasksData])
 
     useEffect(() => {

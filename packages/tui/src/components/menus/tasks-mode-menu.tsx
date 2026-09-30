@@ -211,7 +211,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
 
         // 1. Detail / Log View Mode
         if (state.viewingId) {
-            if (key.escape) {
+            if (key.escape || (key.ctrl && (input === 't' || input === 'T'))) {
                 changeViewingId(null)
                 return
             }
@@ -283,7 +283,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         }
 
         // 2. List Mode
-        if (key.escape) {
+        if (key.escape || (key.ctrl && (input === 't' || input === 'T'))) {
             handleClose()
             return
         }

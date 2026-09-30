@@ -294,17 +294,16 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'aki/qwen3.6-35b': 256000,
 
     // Ambient
-    'deepseek/deepseek-v4-flash': 1050000,
-    'deepseek/deepseek-v4-flash-0731': 1050000,
     'ambient/large': 202000,
-    'zai-org/GLM-5.2-FP8': 202000,
-    'ambient/deepseek/deepseek-v4-flash': 1050000,
-    'ambient/deepseek/deepseek-v4-flash-0731': 1050000,
+    'z-ai/glm-5.2': 202000,
+    'qwen/qwen3.6-27b': 32768,
+    'qwen/qwen3.8-27b': 32768,
     'ambient/ambient/large': 202000,
+    'ambient/z-ai/glm-5.2': 202000,
+    'ambient/qwen/qwen3.6-27b': 32768,
+    'ambient/qwen/qwen3.8-27b': 32768,
+    'zai-org/GLM-5.2-FP8': 202000,
     'ambient/zai-org/GLM-5.2-FP8': 202000,
-    'ambient/moonshotai/kimi-k2.7-code': 262144,
-    'ambient/xiaomi/mimo-v2.5': 1050000,
-    'ambient/stepfun/step-3.7-flash': 262144,
     'auriko/claude-opus-4-6': 1000000,
     'auriko/claude-opus-4-7': 1000000,
     'auriko/claude-sonnet-4-6': 1000000,
@@ -887,7 +886,6 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'qwen/qwen3.8-2.4t-a95b': 970000,
     'iteracompute/qwen/qwen3.8-2.4t-a95b': 970000,
     'iteracompute/deepseek/deepseek-v4-flash-0731': 970000,
-    'qwen/qwen3.8-27b': 327680,
     'iteracompute/qwen/qwen3.8-27b': 327680,
     'Qwen3-VL-235B-A22B-Instruct': 129024,
     'jalapeno/Qwen3-VL-235B-A22B-Instruct': 129024,
@@ -1472,7 +1470,6 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'tensorx/deepseek/deepseek-v4.1-flash': 1048576,
     'tensorx/deepseek/deepseek-v4-pro': 1048576,
     'tensorx/moonshotai/kimi-k3': 1048576,
-    'z-ai/glm-5.2': 1048576,
     'tensorx/z-ai/glm-5.2': 1048576,
     'agent-max': 1000000,
     'the-grid-ai/agent-max': 1000000,
@@ -1740,7 +1737,12 @@ export function getModelContextWindow(value: string): number {
     if (lower.includes('agnes-2.5-pro') || lower.includes('agnes-2.5-pro-beta')) return 1000000
     if (lower.includes('agnes-3.0-flash') || lower.includes('agnes-2.5-flash')) return 512000
     if (lower.startsWith('agnes-') || lower.startsWith('agnes/')) return 512000
-    if (lower.includes('ambient/large') || lower.includes('glm-5.2-fp8')) return 202000
+    if (
+        lower.includes('ambient/large') ||
+        lower.includes('glm-5.2-fp8') ||
+        lower.includes('z-ai/glm-5.2')
+    )
+        return 202000
     if (lower.includes('glm5.3-754b')) return 524288
 
     // Solar / Upstage models

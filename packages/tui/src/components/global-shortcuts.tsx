@@ -68,10 +68,7 @@ export function GlobalShortcuts(session: any) {
         }
 
         if (authMode !== 'none') {
-            if (key.escape && authMode !== 'menu') {
-                if (session.isStreaming) {
-                    return
-                }
+            if ((key.escape || input === '\u001B') && authMode !== 'menu') {
                 if (authMode === 'grill_question') {
                     setGrillQuestions([])
                     setCurrentGrillIndex(0)
@@ -92,7 +89,7 @@ export function GlobalShortcuts(session: any) {
             return
         }
 
-        if (session.isStreaming && key.escape) {
+        if (session.isStreaming && (key.escape || input === '\u001B')) {
             session.handleAbort()
             return
         }

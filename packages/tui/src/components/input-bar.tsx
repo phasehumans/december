@@ -14,10 +14,10 @@ import { defaultPromptHistory } from '../utils/prompt-history'
 import { CommandMenu } from './command-menu'
 import { useCommandMenu } from './command-menu/use-command-menu'
 import { ShortcutsMenu } from './menus/shortcuts-menu'
-import { TaskTree, type TaskItem } from './task-tree'
 import { TextArea } from './text-area'
 
 import type { Command } from './command-menu/types'
+import type { TaskItem } from './task-tree'
 
 type Props = {
     onSubmit: (text: string) => void
@@ -187,6 +187,9 @@ export const InputBar = React.memo(function InputBar({
             : contextPct >= 70
               ? THEME.colors.warning
               : THEME.colors.muted
+
+    const runningTasksCount = tasks ? tasks.filter((t) => t.status === 'running').length : 0
+    const totalTasksCount = tasks ? tasks.length : 0
 
     const stateRef = useRef({
         showFileMenu,
@@ -459,9 +462,6 @@ export const InputBar = React.memo(function InputBar({
                 </Box>
             )}
 
-            {/* background task tree */}
-            {tasks && tasks.length > 0 && <TaskTree tasks={tasks} />}
-
             {/* file mention popup */}
             {showFileMenu && matchingFiles.length > 0 && (
                 <Box flexDirection="column" paddingLeft={1} marginBottom={0}>
@@ -625,6 +625,21 @@ export const InputBar = React.memo(function InputBar({
                                                           : ''
                                               }`}
                                     </Text>
+                                    {totalTasksCount > 0 && (
+                                        <Text
+                                            color={
+                                                runningTasksCount > 0
+                                                    ? THEME.colors.warning
+                                                    : THEME.colors.muted
+                                            }
+                                        >
+                                            ·{' '}
+                                            {runningTasksCount > 0
+                                                ? `${runningTasksCount} running`
+                                                : `${totalTasksCount} tasks`}{' '}
+                                            (Ctrl+T)
+                                        </Text>
+                                    )}
                                     {activeToast && (
                                         <Text
                                             wrap="truncate"
