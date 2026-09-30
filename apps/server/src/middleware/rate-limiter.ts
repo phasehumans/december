@@ -22,8 +22,14 @@ export const createRateLimiter = (options: RateLimiterOptions = {}) => {
 
     const store = redisClient
         ? new RedisStore({
-              // @ts-expect-error ioredis sendCommand signature compatibility
-              sendCommand: (...args: string[]) => redisClient!.call(...args),
+              sendCommand: async (...args: string[]) => {
+                  try {
+                      return await (redisClient as any).call(...args)
+                  } catch (err) {
+                      console.error('[RateLimiter Redis Command Error]', err)
+                      throw err
+                  }
+              },
               prefix,
           })
         : undefined
@@ -33,6 +39,7 @@ export const createRateLimiter = (options: RateLimiterOptions = {}) => {
         limit,
         standardHeaders: true,
         legacyHeaders: false,
+        passOnStoreError: true,
         ...(store ? { store } : {}),
         validate: { keyGeneratorIpFallback: false, xForwardedForHeader: false },
         keyGenerator: (req) => {

@@ -1,0 +1,10 @@
+{
+    "version": "0.4.0",
+    "title": "What's New in v0.4.0",
+    "bullets": [
+        "Enhance device activation flow, expand docs, and enforce repo standards",
+        "Transition to default fullscreen mode",
+        "Configure aws rds postgresql connection"
+    ],
+    "url": "https://trydecember.com/docs/changelog"
+}

@@ -1,4 +1,8 @@
+import path from 'node:path'
+
 import { $ } from 'bun'
+
+import { updateReleaseHighlightsFile } from './extract-release-notes'
 
 const version = process.argv[2]
 const force = process.argv.includes('--force')
@@ -28,6 +32,10 @@ await $`bun run format`
 await $`bun install` // to update lockfile if needed
 
 await $`git-cliff -o CHANGELOG.md`
+
+const changelogPath = path.resolve(process.cwd(), 'CHANGELOG.md')
+const highlightsPath = path.resolve(process.cwd(), 'apps/cli/src/constants/release-highlights.json')
+updateReleaseHighlightsFile(changelogPath, highlightsPath, version)
 
 await $`git add .`
 await $`git commit -m ${`chore(release): v${version}`}`

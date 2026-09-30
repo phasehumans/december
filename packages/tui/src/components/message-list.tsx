@@ -6,6 +6,7 @@ import { BotMessage } from './messages/bot-message'
 import { ErrorMessage } from './messages/error-message'
 import { UserMessage } from './messages/user-message'
 
+import type { ReleaseAnnouncement } from '../constants/announcements'
 import type { Message } from '../types'
 
 function renderSingleMessage(
@@ -15,7 +16,8 @@ function renderSingleMessage(
     cliVersion?: string,
     latestVersion?: string,
     userEmail?: string,
-    expandCommands?: boolean
+    expandCommands?: boolean,
+    announcement?: ReleaseAnnouncement | null
 ) {
     const key = msg.id != null ? `${msg.id}-${index}` : `msg-idx-${index}`
     if (msg.role === 'header') {
@@ -25,6 +27,7 @@ function renderSingleMessage(
                 cliVersion={cliVersion}
                 latestVersion={latestVersion}
                 userEmail={userEmail}
+                announcement={announcement}
             />
         )
     }
@@ -63,6 +66,7 @@ export const MessageList = React.memo(function MessageList({
     userEmail,
     expandCommands,
     fullscreen = true,
+    announcement,
 }: {
     staticKey: number
     staticMessages: Message[]
@@ -73,6 +77,7 @@ export const MessageList = React.memo(function MessageList({
     userEmail?: string
     expandCommands?: boolean
     fullscreen?: boolean
+    announcement?: ReleaseAnnouncement | null
 }) {
     if (fullscreen) {
         const allMessages = [...staticMessages, ...activeMessages]
@@ -86,7 +91,8 @@ export const MessageList = React.memo(function MessageList({
                         cliVersion,
                         latestVersion,
                         userEmail,
-                        expandCommands
+                        expandCommands,
+                        announcement
                     )
                 )}
             </Box>
@@ -109,7 +115,8 @@ export const MessageList = React.memo(function MessageList({
                             cliVersion,
                             latestVersion,
                             userEmail,
-                            expandCommands
+                            expandCommands,
+                            announcement
                         )
                     }
                 </Static>
@@ -122,7 +129,8 @@ export const MessageList = React.memo(function MessageList({
                     cliVersion,
                     latestVersion,
                     userEmail,
-                    expandCommands
+                    expandCommands,
+                    announcement
                 )
             )}
         </Box>

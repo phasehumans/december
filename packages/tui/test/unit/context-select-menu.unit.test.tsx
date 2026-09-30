@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, mock } from 'bun:test'
 import React from 'react'
 
 import { ContextSelectMenu } from '../../src/components/menus/context-select-menu'
@@ -74,9 +74,15 @@ describe('ContextSelectMenu Component (Unit)', () => {
         expect(frame).toContain('●')
         expect(frame).toContain('□')
 
-        // Verify esc Cancel is rendered on the left
+        // Verify footer items
         expect(frame).toContain('esc')
         expect(frame).toContain('Cancel')
+        expect(frame).toContain('c')
+        expect(frame).toContain('Clear history')
+        expect(frame).toContain('m')
+        expect(frame).toContain('Model')
+        expect(frame).toContain('n')
+        expect(frame).toContain('New session')
     })
 
     it('renders safely when agent is empty or undefined', () => {
@@ -91,5 +97,60 @@ describe('ContextSelectMenu Component (Unit)', () => {
         expect(frame).toContain('Tool Schemas: 0 tokens')
         expect(frame).toContain('Conversation History: 0 tokens')
         expect(frame).toContain('Free space:')
+    })
+
+    it('handles keyboard shortcuts esc, c, m, and n', async () => {
+        const onClose = mock(() => {})
+        const onClear = mock(() => {})
+        const onModelSelect = mock(() => {})
+        const onNewSession = mock(() => {})
+
+        const { stdin } = renderWithProviders(
+            <ContextSelectMenu
+                onClose={onClose}
+                onClear={onClear}
+                onModelSelect={onModelSelect}
+                onNewSession={onNewSession}
+            />
+        )
+
+        stdin.write('\x1B')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onClose).toHaveBeenCalled()
+
+        stdin.write('c')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onClear).toHaveBeenCalled()
+
+        stdin.write('m')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onModelSelect).toHaveBeenCalled()
+
+        stdin.write('n')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onNewSession).toHaveBeenCalled()
+    })
+
+    it('invokes handleSubmit for clear, model, and new session when callbacks not provided', async () => {
+        const setAuthMode = mock((mode: string) => {})
+        const handleSubmit = mock((text: string) => {})
+
+        const { stdin } = renderWithProviders(
+            <ContextSelectMenu setAuthMode={setAuthMode} handleSubmit={handleSubmit} />
+        )
+
+        stdin.write('c')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(setAuthMode).toHaveBeenCalledWith('none')
+        expect(handleSubmit).toHaveBeenCalledWith('/clear')
+
+        stdin.write('m')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(handleSubmit).toHaveBeenCalledWith('/model')
+
+        stdin.write('n')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(setAuthMode).toHaveBeenCalledWith('none')
+        expect(handleSubmit).toHaveBeenCalledWith('/new')
     })
 })

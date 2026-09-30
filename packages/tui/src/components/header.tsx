@@ -5,6 +5,7 @@ import path from 'node:path'
 import { Box, Text } from 'ink'
 import React from 'react'
 
+import { type ReleaseAnnouncement } from '../constants/announcements'
 import { THEME } from '../theme'
 import { terminalLink } from '../utils/terminal-link'
 
@@ -61,15 +62,19 @@ function getCwd(): string {
     }
 }
 
+export interface HeaderProps {
+    cliVersion?: string
+    latestVersion?: string
+    userEmail?: string
+    announcement?: ReleaseAnnouncement | null
+}
+
 export const Header = React.memo(function Header({
     cliVersion = '0.1.0',
     latestVersion,
     userEmail,
-}: {
-    cliVersion?: string
-    latestVersion?: string
-    userEmail?: string
-}) {
+    announcement,
+}: HeaderProps) {
     const cwd = getCwd()
     const branch = getGitBranch()
 
@@ -107,6 +112,31 @@ export const Header = React.memo(function Header({
                     </Text>
                 )}
             </Box>
+            {announcement && (
+                <Box flexDirection="column" marginTop={1}>
+                    <Box>
+                        <Text color={THEME.colors.brand}>▎ </Text>
+                        <Text bold color={THEME.colors.text}>
+                            {announcement.title || `What's New in v${announcement.version}`}
+                        </Text>
+                    </Box>
+                    {announcement.bullets.map((bullet, idx) => (
+                        <Box key={idx}>
+                            <Text color={THEME.colors.brand}>▎ </Text>
+                            <Text color={THEME.colors.muted}>{bullet}</Text>
+                        </Box>
+                    ))}
+                    {announcement.url && (
+                        <Box>
+                            <Text color={THEME.colors.brand}>▎ </Text>
+                            <Text color={THEME.colors.muted}>Check out detailed changelog on </Text>
+                            <Text color={THEME.colors.brand}>
+                                {terminalLink(announcement.url, announcement.url)}
+                            </Text>
+                        </Box>
+                    )}
+                </Box>
+            )}
         </Box>
     )
 })

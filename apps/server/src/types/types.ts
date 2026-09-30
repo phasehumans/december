@@ -6,6 +6,7 @@ declare global {
         interface Request {
             user?: Pick<TokenPayload, 'userId' | 'sessionId'>
             tokenUser?: Pick<TokenPayload, 'userId' | 'sessionId'>
+            tokenError?: any
         }
     }
 }

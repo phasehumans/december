@@ -14,6 +14,8 @@ import { ScrollViewport } from './components/scroll-viewport'
 import { useTerminalColumns, useTerminalRows } from './hooks/use-terminal-columns'
 import { extractPlanSummary } from './utils/pager'
 
+import type { ReleaseAnnouncement } from './constants/announcements'
+
 export function ChatApp({
     agent,
     isAuthenticated: initialAuth,
@@ -25,6 +27,7 @@ export function ChatApp({
     onUpdateSuccess,
     session,
     isInline = false,
+    announcement,
 }: {
     agent: Agent
     isAuthenticated: boolean
@@ -38,6 +41,7 @@ export function ChatApp({
     onUpdateSuccess?: () => Promise<void>
     session: any
     isInline?: boolean
+    announcement?: ReleaseAnnouncement | null
 }) {
     const [exitConfirm, setExitConfirm] = useState(false)
     const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -233,6 +237,7 @@ export function ChatApp({
                     userEmail={currentEmail || userEmail}
                     expandCommands={session.expandCommands}
                     fullscreen={false}
+                    announcement={announcement}
                 />
                 {inputBarElement}
             </Box>
@@ -253,6 +258,7 @@ export function ChatApp({
                     userEmail={currentEmail || userEmail}
                     expandCommands={session.expandCommands}
                     fullscreen={true}
+                    announcement={announcement}
                 />
             </ScrollViewport>
 

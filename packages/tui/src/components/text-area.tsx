@@ -93,7 +93,7 @@ export function TextArea({
         if (!focus) return
 
         // Ignore terminal mouse reporting escape sequences
-        if (input.startsWith('[<') || input.startsWith('\x1b[<') || input.startsWith('\x1b[M')) {
+        if (input.includes('[<') || input.includes('\x1b[<') || input.includes('\x1b[M')) {
             return
         }
 

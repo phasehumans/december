@@ -108,7 +108,7 @@ const SETTINGS_NAV_GROUPS = [
                 label: 'Changelog',
                 icon: FileClock,
                 isExternal: true,
-                href: 'https://github.com/phasehumans/december/blob/main/CHANGELOG.md',
+                href: `${getWebUrl()}/docs/changelog`,
             },
         ],
     },
@@ -499,7 +499,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
 
                     {/* Changelog */}
                     <a
-                        href="https://github.com/phasehumans/december/blob/main/CHANGELOG.md"
+                        href={`${getWebUrl()}/docs/changelog`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none hover:bg-[#1C1C1C] cursor-pointer"
@@ -668,7 +668,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             />
                         </a>
                         <a
-                            href="https://github.com/phasehumans/december/blob/main/CHANGELOG.md"
+                            href={`${getWebUrl()}/docs/changelog`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group whitespace-nowrap shrink-0"

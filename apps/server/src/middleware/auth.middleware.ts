@@ -24,7 +24,8 @@ export const parseAuthToken = (req: Request, _res: Response, next: NextFunction)
                 }
             }
         }
-    } catch {
+    } catch (err: any) {
+        req.tokenError = err
         // Intentionally swallowed: optional pre-parsing for downstream rate limiting and routing
     }
     next()
@@ -52,25 +53,42 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     }
 
     try {
-        const token = extractToken(req)
+        let tokenUser = req.tokenUser
 
-        if (!token) {
-            return sendAuthError(401, 'Unauthorized')
+        if (!tokenUser) {
+            if (req.tokenError) {
+                throw req.tokenError
+            }
+
+            const token = extractToken(req)
+
+            if (!token) {
+                return sendAuthError(401, 'Unauthorized')
+            }
+
+            const secret = env.ACCESS_TOKEN_SECRET
+            const decoded = jwt.verify(token, secret) as TokenPayload | string
+
+            if (typeof decoded === 'string' || !decoded.userId || !decoded.sessionId) {
+                return sendAuthError(401, 'Invalid token')
+            }
+
+            tokenUser = {
+                userId: decoded.userId,
+                sessionId: decoded.sessionId,
+            }
+            req.tokenUser = tokenUser
+            if (!req.user) {
+                req.user = tokenUser
+            }
         }
 
-        const secret = env.ACCESS_TOKEN_SECRET
-        const decoded = jwt.verify(token, secret) as TokenPayload | string
-
-        if (typeof decoded === 'string') {
-            return sendAuthError(401, 'Invalid token')
-        }
-
-        let session = await sessionCache.get(decoded.sessionId)
+        let session = await sessionCache.get(tokenUser.sessionId)
 
         if (!session) {
             session = await prisma.authSession.findUnique({
                 where: {
-                    id: decoded.sessionId,
+                    id: tokenUser.sessionId,
                 },
                 select: {
                     id: true,
@@ -87,7 +105,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             })
 
             if (session) {
-                await sessionCache.set(decoded.sessionId, session)
+                await sessionCache.set(tokenUser.sessionId, session)
             }
         }
 
@@ -99,7 +117,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             return sendAuthError(401, 'Unauthorized')
         }
 
-        if (session.userId !== decoded.userId) {
+        if (session.userId !== tokenUser.userId) {
             return sendAuthError(401, 'Invalid session')
         }
 
@@ -130,8 +148,8 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         }
 
         req.user = {
-            userId: decoded.userId,
-            sessionId: decoded.sessionId,
+            userId: tokenUser.userId,
+            sessionId: tokenUser.sessionId,
         }
 
         next()

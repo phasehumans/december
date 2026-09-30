@@ -62,4 +62,54 @@ describe('Auth SessionCache - Unit Tests', () => {
 
         expect(await sessionCache.get('sess-123')).toBeNull()
     })
+
+    it('should respect TTL expiration for in-memory fallback cache', async () => {
+        const { redisClient } = await import('../../src/config/redis')
+        const originalStatus = redisClient?.status
+
+        if (redisClient) {
+            ;(redisClient as any).status = 'end'
+        }
+
+        try {
+            // Set short TTL of 50ms for in-memory fallback
+            await sessionCache.set('sess-short', mockSessionData, 50)
+
+            const active = await sessionCache.get('sess-short')
+            expect(active).not.toBeNull()
+
+            // Wait for expiration
+            await new Promise((resolve) => setTimeout(resolve, 60))
+
+            const expired = await sessionCache.get('sess-short')
+            expect(expired).toBeNull()
+        } finally {
+            if (redisClient && originalStatus) {
+                ;(redisClient as any).status = originalStatus
+            }
+        }
+    })
+
+    it('should handle offline fallback gracefully when Redis throws an error', async () => {
+        const { redisClient } = await import('../../src/config/redis')
+        const originalGet = redisClient?.get
+
+        if (redisClient) {
+            // Mock Redis get error
+            redisClient.get = (() => {
+                throw new Error('Redis connection lost')
+            }) as any
+        }
+
+        try {
+            await sessionCache.set('sess-fallback', mockSessionData)
+            const retrieved = await sessionCache.get('sess-fallback')
+            expect(retrieved).not.toBeNull()
+            expect(retrieved?.id).toBe('sess-123')
+        } finally {
+            if (redisClient && originalGet) {
+                redisClient.get = originalGet
+            }
+        }
+    })
 })

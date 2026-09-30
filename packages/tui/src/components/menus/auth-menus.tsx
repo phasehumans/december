@@ -15,6 +15,7 @@ import { SubscriptionSelectMenu } from './subscription-select-menu'
 import { SwitchSelectMenu } from './switch-select-menu'
 import { TasksModeMenu } from './tasks-mode-menu'
 import { ToolPermissionMenu } from './tool-permission-menu'
+import { UsageSelectMenu } from './usage-select-menu'
 
 export function AuthMenus(props: any) {
     switch (props.authMode) {
@@ -55,6 +56,8 @@ export function AuthMenus(props: any) {
             return <GrillQuestionMenu {...props} />
         case 'settings_main':
             return <SettingsMainMenu {...props} />
+        case 'usage':
+            return <UsageSelectMenu {...props} />
         case 'tool_permission':
             return (
                 <ToolPermissionMenu

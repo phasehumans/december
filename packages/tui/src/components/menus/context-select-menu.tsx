@@ -1,6 +1,6 @@
 import { getModelContextWindow } from '@december/providers'
 import { decomposeContext } from '@december/shared'
-import { Box, Text } from 'ink'
+import { Box, Text, useInput } from 'ink'
 import React from 'react'
 
 import { THEME } from '../../theme'
@@ -11,8 +11,70 @@ function getModelLabel(id: string) {
     return id
 }
 
-export function ContextSelectMenu(props: any) {
-    const { agent } = props
+export interface ContextSelectMenuProps {
+    agent?: any
+    setAuthMode?: (mode: string) => void
+    handleSubmit?: (text: string) => void
+    onClose?: () => void
+    onClear?: () => void
+    onModelSelect?: () => void
+    onNewSession?: () => void
+}
+
+export function ContextSelectMenu(props: ContextSelectMenuProps) {
+    const { agent, setAuthMode, handleSubmit, onClose, onClear, onModelSelect, onNewSession } =
+        props
+
+    useInput((input, key) => {
+        if (key.escape || input === '\u001B') {
+            if (onClose) {
+                onClose()
+            } else if (setAuthMode) {
+                setAuthMode('none')
+            }
+            return
+        }
+
+        if (input === 'c' || input === 'C') {
+            if (onClear) {
+                onClear()
+            } else {
+                if (setAuthMode) setAuthMode('none')
+                if (handleSubmit) {
+                    handleSubmit('/clear')
+                } else if (agent?.clearContext) {
+                    agent.clearContext()
+                }
+            }
+            return
+        }
+
+        if (input === 'm' || input === 'M') {
+            if (onModelSelect) {
+                onModelSelect()
+            } else if (handleSubmit) {
+                handleSubmit('/model')
+            } else if (setAuthMode) {
+                setAuthMode('model_select')
+            }
+            return
+        }
+
+        if (input === 'n' || input === 'N') {
+            if (onNewSession) {
+                onNewSession()
+            } else {
+                if (setAuthMode) setAuthMode('none')
+                if (handleSubmit) {
+                    handleSubmit('/new')
+                } else if (agent?.newContext) {
+                    agent.newContext()
+                }
+            }
+            return
+        }
+    })
+
     const activeModelId = agent?.modelOptions?.model || 'gemini-3.7-flash'
     const currentModelName = getModelLabel(activeModelId)
     const maxTokens = getModelContextWindow(activeModelId) || 1000000
@@ -155,7 +217,14 @@ export function ContextSelectMenu(props: any) {
                 </Box>
             </Box>
 
-            <MenuFooter items={[{ key: 'esc', label: 'Cancel' }]} />
+            <MenuFooter
+                items={[
+                    { key: 'esc', label: 'Cancel' },
+                    { key: 'c', label: 'Clear history' },
+                    { key: 'm', label: 'Model' },
+                    { key: 'n', label: 'New session' },
+                ]}
+            />
         </Box>
     )
 }

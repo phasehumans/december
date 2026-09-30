@@ -39,7 +39,7 @@ describe('ScrollViewport Component (Unit)', () => {
         expect(frame).toContain('Line 1')
     })
 
-    it('navigates with mouse wheel up and down', async () => {
+    it('navigates with mouse wheel up and down including modifier variants', async () => {
         const handleScrollChange = mock((linesBelow: number) => {})
 
         const { stdin } = render(
@@ -58,6 +58,16 @@ describe('ScrollViewport Component (Unit)', () => {
         stdin.write('\u001B[<64;20;10M')
         await new Promise((resolve) => setTimeout(resolve, 50))
         expect(handleScrollChange).toHaveBeenCalled()
+
+        // Shift + Mouse wheel up escape sequence: \u001B[<68;20;10M
+        stdin.write('\u001B[<68;20;10M')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(handleScrollChange).toHaveBeenCalledTimes(2)
+
+        // Mouse wheel down escape sequence: \u001B[<65;20;10M
+        stdin.write('\u001B[<65;20;10M')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(handleScrollChange).toHaveBeenCalledTimes(3)
     })
 
     it('navigates with PageUp, PageDown, Home, and End keys', async () => {

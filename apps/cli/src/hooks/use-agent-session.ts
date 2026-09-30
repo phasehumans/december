@@ -1,5 +1,9 @@
 import { Agent, runAgentLoop } from '@december/agent'
-import { SkillDiscoveryEngine } from '@december/shared'
+import {
+    getCleanProviderDisplayName,
+    PROVIDER_BILLING_LINKS,
+    SkillDiscoveryEngine,
+} from '@december/shared'
 import { type Message, openPlanInPager } from '@december/tui'
 import { useEffect, useCallback, useState, useRef } from 'react'
 
@@ -35,8 +39,7 @@ import { fetchOpenRouterModels } from '../utils/openrouter-models'
 import { getProjectContext } from '../utils/project-context'
 import { fetchProviderBalance } from '../utils/provider-balance'
 import { instantiateProvider } from '../utils/provider-factory'
-import { formatUsageCard } from '../utils/usage-rates'
-import { getWeeklyUsageSummary } from '../utils/usage-tracker'
+import { getWeeklyUsageSummary, loadUsageLedger } from '../utils/usage-tracker'
 
 import {
     getNextMsgId,
@@ -204,6 +207,7 @@ export function useAgentSession({
     }, [])
 
     const [detectedSubscriptions, setDetectedSubscriptions] = useState<Record<string, any>>({})
+    const [usageData, setUsageData] = useState<any>(null)
 
     useEffect(() => {
         import('../auth/subscriptions/subscription-manager')
@@ -935,6 +939,133 @@ export function useAgentSession({
             setPlanWorkflow,
         ]
     )
+
+    const fetchUsageData = useCallback(async () => {
+        const currentModel = agent?.modelOptions?.model || 'gemini-3.6-flash'
+        const rawProvider = selectedProvider || (agent?.llm as any)?.id || ''
+        const provider = rawProvider || (authMethod === 'december' ? 'december' : undefined)
+
+        // 1. Calculate session usage from current messages
+        const allMsgs = [
+            ...useCliStore.getState().staticMessages,
+            ...useCliStore.getState().activeMessages,
+        ]
+        let sessionInputTokens = 0
+        let sessionOutputTokens = 0
+        let sessionCacheTokens = 0
+        let sessionRequests = 0
+
+        for (const msg of allMsgs) {
+            if (msg.usage) {
+                sessionInputTokens += msg.usage.promptTokens || 0
+                sessionOutputTokens += msg.usage.completionTokens || 0
+                sessionCacheTokens += (msg.usage as any).cacheReadInputTokens || 0
+                sessionRequests++
+            }
+        }
+
+        // 2. Fetch rolling weekly summary from local ledger
+        let weeklyStats: any
+        try {
+            weeklyStats = await getWeeklyUsageSummary()
+        } catch {
+            // Intentionally swallowed: local usage summary fetch fallback
+        }
+
+        // 3. Load daily ledger for past 7 days
+        const now = new Date()
+        const dailyUsage: any[] = []
+        try {
+            const ledger = await loadUsageLedger()
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+                const dateKey = d.toISOString().slice(0, 10)
+                const day = ledger.days[dateKey]
+                const tokens = (day?.inputTokens || 0) + (day?.outputTokens || 0)
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'short' })
+                const formattedDate = d.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                })
+                dailyUsage.push({
+                    date: dateKey,
+                    dayName,
+                    formattedDate,
+                    tokens,
+                    isToday: i === 0,
+                })
+            }
+        } catch {
+            // Intentionally swallowed: daily ledger load fallback
+        }
+
+        // 4. Fetch provider balance if supported / applicable
+        let balanceInfo: any
+        const config = await loadConfig()
+        if (authMethod === 'december' && config.decemberToken) {
+            try {
+                const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
+                const overviewRes = await fetch(`${serverUrl}/api/v1/billing/overview`, {
+                    headers: { Authorization: `Bearer ${config.decemberToken}` },
+                    signal: AbortSignal.timeout(2000),
+                })
+                if (overviewRes.ok) {
+                    const overviewJson = (await overviewRes.json()) as any
+                    const balanceCents = overviewJson.data?.creditBalance ?? 0
+                    balanceInfo = {
+                        supported: true,
+                        balance: `$${(balanceCents / 100).toFixed(2)}`,
+                        currency: 'USD',
+                    }
+                }
+            } catch {
+                // Intentionally swallowed: network error fetching december wallet balance
+            }
+        } else if (authMethod === 'byok' || !authMethod) {
+            const activeKey =
+                apiKey ||
+                config.providers?.[provider || ''] ||
+                (provider ? process.env[`${provider.toUpperCase()}_API_KEY`] : undefined)
+            if (activeKey) {
+                try {
+                    balanceInfo = await fetchProviderBalance(provider, activeKey, 2000)
+                } catch {
+                    // Intentionally swallowed: live balance fetch failure
+                }
+            }
+        }
+
+        const providerKey = (provider || 'google').toLowerCase()
+        const data = {
+            model: currentModel,
+            provider: providerKey,
+            providerDisplayName: getCleanProviderDisplayName(providerKey, currentModel),
+            billingUrl: PROVIDER_BILLING_LINKS[providerKey],
+            balance: balanceInfo,
+            sessionStats: {
+                requests: sessionRequests,
+                inputTokens: sessionInputTokens,
+                outputTokens: sessionOutputTokens,
+                cacheReadTokens: sessionCacheTokens,
+                totalTokens: sessionInputTokens + sessionOutputTokens,
+            },
+            weeklyStats,
+            dailyUsage: dailyUsage.length > 0 ? dailyUsage : undefined,
+        }
+        setUsageData(data)
+        return data
+    }, [agent, selectedProvider, authMethod, apiKey])
+
+    const handleOpenBilling = useCallback(async (url?: string) => {
+        if (url) {
+            try {
+                const { openUrl } = await import('../utils/open')
+                await openUrl(url)
+            } catch {
+                // Intentionally swallowed: headless browser open fallback
+            }
+        }
+    }, [])
 
     const handleSubmit = useCallback(
         async (text: string) => {
@@ -1852,102 +1983,8 @@ ${decStatus}
             }
 
             if (text.trim() === '/usage') {
-                const currentModel = agent.modelOptions?.model || 'gemini-3.6-flash'
-                const rawProvider = selectedProvider || (agent.llm as any)?.id || ''
-                const provider = rawProvider || (authMethod === 'december' ? 'december' : undefined)
-
-                // 1. Calculate session usage from current messages
-                const allMsgs = [
-                    ...useCliStore.getState().staticMessages,
-                    ...useCliStore.getState().activeMessages,
-                ]
-                let sessionInputTokens = 0
-                let sessionOutputTokens = 0
-                let sessionCacheTokens = 0
-                let sessionRequests = 0
-
-                for (const msg of allMsgs) {
-                    if (msg.usage) {
-                        sessionInputTokens += msg.usage.promptTokens || 0
-                        sessionOutputTokens += msg.usage.completionTokens || 0
-                        sessionCacheTokens += (msg.usage as any).cacheReadInputTokens || 0
-                        sessionRequests++
-                    }
-                }
-
-                // 2. Fetch rolling weekly summary from local ledger
-                let weeklyStats: any
-                try {
-                    weeklyStats = await getWeeklyUsageSummary()
-                } catch {
-                    // Intentionally swallowed: local usage summary fetch fallback
-                }
-
-                // 3. Fetch provider balance if supported / applicable
-                let balanceInfo: any
-                const config = await loadConfig()
-                if (authMethod === 'december' && config.decemberToken) {
-                    try {
-                        const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
-                        const overviewRes = await fetch(`${serverUrl}/api/v1/billing/overview`, {
-                            headers: { Authorization: `Bearer ${config.decemberToken}` },
-                            signal: AbortSignal.timeout(2000),
-                        })
-                        if (overviewRes.ok) {
-                            const overviewJson = (await overviewRes.json()) as any
-                            const balanceCents = overviewJson.data?.creditBalance ?? 0
-                            balanceInfo = {
-                                supported: true,
-                                balance: `$${(balanceCents / 100).toFixed(2)}`,
-                                currency: 'USD',
-                            }
-                        }
-                    } catch {
-                        // Intentionally swallowed: network error fetching december wallet balance
-                    }
-                } else if (authMethod === 'byok' || !authMethod) {
-                    const activeKey =
-                        apiKey ||
-                        config.providers?.[provider || ''] ||
-                        (provider ? process.env[`${provider.toUpperCase()}_API_KEY`] : undefined)
-                    if (activeKey) {
-                        try {
-                            balanceInfo = await fetchProviderBalance(provider, activeKey, 2000)
-                        } catch {
-                            // Intentionally swallowed: live balance fetch failure
-                        }
-                    }
-                }
-
-                const card = formatUsageCard({
-                    model: currentModel,
-                    authMethod,
-                    provider,
-                    isAuthenticated,
-                    sessionStats: {
-                        requests: sessionRequests,
-                        inputTokens: sessionInputTokens,
-                        outputTokens: sessionOutputTokens,
-                        cacheReadTokens: sessionCacheTokens,
-                        totalTokens: sessionInputTokens + sessionOutputTokens,
-                    },
-                    weeklyStats,
-                    balance: balanceInfo,
-                })
-
-                setActiveMessages((prev) => [
-                    ...prev,
-                    {
-                        id: getNextMsgId(),
-                        role: 'assistant',
-                        blocks: [
-                            {
-                                type: 'text',
-                                content: `\n${card}\n`,
-                            },
-                        ],
-                    },
-                ])
+                await fetchUsageData()
+                setAuthMode('usage')
                 return
             }
 
@@ -1961,7 +1998,7 @@ ${decStatus}
                         blocks: [
                             {
                                 type: 'text',
-                                content: `\nOpening GitHub issues...\n\nIf it doesn't open automatically, please click here:\n[${url}](${url})\n\n*Have feedback, found a bug, or have a feature request? Let us know!*`,
+                                content: `\nIf it doesn't open automatically, please click here:\n[${url}](${url})\n\n*Have feedback, found a bug, or have a feature request? Let us know!*`,
                             },
                         ],
                     },
@@ -2186,6 +2223,7 @@ ${decStatus}
         },
         [
             agent,
+            fetchUsageData,
             isAuthenticated,
             isStreaming,
             generateGrillQuestions,
@@ -2545,5 +2583,11 @@ ${decStatus}
         activeModel,
         setActiveModel,
         detectedSubscriptions,
+        usageData,
+        setUsageData,
+        handleRefreshUsage: fetchUsageData,
+        handleOpenBilling,
+        onRefresh: fetchUsageData,
+        onOpenBilling: handleOpenBilling,
     }
 }

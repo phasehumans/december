@@ -93,18 +93,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 },
             },
             {
-                id: 'go-activate',
-                label: 'Device Activation',
-                subtitle: 'Link CLI or secondary device code',
-                category: 'Navigation',
-                icon: <Icons.Terminal className="w-4 h-4 text-neutral-400" />,
-                keywords: ['activate', 'cli', 'code', 'pair', 'terminal', 'device', 'link'],
-                action: () => {
-                    onClose()
-                    navigate('/activate')
-                },
-            },
-            {
                 id: 'go-docs',
                 label: 'Documentation',
                 subtitle: 'Guides, architecture, and CLI reference',

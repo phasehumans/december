@@ -29,6 +29,22 @@ describe('OutOfCreditsModal', () => {
         expect(img.src).toContain(outCreditsPng)
     })
 
+    test('renders default banner with eager loading and WebP source', () => {
+        render(
+            <MemoryRouter>
+                <OutOfCreditsModal isOpen={true} onClose={() => {}} />
+            </MemoryRouter>
+        )
+
+        const source = document.body.querySelector('source[type="image/webp"]')
+        expect(source).not.toBeNull()
+
+        const img = screen.getByAltText('Out of Credits') as HTMLImageElement
+        expect(img.getAttribute('loading')).toBe('eager')
+        expect(img.getAttribute('fetchpriority')).toBe('high')
+        expect(img.getAttribute('decoding')).toBe('sync')
+    })
+
     test('renders custom bannerImage when provided', () => {
         render(
             <MemoryRouter>

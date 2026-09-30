@@ -1,0 +1,221 @@
+---
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+// Changelog Page - generated directly from CHANGELOG.md
+export interface ChangelogItem {
+  scope?: string;
+  text: string;
+  pr?: string;
+  raw: string;
+}
+
+export interface ChangelogSection {
+  title: string;
+  items: ChangelogItem[];
+}
+
+export interface ChangelogRelease {
+  version: string;
+  date: string;
+  isUnreleased: boolean;
+  sections: ChangelogSection[];
+}
+
+function parseChangelog(markdown: string): ChangelogRelease[] {
+  const lines = markdown.split('\n');
+  const releases: ChangelogRelease[] = [];
+  let currentRelease: ChangelogRelease | null = null;
+  let currentSection: ChangelogSection | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Version header: ## [0.3.34] - 2026-09-28 or ## [unreleased]
+    const versionMatch = line.match(/^##\s+\[(.*?)\](?:\s+-\s+(\d{4}-\d{2}-\d{2}))?/);
+    if (versionMatch) {
+      const rawVer = versionMatch[1];
+      const date = versionMatch[2] || (rawVer.toLowerCase() === 'unreleased' ? 'Upcoming' : '');
+      currentRelease = {
+        version: rawVer,
+        date: date,
+        isUnreleased: rawVer.toLowerCase() === 'unreleased',
+        sections: [],
+      };
+      releases.push(currentRelease);
+      currentSection = null;
+      continue;
+    }
+
+    if (!currentRelease) continue;
+
+    // Section header: ### Features, ### Bug Fixes, etc.
+    if (line.startsWith('### ')) {
+      const title = line.replace('### ', '').trim();
+      currentSection = {
+        title,
+        items: [],
+      };
+      currentRelease.sections.push(currentSection);
+      continue;
+    }
+
+    // Bullet items: - _(scope)_ text (#123)
+    if (currentSection && (line.trim().startsWith('- ') || line.trim().startsWith('* '))) {
+      const rawItem = line.trim().replace(/^[-*]\s*/, '');
+      const scopeMatch = rawItem.match(/^_([^_]+)_\s*/);
+      const scope = scopeMatch ? scopeMatch[1].replace(/^\(/, '').replace(/\)$/, '').trim() : undefined;
+      let itemText = scopeMatch ? rawItem.slice(scopeMatch[0].length).trim() : rawItem;
+
+      const prMatch = itemText.match(/\(#(\d+)\)\s*$/);
+      const pr = prMatch ? prMatch[1] : undefined;
+      if (prMatch && prMatch.index !== undefined) {
+        itemText = itemText.slice(0, prMatch.index).trim();
+      }
+
+      if (itemText.length > 0) {
+        itemText = itemText[0].toUpperCase() + itemText.slice(1);
+      }
+
+      currentSection.items.push({
+        scope,
+        text: itemText,
+        pr,
+        raw: rawItem,
+      });
+    }
+  }
+
+  // Filter out any empty sections
+  for (const rel of releases) {
+    rel.sections = rel.sections.filter((s) => s.items.length > 0);
+  }
+
+  return releases.filter((r) => r.sections.length > 0);
+}
+
+const changelogPath = fileURLToPath(new URL('../../../../../CHANGELOG.md', import.meta.url));
+let changelogContent = '';
+try {
+  changelogContent = fs.readFileSync(changelogPath, 'utf-8');
+} catch {
+  // Intentionally swallowed: fallback to empty changelog if file cannot be read
+}
+
+const releases = parseChangelog(changelogContent);
+---
+
+<BaseLayout
+  title="Changelog | December"
+  description="Release history, new features, and updates across December CLI, TUI, and cloud platforms."
+  canonicalUrl="https://trydecember.com/docs/changelog"
+  activePath="/docs/changelog"
+  hideHeader={false}
+  hideFooter={false}
+>
+  <!-- Main Container: Identical horizontal gap/margins to landing page, docs, privacy, and terms -->
+  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24 min-w-0">
+    <!-- Breadcrumb Navigation Bar -->
+    <nav class="flex items-center flex-wrap font-mono text-xs text-[#64748b] mb-8">
+      <div class="flex items-center flex-wrap gap-2">
+        <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
+        <span class="text-[#cbd5e1]">/</span>
+        <a href="/docs" class="hover:text-[#090a0f] transition-colors">docs</a>
+        <span class="text-[#cbd5e1]">/</span>
+        <span class="text-[#090a0f] font-medium">[changelog]</span>
+      </div>
+    </nav>
+
+    <!-- Article Layout -->
+    <article class="w-full min-w-0">
+      <!-- Document Header -->
+      <header class="mb-10 max-w-3xl min-w-0">
+        <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] leading-snug">
+          Changelog
+        </h1>
+        <p class="mt-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+          All notable changes, enhancements, and fixes across December CLI, TUI, and cloud execution.
+        </p>
+      </header>
+
+      <!-- Releases List -->
+      <div class="min-w-0 max-w-full">
+        {releases.map((release) => (
+          <section class="border-b border-[#e2e8f0] pb-10 mb-10 last:border-b-0 last:pb-0">
+            <div class="flex flex-wrap items-baseline gap-3 mb-6">
+              <h2 class="text-xl sm:text-2xl font-medium text-[#090a0f] tracking-tight">
+                {release.isUnreleased ? 'Upcoming Release' : `v${release.version}`}
+              </h2>
+              {release.date && (
+                <span class="font-mono text-xs text-[#64748b]">
+                  {release.date}
+                </span>
+              )}
+              {!release.isUnreleased && (
+                <a
+                  href={`https://github.com/phasehumans/december/releases/tag/v${release.version}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="font-mono text-xs text-[#87b2f4] hover:underline ml-auto"
+                >
+                  view on github &rarr;
+                </a>
+              )}
+            </div>
+
+            <!-- Sections within release (Features, Bug Fixes, etc.) -->
+            <div class="space-y-6">
+              {release.sections.map((section) => (
+                <div>
+                  <h3 class="text-xs font-mono uppercase tracking-wider text-[#64748b] mb-3 font-semibold">
+                    {section.title}
+                  </h3>
+                  <ul class="space-y-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+                    {section.items.map((item) => (
+                      <li class="flex items-start gap-2.5">
+                        <span class="text-[#87b2f4] select-none font-bold text-base leading-none mt-1">&bull;</span>
+                        <span class="min-w-0">
+                          {item.scope && (
+                            <span class="font-mono text-xs px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#090a0f] border border-[#e2e8f0] mr-1.5 font-medium">
+                              {item.scope}
+                            </span>
+                          )}
+                          <span>{item.text}</span>
+                          {item.pr && (
+                            <a
+                              href={`https://github.com/phasehumans/december/pull/${item.pr}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="font-mono text-xs text-[#87b2f4] hover:underline ml-1.5"
+                            >
+                              #{item.pr}
+                            </a>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <!-- Navigation & Contact Footer -->
+      <div class="mt-14 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs border-t border-[#e2e8f0] pt-8">
+        <span class="text-[#64748b]">
+          Follow releases on <a href="https://github.com/phasehumans/december/releases" target="_blank" rel="noopener noreferrer" class="text-[#87b2f4] hover:underline">GitHub</a>
+        </span>
+        <a
+          href="/docs"
+          class="group inline-flex items-center gap-1.5 p-2.5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all"
+        >
+          <span>Back to Documentation</span>
+          <span class="text-[#94a3b8] group-hover:text-[#87b2f4] transition-colors">&rarr;</span>
+        </a>
+      </div>
+    </article>
+  </div>
+</BaseLayout>

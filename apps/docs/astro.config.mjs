@@ -27,7 +27,7 @@ export default defineConfig({
         '/x': 'https://x.com/phasehumans',
         '/youtube': 'https://www.youtube.com/@phasehumans',
         '/yt': 'https://www.youtube.com/@phasehumans',
-        '/changelog': 'https://github.com/phasehumans/december/blob/main/CHANGELOG.md',
+        '/changelog': '/docs/changelog',
         '/blogs': '/blog',
         '/llm.txt': '/llms.txt',
     },

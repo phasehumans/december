@@ -5,6 +5,7 @@ import path from 'node:path'
 import pkg from '../package.json' with { type: 'json' }
 
 import { parseCliArgs, getHelpText } from './args'
+import releaseHighlights from './constants/release-highlights.json' with { type: 'json' }
 import { purgeProjectEnvApiKeys } from './utils/env-sanitizer'
 
 // Ensure no API keys or tokens from project .env files are loaded into CLI process
@@ -284,7 +285,7 @@ async function main() {
         inkModule,
         reactModule,
         { FileSessionRepository },
-        { getProviderConfig, loadConfig, getAuthStatus },
+        { getProviderConfig, loadConfig, saveConfig, getAuthStatus },
         { suppressConsole },
         { useAgentSession },
         { localOperations, setActiveScopeDir },
@@ -406,6 +407,26 @@ async function main() {
         })
     }
 
+    const { compareVersions } = await import('./utils/bin-discovery')
+    const isFirstRun =
+        !config.lastSeenVersion || compareVersions(pkg.version, config.lastSeenVersion) > 0
+
+    let announcement: any = null
+    if (isFirstRun) {
+        if (
+            releaseHighlights &&
+            Array.isArray(releaseHighlights.bullets) &&
+            releaseHighlights.bullets.length > 0
+        ) {
+            announcement = releaseHighlights
+        }
+
+        config.lastSeenVersion = pkg.version
+        saveConfig(config).catch(() => {
+            // Intentionally swallowed: config save failure should not block cli startup
+        })
+    }
+
     function AppWrapper(props: any) {
         const [latestVersion, setLatestVersion] = React.useState(undefined as string | undefined)
         React.useEffect(() => {
@@ -427,6 +448,7 @@ async function main() {
         return React.createElement(App, {
             ...props,
             latestVersion,
+            announcement,
             onUpdateSuccess: handleUpdateSuccess,
             session,
         })
@@ -437,10 +459,13 @@ async function main() {
     const isFullscreen = !parsedArgs.isInline
 
     if (process.stdout.isTTY) {
-        process.stdout.write('\x1b[?2004h')
+        const enterSequences = isFullscreen ? '\x1b[?2004h\x1b[?1000h\x1b[?1006h' : '\x1b[?2004h'
+        const exitSequences = isFullscreen ? '\x1b[?2004l\x1b[?1000l\x1b[?1006l' : '\x1b[?2004l'
+
+        process.stdout.write(enterSequences)
         const cleanupTerminal = () => {
             try {
-                process.stdout.write('\x1b[?2004l')
+                process.stdout.write(exitSequences)
             } catch {
                 // Intentionally swallowed: cleanup terminal escape sequences on exit
             }

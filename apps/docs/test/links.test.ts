@@ -37,6 +37,7 @@ describe('apps/docs link integrity verification', () => {
         '/docs/prompting',
         '/docs/integrations',
         '/docs/security',
+        '/docs/changelog',
         '/blog',
         '/blog/context-rot',
         '/blog/how-to-build-tools-for-ai-agents',

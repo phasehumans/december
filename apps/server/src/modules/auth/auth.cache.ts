@@ -7,18 +7,14 @@ interface CacheEntry {
     expiresAt: number
 }
 
-const DEFAULT_TTL_MS = 15 * 1000 // 15 seconds short TTL for L1 in-memory map
-const REDIS_TTL_MS = 15 * 60 * 1000 // 15 minutes TTL for L2 Redis cache
+const DEFAULT_TTL_MS = 15 * 60 * 1000 // 15 minutes TTL for local fallback memory
+const REDIS_TTL_MS = 15 * 60 * 1000 // 15 minutes TTL for Redis cache
 
 class SessionCache {
     private cache = new Map<string, CacheEntry>()
 
     async get(sessionId: string): Promise<CachedSessionData | null> {
-        const entry = this.cache.get(sessionId)
-        if (entry && Date.now() <= entry.expiresAt) {
-            return entry.data
-        }
-
+        // 1. If Redis is ready, fetch directly from Redis for zero-database validation and instant cross-node revocation
         if (redisClient && redisClient.status === 'ready') {
             try {
                 const dataStr = await redisClient.get(`sess:cache:${sessionId}`)
@@ -27,24 +23,32 @@ class SessionCache {
                     if (parsed.expiresAt) {
                         parsed.expiresAt = new Date(parsed.expiresAt)
                     }
-                    this.cache.set(sessionId, {
-                        data: parsed,
-                        expiresAt: Date.now() + DEFAULT_TTL_MS,
-                    })
                     return parsed
                 }
+                return null
             } catch (err) {
+                // Intentionally swallowed: fallback to local memory cache if Redis command fails
                 console.error('[SessionCache Redis Get Error]', err)
             }
+        }
+
+        // 2. Fallback to local memory cache if Redis is unavailable or offline
+        const entry = this.cache.get(sessionId)
+        if (entry) {
+            if (Date.now() <= entry.expiresAt) {
+                return entry.data
+            }
+            this.cache.delete(sessionId)
         }
 
         return null
     }
 
     async set(sessionId: string, data: CachedSessionData, ttlMs = REDIS_TTL_MS): Promise<void> {
+        // Maintain local fallback memory entry
         this.cache.set(sessionId, {
             data,
-            expiresAt: Date.now() + DEFAULT_TTL_MS,
+            expiresAt: Date.now() + ttlMs,
         })
 
         if (redisClient && redisClient.status === 'ready') {

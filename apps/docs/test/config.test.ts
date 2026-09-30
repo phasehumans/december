@@ -43,8 +43,6 @@ describe('apps/docs astro configuration', () => {
         expect(rawConfig.redirects['/x']).toBe('https://x.com/phasehumans')
         expect(rawConfig.redirects['/youtube']).toBe('https://www.youtube.com/@phasehumans')
         expect(rawConfig.redirects['/yt']).toBe('https://www.youtube.com/@phasehumans')
-        expect(rawConfig.redirects['/changelog']).toBe(
-            'https://github.com/phasehumans/december/blob/main/CHANGELOG.md'
-        )
+        expect(rawConfig.redirects['/changelog']).toBe('/docs/changelog')
     })
 })

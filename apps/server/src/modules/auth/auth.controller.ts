@@ -35,10 +35,7 @@ const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
     const { email, otp } = parseData
 
     const userAgent = req.get('user-agent') || 'unknown'
-    const ipAddress =
-        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-        req.socket.remoteAddress ||
-        'unknown'
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
     const result = await authService.verifyOtp({ email, otp, userAgent, ipAddress })
     authCookie.setAuthCookies(res, result.accessToken)
@@ -50,10 +47,7 @@ const login = asyncHandler(async (req: Request, res: Response) => {
     const parseData = loginSchema.parse(req.body)
 
     const userAgent = req.get('user-agent') || 'unknown'
-    const ipAddress =
-        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-        req.socket.remoteAddress ||
-        'unknown'
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
     const result = await authService.login({ ...parseData, userAgent, ipAddress })
     authCookie.setAuthCookies(res, result.accessToken)
@@ -130,10 +124,7 @@ const google = asyncHandler(async (req: Request, res: Response) => {
     if (!email_verified) throw new AppError('email not verified', 400)
 
     const userAgent = req.get('user-agent') || 'unknown'
-    const ipAddress =
-        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-        req.socket.remoteAddress ||
-        'unknown'
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
     const result = await authService.google({ email, name, sub, userAgent, ipAddress })
     authCookie.setAuthCookies(res, result.accessToken)
@@ -222,10 +213,7 @@ const github = asyncHandler(async (req: Request, res: Response) => {
     const sub = String(userResponse.data.id)
 
     const userAgent = req.get('user-agent') || 'unknown'
-    const ipAddress =
-        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-        req.socket.remoteAddress ||
-        'unknown'
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
     const result = await authService.github({
         email,
@@ -262,6 +250,7 @@ const refreshSession = asyncHandler(async (req: Request, res: Response) => {
                 error.message === 'account no longer exists' ||
                 error.message === 'account has been deleted' ||
                 error.message === 'invalid refresh token' ||
+                error.message === 'token reuse detected' ||
                 error.message === 'session not found')
         ) {
             authCookie.clearAuthCookies(res)
@@ -347,10 +336,7 @@ const pollDeviceToken = asyncHandler(async (req: Request, res: Response) => {
             ? rawUserAgent
             : `device-cli (${rawUserAgent})`
         : 'device-cli'
-    const ipAddress =
-        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-        req.socket.remoteAddress ||
-        'unknown'
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
     const result = await authService.pollDeviceToken({ ...parseData, userAgent, ipAddress })
 

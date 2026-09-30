@@ -268,6 +268,7 @@ export interface DecemberConfig {
         latestVersion: string
         checkedAt: number
     }
+    lastSeenVersion?: string
 }
 
 export function getLegacyConfigDir(): string {

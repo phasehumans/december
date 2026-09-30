@@ -34,4 +34,33 @@ describe('Header Component (Unit)', () => {
         const branch2 = getGitBranch()
         expect(branch2).toBe(branch)
     })
+
+    it('renders announcement with 3 items and heading when provided', () => {
+        const announcement = {
+            version: '0.4.0',
+            title: "What's New in v0.4.0",
+            bullets: [
+                'Fullscreen alternate-screen TUI by default',
+                '140+ Direct BYOK provider integrations',
+                'Configure aws rds postgresql connection',
+            ],
+            url: 'https://trydecember.com/docs/changelog',
+        }
+        const { lastFrame } = render(<Header announcement={announcement} />)
+        const frame = lastFrame()
+        expect(frame).toContain("▎ What's New in v0.4.0")
+        expect(frame).toContain('▎ Fullscreen alternate-screen TUI by default')
+        expect(frame).toContain('▎ 140+ Direct BYOK provider integrations')
+        expect(frame).toContain('▎ Configure aws rds postgresql connection')
+        expect(frame).toContain('Check out detailed changelog on')
+        expect(frame).toContain('https://trydecember.com/docs/changelog')
+    })
+
+    it('does not render announcement when announcement is null or undefined', () => {
+        const { lastFrame: frameUndefined } = render(<Header />)
+        expect(frameUndefined()).not.toContain("What's New")
+
+        const { lastFrame: frameNull } = render(<Header announcement={null} />)
+        expect(frameNull()).not.toContain("What's New")
+    })
 })

@@ -149,6 +149,7 @@ const verifyOtp = async (data: VerifyOtp) => {
     })
 
     const tokenHash = hashRefreshToken(accessToken)
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
     await authRepository.createSession({
         id: sessionId,
@@ -156,7 +157,18 @@ const verifyOtp = async (data: VerifyOtp) => {
         refreshTokenHash: tokenHash,
         userAgent: userAgent,
         ipAddress: ipAddress,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        expiresAt,
+    })
+
+    await sessionCache.set(sessionId, {
+        id: sessionId,
+        userId: user.id,
+        isRevoked: false,
+        expiresAt,
+        user: {
+            id: user.id,
+            isDeleted: false,
+        },
     })
 
     try {
@@ -217,6 +229,7 @@ const login = async (data: Login) => {
     })
 
     const tokenHash = hashRefreshToken(accessToken)
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
     await authRepository.createSession({
         id: sessionId,
@@ -224,7 +237,18 @@ const login = async (data: Login) => {
         refreshTokenHash: tokenHash,
         userAgent: userAgent,
         ipAddress: ipAddress,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        expiresAt,
+    })
+
+    await sessionCache.set(sessionId, {
+        id: sessionId,
+        userId: existingUser.id,
+        isRevoked: false,
+        expiresAt,
+        user: {
+            id: existingUser.id,
+            isDeleted: false,
+        },
     })
 
     return {
@@ -370,6 +394,7 @@ const google = async (data: Google) => {
     })
 
     const tokenHash = hashRefreshToken(accessToken)
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
     await authRepository.createSession({
         id: sessionId,
@@ -377,7 +402,18 @@ const google = async (data: Google) => {
         refreshTokenHash: tokenHash,
         userAgent: userAgent,
         ipAddress: ipAddress,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        expiresAt,
+    })
+
+    await sessionCache.set(sessionId, {
+        id: sessionId,
+        userId: user.id,
+        isRevoked: false,
+        expiresAt,
+        user: {
+            id: user.id,
+            isDeleted: false,
+        },
     })
 
     return {
@@ -451,6 +487,7 @@ const github = async (data: Github) => {
     })
 
     const tokenHash = hashRefreshToken(accessToken)
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
     await authRepository.createSession({
         id: sessionId,
@@ -458,7 +495,18 @@ const github = async (data: Github) => {
         refreshTokenHash: tokenHash,
         userAgent: userAgent,
         ipAddress: ipAddress,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        expiresAt,
+    })
+
+    await sessionCache.set(sessionId, {
+        id: sessionId,
+        userId: user.id,
+        isRevoked: false,
+        expiresAt,
+        user: {
+            id: user.id,
+            isDeleted: false,
+        },
     })
 
     return {
@@ -468,7 +516,7 @@ const github = async (data: Github) => {
     }
 }
 
-const REFRESH_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000 // 24 hours grace window
+const REFRESH_GRACE_PERIOD_MS = 30 * 1000 // 30 seconds grace window for concurrent multi-tab refreshes
 
 const refreshSession = async (data: RefreshSession) => {
     const { refreshToken } = data
@@ -528,23 +576,67 @@ const refreshSession = async (data: RefreshSession) => {
         throw new AppError('account no longer exists', 401)
     }
 
-    const accessToken = generateAccessToken({
-        userId: user.id,
-        sessionId: session.id,
-    })
+    const incomingHash = hashRefreshToken(token)
 
-    const newExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    // Case 1: Primary active refresh token match -> rotate token atomically
+    if (session.refreshTokenHash === incomingHash) {
+        const newAccessToken = generateAccessToken({
+            userId: user.id,
+            sessionId: session.id,
+        })
+        const newHash = hashRefreshToken(newAccessToken)
+        const newExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
-    await authRepository.updateSession(session.id, {
-        expiresAt: newExpiresAt,
-    })
+        await authRepository.updateSession(session.id, {
+            previousRefreshTokenHash: session.refreshTokenHash,
+            refreshTokenHash: newHash,
+            rotatedAt: new Date(),
+            expiresAt: newExpiresAt,
+        })
 
-    await sessionCache.invalidate(session.id)
+        await sessionCache.set(session.id, {
+            id: session.id,
+            userId: user.id,
+            isRevoked: false,
+            expiresAt: newExpiresAt,
+            user: {
+                id: user.id,
+                isDeleted: false,
+            },
+        })
 
-    return {
-        accessToken,
-        token: accessToken,
+        return {
+            accessToken: newAccessToken,
+            token: newAccessToken,
+        }
     }
+
+    // Case 2: Matches previous refresh token within 30-second grace window (multi-tab concurrent refresh)
+    if (session.previousRefreshTokenHash === incomingHash) {
+        const isWithinGraceWindow =
+            session.rotatedAt && Date.now() - session.rotatedAt.getTime() <= REFRESH_GRACE_PERIOD_MS
+
+        if (isWithinGraceWindow) {
+            // Concurrent request from another tab - issue new valid token without revoking active session
+            const concurrentAccessToken = generateAccessToken({
+                userId: user.id,
+                sessionId: session.id,
+            })
+
+            return {
+                accessToken: concurrentAccessToken,
+                token: concurrentAccessToken,
+            }
+        }
+
+        // Token reuse detected outside grace window: invalidate session across DB and Redis
+        await authRepository.revokeSession(session.id)
+        await sessionCache.invalidate(session.id)
+        throw new AppError('token reuse detected', 401)
+    }
+
+    // Case 3: Token does not match current or previous hash
+    throw new AppError('invalid refresh token', 401)
 }
 
 const signout = async (data: Signout) => {
@@ -584,10 +676,6 @@ const deleteAccount = async (data: DeleteAccount) => {
     await sessionCache.invalidateUser(userId)
 }
 
-const purgeSessions = async (_data: PurgeSessions) => {
-    return await authRepository.purgeExpiredAndRevokedSessions()
-}
-
 const getCliToken = async (data: GetCliToken) => {
     const { token: _token, userId } = data
     const user = await authRepository.findUserById(userId)
@@ -599,6 +687,7 @@ const getCliToken = async (data: GetCliToken) => {
     const sessionId = crypto.randomUUID()
     const token = generateAccessToken({ userId: user.id, sessionId }, { expiresIn: '30d' })
     const tokenHash = hashRefreshToken(token)
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
 
     await authRepository.createSession({
         id: sessionId,
@@ -606,7 +695,18 @@ const getCliToken = async (data: GetCliToken) => {
         refreshTokenHash: tokenHash,
         userAgent: 'cli-token',
         ipAddress: 'unknown',
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        expiresAt,
+    })
+
+    await sessionCache.set(sessionId, {
+        id: sessionId,
+        userId: user.id,
+        isRevoked: false,
+        expiresAt,
+        user: {
+            id: user.id,
+            isDeleted: false,
+        },
     })
 
     return { token, email: user.email }
@@ -679,13 +779,26 @@ const pollDeviceToken = async (data: PollDeviceToken) => {
         )
         const tokenHash = hashRefreshToken(accessToken)
 
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
         await authRepository.createSession({
             id: sessionId,
             userId: user.id,
             refreshTokenHash: tokenHash,
             userAgent: userAgent || 'device-cli',
             ipAddress: ipAddress || 'unknown',
-            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+            expiresAt,
+        })
+
+        await sessionCache.set(sessionId, {
+            id: sessionId,
+            userId: user.id,
+            isRevoked: false,
+            expiresAt,
+            user: {
+                id: user.id,
+                isDeleted: false,
+            },
         })
 
         if (redisClient && redisClient.status === 'ready') {
@@ -781,23 +894,8 @@ const getDeviceStatus = async (data: GetDeviceStatus): Promise<GetDeviceStatusRe
     }
 }
 
-const purgeExpiredAndRevokedSessions = async (data: PurgeSessions = {}) => {
-    void data
+const purgeExpiredAndRevokedSessions = async (_data: PurgeSessions = {}) => {
     return authRepository.purgeExpiredAndRevokedSessions()
-}
-
-const startSessionCleanupScheduler = (intervalMs = 60 * 60 * 1000) => {
-    const timer = setInterval(async () => {
-        try {
-            await purgeExpiredAndRevokedSessions()
-        } catch (error) {
-            console.error('Session cleanup scheduler failed:', error)
-        }
-    }, intervalMs)
-    if (timer.unref) {
-        timer.unref()
-    }
-    return timer
 }
 
 export const authService = {
@@ -819,5 +917,4 @@ export const authService = {
     verifyUserCode,
     getDeviceStatus,
     purgeExpiredAndRevokedSessions,
-    startSessionCleanupScheduler,
 }

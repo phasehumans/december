@@ -175,14 +175,14 @@ export const ScrollViewport = React.memo(function ScrollViewport({
         (input, key) => {
             if (!isActive) return
 
-            // Mouse Wheel Up: \x1b[<64;...M or [<64;...M
-            if (input.includes('[<64;')) {
+            // Mouse Wheel Up: \x1b[<64;...M or [<64;...M (including modifier flags: 68, 72, 80, 84)
+            if (/\[<(?:64|68|72|80|84);/.test(input)) {
                 handleScrollUp(3)
                 return
             }
 
-            // Mouse Wheel Down: \x1b[<65;...M or [<65;...M
-            if (input.includes('[<65;')) {
+            // Mouse Wheel Down: \x1b[<65;...M or [<65;...M (including modifier flags: 69, 73, 81, 85)
+            if (/\[<(?:65|69|73|81|85);/.test(input)) {
                 handleScrollDown(3)
                 return
             }

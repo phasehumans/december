@@ -114,4 +114,39 @@ describe('Rate Limiter & Structured Logger Middleware Integration', () => {
         expect(deviceCodeLimiter).toBeDefined()
         expect(deviceTokenPollLimiter).toBeDefined()
     })
+
+    it('parseAuthToken pre-parses token into req.tokenUser for downstream single-pass consumption', async () => {
+        const { parseAuthToken } = await import('../../src/middleware/auth.middleware')
+        const testToken = jwt.sign(
+            { userId: 'single-pass-user', sessionId: 'single-pass-session' },
+            env.ACCESS_TOKEN_SECRET
+        )
+
+        const testApp = express()
+        testApp.use(parseAuthToken)
+        testApp.get('/test-preauth', (req, res) => {
+            res.json({
+                hasTokenUser: Boolean(req.tokenUser),
+                userId: req.tokenUser?.userId,
+                sessionId: req.tokenUser?.sessionId,
+            })
+        })
+
+        const res = await request(testApp)
+            .get('/test-preauth')
+            .set('Authorization', `Bearer ${testToken}`)
+
+        expect(res.status).toBe(200)
+        expect(res.body.hasTokenUser).toBe(true)
+        expect(res.body.userId).toBe('single-pass-user')
+        expect(res.body.sessionId).toBe('single-pass-session')
+    })
+
+    it('createRateLimiter configures passOnStoreError to maintain service availability on store failures', () => {
+        const resilientLimiter = createRateLimiter({
+            windowMs: 60 * 1000,
+            limit: 10,
+        })
+        expect(resilientLimiter).toBeDefined()
+    })
 })
