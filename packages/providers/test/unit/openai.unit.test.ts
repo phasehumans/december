@@ -446,4 +446,52 @@ describe('OpenAI Provider Adapter (Unit)', () => {
             cacheReadInputTokens: 80,
         })
     })
+
+    it('passes reasoning_content on assistant messages when thinking is present', async () => {
+        let capturedPayload: any = null
+
+        const mockClient: any = {
+            chat: {
+                completions: {
+                    create: async (payload: any) => {
+                        capturedPayload = payload
+                        return (async function* () {
+                            yield { choices: [{ delta: { content: 'Done' } }] }
+                        })()
+                    },
+                },
+            },
+        }
+
+        const provider = openaiProvider(undefined, 'test-key', undefined, mockClient)
+        const messages = [
+            { role: 'user', content: 'hello' },
+            {
+                role: 'assistant',
+                content: '',
+                thinking: 'I need to check the project files.',
+                toolCalls: [{ id: 'tc-1', name: 'read_file', input: '{"path":"CONTEXT.md"}' }],
+            },
+            { role: 'tool', content: 'context content', toolCallId: 'tc-1' },
+        ]
+
+        const stream = provider.stream(messages)
+        for await (const _ of stream) {
+            // drain stream
+        }
+
+        expect(capturedPayload).not.toBeNull()
+        expect(capturedPayload.messages[1]).toEqual({
+            role: 'assistant',
+            content: '',
+            reasoning_content: 'I need to check the project files.',
+            tool_calls: [
+                {
+                    id: 'tc-1',
+                    type: 'function',
+                    function: { name: 'read_file', arguments: '{"path":"CONTEXT.md"}' },
+                },
+            ],
+        })
+    })
 })

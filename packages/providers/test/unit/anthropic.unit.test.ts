@@ -228,4 +228,57 @@ describe('Anthropic Provider Adapter (Unit)', () => {
         expect(capturedPayload).not.toBeNull()
         expect(capturedPayload.tools).toBeUndefined()
     })
+
+    it('passes thinking content block on assistant messages when thinking is present', async () => {
+        let capturedPayload: any = null
+
+        const mockClient: any = {
+            messages: {
+                create: async (payload: any) => {
+                    capturedPayload = payload
+                    return (async function* () {
+                        yield {
+                            type: 'content_block_start',
+                            index: 0,
+                            content_block: { type: 'text', text: 'OK' },
+                        }
+                    })()
+                },
+            },
+        }
+
+        const provider = anthropicProvider(undefined, undefined, mockClient)
+        const messages = [
+            { role: 'user', content: 'hello' },
+            {
+                role: 'assistant',
+                content: '',
+                thinking: 'Thinking through problem...',
+                toolCalls: [{ id: 'tc-1', name: 'read_file', input: '{"path":"CONTEXT.md"}' }],
+            },
+            { role: 'tool', content: 'context content', toolCallId: 'tc-1' },
+        ]
+
+        const stream = provider.stream(messages)
+        for await (const _ of stream) {
+            // consume
+        }
+
+        expect(capturedPayload).not.toBeNull()
+        expect(capturedPayload.messages[1]).toEqual({
+            role: 'assistant',
+            content: [
+                {
+                    type: 'thinking',
+                    thinking: 'Thinking through problem...',
+                },
+                {
+                    type: 'tool_use',
+                    id: 'tc-1',
+                    name: 'read_file',
+                    input: { path: 'CONTEXT.md' },
+                },
+            ],
+        })
+    })
 })

@@ -675,4 +675,51 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).toContain('file4.ts')
         expect(frame).not.toContain('✔')
     })
+
+    it('renders active spinner and reading status when consolidated reads are currently running', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/cli/src/index.ts)',
+                        toolInput: JSON.stringify({ filePath: 'apps/cli/src/index.ts' }),
+                        status: 'running',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/cli/src/local-operations.ts)',
+                        toolInput: JSON.stringify({ filePath: 'apps/cli/src/local-operations.ts' }),
+                        status: 'running',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Read')
+        expect(frame).toContain('apps/cli/src/index.ts')
+        expect(frame).toContain('apps/cli/src/local-operations.ts')
+        // When running, it should NOT prompt to expand or display static glyph
+        expect(frame).not.toContain('(ctrl+o to expand)')
+    })
+
+    it('renders running command with spinner alongside tool name and arguments', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'bash',
+                        command: 'Bash(git status -s)',
+                        status: 'running',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Bash')
+        expect(frame).toContain('git status -s')
+    })
 })

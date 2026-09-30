@@ -96,4 +96,21 @@ describe('evaporateStaleToolOutputs (Micro-Compaction)', () => {
         const result = evaporateStaleToolOutputs(messages, 3)
         expect(result[1].content).toBe(smallOutput)
     })
+
+    it('preserves thinking on assistant messages during evaporation', () => {
+        const messages: AgentMessage[] = [
+            { role: 'user', content: 'turn 1' },
+            {
+                role: 'assistant',
+                content: 'running tool',
+                thinking: 'Checking file structure first',
+                toolCalls: [{ id: 'tc-1', name: 'read_file', input: '{"path":"file.txt"}' }],
+            },
+            { role: 'tool', content: 'content\n'.repeat(50), toolCallId: 'tc-1' },
+            { role: 'assistant', content: 'done' },
+        ]
+
+        const result = evaporateStaleToolOutputs(messages, 3)
+        expect(result[1].thinking).toBe('Checking file structure first')
+    })
 })

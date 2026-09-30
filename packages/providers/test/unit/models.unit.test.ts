@@ -153,6 +153,8 @@ describe('Models Utility & Context Windows (Unit)', () => {
             expect(supportsModelThinking('deepseek-reasoner')).toBe(true)
             expect(supportsModelThinking('deepseek-r1')).toBe(true)
             expect(supportsModelThinking('deepseek/deepseek-r1')).toBe(true)
+            expect(supportsModelThinking('deepseek-v4-flash')).toBe(true)
+            expect(supportsModelThinking('deepseek-v4-pro')).toBe(true)
 
             // GLM reasoning & abliterated-model-large-v2
             expect(supportsModelThinking('glm-5.3')).toBe(true)

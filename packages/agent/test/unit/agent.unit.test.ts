@@ -93,6 +93,25 @@ describe('Agent core functionality (Unit)', () => {
         expect(providerMsgs.some((m) => m.content === 'UI status msg')).toBe(false)
     })
 
+    test('preserves thinking property in defaultConvertToLlm', () => {
+        const agent = new Agent({
+            llm: new MockLLM(),
+            tools: [],
+            operations: mockOperations,
+        })
+        agent.addMessage({ role: 'user', content: 'Explain code' })
+        agent.addMessage({
+            role: 'assistant',
+            content: '',
+            thinking: 'Let me inspect the files first',
+            toolCalls: [{ id: 'tc-1', name: 'read_file', input: '{"path":"main.ts"}' }],
+        })
+
+        const providerMsgs = agent.convertToLlm(agent.messages)
+        const assistantMsg = providerMsgs.find((m) => m.role === 'assistant')
+        expect(assistantMsg?.thinking).toBe('Let me inspect the files first')
+    })
+
     test('uses custom convertToLlm when provided', () => {
         const customConvert = (msgs: any[]) => msgs.map((m) => ({ ...m, content: 'custom' }))
         const agent = new Agent({

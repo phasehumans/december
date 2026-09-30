@@ -94,6 +94,12 @@ export function anthropicProvider(
                     })
                 } else if (msg.role === 'assistant') {
                     const content: Anthropic.ContentBlockParam[] = []
+                    if (msg.thinking) {
+                        content.push({
+                            type: 'thinking',
+                            thinking: msg.thinking,
+                        } as any)
+                    }
                     if (msg.content) {
                         content.push({ type: 'text', text: msg.content })
                     }

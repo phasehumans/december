@@ -16,6 +16,7 @@ export interface Message {
     content: string
     toolCalls?: ToolCall[]
     toolCallId?: string
+    thinking?: string
 }
 
 export interface AgentMessage extends Message {

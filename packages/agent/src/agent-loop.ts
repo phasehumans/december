@@ -365,7 +365,7 @@ async function runInnerLoop(
         eventQueue.push({ type: 'TurnStart' })
 
         // stream assistant response
-        const { assistantMessage, toolCalls, error } = await streamAssistantResponse(
+        const { assistantMessage, toolCalls, thinking, error } = await streamAssistantResponse(
             agent,
             eventQueue,
             signal,
@@ -378,12 +378,17 @@ async function runInnerLoop(
         }
 
         if (toolCalls.length === 0) {
-            agent.addMessage({ role: 'assistant', content: assistantMessage })
+            agent.addMessage({
+                role: 'assistant',
+                content: assistantMessage,
+                thinking,
+            })
             isDone = true
         } else {
             agent.addMessage({
                 role: 'assistant',
                 content: assistantMessage,
+                thinking,
                 toolCalls: toolCalls,
             })
 
@@ -444,7 +449,7 @@ async function streamAssistantResponse(
     signal: AbortSignal,
     turnCount: number = 1,
     options?: { readOnly?: boolean }
-): Promise<{ assistantMessage: string; toolCalls: ToolCall[]; error?: string }> {
+): Promise<{ assistantMessage: string; toolCalls: ToolCall[]; thinking?: string; error?: string }> {
     let assistantMessage = ''
     let toolCalls: ToolCall[] = []
     let thinkingText = ''
@@ -602,7 +607,7 @@ async function streamAssistantResponse(
                     }
                 }
                 toolCalls = Array.from(activeToolCalls.values())
-                return { assistantMessage, toolCalls }
+                return { assistantMessage, toolCalls, thinking: thinkingText || undefined }
             },
             {
                 retries: 5,
@@ -654,21 +659,26 @@ async function streamAssistantResponse(
             }
         )
 
-        const abortPromise = new Promise<{ assistantMessage: string; toolCalls: ToolCall[] }>(
-            (_, reject) => {
-                if (signal.aborted) {
+        const abortPromise = new Promise<{
+            assistantMessage: string
+            toolCalls: ToolCall[]
+            thinking?: string
+        }>((_, reject) => {
+            if (signal.aborted) {
+                reject(new AbortError(new Error('Aborted')))
+            } else {
+                signal.addEventListener('abort', () => {
                     reject(new AbortError(new Error('Aborted')))
-                } else {
-                    signal.addEventListener('abort', () => {
-                        reject(new AbortError(new Error('Aborted')))
-                    })
-                }
+                })
             }
-        )
+        })
 
         const result = await Promise.race([retryPromise, abortPromise])
         assistantMessage = result.assistantMessage
         toolCalls = result.toolCalls
+        if (result.thinking) {
+            thinkingText = result.thinking
+        }
 
         const durationMs = Date.now() - startTime
         const logEntry = createRequestLogEntry({
@@ -706,8 +716,10 @@ async function streamAssistantResponse(
             // Intentionally swallowed: Telemetry generation recording must not disrupt agent loop
         }
 
-        eventQueue.push({ type: 'AgentStatus', message: '' }) // clear status on success
-        return { assistantMessage, toolCalls }
+        if (toolCalls.length === 0) {
+            eventQueue.push({ type: 'AgentStatus', message: '' }) // clear status on success
+        }
+        return { assistantMessage, toolCalls, thinking: thinkingText || undefined }
     } catch (error: any) {
         let errorMsg = formatError(error)
 
@@ -835,7 +847,7 @@ async function streamAssistantResponse(
             errorMessage: errorMsg,
         })
         await agent.saveContext()
-        return { assistantMessage, toolCalls, error: errorMsg }
+        return { assistantMessage, toolCalls, thinking: thinkingText || undefined, error: errorMsg }
     }
 }
 

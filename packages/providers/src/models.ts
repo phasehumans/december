@@ -1948,7 +1948,8 @@ export function supportsModelThinking(model?: string): boolean {
     if (
         lower.includes('deepseek-reasoner') ||
         lower.includes('deepseek-r1') ||
-        lower.includes('r1-1776')
+        lower.includes('r1-1776') ||
+        lower.includes('deepseek-v4')
     ) {
         return true
     }

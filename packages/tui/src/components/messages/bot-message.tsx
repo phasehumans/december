@@ -181,6 +181,47 @@ function StyledCommand({ command, truncate = true }: { command: string; truncate
     return <Text color={THEME.colors.text}>{displayCmd}</Text>
 }
 
+function StyledRunningCommand({
+    command,
+    truncate = true,
+}: {
+    command: string
+    truncate?: boolean
+}) {
+    const match = command.match(/^([A-Za-z_]+)\(([\s\S]*)\)$/)
+    if (match) {
+        const args = (match[2] || '').replace(/\r?\n/g, ' ')
+        const toolName = match[1]
+        let displayArgs = args
+        if (truncate && displayArgs.length > 80) {
+            displayArgs = displayArgs.substring(0, 80) + '...'
+        }
+        if (
+            (toolName === 'read_file' || toolName === 'view_file' || toolName === 'Read') &&
+            args &&
+            !args.includes(' ')
+        ) {
+            const rel = toRelativePath(displayArgs)
+            displayArgs = fileLink(rel, args)
+        }
+        const cmdColor = THEME.colors.warning
+
+        return (
+            <Text>
+                <Text color={cmdColor} bold>
+                    {match[1]}
+                </Text>
+                {displayArgs ? <Text color={THEME.colors.muted}>({displayArgs})</Text> : null}
+            </Text>
+        )
+    }
+    let displayCmd = command.replace(/\r?\n/g, ' ')
+    if (truncate && displayCmd.length > 80) {
+        displayCmd = displayCmd.substring(0, 80) + '...'
+    }
+    return <Text color={THEME.colors.text}>{displayCmd}</Text>
+}
+
 function CollapsibleCommandOutput({
     command,
     output,
@@ -279,9 +320,11 @@ function getReadBlockPath(block: CommandBlock): { display: string; target: strin
 export function ConsolidatedReadsView({
     blocks,
     forceExpanded,
+    isLastBlock,
 }: {
     blocks: CommandBlock[]
     forceExpanded?: boolean
+    isLastBlock?: boolean
 }) {
     const isExpanded = forceExpanded ?? false
     const paths = blocks.map(getReadBlockPath)
@@ -297,6 +340,45 @@ export function ConsolidatedReadsView({
     }
 
     const cmdColor = THEME.colors.warning
+    const isRunning = blocks.some((b) => b.status === 'running')
+
+    if (isRunning) {
+        return (
+            <Box flexDirection="column" marginY={0}>
+                <Box alignItems="center" gap={1}>
+                    <Spinner />
+                    <Text>
+                        <Text color={cmdColor} bold>
+                            Read
+                        </Text>
+                        <Text color={THEME.colors.muted}>
+                            ({isExpanded ? `${count} files` : inlineArgs})
+                        </Text>
+                    </Text>
+                    <InlineTip active={isLastBlock ?? true} />
+                </Box>
+                {isExpanded && (
+                    <Box flexDirection="column" paddingLeft={2} marginTop={0}>
+                        {paths.map((p, pidx) => {
+                            const fileRunning = blocks[pidx]?.status === 'running'
+                            return (
+                                <Box key={pidx} alignItems="center" gap={1}>
+                                    {fileRunning ? (
+                                        <Spinner />
+                                    ) : (
+                                        <Text color={cmdColor}>{`${THEME.glyphs.status} `}</Text>
+                                    )}
+                                    <Text color={THEME.colors.muted}>
+                                        {fileLink(p.display, p.target)}
+                                    </Text>
+                                </Box>
+                            )
+                        })}
+                    </Box>
+                )}
+            </Box>
+        )
+    }
 
     return (
         <Box flexDirection="column" marginY={0}>
@@ -404,6 +486,7 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                             key={item.originalIdx}
                             blocks={item.blocks}
                             forceExpanded={expandCommands}
+                            isLastBlock={item.originalIdx + item.blocks.length >= blocks.length}
                         />
                     )
                 }
@@ -787,8 +870,12 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                             <Box key={idx} flexDirection="column">
                                 <Box gap={1} alignItems="center">
                                     <Spinner />
-                                    <Text color={THEME.colors.muted}>{statusLabel}</Text>
-                                    <InlineTip active={true} />
+                                    {block.command ? (
+                                        <StyledRunningCommand command={block.command} />
+                                    ) : (
+                                        <Text color={THEME.colors.muted}>{statusLabel}</Text>
+                                    )}
+                                    <InlineTip active={idx === blocks.length - 1} />
                                 </Box>
                                 {block.output && (
                                     <Box

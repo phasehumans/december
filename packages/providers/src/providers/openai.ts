@@ -176,6 +176,9 @@ export function openaiProvider(
                         role: 'assistant',
                         content: msg.content,
                     }
+                    if (msg.thinking) {
+                        ;(asstMsg as any).reasoning_content = msg.thinking
+                    }
                     if (msg.toolCalls && msg.toolCalls.length > 0) {
                         asstMsg.tool_calls = msg.toolCalls.map((tc) => ({
                             id: tc.id,

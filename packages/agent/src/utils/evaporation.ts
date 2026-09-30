@@ -30,6 +30,7 @@ export function evaporateStaleToolOutputs(
         return messages.map((m) => ({
             role: m.role,
             content: m.content,
+            thinking: m.thinking,
             toolCalls: m.toolCalls,
             toolCallId: m.toolCallId,
         }))
@@ -39,6 +40,7 @@ export function evaporateStaleToolOutputs(
         const baseMsg: Message = {
             role: msg.role,
             content: msg.content,
+            thinking: msg.thinking,
             toolCalls: msg.toolCalls,
             toolCallId: msg.toolCallId,
         }
