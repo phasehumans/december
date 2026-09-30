@@ -636,32 +636,20 @@ export const getCuratedProviderModels = (provider: string) => {
         case 'ambient':
             return [
                 {
-                    label: 'DeepSeek V4 Flash',
-                    value: 'deepseek/deepseek-v4-flash',
-                },
-                {
-                    label: 'DeepSeek V4 Flash 0731',
-                    value: 'deepseek/deepseek-v4-flash-0731',
-                },
-                {
                     label: 'Ambient Large',
                     value: 'ambient/large',
                 },
                 {
-                    label: 'GLM 5.2 FP8',
-                    value: 'zai-org/GLM-5.2-FP8',
+                    label: 'GLM 5.2',
+                    value: 'z-ai/glm-5.2',
                 },
                 {
-                    label: 'Kimi K2.7 Code',
-                    value: 'moonshotai/kimi-k2.7-code',
+                    label: 'Qwen 3.6 27B',
+                    value: 'qwen/qwen3.6-27b',
                 },
                 {
-                    label: 'MiMo V2.5',
-                    value: 'xiaomi/mimo-v2.5',
-                },
-                {
-                    label: 'Step 3.7 Flash',
-                    value: 'stepfun/step-3.7-flash',
+                    label: 'Qwen 3.8 27B',
+                    value: 'qwen/qwen3.8-27b',
                 },
             ]
         case 'auriko':
@@ -3013,12 +3001,10 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     if (
         normalized === 'ambient' &&
         (model.includes('/') ||
-            model.startsWith('deepseek') ||
             model.startsWith('ambient') ||
             model.startsWith('glm') ||
-            model.startsWith('kimi') ||
-            model.startsWith('mimo') ||
-            model.startsWith('step'))
+            model.startsWith('qwen') ||
+            model.startsWith('z-ai'))
     )
         return true
     if (
@@ -3110,6 +3096,9 @@ export const getDefaultModelForProvider = (provider: string): string => {
     }
     if (normalized === 'amd') {
         return 'DeepSeek-V4-Flash'
+    }
+    if (normalized === 'ambient') {
+        return 'ambient/large'
     }
     if (normalized === 'anyapi') {
         return 'anthropic/claude-sonnet-4-6'

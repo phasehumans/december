@@ -154,7 +154,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getModelContextWindow('deepseek-v4-flash-0731-284b')).toBe(1050000)
             expect(getModelContextWindow('aki/deepseek-v4-flash-0731-284b')).toBe(1050000)
             expect(getModelContextWindow('ambient/large')).toBe(202000)
-            expect(getModelContextWindow('ambient/deepseek/deepseek-v4-flash')).toBe(1050000)
+            expect(getModelContextWindow('ambient/z-ai/glm-5.2')).toBe(202000)
+            expect(getModelContextWindow('ambient/qwen/qwen3.6-27b')).toBe(32768)
             expect(getModelContextWindow('auriko/claude-sonnet-4-6')).toBe(1000000)
             expect(getModelContextWindow('auriko/deepseek-v4-flash')).toBe(1000000)
             expect(getModelContextWindow('baseten/deepseek-ai/DeepSeek-V4.1-Flash')).toBe(1048576)
@@ -262,13 +263,10 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
 
             const ambientModels = getProviderModels('ambient')
             expect(ambientModels.map((m) => m.value)).toEqual([
-                'deepseek/deepseek-v4-flash',
-                'deepseek/deepseek-v4-flash-0731',
                 'ambient/large',
-                'zai-org/GLM-5.2-FP8',
-                'moonshotai/kimi-k2.7-code',
-                'xiaomi/mimo-v2.5',
-                'stepfun/step-3.7-flash',
+                'z-ai/glm-5.2',
+                'qwen/qwen3.6-27b',
+                'qwen/qwen3.8-27b',
             ])
 
             const aurikoModels = getProviderModels('auriko')
@@ -343,7 +341,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getDefaultModelForProvider('aiand')).toBe('deepseek-ai/deepseek-v4-flash')
             expect(getDefaultModelForProvider('aki')).toBe('deepseek-v4-flash-0731-284b')
             expect(getDefaultModelForProvider('aki-io')).toBe('deepseek-v4-flash-0731-284b')
-            expect(getDefaultModelForProvider('ambient')).toBe('deepseek/deepseek-v4-flash')
+            expect(getDefaultModelForProvider('ambient')).toBe('ambient/large')
             expect(getDefaultModelForProvider('auriko')).toBe('claude-sonnet-4-6')
             expect(getDefaultModelForProvider('aurikoai')).toBe('claude-sonnet-4-6')
             expect(getDefaultModelForProvider('auriko-ai')).toBe('claude-sonnet-4-6')
@@ -373,7 +371,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(isValidModelForProvider('aiand', 'deepseek-ai/deepseek-v4-flash')).toBe(true)
             expect(isValidModelForProvider('aki', 'deepseek-v4-flash-0731-284b')).toBe(true)
             expect(isValidModelForProvider('aki-io', 'glm5.3-754b')).toBe(true)
-            expect(isValidModelForProvider('ambient', 'deepseek/deepseek-v4-flash')).toBe(true)
+            expect(isValidModelForProvider('ambient', 'ambient/large')).toBe(true)
+            expect(isValidModelForProvider('ambient', 'z-ai/glm-5.2')).toBe(true)
             expect(isValidModelForProvider('auriko', 'claude-sonnet-4-6')).toBe(true)
             expect(isValidModelForProvider('aurikoai', 'deepseek-v4-flash')).toBe(true)
             expect(isValidModelForProvider('baseten', 'deepseek-ai/DeepSeek-V4.1-Flash')).toBe(true)
@@ -399,9 +398,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(ensureValidModelForProvider('aki', 'deepseek-v4-flash-0731-284b')).toBe(
                 'deepseek-v4-flash-0731-284b'
             )
-            expect(ensureValidModelForProvider('ambient', 'deepseek/deepseek-v4-flash')).toBe(
-                'deepseek/deepseek-v4-flash'
-            )
+            expect(ensureValidModelForProvider('ambient', 'ambient/large')).toBe('ambient/large')
             expect(ensureValidModelForProvider('auriko', 'claude-sonnet-4-6')).toBe(
                 'claude-sonnet-4-6'
             )
@@ -766,7 +763,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(targetAmbient).toBeDefined()
             const switched9 = applyProviderSwitch(switched8.config, targetAmbient!)
             expect(switched9.config.activeProvider).toBe('ambient')
-            expect(switched9.config.activeModel).toBe('deepseek/deepseek-v4-flash')
+            expect(switched9.config.activeModel).toBe('ambient/large')
 
             // Switch: ambient -> auriko via alias auriko-ai
             const targetAuriko = resolveSwitchTarget(switched9.config, 'auriko-ai')

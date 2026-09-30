@@ -524,6 +524,8 @@ export function useAuthHandlers(
                     : ['gpt-4o']
 
             let lastProbeErr: any
+            let lowCreditErr: any
+            let lowCreditModel: string | undefined
             let probeSuccess = false
 
             for (const modelToTest of candidateModels.slice(0, 4)) {
@@ -566,11 +568,26 @@ export function useAuthHandlers(
                     ) {
                         throw probeErr
                     }
+                    if (
+                        errText.includes('402') ||
+                        errText.includes('credits') ||
+                        errText.includes('payment') ||
+                        errText.includes('afford') ||
+                        errText.includes('insufficient_quota')
+                    ) {
+                        if (!lowCreditErr) {
+                            lowCreditErr = probeErr
+                            lowCreditModel = testModel
+                        }
+                    }
                 }
             }
 
-            if (!probeSuccess && lastProbeErr) {
-                throw lastProbeErr
+            if (!probeSuccess && (lowCreditErr || lastProbeErr)) {
+                if (lowCreditModel) {
+                    testModel = lowCreditModel
+                }
+                throw lowCreditErr || lastProbeErr
             }
 
             const { getDefaultModelForProvider } = await import('../utils/models')
