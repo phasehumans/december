@@ -10,7 +10,7 @@ import { GrillQuestionMenu } from './components/menus/grill-question-menu'
 import { PlanApproveMenu } from './components/menus/plan-approve-menu'
 import { ToolPermissionMenu } from './components/menus/tool-permission-menu'
 import { MessageList } from './components/message-list'
-import { ScrollViewport } from './components/scroll-viewport'
+import { ScrollViewport, type ScrollViewportHandle } from './components/scroll-viewport'
 import { useTerminalColumns, useTerminalRows } from './hooks/use-terminal-columns'
 import { extractPlanSummary } from './utils/pager'
 
@@ -173,9 +173,21 @@ export function ChatApp({
     const rows = useTerminalRows()
     const columns = useTerminalColumns()
 
+    const scrollViewportRef = useRef<ScrollViewportHandle>(null)
+
+    const handleScrollUp = useCallback((delta: number = 1) => {
+        scrollViewportRef.current?.scrollUp(delta)
+    }, [])
+
+    const handleScrollDown = useCallback((delta: number = 1) => {
+        scrollViewportRef.current?.scrollDown(delta)
+    }, [])
+
     const inputBarElement = (
         <InputBar
             onSubmit={handleFormSubmit}
+            onScrollUp={handleScrollUp}
+            onScrollDown={handleScrollDown}
             disabled={authMode !== 'none' || (Boolean(workflowUI) && !session.customInputMode)}
             onCopy={() => {
                 import('./utils/clipboard')
@@ -247,7 +259,11 @@ export function ChatApp({
     return (
         <Box flexDirection="column" height={rows} width={columns} overflow="hidden">
             <GlobalShortcuts {...session} agent={agent} />
-            <ScrollViewport isGenerating={session.isStreaming} isActive={authMode === 'none'}>
+            <ScrollViewport
+                ref={scrollViewportRef}
+                isGenerating={session.isStreaming}
+                isActive={authMode === 'none'}
+            >
                 <MessageList
                     staticKey={staticKey}
                     staticMessages={staticMessages}

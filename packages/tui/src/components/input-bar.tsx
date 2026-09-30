@@ -45,6 +45,8 @@ type Props = {
     showExitConfirm?: boolean
     toasts?: { id: string; message: string; variant?: string }[]
     queuedPrompts?: string[]
+    onScrollUp?: (delta?: number) => void
+    onScrollDown?: (delta?: number) => void
 }
 
 const MAX_FILE_SUGGESTIONS = 5
@@ -87,6 +89,8 @@ export const InputBar = React.memo(function InputBar({
     toasts,
     queuedPrompts,
     tasks,
+    onScrollUp,
+    onScrollDown,
 }: Props) {
     const [value, setValue] = useState('')
     const toast = useToast()
@@ -547,6 +551,8 @@ export const InputBar = React.memo(function InputBar({
                                 onSubmit={handleSubmit}
                                 onHistoryUp={handleHistoryUp}
                                 onHistoryDown={handleHistoryDown}
+                                onScrollUp={onScrollUp}
+                                onScrollDown={onScrollDown}
                                 placeholder={
                                     grillMode
                                         ? ''

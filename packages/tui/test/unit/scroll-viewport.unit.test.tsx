@@ -119,4 +119,30 @@ describe('ScrollViewport Component (Unit)', () => {
         await new Promise((resolve) => setTimeout(resolve, 50))
         expect(handleScrollChange).toHaveBeenCalledWith(0)
     })
+
+    it('exposes imperative handle with scrollUp, scrollDown, scrollToTop, and scrollToBottom', () => {
+        const handleScrollChange = mock((linesBelow: number) => {})
+        const ref = React.createRef<any>()
+
+        render(
+            <RootLayout>
+                <ScrollViewport ref={ref} height={5} onScrollChange={handleScrollChange}>
+                    {Array.from({ length: 20 }, (_, i) => (
+                        <Box key={i} flexShrink={0}>
+                            <Text>{`Row ${i + 1}`}</Text>
+                        </Box>
+                    ))}
+                </ScrollViewport>
+            </RootLayout>
+        )
+
+        expect(ref.current).toBeDefined()
+        expect(typeof ref.current.scrollUp).toBe('function')
+        expect(typeof ref.current.scrollDown).toBe('function')
+        expect(typeof ref.current.scrollToTop).toBe('function')
+        expect(typeof ref.current.scrollToBottom).toBe('function')
+
+        ref.current.scrollUp(2)
+        expect(handleScrollChange).toHaveBeenCalled()
+    })
 })

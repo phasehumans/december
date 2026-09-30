@@ -266,4 +266,70 @@ describe('TextArea Component (Unit)', () => {
         stdin.write('\x1b[<0;24;15M')
         expect(textValue).toBe('hello')
     })
+
+    it('triggers onScrollUp and onScrollDown on up/down arrow when value is empty', async () => {
+        const onScrollUp = mock()
+        const onScrollDown = mock()
+        const { stdin } = render(
+            <TextArea
+                value=""
+                onChange={() => {}}
+                onSubmit={() => {}}
+                onScrollUp={onScrollUp}
+                onScrollDown={onScrollDown}
+                focus={true}
+            />
+        )
+
+        stdin.write('\u001B[A') // Up arrow
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollUp).toHaveBeenCalledWith(1)
+
+        stdin.write('\u001B[B') // Down arrow
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollDown).toHaveBeenCalledWith(1)
+    })
+
+    it('triggers onScrollUp on Shift+Up arrow even when text is present', async () => {
+        const onScrollUp = mock()
+        const { stdin } = render(
+            <TextArea
+                value="some prompt text"
+                onChange={() => {}}
+                onSubmit={() => {}}
+                onScrollUp={onScrollUp}
+                focus={true}
+            />
+        )
+
+        // Shift+Up arrow escape sequence: \x1b[1;2A
+        stdin.write('\u001B[1;2A')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollUp).toHaveBeenCalledWith(1)
+    })
+
+    it('navigates prompt history with Ctrl+P and Ctrl+N', async () => {
+        const onHistoryUp = mock()
+        const onHistoryDown = mock()
+        const { stdin } = render(
+            <TextArea
+                value=""
+                onChange={() => {}}
+                onSubmit={() => {}}
+                onHistoryUp={onHistoryUp}
+                onHistoryDown={onHistoryDown}
+                focus={true}
+            />
+        )
+
+        // Ctrl+P (byte 0x10)
+        stdin.write('\x10')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onHistoryUp).toHaveBeenCalledTimes(1)
+
+        // Ctrl+N (byte 0x0E)
+        stdin.write('\x0E')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onHistoryDown).toHaveBeenCalledTimes(1)
+    })
 })

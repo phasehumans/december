@@ -10,6 +10,8 @@ type Props = {
     onSubmit: (value: string) => void
     onHistoryUp?: () => void
     onHistoryDown?: () => void
+    onScrollUp?: (delta?: number) => void
+    onScrollDown?: (delta?: number) => void
     placeholder?: string
     focus?: boolean
     disableHistoryNav?: boolean
@@ -21,6 +23,8 @@ export function TextArea({
     onSubmit,
     onHistoryUp,
     onHistoryDown,
+    onScrollUp,
+    onScrollDown,
     placeholder = '',
     focus = true,
     disableHistoryNav = false,
@@ -173,8 +177,32 @@ export function TextArea({
             setCursorOffset(Math.min(value.length, offset + 1))
             return
         }
+        if (key.pageUp || key.pageDown) {
+            return
+        }
+
+        if (key.home) {
+            if (value.length === 0) return
+            setCursorOffset(0)
+            return
+        }
+
+        if (key.end) {
+            if (value.length === 0) return
+            setCursorOffset(value.length)
+            return
+        }
+
         if (key.upArrow) {
             if (disableHistoryNav) return
+            if (key.shift) {
+                onScrollUp?.(1)
+                return
+            }
+            if (value.length === 0) {
+                onScrollUp?.(1)
+                return
+            }
             const lines = value.slice(0, offset).split('\n')
             if (lines.length > 1) {
                 const currentLineLength = lines[lines.length - 1]?.length || 0
@@ -183,8 +211,8 @@ export function TextArea({
                 const newOffset = offset - currentLineLength - 1 - (prevLineLength - newCol)
                 setCursorOffset(Math.max(0, newOffset))
             } else {
-                if (offset === 0 && onHistoryUp) {
-                    onHistoryUp()
+                if (offset === 0) {
+                    onScrollUp?.(1)
                 } else {
                     setCursorOffset(0)
                 }
@@ -193,6 +221,14 @@ export function TextArea({
         }
         if (key.downArrow) {
             if (disableHistoryNav) return
+            if (key.shift) {
+                onScrollDown?.(1)
+                return
+            }
+            if (value.length === 0) {
+                onScrollDown?.(1)
+                return
+            }
             const postLines = value.slice(offset).split('\n')
             if (postLines.length > 1) {
                 const preLines = value.slice(0, offset).split('\n')
@@ -203,8 +239,8 @@ export function TextArea({
                 const newOffset = offset + postLineZeroLength + 1 + newCol
                 setCursorOffset(Math.min(value.length, newOffset))
             } else {
-                if (offset === value.length && onHistoryDown) {
-                    onHistoryDown()
+                if (offset === value.length) {
+                    onScrollDown?.(1)
                 } else {
                     setCursorOffset(value.length)
                 }
@@ -246,6 +282,18 @@ export function TextArea({
             const newValue = value.slice(offset)
             onChange(newValue)
             setCursorOffset(0)
+            return
+        }
+        if (key.ctrl && (input === 'p' || (key as any).name === 'p')) {
+            if (!disableHistoryNav && onHistoryUp) {
+                onHistoryUp()
+            }
+            return
+        }
+        if (key.ctrl && (input === 'n' || (key as any).name === 'n')) {
+            if (!disableHistoryNav && onHistoryDown) {
+                onHistoryDown()
+            }
             return
         }
 

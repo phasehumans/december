@@ -11,6 +11,12 @@ const WINDOW_SIZE = 15
 export const SHORTCUTS = [
     { key: '/', desc: 'Open slash commands' },
     { key: '! <cmd>', desc: 'Execute shell command directly (e.g. !git status)' },
+    { key: '↑ / ↓', desc: 'Scroll chat up / down (when prompt empty)' },
+    { key: 'pageup / pagedown', desc: 'Scroll chat by page' },
+    { key: 'shift + ↑ / ↓', desc: 'Scroll chat line by line' },
+    { key: 'home / end', desc: 'Jump to top / bottom' },
+    { key: 'ctrl+p', desc: 'Previous prompt history' },
+    { key: 'ctrl+n', desc: 'Next prompt history' },
     { key: 'ctrl+a', desc: 'Go to start' },
     { key: 'ctrl+e', desc: 'Go to end' },
     { key: 'ctrl+k', desc: 'Delete to end' },
@@ -23,7 +29,7 @@ export const SHORTCUTS = [
     { key: 'ctrl+o', desc: 'Toggle expand commands' },
     { key: 'ctrl+t', desc: 'Tasks mode' },
     { key: 'alt+enter', desc: 'Insert newline' },
-    { key: 'esc', desc: 'Cancel / Close menu' },
+    { key: 'esc', desc: 'Cancel / Return to bottom' },
 ]
 
 export function ShortcutsMenu({ onClose }: { onClose: () => void }) {

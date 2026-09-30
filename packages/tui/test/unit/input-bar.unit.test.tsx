@@ -337,4 +337,26 @@ describe('InputBar Component (Unit)', () => {
         // Command menu must appear above the prompt text
         expect(cmdIndex).toBeLessThan(promptIndex)
     })
+
+    it('forwards onScrollUp and onScrollDown on arrow keys when prompt is empty', async () => {
+        const onScrollUp = mock()
+        const onScrollDown = mock()
+        const { stdin } = render(
+            <RootLayout>
+                <InputBar
+                    onSubmit={mock(() => {})}
+                    onScrollUp={onScrollUp}
+                    onScrollDown={onScrollDown}
+                />
+            </RootLayout>
+        )
+
+        stdin.write('\u001B[A') // Up arrow
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        expect(onScrollUp).toHaveBeenCalledWith(1)
+
+        stdin.write('\u001B[B') // Down arrow
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        expect(onScrollDown).toHaveBeenCalledWith(1)
+    })
 })
