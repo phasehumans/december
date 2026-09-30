@@ -541,10 +541,18 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                         (part.startsWith('\n') ||
                                             (pidx === 0 && block.content.startsWith('\n'))) &&
                                         !needsTopMargin
+                                    const isStreaming =
+                                        idx === blocks.length - 1 && pidx === parts.length - 1
+                                    const contentText = isStreaming
+                                        ? part.replace(/^\n+/, '')
+                                        : part.trim()
                                     return (
                                         <Box key={pidx} flexDirection="column">
                                             {hasLeadingNewline && <Text> </Text>}
-                                            <SmoothMarkdown text={part.trim()} isRunning={true} />
+                                            <SmoothMarkdown
+                                                text={contentText}
+                                                isRunning={isStreaming}
+                                            />
                                         </Box>
                                     )
                                 })}

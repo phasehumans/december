@@ -340,7 +340,7 @@ export async function processAgentStream({
         )
     }
 
-    const FRAME_BUDGET_MS = 33 // ~30 FPS frame budget for terminal rendering
+    const FRAME_BUDGET_MS = 16 // ~60 FPS frame budget for terminal rendering
 
     for await (const event of stream) {
         pendingEvents.push(event)

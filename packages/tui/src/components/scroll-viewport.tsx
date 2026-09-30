@@ -45,7 +45,12 @@ export const ScrollViewport = React.memo(
         const viewportRef = useRef<any>(null)
         const contentRef = useRef<any>(null)
 
-        const [viewportHeight, setViewportHeight] = useState<number>(explicitHeight ?? 20)
+        const defaultHeight =
+            explicitHeight ??
+            (typeof process !== 'undefined' && process.stdout?.rows
+                ? Math.max(10, process.stdout.rows - 6)
+                : 24)
+        const [viewportHeight, setViewportHeight] = useState<number>(defaultHeight)
         const [contentHeight, setContentHeight] = useState<number>(0)
         const [internalScrollTop, setInternalScrollTop] = useState<number>(0)
         const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
@@ -56,6 +61,9 @@ export const ScrollViewport = React.memo(
         // Compute max scrollTop
         const maxScrollTop = Math.max(0, contentHeight - viewportHeight)
 
+        // Directly derive scrollTop: when not in reading mode (auto-scroll), lock synchronously to maxScrollTop
+        const scrollTop = isReadingMode ? Math.min(internalScrollTop, maxScrollTop) : maxScrollTop
+
         // State refs to eliminate stale closure bugs in useInput
         const stateRef = useRef({
             isReadingMode,
@@ -63,6 +71,7 @@ export const ScrollViewport = React.memo(
             maxScrollTop,
             viewportHeight,
             contentHeight,
+            scrollTop,
         })
         stateRef.current = {
             isReadingMode,
@@ -70,6 +79,7 @@ export const ScrollViewport = React.memo(
             maxScrollTop,
             viewportHeight,
             contentHeight,
+            scrollTop,
         }
 
         // Measure viewport and content dimensions
@@ -100,22 +110,12 @@ export const ScrollViewport = React.memo(
             if (controlledScrollFromBottom !== undefined) {
                 if (controlledScrollFromBottom === 0) {
                     setIsReadingMode(false)
-                    setInternalScrollTop(maxScrollTop)
                 } else {
                     setIsReadingMode(true)
                     setInternalScrollTop(Math.max(0, maxScrollTop - controlledScrollFromBottom))
                 }
             }
         }, [controlledScrollFromBottom, maxScrollTop])
-
-        // Auto-scroll when in auto-scroll mode
-        useEffect(() => {
-            if (!isReadingMode) {
-                setInternalScrollTop(maxScrollTop)
-            }
-        }, [maxScrollTop, isReadingMode])
-
-        const scrollTop = Math.min(internalScrollTop, maxScrollTop)
 
         const notifyStateChange = useCallback(
             (newScrollTop: number) => {
@@ -136,12 +136,12 @@ export const ScrollViewport = React.memo(
 
         const handleScrollUp = useCallback(
             (delta: number) => {
-                const currentTop = Math.min(
-                    stateRef.current.internalScrollTop,
-                    stateRef.current.maxScrollTop
-                )
+                const currentMax = stateRef.current.maxScrollTop
+                const currentTop = stateRef.current.isReadingMode
+                    ? Math.min(stateRef.current.internalScrollTop, currentMax)
+                    : currentMax
                 const newTop = Math.max(0, currentTop - delta)
-                setIsReadingMode(newTop < stateRef.current.maxScrollTop)
+                setIsReadingMode(newTop < currentMax)
                 setInternalScrollTop(newTop)
                 notifyStateChange(newTop)
             },
@@ -150,11 +150,10 @@ export const ScrollViewport = React.memo(
 
         const handleScrollDown = useCallback(
             (delta: number) => {
-                const currentTop = Math.min(
-                    stateRef.current.internalScrollTop,
-                    stateRef.current.maxScrollTop
-                )
                 const currentMax = stateRef.current.maxScrollTop
+                const currentTop = stateRef.current.isReadingMode
+                    ? Math.min(stateRef.current.internalScrollTop, currentMax)
+                    : currentMax
                 const newTop = Math.min(currentMax, currentTop + delta)
                 if (newTop >= currentMax) {
                     setIsReadingMode(false)
