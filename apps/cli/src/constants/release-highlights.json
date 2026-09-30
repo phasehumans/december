@@ -1,10 +1,9 @@
 {
-    "version": "0.4.0",
-    "title": "What's New in v0.4.0",
+    "version": "0.4.1",
+    "title": "What's New in v0.4.1",
     "bullets": [
-        "Enhance device activation flow, expand docs, and enforce repo standards",
-        "Transition to default fullscreen mode",
-        "Configure aws rds postgresql connection"
+        "*(cache)* Implement client and server side caching with redis",
+        "*(auth)* Redis session cache, rate limiting, and token auth"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

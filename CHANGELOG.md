@@ -2,6 +2,13 @@
 
 ### Features
 
+- _(cache)_ Implement client and server side caching with redis
+- _(auth)_ Redis session cache, rate limiting, and token auth (#349)
+
+## [0.4.0] - 2026-09-29
+
+### Features
+
 - _(auth,docs)_ Enhance device activation flow, expand docs, and enforce repo standards
 - _(tui)_ Transition to default fullscreen mode
 - _(infra)_ Configure aws rds postgresql connection
@@ -12,6 +19,11 @@
 - _(tui)_ Retain status bar on slash menu, remove command footer, and disable mouse tracking
 - _(tui)_ Remove streaming below indicator on scroll
 - _(infra)_ Bind server port 4000 to localhost to restrict direct public access
+- _(ci)_ Hard reset ec2 deployment working tree and bump publish node version
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.0
 
 ## [0.3.34] - 2026-09-28
 
