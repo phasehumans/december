@@ -329,6 +329,29 @@ describe('BotMessage Component (Unit)', () => {
         expect(rawLines[cmdIdx + 1]?.trim()).toBe('')
     })
 
+    it('locks spacing contract: tool calls followed by active thinking/loader has 0 blank lines (flush layout)', () => {
+        const blocks: any[] = [
+            {
+                type: 'command',
+                command: 'ListDir(/home/chaitanya/code/december)',
+                status: 'success',
+                output: 'ok',
+            },
+            {
+                type: 'text',
+                content: 'Working...',
+            },
+        ]
+        const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
+        const frame = lastFrame() || ''
+        const rawLines = frame.split('\n')
+        const cmdIdx = rawLines.findIndex((l) => l.includes('ListDir'))
+        const loaderIdx = rawLines.findIndex((l) => l.includes('Working...'))
+        expect(cmdIdx).toBeGreaterThanOrEqual(0)
+        // 0 blank lines between command and loader: loader is immediately adjacent
+        expect(loaderIdx).toBe(cmdIdx + 1)
+    })
+
     it('locks spacing contract: thoughts followed by tool calls has 0 blank lines (adjacent lines)', () => {
         const blocks: any[] = [
             {

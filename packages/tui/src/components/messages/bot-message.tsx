@@ -467,7 +467,6 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                             if (idx !== blocks.length - 1) return null
                             return (
                                 <Box key={idx} flexDirection="column">
-                                    {needsTopMargin && <Text> </Text>}
                                     <Box gap={1} alignItems="center">
                                         <Spinner />
                                         <Text color={THEME.colors.muted}>{block.content}</Text>
@@ -489,7 +488,6 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                             if (idx !== blocks.length - 1) return null
                             return (
                                 <Box key={idx} flexDirection="column">
-                                    {needsTopMargin && <Text> </Text>}
                                     <Box gap={1} alignItems="center">
                                         <Spinner />
                                         <Text color={THEME.colors.muted}>
