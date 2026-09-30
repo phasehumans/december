@@ -1,12 +1,16 @@
 import bcrypt from 'bcrypt'
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect, beforeEach } from 'bun:test'
 
 import { settingRepository } from '../../src/modules/setting/setting.repository'
 import { GenerationSound } from '../../src/modules/setting/setting.schema'
 import { settingService } from '../../src/modules/setting/setting.service'
 import { AppError } from '../../src/shared/appError'
+import { appCache } from '../../src/shared/cache'
 
 describe('Setting Service - Unit Tests', () => {
+    beforeEach(async () => {
+        await appCache.clearAll()
+    })
     describe('getMe', () => {
         it('should throw AppError 404 if user not found', async () => {
             const original = settingRepository.findUserByIdForInfo
@@ -545,6 +549,60 @@ describe('Setting Service - Unit Tests', () => {
                 settingRepository.findUserRules = originalFind
                 settingRepository.updateUserRules = originalUpdate
                 settingRepository.deleteUserRules = originalDelete
+            }
+        })
+    })
+
+    describe('caching behavior', () => {
+        it('should return cached profile without querying repository on second call, and bust cache on update', async () => {
+            let repositoryCallCount = 0
+            const originalFind = settingRepository.findUserByIdForProfile
+            const originalExist = settingRepository.findUserByIdForExistCheck
+            const originalUpdateName = settingRepository.updateUserName
+
+            settingRepository.findUserByIdForProfile = (async () => {
+                repositoryCallCount++
+                return {
+                    id: 'u1',
+                    name: 'Initial Name',
+                    password: null,
+                }
+            }) as any
+            settingRepository.findUserByIdForExistCheck = (async () => ({ id: 'u1' })) as any
+            settingRepository.updateUserName = (async (_id, name) => ({ id: 'u1', name })) as any
+
+            try {
+                // First call: repository is called
+                const p1 = await settingService.getProfile({ userId: 'u1' })
+                expect(p1.name).toBe('Initial Name')
+                expect(repositoryCallCount).toBe(1)
+
+                // Second call: served from cache, repository not called
+                const p2 = await settingService.getProfile({ userId: 'u1' })
+                expect(p2.name).toBe('Initial Name')
+                expect(repositoryCallCount).toBe(1)
+
+                // Update name: busts user setting cache
+                await settingService.updateName({ userId: 'u1', name: 'Updated Name' })
+
+                // Change repository return value to simulate DB change
+                settingRepository.findUserByIdForProfile = (async () => {
+                    repositoryCallCount++
+                    return {
+                        id: 'u1',
+                        name: 'Updated Name',
+                        password: null,
+                    }
+                }) as any
+
+                // Third call: cache was invalidated, so repository is called again
+                const p3 = await settingService.getProfile({ userId: 'u1' })
+                expect(p3.name).toBe('Updated Name')
+                expect(repositoryCallCount).toBe(2)
+            } finally {
+                settingRepository.findUserByIdForProfile = originalFind
+                settingRepository.findUserByIdForExistCheck = originalExist
+                settingRepository.updateUserName = originalUpdateName
             }
         })
     })

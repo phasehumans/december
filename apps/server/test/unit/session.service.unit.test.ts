@@ -1,12 +1,16 @@
 import { prisma } from '@december/database'
-import { describe, it, expect, mock, afterEach } from 'bun:test'
+import { describe, it, expect, mock, afterEach, beforeEach } from 'bun:test'
 
 import { sessionRepository } from '../../src/modules/session/session.repository'
 import { sessionService } from '../../src/modules/session/session.service'
 import { usageService } from '../../src/modules/usage/usage.service'
 import { AppError } from '../../src/shared/appError'
+import { appCache } from '../../src/shared/cache'
 
 describe('Session Service - Unit Tests', () => {
+    beforeEach(async () => {
+        await appCache.clearAll()
+    })
     const testUserId = '11111111-1111-1111-1111-111111111111'
     const otherUserId = '22222222-2222-2222-2222-222222222222'
     const testSessionId = '33333333-3333-3333-3333-333333333333'
@@ -639,6 +643,74 @@ describe('Session Service - Unit Tests', () => {
                 expect(result.insights).toHaveLength(3)
             } finally {
                 sessionRepository.findSessionById = originalFind
+            }
+        })
+    })
+
+    describe('caching behavior', () => {
+        it('should cache getUserSessions and invalidate on renameSession', async () => {
+            let repositoryCallCount = 0
+            const originalFindMany = sessionRepository.findManySessions
+            const originalFindById = sessionRepository.findSessionById
+            const originalUpdate = sessionRepository.updateSession
+
+            sessionRepository.findManySessions = (async () => {
+                repositoryCallCount++
+                return {
+                    sessions: [
+                        {
+                            id: testSessionId,
+                            title: 'Original Title',
+                            type: 'WEB',
+                            isArchived: false,
+                            tags: [],
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                            messages: [],
+                            user: { username: 'testuser' },
+                        },
+                    ],
+                    pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },
+                }
+            }) as any
+
+            sessionRepository.findSessionById = (async () => ({
+                id: testSessionId,
+                userId: testUserId,
+                title: 'Original Title',
+            })) as any
+
+            sessionRepository.updateSession = (async (_id, _userId, data) => ({
+                id: testSessionId,
+                ...data,
+            })) as any
+
+            try {
+                // First call: hits repository
+                const res1 = await sessionService.getUserSessions({ userId: testUserId })
+                expect(res1.sessions).toHaveLength(1)
+                expect(repositoryCallCount).toBe(1)
+
+                // Second call: hits cache
+                const res2 = await sessionService.getUserSessions({ userId: testUserId })
+                expect(res2.sessions).toHaveLength(1)
+                expect(repositoryCallCount).toBe(1)
+
+                // Rename session: invalidates cache
+                await sessionService.renameSession({
+                    userId: testUserId,
+                    sessionId: testSessionId,
+                    title: 'New Title',
+                })
+
+                // Third call: cache was invalidated, hits repository
+                const res3 = await sessionService.getUserSessions({ userId: testUserId })
+                expect(res3.sessions).toHaveLength(1)
+                expect(repositoryCallCount).toBe(2)
+            } finally {
+                sessionRepository.findManySessions = originalFindMany
+                sessionRepository.findSessionById = originalFindById
+                sessionRepository.updateSession = originalUpdate
             }
         })
     })

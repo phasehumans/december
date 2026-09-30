@@ -5,6 +5,7 @@ import Redis from 'ioredis'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
+import { appCache } from '../../shared/cache'
 import {
     sessionPrefix,
     sessionWorkspacePrefix,
@@ -85,67 +86,90 @@ const loadSessionFiles = async (data: LoadSessionFiles) => {
     }
 }
 
+const invalidateUserRecentSessions = async (userId: string) => {
+    await appCache.delPattern(appCache.key('sessions', 'recent', userId, '*'))
+}
+
 const getUserSessions = async (data: GetUserSessions) => {
     const { userId, filters } = data
-    const result = await sessionRepository.findManySessions(userId, filters)
-    const sessions = result.sessions.map((session: any) => {
-        let prNumber: number | null = session.prNumber || null
-        const prUrl: string | null = session.reviews?.[0]?.prUrl || null
-        if (!prNumber && prUrl) {
-            const match = prUrl.match(/pull\/(\d+)/)
-            if (match && match[1]) prNumber = parseInt(match[1], 10)
-        }
 
-        const prTitle =
-            session.reviews?.[0]?.prTitle || session.reviews?.[0]?.title || session.title
-        const branchName =
-            session.reviews?.[0]?.branchName ||
-            session.reviews?.[0]?.branch ||
-            (session.title
-                ? session.title
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]+/g, '-')
-                      .slice(0, 30)
-                : null)
-        const additions = session.reviews?.[0]?.additions ?? (prNumber ? 220 : null)
-        const deletions = session.reviews?.[0]?.deletions ?? (prNumber ? 82 : null)
-        const repoName = session.reviews?.[0]?.repoName ?? (prNumber ? 'december' : null)
+    const fetchSessions = async () => {
+        const result = await sessionRepository.findManySessions(userId, filters)
+        const sessions = result.sessions.map((session: any) => {
+            let prNumber: number | null = session.prNumber || null
+            const prUrl: string | null = session.reviews?.[0]?.prUrl || null
+            if (!prNumber && prUrl) {
+                const match = prUrl.match(/pull\/(\d+)/)
+                if (match && match[1]) prNumber = parseInt(match[1], 10)
+            }
+
+            const prTitle =
+                session.reviews?.[0]?.prTitle || session.reviews?.[0]?.title || session.title
+            const branchName =
+                session.reviews?.[0]?.branchName ||
+                session.reviews?.[0]?.branch ||
+                (session.title
+                    ? session.title
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]+/g, '-')
+                          .slice(0, 30)
+                    : null)
+            const additions = session.reviews?.[0]?.additions ?? (prNumber ? 220 : null)
+            const deletions = session.reviews?.[0]?.deletions ?? (prNumber ? 82 : null)
+            const repoName = session.reviews?.[0]?.repoName ?? (prNumber ? 'december' : null)
+
+            return {
+                id: session.id,
+                title:
+                    session.title ||
+                    (session.messages?.[0]?.content
+                        ? session.messages[0].content.substring(0, 50) + '...'
+                        : 'New Chat'),
+                type: session.type,
+                isArchived: session.isArchived,
+                tags: session.tags,
+                createdAt: session.createdAt,
+                updatedAt: session.updatedAt,
+                lastMessage: session.messages?.[0]?.content || null,
+                createdBy: session.user?.username
+                    ? `@${session.user.username.toLowerCase()}`
+                    : session.user?.email
+                      ? `@${session.user.email.split('@')[0].toLowerCase()}`
+                      : '@user',
+                createdByName:
+                    session.user?.name || session.user?.username || session.user?.email || 'User',
+                prNumber,
+                prState: prNumber ? 'open' : null,
+                prTitle,
+                prUrl: prUrl || null,
+                branchName: branchName || null,
+                additions,
+                deletions,
+                repoName,
+            }
+        })
 
         return {
-            id: session.id,
-            title:
-                session.title ||
-                (session.messages?.[0]?.content
-                    ? session.messages[0].content.substring(0, 50) + '...'
-                    : 'New Chat'),
-            type: session.type,
-            isArchived: session.isArchived,
-            tags: session.tags,
-            createdAt: session.createdAt,
-            updatedAt: session.updatedAt,
-            lastMessage: session.messages?.[0]?.content || null,
-            createdBy: session.user?.username
-                ? `@${session.user.username.toLowerCase()}`
-                : session.user?.email
-                  ? `@${session.user.email.split('@')[0].toLowerCase()}`
-                  : '@user',
-            createdByName:
-                session.user?.name || session.user?.username || session.user?.email || 'User',
-            prNumber,
-            prState: prNumber ? 'open' : null,
-            prTitle,
-            prUrl: prUrl || null,
-            branchName: branchName || null,
-            additions,
-            deletions,
-            repoName,
+            sessions,
+            pagination: result.pagination,
         }
-    })
-
-    return {
-        sessions,
-        pagination: result.pagination,
     }
+
+    if (filters?.search && filters.search.trim().length > 0) {
+        return fetchSessions()
+    }
+
+    const cacheKey = appCache.key(
+        'sessions',
+        'recent',
+        userId,
+        String(filters?.isArchived ?? 'all'),
+        filters?.type ?? 'all',
+        String(filters?.limit ?? 50),
+        String(filters?.page ?? 1)
+    )
+
+    return appCache.wrap(cacheKey, 30, fetchSessions)
 }
 
 const createSession = async (data: CreateSession) => {
@@ -196,6 +220,8 @@ const createSession = async (data: CreateSession) => {
         })
     }
 
+    await invalidateUserRecentSessions(userId)
+
     return session
 }
 
@@ -226,27 +252,33 @@ const renameSession = async (data: RenameSession) => {
     const { userId, sessionId, title } = data
     const existing = await sessionRepository.findSessionById(sessionId, userId)
     if (!existing) throw new AppError('Session not found', 404)
-    return sessionRepository.updateSession(sessionId, userId, { title })
+    const updated = await sessionRepository.updateSession(sessionId, userId, { title })
+    await invalidateUserRecentSessions(userId)
+    return updated
 }
 
 const archiveSession = async (data: ArchiveSession) => {
     const { userId, sessionId } = data
     const existing = await sessionRepository.findSessionById(sessionId, userId)
     if (!existing) throw new AppError('Session not found', 404)
-    return sessionRepository.updateSession(sessionId, userId, {
+    const updated = await sessionRepository.updateSession(sessionId, userId, {
         isArchived: true,
         updatedAt: existing.updatedAt,
     })
+    await invalidateUserRecentSessions(userId)
+    return updated
 }
 
 const unarchiveSession = async (data: UnarchiveSession) => {
     const { userId, sessionId } = data
     const existing = await sessionRepository.findSessionById(sessionId, userId)
     if (!existing) throw new AppError('Session not found', 404)
-    return sessionRepository.updateSession(sessionId, userId, {
+    const updated = await sessionRepository.updateSession(sessionId, userId, {
         isArchived: false,
         updatedAt: existing.updatedAt,
     })
+    await invalidateUserRecentSessions(userId)
+    return updated
 }
 
 const updateSessionTags = async (data: UpdateSessionTags) => {
@@ -254,7 +286,9 @@ const updateSessionTags = async (data: UpdateSessionTags) => {
     const existing = await sessionRepository.findSessionById(sessionId, userId)
     if (!existing) throw new AppError('Session not found', 404)
     const singleTag = tags ? tags.slice(0, 1) : []
-    return sessionRepository.updateSession(sessionId, userId, { tags: singleTag })
+    const updated = await sessionRepository.updateSession(sessionId, userId, { tags: singleTag })
+    await invalidateUserRecentSessions(userId)
+    return updated
 }
 
 const getSessionInsights = async (data: GetSessionInsights) => {
@@ -369,6 +403,7 @@ const deleteSession = async (data: DeleteSession) => {
     }
 
     await sessionRepository.deleteSession(sessionId)
+    await invalidateUserRecentSessions(userId)
 
     return { message: 'session deleted successfully' }
 }

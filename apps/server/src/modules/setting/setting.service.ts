@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt'
 
 import { AppError } from '../../shared/appError'
+import { appCache } from '../../shared/cache'
 
 import { settingRepository } from './setting.repository'
 
@@ -54,33 +55,45 @@ import type {
     DeleteRules,
 } from './setting.types'
 
+const invalidateUserSettingCache = async (userId: string) => {
+    await Promise.all([
+        appCache.del(appCache.key('setting', 'me', userId)),
+        appCache.del(appCache.key('setting', 'profile', userId)),
+        appCache.del(appCache.key('setting', 'rules', userId)),
+    ])
+}
+
 const getMe = async (data: GetMe) => {
     const { userId } = data
-    const profile = await settingRepository.findUserByIdForInfo(userId)
+    return appCache.wrap(appCache.key('setting', 'me', userId), 300, async () => {
+        const profile = await settingRepository.findUserByIdForInfo(userId)
 
-    if (!profile) {
-        throw new AppError('user not found', 404)
-    }
+        if (!profile) {
+            throw new AppError('user not found', 404)
+        }
 
-    const fullName = profile.name || 'Profile'
-    const isGithubConnected = profile.githubConnected
+        const fullName = profile.name || 'Profile'
+        const isGithubConnected = profile.githubConnected
 
-    return { fullName, isGithubConnected }
+        return { fullName, isGithubConnected }
+    })
 }
 
 const getProfile = async (data: GetProfile) => {
     const { userId } = data
-    const profile = await settingRepository.findUserByIdForProfile(userId, settingSelect)
+    return appCache.wrap(appCache.key('setting', 'profile', userId), 300, async () => {
+        const profile = await settingRepository.findUserByIdForProfile(userId, settingSelect)
 
-    if (!profile) {
-        throw new AppError('user not found', 404)
-    }
+        if (!profile) {
+            throw new AppError('user not found', 404)
+        }
 
-    const { password, ...rest } = profile
-    return {
-        ...rest,
-        hasPassword: password !== null,
-    }
+        const { password, ...rest } = profile
+        return {
+            ...rest,
+            hasPassword: password !== null,
+        }
+    })
 }
 
 const updateName = async (data: UpdateName) => {
@@ -93,6 +106,7 @@ const updateName = async (data: UpdateName) => {
     }
 
     const updatedUser = await settingRepository.updateUserName(userId, name)
+    await invalidateUserSettingCache(userId)
 
     return updatedUser
 }
@@ -118,6 +132,7 @@ const updateUsername = async (data: UpdateUsername) => {
 
     try {
         const updatedUser = await settingRepository.updateUsername(userId, username)
+        await invalidateUserSettingCache(userId)
 
         return updatedUser
     } catch (error: any) {
@@ -144,6 +159,7 @@ const changePassword = async (data: ChangePassword) => {
         const hashPassword = await bcrypt.hash(newPassword, 10)
 
         await settingRepository.updatePassword(userId, hashPassword)
+        await invalidateUserSettingCache(userId)
 
         return { success: true }
     }
@@ -167,6 +183,7 @@ const changePassword = async (data: ChangePassword) => {
     const hashPassword = await bcrypt.hash(newPassword, 10)
 
     await settingRepository.updatePassword(userId, hashPassword)
+    await invalidateUserSettingCache(userId)
 
     return { success: true }
 }
@@ -203,6 +220,7 @@ const updateNotifications = async (data: UpdateNotifications) => {
     }
 
     const updatedUser = await settingRepository.updateNotifications(userId, updateData)
+    await invalidateUserSettingCache(userId)
 
     return updatedUser
 }
@@ -224,6 +242,7 @@ const generationSound = async (data: UpdateGenerationSoundPayload) => {
     }
 
     const updatedUser = await settingRepository.updateGenerationSound(userId, generationSound)
+    await invalidateUserSettingCache(userId)
 
     return updatedUser
 }
@@ -237,6 +256,7 @@ const completeOnboarding = async (data: CompleteOnboarding) => {
     }
 
     const updatedUser = await settingRepository.updateCompleteOnboarding(userId)
+    await invalidateUserSettingCache(userId)
 
     return updatedUser
 }
@@ -258,6 +278,8 @@ const dismissOnboardingCard = async (data: DismissOnboardingCard) => {
         updatedUser = await settingRepository.updateFeedbackCardDone(userId)
     }
 
+    await invalidateUserSettingCache(userId)
+
     return updatedUser
 }
 
@@ -274,6 +296,7 @@ const submitFeedback = async (data: SubmitFeedback) => {
 
     // Mark feedback card as done
     const updatedUser = await settingRepository.updateFeedbackCardDone(userId)
+    await invalidateUserSettingCache(userId)
 
     return updatedUser
 }
@@ -286,8 +309,10 @@ const getRules = async (data: GetRules) => {
         throw new AppError('user not found', 404)
     }
 
-    const result = await settingRepository.findUserRules(userId)
-    return result
+    return appCache.wrap(appCache.key('setting', 'rules', userId), 300, async () => {
+        const result = await settingRepository.findUserRules(userId)
+        return result
+    })
 }
 
 const updateRules = async (data: UpdateRules) => {
@@ -299,6 +324,8 @@ const updateRules = async (data: UpdateRules) => {
     }
 
     const result = await settingRepository.updateUserRules(userId, rules)
+    await invalidateUserSettingCache(userId)
+
     return result
 }
 
@@ -311,6 +338,8 @@ const deleteRules = async (data: DeleteRules) => {
     }
 
     const result = await settingRepository.deleteUserRules(userId)
+    await invalidateUserSettingCache(userId)
+
     return result
 }
 
