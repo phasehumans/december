@@ -1,8 +1,9 @@
 import { Box, Text } from 'ink'
 import React from 'react'
 
+import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import { THEME } from '../theme'
-import { fileLink } from '../utils/terminal-link'
+import { fileLink, toRelativePath } from '../utils/terminal-link'
 
 export interface DiffLine {
     oldLineNumber?: number
@@ -93,17 +94,29 @@ export const DiffGutterView = React.memo(function DiffGutterView({
     )
     const gutterWidth = Math.max(2, String(maxLineNum).length)
 
+    const columns = useTerminalColumns()
+    const maxPathLen = Math.max(30, columns - 45)
+
     // Formatted clickable file link
-    const displayPath = filePath ? filePath.replace(/^\.\//, '') : ''
-    const linkedPath = displayPath ? fileLink(displayPath, displayPath, startLine) : ''
+    const cleanPath = filePath ? filePath.replace(/^\.\//, '') : ''
+    const displayPath = cleanPath ? toRelativePath(cleanPath) : ''
+    const truncatedDisplay =
+        displayPath.length > maxPathLen
+            ? displayPath.substring(0, maxPathLen - 3) + '...'
+            : displayPath
+    const linkedPath = displayPath
+        ? fileLink(truncatedDisplay, filePath || displayPath, startLine)
+        : ''
 
     return (
         <Box flexDirection="column" marginY={0}>
             {/* Header row */}
             <Box flexDirection="row" gap={1} alignItems="center">
-                <Text color={THEME.colors.warning}>{`${THEME.glyphs.status} `}</Text>
-                <Text color={THEME.colors.warning} bold>
-                    {actionLabel}
+                <Text>
+                    <Text color={THEME.colors.warning}>{`${THEME.glyphs.status} `}</Text>
+                    <Text color={THEME.colors.warning} bold>
+                        {actionLabel}
+                    </Text>
                 </Text>
                 {displayPath && <Text color={THEME.colors.text}>{linkedPath}</Text>}
                 {(additions > 0 || deletions > 0) && (
@@ -112,7 +125,7 @@ export const DiffGutterView = React.memo(function DiffGutterView({
                         {deletions > 0 && <Text color={THEME.colors.error}>-{deletions}</Text>}
                     </Text>
                 )}
-                <Text color={THEME.colors.muted}>
+                <Text color={THEME.colors.muted} wrap="truncate">
                     ({isExpanded ? 'ctrl+o to collapse' : 'ctrl+o to view'})
                 </Text>
             </Box>

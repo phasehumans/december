@@ -1,10 +1,10 @@
+import { Menu } from 'lucide-react'
 import React, { useState, useEffect, useRef } from 'react'
 
 import type { ViewState } from '@/app/types'
 
 import { MobileSidebar } from '@/features/navigation/components/MobileSidebar'
 import Sidebar from '@/features/navigation/components/Sidebar'
-import { Icons } from '@/shared/components/ui/Icons'
 
 interface AppSideNavigationProps {
     showSidebar: boolean
@@ -90,9 +90,9 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                     <button
                         onClick={() => setIsMobileSidebarOpen(true)}
                         className="pointer-events-auto w-7 h-7 text-[#8F8E8D] hover:text-[#D4D4D8] hover:bg-[#252525] rounded-full transition-colors flex items-center justify-center cursor-pointer outline-none"
-                        aria-label="Open sidebar"
+                        aria-label="Open menu"
                     >
-                        <Icons.SidebarToggle className="w-[18px] h-[18px]" />
+                        <Menu className="w-[18px] h-[18px]" />
                     </button>
                 </div>
             )}

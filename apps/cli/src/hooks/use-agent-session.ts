@@ -202,7 +202,6 @@ export function useAgentSession({
 
     const [expandCommands, setExpandCommands] = useState(false)
     const toggleExpandCommands = useCallback(() => {
-        console.clear()
         setExpandCommands((prev) => !prev)
     }, [])
 
@@ -258,7 +257,6 @@ export function useAgentSession({
                 }
                 const resumed = convertAgentMessagesToTuiMessages(agent.messages)
                 if (resumed.length > 0) {
-                    console.clear()
                     setStaticMessages([{ id: 'header', role: 'header' }, ...resumed])
                     setStaticKey((k: number) => k + 1)
                 }

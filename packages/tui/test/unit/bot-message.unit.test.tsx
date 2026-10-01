@@ -570,6 +570,59 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('✔')
     })
 
+    it('applies Option A tail truncation on 2 consolidated read files when paths exceed line width', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/web/src/features/home/components/HomeHero.tsx)',
+                        toolInput: JSON.stringify({
+                            AbsolutePath: 'apps/web/src/features/home/components/HomeHero.tsx',
+                        }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/web/src/features/home/components/HomeHeader.tsx)',
+                        toolInput: JSON.stringify({
+                            AbsolutePath: 'apps/web/src/features/home/components/HomeHeader.tsx',
+                        }),
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Read')
+        expect(frame).toContain('HomeHero.tsx')
+        expect(frame).toContain('(ctrl+o to expand)')
+        expect(frame).toContain('...')
+        // Entire read collapsed row must fit with hint on a single line
+        const readLines = frame.split('\n').filter((l) => l.includes('Read'))
+        expect(readLines.length).toBe(1)
+        expect(readLines[0]).toContain('(ctrl+o to expand)')
+    })
+
+    it('renders file_change block with single space after bullet', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'file_change',
+                        action: 'created',
+                        filePath: 'src/index.ts',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('● CREATED')
+        expect(frame).not.toContain('●  CREATED')
+    })
+
     it('expands consolidated parallel reads when expandCommands is true', () => {
         const { lastFrame } = render(
             <BotMessage

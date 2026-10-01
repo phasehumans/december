@@ -1,6 +1,7 @@
 import { Box, Text } from 'ink'
 import React from 'react'
 
+import { useTerminalColumns } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
 import { fileLink, toRelativePath } from '../../utils/terminal-link'
 import { DiffGutterView } from '../diff-gutter'
@@ -146,21 +147,27 @@ export function CollapsibleThought({
 export const ThoughtView = CollapsibleThought
 
 function StyledCommand({ command, truncate = true }: { command: string; truncate?: boolean }) {
+    const columns = useTerminalColumns()
+    const maxArgLength = Math.max(40, columns - 38)
+
     const match = command.match(/^([A-Za-z_]+)\(([\s\S]*)\)$/)
     if (match) {
         const args = (match[2] || '').replace(/\r?\n/g, ' ')
         const toolName = match[1]
         let displayArgs = args
-        if (truncate && displayArgs.length > 80) {
-            displayArgs = displayArgs.substring(0, 80) + '...'
-        }
         if (
             (toolName === 'read_file' || toolName === 'view_file' || toolName === 'Read') &&
             args &&
             !args.includes(' ')
         ) {
-            const rel = toRelativePath(displayArgs)
-            displayArgs = fileLink(rel, args)
+            const rel = toRelativePath(args)
+            const truncatedRel =
+                truncate && rel.length > maxArgLength
+                    ? rel.substring(0, maxArgLength - 3) + '...'
+                    : rel
+            displayArgs = fileLink(truncatedRel, args)
+        } else if (truncate && displayArgs.length > maxArgLength) {
+            displayArgs = displayArgs.substring(0, maxArgLength - 3) + '...'
         }
         const cmdColor = THEME.colors.warning
 
@@ -175,8 +182,8 @@ function StyledCommand({ command, truncate = true }: { command: string; truncate
         )
     }
     let displayCmd = command.replace(/\r?\n/g, ' ')
-    if (truncate && displayCmd.length > 80) {
-        displayCmd = displayCmd.substring(0, 80) + '...'
+    if (truncate && displayCmd.length > maxArgLength) {
+        displayCmd = displayCmd.substring(0, maxArgLength - 3) + '...'
     }
     return <Text color={THEME.colors.text}>{displayCmd}</Text>
 }
@@ -188,21 +195,27 @@ function StyledRunningCommand({
     command: string
     truncate?: boolean
 }) {
+    const columns = useTerminalColumns()
+    const maxArgLength = Math.max(40, columns - 38)
+
     const match = command.match(/^([A-Za-z_]+)\(([\s\S]*)\)$/)
     if (match) {
         const args = (match[2] || '').replace(/\r?\n/g, ' ')
         const toolName = match[1]
         let displayArgs = args
-        if (truncate && displayArgs.length > 80) {
-            displayArgs = displayArgs.substring(0, 80) + '...'
-        }
         if (
             (toolName === 'read_file' || toolName === 'view_file' || toolName === 'Read') &&
             args &&
             !args.includes(' ')
         ) {
-            const rel = toRelativePath(displayArgs)
-            displayArgs = fileLink(rel, args)
+            const rel = toRelativePath(args)
+            const truncatedRel =
+                truncate && rel.length > maxArgLength
+                    ? rel.substring(0, maxArgLength - 3) + '...'
+                    : rel
+            displayArgs = fileLink(truncatedRel, args)
+        } else if (truncate && displayArgs.length > maxArgLength) {
+            displayArgs = displayArgs.substring(0, maxArgLength - 3) + '...'
         }
         const cmdColor = THEME.colors.warning
 
@@ -216,8 +229,8 @@ function StyledRunningCommand({
         )
     }
     let displayCmd = command.replace(/\r?\n/g, ' ')
-    if (truncate && displayCmd.length > 80) {
-        displayCmd = displayCmd.substring(0, 80) + '...'
+    if (truncate && displayCmd.length > maxArgLength) {
+        displayCmd = displayCmd.substring(0, maxArgLength - 3) + '...'
     }
     return <Text color={THEME.colors.text}>{displayCmd}</Text>
 }
@@ -243,7 +256,7 @@ function CollapsibleCommandOutput({
             <Box alignItems="center" gap={1}>
                 <StyledCommand command={command} />
                 {lines.length > 0 && (
-                    <Text color={THEME.colors.muted}>
+                    <Text color={THEME.colors.muted} wrap="truncate">
                         ({isExpanded ? 'ctrl+o to collapse' : 'ctrl+o to expand'})
                     </Text>
                 )}
@@ -317,6 +330,64 @@ function getReadBlockPath(block: CommandBlock): { display: string; target: strin
     return { display: rel || rawPath, target: rawPath }
 }
 
+function formatConsolidatedReadArgs(
+    paths: { display: string; target: string }[],
+    maxArgLength: number
+): string {
+    const count = paths.length
+    if (count === 0) return ''
+
+    if (count === 1) {
+        const p0 = paths[0]!
+        const label =
+            p0.display.length > maxArgLength
+                ? p0.display.substring(0, Math.max(10, maxArgLength - 3)) + '...'
+                : p0.display
+        return fileLink(label, p0.target)
+    }
+
+    if (count === 2) {
+        const p0 = paths[0]!
+        const p1 = paths[1]!
+        if (p0.display.length + 2 + p1.display.length <= maxArgLength) {
+            return `${fileLink(p0.display, p0.target)}, ${fileLink(p1.display, p1.target)}`
+        }
+
+        const remainingForP1 = maxArgLength - (p0.display.length + 2)
+        if (remainingForP1 >= 8) {
+            const truncatedP1 = p1.display.substring(0, remainingForP1 - 3) + '...'
+            return `${fileLink(p0.display, p0.target)}, ${fileLink(truncatedP1, p1.target)}`
+        }
+
+        const truncatedP0 =
+            p0.display.length > maxArgLength - 6
+                ? p0.display.substring(0, Math.max(10, maxArgLength - 9)) + '...'
+                : p0.display
+        return `${fileLink(truncatedP0, p0.target)}, ...`
+    }
+
+    const p0 = paths[0]!
+    const p1 = paths[1]!
+    const suffixTwo = `, +${count - 2} more`
+    if (p0.display.length + 2 + p1.display.length + suffixTwo.length <= maxArgLength) {
+        return `${fileLink(p0.display, p0.target)}, ${fileLink(p1.display, p1.target)}${suffixTwo}`
+    }
+
+    const remainingForP1 = maxArgLength - (p0.display.length + 2 + suffixTwo.length)
+    if (remainingForP1 >= 8) {
+        const truncatedP1 = p1.display.substring(0, remainingForP1 - 3) + '...'
+        return `${fileLink(p0.display, p0.target)}, ${fileLink(truncatedP1, p1.target)}${suffixTwo}`
+    }
+
+    const suffixOne = `, +${count - 1} more`
+    const remainingForP0 = maxArgLength - suffixOne.length
+    const label0 =
+        p0.display.length > remainingForP0
+            ? p0.display.substring(0, Math.max(10, remainingForP0 - 3)) + '...'
+            : p0.display
+    return `${fileLink(label0, p0.target)}${suffixOne}`
+}
+
 export function ConsolidatedReadsView({
     blocks,
     forceExpanded,
@@ -327,17 +398,12 @@ export function ConsolidatedReadsView({
     isLastBlock?: boolean
 }) {
     const isExpanded = forceExpanded ?? false
+    const columns = useTerminalColumns()
+    const maxArgLength = Math.max(40, columns - 38)
     const paths = blocks.map(getReadBlockPath)
     const count = paths.length
 
-    let inlineArgs = ''
-    if (count === 2) {
-        inlineArgs = `${fileLink(paths[0]!.display, paths[0]!.target)}, ${fileLink(paths[1]!.display, paths[1]!.target)}`
-    } else if (count > 2) {
-        inlineArgs = `${fileLink(paths[0]!.display, paths[0]!.target)}, ${fileLink(paths[1]!.display, paths[1]!.target)}, +${count - 2} more`
-    } else if (count === 1) {
-        inlineArgs = fileLink(paths[0]!.display, paths[0]!.target)
-    }
+    const inlineArgs = formatConsolidatedReadArgs(paths, maxArgLength)
 
     const cmdColor = THEME.colors.warning
     const isRunning = blocks.some((b) => b.status === 'running')
@@ -366,11 +432,20 @@ export function ConsolidatedReadsView({
                                     {fileRunning ? (
                                         <Spinner />
                                     ) : (
-                                        <Text color={cmdColor}>{`${THEME.glyphs.status} `}</Text>
+                                        <Text>
+                                            <Text
+                                                color={cmdColor}
+                                            >{`${THEME.glyphs.status} `}</Text>
+                                            <Text color={THEME.colors.muted}>
+                                                {fileLink(p.display, p.target)}
+                                            </Text>
+                                        </Text>
                                     )}
-                                    <Text color={THEME.colors.muted}>
-                                        {fileLink(p.display, p.target)}
-                                    </Text>
+                                    {fileRunning && (
+                                        <Text color={THEME.colors.muted}>
+                                            {fileLink(p.display, p.target)}
+                                        </Text>
+                                    )}
                                 </Box>
                             )
                         })}
@@ -392,7 +467,7 @@ export function ConsolidatedReadsView({
                         ({isExpanded ? `${count} files` : inlineArgs})
                     </Text>
                 </Text>
-                <Text color={THEME.colors.muted}>
+                <Text color={THEME.colors.muted} wrap="truncate">
                     ({isExpanded ? 'ctrl+o to collapse' : 'ctrl+o to expand'})
                 </Text>
             </Box>
@@ -926,11 +1001,13 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
 
                         return (
                             <Box key={idx} gap={1} alignItems="center">
-                                <Text
-                                    color={THEME.colors.warning}
-                                >{`${THEME.glyphs.status} `}</Text>
-                                <Text color={THEME.colors.warning} bold>
-                                    {actionLabel}
+                                <Text>
+                                    <Text
+                                        color={THEME.colors.warning}
+                                    >{`${THEME.glyphs.status} `}</Text>
+                                    <Text color={THEME.colors.warning} bold>
+                                        {actionLabel}
+                                    </Text>
                                 </Text>
                                 <Text color={THEME.colors.muted}>
                                     {fileLink(block.filePath, block.filePath)}

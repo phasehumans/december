@@ -25,6 +25,7 @@ export function parseIgnoreLines(content: string): string[] {
         const trimmed = line.trim()
         if (!trimmed || trimmed.startsWith('#')) continue
 
+        const isRootAnchored = trimmed.startsWith('/')
         let clean = trimmed
         if (clean.startsWith('/')) {
             clean = clean.slice(1)
@@ -37,7 +38,7 @@ export function parseIgnoreLines(content: string): string[] {
             if (!clean.endsWith('/**')) {
                 patterns.push(`${clean}/**`)
             }
-            if (!clean.startsWith('**/')) {
+            if (!isRootAnchored && !clean.startsWith('**/')) {
                 patterns.push(`**/${clean}`)
                 patterns.push(`**/${clean}/**`)
             }

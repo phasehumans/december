@@ -57,4 +57,13 @@ dist/
         expect(isPathIgnored('mock-db.sqlite', patterns)).toBe(true)
         expect(isPathIgnored('src/app.ts', patterns)).toBe(false)
     })
+
+    it('handles root-anchored patterns with leading slash correctly without matching subdirectories', () => {
+        const patterns = parseIgnoreLines('/docs/\n/root-only.txt')
+        expect(isPathIgnored('docs/index.html', patterns)).toBe(true)
+        expect(isPathIgnored('docs', patterns)).toBe(true)
+        expect(isPathIgnored('apps/docs/index.html', patterns)).toBe(false)
+        expect(isPathIgnored('root-only.txt', patterns)).toBe(true)
+        expect(isPathIgnored('subfolder/root-only.txt', patterns)).toBe(false)
+    })
 })

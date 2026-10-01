@@ -899,9 +899,8 @@ export function useAuthHandlers(
         try {
             await agent.loadContext(item.value)
             const resumedMessages = convertAgentMessagesToTuiMessages(agent.messages)
-            console.clear()
             setStaticMessages([{ id: 'header', role: 'header' }, ...resumedMessages])
-            setStaticKey((k) => k + 1) // force ink <static> to remount and render the entire array
+            setStaticKey((k) => k + 1)
             setActiveMessages([])
             addToast(`Resumed session: ${item.value}`, 'success')
         } catch (err: any) {

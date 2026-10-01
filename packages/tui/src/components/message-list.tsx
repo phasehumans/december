@@ -102,11 +102,7 @@ export const MessageList = React.memo(function MessageList({
     return (
         <Box flexDirection="column" width="100%">
             {staticMessages.length > 0 && (
-                <Static
-                    key={`${staticKey}-${expandCommands}`}
-                    items={staticMessages}
-                    style={{ width: '100%' }}
-                >
+                <Static key={staticKey} items={staticMessages} style={{ width: '100%' }}>
                     {(msg, index) =>
                         renderSingleMessage(
                             msg,

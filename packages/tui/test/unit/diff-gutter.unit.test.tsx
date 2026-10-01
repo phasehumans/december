@@ -79,4 +79,18 @@ describe('DiffGutterView Component', () => {
         expect(frame).toContain('old code')
         expect(frame).toContain('new code')
     })
+
+    it('renders with single space after status glyph and truncates long paths to fit one line', () => {
+        const diff = '-old\n+new'
+        const longPath =
+            '/home/chaitanya/code/december/packages/tui/src/very/deeply/nested/component/path/that/is/very/long/Component.tsx'
+        const { lastFrame } = render(
+            <DiffGutterView filePath={longPath} diff={diff} startLine={1} forceExpanded={false} />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('● Updated')
+        expect(frame).not.toContain('●  Updated')
+        expect(frame).toContain('...')
+        expect(frame).toContain('ctrl+o to view')
+    })
 })

@@ -237,14 +237,18 @@ export const localOperations: PlatformAdapter = {
             const targetDir = path.isAbsolute(dirPath) ? dirPath : path.resolve(root, dirPath)
             const ignores = getWorkspaceIgnores(root)
             try {
-                const cmd = `git grep -nI "${query}" ${targetDir} || grep -rnI --exclude-dir=node_modules --exclude-dir=.git "${query}" ${targetDir}`
+                const escapedQuery = query.replace(/"/g, '\\"')
+                const cmd = `git grep -nI "${escapedQuery}" -- ${targetDir} || grep -rnI --exclude-dir=node_modules --exclude-dir=.git "${escapedQuery}" ${targetDir}`
                 const { stdout } = await execAsync(cmd)
                 if (!stdout) return ''
                 const lines = stdout.split('\n')
                 const filtered = lines.filter((line) => {
                     if (!line.trim()) return false
-                    const filePath = line.split(':')[0]
-                    return !isPathIgnored(filePath, ignores)
+                    const rawPath = line.split(':')[0]
+                    const relPath = path.isAbsolute(rawPath)
+                        ? path.relative(root, rawPath)
+                        : rawPath
+                    return !isPathIgnored(relPath, ignores)
                 })
                 return filtered.join('\n')
             } catch (error: any) {
