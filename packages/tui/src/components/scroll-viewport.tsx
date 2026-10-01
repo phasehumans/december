@@ -143,6 +143,8 @@ export const ScrollViewport = React.memo(
                 const newTop = Math.max(0, currentTop - delta)
                 setIsReadingMode(newTop < currentMax)
                 setInternalScrollTop(newTop)
+                stateRef.current.isReadingMode = newTop < currentMax
+                stateRef.current.internalScrollTop = newTop
                 notifyStateChange(newTop)
             },
             [notifyStateChange]
@@ -158,9 +160,12 @@ export const ScrollViewport = React.memo(
                 if (newTop >= currentMax) {
                     setIsReadingMode(false)
                     setInternalScrollTop(currentMax)
+                    stateRef.current.isReadingMode = false
+                    stateRef.current.internalScrollTop = currentMax
                     notifyStateChange(currentMax)
                 } else {
                     setInternalScrollTop(newTop)
+                    stateRef.current.internalScrollTop = newTop
                     notifyStateChange(newTop)
                 }
             },
@@ -171,6 +176,8 @@ export const ScrollViewport = React.memo(
             const currentMax = stateRef.current.maxScrollTop
             setIsReadingMode(currentMax > 0)
             setInternalScrollTop(0)
+            stateRef.current.isReadingMode = currentMax > 0
+            stateRef.current.internalScrollTop = 0
             notifyStateChange(0)
         }, [notifyStateChange])
 
@@ -178,6 +185,8 @@ export const ScrollViewport = React.memo(
             const currentMax = stateRef.current.maxScrollTop
             setIsReadingMode(false)
             setInternalScrollTop(currentMax)
+            stateRef.current.isReadingMode = false
+            stateRef.current.internalScrollTop = currentMax
             notifyStateChange(currentMax)
         }, [notifyStateChange])
 
