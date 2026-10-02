@@ -2,6 +2,10 @@
   <img src="./apps/web/assets/logo.svg" alt="december" width="80" height="80" />
 </p>
 
+<p align="center">
+  <b>English</b> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a>
+</p>
+
 December is a coding agent that lives in your terminal. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
 
 **Also available on the web at <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
