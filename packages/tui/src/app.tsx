@@ -82,6 +82,23 @@ export function ChatApp({
         }
     }, [])
 
+    useEffect(() => {
+        if (!process.stdout?.isTTY || isInline) return
+
+        const handleResize = () => {
+            try {
+                process.stdout.write('\x1b[2J\x1b[H')
+            } catch {
+                // Intentionally swallowed: ignore stdout write errors on resize
+            }
+        }
+
+        process.stdout.on('resize', handleResize)
+        return () => {
+            process.stdout.off('resize', handleResize)
+        }
+    }, [isInline])
+
     useInput((input, key) => {
         if (key.ctrl && input === 'c') {
             handleInterrupt()

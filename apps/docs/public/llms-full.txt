@@ -1,6 +1,12 @@
 # December Documentation
 
-December is an open-source coding agent for your terminal and the cloud. It edits files, fixes bugs, and runs shell commands with git checkpoints and terminal-to-cloud handoff.
+December is a coding agent that lives in your terminal. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
+
+**Also available on the web at [trydecember.com](https://trydecember.com)**
+
+- **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
+- **Cloud Handoff:** Use _/handoff_ to continue your session on **[trydecember.com](https://trydecember.com)**
+- **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 150+ others, or log in via December to use December credits.
 
 - Website: https://trydecember.com
 - Repository: https://github.com/phasehumans/december
@@ -8,12 +14,18 @@ December is an open-source coding agent for your terminal and the cloud. It edit
 
 ---
 
-## 1. Installation & CLI Usage
+## 1. Get Started
 
-### Install
+1. Install December:
+
 ```bash
 npm install -g @trydecember/cli
-# or:
+```
+
+2. Navigate to your project directory and run `december`.
+
+### Additional Install Options
+```bash
 bun add -g @trydecember/cli
 pnpm add -g @trydecember/cli
 ```
@@ -125,7 +137,7 @@ December was built by software engineer **Chaitanya Sonawane** (also known as Ch
 - Email: chetan@trydecember.com
 
 ### What is December?
-December is an open-source coding agent that runs in your terminal and can hand off tasks to cloud microVM sandboxes.
+December is a coding agent that lives in your terminal. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
 
 ### How does December compare to Cursor or Devin?
 Unlike Cursor (which is a VS Code fork), December runs directly in your existing terminal and works with any editor (Neovim, VS Code, JetBrains). Unlike Devin, December can run 100% locally with zero latency, handing off to the cloud only when you want background runs or shareable previews.
@@ -135,7 +147,13 @@ Run `/handoff` in your terminal. December sends your uncommitted diffs and sessi
 
 ---
 
-## 8. Creator
+## 8. Feedback & Bugs
+
+Found a bug or have a feature request? [Open an issue](https://github.com/phasehumans/december/issues) or email us at [team@trydecember.com](mailto:team@trydecember.com)
+
+---
+
+## 9. Creator
 
 - **Creator**: Chaitanya Sonawane
 - **Portfolio**: https://trydecember.com/me

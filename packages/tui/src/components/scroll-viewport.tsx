@@ -48,7 +48,7 @@ export const ScrollViewport = React.memo(
         const defaultHeight =
             explicitHeight ??
             (typeof process !== 'undefined' && process.stdout?.rows
-                ? Math.max(10, process.stdout.rows - 6)
+                ? Math.max(1, process.stdout.rows - 6)
                 : 24)
         const [viewportHeight, setViewportHeight] = useState<number>(defaultHeight)
         const [contentHeight, setContentHeight] = useState<number>(0)
@@ -271,6 +271,7 @@ export const ScrollViewport = React.memo(
                 height={explicitHeight}
                 flexGrow={1}
                 flexShrink={1}
+                minHeight={0}
                 overflowY="hidden"
                 flexDirection="column"
                 width="100%"

@@ -579,7 +579,12 @@ export const InputBar = React.memo(function InputBar({
 
                     {/* status row - clean & minimal: <model> (<authMethod>)                  <tokens> / <max> (<pct>%) */}
                     {showExitConfirm ? (
-                        <Box width="100%" justifyContent="space-between">
+                        <Box
+                            width="100%"
+                            justifyContent="space-between"
+                            height={1}
+                            overflow="hidden"
+                        >
                             <Box gap={2} alignItems="center" flexShrink={1}>
                                 <Box gap={1} flexShrink={1}>
                                     {activeToast ? (
@@ -596,7 +601,7 @@ export const InputBar = React.memo(function InputBar({
                                             · {activeToast.message.replace(/\s+/g, ' ').trim()}
                                         </Text>
                                     ) : (
-                                        <Text color={THEME.colors.muted}>
+                                        <Text color={THEME.colors.muted} wrap="truncate">
                                             · Press Ctrl+C again to exit
                                         </Text>
                                     )}
@@ -604,10 +609,15 @@ export const InputBar = React.memo(function InputBar({
                             </Box>
                         </Box>
                     ) : (
-                        <Box width="100%" justifyContent="space-between">
+                        <Box
+                            width="100%"
+                            justifyContent="space-between"
+                            height={1}
+                            overflow="hidden"
+                        >
                             <Box gap={2} alignItems="center" flexShrink={1}>
                                 <Box gap={1} flexShrink={1}>
-                                    <Text color={THEME.colors.muted}>
+                                    <Text color={THEME.colors.muted} wrap="truncate">
                                         {activeModeTag ? (
                                             <Text color={THEME.colors.brand} bold>
                                                 {activeModeTag}{' '}
@@ -627,6 +637,7 @@ export const InputBar = React.memo(function InputBar({
                                     </Text>
                                     {totalTasksCount > 0 && (
                                         <Text
+                                            wrap="truncate"
                                             color={
                                                 runningTasksCount > 0
                                                     ? THEME.colors.warning
@@ -657,7 +668,9 @@ export const InputBar = React.memo(function InputBar({
                                 </Box>
                             </Box>
                             <Box gap={0} flexShrink={0} marginLeft={2}>
-                                <Text color={contextColor}>{contextLabel}</Text>
+                                <Text color={contextColor} wrap="truncate">
+                                    {contextLabel}
+                                </Text>
                             </Box>
                         </Box>
                     )}

@@ -1,34 +1,22 @@
 # December
 
-> December is an open-source coding agent for terminal and cloud. It writes code, fixes bugs, and runs shell commands with git checkpoints and terminal-to-cloud handoff.
+> December is a coding agent that lives in your terminal. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
 
-## Overview
+**Also available on the web at [trydecember.com](https://trydecember.com)**
 
-December runs in two places:
-1. **Terminal (CLI)**: Runs locally in your repository, makes file edits, runs tests, and creates git checkpoints.
-2. **Cloud**: Runs tasks in sandboxed microVMs with live web previews.
-Run `/handoff` in your terminal to continue a task in the cloud without losing diffs or chat history.
+- **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
+- **Cloud Handoff:** Use _/handoff_ to continue your session on **[trydecember.com](https://trydecember.com)**
+- **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 150+ others, or log in via December to use December credits.
 
-## Quickstart
+## Get Started
 
-Install the CLI:
+1. Install December:
+
 ```bash
 npm install -g @trydecember/cli
-# or:
-bun add -g @trydecember/cli
-pnpm add -g @trydecember/cli
 ```
 
-Log in and run a task:
-```bash
-december login
-december "fix failing unit tests in packages/server"
-```
-
-Start an interactive terminal session:
-```bash
-december
-```
+2. Navigate to your project directory and run `december`.
 
 ## Commands & Slash Commands
 
@@ -49,6 +37,10 @@ december
 - **Git Checkpoints**: Commits changes to a shadow branch before editing so you can undo anytime.
 - **MicroVMs**: Cloud sessions run in isolated Linux containers with port forwarding for previews.
 - **Models (BYOK)**: Supports 150+ providers: Anthropic (Claude 3.5 Sonnet), OpenAI (GPT-4o), Google (Gemini 2.0 / 1.5 Pro), DeepSeek, Groq, and Ollama.
+
+## Feedback & Bugs
+
+Found a bug or have a feature request? [Open an issue](https://github.com/phasehumans/december/issues) or email us at [team@trydecember.com](mailto:team@trydecember.com)
 
 ## Creator
 

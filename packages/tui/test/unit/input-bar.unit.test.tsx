@@ -401,4 +401,21 @@ describe('InputBar Component (Unit)', () => {
         expect(frameCompleted).toContain('2 tasks (Ctrl+T)')
         expect(frameCompleted).not.toContain('Background Tasks')
     })
+
+    it('renders both top and bottom dividers and constrains status row', () => {
+        const { lastFrame } = render(
+            <RootLayout>
+                <InputBar
+                    onSubmit={mock(() => {})}
+                    isAuthenticated={false}
+                    activeModel="gemini-3.7-flash"
+                />
+            </RootLayout>
+        )
+        const frame = lastFrame() || ''
+        const lines = frame.split('\n')
+        const dividerLines = lines.filter((l) => l.includes('───'))
+        expect(dividerLines.length).toBeGreaterThanOrEqual(2)
+        expect(frame).toContain('Not connected (run /login)')
+    })
 })

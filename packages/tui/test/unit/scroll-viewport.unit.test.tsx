@@ -145,4 +145,18 @@ describe('ScrollViewport Component (Unit)', () => {
         ref.current.scrollUp(2)
         expect(handleScrollChange).toHaveBeenCalled()
     })
+
+    it('renders children with flexible height and minHeight 0 without overflowing small rows', () => {
+        const { lastFrame } = render(
+            <RootLayout>
+                <ScrollViewport>
+                    <Text>Compact line 1</Text>
+                    <Text>Compact line 2</Text>
+                </ScrollViewport>
+            </RootLayout>
+        )
+        const frame = lastFrame()
+        expect(frame).toContain('Compact line 1')
+        expect(frame).toContain('Compact line 2')
+    })
 })
