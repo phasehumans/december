@@ -476,34 +476,20 @@ describe('E2BSandboxService (Unit & Integration)', () => {
         }
     })
 
-    it('should accept userRules in runAgentSession and resolve user rules from DB if userId provided', async () => {
-        let queriedUserId: string | null = null
-        const origFindUnique = prisma.user.findUnique
-        prisma.user.findUnique = (async ({ where }: any) => {
-            queriedUserId = where.id
-            return {
-                id: where.id,
-                rules: '# Custom Rules\nAlways write clean code.',
-            }
-        }) as any
+    it('should accept userRules in runAgentSession directly', async () => {
+        const stream = await E2BSandboxService.runAgentSession({
+            sessionId: 'sess-user-rules',
+            userId: 'user-rules-123',
+            userRules: '# Custom Rules\nAlways write clean code.',
+            prompt: 'Build my feature',
+        })
 
-        try {
-            const stream = await E2BSandboxService.runAgentSession({
-                sessionId: 'sess-user-rules',
-                userId: 'user-rules-123',
-                prompt: 'Build my feature',
-            })
-
-            const events: any[] = []
-            for await (const chunk of stream) {
-                events.push(JSON.parse(chunk.data))
-            }
-
-            expect(queriedUserId).toBe('user-rules-123')
-            expect(events.length).toBeGreaterThan(0)
-            expect(events.some((e) => e.type === 'AgentStart')).toBe(true)
-        } finally {
-            prisma.user.findUnique = origFindUnique
+        const events: any[] = []
+        for await (const chunk of stream) {
+            events.push(JSON.parse(chunk.data))
         }
+
+        expect(events.length).toBeGreaterThan(0)
+        expect(events.some((e) => e.type === 'AgentStart')).toBe(true)
     })
 })

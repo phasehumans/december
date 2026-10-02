@@ -606,20 +606,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
     const { sessionId, userId, userRules, sandboxId, prompt, workspaceDir, secrets } = data
     console.log(`[E2BSandboxService] Starting in-sandbox agent runner session for ${sessionId}`)
 
-    let effectiveUserRules = userRules
-    if (!effectiveUserRules && userId) {
-        try {
-            const userRecord = await prisma.user.findUnique({
-                where: { id: userId },
-                select: { rules: true },
-            })
-            if (userRecord?.rules) {
-                effectiveUserRules = userRecord.rules
-            }
-        } catch {
-            // Intentionally swallowed: user lookup fallback
-        }
-    }
+    const effectiveUserRules = userRules
 
     const hasLlmKey = !!(
         process.env.GEMINI_API_KEY ||
