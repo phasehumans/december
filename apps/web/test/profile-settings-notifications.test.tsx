@@ -1,10 +1,9 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { expect, test, describe, afterEach, beforeEach, mock, spyOn } from 'bun:test'
+import { expect, test, describe, afterEach, beforeEach, mock } from 'bun:test'
 import React from 'react'
 import { MemoryRouter } from 'react-router-dom'
 
-import { profileAPI } from '../src/features/profile/api/profile'
 import { ProfileSettingsContent } from '../src/features/profile/components/ProfileSettingsContent'
 
 if (!globalThis.document) {
@@ -22,7 +21,6 @@ describe('Profile Settings Notifications Tab Placement', () => {
                 queries: { retry: false },
             },
         })
-        spyOn(profileAPI, 'getRules').mockImplementation(async () => ({ rules: '' }))
     })
 
     afterEach(() => {
