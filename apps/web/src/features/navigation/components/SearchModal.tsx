@@ -128,27 +128,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 },
             },
             {
-                id: 'go-settings-preferences',
-                label: 'Preferences & Appearance',
-                subtitle: 'Settings / Preferences',
-                category: 'Settings Subpages',
-                icon: <Icons.DesignSystems className="w-4 h-4 text-neutral-400" />,
-                keywords: [
-                    'theme',
-                    'dark mode',
-                    'light mode',
-                    'custom rules',
-                    'shortcuts',
-                    'appearance',
-                    'display',
-                    'preferences',
-                ],
-                action: () => {
-                    onClose()
-                    navigate('/settings/preferences')
-                },
-            },
-            {
                 id: 'go-settings-connections',
                 label: 'Connections',
                 subtitle: 'Settings / Connections',

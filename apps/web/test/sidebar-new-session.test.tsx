@@ -258,4 +258,35 @@ describe('Sidebar Navigation - Create New Session', () => {
 
         expect(textarea.value).toBe('')
     })
+
+    test('HomeHero displays December Agent by default and triggers Plan-Build-Agent sequence on prompt focus', async () => {
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/']}>
+                    <HomeHero onPromptSubmit={() => {}} onOpenAuth={() => {}} />
+                </MemoryRouter>
+            </QueryClientProvider>
+        )
+
+        // Verify search switcher buttons are not present
+        const searchModeBtn = screen.queryByRole('button', { name: 'Search' })
+        expect(searchModeBtn).toBeNull()
+
+        // Verify initial visible word is Agent
+        const heading = screen.getByRole('heading', { level: 2 })
+        expect(heading.textContent).toContain('December')
+        expect(heading.textContent).toContain('Agent')
+
+        const textarea = document.getElementById('home-prompt-textarea') as HTMLTextAreaElement
+        expect(textarea).toBeDefined()
+
+        // Focus prompt input to trigger animation
+        await act(async () => {
+            fireEvent.focus(textarea)
+            await new Promise((resolve) => setTimeout(resolve, 50))
+        })
+
+        // Plan should now be in the heading
+        expect(heading.textContent).toContain('Plan')
+    })
 })

@@ -438,45 +438,6 @@ export const ProfileAccountSkeleton: React.FC = () => (
     </div>
 )
 
-export const ProfilePreferencesSkeleton: React.FC = () => (
-    <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
-        {/* preferences */}
-        <div className="flex flex-col mb-10">
-            <div className="h-6 flex items-center mb-4">
-                <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
-            </div>
-            <div className="flex flex-col gap-7 border-t border-[#242323] pt-6">
-                {/* completion sound */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
-                    <div className="flex flex-col gap-0.5 max-w-full sm:max-w-[60%]">
-                        <Skeleton className="h-4 w-32 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-3.5 w-80 bg-white/[0.025] rounded" />
-                    </div>
-                    <div className="flex flex-col gap-2.5 sm:gap-3 shrink-0 pt-1 sm:pt-0">
-                        <Skeleton className="h-5 w-36 bg-white/[0.03] rounded" />
-                        <Skeleton className="h-5 w-28 bg-white/[0.03] rounded" />
-                        <Skeleton className="h-5 w-24 bg-white/[0.03] rounded" />
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {/* custom rules */}
-        <div className="flex flex-col mb-0">
-            <div className="h-6 flex items-center mb-4">
-                <Skeleton className="h-4 w-32 bg-white/[0.04] rounded" />
-            </div>
-            <div className="flex flex-col gap-4 border-t border-[#242323] pt-6">
-                <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />
-                <Skeleton className="h-3.5 w-4/5 bg-white/[0.025] rounded" />
-                <div className="mt-2">
-                    <Skeleton className="h-9 w-36 rounded-lg bg-white/[0.03]" />
-                </div>
-            </div>
-        </div>
-    </div>
-)
-
 const CONNECTION_SKELETON_ITEMS = [
     { nameW: 'w-16', descW: 'w-[75%] sm:w-[340px]', btnW: 'w-16 sm:w-20' },
     { nameW: 'w-14', descW: 'w-[65%] sm:w-[300px]', btnW: 'w-16 sm:w-20' },
@@ -533,10 +494,6 @@ export const ProfileConnectionsSkeleton: React.FC = () => (
 export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = ({
     activeTab = 'Account',
 }) => {
-    if (activeTab === 'Preferences' || activeTab === 'General') {
-        return <ProfilePreferencesSkeleton />
-    }
-
     if (activeTab === 'Connections' || activeTab === 'Integrations') {
         return <ProfileConnectionsSkeleton />
     }

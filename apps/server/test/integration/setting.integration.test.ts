@@ -153,17 +153,6 @@ describe('Setting Module Integration Tests', () => {
         expect(res.body.data.welcomeCardDone).toBe(true)
     })
 
-    it('9. POST /api/v1/setting/sound - updates generation sound setting', async () => {
-        const res = await request(app)
-            .post('/api/v1/setting/sound')
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${accessToken}`)
-            .send({ generationSound: 'NEVER' })
-
-        expect(res.status).toBe(200)
-        expect(res.body.data.generationSound).toBe('NEVER')
-    })
-
     it('10. POST /api/v1/setting/feedback - submits user feedback', async () => {
         const res = await request(app)
             .post('/api/v1/setting/feedback')

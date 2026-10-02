@@ -102,29 +102,6 @@ async function updateNotifications(id: string, data: Prisma.UserUpdateInput) {
     })
 }
 
-async function findUserByIdForGenerationSound(id: string) {
-    return prisma.user.findUnique({
-        where: { id },
-        select: {
-            id: true,
-            generationSound: true,
-        },
-    })
-}
-
-async function updateGenerationSound(
-    id: string,
-    generationSound: Prisma.UserUpdateInput['generationSound']
-) {
-    return prisma.user.update({
-        where: { id },
-        data: { generationSound },
-        select: {
-            generationSound: true,
-        },
-    })
-}
-
 async function updateCompleteOnboarding(id: string) {
     return prisma.user.update({
         where: { id },
@@ -189,35 +166,6 @@ async function findUserByEmail(email: string) {
     })
 }
 
-async function findUserRules(id: string) {
-    return prisma.user.findUnique({
-        where: { id },
-        select: {
-            rules: true,
-        },
-    })
-}
-
-async function updateUserRules(id: string, rules: string) {
-    return prisma.user.update({
-        where: { id },
-        data: { rules },
-        select: {
-            rules: true,
-        },
-    })
-}
-
-async function deleteUserRules(id: string) {
-    return prisma.user.update({
-        where: { id },
-        data: { rules: null },
-        select: {
-            rules: true,
-        },
-    })
-}
-
 export const settingRepository = {
     findUserByIdForInfo,
     findUserByIdForProfile,
@@ -230,8 +178,6 @@ export const settingRepository = {
     findUserPasswordById,
     updatePassword,
     updateNotifications,
-    findUserByIdForGenerationSound,
-    updateGenerationSound,
 
     updateCompleteOnboarding,
     updateWelcomeCardDone,
@@ -239,8 +185,4 @@ export const settingRepository = {
     updateFeedbackCardDone,
     createFeedback,
     findUserByEmail,
-
-    findUserRules,
-    updateUserRules,
-    deleteUserRules,
 }

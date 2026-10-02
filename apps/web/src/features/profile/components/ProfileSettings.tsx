@@ -1,7 +1,6 @@
 import {
     ChevronLeft,
     UserCircle,
-    Sliders,
     CreditCard,
     FileClock,
     ArrowUpRight,
@@ -17,7 +16,6 @@ import { useProfileSettingsController } from '../hooks/useProfileSettingsControl
 import { ProfileBillingSettings } from './ProfileBillingSettings'
 import { ProfileConnectionsSettings } from './ProfileConnectionsSettings'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
-import { ProfileGeneralSettings } from './ProfileGeneralSettings'
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
 import { ProfileRepositoriesSettings } from './ProfileRepositoriesSettings'
@@ -47,12 +45,6 @@ const SETTINGS_NAV_GROUPS = [
                 slug: 'account',
                 label: 'Account',
                 icon: UserCircle,
-            },
-            {
-                tab: 'Preferences',
-                slug: 'preferences',
-                label: 'Preferences',
-                icon: Sliders,
             },
             {
                 tab: 'Connections',
@@ -116,7 +108,6 @@ const SETTINGS_NAV_GROUPS = [
 
 const TAB_LABEL_MAP: Record<string, string> = {
     Account: 'Account',
-    Preferences: 'Preferences',
     Connections: 'Connections',
     Integrations: 'Connections',
     Repositories: 'Repositories',
@@ -215,14 +206,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         emailNotifications,
         productUpdates,
         securityAlerts,
-        generationSound,
         resolvedName,
         openNameModal,
         openPasswordModal,
         handleSaveName,
         handleUpdatePassword,
         handleNotificationToggle,
-        handleGenerationSoundChange,
         connectGithub,
         connectVercel,
         connectSupabase,
@@ -288,13 +277,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         onSignOut={onSignOut}
                         onOpenDeleteAccountModal={() => setDeleteAccountModalOpen(true)}
                         onOpenSignOutAllSessionsModal={() => setSignOutAllSessionsModalOpen(true)}
-                    />
-                )
-            case 'Preferences':
-                return (
-                    <ProfileGeneralSettings
-                        generationSound={generationSound}
-                        onGenerationSoundChange={handleGenerationSoundChange}
                     />
                 )
             case 'Connections':
@@ -548,19 +530,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         >
                             <UserCircle className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Account
-                        </button>
-                        <button
-                            onClick={() =>
-                                navigate(`/settings/${getSlugForProfileTab('Preferences')}`)
-                            }
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Preferences'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Sliders className="w-[16px] h-[16px] mx-[1px]" strokeWidth={1.75} />
-                            Preferences
                         </button>
                         <button
                             onClick={() =>

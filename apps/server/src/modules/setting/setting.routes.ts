@@ -17,11 +17,6 @@ settingRouter.patch('/notifications', settingController.updateNotifications)
 settingRouter.patch('/onboarding', settingController.completeOnboarding)
 settingRouter.post('/onboarding/dismiss', settingController.dismissOnboardingCard)
 
-settingRouter.post('/sound', settingController.generationSound)
 settingRouter.post('/feedback', settingController.submitFeedback)
-
-settingRouter.get('/rules', settingController.getRules)
-settingRouter.post('/rules', settingController.updateRules)
-settingRouter.delete('/rules', settingController.deleteRules)
 
 export default settingRouter

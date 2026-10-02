@@ -5,7 +5,6 @@ import React from 'react'
 import { MemoryRouter } from 'react-router-dom'
 
 import { profileAPI } from '../src/features/profile/api/profile'
-import { ProfileGeneralSettings } from '../src/features/profile/components/ProfileGeneralSettings'
 import { ProfileSettingsContent } from '../src/features/profile/components/ProfileSettingsContent'
 
 if (!globalThis.document) {
@@ -107,40 +106,5 @@ describe('Profile Settings Notifications Tab Placement', () => {
         // Click Security alerts switch (second switch)
         fireEvent.click(switches[1])
         expect(handleNotificationToggle).toHaveBeenCalledWith('notifySecurityAlerts', false)
-    })
-
-    test('ProfileGeneralSettings (Preferences tab) does NOT render Notifications section or Chat suggestions', () => {
-        render(
-            <QueryClientProvider client={queryClient}>
-                <MemoryRouter>
-                    <ProfileGeneralSettings
-                        generationSound="FIRST_GENERATION"
-                        onGenerationSoundChange={() => {}}
-                    />
-                </MemoryRouter>
-            </QueryClientProvider>
-        )
-
-        // Preferences and Custom Rules headings should exist
-        expect(screen.getByRole('heading', { name: 'Preferences' })).toBeDefined()
-        expect(screen.getByRole('heading', { name: 'Custom Rules' })).toBeDefined()
-
-        // Completion sound should exist, Generation complete sound should not
-        expect(screen.getByText('Completion sound')).toBeDefined()
-        expect(screen.queryByText('Generation complete sound')).toBeNull()
-
-        // Chat suggestions should NOT exist
-        expect(screen.queryByText('Chat suggestions')).toBeNull()
-        expect(
-            screen.queryByText(
-                'Show helpful suggestions in the chat interface to enhance your experience.'
-            )
-        ).toBeNull()
-
-        // Notifications section should NOT exist in Preferences tab
-        expect(screen.queryByRole('heading', { name: 'Notifications' })).toBeNull()
-        expect(screen.queryByText('Project activity')).toBeNull()
-        expect(screen.queryByText('Product updates')).toBeNull()
-        expect(screen.queryByText('Security alerts')).toBeNull()
     })
 })

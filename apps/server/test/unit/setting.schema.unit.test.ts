@@ -5,11 +5,8 @@ import {
     updateUsernameSchema,
     changePasswordSchema,
     updateNotificationSchema,
-    generationSoundSchema,
     dismissOnboardingCardSchema,
     submitFeedbackSchema,
-    updateRulesSchema,
-    GenerationSound,
 } from '../../src/modules/setting/setting.schema'
 
 describe('Setting Schema - Unit Tests', () => {
@@ -102,34 +99,6 @@ describe('Setting Schema - Unit Tests', () => {
         })
     })
 
-    describe('generationSoundSchema', () => {
-        it('should pass with valid GenerationSound enum values', () => {
-            expect(
-                generationSoundSchema.safeParse({
-                    generationSound: GenerationSound.ALWAYS,
-                }).success
-            ).toBe(true)
-            expect(
-                generationSoundSchema.safeParse({
-                    generationSound: GenerationSound.NEVER,
-                }).success
-            ).toBe(true)
-            expect(
-                generationSoundSchema.safeParse({
-                    generationSound: GenerationSound.FIRST_GENERATION,
-                }).success
-            ).toBe(true)
-        })
-
-        it('should fail with invalid sound value', () => {
-            expect(
-                generationSoundSchema.safeParse({
-                    generationSound: 'SOMETIMES',
-                }).success
-            ).toBe(false)
-        })
-    })
-
     describe('dismissOnboardingCardSchema', () => {
         it('should pass with valid card names', () => {
             expect(dismissOnboardingCardSchema.safeParse({ card: 'welcome' }).success).toBe(true)
@@ -173,17 +142,6 @@ describe('Setting Schema - Unit Tests', () => {
                     feedback: '',
                 }).success
             ).toBe(false)
-        })
-    })
-
-    describe('updateRulesSchema', () => {
-        it('should pass with any string', () => {
-            expect(updateRulesSchema.safeParse({ rules: 'Always write tests' }).success).toBe(true)
-            expect(updateRulesSchema.safeParse({ rules: '' }).success).toBe(true)
-        })
-
-        it('should fail if rules is missing', () => {
-            expect(updateRulesSchema.safeParse({}).success).toBe(false)
         })
     })
 })

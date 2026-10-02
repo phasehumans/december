@@ -2,7 +2,6 @@ import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach } from 'bun:test'
 
 import { settingRepository } from '../../src/modules/setting/setting.repository'
-import { GenerationSound } from '../../src/modules/setting/setting.schema'
 import { settingService } from '../../src/modules/setting/setting.service'
 import { AppError } from '../../src/shared/appError'
 import { appCache } from '../../src/shared/cache'
@@ -382,55 +381,6 @@ describe('Setting Service - Unit Tests', () => {
         })
     })
 
-    describe('generationSound', () => {
-        it('should throw AppError 400 if generationSound value is unchanged', async () => {
-            const originalFind = settingRepository.findUserByIdForGenerationSound
-            settingRepository.findUserByIdForGenerationSound = (async () => ({
-                generationSound: GenerationSound.ALWAYS,
-            })) as any
-
-            try {
-                await expect(
-                    settingService.generationSound({
-                        userId: 'u1',
-                        generationSound: GenerationSound.ALWAYS,
-                    })
-                ).rejects.toThrow(
-                    new AppError(
-                        'new input must be different from the current generation sound state',
-                        400
-                    )
-                )
-            } finally {
-                settingRepository.findUserByIdForGenerationSound = originalFind
-            }
-        })
-
-        it('should update generationSound when value changes', async () => {
-            const originalFind = settingRepository.findUserByIdForGenerationSound
-            const originalUpdate = settingRepository.updateGenerationSound
-
-            settingRepository.findUserByIdForGenerationSound = (async () => ({
-                generationSound: GenerationSound.ALWAYS,
-            })) as any
-            settingRepository.updateGenerationSound = (async (_userId, val) => ({
-                id: 'u1',
-                generationSound: val,
-            })) as any
-
-            try {
-                const res = await settingService.generationSound({
-                    userId: 'u1',
-                    generationSound: GenerationSound.NEVER,
-                })
-                expect(res.generationSound).toBe(GenerationSound.NEVER)
-            } finally {
-                settingRepository.findUserByIdForGenerationSound = originalFind
-                settingRepository.updateGenerationSound = originalUpdate
-            }
-        })
-    })
-
     describe('onboarding and feedback', () => {
         it('completeOnboarding should update onboarding status', async () => {
             const originalExist = settingRepository.findUserByIdForExistCheck
@@ -519,36 +469,6 @@ describe('Setting Service - Unit Tests', () => {
                 settingRepository.findUserByIdForExistCheck = originalExist
                 settingRepository.createFeedback = originalCreateFb
                 settingRepository.updateFeedbackCardDone = originalFeedbackDone
-            }
-        })
-    })
-
-    describe('rules management', () => {
-        it('getRules, updateRules, and deleteRules should manage rules', async () => {
-            const originalExist = settingRepository.findUserByIdForExistCheck
-            const originalFind = settingRepository.findUserRules
-            const originalUpdate = settingRepository.updateUserRules
-            const originalDelete = settingRepository.deleteUserRules
-
-            settingRepository.findUserByIdForExistCheck = (async () => ({ id: 'u1' })) as any
-            settingRepository.findUserRules = (async () => ({ rules: '# Rules' })) as any
-            settingRepository.updateUserRules = (async (_id, rules) => ({ rules })) as any
-            settingRepository.deleteUserRules = (async () => ({ rules: null })) as any
-
-            try {
-                const r1 = await settingService.getRules({ userId: 'u1' })
-                expect(r1).toEqual({ rules: '# Rules' } as any)
-
-                const r2 = await settingService.updateRules({ userId: 'u1', rules: '# New' })
-                expect(r2).toEqual({ rules: '# New' } as any)
-
-                const r3 = await settingService.deleteRules({ userId: 'u1' })
-                expect(r3).toEqual({ rules: null } as any)
-            } finally {
-                settingRepository.findUserByIdForExistCheck = originalExist
-                settingRepository.findUserRules = originalFind
-                settingRepository.updateUserRules = originalUpdate
-                settingRepository.deleteUserRules = originalDelete
             }
         })
     })

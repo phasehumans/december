@@ -47,7 +47,7 @@ export const usePromptInputController = ({
     isAuthenticated?: boolean
     onOpenAuth?: () => void
     isLoading?: boolean
-    mode?: 'agent' | 'search' | 'chat'
+    mode?: 'agent' | 'chat'
 }) => {
     const [internalInput, setInternalInput] = useState('')
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -107,11 +107,9 @@ export const usePromptInputController = ({
     const atSearchQuery = isAtTriggered ? atMatch[1].toLowerCase() : ''
 
     const modeProviders =
-        mode === 'search'
-            ? MENTION_PROVIDERS.filter((p) => p.id === 'repos')
-            : mode === 'chat'
-              ? MENTION_PROVIDERS.filter((p) => !['repos', 'sessions'].includes(p.id))
-              : MENTION_PROVIDERS
+        mode === 'chat'
+            ? MENTION_PROVIDERS.filter((p) => !['repos', 'sessions'].includes(p.id))
+            : MENTION_PROVIDERS
     const filteredProviders = modeProviders.filter(
         (p) =>
             p.title.toLowerCase().includes(atSearchQuery) ||

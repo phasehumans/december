@@ -42,7 +42,6 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
         currentView !== 'sessions' &&
         currentView !== 'profile' &&
         currentView !== 'docs' &&
-        currentView !== 'search' &&
         !isWorkspaceScreen
 
     useEffect(() => {

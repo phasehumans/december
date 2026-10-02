@@ -1,5 +1,3 @@
-import { GenerationSound as GenerationSoundEnum } from './setting.schema'
-
 export type GetMe = {
     userId: string
 }
@@ -31,11 +29,6 @@ export type UpdateNotifications = {
     notifySecurityAlerts?: boolean
 }
 
-export type UpdateGenerationSoundPayload = {
-    userId: string
-    generationSound: GenerationSoundEnum
-}
-
 export type CompleteOnboarding = {
     userId: string
 }
@@ -49,17 +42,4 @@ export type SubmitFeedback = {
     userId: string
     rating: 'sad' | 'neutral' | 'happy' | null
     feedback: string
-}
-
-export type GetRules = {
-    userId: string
-}
-
-export type UpdateRules = {
-    userId: string
-    rules: string
-}
-
-export type DeleteRules = {
-    userId: string
 }

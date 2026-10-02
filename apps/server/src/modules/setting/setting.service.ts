@@ -28,8 +28,6 @@ export const settingSelect = {
     notifyProjectActivity: true,
     notifyProductUpdates: true,
     notifySecurityAlerts: true,
-    generationSound: true,
-    rules: true,
 
     creditBalance: true,
     isDeleted: true,
@@ -46,20 +44,15 @@ import type {
     UpdateUsername,
     ChangePassword,
     UpdateNotifications,
-    UpdateGenerationSoundPayload,
     CompleteOnboarding,
     DismissOnboardingCard,
     SubmitFeedback,
-    GetRules,
-    UpdateRules,
-    DeleteRules,
 } from './setting.types'
 
 const invalidateUserSettingCache = async (userId: string) => {
     await Promise.all([
         appCache.del(appCache.key('setting', 'me', userId)),
         appCache.del(appCache.key('setting', 'profile', userId)),
-        appCache.del(appCache.key('setting', 'rules', userId)),
     ])
 }
 
@@ -225,28 +218,6 @@ const updateNotifications = async (data: UpdateNotifications) => {
     return updatedUser
 }
 
-const generationSound = async (data: UpdateGenerationSoundPayload) => {
-    const { userId, generationSound } = data
-
-    const existingUser = await settingRepository.findUserByIdForGenerationSound(userId)
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    if (existingUser.generationSound === generationSound) {
-        throw new AppError(
-            'new input must be different from the current generation sound state',
-            400
-        )
-    }
-
-    const updatedUser = await settingRepository.updateGenerationSound(userId, generationSound)
-    await invalidateUserSettingCache(userId)
-
-    return updatedUser
-}
-
 const completeOnboarding = async (data: CompleteOnboarding) => {
     const { userId } = data
     const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
@@ -301,48 +272,6 @@ const submitFeedback = async (data: SubmitFeedback) => {
     return updatedUser
 }
 
-const getRules = async (data: GetRules) => {
-    const { userId } = data
-    const user = await settingRepository.findUserByIdForExistCheck(userId)
-
-    if (!user) {
-        throw new AppError('user not found', 404)
-    }
-
-    return appCache.wrap(appCache.key('setting', 'rules', userId), 300, async () => {
-        const result = await settingRepository.findUserRules(userId)
-        return result
-    })
-}
-
-const updateRules = async (data: UpdateRules) => {
-    const { userId, rules } = data
-    const user = await settingRepository.findUserByIdForExistCheck(userId)
-
-    if (!user) {
-        throw new AppError('user not found', 404)
-    }
-
-    const result = await settingRepository.updateUserRules(userId, rules)
-    await invalidateUserSettingCache(userId)
-
-    return result
-}
-
-const deleteRules = async (data: DeleteRules) => {
-    const { userId } = data
-    const user = await settingRepository.findUserByIdForExistCheck(userId)
-
-    if (!user) {
-        throw new AppError('user not found', 404)
-    }
-
-    const result = await settingRepository.deleteUserRules(userId)
-    await invalidateUserSettingCache(userId)
-
-    return result
-}
-
 export const settingService = {
     getMe,
     getProfile,
@@ -350,11 +279,7 @@ export const settingService = {
     updateUsername,
     changePassword,
     updateNotifications,
-    generationSound,
     completeOnboarding,
     dismissOnboardingCard,
     submitFeedback,
-    getRules,
-    updateRules,
-    deleteRules,
 }

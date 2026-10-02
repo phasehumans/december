@@ -79,12 +79,7 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
     }
 
     const placeholderText =
-        props.placeholder ||
-        (selectedElement
-            ? 'Describe changes...'
-            : props.mode === 'search'
-              ? 'Ask anything...'
-              : 'Ask December...')
+        props.placeholder || (selectedElement ? 'Describe changes...' : 'Ask December...')
 
     return (
         <div className="w-full bg-[#141414] shrink-0 z-30">

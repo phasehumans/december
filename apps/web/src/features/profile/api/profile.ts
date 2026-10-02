@@ -81,10 +81,6 @@ type UpdateNotificationInput = {
     notifySecurityAlerts?: boolean
 }
 
-type UpdateGenerationSoundInput = {
-    generationSound: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'
-}
-
 const buildUrl = (baseUrl: string, params: Record<string, string>) => {
     const url = new URL(baseUrl)
 
@@ -130,13 +126,6 @@ const changePassword = (data: ChangePasswordInput) => {
 const updateNotifications = (data: UpdateNotificationInput) => {
     return apiRequest<BackendProfile>('/setting/notifications', {
         method: 'PATCH',
-        body: JSON.stringify(data),
-    })
-}
-
-const updateGenerationSound = (data: UpdateGenerationSoundInput) => {
-    return apiRequest<BackendProfile>('/setting/sound', {
-        method: 'POST',
         body: JSON.stringify(data),
     })
 }
@@ -191,27 +180,6 @@ const deleteMemories = () => {
 }
 
 // --- rules ---
-
-type UpdateRulesInput = {
-    rules: string
-}
-
-const getRules = () => {
-    return apiRequest<{ rules: string | null }>('/setting/rules')
-}
-
-const updateRules = (data: UpdateRulesInput) => {
-    return apiRequest<{ rules: string | null }>('/setting/rules', {
-        method: 'POST',
-        body: JSON.stringify(data),
-    })
-}
-
-const deleteRules = () => {
-    return apiRequest<void>('/setting/rules', {
-        method: 'DELETE',
-    })
-}
 
 // --- integrations ---
 
@@ -325,7 +293,6 @@ export const profileAPI = {
     updateAvatarUrl,
     changePassword,
     updateNotifications,
-    updateGenerationSound,
     getQuickInfo,
     signout,
     signoutAll,
@@ -333,9 +300,6 @@ export const profileAPI = {
     getMemories,
     updateMemories,
     deleteMemories,
-    getRules,
-    updateRules,
-    deleteRules,
     getGithubRepos,
     getGithubConnectUrl,
     getVercelConnectUrl,

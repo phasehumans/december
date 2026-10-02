@@ -4,13 +4,11 @@ import { sendSuccess } from '../../shared/response'
 
 import {
     changePasswordSchema,
-    generationSoundSchema,
     updateNameSchema,
     updateNotificationSchema,
     updateUsernameSchema,
     dismissOnboardingCardSchema,
     submitFeedbackSchema,
-    updateRulesSchema,
 } from './setting.schema'
 import { settingService } from './setting.service'
 
@@ -103,20 +101,6 @@ const updateNotifications = asyncHandler(async (req: Request, res: Response) => 
     return sendSuccess(res, 'notifications preferences updated', result)
 })
 
-const generationSound = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parseData = generationSoundSchema.parse(req.body)
-    const { generationSound } = parseData
-
-    const result = await settingService.generationSound({ userId, generationSound })
-    return sendSuccess(res, 'generation sound preference updated successfully', result)
-})
-
 const completeOnboarding = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
@@ -156,42 +140,6 @@ const submitFeedback = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'feedback submitted successfully', result)
 })
 
-const getRules = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const result = await settingService.getRules({ userId })
-    return sendSuccess(res, 'rules fetched successfully', result)
-})
-
-const updateRules = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parseData = updateRulesSchema.parse(req.body)
-    const { rules } = parseData
-
-    const result = await settingService.updateRules({ userId, rules })
-    return sendSuccess(res, 'rules updated successfully', result)
-})
-
-const deleteRules = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const result = await settingService.deleteRules({ userId })
-    return sendSuccess(res, 'rules deleted successfully', result)
-})
-
 export const settingController = {
     getMe,
     getProfile,
@@ -199,11 +147,7 @@ export const settingController = {
     updateUsername,
     changePassword,
     updateNotifications,
-    generationSound,
     completeOnboarding,
     dismissOnboardingCard,
     submitFeedback,
-    getRules,
-    updateRules,
-    deleteRules,
 }

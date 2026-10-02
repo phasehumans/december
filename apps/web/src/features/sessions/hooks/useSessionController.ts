@@ -195,12 +195,7 @@ export const useSessionController = (
             try {
                 const detail = await sessionAPI.getSessionDetail(projectId, versionId)
                 queryClient.setQueryData(['session', projectId], detail)
-                const sessionType = (detail as any).session?.type || (detail as any).project?.type
-                if (sessionType === 'SEARCH') {
-                    navigate(`/search?session=${projectId}`)
-                } else {
-                    hydrateProjectDetail(detail)
-                }
+                hydrateProjectDetail(detail)
             } catch (error) {
                 setProjectLoadError(
                     error instanceof Error ? error.message : 'Failed to open project'

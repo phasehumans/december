@@ -7,9 +7,7 @@ import { usePromptInputController } from '@/features/home/hooks/usePromptInputCo
 import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 
-export const PromptInput: React.FC<
-    PromptInputProps & { onFocus?: () => void; mode?: 'agent' | 'search' }
-> = ({
+export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mode?: 'agent' }> = ({
     onSubmit,
     isLoading,
     placeholder,
@@ -110,9 +108,7 @@ export const PromptInput: React.FC<
                                     ? 'Ask a follow-up...'
                                     : selectedRepos.length > 0
                                       ? ''
-                                      : mode === 'search'
-                                        ? 'Ask anything...'
-                                        : 'Describe your idea...')
+                                      : 'Describe your idea...')
                             }
                             className={`
                     w-full bg-transparent text-[#D6D5D4] placeholder-[#949494] caret-white

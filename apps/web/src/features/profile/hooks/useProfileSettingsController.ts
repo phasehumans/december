@@ -26,7 +26,6 @@ export const useProfileSettingsController = () => {
         updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
-        updateGenerationSoundMutation,
     } = useProfileSettingsData({
         setProfileActionError,
         onNameMutate: () => {},
@@ -49,7 +48,6 @@ export const useProfileSettingsController = () => {
     const emailNotifications = profile?.notifyProjectActivity ?? true
     const productUpdates = profile?.notifyProductUpdates ?? true
     const securityAlerts = profile?.notifySecurityAlerts ?? true
-    const generationSound = profile?.generationSound ?? 'FIRST_GENERATION'
     const resolvedName = profile?.name ?? 'User'
 
     const openNameModal = () => {
@@ -103,12 +101,6 @@ export const useProfileSettingsController = () => {
         })
     }
 
-    const handleGenerationSoundChange = (value: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER') => {
-        updateGenerationSoundMutation.mutate({
-            generationSound: value,
-        })
-    }
-
     const redirectToIntegration = (getUrl: (userId: string) => string) => {
         setProfileActionError(null)
         window.location.href = getUrl(profile?.id || '')
@@ -157,7 +149,6 @@ export const useProfileSettingsController = () => {
         updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
-        updateGenerationSoundMutation,
         isGithubConnected,
         isVercelConnected,
         isSupabaseConnected,
@@ -165,14 +156,12 @@ export const useProfileSettingsController = () => {
         emailNotifications,
         productUpdates,
         securityAlerts,
-        generationSound,
         resolvedName,
         openNameModal,
         openPasswordModal,
         handleSaveName,
         handleUpdatePassword,
         handleNotificationToggle,
-        handleGenerationSoundChange,
         connectGithub,
         connectVercel,
         connectSupabase,

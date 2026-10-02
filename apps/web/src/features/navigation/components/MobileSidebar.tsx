@@ -55,7 +55,7 @@ export const MobileSidebar: React.FC<
     )
     const [sortBy, setSortBy] = React.useState<'created' | 'updated'>('updated')
     const [filterArchived, setFilterArchived] = React.useState(false)
-    const [sessionType, setSessionType] = React.useState<'all' | 'agent' | 'search'>('all')
+    const [sessionType, setSessionType] = React.useState<'all' | 'web' | 'handoff'>('all')
     const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
     const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
 
@@ -184,10 +184,13 @@ export const MobileSidebar: React.FC<
                 if (!filterArchived && item.isArchived) {
                     return false
                 }
-                if (sessionType === 'agent' && item.type === 'SEARCH') {
+                if (item.type === 'SEARCH') {
                     return false
                 }
-                if (sessionType === 'search' && item.type !== 'SEARCH') {
+                if (sessionType === 'web' && item.type !== 'WEB') {
+                    return false
+                }
+                if (sessionType === 'handoff' && item.type !== 'CLI') {
                     return false
                 }
                 return true
@@ -396,20 +399,20 @@ export const MobileSidebar: React.FC<
                                                     )}
                                                 </button>
                                                 <button
-                                                    onClick={() => setSessionType('agent')}
+                                                    onClick={() => setSessionType('web')}
                                                     className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                                                 >
-                                                    <span>Agent</span>
-                                                    {sessionType === 'agent' && (
+                                                    <span>Web</span>
+                                                    {sessionType === 'web' && (
                                                         <Icons.Check className="w-3.5 h-3.5 text-white" />
                                                     )}
                                                 </button>
                                                 <button
-                                                    onClick={() => setSessionType('search')}
+                                                    onClick={() => setSessionType('handoff')}
                                                     className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
                                                 >
-                                                    <span>Search</span>
-                                                    {sessionType === 'search' && (
+                                                    <span>Handoff</span>
+                                                    {sessionType === 'handoff' && (
                                                         <Icons.Check className="w-3.5 h-3.5 text-white" />
                                                     )}
                                                 </button>

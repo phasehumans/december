@@ -17,11 +17,6 @@ const ProfileSettings = React.lazy(() =>
         default: m.ProfileSettings,
     }))
 )
-const SearchSpaceScreen = React.lazy(() =>
-    import('@/features/search/components/SearchSpaceScreen').then((m) => ({
-        default: m.SearchSpaceScreen,
-    }))
-)
 const SessionList = React.lazy(() =>
     import('@/features/sessions/components/SessionList').then((m) => ({ default: m.SessionList }))
 )
@@ -118,12 +113,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 {view === 'profile' && (
                     <AnimatedPage pageKey="profile">
                         <ProfileSettings onSignOut={onSignOut} onBack={onNewProject} />
-                    </AnimatedPage>
-                )}
-
-                {view === 'search' && (
-                    <AnimatedPage pageKey="search">
-                        <SearchSpaceScreen onBack={onNewProject} />
                     </AnimatedPage>
                 )}
 

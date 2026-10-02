@@ -10,7 +10,7 @@ describe('UI Performance and Routing Fixes', () => {
             expect(getViewForPath('/sessions/my-ecommerce-app')).toBe('project')
             expect(getViewForPath('/session/sess-12345')).toBe('project')
             expect(getViewForPath('/project/proj-67890')).toBe('project')
-            expect(getViewForPath('/search')).toBe('search')
+            expect(getViewForPath('/search')).toBe('chat')
             expect(getViewForPath('/')).toBe('chat')
         })
     })

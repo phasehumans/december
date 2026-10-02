@@ -1,8 +1,7 @@
-export type ViewState = 'chat' | 'search' | 'sessions' | 'profile' | 'project'
+export type ViewState = 'chat' | 'sessions' | 'profile' | 'project'
 
 export type ProfileTab =
     | 'Account'
-    | 'Preferences'
     | 'Integrations'
     | 'Connections'
     | 'Repositories'
@@ -15,7 +14,6 @@ export type ProfileTab =
 
 const profileTabToSlug: Record<string, string> = {
     Account: 'account',
-    Preferences: 'preferences',
     Connections: 'connections',
     Integrations: 'connections',
     Repositories: 'repositories',
@@ -52,7 +50,6 @@ export const toProjectSlug = toSessionSlug
 
 const simpleViewToPath: Record<string, string> = {
     chat: '/',
-    search: '/search',
     sessions: '/sessions',
 }
 
@@ -75,6 +72,11 @@ export const getPathForView = (
 }
 
 export const getViewForPath = (pathname: string): ViewState => {
+    // /search routes directly to chat
+    if (pathname === '/search' || pathname.startsWith('/search/')) {
+        return 'chat'
+    }
+
     // exact simple matches
     const simple = simplePathToView[pathname]
     if (simple) return simple

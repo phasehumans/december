@@ -39,16 +39,6 @@ export const updateNotificationSchema = z.object({
         .optional(),
 })
 
-export enum GenerationSound {
-    FIRST_GENERATION = 'FIRST_GENERATION',
-    ALWAYS = 'ALWAYS',
-    NEVER = 'NEVER',
-}
-
-export const generationSoundSchema = z.object({
-    generationSound: z.nativeEnum(GenerationSound, { message: 'invalid generation sound option' }),
-})
-
 export const dismissOnboardingCardSchema = z.object({
     card: z.enum(['welcome', 'github', 'feedback'], { message: 'invalid onboarding card' }),
 })
@@ -56,8 +46,4 @@ export const dismissOnboardingCardSchema = z.object({
 export const submitFeedbackSchema = z.object({
     rating: z.enum(['sad', 'neutral', 'happy']).nullable(),
     feedback: z.string({ message: 'feedback is required' }).min(1, 'feedback cannot be empty'),
-})
-
-export const updateRulesSchema = z.object({
-    rules: z.string({ message: 'rules is required' }),
 })

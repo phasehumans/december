@@ -38,8 +38,40 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const navigate = useNavigate()
     const [prompt, setPrompt] = React.useState('')
     const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-    const [chatMode, setChatMode] = useState<'agent' | 'search'>('agent')
-    const [isLogoAnimating, setIsLogoAnimating] = useState(false)
+    const WORDS = ['Agent', 'Plan', 'Build', 'Agent'] as const
+    const [cycleKey, setCycleKey] = useState(0)
+    const [stepIndex, setStepIndex] = useState(0)
+    const animationTimersRef = React.useRef<ReturnType<typeof setTimeout>[]>([])
+    const isAnimatingRef = React.useRef(false)
+
+    const clearAnimationTimers = React.useCallback(() => {
+        animationTimersRef.current.forEach(clearTimeout)
+        animationTimersRef.current = []
+        isAnimatingRef.current = false
+    }, [])
+
+    const triggerWordAnimation = React.useCallback(() => {
+        if (isAnimatingRef.current) return
+        isAnimatingRef.current = true
+        clearAnimationTimers()
+        isAnimatingRef.current = true
+        setCycleKey((prev) => prev + 1)
+        setStepIndex(0)
+        animationTimersRef.current = [
+            setTimeout(() => setStepIndex(1), 30),
+            setTimeout(() => setStepIndex(2), 630),
+            setTimeout(() => setStepIndex(3), 1230),
+            setTimeout(() => {
+                isAnimatingRef.current = false
+            }, 1550),
+        ]
+    }, [clearAnimationTimers])
+
+    useEffect(() => {
+        return () => {
+            clearAnimationTimers()
+        }
+    }, [clearAnimationTimers])
 
     const queryClient = useQueryClient()
     const { data: profile } = useQuery({
@@ -134,26 +166,20 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     }, [isAuthenticated, profile])
 
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
-                e.preventDefault()
-                setChatMode((prev) => (prev === 'agent' ? 'search' : 'agent'))
-            }
-        }
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [])
-
-    useEffect(() => {
         const handleNewSession = () => {
             setPrompt('')
-            setChatMode('agent')
-            const textarea = document.getElementById('home-prompt-textarea')
+            triggerWordAnimation()
+            const textarea = document.getElementById(
+                'home-prompt-textarea'
+            ) as HTMLTextAreaElement | null
+            if (textarea) {
+                textarea.value = ''
+            }
             textarea?.focus()
         }
         window.addEventListener('december:new-session', handleNewSession)
         return () => window.removeEventListener('december:new-session', handleNewSession)
-    }, [])
+    }, [triggerWordAnimation])
 
     return (
         <main
@@ -182,98 +208,57 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     <div className="absolute bottom-[calc(100%+10px)] left-2 md:left-0 right-2 md:right-0 z-10 flex justify-between items-end">
                         <div className="flex items-center gap-2 select-none mb-1 ml-1.5 md:ml-2 group cursor-default">
                             <Icons.DecemberLogo
-                                className={`w-[22px] h-[22px] md:w-[26px] md:h-[26px] text-white transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLogoAnimating ? '-rotate-12 scale-95' : 'rotate-0 scale-100'}`}
+                                className="w-[22px] h-[22px] md:w-[26px] md:h-[26px] text-white"
                                 strokeWidth={1}
                             />
                             <h2 className="text-[20px] md:text-[23px] font-sans font-normal tracking-[-0.025em] text-white flex items-center gap-1.5 leading-none">
                                 December
-                                <span className="text-[#87B2F4] font-normal relative inline-grid overflow-hidden py-1">
-                                    <span
-                                        className={`col-start-1 row-start-1 transition-all duration-300 ease-out ${
-                                            chatMode === 'agent'
-                                                ? 'opacity-100 translate-y-0'
-                                                : 'opacity-0 -translate-y-4 pointer-events-none'
-                                        }`}
-                                    >
-                                        Agent
-                                    </span>
-                                    <span
-                                        className={`col-start-1 row-start-1 transition-all duration-300 ease-out ${
-                                            chatMode === 'search'
-                                                ? 'opacity-100 translate-y-0'
-                                                : 'opacity-0 translate-y-4 pointer-events-none'
-                                        }`}
-                                    >
-                                        Search
-                                    </span>
+                                <span
+                                    key={cycleKey}
+                                    className="text-[#87B2F4] font-normal relative inline-grid overflow-hidden py-1"
+                                >
+                                    {WORDS.map((word, idx) => {
+                                        const isCurrent = stepIndex === idx
+                                        const isPast = stepIndex > idx
+                                        return (
+                                            <span
+                                                key={`${word}-${idx}`}
+                                                className={`col-start-1 row-start-1 transition-all duration-300 ease-out ${
+                                                    isCurrent
+                                                        ? 'opacity-100 translate-y-0'
+                                                        : isPast
+                                                          ? 'opacity-0 -translate-y-4 pointer-events-none'
+                                                          : 'opacity-0 translate-y-4 pointer-events-none'
+                                                }`}
+                                            >
+                                                {word}
+                                            </span>
+                                        )
+                                    })}
                                 </span>
                             </h2>
-                        </div>
-                        <div className="relative flex items-center bg-[#252525] rounded-full shadow-lg shadow-black/40 w-[94px] overflow-hidden mr-1.5 md:mr-2">
-                            {/* sliding indicator */}
-                            <div
-                                className={`absolute left-0 top-0 bottom-0 w-1/2 rounded-full bg-[#87B2F4] transition-transform duration-300 ease-out shadow-lg shadow-black/40 ${
-                                    chatMode === 'agent' ? 'translate-x-0' : 'translate-x-full'
-                                }`}
-                            />
-
-                            <button
-                                onClick={() => setChatMode('agent')}
-                                className={`relative z-10 flex-1 flex justify-center items-center py-[5px] rounded-full font-sans text-[11.5px] transition-colors duration-300 ${
-                                    chatMode === 'agent'
-                                        ? 'text-[#111111] font-semibold'
-                                        : 'text-[#B4B4B4] hover:text-[#E8E8E8] font-medium'
-                                }`}
-                            >
-                                Agent
-                            </button>
-                            <button
-                                onClick={() => setChatMode('search')}
-                                className={`relative z-10 flex-1 flex justify-center items-center py-[5px] rounded-full font-sans text-[11.5px] transition-colors duration-300 ${
-                                    chatMode === 'search'
-                                        ? 'text-[#111111] font-semibold'
-                                        : 'text-[#B4B4B4] hover:text-[#E8E8E8] font-medium'
-                                }`}
-                            >
-                                Search
-                            </button>
                         </div>
                     </div>
                     <PromptInput
                         value={prompt}
                         onChange={setPrompt}
                         onSubmit={(submittedPrompt) => {
-                            if (chatMode === 'search') {
-                                if (
-                                    isAuthenticated &&
-                                    overview !== undefined &&
-                                    (overview.creditBalance ?? 0) <= 0
-                                ) {
-                                    setShowOutOfCreditsModal(true)
-                                    return
-                                }
-                                navigate(`/search?prompt=${encodeURIComponent(submittedPrompt)}`)
-                            } else {
-                                if (
-                                    isAuthenticated &&
-                                    overview !== undefined &&
-                                    (overview.creditBalance ?? 0) <= 0
-                                ) {
-                                    setShowOutOfCreditsModal(true)
-                                    return
-                                }
-                                onPromptSubmit(submittedPrompt)
+                            if (
+                                isAuthenticated &&
+                                overview !== undefined &&
+                                (overview.creditBalance ?? 0) <= 0
+                            ) {
+                                setShowOutOfCreditsModal(true)
+                                return
                             }
+                            onPromptSubmit(submittedPrompt)
                         }}
                         isLoading={isGenerating}
                         onUpload={() => {}}
                         isAuthenticated={isAuthenticated}
                         onOpenAuth={onOpenAuth}
-                        onFocus={() => {
-                            setIsLogoAnimating(true)
-                            setTimeout(() => setIsLogoAnimating(false), 500)
-                        }}
-                        mode={chatMode}
+                        onFocus={triggerWordAnimation}
+                        mode="agent"
                     />
 
                     {/* Get Started Section - Desktop View */}

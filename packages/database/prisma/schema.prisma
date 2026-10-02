@@ -28,8 +28,6 @@ model User {
   notifyProjectActivity  Boolean         @default(true)
   notifySecurityAlerts   Boolean         @default(true)
   deletedAt              DateTime?
-  generationSound        GenerationSound @default(FIRST_GENERATION)
-  rules                  String?
   isDeleted              Boolean         @default(false)
   vercelAccessToken      String?
   vercelConnected        Boolean         @default(false)
@@ -302,11 +300,6 @@ enum NotificationType {
   ERROR
 }
 
-enum GenerationSound {
-  FIRST_GENERATION
-  ALWAYS
-  NEVER
-}
 
 enum MessageRole {
   USER
