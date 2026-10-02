@@ -1,10 +1,10 @@
 {
-    "version": "0.4.2",
-    "title": "What's New in v0.4.2",
+    "version": "0.4.3",
+    "title": "What's New in v0.4.3",
     "bullets": [
-        "*(tui)* Enable mouse wheel, pageup/down, and arrow scrolling",
-        "*(docs)* Add youtube and x social links to footer and creator navigation schema",
-        "*(tui)* Remove empty line between tool calls and active loader"
+        "Remove search mode and add prompt focus text animation",
+        "*(tui)* Eagerly update scroll state ref to support rapid mouse wheel scroll events",
+        "*(tui)* Prevent layout overflow and ghosting on terminal resize and small heights"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

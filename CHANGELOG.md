@@ -2,6 +2,30 @@
 
 ### Features
 
+- Remove search mode and add prompt focus text animation
+
+### Bug Fixes
+
+- _(tui)_ Eagerly update scroll state ref to support rapid mouse wheel scroll events
+- _(tui)_ Prevent layout overflow and ghosting on terminal resize and small heights
+- _(worker)_ Remove obsolete user.rules references
+
+### Documentation
+
+- Add multilingual readmes for zh, ja, ko, es, and ru
+
+### Testing
+
+- _(web)_ Remove obsolete getrules spy from profile settings test
+
+### Miscellaneous Tasks
+
+- Apply assorted fixes and improvements across workspace
+
+## [0.4.2] - 2026-09-30
+
+### Features
+
 - _(tui)_ Enable mouse wheel, pageup/down, and arrow scrolling
 - _(docs)_ Add youtube and x social links to footer and creator navigation schema
 
@@ -20,6 +44,10 @@
 ### Testing
 
 - _(billing)_ Verify billing and usage workflows and expand test coverage
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.2
 
 ## [0.4.1] - 2026-09-30
 
