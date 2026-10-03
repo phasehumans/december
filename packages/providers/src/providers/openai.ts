@@ -120,10 +120,13 @@ async function providerFetch(
     if (!res.ok) {
         const text = await res.text()
         const normalized = normalizeErrorResponse(text)
+        const headers = new Headers(res.headers)
+        headers.delete('retry-after')
+        headers.delete('retry-after-ms')
         return new Response(normalized, {
             status: res.status,
             statusText: res.statusText,
-            headers: res.headers,
+            headers,
         })
     }
     return res
@@ -142,6 +145,7 @@ export function openaiProvider(
             apiKey: apiKey || process.env.OPENAI_API_KEY || 'dummy-key',
             defaultHeaders,
             fetch: providerFetch,
+            maxRetries: 0,
         })
 
     return createProvider(

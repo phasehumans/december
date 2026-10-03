@@ -559,7 +559,8 @@ export function useAuthHandlers(
                     }
                 } catch (probeErr: any) {
                     lastProbeErr = probeErr
-                    const errText = (probeErr?.message || String(probeErr)).toLowerCase()
+                    const errText =
+                        `${probeErr?.message || ''} ${probeErr?.code || ''} ${probeErr?.error?.code || ''} ${String(probeErr)}`.toLowerCase()
                     if (
                         errText.includes('401') ||
                         errText.includes('unauthorized') ||
@@ -574,6 +575,7 @@ export function useAuthHandlers(
                         errText.includes('payment') ||
                         errText.includes('afford') ||
                         errText.includes('budget') ||
+                        errText.includes('balance') ||
                         errText.includes('insufficient_quota')
                     ) {
                         if (!lowCreditErr) {
@@ -634,7 +636,8 @@ export function useAuthHandlers(
             setApiKey('')
             addToast(MESSAGES.AUTH.API_KEY_SAVED(selectedProvider), 'success')
         } catch (err: any) {
-            const errStr = (err?.message || JSON.stringify(err) || String(err)).toLowerCase()
+            const errStr =
+                `${err?.message || ''} ${err?.code || ''} ${err?.error?.code || ''} ${String(err)}`.toLowerCase()
             const isTimeout =
                 err?.name === 'AbortError' ||
                 errStr.includes('aborted') ||
@@ -646,6 +649,7 @@ export function useAuthHandlers(
                 errStr.includes('payment') ||
                 errStr.includes('afford') ||
                 errStr.includes('budget') ||
+                errStr.includes('balance') ||
                 errStr.includes('insufficient_quota')
 
             if (
