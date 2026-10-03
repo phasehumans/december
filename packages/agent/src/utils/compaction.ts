@@ -207,6 +207,84 @@ function estimateTokens(messages: Message[]): number {
     }, 0)
 }
 
+export function isSafeCompactionBoundary(
+    messages: (Message | AgentMessage)[],
+    splitIndex: number,
+    startIndex: number = 0
+): boolean {
+    if (splitIndex <= startIndex || splitIndex >= messages.length) {
+        return false
+    }
+
+    // 1. Boundary message cannot be a tool result
+    if (messages[splitIndex]?.role === 'tool') {
+        return false
+    }
+
+    // 2. Gather all toolCall IDs dispatched before splitIndex (in middleHistory)
+    const preCallIds = new Set<string>()
+    for (let i = startIndex; i < splitIndex; i++) {
+        const msg = messages[i]
+        if (msg?.toolCalls) {
+            for (const tc of msg.toolCalls) {
+                if (tc.id) preCallIds.add(tc.id)
+            }
+        }
+    }
+
+    // 3. Ensure no tool result at or after splitIndex belongs to a tool call dispatched before splitIndex
+    for (let i = splitIndex; i < messages.length; i++) {
+        const msg = messages[i]
+        if (msg?.role === 'tool' && msg.toolCallId && preCallIds.has(msg.toolCallId)) {
+            return false // Orphaned tool result!
+        }
+    }
+
+    // 4. Ensure no tool result before splitIndex belongs to a tool call dispatched at or after splitIndex
+    const postCallIds = new Set<string>()
+    for (let i = splitIndex; i < messages.length; i++) {
+        const msg = messages[i]
+        if (msg?.toolCalls) {
+            for (const tc of msg.toolCalls) {
+                if (tc.id) postCallIds.add(tc.id)
+            }
+        }
+    }
+    for (let i = startIndex; i < splitIndex; i++) {
+        const msg = messages[i]
+        if (msg?.role === 'tool' && msg.toolCallId && postCallIds.has(msg.toolCallId)) {
+            return false // Tool result separated from call!
+        }
+    }
+
+    return true
+}
+
+export function findSafeCompactionBoundary(
+    messages: (Message | AgentMessage)[],
+    targetIndex: number,
+    startIndex: number = 1
+): number {
+    if (isSafeCompactionBoundary(messages, targetIndex, startIndex)) {
+        return targetIndex
+    }
+
+    const maxDelta = messages.length
+    for (let delta = 1; delta < maxDelta; delta++) {
+        const left = targetIndex - delta
+        if (left > startIndex && isSafeCompactionBoundary(messages, left, startIndex)) {
+            return left
+        }
+
+        const right = targetIndex + delta
+        if (right < messages.length && isSafeCompactionBoundary(messages, right, startIndex)) {
+            return right
+        }
+    }
+
+    return targetIndex
+}
+
 export async function compactContextIfNeeded(
     messages: Message[],
     llm: LLMProvider,
@@ -238,13 +316,23 @@ export async function compactContextIfNeeded(
         return messages // not enough messages to compact
     }
 
-    const systemPrompt = messages[0]!
-    const middleHistory = messages.slice(1, messages.length - PROTECTED_TAIL)
-    const recentHistory = messages.slice(messages.length - PROTECTED_TAIL)
+    const hasSystemPrompt = messages[0]?.role === 'system'
+    const systemPrompt = hasSystemPrompt ? messages[0]! : undefined
+    const historyStartIndex = hasSystemPrompt ? 1 : 0
+
+    const targetIndex = messages.length - PROTECTED_TAIL
+    const safeSplitIndex = findSafeCompactionBoundary(messages, targetIndex, historyStartIndex)
+
+    if (safeSplitIndex <= historyStartIndex || safeSplitIndex >= messages.length) {
+        return messages // Not enough messages to safely compact
+    }
+
+    const middleHistory = messages.slice(historyStartIndex, safeSplitIndex)
+    const recentHistory = messages.slice(safeSplitIndex)
 
     const hasPreviousSummary =
         middleHistory.length > 0 &&
-        middleHistory[0].role === 'system' &&
+        (middleHistory[0].role === 'system' || middleHistory[0].role === 'user') &&
         middleHistory[0].content.includes('[COMPACTED HISTORY SUMMARY]')
     let previousSummaryText = ''
     let messagesToSummarize = middleHistory
@@ -252,6 +340,10 @@ export async function compactContextIfNeeded(
     if (hasPreviousSummary) {
         previousSummaryText = middleHistory[0].content.replace('[COMPACTED HISTORY SUMMARY]\n', '')
         messagesToSummarize = middleHistory.slice(1)
+    }
+
+    if (messagesToSummarize.length === 0) {
+        return messages
     }
 
     const fileManifests = extractFileManifests(messagesToSummarize, previousSummaryText)
@@ -386,5 +478,7 @@ Keep each section concise. You MUST preserve exact file paths, function names, l
         content: `[COMPACTED HISTORY SUMMARY]\n${finalSummary}`,
     }
 
-    return [systemPrompt, summaryMessage, ...recentHistory]
+    return systemPrompt
+        ? [systemPrompt, summaryMessage, ...recentHistory]
+        : [summaryMessage, ...recentHistory]
 }

@@ -145,22 +145,35 @@ export class Agent {
 
     private defaultConvertToLlm(messages: AgentMessage[]): Message[] {
         const filtered = messages.filter((m) => !m.isUI)
-        const evaporated = evaporateStaleToolOutputs(filtered, 3)
+        const evaporated = evaporateStaleToolOutputs(filtered, {
+            preserveRecentTurns: 3,
+            preserveRecentSteps: 2,
+            maxOutputSize: 6 * 1024,
+        })
 
         // Merge adjacent user messages to preserve alternating dialogue format and prevent provider errors
         const merged: Message[] = []
-        for (const msg of evaporated) {
+        for (let i = 0; i < evaporated.length; i++) {
+            const msg = evaporated[i]!
+            let role = msg.role
+            const content = msg.content
+
+            // Prevent illegal mid-conversation system roles for providers like Anthropic
+            if (role === 'system' && i > 0 && content.includes('[COMPACTED HISTORY SUMMARY]')) {
+                role = 'user'
+            }
+
             const prev = merged[merged.length - 1]
             if (
                 prev &&
                 prev.role === 'user' &&
-                msg.role === 'user' &&
+                role === 'user' &&
                 !prev.toolCalls &&
                 !msg.toolCalls
             ) {
-                prev.content = `${prev.content}\n\n${msg.content}`
+                prev.content = `${prev.content}\n\n${content}`
             } else {
-                merged.push({ ...msg })
+                merged.push({ ...msg, role, content })
             }
         }
         return merged

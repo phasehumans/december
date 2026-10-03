@@ -117,15 +117,23 @@ export function anthropicProvider(
                         antMessages.push({ role: 'assistant', content })
                     }
                 } else {
-                    antMessages.push({
-                        role: msg.role as 'user',
-                        content: [
-                            {
-                                type: 'text',
-                                text: msg.content,
-                            },
-                        ],
-                    })
+                    const prev = antMessages[antMessages.length - 1]
+                    if (prev && prev.role === 'user' && Array.isArray(prev.content)) {
+                        prev.content.push({
+                            type: 'text',
+                            text: msg.content,
+                        })
+                    } else {
+                        antMessages.push({
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'text',
+                                    text: msg.content,
+                                },
+                            ],
+                        })
+                    }
                 }
             }
 

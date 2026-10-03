@@ -5,6 +5,7 @@ import {
     pruneToolResults,
     extractFileManifests,
     formatFileManifestsXml,
+    isSafeCompactionBoundary,
 } from '../../src/utils/compaction'
 import { MockLLM } from '../mock-provider'
 
@@ -107,6 +108,90 @@ describe('compactContextIfNeeded (Unit)', () => {
         await expect(
             compactContextIfNeeded(messages, llm, 10, undefined, controller.signal)
         ).rejects.toThrow('Aborted')
+    })
+
+    test('isSafeCompactionBoundary rejects boundaries landing on tool results or splitting tool calls from results', () => {
+        const messages: Message[] = [
+            { role: 'system', content: 'system' },
+            { role: 'user', content: 'turn 1' },
+            {
+                role: 'assistant',
+                content: 'calling tool',
+                toolCalls: [
+                    { id: 'call_1', name: 'bash', input: '{"cmd":"ls"}' },
+                    { id: 'call_2', name: 'read_file', input: '{"path":"a.ts"}' },
+                ],
+            },
+            { role: 'tool', toolCallId: 'call_1', content: 'result 1' },
+            { role: 'tool', toolCallId: 'call_2', content: 'result 2' },
+            { role: 'assistant', content: 'all tools finished' },
+        ]
+
+        // Boundary landing directly on tool result must be rejected
+        expect(isSafeCompactionBoundary(messages, 3)).toBe(false)
+        expect(isSafeCompactionBoundary(messages, 4)).toBe(false)
+
+        // Boundary after all tool results have completed is safe
+        expect(isSafeCompactionBoundary(messages, 5)).toBe(true)
+
+        // Boundary before the assistant tool call is safe (assistant and tools stay together)
+        expect(isSafeCompactionBoundary(messages, 2)).toBe(true)
+    })
+
+    test('compactContextIfNeeded atomically preserves tool call and result pairs without orphaned tool results', async () => {
+        const messages: Message[] = [{ role: 'system', content: 'You are an agent' }]
+        // 10 turns of simple dialogue
+        for (let i = 0; i < 10; i++) {
+            messages.push({ role: 'user', content: `query ${i}`.repeat(50) })
+            messages.push({ role: 'assistant', content: `reply ${i}`.repeat(50) })
+        }
+        // Then an assistant message that dispatched 2 tool calls
+        messages.push({
+            role: 'assistant',
+            content: 'invoking tools',
+            toolCalls: [
+                { id: 'tool_call_alpha', name: 'bash', input: '{"cmd":"pwd"}' },
+                { id: 'tool_call_beta', name: 'read_file', input: '{"path":"app.ts"}' },
+            ],
+        })
+        messages.push({ role: 'tool', toolCallId: 'tool_call_alpha', content: '/workspace' })
+        messages.push({ role: 'tool', toolCallId: 'tool_call_beta', content: 'const app = 1' })
+        messages.push({ role: 'assistant', content: 'done with tools' })
+
+        // Add 16 more messages to ensure total length exceeds PROTECTED_TAIL (20)
+        for (let i = 0; i < 8; i++) {
+            messages.push({ role: 'user', content: `post-query ${i}`.repeat(40) })
+            messages.push({ role: 'assistant', content: `post-reply ${i}`.repeat(40) })
+        }
+
+        const llm = new MockLLM()
+        llm.pushResponse('Compacted summary preserving state')
+
+        const result = await compactContextIfNeeded(messages, llm, 100)
+
+        // result[0] is system prompt, result[1] is summary
+        const compactedHistory = result.slice(2)
+
+        // Verify recentHistory never starts with role: 'tool'
+        expect(compactedHistory[0]!.role).not.toBe('tool')
+
+        // Verify that if any tool result is in compactedHistory, its assistant tool call is also in compactedHistory
+        const toolResultIds = compactedHistory
+            .filter((m) => m.role === 'tool' && m.toolCallId)
+            .map((m) => m.toolCallId!)
+
+        const dispatchedIds = new Set<string>()
+        for (const msg of compactedHistory) {
+            if (msg.toolCalls) {
+                for (const tc of msg.toolCalls) {
+                    if (tc.id) dispatchedIds.add(tc.id)
+                }
+            }
+        }
+
+        for (const toolResultId of toolResultIds) {
+            expect(dispatchedIds.has(toolResultId)).toBe(true)
+        }
     })
 })
 

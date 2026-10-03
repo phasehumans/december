@@ -264,7 +264,6 @@ describe('Anthropic Provider Adapter (Unit)', () => {
             // consume
         }
 
-        expect(capturedPayload).not.toBeNull()
         expect(capturedPayload.messages[1]).toEqual({
             role: 'assistant',
             content: [
@@ -280,5 +279,43 @@ describe('Anthropic Provider Adapter (Unit)', () => {
                 },
             ],
         })
+    })
+
+    it('merges consecutive user or system messages to preserve alternating role contract', async () => {
+        let capturedPayload: any = null
+
+        const mockClient: any = {
+            messages: {
+                create: async (payload: any) => {
+                    capturedPayload = payload
+                    return (async function* () {
+                        yield {
+                            type: 'content_block_start',
+                            index: 0,
+                            content_block: { type: 'text', text: 'OK' },
+                        }
+                    })()
+                },
+            },
+        }
+
+        const provider = anthropicProvider(undefined, undefined, mockClient)
+        const messages = [
+            { role: 'user', content: 'context prefix' },
+            { role: 'user', content: 'actual instruction' },
+        ]
+
+        const stream = provider.stream(messages)
+        for await (const _ of stream) {
+            // consume
+        }
+
+        expect(capturedPayload).not.toBeNull()
+        expect(capturedPayload.messages.length).toBe(1)
+        expect(capturedPayload.messages[0].role).toBe('user')
+        expect(capturedPayload.messages[0].content).toEqual([
+            { type: 'text', text: 'context prefix' },
+            { type: 'text', text: 'actual instruction', cache_control: { type: 'ephemeral' } },
+        ])
     })
 })

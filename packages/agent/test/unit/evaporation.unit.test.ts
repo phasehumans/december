@@ -113,4 +113,117 @@ describe('evaporateStaleToolOutputs (Micro-Compaction)', () => {
         const result = evaporateStaleToolOutputs(messages, 3)
         expect(result[1].thinking).toBe('Checking file structure first')
     })
+
+    it('evaporates tool outputs older than 2 agent execution steps even within a single user turn', () => {
+        const largeOutput = 'row data line\n'.repeat(40)
+        const messages: AgentMessage[] = [
+            // Single user turn
+            { role: 'user', content: 'Autonomous multi-step task' },
+            // Step 1 (oldest step)
+            {
+                role: 'assistant',
+                content: 'Step 1: checking files',
+                toolCalls: [{ id: 'step_1', name: 'ls', input: '{}' }],
+            },
+            { role: 'tool', toolCallId: 'step_1', content: largeOutput },
+            // Step 2 (recent step 2)
+            {
+                role: 'assistant',
+                content: 'Step 2: inspecting code',
+                toolCalls: [{ id: 'step_2', name: 'read_file', input: '{"path":"app.ts"}' }],
+            },
+            { role: 'tool', toolCallId: 'step_2', content: largeOutput },
+            // Step 3 (recent step 1)
+            {
+                role: 'assistant',
+                content: 'Step 3: running tests',
+                toolCalls: [{ id: 'step_3', name: 'bash', input: '{"cmd":"bun test"}' }],
+            },
+            { role: 'tool', toolCallId: 'step_3', content: largeOutput },
+        ]
+
+        const result = evaporateStaleToolOutputs(messages, {
+            preserveRecentTurns: 3,
+            preserveRecentSteps: 2,
+        })
+
+        // Step 1 tool output (index 2) must be evaporated to tombstone because it is older than 2 steps
+        expect(result[2]!.content).toContain('[Tool Output Evaporated:')
+        expect(result[2]!.content).toContain('exit code 0')
+
+        // Step 2 and Step 3 tool outputs must remain intact within the 2 recent steps
+        expect(result[4]!.content).toBe(largeOutput)
+        expect(result[6]!.content).toBe(largeOutput)
+
+        // User prompt and thoughts must be 100% preserved
+        expect(result[0]!.content).toBe('Autonomous multi-step task')
+        expect(result[1]!.content).toBe('Step 1: checking files')
+    })
+
+    it('truncates oversized tool outputs (> 6 KB) in recent steps preserving first 20 and last 20 lines', () => {
+        // Generate 100 lines of ~100 chars each (~10 KB)
+        const lines: string[] = []
+        for (let i = 1; i <= 100; i++) {
+            lines.push(`Log entry #${i}: ` + 'x'.repeat(80))
+        }
+        const hugeOutput = lines.join('\n')
+
+        const messages: AgentMessage[] = [
+            { role: 'user', content: 'Run test suite' },
+            {
+                role: 'assistant',
+                content: 'Running tests now',
+                toolCalls: [{ id: 'call_test', name: 'bash', input: '{"cmd":"test"}' }],
+            },
+            { role: 'tool', toolCallId: 'call_test', content: hugeOutput },
+        ]
+
+        const result = evaporateStaleToolOutputs(messages, {
+            preserveRecentTurns: 3,
+            preserveRecentSteps: 2,
+            maxOutputSize: 6 * 1024,
+        })
+
+        const toolContent = result[2]!.content as string
+        expect(toolContent).toContain('Log entry #1:')
+        expect(toolContent).toContain('Log entry #20:')
+        expect(toolContent).toContain('lines truncated')
+        expect(toolContent).toContain('Log entry #81:')
+        expect(toolContent).toContain('Log entry #100:')
+        // Middle lines like entry #50 should be truncated
+        expect(toolContent).not.toContain('Log entry #50:')
+    })
+
+    it('retains essential error diagnostic information on failed tool outputs even if oversized', () => {
+        const lines: string[] = []
+        lines.push('Command failed with exit code 1:')
+        lines.push(
+            '[Tool Error] TypeError: undefined is not a function at Object.run (/src/index.ts:42)'
+        )
+        for (let i = 1; i <= 100; i++) {
+            lines.push(`Trace detail line #${i}: error stack trace`)
+        }
+        const hugeErrorOutput = lines.join('\n')
+
+        const messages: AgentMessage[] = [
+            { role: 'user', content: 'Debug test failure' },
+            {
+                role: 'assistant',
+                content: 'Running failing test',
+                toolCalls: [{ id: 'call_fail', name: 'bash', input: '{"cmd":"test"}' }],
+            },
+            { role: 'tool', toolCallId: 'call_fail', content: hugeErrorOutput },
+        ]
+
+        const result = evaporateStaleToolOutputs(messages, {
+            preserveRecentTurns: 3,
+            preserveRecentSteps: 2,
+            maxOutputSize: 6 * 1024,
+        })
+
+        const toolContent = result[2]!.content as string
+        expect(toolContent).toBe(hugeErrorOutput)
+        expect(toolContent).toContain('[Tool Error]')
+        expect(toolContent).toContain('Command failed with exit code 1:')
+    })
 })

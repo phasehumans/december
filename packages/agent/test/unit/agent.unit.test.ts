@@ -228,6 +228,38 @@ describe('Agent core functionality (Unit)', () => {
         expect(providerMsgs[1]!.content).toBe('First message\n\nSecond message')
     })
 
+    test('converts compacted history summary into user context in defaultConvertToLlm to prevent illegal system roles', () => {
+        const agent = new Agent({
+            llm: new MockLLM(),
+            tools: [],
+            operations: mockOperations,
+        })
+        agent.addMessage({
+            role: 'system',
+            content: '[COMPACTED HISTORY SUMMARY]\nGoal: Refactor auth module',
+        })
+        agent.addMessage({ role: 'user', content: 'Continue refactoring' })
+        agent.addMessage({ role: 'assistant', content: 'Working on it' })
+
+        const providerMsgs = agent.convertToLlm(agent.messages)
+
+        // Index 0 is root system prompt
+        expect(providerMsgs[0]!.role).toBe('system')
+
+        // Index 1 must not be an illegal system role. It should be merged into user role!
+        expect(providerMsgs[1]!.role).toBe('user')
+        expect(providerMsgs[1]!.content).toContain('[COMPACTED HISTORY SUMMARY]')
+        expect(providerMsgs[1]!.content).toContain('Continue refactoring')
+
+        // Index 2 is assistant
+        expect(providerMsgs[2]!.role).toBe('assistant')
+
+        // There must be no system message beyond index 0 in the provider message stream
+        for (let i = 1; i < providerMsgs.length; i++) {
+            expect(providerMsgs[i]!.role).not.toBe('system')
+        }
+    })
+
     test('marks unanswered user message as isUI on turn failure so next turn is not polluted', async () => {
         let attempts = 0
         const failingLlm = {
