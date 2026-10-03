@@ -2,6 +2,26 @@
 
 ### Features
 
+- _(agent)_ Passive workspace memory ingestion and manage_memory tool
+- _(agent)_ Lsp client integration for definition and reference navigation
+
+### Bug Fixes
+
+- _(tools)_ Prefer non-import lines when resolving symbol definition in code_intelligence
+- _(agent)_ Fix compaction boundaries and add stdout microcompaction (#529)
+- _(cli)_ Resolve auriko api key verification probe freeze and budget error recognition (#524)
+- _(cli)_ Disable openai sdk retries and strip retry-after to prevent api verification hang
+
+### Testing
+
+- _(agent)_ Add lsp-client unit tests
+- _(agent)_ Add workspace memory loop integration tests
+- _(cli)_ Add unit tests for lsp and diagnostics in local-operations
+
+## [0.4.3] - 2026-10-02
+
+### Features
+
 - Remove search mode and add prompt focus text animation
 
 ### Bug Fixes
@@ -21,6 +41,7 @@
 ### Miscellaneous Tasks
 
 - Apply assorted fixes and improvements across workspace
+- _(release)_ V0.4.3
 
 ## [0.4.2] - 2026-09-30
 
