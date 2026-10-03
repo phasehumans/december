@@ -154,14 +154,31 @@ export const CodeIntelligenceTool: Tool<CodeIntelligenceInput> = {
             try {
                 const content = await context.operations.fs.readFile(path)
                 const fileLines = content.split('\n')
+                let fallbackLine: number | undefined
+                let fallbackCol: number | undefined
+
                 for (let i = 0; i < fileLines.length; i++) {
-                    const idx = fileLines[i]!.indexOf(symbol)
+                    const lineStr = fileLines[i]!
+                    const idx = lineStr.indexOf(symbol)
                     if (idx !== -1) {
-                        targetLine = i + 1
-                        targetColumn = idx + 1
-                        break
+                        if (/^\s*import\b/.test(lineStr)) {
+                            if (fallbackLine === undefined) {
+                                fallbackLine = i + 1
+                                fallbackCol = idx + 1
+                            }
+                        } else {
+                            targetLine = i + 1
+                            targetColumn = idx + 1
+                            break
+                        }
                     }
                 }
+
+                if (targetLine === undefined) {
+                    targetLine = fallbackLine
+                    targetColumn = fallbackCol
+                }
+
                 if (targetLine === undefined || targetColumn === undefined) {
                     return `Symbol "${symbol}" not found in ${path}.`
                 }
