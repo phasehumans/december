@@ -97,8 +97,14 @@ export class Agent {
         this.convertToLlm = config.convertToLlm || this.defaultConvertToLlm
         this.steeringQueue = new PendingMessageQueue(config.steeringMode || 'all')
         this.followUpQueue = new PendingMessageQueue(config.followUpMode || 'all')
-        this.conversation = new ConversationManager()
         this.workspaceDir = config.workspaceDir
+        this.conversation = new ConversationManager([], {
+            workspaceRoot: config.workspaceDir,
+        })
+        this.systemPrompt = this.conversation.initSession({
+            workspaceRoot: config.workspaceDir,
+            systemPrompt: this.systemPrompt,
+        })
         this.logsDir = config.logsDir
         this.disableLogging = config.disableLogging || false
         this.deferredRegistry = config.deferredRegistry || new DeferredToolRegistry()
@@ -121,10 +127,12 @@ export class Agent {
             }
         }
 
-        this.conversation.addMessage({
-            role: 'system',
-            content: this.systemPrompt,
-        })
+        if (this.conversation.messages.length === 0) {
+            this.conversation.addMessage({
+                role: 'system',
+                content: this.systemPrompt,
+            })
+        }
     }
 
     get messages(): AgentMessage[] {

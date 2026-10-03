@@ -8,7 +8,34 @@ export interface DiagnosticItem {
 }
 
 export interface DiagnosticsOperations {
-    getDiagnostics: (filePath: string) => Promise<DiagnosticItem[] | string>
+    getDiagnostics: (filePath?: string) => Promise<DiagnosticItem[] | string>
+}
+
+export interface LocationItem {
+    filePath: string
+    line: number
+    column: number
+    preview?: string
+}
+
+export interface OutlineItem {
+    name: string
+    kind: string
+    line: number
+    column: number
+    containerName?: string
+}
+
+export interface LspOperations {
+    getDefinition?: (
+        filePath: string,
+        line: number,
+        column: number
+    ) => Promise<LocationItem[] | LocationItem | null>
+    getReferences?: (filePath: string, line: number, column: number) => Promise<LocationItem[]>
+    getOutline?: (filePath: string) => Promise<OutlineItem[]>
+    getDiagnostics?: (filePath?: string) => Promise<DiagnosticItem[] | string>
+    shutdown?: () => Promise<void>
 }
 
 export interface Environment {
@@ -50,4 +77,5 @@ export interface Environment {
         navigate: (url: string) => Promise<{ text: string; vncUrl?: string; error?: string }>
     }
     diagnostics?: DiagnosticsOperations
+    lsp?: LspOperations
 }

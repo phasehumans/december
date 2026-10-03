@@ -47,6 +47,25 @@ describe('AgentHarness (Unit)', () => {
         expect(systemPrompt).toContain('Execution & Verification')
     })
 
+    test('passively ingests .december/memory.md under <project_memory> in harness agent prompt', () => {
+        const decDir = path.join(tmpDir, '.december')
+        fs.mkdirSync(decDir, { recursive: true })
+        fs.writeFileSync(path.join(decDir, 'memory.md'), '## conventions\n- use pino logger')
+
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+        })
+
+        const agent = harness.getAgent()
+        expect(agent.systemPrompt).toContain('<project_memory>')
+        expect(agent.systemPrompt).toContain('## conventions')
+        expect(agent.systemPrompt).toContain('use pino logger')
+        expect(agent.systemPrompt).toContain('</project_memory>')
+    })
+
     test('discovers global machine root rules from ~/.december or DECEMBER_CONFIG_DIR', () => {
         const globalDir = path.join(tmpDir, 'global-december')
         fs.mkdirSync(globalDir, { recursive: true })

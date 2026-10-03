@@ -1,9 +1,10 @@
 import { exec, spawn } from 'node:child_process'
+import nodeFs from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
-import { PlatformAdapter, BashExecOptions } from '@december/agent'
+import { PlatformAdapter, BashExecOptions, LspClient } from '@december/agent'
 import { getWorkspaceIgnores, isPathIgnored } from '@december/shared'
 import { createLocalBashOperations, killProcessGroup } from '@december/tools'
 import fg from 'fast-glob'
@@ -296,4 +297,97 @@ export const localOperations: PlatformAdapter = {
             }
         },
     },
+    diagnostics: {
+        getDiagnostics: async (filePath?: string) => {
+            const client = await getOrLaunchLspClient()
+            if (!client) return []
+            return client.getDiagnostics(filePath)
+        },
+    },
+    lsp: {
+        getDefinition: async (filePath: string, line: number, column: number) => {
+            const client = await getOrLaunchLspClient()
+            if (!client) return []
+            return client.getDefinition(filePath, line, column)
+        },
+        getReferences: async (filePath: string, line: number, column: number) => {
+            const client = await getOrLaunchLspClient()
+            if (!client) return []
+            return client.getReferences(filePath, line, column)
+        },
+        getOutline: async (filePath: string) => {
+            const client = await getOrLaunchLspClient()
+            if (!client) return []
+            return client.getOutline(filePath)
+        },
+        getDiagnostics: async (filePath?: string) => {
+            const client = await getOrLaunchLspClient()
+            if (!client) return []
+            return client.getDiagnostics(filePath)
+        },
+        shutdown: async () => {
+            if (activeLspClient) {
+                await activeLspClient.shutdown()
+                activeLspClient = null
+                activeLspWorkspace = null
+            }
+        },
+    },
 }
+
+let activeLspClient: LspClient | null = null
+let activeLspWorkspace: string | null = null
+
+export function isTypeScriptProject(workspaceDir: string): boolean {
+    return (
+        nodeFs.existsSync(path.join(workspaceDir, 'tsconfig.json')) ||
+        nodeFs.existsSync(path.join(workspaceDir, 'package.json'))
+    )
+}
+
+export async function getOrLaunchLspClient(customWorkspaceDir?: string): Promise<LspClient | null> {
+    const workspaceDir = customWorkspaceDir || getScopedCwd()
+
+    if (activeLspClient && activeLspWorkspace === workspaceDir) {
+        return activeLspClient
+    }
+
+    if (!isTypeScriptProject(workspaceDir)) {
+        return null
+    }
+
+    if (activeLspClient) {
+        try {
+            await activeLspClient.shutdown()
+        } catch {
+            // Intentionally swallowed: previous client shutdown fallback
+        }
+        activeLspClient = null
+        activeLspWorkspace = null
+    }
+
+    const client = new LspClient({ workspaceRoot: workspaceDir })
+    activeLspClient = client
+    activeLspWorkspace = workspaceDir
+
+    try {
+        await client.start()
+    } catch {
+        // Intentionally swallowed: LSP client start failure fallback
+        activeLspClient = null
+        activeLspWorkspace = null
+        return null
+    }
+
+    return activeLspClient
+}
+
+process.on('exit', () => {
+    if (activeLspClient) {
+        try {
+            activeLspClient.shutdown()
+        } catch {
+            // Intentionally swallowed: process exit shutdown fallback
+        }
+    }
+})

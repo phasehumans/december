@@ -13,6 +13,8 @@ import {
     ManageTaskTool,
     BrowserTool,
     WebSearchTool,
+    CodeIntelligenceTool,
+    ManageMemoryTool,
 } from '../../src/index'
 
 describe('Tool Catalog Schema & Contract Conformance (Integration)', () => {
@@ -29,10 +31,12 @@ describe('Tool Catalog Schema & Contract Conformance (Integration)', () => {
         ManageTaskTool,
         BrowserTool,
         WebSearchTool,
+        CodeIntelligenceTool,
+        ManageMemoryTool,
     ]
 
     it('exports all standard tools with valid names, descriptions, and schemas', () => {
-        expect(allTools.length).toBe(12)
+        expect(allTools.length).toBe(14)
 
         for (const tool of allTools) {
             expect(typeof tool.name).toBe('string')

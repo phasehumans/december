@@ -1,4 +1,8 @@
-import { describe, test, expect } from 'bun:test'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
+import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 
 import { ConversationManager } from '../../src/conversation-manager'
 import { MockLLM } from '../mock-provider'
@@ -103,5 +107,128 @@ describe('ConversationManager (Unit)', () => {
         expect(result.tokensSaved).toBeGreaterThan(15000)
         expect(manager.messages[3]!.content).toBe('[Old tool result content cleared]')
         expect(llm.calls.length).toBe(0)
+    })
+
+    describe('Passive Workspace Memory Ingestion', () => {
+        let tmpDir: string
+
+        beforeEach(() => {
+            tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'conv-mem-test-'))
+        })
+
+        afterEach(() => {
+            fs.rmSync(tmpDir, { recursive: true, force: true })
+        })
+
+        test('checks for .december/memory.md in workspace root and injects under <project_memory>', () => {
+            const decDir = path.join(tmpDir, '.december')
+            fs.mkdirSync(decDir, { recursive: true })
+            fs.writeFileSync(
+                path.join(decDir, 'memory.md'),
+                '## quirks\n- bun test requires DB migrations first'
+            )
+
+            const manager = new ConversationManager()
+            const prompt = manager.initSession({
+                workspaceRoot: tmpDir,
+                systemPrompt: 'You are December.',
+            })
+
+            expect(prompt).toContain('<project_memory>')
+            expect(prompt).toContain('## quirks')
+            expect(prompt).toContain('- bun test requires DB migrations first')
+            expect(prompt).toContain('</project_memory>')
+            expect(manager.messages.length).toBe(1)
+            expect(manager.messages[0]!.content).toBe(prompt)
+        })
+
+        test('falls back to .december/rules.md when memory.md is missing', () => {
+            const decDir = path.join(tmpDir, '.december')
+            fs.mkdirSync(decDir, { recursive: true })
+            fs.writeFileSync(
+                path.join(decDir, 'rules.md'),
+                '## conventions\n- lowercase commit messages only'
+            )
+
+            const manager = new ConversationManager()
+            const prompt = manager.initSession({
+                workspaceRoot: tmpDir,
+                systemPrompt: 'You are December.',
+            })
+
+            expect(prompt).toContain('<project_memory>')
+            expect(prompt).toContain('## conventions')
+            expect(prompt).toContain('- lowercase commit messages only')
+            expect(prompt).toContain('</project_memory>')
+        })
+
+        test('supports MEMORY.md and RULES.md in workspace root, combining both when present', () => {
+            fs.writeFileSync(
+                path.join(tmpDir, 'MEMORY.md'),
+                '## build_and_test\n- test with bun test packages/tools'
+            )
+            fs.writeFileSync(path.join(tmpDir, 'RULES.md'), '## rules\n- do not use em dashes')
+
+            const manager = new ConversationManager()
+            const prompt = manager.initSession({
+                workspaceRoot: tmpDir,
+                systemPrompt: 'Base system prompt.',
+            })
+
+            expect(prompt).toContain('<project_memory>')
+            expect(prompt).toContain('test with bun test packages/tools')
+            expect(prompt).toContain('do not use em dashes')
+            expect(prompt).toContain('</project_memory>')
+        })
+
+        test('handles missing memory and rules files gracefully without errors or warnings', () => {
+            const manager = new ConversationManager()
+            const originalPrompt = 'You are a helpful coding agent.'
+            const prompt = manager.initSession({
+                workspaceRoot: tmpDir,
+                systemPrompt: originalPrompt,
+            })
+
+            expect(prompt).toBe(originalPrompt)
+            expect(prompt).not.toContain('<project_memory>')
+            expect(manager.messages.length).toBe(1)
+            expect(manager.messages[0]!.content).toBe(originalPrompt)
+        })
+
+        test('preserves dynamic environment section at the end of system prompt', () => {
+            const decDir = path.join(tmpDir, '.december')
+            fs.mkdirSync(decDir, { recursive: true })
+            fs.writeFileSync(path.join(decDir, 'memory.md'), '## architecture\n- monorepo packages')
+
+            const manager = new ConversationManager()
+            const baseWithEnv = `You are December.\n\nCurrent date: 2026-10-03\nCurrent working directory: ${tmpDir}`
+            const prompt = manager.initSession({
+                workspaceRoot: tmpDir,
+                systemPrompt: baseWithEnv,
+            })
+
+            expect(prompt).toContain('<project_memory>')
+            expect(prompt).toContain('## architecture')
+            // project_memory should come before Current date:
+            const memoryIndex = prompt.indexOf('<project_memory>')
+            const envIndex = prompt.indexOf('Current date:')
+            expect(memoryIndex).toBeLessThan(envIndex)
+            expect(prompt.endsWith(`Current working directory: ${tmpDir}`)).toBe(true)
+        })
+
+        test('supports constructor options with workspaceRoot', () => {
+            const decDir = path.join(tmpDir, '.december')
+            fs.mkdirSync(decDir, { recursive: true })
+            fs.writeFileSync(path.join(decDir, 'memory.md'), '## conventions\n- always use bun')
+
+            const manager = new ConversationManager([], {
+                workspaceRoot: tmpDir,
+                systemPrompt: 'Init via constructor',
+            })
+
+            expect(manager.messages.length).toBe(1)
+            expect(manager.messages[0]!.content).toContain('<project_memory>')
+            expect(manager.messages[0]!.content).toContain('always use bun')
+        })
     })
 })

@@ -1,3 +1,7 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
 import { describe, test, expect } from 'bun:test'
 
 import { Agent } from '../../src/agent'
@@ -351,5 +355,34 @@ describe('Agent core functionality (Unit)', () => {
         expect((toolResult as any)?.result?.error).toContain(
             'not permitted in read-only / ask mode'
         )
+    })
+
+    test('passively ingests .december/memory.md into agent systemPrompt and messages[0]', () => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-mem-test-'))
+        try {
+            const decDir = path.join(tmpDir, '.december')
+            fs.mkdirSync(decDir, { recursive: true })
+            fs.writeFileSync(
+                path.join(decDir, 'memory.md'),
+                '## quirks\n- e2e tests need headless mode'
+            )
+
+            const agent = new Agent({
+                llm: new MockLLM(),
+                tools: [],
+                operations: mockOperations,
+                workspaceDir: tmpDir,
+                systemPrompt: 'You are December.',
+            })
+
+            expect(agent.systemPrompt).toContain('<project_memory>')
+            expect(agent.systemPrompt).toContain('## quirks')
+            expect(agent.systemPrompt).toContain('e2e tests need headless mode')
+            expect(agent.systemPrompt).toContain('</project_memory>')
+            expect(agent.messages.length).toBe(1)
+            expect(agent.messages[0]!.content).toBe(agent.systemPrompt)
+        } finally {
+            fs.rmSync(tmpDir, { recursive: true, force: true })
+        }
     })
 })

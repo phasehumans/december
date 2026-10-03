@@ -1,12 +1,14 @@
 import { AskQuestionTool } from './ask_question'
 import { BashTool } from './bash'
 import { BrowserTool } from './browser'
+import { CodeIntelligenceTool } from './code_intelligence'
 import { defaultDeferredRegistry } from './deferred-registry'
 import { EditFileTool } from './edit'
 import { EditDiffTool } from './edit_diff'
 import { FindFilesTool } from './find'
 import { GrepSearchTool } from './grep'
 import { LsTool } from './ls'
+import { ManageMemoryTool } from './manage_memory'
 import { ManageTaskTool } from './manage_task'
 import { ReadFileTool } from './read'
 import { SearchToolsTool } from './search_tools'
@@ -24,12 +26,14 @@ export * from './find'
 export * from './grep'
 export * from './ask_question'
 export * from './manage_task'
+export * from './manage_memory'
 export * from './browser'
 export * from './web_search'
 export * from './diff_preview'
 export * from './fuzzy_patch'
 export * from './deferred-registry'
 export * from './search_tools'
+export * from './code_intelligence'
 export { Type, type Static } from '@sinclair/typebox'
 
 export const CORE_TOOLS = [
@@ -43,6 +47,8 @@ export const CORE_TOOLS = [
     GrepSearchTool,
     AskQuestionTool,
     SearchToolsTool,
+    CodeIntelligenceTool,
+    ManageMemoryTool,
 ]
 
 export const DEFERRED_TOOLS = [ManageTaskTool, BrowserTool, WebSearchTool]
@@ -59,4 +65,8 @@ defaultDeferredRegistry.register(WebSearchTool, {
 defaultDeferredRegistry.register(ManageTaskTool, {
     category: 'task',
     keywords: ['task', 'background', 'kill', 'status', 'process', 'pid', 'manage_task'],
+})
+defaultDeferredRegistry.register(ManageMemoryTool, {
+    category: 'memory',
+    keywords: ['memory', 'rules', 'conventions', 'quirks', 'manage_memory', 'remember', 'forget'],
 })

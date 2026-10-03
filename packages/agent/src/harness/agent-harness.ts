@@ -87,6 +87,12 @@ export const DEFAULT_TOOL_PROMPTS: Record<string, { snippet: string; guidelines:
             "Use 'run_skill' to delegate complex procedural workflows or specialized domain tasks to an isolated subagent, keeping the main conversation context clean.",
         ],
     },
+    manage_memory: {
+        snippet: 'Record, read, or prune persistent workspace rules and memories',
+        guidelines: [
+            "Use 'manage_memory' to record learned conventions, build/test commands, architecture notes, and quirks into persistent workspace memory.",
+        ],
+    },
 }
 
 export function isReasoningModel(model?: string, thinkingLevel?: string): boolean {

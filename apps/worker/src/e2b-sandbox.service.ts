@@ -15,6 +15,7 @@ import {
     FindFilesTool,
     GrepSearchTool,
     LsTool,
+    ManageMemoryTool,
     ManageTaskTool,
     ReadFileTool,
     WebSearchTool,
@@ -661,6 +662,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         ManageTaskTool,
         BrowserTool,
         WebSearchTool,
+        ManageMemoryTool,
     ]
 
     const secretKeys = Array.isArray(secrets) ? secrets.map((s) => s.key).filter(Boolean) : []

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile as fsWriteFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile as fsWriteFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -7,6 +7,7 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
 import { EditFileTool } from '../../src/edit'
 import { EditDiffTool } from '../../src/edit_diff'
 import { LsTool } from '../../src/ls'
+import { ManageMemoryTool } from '../../src/manage_memory'
 import { ReadFileTool } from '../../src/read'
 import { WriteFileTool } from '../../src/write'
 import { createMockContext } from '../mock-context'
@@ -25,6 +26,8 @@ describe('Filesystem Tools Integration', () => {
         }
         context.operations.fs.writeFile = async (p: string, content: string) => {
             const fullPath = p.startsWith('/') ? p : join(testDir, p)
+            const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'))
+            await mkdir(parentDir, { recursive: true })
             await fsWriteFile(fullPath, content, 'utf-8')
         }
         context.operations.fs.readdir = async (p: string) => {
@@ -79,5 +82,32 @@ describe('Filesystem Tools Integration', () => {
         const lsResult = await LsTool.execute({ dirPath: testDir }, context)
         expect(lsResult).toContain('fileA.txt')
         expect(lsResult).toContain('fileB.txt')
+    })
+
+    test('manage_memory tool records, reads, and forgets entries in persistent filesystem storage', async () => {
+        const recordRes = await ManageMemoryTool.execute(
+            {
+                action: 'record',
+                category: 'build_and_test',
+                entry: 'run test with bun test',
+            },
+            context
+        )
+        expect(recordRes).toContain('Recorded entry')
+
+        const readRes = await ManageMemoryTool.execute(
+            { action: 'read', category: 'build_and_test' },
+            context
+        )
+        expect(readRes).toContain('run test with bun test')
+
+        const forgetRes = await ManageMemoryTool.execute(
+            { action: 'forget', entry: 'run test with bun test' },
+            context
+        )
+        expect(forgetRes).toContain('Removed entry from memory')
+
+        const afterForget = await ManageMemoryTool.execute({ action: 'read' }, context)
+        expect(afterForget).not.toContain('run test with bun test')
     })
 })

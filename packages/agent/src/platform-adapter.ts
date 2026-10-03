@@ -1,3 +1,5 @@
+import type { DiagnosticsOperations, LspOperations } from '@december/shared'
+
 export interface BashExecOptions {
     onData?: (chunk: string | Buffer) => void
     timeout?: number
@@ -41,4 +43,6 @@ export interface PlatformAdapter {
     browser?: {
         navigate: (url: string) => Promise<{ text: string; vncUrl?: string; error?: string }>
     }
+    diagnostics?: DiagnosticsOperations
+    lsp?: LspOperations
 }

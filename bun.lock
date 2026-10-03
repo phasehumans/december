@@ -37,6 +37,7 @@
         "prettier": "^3.8.4",
         "turbo": "2.9.18",
         "typescript-eslint": "^8.59.3",
+        "typescript-language-server": "^6.0.1",
         "vitest": "^3.0.7",
         "zod": "^3.24.2",
       },
@@ -46,7 +47,7 @@
     },
     "apps/cli": {
       "name": "@trydecember/cli",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "bin": {
         "december": "dist/december.js",
       },
@@ -70,7 +71,7 @@
     },
     "apps/docs": {
       "name": "@december/docs",
-      "version": "0.1.0",
+      "version": "0.4.3",
       "dependencies": {
         "@astrojs/check": "^0.9.4",
         "@astrojs/mdx": "^4.1.0",
@@ -85,7 +86,7 @@
     },
     "apps/server": {
       "name": "@december/server",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1014.0",
         "@aws-sdk/s3-request-presigner": "3.1086.0",
@@ -132,7 +133,7 @@
     },
     "apps/web": {
       "name": "@december/web",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "dependencies": {
         "@react-oauth/google": "^0.13.4",
         "@tanstack/react-query": "^5.90.21",
@@ -163,7 +164,7 @@
     },
     "apps/worker": {
       "name": "@december/worker",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1089.0",
         "@aws-sdk/s3-request-presigner": "3.1089.0",
@@ -187,7 +188,7 @@
     },
     "packages/agent": {
       "name": "@december/agent",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "dependencies": {
         "@anthropic-ai/sdk": "0.109.0",
         "@december/providers": "workspace:*",
@@ -208,7 +209,7 @@
     },
     "packages/database": {
       "name": "@december/database",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "dependencies": {
         "@prisma/adapter-pg": "7.8.0",
         "@prisma/client": "7.8.0",
@@ -227,7 +228,7 @@
     },
     "packages/evals": {
       "name": "@december/evals",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "devDependencies": {
         "@types/bun": "latest",
         "@types/node": "^22.0.0",
@@ -236,7 +237,7 @@
     },
     "packages/providers": {
       "name": "@december/providers",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.112.3",
         "@december/shared": "workspace:*",
@@ -252,7 +253,7 @@
     },
     "packages/shared": {
       "name": "@december/shared",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "dependencies": {
         "bullmq": "5.80.2",
         "ioredis": "5.11.1",
@@ -264,7 +265,7 @@
     },
     "packages/tools": {
       "name": "@december/tools",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "dependencies": {
         "@december/shared": "workspace:*",
         "@sinclair/typebox": "0.34.52",
@@ -278,7 +279,7 @@
     },
     "packages/tui": {
       "name": "@december/tui",
-      "version": "0.3.30",
+      "version": "0.4.3",
       "dependencies": {
         "@december/providers": "workspace:*",
         "@december/shared": "workspace:*",
@@ -3143,6 +3144,8 @@
     "typescript-auto-import-cache": ["typescript-auto-import-cache@0.3.6", "", { "dependencies": { "semver": "^7.3.8" } }, "sha512-RpuHXrknHdVdK7wv/8ug3Fr0WNsNi5l5aB8MYYuXhq2UH5lnEB1htJ1smhtD5VeCsGr2p8mUDtd83LCQDFVgjQ=="],
 
     "typescript-eslint": ["typescript-eslint@8.61.1", "", { "dependencies": { "@typescript-eslint/eslint-plugin": "8.61.1", "@typescript-eslint/parser": "8.61.1", "@typescript-eslint/typescript-estree": "8.61.1", "@typescript-eslint/utils": "8.61.1" }, "peerDependencies": { "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0", "typescript": ">=4.8.4 <6.1.0" } }, "sha512-V7PayAfJokV3pEHgN7/v03D1SpujhRfQtYLbLIiBfDDncdg4PAiRBfoS4cnCANK4jmAPncczi59QO3afiXUlNw=="],
+
+    "typescript-language-server": ["typescript-language-server@6.0.1", "", { "bin": { "typescript-language-server": "lib/cli.mjs" } }, "sha512-c5hEHM/7rdFRbQWoHXuddyJ53oF0M2dKeXQOYdwUek556oarltKeumKJGLp/ZMcGV7gW30mGn1MR3V5GDiLiKg=="],
 
     "ufo": ["ufo@1.6.4", "", {}, "sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA=="],
 

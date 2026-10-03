@@ -2,11 +2,13 @@ import { describe, expect, test } from 'bun:test'
 
 import { AskQuestionTool } from '../../src/ask_question'
 import { BashTool } from '../../src/bash'
+import { CodeIntelligenceTool } from '../../src/code_intelligence'
 import { EditFileTool } from '../../src/edit'
 import { EditDiffTool } from '../../src/edit_diff'
 import { FindFilesTool } from '../../src/find'
 import { GrepSearchTool } from '../../src/grep'
 import { LsTool } from '../../src/ls'
+import { ManageMemoryTool } from '../../src/manage_memory'
 import { ManageTaskTool } from '../../src/manage_task'
 import { ReadFileTool } from '../../src/read'
 import { WebSearchTool } from '../../src/web_search'
@@ -48,5 +50,17 @@ describe('Tools Schema & Registration (Unit)', () => {
 
     test('Web tools (web_search) have correct names', () => {
         expect(WebSearchTool.name).toBe('web_search')
+    })
+
+    test('CodeIntelligenceTool has correct metadata', () => {
+        expect(CodeIntelligenceTool.name).toBe('code_intelligence')
+        expect(CodeIntelligenceTool.description).toBeDefined()
+        expect(CodeIntelligenceTool.inputSchema).toBeDefined()
+    })
+
+    test('ManageMemoryTool has correct metadata', () => {
+        expect(ManageMemoryTool.name).toBe('manage_memory')
+        expect(ManageMemoryTool.description).toBeDefined()
+        expect(ManageMemoryTool.inputSchema).toBeDefined()
     })
 })
