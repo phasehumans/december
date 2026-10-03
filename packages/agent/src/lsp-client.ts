@@ -279,37 +279,76 @@ export class LspClient {
         line: number,
         column: number
     ): Promise<LocationItem[]> {
-        await this.start()
-        const uri = await this.openDocument(filePath)
+        const queryRawDefinition = async (
+            targetFile: string,
+            targetLine: number,
+            targetCol: number
+        ): Promise<LocationItem[]> => {
+            await this.start()
+            const uri = await this.openDocument(targetFile)
 
-        const raw = await this.sendRequest('textDocument/definition', {
-            textDocument: { uri },
-            position: {
-                line: Math.max(0, line - 1),
-                character: Math.max(0, column - 1),
-            },
-        })
-
-        if (!raw) return []
-
-        const array = Array.isArray(raw) ? raw : [raw]
-        const locations: LocationItem[] = []
-
-        for (const loc of array) {
-            const targetUri = loc.targetUri || loc.uri
-            if (!targetUri) continue
-
-            const targetRange = loc.targetSelectionRange || loc.targetRange || loc.range
-            const targetFilePath = fileURLToPath(targetUri)
-
-            locations.push({
-                filePath: targetFilePath,
-                line: (targetRange?.start?.line ?? 0) + 1,
-                column: (targetRange?.start?.character ?? 0) + 1,
+            const raw = await this.sendRequest('textDocument/definition', {
+                textDocument: { uri },
+                position: {
+                    line: Math.max(0, targetLine - 1),
+                    character: Math.max(0, targetCol - 1),
+                },
             })
+
+            if (!raw) return []
+
+            const array = Array.isArray(raw) ? raw : [raw]
+            const locations: LocationItem[] = []
+
+            for (const loc of array) {
+                const targetUri = loc.targetUri || loc.uri
+                if (!targetUri) continue
+
+                const targetRange = loc.targetSelectionRange || loc.targetRange || loc.range
+                const targetFilePath = fileURLToPath(targetUri)
+
+                locations.push({
+                    filePath: targetFilePath,
+                    line: (targetRange?.start?.line ?? 0) + 1,
+                    column: (targetRange?.start?.character ?? 0) + 1,
+                })
+            }
+
+            return locations
         }
 
-        return locations
+        const initial = await queryRawDefinition(filePath, line, column)
+        const resolved: LocationItem[] = []
+
+        for (const loc of initial) {
+            try {
+                // If definition resolved to an import declaration, follow it to the actual definition
+                const content = fs.readFileSync(loc.filePath, 'utf8')
+                const lines = content.split('\n')
+                const lineContent = lines[loc.line - 1] || ''
+
+                if (/^\s*import\b/.test(lineContent)) {
+                    const secondHop = await queryRawDefinition(loc.filePath, loc.line, loc.column)
+                    if (
+                        secondHop.length > 0 &&
+                        !(
+                            secondHop.length === 1 &&
+                            secondHop[0]!.filePath === loc.filePath &&
+                            secondHop[0]!.line === loc.line
+                        )
+                    ) {
+                        resolved.push(...secondHop)
+                        continue
+                    }
+                }
+            } catch {
+                // Intentionally swallowed: file reading fallback
+            }
+
+            resolved.push(loc)
+        }
+
+        return resolved
     }
 
     public async getReferences(

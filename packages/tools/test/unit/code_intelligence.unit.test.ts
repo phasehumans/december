@@ -235,8 +235,8 @@ describe('CodeIntelligenceTool (Unit)', () => {
             )
 
             expect(context.operations.fs.readFile).toHaveBeenCalledWith('/src/main.ts')
-            // Line 1, col 10 in 1-indexed format
-            expect(context.operations.lsp.getDefinition).toHaveBeenCalledWith('/src/main.ts', 1, 10)
+            // Line 3, col 13 in 1-indexed format (prefers usage call site over import)
+            expect(context.operations.lsp.getDefinition).toHaveBeenCalledWith('/src/main.ts', 3, 13)
             expect(result).toBe('Definition found at /src/helper.ts:1:17')
         })
 
