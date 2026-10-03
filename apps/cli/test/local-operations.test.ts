@@ -1,4 +1,6 @@
+import nodeFs from 'node:fs'
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 
 import {
@@ -272,6 +274,47 @@ describe('local-operations', () => {
 
             const res = await localOperations.browser.navigate('http://example.com')
             expect(res).toEqual({ text: '', error: 'Network error' })
+        })
+    })
+
+    describe('lsp and diagnostics operations', () => {
+        test('has lsp and diagnostics functions defined on localOperations', () => {
+            expect(typeof localOperations.diagnostics?.getDiagnostics).toBe('function')
+            expect(typeof localOperations.lsp?.getDefinition).toBe('function')
+            expect(typeof localOperations.lsp?.getReferences).toBe('function')
+            expect(typeof localOperations.lsp?.getOutline).toBe('function')
+            expect(typeof localOperations.lsp?.shutdown).toBe('function')
+        })
+
+        test('returns empty results when cwd is not a typescript project', async () => {
+            const emptyDir = nodeFs.mkdtempSync(path.join(os.tmpdir(), 'non-ts-dir-'))
+            try {
+                const defs = await localOperations.lsp!.getDefinition(
+                    path.join(emptyDir, 'file.txt'),
+                    1,
+                    1
+                )
+                expect(defs).toEqual([])
+
+                const refs = await localOperations.lsp!.getReferences(
+                    path.join(emptyDir, 'file.txt'),
+                    1,
+                    1
+                )
+                expect(refs).toEqual([])
+
+                const outline = await localOperations.lsp!.getOutline(
+                    path.join(emptyDir, 'file.txt')
+                )
+                expect(outline).toEqual([])
+
+                const diags = await localOperations.diagnostics!.getDiagnostics(
+                    path.join(emptyDir, 'file.txt')
+                )
+                expect(diags).toEqual([])
+            } finally {
+                nodeFs.rmSync(emptyDir, { recursive: true, force: true })
+            }
         })
     })
 })
