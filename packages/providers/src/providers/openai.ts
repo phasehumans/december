@@ -274,6 +274,15 @@ export function openaiProvider(
             const activeToolCalls = new Map<number, string>()
 
             for await (const chunk of stream) {
+                if ((chunk as any).error) {
+                    const errObj = (chunk as any).error
+                    const msg =
+                        typeof errObj === 'string'
+                            ? errObj
+                            : errObj.message || JSON.stringify(errObj)
+                    throw new Error(msg)
+                }
+
                 if (chunk.usage) {
                     const cachedTokens = (chunk.usage as any).prompt_tokens_details?.cached_tokens
                     yield {

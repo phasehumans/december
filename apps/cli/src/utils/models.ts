@@ -657,6 +657,14 @@ export const getCuratedProviderModels = (provider: string) => {
         case 'auriko-ai':
             return [
                 {
+                    label: 'DeepSeek V4 Flash',
+                    value: 'deepseek-v4-flash',
+                },
+                {
+                    label: 'Gemini 2.5 Flash',
+                    value: 'gemini-2.5-flash',
+                },
+                {
                     label: 'Claude Sonnet 4.6',
                     value: 'claude-sonnet-4-6',
                 },
@@ -669,16 +677,8 @@ export const getCuratedProviderModels = (provider: string) => {
                     value: 'claude-opus-4-7',
                 },
                 {
-                    label: 'DeepSeek V4 Flash',
-                    value: 'deepseek-v4-flash',
-                },
-                {
                     label: 'DeepSeek V4 Pro',
                     value: 'deepseek-v4-pro',
-                },
-                {
-                    label: 'Gemini 2.5 Flash',
-                    value: 'gemini-2.5-flash',
                 },
                 {
                     label: 'Gemini 2.5 Pro',
@@ -3103,8 +3103,14 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'anyapi') {
         return 'anthropic/claude-sonnet-4-6'
     }
+    if (normalized === 'auriko' || normalized === 'aurikoai' || normalized === 'auriko-ai') {
+        return 'deepseek-v4-flash'
+    }
     if (normalized === 'bailing') {
         return 'Ling-1T'
+    }
+    if (normalized === 'baseten' || normalized === 'basetenco' || normalized === 'baseten-co') {
+        return 'deepseek-ai/DeepSeek-V4.1-Flash'
     }
     if (normalized === 'berget') {
         return 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'

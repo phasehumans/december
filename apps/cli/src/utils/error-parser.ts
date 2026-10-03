@@ -35,6 +35,10 @@ export function isCreditOrBalanceError(combined: string): boolean {
         combined.includes('payment required') ||
         combined.includes('quota exceeded') ||
         combined.includes('quota_exhausted') ||
+        combined.includes('budget_exhausted') ||
+        combined.includes('budget exhausted') ||
+        combined.includes('budget exceeded') ||
+        combined.includes('budget_exceeded') ||
         combined.includes('402') ||
         combined.includes('1008') ||
         combined.includes('20009') ||
@@ -665,7 +669,10 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
             (str.includes('auriko.ai') ||
                 str.includes('api.auriko.ai') ||
                 str.includes('auriko')) &&
-            (isCreditOrBalanceError(str) || str.includes('credits') || str.includes('402')),
+            (isCreditOrBalanceError(str) ||
+                str.includes('credits') ||
+                str.includes('budget') ||
+                str.includes('402')),
         notice: 'Insufficient credits in your Auriko account. Please check your account at https://www.auriko.ai/dashboard\n',
         message: 'Insufficient credits in your Auriko account.',
         hint: 'Please check your account at https://www.auriko.ai/dashboard or switch models using /model.',
@@ -1295,13 +1302,19 @@ export function parseErrorMessage(err: any, context?: ErrorParseContext): string
         (finalResult || '') +
         (contextStr ? ' ' + contextStr : '')
     ).toLowerCase()
+    const isBudgetExhausted =
+        lowerStr.includes('budget_exhausted') ||
+        lowerStr.includes('budget exhausted') ||
+        lowerStr.includes('budget_exceeded') ||
+        lowerStr.includes('budget exceeded')
     const isRateLimit =
-        lowerStr.includes('429') ||
-        lowerStr.includes('quota') ||
-        lowerStr.includes('rate limit') ||
-        lowerStr.includes('rate_limit') ||
-        lowerStr.includes('resource_exhausted') ||
-        lowerStr.includes('generativelanguage.googleapis.com')
+        !isBudgetExhausted &&
+        (lowerStr.includes('429') ||
+            lowerStr.includes('quota') ||
+            lowerStr.includes('rate limit') ||
+            lowerStr.includes('rate_limit') ||
+            lowerStr.includes('resource_exhausted') ||
+            lowerStr.includes('generativelanguage.googleapis.com'))
 
     if (isRateLimit && !finalResult.includes('Rate limit or quota exhausted')) {
         const rateDetails = resolveRateLimitDetails(lowerStr, context)
@@ -1397,14 +1410,21 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
     const combined =
         `${fullMessage} ${explicitCause || ''} ${contextStr ? ' ' + contextStr : ''}`.toLowerCase()
 
+    const isBudgetExhausted =
+        combined.includes('budget_exhausted') ||
+        combined.includes('budget exhausted') ||
+        combined.includes('budget_exceeded') ||
+        combined.includes('budget exceeded')
+
     // 1. Rate limit
     const isRateLimit =
-        combined.includes('429') ||
-        combined.includes('quota') ||
-        combined.includes('rate limit') ||
-        combined.includes('rate_limit') ||
-        combined.includes('resource_exhausted') ||
-        combined.includes('generativelanguage.googleapis.com')
+        !isBudgetExhausted &&
+        (combined.includes('429') ||
+            combined.includes('quota') ||
+            combined.includes('rate limit') ||
+            combined.includes('rate_limit') ||
+            combined.includes('resource_exhausted') ||
+            combined.includes('generativelanguage.googleapis.com'))
 
     if (isRateLimit) {
         const parts = fullMessage.split('\n')

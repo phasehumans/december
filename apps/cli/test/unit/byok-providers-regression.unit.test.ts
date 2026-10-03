@@ -271,12 +271,12 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
 
             const aurikoModels = getProviderModels('auriko')
             expect(aurikoModels.map((m) => m.value)).toEqual([
+                'deepseek-v4-flash',
+                'gemini-2.5-flash',
                 'claude-sonnet-4-6',
                 'claude-opus-4-6',
                 'claude-opus-4-7',
-                'deepseek-v4-flash',
                 'deepseek-v4-pro',
-                'gemini-2.5-flash',
                 'gemini-2.5-pro',
                 'gemini-3.1-pro-preview',
                 'glm-5.1',
@@ -342,9 +342,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getDefaultModelForProvider('aki')).toBe('deepseek-v4-flash-0731-284b')
             expect(getDefaultModelForProvider('aki-io')).toBe('deepseek-v4-flash-0731-284b')
             expect(getDefaultModelForProvider('ambient')).toBe('ambient/large')
-            expect(getDefaultModelForProvider('auriko')).toBe('claude-sonnet-4-6')
-            expect(getDefaultModelForProvider('aurikoai')).toBe('claude-sonnet-4-6')
-            expect(getDefaultModelForProvider('auriko-ai')).toBe('claude-sonnet-4-6')
+            expect(getDefaultModelForProvider('auriko')).toBe('deepseek-v4-flash')
+            expect(getDefaultModelForProvider('aurikoai')).toBe('deepseek-v4-flash')
+            expect(getDefaultModelForProvider('auriko-ai')).toBe('deepseek-v4-flash')
             expect(getDefaultModelForProvider('baseten')).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
             expect(getDefaultModelForProvider('basetenco')).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
             expect(getDefaultModelForProvider('baseten-co')).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
@@ -770,7 +770,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(targetAuriko).toBeDefined()
             const switched10 = applyProviderSwitch(switched9.config, targetAuriko!)
             expect(switched10.config.activeProvider).toBe('auriko')
-            expect(switched10.config.activeModel).toBe('claude-sonnet-4-6')
+            expect(switched10.config.activeModel).toBe('deepseek-v4-flash')
 
             // Switch: auriko -> baseten via alias baseten-co
             const targetBaseten = resolveSwitchTarget(switched10.config, 'baseten-co')

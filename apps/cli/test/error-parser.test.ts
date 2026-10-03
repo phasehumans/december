@@ -148,6 +148,14 @@ describe('error-parser', () => {
         expect(parsed).not.toContain('December Wallet')
     })
 
+    test('attaches Auriko credit notice when budget_exhausted or credit limit is exhausted on Auriko', () => {
+        const rawErr =
+            '429 {"error": {"code": "budget_exhausted", "message": "Auriko budget exhausted"}}'
+        const parsed = parseErrorMessage(rawErr, { provider: 'auriko' })
+        expect(parsed).toContain('https://www.auriko.ai/dashboard')
+        expect(parsed).toContain('Insufficient credits in your Auriko account')
+    })
+
     test('attaches authentication notice when 401 or session expired error occurs', () => {
         const raw401Err = '401 status code (no body)'
         const parsed = parseErrorMessage(raw401Err)
@@ -395,6 +403,14 @@ describe('error-parser', () => {
 
         test('attaches custom notice for Auriko credit exhaustion', () => {
             const rawErr = '402 Insufficient credits. api.auriko.ai account empty'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in your Auriko account.')
+            expect(parsed.hint).toContain('https://www.auriko.ai/dashboard')
+        })
+
+        test('attaches custom notice for Auriko budget_exhausted error', () => {
+            const rawErr =
+                '429 {"error": {"code": "budget_exhausted", "message": "Monthly budget limit reached on api.auriko.ai"}}'
             const parsed = parseError(rawErr)
             expect(parsed.message).toBe('Insufficient credits in your Auriko account.')
             expect(parsed.hint).toContain('https://www.auriko.ai/dashboard')

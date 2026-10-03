@@ -535,7 +535,7 @@ export function useAuthHandlers(
                     probeAbortController.abort(
                         new Error('Connection timed out while verifying API key.')
                     )
-                }, 10000)
+                }, 8000)
 
                 try {
                     const stream = testProvider.stream(
@@ -573,12 +573,21 @@ export function useAuthHandlers(
                         errText.includes('credits') ||
                         errText.includes('payment') ||
                         errText.includes('afford') ||
+                        errText.includes('budget') ||
                         errText.includes('insufficient_quota')
                     ) {
                         if (!lowCreditErr) {
                             lowCreditErr = probeErr
                             lowCreditModel = testModel
                         }
+                        break
+                    }
+                    if (
+                        errText.includes('timed out') ||
+                        errText.includes('timeout') ||
+                        probeErr?.name === 'AbortError'
+                    ) {
+                        break
                     }
                 }
             }
@@ -635,7 +644,9 @@ export function useAuthHandlers(
                 errStr.includes('402') ||
                 errStr.includes('credits') ||
                 errStr.includes('payment') ||
-                errStr.includes('afford')
+                errStr.includes('afford') ||
+                errStr.includes('budget') ||
+                errStr.includes('insufficient_quota')
 
             if (
                 errStr.includes('429') ||
@@ -646,6 +657,10 @@ export function useAuthHandlers(
                 errStr.includes('503') ||
                 errStr.includes('无可用渠道') ||
                 errStr.includes('no available channel') ||
+                errStr.includes('platform_keys_unavailable') ||
+                errStr.includes('byok_keys_required') ||
+                errStr.includes('tier_opt_in_required') ||
+                errStr.includes('no_provider_available') ||
                 isLowCredit
             ) {
                 const { getDefaultModelForProvider } = await import('../utils/models')
