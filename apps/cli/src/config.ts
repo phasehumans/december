@@ -268,6 +268,7 @@ export interface DecemberConfig {
         latestVersion: string
         checkedAt: number
     }
+    trustedWorkspaces?: string[]
     lastSeenVersion?: string
 }
 

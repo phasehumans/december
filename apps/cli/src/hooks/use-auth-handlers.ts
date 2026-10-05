@@ -509,6 +509,38 @@ export function useAuthHandlers(
         if (!trimmedKey) return
 
         const selectedProvider = useCliStore.getState().selectedProvider
+
+        if (selectedProvider === 'deepgram') {
+            setIsStreaming(true)
+            setAuthError(null)
+
+            try {
+                const res = await fetch('https://api.deepgram.com/v1/projects', {
+                    headers: { Authorization: `Token ${trimmedKey}` },
+                })
+
+                if (!res.ok) {
+                    throw new Error(
+                        'Invalid Deepgram API key. Please check your key from console.deepgram.com.'
+                    )
+                }
+
+                const config = await loadConfig()
+                config.providers = config.providers || {}
+                config.providers.deepgram = trimmedKey
+                await saveConfig(config)
+
+                setApiKey('')
+                setAuthMode('none')
+                addToast('Saved Deepgram API key for voice dictation.', 'success')
+            } catch (err: any) {
+                setAuthError(err.message || 'Failed to verify Deepgram API key.')
+            } finally {
+                setIsStreaming(false)
+            }
+            return
+        }
+
         setIsStreaming(true)
         setAuthError(null)
 

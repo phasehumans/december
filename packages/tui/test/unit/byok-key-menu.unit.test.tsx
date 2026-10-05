@@ -107,4 +107,27 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain('Submit')
         expect(output).toContain('Cancel')
     })
+
+    it('renders Deepgram provider with $200 free credit note', () => {
+        const handleKeySubmit = mock()
+        const setApiKey = mock()
+        const { lastFrame } = render(
+            <ByokKeyMenu
+                selectedProvider="deepgram"
+                apiKey="dg-test-key"
+                setApiKey={setApiKey}
+                handleKeySubmit={handleKeySubmit}
+                isStreaming={false}
+            />
+        )
+        const output = lastFrame() || ''
+
+        expect(output).toContain('Enter API Key for Deepgram:')
+        expect(output).toContain("Don't have an API key? Get one at")
+        expect(output).toContain('https://console.deepgram.com')
+        expect(output).toContain('($200 free credit on signup)')
+        expect(output).toContain('dg-test-key')
+        expect(output).toContain('Submit')
+        expect(output).toContain('Cancel')
+    })
 })

@@ -43,6 +43,7 @@ export const PROVIDER_NAMES: Record<string, string> = {
     december: 'December Cloud',
     december_proxy: 'December Cloud',
     deepseek: 'DeepSeek',
+    deepgram: 'Deepgram',
     fireworks: 'Fireworks AI',
     google: 'Google',
     gemini: 'Google AI Studio',
@@ -162,6 +163,7 @@ export const PROVIDER_KEY_URLS: Record<string, string> = {
     deepinfra: 'https://deepinfra.com/dash/api_keys',
     deepseek: 'https://platform.deepseek.com/api_keys',
     digitalocean: 'https://cloud.digitalocean.com/account/api/tokens',
+    deepgram: 'https://console.deepgram.com',
     dinference: 'https://dinference.com/',
     drun: 'https://d.run/',
     ebcloud: 'https://ebcloud.com/',
@@ -336,6 +338,10 @@ export const PROVIDER_KEY_URLS: Record<string, string> = {
     zhipuai: 'https://open.bigmodel.cn/usercenter/apikeys',
 }
 
+export const PROVIDER_KEY_NOTES: Record<string, string> = {
+    deepgram: ' ($200 free credit on signup)',
+}
+
 export function formatProviderName(provider?: string): string {
     if (!provider) return 'Provider'
     return PROVIDER_NAMES[provider] || provider.charAt(0).toUpperCase() + provider.slice(1)
@@ -345,6 +351,9 @@ export function ByokKeyMenu(props: any) {
     const { selectedProvider, apiKey, setApiKey, handleKeySubmit, isStreaming, authError } = props
     const formattedProvider = formatProviderName(selectedProvider)
     const keyUrl = selectedProvider ? PROVIDER_KEY_URLS[selectedProvider] : undefined
+    const keyNote = selectedProvider
+        ? PROVIDER_KEY_NOTES[selectedProvider.toLowerCase().trim()]
+        : undefined
 
     return (
         <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
@@ -354,6 +363,7 @@ export function ByokKeyMenu(props: any) {
                     <Text italic color={THEME.colors.muted}>
                         {"Don't have an API key? Get one at "}
                         <Text color={THEME.colors.brand}>{keyUrl}</Text>
+                        {keyNote}
                     </Text>
                 )}
             </Box>

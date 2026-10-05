@@ -25,6 +25,12 @@ export {
 } from './commands'
 export { runHeadlessTask, suppressConsole, restoreConsole } from './headless-runner'
 export type { HeadlessTaskOptions, HeadlessTaskResult } from './headless-runner'
+export {
+    resolveWorkspaceRoot,
+    isWorkspaceTrusted,
+    addTrustedWorkspace,
+    ensureWorkspaceTrust,
+} from './utils/workspace-trust'
 
 export async function readPipedStdin(): Promise<string | null> {
     if (process.stdin.isTTY) return null
@@ -158,6 +164,13 @@ async function main() {
         }
         parsedArgs.prompt = question
     }
+
+    // Safety: Verify workspace trust before executing headless tasks or entering interactive TUI
+    const { ensureWorkspaceTrust } = await import('./utils/workspace-trust')
+    await ensureWorkspaceTrust({
+        targetDir: parsedArgs.scope,
+        isHeadless: Boolean(parsedArgs.prompt),
+    })
 
     // Path 4: Headless Task Execution (Load agent harness & tools, skip Ink/React/TUI)
     if (parsedArgs.prompt) {

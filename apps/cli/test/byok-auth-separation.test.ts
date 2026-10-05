@@ -126,4 +126,35 @@ describe('BYOK Provider Selection vs Subscription Selection (Unit)', () => {
         expect(useCliStore.getState().selectedProvider).toBe('claude')
         expect(useCliStore.getState().authMode).toBe('none')
     })
+
+    it('saves deepgram key without modifying activeProvider or authPriority', async () => {
+        const { loadConfig, saveConfig } = await import('../src/config')
+        const initialConfig = await loadConfig()
+        initialConfig.activeProvider = 'gemini'
+        initialConfig.authPriority = 'subscription'
+        await saveConfig(initialConfig)
+
+        useCliStore.setState({ selectedProvider: 'deepgram', authMode: 'byok_key' })
+
+        const originalFetch = globalThis.fetch
+        globalThis.fetch = (async (url: string) => {
+            if (url.includes('deepgram.com')) {
+                return new Response(JSON.stringify({ projects: [] }), { status: 200 })
+            }
+            return new Response('Not Found', { status: 404 })
+        }) as any
+
+        try {
+            const handlers = useAuthHandlers(null)
+            await handlers.handleKeySubmit('test-deepgram-key')
+
+            expect(useCliStore.getState().authMode).toBe('none')
+            const updatedConfig = await loadConfig()
+            expect(updatedConfig.providers?.deepgram).toBe('test-deepgram-key')
+            expect(updatedConfig.activeProvider).toBe('gemini')
+            expect(updatedConfig.authPriority).toBe('subscription')
+        } finally {
+            globalThis.fetch = originalFetch
+        }
+    })
 })

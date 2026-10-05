@@ -47,6 +47,10 @@ type Props = {
     queuedPrompts?: string[]
     onScrollUp?: (delta?: number) => void
     onScrollDown?: (delta?: number) => void
+    onStartVoice?: (callbacks: {
+        onTranscript: (text: string, isFinal: boolean) => void
+        onError: (err: Error) => void
+    }) => Promise<{ stop: () => Promise<string>; cancel: () => void } | null>
 }
 
 const MAX_FILE_SUGGESTIONS = 5
@@ -91,8 +95,15 @@ export const InputBar = React.memo(function InputBar({
     tasks,
     onScrollUp,
     onScrollDown,
+    onStartVoice,
 }: Props) {
     const [value, setValue] = useState('')
+    const [isVoiceActive, setIsVoiceActive] = useState(false)
+    const [isTranscribing, setIsTranscribing] = useState(false)
+    const voiceSessionRef = useRef<{
+        stop: () => Promise<string>
+        cancel: () => void
+    } | null>(null)
     const toast = useToast()
     const dialog = useDialog()
     const columns = useTerminalColumns()
@@ -108,6 +119,82 @@ export const InputBar = React.memo(function InputBar({
               : null
 
     const handleContentChangeRef = useRef<(text: string) => void>(() => {})
+
+    const handleStopVoice = useCallback(
+        async (sendPrompt = false) => {
+            const session = voiceSessionRef.current
+            if (!session) {
+                setIsVoiceActive(false)
+                setIsTranscribing(false)
+                return
+            }
+
+            voiceSessionRef.current = null
+            setIsVoiceActive(false)
+
+            if (sendPrompt) {
+                setIsTranscribing(true)
+                try {
+                    const finalTranscript = await session.stop()
+                    const promptToSend = (finalTranscript || value).trim()
+                    setValue('')
+                    handleContentChangeRef.current('')
+                    if (promptToSend) {
+                        onSubmit(promptToSend)
+                    }
+                } finally {
+                    setIsTranscribing(false)
+                }
+            } else {
+                session.cancel()
+                setValue('')
+                handleContentChangeRef.current('')
+                setIsTranscribing(false)
+            }
+        },
+        [onSubmit, value]
+    )
+
+    const handleStartVoice = useCallback(async () => {
+        if (!onStartVoice) {
+            onSubmit('/voice')
+            return
+        }
+
+        setIsVoiceActive(true)
+        setValue('')
+        handleContentChangeRef.current('')
+        setIsTranscribing(false)
+
+        try {
+            const session = await onStartVoice({
+                onTranscript: (text) => {
+                    setValue(text)
+                    handleContentChangeRef.current(text)
+                },
+                onError: (err) => {
+                    setIsVoiceActive(false)
+                    setIsTranscribing(false)
+                    voiceSessionRef.current = null
+                    toast.show({
+                        variant: 'error',
+                        message: err.message || 'Voice dictation error.',
+                    })
+                },
+            })
+
+            if (!session) {
+                setIsVoiceActive(false)
+                setIsTranscribing(false)
+                return
+            }
+
+            voiceSessionRef.current = session
+        } catch {
+            setIsVoiceActive(false)
+            setIsTranscribing(false)
+        }
+    }, [onStartVoice, onSubmit, toast])
 
     const handleAutocompleteCommand = useCallback((completedText: string) => {
         setValue(completedText)
@@ -200,6 +287,9 @@ export const InputBar = React.memo(function InputBar({
         grillMode,
         onSubmit,
         onCopy,
+        isVoiceActive,
+        isTranscribing,
+        handleStopVoice,
     })
     stateRef.current = {
         showFileMenu,
@@ -210,11 +300,27 @@ export const InputBar = React.memo(function InputBar({
         grillMode,
         onSubmit,
         onCopy,
+        isVoiceActive,
+        isTranscribing,
+        handleStopVoice,
     }
 
     const isCtrlW = useRef(false)
     useInput((input, key) => {
         const state = stateRef.current
+        if (key.escape) {
+            if (state.isVoiceActive || state.isTranscribing || voiceSessionRef.current) {
+                state.handleStopVoice(false)
+                return
+            }
+            if (state.showFileMenu && state.matchingFiles.length > 0) {
+                const nextVal = state.value.replace(/@\S*$/, '')
+                setValue(nextVal)
+                state.handleContentChange(nextVal)
+                return
+            }
+        }
+
         if (state.showFileMenu && state.matchingFiles.length > 0) {
             if (key.upArrow) {
                 setSelectedFileIndex((prev) => Math.max(0, prev - 1))
@@ -232,12 +338,6 @@ export const InputBar = React.memo(function InputBar({
                     state.handleContentChange(nextVal)
                     setSelectedFileIndex(0)
                 }
-                return
-            }
-            if (key.escape) {
-                const nextVal = state.value.replace(/@\S*$/, '')
-                setValue(nextVal)
-                state.handleContentChange(nextVal)
                 return
             }
         }
@@ -349,6 +449,13 @@ export const InputBar = React.memo(function InputBar({
                 '/docs',
             ]
 
+            if (command.value === '/voice') {
+                setValue('')
+                handleContentChange('')
+                handleStartVoice()
+                return
+            }
+
             if (forwardCommands.includes(command.value) || !command.action) {
                 if (hasArguments) {
                     onSubmit(currentValue)
@@ -369,12 +476,26 @@ export const InputBar = React.memo(function InputBar({
                 })
             }
         },
-        [toast, dialog, agent, resetChat, onUpdateSuccess, handleContentChange, onSubmit, value]
+        [
+            toast,
+            dialog,
+            agent,
+            resetChat,
+            onUpdateSuccess,
+            handleContentChange,
+            onSubmit,
+            value,
+            handleStartVoice,
+        ]
     )
 
     const handleSubmit = useCallback(
         async (text: string) => {
             if (disabled) return
+            if (isVoiceActive || isTranscribing) {
+                await handleStopVoice(true)
+                return
+            }
             if (showCommandMenu) {
                 const command = resolveCommand(selectedIndex)
                 handleCommand(command)
@@ -385,6 +506,14 @@ export const InputBar = React.memo(function InputBar({
             }
             const rawTrimmed = text.trim()
             if (rawTrimmed.length === 0) return
+
+            if (rawTrimmed === '/voice') {
+                setValue('')
+                handleContentChange('')
+                handleStartVoice()
+                return
+            }
+
             const trimmed = expandPastes(rawTrimmed)
             defaultPromptHistory.append(trimmed)
             defaultPromptHistory.resetCursor()
@@ -554,14 +683,19 @@ export const InputBar = React.memo(function InputBar({
                                 onScrollUp={onScrollUp}
                                 onScrollDown={onScrollDown}
                                 placeholder={
-                                    grillMode
-                                        ? ''
-                                        : planRefineMode
-                                          ? 'Enter feedback to refine plan (or Esc to cancel)...'
-                                          : interactivePlanGoalMode
-                                            ? 'Enter your goal (e.g. add dark mode) or Esc to cancel...'
-                                            : placeholder
+                                    isTranscribing
+                                        ? 'Transcribing speech...'
+                                        : isVoiceActive
+                                          ? 'Listening...'
+                                          : grillMode
+                                            ? ''
+                                            : planRefineMode
+                                              ? 'Enter feedback to refine plan (or Esc to cancel)...'
+                                              : interactivePlanGoalMode
+                                                ? 'Enter your goal (e.g. add dark mode) or Esc to cancel...'
+                                                : placeholder
                                 }
+                                placeholderColor={isVoiceActive ? THEME.colors.brand : undefined}
                                 focus={!disabled && !dialog.isOpen}
                                 disableHistoryNav={
                                     showCommandMenu || showFileMenu || showShortcutsMenu

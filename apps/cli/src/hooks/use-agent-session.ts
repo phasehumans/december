@@ -1500,6 +1500,37 @@ ${decStatus}
                 return
             }
 
+            if (text.trim() === '/voice') {
+                const { isVoiceConfigured, getVoiceSetupNotice } = await import('../utils/audio')
+                const status = await isVoiceConfigured()
+                if (!status.available) {
+                    const userMsg: Message = {
+                        id: getNextMsgId(),
+                        role: 'user',
+                        displayText: '/voice',
+                        text: '/voice',
+                    }
+                    const noticeMsg: Message = {
+                        id: getNextMsgId(),
+                        role: 'assistant',
+                        blocks: [
+                            {
+                                type: 'text',
+                                content: getVoiceSetupNotice(status),
+                            },
+                        ],
+                    }
+                    setStaticMessages((prev) => [
+                        ...prev,
+                        ...useCliStore.getState().activeMessages,
+                        userMsg,
+                        noticeMsg,
+                    ])
+                    setActiveMessages([])
+                    return
+                }
+            }
+
             if (text.trim() === '/copy') {
                 try {
                     const { writeToClipboard } = await import('@december/tui')
@@ -2455,7 +2486,57 @@ ${decStatus}
 
     const handleContextSelect = () => {}
 
+    const handleStartVoice = useCallback(
+        async (callbacks: {
+            onTranscript: (text: string, isFinal: boolean) => void
+            onError: (err: Error) => void
+        }) => {
+            const { isVoiceConfigured, getVoiceSetupNotice, startVoiceDictation } =
+                await import('../utils/audio')
+            const status = await isVoiceConfigured()
+
+            if (!status.hasBinary) {
+                const userMsg: Message = {
+                    id: getNextMsgId(),
+                    role: 'user',
+                    displayText: '/voice',
+                    text: '/voice',
+                }
+                const noticeMsg: Message = {
+                    id: getNextMsgId(),
+                    role: 'assistant',
+                    blocks: [
+                        {
+                            type: 'text',
+                            content: getVoiceSetupNotice(status),
+                        },
+                    ],
+                }
+                setStaticMessages((prev) => [
+                    ...prev,
+                    ...useCliStore.getState().activeMessages,
+                    userMsg,
+                    noticeMsg,
+                ])
+                setActiveMessages([])
+                return null
+            }
+
+            if (!status.hasKey) {
+                useCliStore.getState().setSelectedProvider('deepgram')
+                useCliStore.getState().setApiKey('')
+                useCliStore.getState().setAuthError(null)
+                useCliStore.getState().setAuthMode('byok_key')
+                return null
+            }
+
+            return await startVoiceDictation(callbacks)
+        },
+        [setStaticMessages, setActiveMessages]
+    )
+
     return {
+        onStartVoice: handleStartVoice,
         currentPlannedPrompt,
         setCurrentPlannedPrompt,
         currentPlanText,

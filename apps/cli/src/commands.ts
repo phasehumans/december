@@ -294,23 +294,32 @@ export async function handleKeyCommand(options?: {
         return
     }
 
-    const { getDefaultModelForProvider } = await import('./utils/models')
-    const defaultModel = getDefaultModelForProvider(provider)
+    const isSTTProvider = provider.toLowerCase() === 'deepgram'
 
     const config = await loadConfig()
     config.providers = config.providers || {}
     config.providers[provider] = finalKey
-    config.activeProvider = provider
-    config.activeModel = defaultModel
-    config.authPriority = 'byok'
-    await saveConfig(config)
 
-    const { fetchLiveProviderModels } = await import('./utils/models')
-    fetchLiveProviderModels(provider, finalKey).catch(() => {})
+    if (!isSTTProvider) {
+        const { getDefaultModelForProvider } = await import('./utils/models')
+        const defaultModel = getDefaultModelForProvider(provider)
+        config.activeProvider = provider
+        config.activeModel = defaultModel
+        config.authPriority = 'byok'
+        await saveConfig(config)
 
-    console.log(
-        `\n${GREEN}Successfully saved API key for ${provider.toUpperCase()} (Model: ${defaultModel})!${RESET}\n`
-    )
+        const { fetchLiveProviderModels } = await import('./utils/models')
+        fetchLiveProviderModels(provider, finalKey).catch(() => {})
+
+        console.log(
+            `\n${GREEN}Successfully saved API key for ${provider.toUpperCase()} (Model: ${defaultModel})!${RESET}\n`
+        )
+    } else {
+        await saveConfig(config)
+        console.log(
+            `\n${GREEN}Successfully saved API key for DEEPGRAM (Live Voice Dictation)!${RESET}\n`
+        )
+    }
 }
 
 export async function handleLoginCommand(options?: { provider?: string }): Promise<void> {

@@ -324,4 +324,12 @@ export const COMMANDS: Command[] = [
             // forwarded to chat screen
         },
     },
+    {
+        name: 'voice',
+        description: 'Dictate a prompt using your microphone (Deepgram)',
+        value: '/voice',
+        action: (ctx) => {
+            // forwarded to input bar
+        },
+    },
 ]

@@ -205,6 +205,7 @@ export function ChatApp({
             onSubmit={handleFormSubmit}
             onScrollUp={handleScrollUp}
             onScrollDown={handleScrollDown}
+            onStartVoice={session.onStartVoice}
             disabled={authMode !== 'none' || (Boolean(workflowUI) && !session.customInputMode)}
             onCopy={() => {
                 import('./utils/clipboard')

@@ -13,6 +13,7 @@ type Props = {
     onScrollUp?: (delta?: number) => void
     onScrollDown?: (delta?: number) => void
     placeholder?: string
+    placeholderColor?: string
     focus?: boolean
     disableHistoryNav?: boolean
 }
@@ -26,6 +27,7 @@ export function TextArea({
     onScrollUp,
     onScrollDown,
     placeholder = '',
+    placeholderColor,
     focus = true,
     disableHistoryNav = false,
 }: Props) {
@@ -308,7 +310,7 @@ export function TextArea({
 
     if (!value && placeholder) {
         return (
-            <Text color={THEME.colors.subtle} wrap="wrap">
+            <Text color={placeholderColor || THEME.colors.subtle} wrap="wrap">
                 {focus ? <Text inverse>{placeholder[0] || ' '}</Text> : null}
                 {placeholder.slice(focus ? 1 : 0)}
             </Text>
