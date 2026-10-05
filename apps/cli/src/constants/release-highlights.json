@@ -1,10 +1,9 @@
 {
-    "version": "0.4.4",
-    "title": "What's New in v0.4.4",
+    "version": "0.4.5",
+    "title": "What's New in v0.4.5",
     "bullets": [
-        "*(agent)* Passive workspace memory ingestion and manage_memory tool",
-        "*(agent)* Lsp client integration for definition and reference navigation",
-        "*(tools)* Prefer non-import lines when resolving symbol definition in code_intelligence"
+        "*(cli,tui)* Add voice input dictation and workspace trust verification",
+        "*(tools,cli)* Interactive cdp browser engine and browser_action tool (#506, #509)"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

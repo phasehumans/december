@@ -2,6 +2,13 @@
 
 ### Features
 
+- _(cli,tui)_ Add voice input dictation and workspace trust verification
+- _(tools,cli)_ Interactive cdp browser engine and browser_action tool (#506, #509)
+
+## [0.4.4] - 2026-10-03
+
+### Features
+
 - _(agent)_ Passive workspace memory ingestion and manage_memory tool
 - _(agent)_ Lsp client integration for definition and reference navigation
 
@@ -17,6 +24,10 @@
 - _(agent)_ Add lsp-client unit tests
 - _(agent)_ Add workspace memory loop integration tests
 - _(cli)_ Add unit tests for lsp and diagnostics in local-operations
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.4
 
 ## [0.4.3] - 2026-10-02
 
