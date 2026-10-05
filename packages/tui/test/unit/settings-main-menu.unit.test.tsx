@@ -34,6 +34,8 @@ describe('SettingsMainMenu Component (Unit)', () => {
         expect(frame).toContain('[all]')
         expect(frame).toContain('Follow-Up Mode')
         expect(frame).toContain('[all]')
+        expect(frame).toContain('Browser Window')
+        expect(frame).toContain('[on]')
     })
 
     it('renders active provider and model when configured', () => {
@@ -48,6 +50,7 @@ describe('SettingsMainMenu Component (Unit)', () => {
                 settingsPathGuard={false}
                 settingsSteeringMode="one-at-a-time"
                 settingsFollowUpMode="one-at-a-time"
+                settingsBrowserVisible={false}
                 handleSettingsMainSelect={mock(() => {})}
             />
         )
@@ -69,6 +72,8 @@ describe('SettingsMainMenu Component (Unit)', () => {
         expect(frame).toContain('[one-at-a-time]')
         expect(frame).toContain('Follow-Up Mode')
         expect(frame).toContain('[one-at-a-time]')
+        expect(frame).toContain('Browser Window')
+        expect(frame).toContain('[off]')
     })
 
     it('renders subscription and december cloud labels correctly', () => {

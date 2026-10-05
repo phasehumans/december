@@ -198,6 +198,8 @@ export function useAgentSession({
         setSettingsSteeringMode,
         settingsFollowUpMode,
         setSettingsFollowUpMode,
+        settingsBrowserVisible,
+        setSettingsBrowserVisible,
     } = state
 
     const [expandCommands, setExpandCommands] = useState(false)
@@ -2011,6 +2013,7 @@ ${decStatus}
                     setSettingsThinkingLevel(config.thinkingLevel ?? 'auto')
                     setSettingsSteeringMode(config.steeringMode ?? 'all')
                     setSettingsFollowUpMode(config.followUpMode ?? 'all')
+                    setSettingsBrowserVisible(config.browserVisible !== false)
                     setAuthMode('settings_main')
                 })
                 return
@@ -2631,6 +2634,8 @@ ${decStatus}
         setSettingsSteeringMode,
         settingsFollowUpMode,
         setSettingsFollowUpMode,
+        settingsBrowserVisible,
+        setSettingsBrowserVisible,
         handleSubmit,
         sessionRepository,
         handleSettingsMainSelect,

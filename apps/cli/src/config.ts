@@ -270,6 +270,7 @@ export interface DecemberConfig {
     }
     trustedWorkspaces?: string[]
     lastSeenVersion?: string
+    browserVisible?: boolean
 }
 
 export function getLegacyConfigDir(): string {

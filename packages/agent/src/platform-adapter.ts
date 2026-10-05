@@ -1,4 +1,4 @@
-import type { DiagnosticsOperations, LspOperations } from '@december/shared'
+import type { BrowserOperations, DiagnosticsOperations, LspOperations } from '@december/shared'
 
 export interface BashExecOptions {
     onData?: (chunk: string | Buffer) => void
@@ -40,9 +40,7 @@ export interface PlatformAdapter {
         cwd: () => string
         get: (key: string) => string | undefined
     }
-    browser?: {
-        navigate: (url: string) => Promise<{ text: string; vncUrl?: string; error?: string }>
-    }
+    browser?: BrowserOperations
     diagnostics?: DiagnosticsOperations
     lsp?: LspOperations
 }

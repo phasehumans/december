@@ -39,6 +39,28 @@ describe('BrowserTool (Unit)', () => {
         expect(result).toBe('Failed to fetch URL: HTTP 404 Not Found')
     })
 
+    test('should append console errors and network errors when present', async () => {
+        const context = createMockContext()
+        context.operations.browser = {
+            navigate: mock(async () => ({
+                text: 'App loaded',
+                consoleErrors: [
+                    'TypeError: Cannot read properties of undefined',
+                    'Warning: Missing key prop',
+                ],
+                networkErrors: ['HTTP 500 - http://localhost:3000/api/data'],
+            })),
+        }
+
+        const result = await BrowserTool.execute({ url: 'http://localhost:3000' }, context)
+        expect(result).toContain('App loaded')
+        expect(result).toContain('[CONSOLE ERRORS]')
+        expect(result).toContain('- TypeError: Cannot read properties of undefined')
+        expect(result).toContain('- Warning: Missing key prop')
+        expect(result).toContain('[FAILED NETWORK REQUESTS]')
+        expect(result).toContain('- HTTP 500 - http://localhost:3000/api/data')
+    })
+
     test('should fail if environment does not support browser', async () => {
         const context = createMockContext()
         delete context.operations.browser

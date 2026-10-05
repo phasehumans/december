@@ -1,6 +1,7 @@
 import { AskQuestionTool } from './ask_question'
 import { BashTool } from './bash'
 import { BrowserTool } from './browser'
+import { BrowserActionTool } from './browser_action'
 import { CodeIntelligenceTool } from './code_intelligence'
 import { defaultDeferredRegistry } from './deferred-registry'
 import { EditFileTool } from './edit'
@@ -28,6 +29,7 @@ export * from './ask_question'
 export * from './manage_task'
 export * from './manage_memory'
 export * from './browser'
+export * from './browser_action'
 export * from './web_search'
 export * from './diff_preview'
 export * from './fuzzy_patch'
@@ -51,12 +53,27 @@ export const CORE_TOOLS = [
     ManageMemoryTool,
 ]
 
-export const DEFERRED_TOOLS = [ManageTaskTool, BrowserTool, WebSearchTool]
+export const DEFERRED_TOOLS = [ManageTaskTool, BrowserTool, BrowserActionTool, WebSearchTool]
 
 // Pre-register standard deferred tools in defaultDeferredRegistry
 defaultDeferredRegistry.register(BrowserTool, {
     category: 'web',
     keywords: ['browser', 'render', 'html', 'scrape', 'page', 'url', 'browse', 'webpage'],
+})
+defaultDeferredRegistry.register(BrowserActionTool, {
+    category: 'web',
+    keywords: [
+        'browser_action',
+        'click',
+        'type',
+        'screenshot',
+        'dom',
+        'test',
+        'input',
+        'form',
+        'ui',
+        'localhost',
+    ],
 })
 defaultDeferredRegistry.register(WebSearchTool, {
     category: 'web',

@@ -10,7 +10,7 @@ export type BrowserInput = Static<typeof browserSchema>
 export const BrowserTool: Tool<BrowserInput> = {
     name: 'browser',
     description:
-        'Use a basic HTTP client to fetch the HTML content of a URL. Strips out scripts and styles to return clean text. It also exposes a VNC stream for UI inspection.',
+        'Use an interactive browser engine to navigate to a URL, execute client-side JavaScript, extract rendered page content, and capture console or network errors.',
     inputSchema: browserSchema,
     execute: async ({ url }, context: ToolExecuteContext) => {
         try {
@@ -25,6 +25,19 @@ export const BrowserTool: Tool<BrowserInput> = {
             }
 
             let output = truncateOutput(result.text, 25000, 100).text
+
+            if (result.consoleErrors && result.consoleErrors.length > 0) {
+                output +=
+                    '\n\n[CONSOLE ERRORS]\n' +
+                    result.consoleErrors.map((err) => `- ${err}`).join('\n')
+            }
+
+            if (result.networkErrors && result.networkErrors.length > 0) {
+                output +=
+                    '\n\n[FAILED NETWORK REQUESTS]\n' +
+                    result.networkErrors.map((err) => `- ${err}`).join('\n')
+            }
+
             if (result.vncUrl) {
                 output += `\n\n[VNC STREAM STARTED: ${result.vncUrl}]`
             }

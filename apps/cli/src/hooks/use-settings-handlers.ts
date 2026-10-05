@@ -17,6 +17,8 @@ export function useSettingsHandlers() {
         setSettingsSteeringMode,
         settingsFollowUpMode,
         setSettingsFollowUpMode,
+        settingsBrowserVisible,
+        setSettingsBrowserVisible,
         settingsAuthPriority,
         setSettingsAuthPriority,
         setAuthMethod,
@@ -27,7 +29,7 @@ export function useSettingsHandlers() {
         setOllamaModels,
         agent,
         addToast,
-    } = useCliStore()
+    } = useCliStore.getState()
 
     const handleSettingsMainSelect = async (item: any) => {
         const config = await loadConfig()
@@ -142,6 +144,15 @@ export function useSettingsHandlers() {
                     agent.followUpQueue.mode = nextVal
                 }
                 addToast(`Follow-up mode set to ${nextVal}`)
+                updated = true
+                break
+            }
+            case 'browserVisible': {
+                const current = useCliStore.getState().settingsBrowserVisible
+                const nextVal = !(current !== false)
+                config.browserVisible = nextVal
+                setSettingsBrowserVisible(nextVal)
+                addToast(`Browser window set to ${nextVal ? 'visible (on)' : 'headless (off)'}`)
                 updated = true
                 break
             }

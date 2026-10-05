@@ -73,9 +73,41 @@ export interface Environment {
         ) => Promise<string>
         requestPermission?: (toolCall: any) => Promise<{ block: boolean; reason?: string }>
     }
-    browser?: {
-        navigate: (url: string) => Promise<{ text: string; vncUrl?: string; error?: string }>
-    }
+    browser?: BrowserOperations
     diagnostics?: DiagnosticsOperations
     lsp?: LspOperations
+}
+
+export interface BrowserNavigateResult {
+    text: string
+    vncUrl?: string
+    error?: string
+    consoleErrors?: string[]
+    networkErrors?: string[]
+}
+
+export interface BrowserActionInput {
+    action: 'navigate' | 'click' | 'type' | 'screenshot' | 'get_console_errors'
+    url?: string
+    selector?: string
+    text?: string
+    fullPage?: boolean
+}
+
+export interface BrowserActionResult {
+    success: boolean
+    action: string
+    output?: string
+    text?: string
+    screenshotPath?: string
+    screenshotBase64?: string
+    consoleErrors?: string[]
+    networkErrors?: string[]
+    error?: string
+}
+
+export interface BrowserOperations {
+    navigate: (url: string) => Promise<BrowserNavigateResult>
+    action?: (params: BrowserActionInput) => Promise<BrowserActionResult>
+    close?: () => Promise<void>
 }

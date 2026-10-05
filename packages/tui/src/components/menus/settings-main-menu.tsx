@@ -19,6 +19,7 @@ export interface SettingsMainMenuProps {
     settingsThinkingLevel?: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
     settingsSteeringMode?: 'all' | 'one-at-a-time'
     settingsFollowUpMode?: 'all' | 'one-at-a-time'
+    settingsBrowserVisible?: boolean
     handleSettingsMainSelect: (item: { label: string; value: string }) => void
 }
 
@@ -34,6 +35,7 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
         settingsPathGuard = true,
         settingsSteeringMode = 'all',
         settingsFollowUpMode = 'all',
+        settingsBrowserVisible = true,
         handleSettingsMainSelect,
     } = props
 
@@ -84,6 +86,10 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
         {
             label: `Follow-Up Mode           [${settingsFollowUpMode}]`,
             value: 'followUpMode',
+        },
+        {
+            label: `Browser Window           [${settingsBrowserVisible !== false ? 'on' : 'off'}]`,
+            value: 'browserVisible',
         },
     ]
 

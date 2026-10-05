@@ -133,6 +133,8 @@ export interface CliState {
     setSettingsSteeringMode: (val: 'all' | 'one-at-a-time') => void
     settingsFollowUpMode: 'all' | 'one-at-a-time'
     setSettingsFollowUpMode: (val: 'all' | 'one-at-a-time') => void
+    settingsBrowserVisible: boolean
+    setSettingsBrowserVisible: (val: boolean) => void
 
     // tasks feature
     tasksData: BackgroundTask[]
@@ -296,6 +298,8 @@ export const useCliStore = create<CliState>((set) => ({
     setSettingsSteeringMode: (settingsSteeringMode) => set({ settingsSteeringMode }),
     settingsFollowUpMode: 'all',
     setSettingsFollowUpMode: (settingsFollowUpMode) => set({ settingsFollowUpMode }),
+    settingsBrowserVisible: true,
+    setSettingsBrowserVisible: (settingsBrowserVisible) => set({ settingsBrowserVisible }),
 
     // tasks
     tasksData: [],

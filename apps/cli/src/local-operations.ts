@@ -10,6 +10,7 @@ import { createLocalBashOperations, killProcessGroup } from '@december/tools'
 import fg from 'fast-glob'
 
 import { taskManager } from './task-manager'
+import { browserRunner } from './utils/browser'
 
 const execAsync = promisify(exec)
 const localBashOps = createLocalBashOperations()
@@ -272,30 +273,9 @@ export const localOperations: PlatformAdapter = {
         },
     },
     browser: {
-        navigate: async (url: string) => {
-            try {
-                const res = await fetch(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (compatible; DecemberAgent/1.0)',
-                    },
-                })
-                const html = await res.text()
-                if (!res.ok) {
-                    return { text: '', error: `HTTP Error (${res.status}): ${html}` }
-                }
-
-                const cleanText = html
-                    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-                    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-                    .replace(/<[^>]+>/g, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim()
-
-                return { text: cleanText }
-            } catch (error: any) {
-                return { text: '', error: error.message }
-            }
-        },
+        navigate: async (url: string) => browserRunner.navigate(url),
+        action: async (params: any) => browserRunner.action(params),
+        close: async () => browserRunner.close(),
     },
     diagnostics: {
         getDiagnostics: async (filePath?: string) => {
