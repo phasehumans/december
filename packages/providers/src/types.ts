@@ -40,6 +40,11 @@ export interface LLMProvider {
     id: string
 
     /**
+     * optional underlying sdk client or api instance
+     */
+    api?: any
+
+    /**
      * stream a response from the llm
      */
     stream(

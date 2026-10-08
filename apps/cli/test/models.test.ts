@@ -405,8 +405,34 @@ describe('models utils', () => {
                 mockFetch as any
             )
             expect(capturedHeaders['Authorization']).toBe('Bearer mock-oauth-session-token')
-            expect(capturedHeaders['anthropic-beta']).toBe('oauth-2024-11-18')
+            expect(capturedHeaders['anthropic-beta']).toBe('claude-code-20250219,oauth-2024-06-20')
             expect(models.some((m) => m.value === 'claude-custom-v1')).toBe(true)
+        })
+
+        it('uses x-api-key without oauth-beta header for standard Anthropic and user API keys', async () => {
+            clearProviderModelsCache()
+            let capturedHeaders: any = {}
+
+            const mockFetch = async (_url: string, init?: any) => {
+                capturedHeaders = init?.headers || {}
+                return new Response(
+                    JSON.stringify({
+                        data: [{ id: 'claude-sonnet-5' }],
+                    }),
+                    { status: 200, headers: { 'Content-Type': 'application/json' } }
+                )
+            }
+
+            const models = await fetchLiveProviderModels(
+                'anthropic',
+                'sk-ant-usr-mock-test-key-12345',
+                undefined,
+                mockFetch as any
+            )
+            expect(capturedHeaders['x-api-key']).toBe('sk-ant-usr-mock-test-key-12345')
+            expect(capturedHeaders['Authorization']).toBeUndefined()
+            expect(capturedHeaders['anthropic-beta']).toBeUndefined()
+            expect(models.some((m) => m.value === 'claude-sonnet-5')).toBe(true)
         })
     })
 })

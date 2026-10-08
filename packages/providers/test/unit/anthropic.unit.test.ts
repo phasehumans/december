@@ -318,4 +318,49 @@ describe('Anthropic Provider Adapter (Unit)', () => {
             { type: 'text', text: 'actual instruction', cache_control: { type: 'ephemeral' } },
         ])
     })
+
+    const getClientAuth = (client: any) => {
+        const opts = client?.options || client?._options || client || {}
+        return {
+            apiKey: opts.apiKey ?? client?.apiKey,
+            authToken: opts.authToken ?? client?.authToken,
+            headers: opts.defaultHeaders || client?.defaultHeaders || {},
+        }
+    }
+
+    it('correctly configures API key auth without oauth beta headers for user keys (sk-ant-usr)', () => {
+        const userKey = 'sk-ant-usr-mock-test-key-12345'
+        const provider = anthropicProvider(undefined, userKey)
+        const auth = getClientAuth(provider.api)
+        expect(auth.apiKey).toBe(userKey)
+        expect(auth.authToken).toBeFalsy()
+        expect(auth.headers['anthropic-beta']).toBeUndefined()
+    })
+
+    it('correctly configures API key auth without oauth beta headers for workspace keys (sk-ant-api)', () => {
+        const apiKey = 'sk-ant-api03-abcdef1234567890'
+        const provider = anthropicProvider(undefined, apiKey)
+        const auth = getClientAuth(provider.api)
+        expect(auth.apiKey).toBe(apiKey)
+        expect(auth.authToken).toBeFalsy()
+        expect(auth.headers['anthropic-beta']).toBeUndefined()
+    })
+
+    it('correctly configures OAuth Bearer auth and claude-code beta header for OAuth tokens (sk-ant-oat)', () => {
+        const oauthToken = 'sk-ant-oat01-token123456'
+        const provider = anthropicProvider(undefined, oauthToken)
+        const auth = getClientAuth(provider.api)
+        expect(auth.apiKey).toBeFalsy()
+        expect(auth.authToken).toBe(oauthToken)
+        expect(auth.headers['anthropic-beta']).toBe('claude-code-20250219,oauth-2024-06-20')
+    })
+
+    it('preserves custom oauth-2024-11-18 beta header for ThinkingMachines proxy', () => {
+        const provider = anthropicProvider('https://tinker.thinkingmachines.dev', 'tinker-key', {
+            'anthropic-beta': 'oauth-2024-11-18',
+        })
+        const auth = getClientAuth(provider.api)
+        expect(auth.authToken).toBe('tinker-key')
+        expect(auth.headers['anthropic-beta']).toBe('oauth-2024-11-18')
+    })
 })

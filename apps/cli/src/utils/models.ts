@@ -2583,13 +2583,13 @@ export async function fetchLiveProviderModels(
             headers['anthropic-version'] = '2023-06-01'
             const isOAuth =
                 normalized === 'claude' ||
-                !apiKey.startsWith('sk-ant-api') ||
+                apiKey.startsWith('sk-ant-oat') ||
                 apiKey.startsWith('Bearer ')
-            if (isOAuth && !apiKey.startsWith('sk-ant-api')) {
+            if (isOAuth) {
                 headers['Authorization'] = apiKey.startsWith('Bearer ')
                     ? apiKey
                     : `Bearer ${apiKey}`
-                headers['anthropic-beta'] = 'oauth-2024-11-18'
+                headers['anthropic-beta'] = 'claude-code-20250219,oauth-2024-06-20'
             } else {
                 headers['x-api-key'] = apiKey
             }

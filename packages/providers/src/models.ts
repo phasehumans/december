@@ -1994,6 +1994,7 @@ export function createProvider<T>(
 ): LLMProvider {
     return {
         id: config.id,
+        api: config.api,
         stream: streamImpl,
     }
 }

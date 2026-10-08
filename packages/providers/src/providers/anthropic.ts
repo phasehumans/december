@@ -43,23 +43,49 @@ export function anthropicProvider(
         ? undefined
         : (customClientOrDefaultHeaders as Record<string, string> | undefined)
 
-    const isOAuth =
-        Boolean(
-            defaultHeaders &&
-            (defaultHeaders['anthropic-beta']?.includes('oauth') ||
-                defaultHeaders['anthropic-beta']?.includes('claude-code'))
-        ) || Boolean(apiKey && !apiKey.startsWith('sk-ant-api'))
+    let resolvedBaseURL = baseURL
+    let resolvedApiKey = apiKey
+    if (
+        baseURL &&
+        !baseURL.startsWith('http') &&
+        !baseURL.startsWith('/') &&
+        apiKey === undefined
+    ) {
+        resolvedApiKey = baseURL
+        resolvedBaseURL = undefined
+    }
+
+    const isExplicitOAuth = Boolean(
+        defaultHeaders &&
+        (defaultHeaders['anthropic-beta']?.includes('oauth') ||
+            defaultHeaders['anthropic-beta']?.includes('claude-code'))
+    )
+
+    const isTokenOAuth = Boolean(
+        resolvedApiKey &&
+        (resolvedApiKey.startsWith('sk-ant-oat') || resolvedApiKey.startsWith('Bearer '))
+    )
+
+    const isEnvOAuth = Boolean(
+        !resolvedApiKey &&
+        !process.env.ANTHROPIC_API_KEY &&
+        (process.env.ANTHROPIC_AUTH_TOKEN || process.env.CLAUDE_CODE_OAUTH_TOKEN)
+    )
+
+    const isOAuth = isExplicitOAuth || isTokenOAuth || isEnvOAuth
 
     const client =
         (isCustomClient ? (customClientOrDefaultHeaders as Anthropic) : customClient) ||
         new Anthropic({
-            baseURL,
-            apiKey: isOAuth ? undefined : apiKey || process.env.ANTHROPIC_API_KEY,
+            baseURL: resolvedBaseURL,
+            apiKey: isOAuth ? undefined : resolvedApiKey || process.env.ANTHROPIC_API_KEY,
             authToken: isOAuth
-                ? apiKey || process.env.ANTHROPIC_AUTH_TOKEN || process.env.CLAUDE_CODE_OAUTH_TOKEN
+                ? resolvedApiKey ||
+                  process.env.ANTHROPIC_AUTH_TOKEN ||
+                  process.env.CLAUDE_CODE_OAUTH_TOKEN
                 : undefined,
             defaultHeaders: {
-                ...(isOAuth ? { 'anthropic-beta': 'oauth-2024-11-18' } : {}),
+                ...(isOAuth ? { 'anthropic-beta': 'claude-code-20250219,oauth-2024-06-20' } : {}),
                 ...(defaultHeaders || {}),
             },
         })

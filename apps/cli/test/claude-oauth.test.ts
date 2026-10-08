@@ -74,7 +74,7 @@ describe('Claude Code OAuth & Subscription Integration (Unit)', () => {
         expect(refreshed.expiresAt).toBeGreaterThan(Date.now())
     })
 
-    it('instantiates claude provider via provider-factory with oauth-2024-11-18 beta header for subscription', () => {
+    it('instantiates claude provider via provider-factory with oauth beta header for subscription', () => {
         const bundle = {
             provider: 'claude',
             accessToken: 'test-claude-oauth-token',

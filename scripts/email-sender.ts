@@ -12,12 +12,24 @@ export interface UserRecipient {
 export interface CampaignOptions {
     subject?: string
     body?: string
+    html?: string
     templatePath?: string
+    htmlTemplatePath?: string
     usersPath?: string
     dryRun?: boolean
     test?: boolean
     send?: boolean
     testEmail?: string
+    from?: string
+    replyTo?: string
+    useResend?: boolean
+    attachments?: Array<{
+        filename: string
+        path?: string
+        content?: any
+        cid?: string
+        contentType?: string
+    }>
 }
 
 interface SendEmailConfig {
@@ -28,12 +40,26 @@ interface SendEmailConfig {
 
 const CONFIG_PATH = join(homedir(), '.config', 'sendemail', 'config.json')
 
-export const loadSmtpCredentials = (): {
+export const loadSmtpCredentials = (options?: {
+    preferResend?: boolean
+}): {
     sender: string
     password: string
     host?: string
     port?: number
+    user?: string
 } => {
+    const preferResend = options?.preferResend ?? false
+    if (preferResend && process.env.RESEND_API_KEY) {
+        return {
+            sender: process.env.SENDER_EMAIL || 'team@trydecember.com',
+            password: process.env.RESEND_API_KEY,
+            host: 'smtp.resend.com',
+            port: 465,
+            user: 'resend',
+        }
+    }
+
     const envSender = process.env.SMTP_USER || process.env.SMTP_EMAIL || process.env.GMAIL_USER
     const envPassword =
         process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD
@@ -44,6 +70,16 @@ export const loadSmtpCredentials = (): {
             password: envPassword,
             host: process.env.SMTP_HOST || 'smtp.gmail.com',
             port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 465,
+        }
+    }
+
+    if (process.env.RESEND_API_KEY) {
+        return {
+            sender: process.env.SENDER_EMAIL || 'team@trydecember.com',
+            password: process.env.RESEND_API_KEY,
+            host: 'smtp.resend.com',
+            port: 465,
+            user: 'resend',
         }
     }
 
@@ -64,7 +100,7 @@ export const loadSmtpCredentials = (): {
     }
 
     throw new Error(
-        'missing SMTP credentials. configure SMTP_USER and SMTP_PASS in .env or ~/.config/sendemail/config.json'
+        'missing SMTP credentials. configure SMTP_USER/SMTP_PASS, RESEND_API_KEY, or ~/.config/sendemail/config.json'
     )
 }
 
@@ -145,15 +181,17 @@ export const createSmtpTransporter = (credentials: {
     password: string
     host?: string
     port?: number
+    user?: string
 }) => {
     const host = credentials.host || 'smtp.gmail.com'
     const port = credentials.port || 465
+    const user = credentials.user || (host.includes('resend') ? 'resend' : credentials.sender)
     return nodemailer.createTransport({
         host,
         port,
         secure: port === 465,
         auth: {
-            user: credentials.sender,
+            user,
             pass: credentials.password,
         },
     })
@@ -176,11 +214,16 @@ export const sendCampaign = async (options: CampaignOptions): Promise<void> => {
 
     let subject = options.subject || ''
     let body = options.body || ''
+    let html = options.html || ''
 
     if (options.templatePath) {
         const parsed = parseTemplateFile(options.templatePath)
         if (!subject) subject = parsed.subject
         if (!body) body = parsed.body
+    }
+
+    if (options.htmlTemplatePath && existsSync(options.htmlTemplatePath)) {
+        html = readFileSync(options.htmlTemplatePath, 'utf-8')
     }
 
     if (!subject) {
@@ -191,7 +234,7 @@ export const sendCampaign = async (options: CampaignOptions): Promise<void> => {
         throw new Error('body is required (specify in template file or via options)')
     }
 
-    const usersPath = options.usersPath || resolve(__dirname, 'users.txt')
+    const usersPath = options.usersPath || resolve(import.meta.dir, 'users.txt')
     const allUsers = parseUsersFile(usersPath)
 
     const recipients: UserRecipient[] = test ? [{ name: 'chaitanya', email: testEmail }] : allUsers
@@ -201,8 +244,14 @@ export const sendCampaign = async (options: CampaignOptions): Promise<void> => {
         return
     }
 
-    const credentials = loadSmtpCredentials()
+    const credentials = loadSmtpCredentials({ preferResend: options.useResend })
     const { sender } = credentials
+    const fromAddress =
+        options.from ||
+        (sender === 'team@trydecember.com'
+            ? 'December <team@trydecember.com>'
+            : `chaitanya <${sender}>`)
+    const replyToAddress = options.replyTo || options.from || sender
 
     if (dryRun) {
         console.log(`[dry-run] previewing ${recipients.length} email(s):\n`)
@@ -210,16 +259,20 @@ export const sendCampaign = async (options: CampaignOptions): Promise<void> => {
             const recipientSubject = subject.replaceAll('{name}', recipient.name)
             const recipientBody = body.replaceAll('{name}', recipient.name)
             console.log(`To: ${recipient.name} <${recipient.email}>`)
-            console.log(`From: chaitanya <${sender}>`)
+            console.log(`From: ${fromAddress}`)
             console.log(`Subject: ${recipientSubject}`)
             console.log('-'.repeat(50))
             console.log(recipientBody)
+            if (html) {
+                console.log('-'.repeat(50))
+                console.log(`[HTML enabled: ${html.length} chars]`)
+            }
             console.log('='.repeat(60) + '\n')
         }
         return
     }
 
-    console.log(`connecting to smtp as ${sender}...`)
+    console.log(`connecting to smtp (${credentials.host}) as ${credentials.user || sender}...`)
     const transporter = createSmtpTransporter(credentials)
 
     try {
@@ -234,17 +287,20 @@ export const sendCampaign = async (options: CampaignOptions): Promise<void> => {
         const recipient = recipients[i]!
         const recipientSubject = subject.replaceAll('{name}', recipient.name)
         const recipientBody = body.replaceAll('{name}', recipient.name)
+        const recipientHtml = html ? html.replaceAll('{name}', recipient.name) : undefined
 
         console.log(
             `[${i + 1}/${recipients.length}] sending to ${recipient.name} <${recipient.email}>...`
         )
 
         await transporter.sendMail({
-            from: `chaitanya <${sender}>`,
+            from: fromAddress,
             to: recipient.email,
             subject: recipientSubject,
             text: recipientBody,
-            replyTo: sender,
+            ...(recipientHtml ? { html: recipientHtml } : {}),
+            ...(options.attachments ? { attachments: options.attachments } : {}),
+            replyTo: replyToAddress,
         })
 
         console.log('  sent successfully')
@@ -269,13 +325,15 @@ if (import.meta.main) {
         return idx !== -1 && args[idx + 1] ? args[idx + 1] : undefined
     }
 
-    const templatePath = getArgValue('--template') || resolve(__dirname, 'email.txt')
-    const usersPath = getArgValue('--users') || resolve(__dirname, 'users.txt')
+    const templatePath = getArgValue('--template') || resolve(import.meta.dir, 'email.txt')
+    const htmlTemplatePath = getArgValue('--html-template')
+    const usersPath = getArgValue('--users') || resolve(import.meta.dir, 'users.txt')
     const subject = getArgValue('--subject')
     const testEmail = getArgValue('--test-email')
 
     sendCampaign({
         templatePath,
+        htmlTemplatePath,
         usersPath,
         subject,
         testEmail,
