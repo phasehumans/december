@@ -44,6 +44,7 @@ describe('apps/docs static build verification', () => {
         expect(indexHtml).toContain('https://trydecember.com')
 
         // CLI install command
+        expect(indexHtml).toContain('curl -fsSL https://trydecember.com/install.sh | bash')
         expect(indexHtml).toContain('npm install -g @trydecember/cli')
 
         // Links to app.trydecember.com for Web Workspace and Login

@@ -10,6 +10,7 @@ export type BinaryManager =
     | 'pnpm'
     | 'yarn'
     | 'brew'
+    | 'curl'
     | 'standalone'
     | 'source'
     | 'unknown'
@@ -81,7 +82,7 @@ export function inferManagerFromPath(filePath: string, realPath: string): Binary
         normalized.includes('/.local/bin/december') ||
         normalized.includes('/.local/bin/')
     ) {
-        return 'standalone'
+        return 'curl'
     }
     return 'unknown'
 }

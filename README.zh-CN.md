@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | <b>简体中文</b> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a>
+  <a href="README.md">English</a> | <b>简体中文</b> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a> | <a href="README.mr.md">मराठी</a>
 </p>
 
-December 是一个运行在终端中的编程智能体。它能够理解你的代码库，并通过编写代码、修复 Bug 和运行命令来帮助你更快速地构建项目。你可以直接在终端中使用它，或者配合你喜爱的 IDE 一起使用。
+December 是一个面向终端与云端的 (so much) better 编程智能体。它能够理解你的代码库，并通过编写代码、修复 Bug 和运行命令来帮助你更快速地构建项目。你可以直接在终端中使用它，或者配合你喜爱的 IDE 一起使用。
 
 **也可在网页端使用：<a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
@@ -23,7 +23,7 @@ December 是一个运行在终端中的编程智能体。它能够理解你的�
 1. 安装 December：
 
 ```bash
-npm install -g @trydecember/cli
+curl -fsSL https://trydecember.com/install.sh | bash
 ```
 
 2. 进入你的项目目录并运行 `december`。

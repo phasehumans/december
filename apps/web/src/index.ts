@@ -39,13 +39,13 @@ const proxyBackendApi = (req: Request) => {
     return fetch(targetUrl, options)
 }
 
-const NPM_PACKAGE_URL = 'https://www.npmjs.com/package/@trydecember/cli'
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/phasehumans/december/main'
 
 const server = serve({
     port: Number(process.env.APP_PORT || process.env.WEB_PORT || 3000),
     routes: {
-        '/install.sh': () => Response.redirect(NPM_PACKAGE_URL, 302),
-        '/install': () => Response.redirect(NPM_PACKAGE_URL, 302),
+        '/install.sh': () => Response.redirect(`${GITHUB_RAW_BASE}/install.sh`, 302),
+        '/install': () => Response.redirect(`${GITHUB_RAW_BASE}/install.sh`, 302),
         '/docs': () => {
             const targetBase =
                 process.env.WEB_URL ||

@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <b>Español</b> | <a href="README.ru.md">Русский</a>
+  <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <b>Español</b> | <a href="README.ru.md">Русский</a> | <a href="README.mr.md">मराठी</a>
 </p>
 
-December es un agente de programación que vive en tu terminal. Comprende tu base de código y te ayuda a desarrollar más rápido escribiendo código, corrigiendo errores y ejecutando comandos. Úsalo directamente en tu terminal o junto con tu IDE favorito.
+December es un (so much) better agente de programación para terminal y nube. Comprende tu base de código y te ayuda a desarrollar más rápido escribiendo código, corrigiendo errores y ejecutando comandos. Úsalo directamente en tu terminal o junto con tu IDE favorito.
 
 **También disponible en la web en <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
@@ -23,7 +23,7 @@ December es un agente de programación que vive en tu terminal. Comprende tu bas
 1. Instala December:
 
 ```bash
-npm install -g @trydecember/cli
+curl -fsSL https://trydecember.com/install.sh | bash
 ```
 
 2. Ve al directorio de tu proyecto y ejecuta `december`.

@@ -10,4 +10,6 @@
 /settings/terms    https://trydecember.com/terms    302
 /docs/*     https://trydecember.com/docs/:splat     302
 /docs       https://trydecember.com/docs            302
+/install.sh    https://raw.githubusercontent.com/phasehumans/december/main/install.sh    302
+/install       https://raw.githubusercontent.com/phasehumans/december/main/install.sh    302
 /*          /index.html                             200

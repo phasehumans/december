@@ -1,7 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import outCreditsPng from '../../../../assets/outcredits.png'
 import outCreditsWebp from '../../../../assets/outcredits.webp'
 
 import { Modal } from '@/shared/components/ui/Modal'
@@ -9,7 +8,7 @@ import { Modal } from '@/shared/components/ui/Modal'
 // Preload the out-of-credits banner in the browser so it is warm in cache and renders instantly
 if (typeof window !== 'undefined') {
     const preloader = new Image()
-    preloader.src = outCreditsWebp || outCreditsPng
+    preloader.src = outCreditsWebp
 }
 
 interface OutOfCreditsModalProps {
@@ -41,28 +40,14 @@ export const OutOfCreditsModal: React.FC<OutOfCreditsModalProps> = ({
             showLogo={false}
             banner={
                 <div className="w-full h-[180px] relative overflow-hidden bg-[#151515]">
-                    {bannerImage ? (
-                        <img
-                            src={bannerImage}
-                            alt={title}
-                            loading="eager"
-                            {...({ fetchpriority: 'high' } as any)}
-                            decoding="sync"
-                            className="w-full h-full object-cover object-center absolute inset-0"
-                        />
-                    ) : (
-                        <picture className="w-full h-full">
-                            <source type="image/webp" srcSet={outCreditsWebp} />
-                            <img
-                                src={outCreditsPng}
-                                alt={title}
-                                loading="eager"
-                                {...({ fetchpriority: 'high' } as any)}
-                                decoding="sync"
-                                className="w-full h-full object-cover object-center absolute inset-0"
-                            />
-                        </picture>
-                    )}
+                    <img
+                        src={bannerImage || outCreditsWebp}
+                        alt={title}
+                        loading="eager"
+                        {...({ fetchpriority: 'high' } as any)}
+                        decoding="sync"
+                        className="w-full h-full object-cover object-center absolute inset-0"
+                    />
                 </div>
             }
         >

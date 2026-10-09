@@ -9,7 +9,7 @@ if (!globalThis.document) {
 
 const { render, screen, cleanup } = await import('@testing-library/react')
 
-import outCreditsPng from '../assets/outcredits.png'
+import outCreditsWebp from '../assets/outcredits.webp'
 import { OutOfCreditsModal } from '../src/features/billing/components/OutOfCreditsModal'
 
 describe('OutOfCreditsModal', () => {
@@ -17,7 +17,7 @@ describe('OutOfCreditsModal', () => {
         cleanup()
     })
 
-    test('renders default banner image with outcredits.png', () => {
+    test('renders default banner image with outcredits.webp', () => {
         render(
             <MemoryRouter>
                 <OutOfCreditsModal isOpen={true} onClose={() => {}} />
@@ -26,18 +26,15 @@ describe('OutOfCreditsModal', () => {
 
         const img = screen.getByAltText('Out of Credits') as HTMLImageElement
         expect(img).toBeDefined()
-        expect(img.src).toContain(outCreditsPng)
+        expect(img.src).toContain(outCreditsWebp)
     })
 
-    test('renders default banner with eager loading and WebP source', () => {
+    test('renders default banner with eager loading', () => {
         render(
             <MemoryRouter>
                 <OutOfCreditsModal isOpen={true} onClose={() => {}} />
             </MemoryRouter>
         )
-
-        const source = document.body.querySelector('source[type="image/webp"]')
-        expect(source).not.toBeNull()
 
         const img = screen.getByAltText('Out of Credits') as HTMLImageElement
         expect(img.getAttribute('loading')).toBe('eager')

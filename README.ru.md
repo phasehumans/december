@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <b>Русский</b>
+  <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <b>Русский</b> | <a href="README.mr.md">मराठी</a>
 </p>
 
-December - это агент для написания кода, работающий прямо в вашем терминале. Он понимает вашу кодовую базу и помогает быстрее разрабатывать проекты: пишет код, исправляет ошибки и выполняет команды. Используйте его прямо в терминале или вместе с вашей любимой IDE.
+December - это (so much) better агент для написания кода для терминала и облака. Он понимает вашу кодовую базу и помогает быстрее разрабатывать проекты: пишет код, исправляет ошибки и выполняет команды. Используйте его прямо в терминале или вместе с вашей любимой IDE.
 
 **Также доступно в веб-версии на <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
@@ -23,7 +23,7 @@ December - это агент для написания кода, работаю�
 1. Установите December:
 
 ```bash
-npm install -g @trydecember/cli
+curl -fsSL https://trydecember.com/install.sh | bash
 ```
 
 2. Перейдите в каталог вашего проекта и запустите `december`.

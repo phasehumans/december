@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <b>한국어</b> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a>
+  <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <b>한국어</b> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a> | <a href="README.mr.md">मराठी</a>
 </p>
 
-December는 터미널에서 작동하는 코딩 에이전트입니다. 사용자의 코드베이스를 이해하고 코드 작성, 버그 수정, 명령어 실행을 통해 개발을 더 빠르게 진행할 수 있도록 돕습니다. 터미널에서 직접 사용하거나 원하는 IDE와 함께 사용할 수 있습니다.
+December는 터미널과 클라우드를 위한 (so much) better 코딩 에이전트입니다. 사용자의 코드베이스를 이해하고 코드 작성, 버그 수정, 명령어 실행을 통해 개발을 더 빠르게 진행할 수 있도록 돕습니다. 터미널에서 직접 사용하거나 원하는 IDE와 함께 사용할 수 있습니다.
 
 **웹에서도 사용 가능: <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
@@ -23,7 +23,7 @@ December는 터미널에서 작동하는 코딩 에이전트입니다. 사용자
 1. December 설치:
 
 ```bash
-npm install -g @trydecember/cli
+curl -fsSL https://trydecember.com/install.sh | bash
 ```
 
 2. 프로젝트 디렉터리로 이동한 후 `december`를 실행합니다.

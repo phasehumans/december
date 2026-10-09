@@ -19,14 +19,16 @@ describe('apps/docs page content & layout tests', () => {
         it('renders hero title, description, and install command', () => {
             const html = getLandingHtml()
 
-            expect(html).toContain('december, a coding agent')
+            expect(html).toContain('december, a (so much) better coding agent')
             expect(html).toContain('for terminal and cloud')
+            expect(html).toContain('curl -fsSL https://trydecember.com/install.sh | bash')
             expect(html).toContain('npm install -g @trydecember/cli')
         })
 
-        it('includes package manager switch options for npm, bun, and pnpm', () => {
+        it('includes package manager switch options for curl, npm, bun, and pnpm', () => {
             const html = getLandingHtml()
 
+            expect(html).toContain('data-pm="curl"')
             expect(html).toContain('data-pm="npm"')
             expect(html).toContain('data-pm="bun"')
             expect(html).toContain('data-pm="pnpm"')
@@ -52,9 +54,9 @@ describe('apps/docs page content & layout tests', () => {
             expect(footerHtml).toContain('href="/privacy"')
             expect(footerHtml).toContain('href="/terms"')
             expect(footerHtml).toContain('https://github.com/phasehumans/december')
-            expect(footerHtml).toContain('https://www.npmjs.com/package/@trydecember/cli')
             expect(footerHtml).toContain('https://x.com/phasehumans')
             expect(footerHtml).toContain('x')
+            expect(footerHtml).not.toContain('https://www.npmjs.com/package/@trydecember/cli')
             expect(footerHtml).not.toContain('https://www.youtube.com/@phasehumans')
             expect(footerHtml).not.toContain('youtube')
             expect(footerHtml).not.toContain('twitter')

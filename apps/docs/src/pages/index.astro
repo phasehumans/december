@@ -5,34 +5,36 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 ---
 
 <BaseLayout
-  title="December | A Coding Agent for Terminal and Cloud"
-  description="December is an open-source coding agent for terminal and cloud. It writes code, fixes bugs, and runs commands with seamless terminal-to-cloud handoff."
+  title="December | A (So Much) Better Coding Agent for Terminal and Cloud"
+  description="December is a (so much) better coding agent for terminal and cloud. It writes code, fixes bugs, and runs commands with seamless terminal-to-cloud handoff."
   canonicalUrl="https://trydecember.com"
   hideHeader={false}
   hideFooter={false}
-  preloadBannerImage={true}
+  preloadBannerImage={false}
 >
   <!-- Page Container: Generous left & right margins with compact vertical rhythm -->
   <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-2 sm:pt-12 sm:pb-3">
     
     <!-- Hero Section -->
-    <section class="mb-11 sm:mb-14">
+    <section class="mb-12 sm:mb-16">
       <!-- Headline -->
-      <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-medium tracking-[-0.035em] text-[#090a0f] leading-[1.1] max-w-3xl">
-        december, a coding agent<br class="hidden sm:inline" /> for terminal and cloud.
+      <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-medium tracking-[-0.03em] text-[#090a0f] leading-[1.15] w-full">
+        december, a (so much) better coding agent<br class="hidden sm:inline" /> for terminal and cloud.
       </h1>
 
-      <!-- Subtitle (simple & compact) -->
-      <p class="mt-3 text-sm sm:text-base text-[#52525b] font-normal leading-relaxed max-w-2xl">
+      <!-- Subtitle -->
+      <p class="mt-3.5 text-sm sm:text-base md:text-[17px] text-[#52525b] font-normal leading-relaxed w-full">
         It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
       </p>
 
       <!-- Quick Install Command Bar & Cloud Option -->
-      <div class="mt-7 max-w-2xl">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-3">
+      <div class="mt-7 sm:mt-8 w-full">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full">
           <!-- Command Bar with Package Manager Dropdown -->
-          <div class="relative w-full sm:w-auto sm:flex-1 sm:min-w-[280px] max-w-[420px]" id="hero-install-container">
-            <div class="h-10 flex items-center justify-between border border-[#e2e8f0] bg-white rounded-none pl-3 sm:pl-3.5 pr-1.5 shadow-xs transition-all hover:border-[#cbd5e1]">
+          <div class="relative w-full sm:w-[62%] sm:min-w-[340px]" id="hero-install-container">
+            <div class="corner-brackets relative h-10 flex items-center justify-between border border-[#e2e8f0] bg-white rounded-none pl-3 sm:pl-3.5 pr-1.5 transition-all hover:border-[#87b2f4]">
+              <span class="corner-brackets-tr"></span>
+              <span class="corner-brackets-bl"></span>
               <!-- Command Text button -->
               <button
                 id="hero-copy-cmd-btn"
@@ -41,7 +43,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 title="Click to copy command"
               >
                 <span class="text-[#87b2f4] select-none font-semibold shrink-0">$</span>
-                <span id="hero-display-cmd" class="font-normal text-[#0f172a] truncate">npm install -g @trydecember/cli</span>
+                <span id="hero-display-cmd" class="font-normal text-[#0f172a] truncate">curl -fsSL https://trydecember.com/install.sh | bash</span>
               </button>
 
               <!-- Actions: Copy Button + Dropdown Toggle -->
@@ -75,7 +77,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               </div>
             </div>
 
-            <!-- Dropdown Menu (npm, bun, pnpm with Logos) -->
+            <!-- Dropdown Menu (curl, npm, bun, pnpm with Logos) -->
             <div
               id="pm-dropdown-menu"
               class="hidden absolute right-0 top-full mt-1.5 z-50 w-52 border border-[#e2e8f0] bg-white p-1.5 shadow-xl font-mono text-xs rounded-none"
@@ -83,6 +85,19 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               <div class="px-2.5 py-1 text-[10px] uppercase tracking-wider text-[#94a3b8] font-semibold">
                 Install via
               </div>
+
+              <!-- curl option -->
+              <button
+                type="button"
+                class="pm-option w-full flex items-center gap-2.5 px-2.5 py-2 text-[#1e293b] hover:bg-[#f8fafc] hover:text-[#090a0f] transition-colors cursor-pointer text-left rounded-[2px]"
+                data-pm="curl"
+                data-cmd="curl -fsSL https://trydecember.com/install.sh | bash"
+              >
+                <svg class="w-4 h-4 text-[#87b2f4]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 17l6-6-6-6M12 19h8"/>
+                </svg>
+                <span class="font-medium">curl</span>
+              </button>
 
               <!-- npm option -->
               <button
@@ -156,7 +171,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           <!-- Cloud / Web: Get TRY DECEMBER CLOUD Button -->
           <a
             href={`${appUrl}/login`}
-            class="corner-brackets relative h-10 inline-flex items-center justify-center gap-2 border border-[#e2e8f0] bg-[#EDF4FE] px-4 font-mono text-xs uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] hover:shadow-xs transition-all active:scale-[0.98] shrink-0"
+            class="corner-brackets relative h-10 inline-flex items-center justify-center gap-2 border border-[#e2e8f0] bg-[#EDF4FE] px-4 font-mono text-xs uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] transition-all active:scale-[0.98] w-full sm:w-auto sm:flex-1"
           >
             <span class="corner-brackets-tr"></span>
             <span class="corner-brackets-bl"></span>
@@ -270,6 +285,74 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               </svg>
             </span>
 
+            <!-- Poolside -->
+            <span title="Poolside" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 32 32" fill="#4137FF">
+                <path d="M3.417 9.863C6.807 2.914 15.187.028 22.137 3.417c6.95 3.39 9.836 11.77 6.446 18.72-3.39 6.95-11.77 9.835-18.72 6.446-5.2-2.537-8.123-7.867-7.848-13.298l.037-.525.02-.152c.144-.746.733-1.277 1.607-1.208.773.069 1.358.712 1.367 1.472l-.006.153-.029.414c-.192 3.792 1.602 7.516 4.864 9.697l4.118-8.445-9.886-4.821c-.698-.341-1.013-1.152-.751-1.866l.06-.14zm9.154 16.587c4.673 1.54 9.829-.236 12.564-4.326l-8.445-4.118-4.119 8.444zm11.15-18.284c.028.41.05.842.058 1.29.044 2.356-.228 5.3-1.258 8.056l3.928 1.916c1.321-4.01.202-8.375-2.728-11.262zm-3.187-1.462c-.647.35-1.474.866-2.365 1.535-1.642 1.235-3.404 2.909-4.665 4.875l6.306 3.075c.773-2.204 1.009-4.622.97-6.677-.02-1.113-.124-2.084-.247-2.808zm-3.116-1.612C13.34 4.53 9.21 6.335 6.864 9.845l3.93 1.916c1.536-2.508 3.689-4.535 5.572-5.95.358-.27.71-.52 1.052-.75z" />
+              </svg>
+            </span>
+
+            <!-- NVIDIA -->
+            <span title="NVIDIA" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#76B900">
+                <path d="M8.948 8.798v-1.43a6.7 6.7 0 0 1 .424-.018c3.922-.124 6.493 3.374 6.493 3.374s-2.774 3.851-5.75 3.851c-.398 0-.787-.062-1.158-.185v-4.346c1.528.185 1.837.857 2.747 2.385l2.04-1.714s-1.492-1.952-4-1.952a6.016 6.016 0 0 0-.796.035m0-4.735v2.138l.424-.027c5.45-.185 9.01 4.47 9.01 4.47s-4.08 4.964-8.33 4.964c-.37 0-.733-.035-1.095-.097v1.325c.3.035.61.062.91.062 3.957 0 6.82-2.023 9.593-4.408.459.371 2.34 1.263 2.73 1.652-2.633 2.208-8.772 3.984-12.253 3.984-.335 0-.653-.018-.971-.053v1.864H24V4.063zm0 10.326v1.131c-3.657-.654-4.673-4.46-4.673-4.46s1.758-1.944 4.673-2.262v1.237H8.94c-1.528-.186-2.73 1.245-2.73 1.245s.68 2.412 2.739 3.11M2.456 10.9s2.164-3.197 6.5-3.533V6.201C4.153 6.59 0 10.653 0 10.653s2.35 6.802 8.948 7.42v-1.237c-4.84-.6-6.492-5.936-6.492-5.936z"></path>
+              </svg>
+            </span>
+
+            <!-- OpenRouter -->
+            <span title="OpenRouter" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#6366F1">
+                <path d="M16.778 1.844v1.919q-.569-.026-1.138-.032-.708-.008-1.415.037c-1.93.126-4.023.728-6.149 2.237-2.911 2.066-2.731 1.95-4.14 2.75-.396.223-1.342.574-2.185.798-.841.225-1.753.333-1.751.333v4.229s.768.108 1.61.333c.842.224 1.789.575 2.185.799 1.41.798 1.228.683 4.14 2.75 2.126 1.509 4.22 2.11 6.148 2.236.88.058 1.716.041 2.555.005v1.918l7.222-4.168-7.222-4.17v2.176c-.86.038-1.611.065-2.278.021-1.364-.09-2.417-.357-3.979-1.465-2.244-1.593-2.866-2.027-3.68-2.508.889-.518 1.449-.906 3.822-2.59 1.56-1.109 2.614-1.377 3.978-1.466.667-.044 1.418-.017 2.278.02v2.176L24 6.014Z"></path>
+              </svg>
+            </span>
+
+            <!-- Together AI -->
+            <span title="Together AI" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path d="M23.197 4.503A6 6 0 0015 2.307a5.973 5.973 0 00-2.995 4.933l5.996.008v.515h-5.996c.039.937.298 1.87.8 2.74a6 6 0 1010.39-6z" fill="#EF2CC1"/>
+                <path d="M.805 4.5A6 6 0 003 12.697a5.972 5.972 0 005.77.127L5.779 7.627l.446-.257 2.997 5.192A6 6 0 10.804 4.5z" fill="#CAAEF5"/>
+                <path d="M12 23.894a6 6 0 005.999-6c0-2.13-1.1-3.996-2.775-5.06l-3.005 5.189-.444-.258 2.997-5.192A6 6 0 1012 23.894z" fill="#FC4C02"/>
+              </svg>
+            </span>
+
+            <!-- Cloudflare -->
+            <span title="Cloudflare" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#F38020">
+                <path d="M16.5088 16.8447c.1475-.5068.0908-.9707-.1553-1.3154-.2246-.3164-.6045-.499-1.0615-.5205l-8.6592-.1123a.1559.1559 0 0 1-.1333-.0713c-.0283-.042-.0351-.0986-.021-.1553.0278-.084.1123-.1484.2036-.1562l8.7359-.1123c1.0351-.0489 2.1601-.8868 2.5537-1.9136l.499-1.3013c.0215-.0561.0293-.1128.0147-.168-.5625-2.5463-2.835-4.4453-5.5499-4.4453-2.5039 0-4.6284 1.6177-5.3876 3.8614-.4927-.3658-1.1187-.5625-1.794-.499-1.2026.119-2.1665 1.083-2.2861 2.2856-.0283.31-.0069.6128.0635.894C1.5683 13.171 0 14.7754 0 16.752c0 .1748.0142.3515.0352.5273.0141.083.0844.1475.1689.1475h15.9814c.0909 0 .1758-.0645.2032-.1553l.12-.4268zm2.7568-5.5634c-.0771 0-.1611 0-.2383.0112-.0566 0-.1054.0415-.127.0976l-.3378 1.1744c-.1475.5068-.0918.9707.1543 1.3164.2256.3164.6055.498 1.0625.5195l1.8437.1133c.0557 0 .1055.0263.1329.0703.0283.043.0351.1074.0214.1562-.0283.084-.1132.1485-.204.1553l-1.921.1123c-1.041.0488-2.1582.8867-2.5527 1.914l-.1406.3585c-.0283.0713.0215.1416.0986.1416h6.5977c.0771 0 .1474-.0489.169-.126.1122-.4082.1757-.837.1757-1.2803 0-2.6025-2.125-4.727-4.7344-4.727"></path>
+              </svg>
+            </span>
+
+            <!-- Modal -->
+            <span title="Modal" class="hover:opacity-80 transition-opacity cursor-pointer hidden sm:inline-flex items-center shrink-0">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 300 300" fill="none">
+                <path d="M121.683 75.25L149.997 124L91.4816 224.75C90.3128 226.757 88.155 228 85.8174 228H32.9664C31.7976 228 30.6778 227.691 29.697 227.131C28.7161 226.57 27.8906 225.758 27.3021 224.75L0.876625 179.25C-0.292208 177.243 -0.292208 174.765 0.876625 172.75L57.512 75.25C58.0923 74.2425 58.9259 73.43 59.9068 72.8694C60.8876 72.3088 62.0074 72 63.1762 72H116.027C118.365 72 120.523 73.2431 121.692 75.25H121.683ZM299.125 172.75L242.49 75.25C241.91 74.2425 241.076 73.43 240.095 72.8694C239.114 72.3088 237.995 72 236.826 72H183.975C181.637 72 179.479 73.2431 178.311 75.25L149.997 124L208.512 224.75C209.681 226.757 211.839 228 214.177 228H267.027C268.196 228 269.316 227.691 270.297 227.131C271.278 226.57 272.103 225.758 272.692 224.75L299.117 179.25C300.286 177.243 300.286 174.765 299.117 172.75H299.125Z" fill="#62DE61"/>
+                <path d="M89.6018 124H150.005L121.692 75.25C120.523 73.2431 118.365 72 116.027 72H63.1763C62.0074 72 60.8876 72.3088 59.9068 72.8694L89.6018 124Z" fill="url(#modal-p0)"/>
+                <path d="M89.6018 124L59.9068 72.8694C58.9259 73.43 58.1005 74.2425 57.512 75.25L0.876625 172.75C-0.292208 174.765 -0.292208 177.235 0.876625 179.25L27.3021 224.75C27.8825 225.758 28.7161 226.57 29.697 227.131L89.5936 124H89.6018Z" fill="url(#modal-p1)"/>
+                <path d="M149.997 124H89.5936L29.697 227.131C30.6778 227.691 31.7976 228 32.9664 228H85.8174C88.155 228 90.3128 226.757 91.4816 224.75L149.997 124Z" fill="#09AF58"/>
+                <path d="M299.125 179.25C299.706 178.243 300 177.121 300 176H240.61L210.915 227.131C211.896 227.691 213.016 228 214.185 228H267.036C269.373 228 271.531 226.757 272.7 224.75L299.125 179.25Z" fill="#09AF58"/>
+                <path d="M183.975 72C182.806 72 181.686 72.3088 180.705 72.8694L240.602 176H299.992C299.992 174.879 299.698 173.758 299.117 172.75L242.49 75.25C241.321 73.2431 239.163 72 236.826 72H183.967H183.975Z" fill="url(#modal-p2)"/>
+                <path d="M210.907 227.131L240.602 176L180.705 72.8694C179.725 73.43 178.899 74.2425 178.311 75.25L149.997 124L208.512 224.75C209.093 225.758 209.926 226.57 210.907 227.131Z" fill="url(#modal-p3)"/>
+                <defs>
+                  <linearGradient id="modal-p0" x1="127.348" y1="137" x2="82.9561" y2="59.6398" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#BFF9B4"/>
+                    <stop offset="1" stop-color="#80EE64"/>
+                  </linearGradient>
+                  <linearGradient id="modal-p1" x1="7.04774" y1="214.131" x2="81.1284" y2="85.0556" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#80EE64"/>
+                    <stop offset="1" stop-color="#09AF58"/>
+                  </linearGradient>
+                  <linearGradient id="modal-p2" x1="278.103" y1="188.561" x2="204.022" y2="59.4863" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#BFF9B4"/>
+                    <stop offset="1" stop-color="#80EE64"/>
+                  </linearGradient>
+                  <linearGradient id="modal-p3" x1="232.804" y1="214.569" x2="158.724" y2="85.4864" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#80EE64"/>
+                    <stop offset="1" stop-color="#09AF58"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </span>
+
           <!-- and 150+ more providers -->
           <a
             href="/docs/integrations"
@@ -280,10 +363,28 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </div>
     </section>
 
+    <!-- Video Player Showcase (Hero Demo) -->
+    <section class="mb-16 sm:mb-20">
+      <div class="relative w-full mx-auto">
+        <!-- Video Container with 16:9 Aspect Ratio -->
+        <div
+          id="hero-video-container"
+          class="relative w-full aspect-video rounded-none border border-[#e2e8f0] bg-black shadow-xl overflow-hidden"
+        >
+          <iframe
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+            title="December Demo Video"
+            class="w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+    </section>
 
     <!-- How It Works Section -->
     <section class="mb-16 sm:mb-20">
-      <div class="max-w-3xl mb-8">
+      <div class="w-full mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           How it works
         </h2>
@@ -330,10 +431,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
 
             <img
-              src="/illustrations/code-loop.png"
+              src="/illustrations/code-loop.webp"
               alt="Writes code and runs commands"
+              width="240"
+              height="240"
               class="w-20 h-20 sm:w-22 sm:h-22 object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              decoding="async"
             />
           </div>
         </a>
@@ -364,10 +468,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
 
             <img
-              src="/illustrations/cloud-handoff.png"
+              src="/illustrations/cloud-handoff.webp"
               alt="Cloud Handoff"
+              width="240"
+              height="240"
               class="w-20 h-20 sm:w-22 sm:h-22 object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              decoding="async"
             />
           </div>
         </a>
@@ -398,10 +505,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
 
             <img
-              src="/illustrations/byok-chip.png"
+              src="/illustrations/byok-chip.webp"
               alt="Bring your own AI"
+              width="240"
+              height="240"
               class="w-20 h-20 sm:w-22 sm:h-22 object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              decoding="async"
             />
           </div>
         </a>
@@ -410,7 +520,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
     <!-- Benchmarks & Adoption Section -->
     <section class="mb-16 sm:mb-20">
-      <div class="max-w-2xl mb-6 sm:mb-8">
+      <div class="w-full mb-6 sm:mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           Benchmarks & Adoption
         </h2>
@@ -647,7 +757,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
     <!-- Environments Section -->
     <section class="mb-16 sm:mb-20">
-      <div class="max-w-2xl mb-6">
+      <div class="w-full mb-6">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           Environments
         </h2>
@@ -683,10 +793,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
 
             <img
-              src="/illustrations/laptop.png"
+              src="/illustrations/laptop.webp"
               alt="Local Terminal"
+              width="240"
+              height="240"
               class="w-24 h-24 sm:w-28 sm:h-28 object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              decoding="async"
             />
           </div>
         </div>
@@ -714,10 +827,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
 
             <img
-              src="/illustrations/vpc.png"
+              src="/illustrations/vpc.webp"
               alt="Cloud Sandbox"
+              width="240"
+              height="240"
               class="w-24 h-24 sm:w-28 sm:h-28 object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              decoding="async"
             />
           </div>
         </div>
@@ -727,7 +843,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
     <!-- FAQ Section -->
     <section id="faq" class="mb-11 sm:mb-14">
-      <div class="max-w-2xl mb-6 sm:mb-8">
+      <div class="w-full mb-6 sm:mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           FAQ
         </h2>
@@ -791,10 +907,10 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           </button>
           <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed">
             <p>
-              Install December globally using your preferred package manager:
+              Install December using the standalone installer:
             </p>
             <div class="mt-2.5 p-3 bg-[#f8fafc] border border-[#e2e8f0] font-mono text-xs text-[#090a0f] flex items-center justify-between gap-3">
-              <span id="faq-install-cmd">npm install -g @trydecember/cli</span>
+              <span id="faq-install-cmd">curl -fsSL https://trydecember.com/install.sh | bash</span>
               <button
                 id="faq-copy-btn"
                 type="button"
@@ -882,29 +998,26 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     <!-- Brand Banner above Footer -->
     <div class="mb-1 sm:mb-2">
       <div class="relative w-full bg-[#f0f7ff] overflow-hidden group transition-all">
-        <!-- Blue Particle F1 Car Background Image spanning full width -->
-        <picture>
-          <source srcset="/illustrations/december-sky.webp" type="image/webp" />
-          <img
-            src="/illustrations/december-sky.png"
-            alt="Start building with December"
-            class="absolute inset-0 w-full h-full object-cover object-center select-none pointer-events-none opacity-95 group-hover:opacity-100 transition-opacity duration-300"
-            loading="eager"
-            decoding="async"
-          />
-        </picture>
+        <!-- Brand Banner Background Image spanning full width -->
+        <img
+          src="/illustrations/banner.webp"
+          alt="Start building with December"
+          class="absolute inset-0 w-full h-full object-cover object-top select-none pointer-events-none opacity-95 group-hover:opacity-100 transition-opacity duration-300"
+          loading="lazy"
+          decoding="async"
+        />
 
-        <!-- Soft gradient overlay ensuring optimal contrast for text on the left -->
-        <div class="absolute inset-0 bg-gradient-to-r from-white/90 via-white/40 to-transparent pointer-events-none"></div>
+        <!-- Soft gradient overlay ensuring optimal contrast for text on the left without obscuring center figures -->
+        <div class="absolute inset-y-0 left-0 w-full sm:w-1/2 bg-gradient-to-r from-white/90 via-white/35 to-transparent pointer-events-none"></div>
 
-        <!-- Banner Content: Compact text layout to maximize focus on the car image -->
+        <!-- Banner Content: Compact text layout to maximize focus on the illustration -->
         <div class="relative z-10 p-5 sm:p-6 md:p-7 flex flex-col justify-center min-h-[160px] sm:min-h-[180px] md:min-h-[200px]">
           <div class="max-w-xs sm:max-w-sm">
             <h3 class="text-base sm:text-lg font-medium text-[#090a0f] tracking-tight leading-snug">
               Start building with December.
             </h3>
             <p class="mt-1.5 text-xs sm:text-[13px] text-[#475569] leading-relaxed">
-              A coding agent for terminal and cloud.
+              A (so much) better coding agent for terminal and cloud.
             </p>
           </div>
         </div>
@@ -926,7 +1039,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     const pmDropdownMenu = document.getElementById('pm-dropdown-menu');
     const pmOptions = document.querySelectorAll('.pm-option');
 
-    let currentHeroCmd = heroDisplayCmd?.textContent?.trim() || "npm install -g @trydecember/cli";
+    let currentHeroCmd = heroDisplayCmd?.textContent?.trim() || "curl -fsSL https://trydecember.com/install.sh | bash";
 
     const triggerHeroCopy = async () => {
       try {
@@ -990,7 +1103,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       faqCopyBtn.onclick = async (e) => {
         e.stopPropagation();
         try {
-          await navigator.clipboard.writeText(faqInstallCmd.textContent?.trim() || 'npm install -g @trydecember/cli');
+          await navigator.clipboard.writeText(faqInstallCmd.textContent?.trim() || 'curl -fsSL https://trydecember.com/install.sh | bash');
           faqCopyIcon.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
           setTimeout(() => {
             faqCopyIcon.innerHTML = '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>';
