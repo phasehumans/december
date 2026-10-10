@@ -20,8 +20,8 @@ export default defineConfig({
         port: 2000,
     },
     redirects: {
-        '/install.sh': 'https://raw.githubusercontent.com/phasehumans/december/main/install.sh',
-        '/install': 'https://raw.githubusercontent.com/phasehumans/december/main/install.sh',
+        '/install.sh': 'https://www.npmjs.com/package/@trydecember/cli',
+        '/install': 'https://www.npmjs.com/package/@trydecember/cli',
         '/pricing': 'https://app.trydecember.com/settings/billing',
         '/settings/billing': 'https://app.trydecember.com/settings/billing',
         '/settings/usage': 'https://app.trydecember.com/settings/usage',

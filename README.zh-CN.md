@@ -23,7 +23,7 @@ December 是一个面向终端与云端的 (so much) better 编程智能体。�
 1. 安装 December：
 
 ```bash
-curl -fsSL https://trydecember.com/install.sh | bash
+npm install -g @trydecember/cli
 ```
 
 2. 进入你的项目目录并运行 `december`。

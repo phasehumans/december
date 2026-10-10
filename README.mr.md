@@ -23,7 +23,7 @@ December हा टर्मिनल आणि क्लाउडसाठी�
 1. December इन्स्टॉल करा:
 
 ```bash
-curl -fsSL https://trydecember.com/install.sh | bash
+npm install -g @trydecember/cli
 ```
 
 2. तुमच्या प्रोजेक्ट डिरेक्टरीमध्ये जा आणि `december` चालवा.

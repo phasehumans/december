@@ -23,7 +23,7 @@ December는 터미널과 클라우드를 위한 (so much) better 코딩 에이�
 1. December 설치:
 
 ```bash
-curl -fsSL https://trydecember.com/install.sh | bash
+npm install -g @trydecember/cli
 ```
 
 2. 프로젝트 디렉터리로 이동한 후 `december`를 실행합니다.

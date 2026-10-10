@@ -43,7 +43,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 title="Click to copy command"
               >
                 <span class="text-[#87b2f4] select-none font-semibold shrink-0">$</span>
-                <span id="hero-display-cmd" class="font-normal text-[#0f172a] truncate">curl -fsSL https://trydecember.com/install.sh | bash</span>
+                <span id="hero-display-cmd" class="font-normal text-[#0f172a] truncate">npm install -g @trydecember/cli</span>
               </button>
 
               <!-- Actions: Copy Button + Dropdown Toggle -->
@@ -91,28 +91,10 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 <span class="text-[9px] text-[#cbd5e1] font-mono font-normal">CLI</span>
               </div>
 
-              <!-- curl option (default active) -->
+              <!-- npm option (default active) -->
               <button
                 type="button"
                 class="pm-option w-full flex items-center gap-2.5 px-2.5 py-2 text-[#090a0f] bg-[#f8fafc] font-semibold transition-colors cursor-pointer text-left rounded-[2px]"
-                data-pm="curl"
-                data-cmd="curl -fsSL https://trydecember.com/install.sh | bash"
-              >
-                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none">
-                  <rect width="24" height="24" rx="3" fill="#334155" />
-                  <path d="M6.5 7.5L11 12L6.5 16.5" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-                  <line x1="13" y1="16.5" x2="17.5" y2="16.5" stroke="white" stroke-width="2.2" stroke-linecap="round" />
-                </svg>
-                <span>curl</span>
-                <svg class="pm-check w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </button>
-
-              <!-- npm option -->
-              <button
-                type="button"
-                class="pm-option w-full flex items-center gap-2.5 px-2.5 py-2 text-[#1e293b] hover:bg-[#f8fafc] hover:text-[#090a0f] transition-colors cursor-pointer text-left rounded-[2px]"
                 data-pm="npm"
                 data-cmd="npm install -g @trydecember/cli"
               >
@@ -120,7 +102,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                   <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
                 </svg>
                 <span>npm</span>
-                <svg class="pm-check hidden w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="pm-check w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </button>
@@ -1042,7 +1024,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     const pmDropdownMenu = document.getElementById('pm-dropdown-menu');
     const pmOptions = document.querySelectorAll('.pm-option');
 
-    let currentHeroCmd = heroDisplayCmd?.textContent?.trim() || "curl -fsSL https://trydecember.com/install.sh | bash";
+    let currentHeroCmd = heroDisplayCmd?.textContent?.trim() || "npm install -g @trydecember/cli";
 
     const triggerHeroCopy = async () => {
       try {

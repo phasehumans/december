@@ -19,7 +19,7 @@ December is a (so much) better coding agent for terminal and cloud. It understan
 1. Install December:
 
 ```bash
-curl -fsSL https://trydecember.com/install.sh | bash
+npm install -g @trydecember/cli
 ```
 
 2. Navigate to your project directory and run `december`.

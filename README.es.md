@@ -23,7 +23,7 @@ December es un (so much) better agente de programación para terminal y nube. Co
 1. Instala December:
 
 ```bash
-curl -fsSL https://trydecember.com/install.sh | bash
+npm install -g @trydecember/cli
 ```
 
 2. Ve al directorio de tu proyecto y ejecuta `december`.

@@ -21,14 +21,12 @@ describe('apps/docs page content & layout tests', () => {
 
             expect(html).toContain('december, a (so much) better coding agent')
             expect(html).toContain('for terminal and cloud')
-            expect(html).toContain('curl -fsSL https://trydecember.com/install.sh | bash')
             expect(html).toContain('npm install -g @trydecember/cli')
         })
 
-        it('includes package manager switch options for curl, npm, bun, and pnpm', () => {
+        it('includes package manager switch options for npm, bun, and pnpm', () => {
             const html = getLandingHtml()
 
-            expect(html).toContain('data-pm="curl"')
             expect(html).toContain('data-pm="npm"')
             expect(html).toContain('data-pm="bun"')
             expect(html).toContain('data-pm="pnpm"')

@@ -23,7 +23,7 @@ December はターミナルとクラウドに対応した (so much) better な�
 1. December をインストール:
 
 ```bash
-curl -fsSL https://trydecember.com/install.sh | bash
+npm install -g @trydecember/cli
 ```
 
 2. プロジェクトのディレクトリに移動して `december` を実行します。

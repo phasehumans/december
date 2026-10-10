@@ -1,5 +1,5 @@
-/install.sh          https://raw.githubusercontent.com/phasehumans/december/main/install.sh    302
-/install             https://raw.githubusercontent.com/phasehumans/december/main/install.sh    302
+/install.sh          https://www.npmjs.com/package/@trydecember/cli    302
+/install             https://www.npmjs.com/package/@trydecember/cli    302
 /pricing             https://app.trydecember.com/settings/billing    302
 /settings/billing    https://app.trydecember.com/settings/billing    302
 /settings/usage      https://app.trydecember.com/settings/usage      302

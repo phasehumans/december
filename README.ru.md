@@ -23,7 +23,7 @@ December - это (so much) better агент для написания кода
 1. Установите December:
 
 ```bash
-curl -fsSL https://trydecember.com/install.sh | bash
+npm install -g @trydecember/cli
 ```
 
 2. Перейдите в каталог вашего проекта и запустите `december`.
