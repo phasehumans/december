@@ -107,8 +107,8 @@ describe('apps/docs built HTML SEO & metadata verification', () => {
 
                 expect(html).toContain('December')
                 expect(html).toContain(version)
-                expect(html).toContain('[blog]')
-                expect(html).toContain('[docs]')
+                expect(html).toContain('blog')
+                expect(html).toContain('docs')
                 expect(html).not.toContain('[login]')
             })
         })

@@ -16,26 +16,26 @@ const { activePath = '/' } = Astro.props;
       <span class="text-[#64748b]">{version}</span>
     </a>
 
-    <!-- Nav Items (Right): [blog] and [docs] -->
+    <!-- Nav Items (Right): blog and docs -->
     <div class="flex items-center gap-1.5 sm:gap-2.5 font-mono text-xs sm:text-sm">
-      <!-- [blog] in bracket format -->
+      <!-- blog -->
       <a 
         href="/blog" 
         class={`transition-colors py-1 px-1 ${
           activePath.startsWith('/blog') ? 'text-[#87b2f4]' : 'text-[#475569] hover:text-[#87b2f4]'
         }`}
       >
-        [blog]
+        blog
       </a>
 
-      <!-- [docs] in bracket format -->
+      <!-- docs -->
       <a 
         href="/docs" 
         class={`transition-colors py-1 px-1 ${
           activePath.startsWith('/docs') ? 'text-[#87b2f4]' : 'text-[#475569] hover:text-[#87b2f4]'
         }`}
       >
-        [docs]
+        docs
       </a>
     </div>
   </div>

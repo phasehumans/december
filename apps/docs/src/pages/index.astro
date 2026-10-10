@@ -23,7 +23,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       </h1>
 
       <!-- Subtitle -->
-      <p class="mt-3.5 text-sm sm:text-base md:text-[17px] text-[#52525b] font-normal leading-relaxed w-full">
+      <p class="mt-3.5 text-sm sm:text-[15px] md:text-[16px] text-[#52525b] font-normal leading-relaxed w-full">
         It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
       </p>
 
@@ -47,13 +47,14 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               </button>
 
               <!-- Actions: Copy Button + Dropdown Toggle -->
-              <div class="flex items-center gap-0.5 ml-1.5 shrink-0">
+              <div class="flex items-center gap-1 ml-2 shrink-0">
                 <!-- Copy Button -->
                 <button
                   id="hero-copy-icon-btn"
                   type="button"
-                  class="relative p-1 text-[#64748b] hover:text-[#090a0f] transition-colors cursor-pointer focus:outline-none"
+                  class="w-7 h-7 flex items-center justify-center text-[#64748b] hover:text-[#090a0f] hover:bg-[#f8fafc] transition-colors cursor-pointer focus:outline-none rounded-[2px]"
                   title="Copy command"
+                  aria-label="Copy install command"
                 >
                   <svg id="hero-copy-icon" class="w-3.5 h-3.5 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -61,14 +62,17 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                   </svg>
                 </button>
 
+                <div class="h-4 w-px bg-[#e2e8f0]" aria-hidden="true"></div>
+
                 <!-- Dropdown Toggle Button -->
                 <button
                   id="pm-dropdown-toggle"
                   type="button"
-                  class="py-1 pl-1.5 pr-0.5 border-l border-[#e2e8f0] text-[#64748b] hover:text-[#090a0f] transition-colors focus:outline-none cursor-pointer flex items-center justify-center"
+                  class="h-7 px-1.5 flex items-center justify-center gap-1 text-[#64748b] hover:text-[#090a0f] hover:bg-[#f8fafc] transition-colors focus:outline-none cursor-pointer rounded-[2px]"
                   aria-expanded="false"
                   aria-haspopup="true"
-                  title="Select package manager"
+                  title="Choose install method"
+                  aria-label="Choose install method"
                 >
                   <svg id="pm-dropdown-chevron" class="w-3.5 h-3.5 transition-transform duration-200 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M6 9l6 6 6-6" />
@@ -77,26 +81,32 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               </div>
             </div>
 
-            <!-- Dropdown Menu (curl, npm, bun, pnpm with Logos) -->
+            <!-- Dropdown Menu (curl, npm, bun, pnpm with Logos & Active State) -->
             <div
               id="pm-dropdown-menu"
-              class="hidden absolute right-0 top-full mt-1.5 z-50 w-52 border border-[#e2e8f0] bg-white p-1.5 shadow-xl font-mono text-xs rounded-none"
+              class="hidden absolute right-0 top-full mt-1.5 z-50 w-56 border border-[#e2e8f0] bg-white p-1.5 shadow-xl font-mono text-xs rounded-none"
             >
-              <div class="px-2.5 py-1 text-[10px] uppercase tracking-wider text-[#94a3b8] font-semibold">
-                Install via
+              <div class="px-2.5 py-1.5 text-[10px] uppercase tracking-wider text-[#94a3b8] font-semibold border-b border-[#f1f5f9] mb-1 flex items-center justify-between">
+                <span>Install via</span>
+                <span class="text-[9px] text-[#cbd5e1] font-mono font-normal">CLI</span>
               </div>
 
-              <!-- curl option -->
+              <!-- curl option (default active) -->
               <button
                 type="button"
-                class="pm-option w-full flex items-center gap-2.5 px-2.5 py-2 text-[#1e293b] hover:bg-[#f8fafc] hover:text-[#090a0f] transition-colors cursor-pointer text-left rounded-[2px]"
+                class="pm-option w-full flex items-center gap-2.5 px-2.5 py-2 text-[#090a0f] bg-[#f8fafc] font-semibold transition-colors cursor-pointer text-left rounded-[2px]"
                 data-pm="curl"
                 data-cmd="curl -fsSL https://trydecember.com/install.sh | bash"
               >
-                <svg class="w-4 h-4 text-[#87b2f4]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M4 17l6-6-6-6M12 19h8"/>
+                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none">
+                  <rect width="24" height="24" rx="3" fill="#334155" />
+                  <path d="M6.5 7.5L11 12L6.5 16.5" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  <line x1="13" y1="16.5" x2="17.5" y2="16.5" stroke="white" stroke-width="2.2" stroke-linecap="round" />
                 </svg>
-                <span class="font-medium">curl</span>
+                <span>curl</span>
+                <svg class="pm-check w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
               </button>
 
               <!-- npm option -->
@@ -106,10 +116,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 data-pm="npm"
                 data-cmd="npm install -g @trydecember/cli"
               >
-                <svg class="w-4 h-4 text-[#cb3837]" viewBox="0 0 24 24" fill="currentColor">
+                <svg class="w-4 h-4 shrink-0 text-[#cb3837]" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
                 </svg>
-                <span class="font-medium">npm</span>
+                <span>npm</span>
+                <svg class="pm-check hidden w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
               </button>
 
               <!-- bun option -->
@@ -140,7 +153,10 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                     <path d="M24,33.64a2.07,2.07,0 1,0-2.06-2.07A2.07,2.07,0,0,0,24,33.64Zm24.77,0a2.07,2.07,0 1,0-2.06-2.07A2.07,2.07,0,0,0,48.75,33.64Z" fill="#fff" fill-rule="evenodd"/>
                   </g>
                 </svg>
-                <span class="font-medium">bun</span>
+                <span>bun</span>
+                <svg class="pm-check hidden w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
               </button>
 
               <!-- pnpm option -->
@@ -160,7 +176,10 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                   <rect x="9.25" y="16.5" width="5.5" height="5.5" fill="#4a4a4a" rx="1"/>
                   <rect x="16.5" y="16.5" width="5.5" height="5.5" fill="#4a4a4a" rx="1"/>
                 </svg>
-                <span class="font-medium">pnpm</span>
+                <span>pnpm</span>
+                <svg class="pm-check hidden w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
               </button>
             </div>
           </div>
@@ -363,10 +382,9 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </div>
     </section>
 
-    <!-- Video Player Showcase (Hero Demo) -->
+    <!-- Video Player Showcase (Hero Demo) - Temporarily disabled, will be added later
     <section class="mb-16 sm:mb-20">
       <div class="relative w-full mx-auto">
-        <!-- Video Container with 16:9 Aspect Ratio -->
         <div
           id="hero-video-container"
           class="relative w-full aspect-video rounded-none border border-[#e2e8f0] bg-black shadow-xl overflow-hidden"
@@ -381,6 +399,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </div>
       </div>
     </section>
+    -->
 
     <!-- How It Works Section -->
     <section class="mb-16 sm:mb-20">
@@ -393,7 +412,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </h3>
         <div class="mt-3 space-y-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
           <p>
-            December runs directly inside your local repository. It indexes your codebase, plans multi-file changes, edits code with precision, and executes shell commands and test suites to verify every fix.
+            December runs directly inside your local repository. It understands your codebase, plans multi-file changes, edits code with precision, and executes shell commands and test suites to verify every fix.
           </p>
           <p>
             Bring the tools and subscriptions you already have: December connects seamlessly to your existing plans, including Claude Code, Codex plan, Antigravity plan, and Copilot plan. It also supports 150+ model providers via BYOK and fully offline local models with Ollama.
@@ -869,7 +888,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 <span class="text-[#cbd5e1]">/</span>
                 <span>Overview</span>
               </div>
-              <h4 class="text-sm sm:text-base font-medium text-[#090a0f] group-hover:text-[#87b2f4] transition-colors leading-snug">
+              <h4 class="text-sm sm:text-[15px] font-normal text-[#090a0f] leading-snug">
                 What is December?
               </h4>
             </div>
@@ -879,7 +898,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           </button>
           <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed">
             <p>
-              December is an open-source autonomous coding agent designed for your terminal and the cloud. It indexes and understands your codebase, plans multi-file refactors, writes code, fixes bugs, and executes native terminal commands and tests with zero artificial friction. Use it directly in your terminal or alongside your favorite IDE.
+              December is a coding agent designed for your terminal and cloud. Rather than just offering inline suggestions, December explores your project, plans multi-file changes, writes code, and executes terminal commands and tests to verify fixes. You can work with it entirely in your local terminal or alongside your favorite IDE.
             </p>
           </div>
         </div>
@@ -897,7 +916,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 <span class="text-[#cbd5e1]">/</span>
                 <span>Installation</span>
               </div>
-              <h4 class="text-sm sm:text-base font-medium text-[#090a0f] group-hover:text-[#87b2f4] transition-colors leading-snug">
+              <h4 class="text-sm sm:text-[15px] font-normal text-[#090a0f] leading-snug">
                 How do I get started with December?
               </h4>
             </div>
@@ -907,25 +926,10 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           </button>
           <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed">
             <p>
-              Install December using the standalone installer:
+              Install December using the standalone installer or your preferred package manager (npm, bun, or pnpm) from the quick install command bar above.
             </p>
-            <div class="mt-2.5 p-3 bg-[#f8fafc] border border-[#e2e8f0] font-mono text-xs text-[#090a0f] flex items-center justify-between gap-3">
-              <span id="faq-install-cmd">curl -fsSL https://trydecember.com/install.sh | bash</span>
-              <button
-                id="faq-copy-btn"
-                type="button"
-                class="p-1 text-[#64748b] hover:text-[#090a0f] transition-colors cursor-pointer focus:outline-none shrink-0"
-                title="Copy command"
-                aria-label="Copy install command"
-              >
-                <svg id="faq-copy-icon" class="w-3.5 h-3.5 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </button>
-            </div>
             <p class="mt-2.5">
-              Then navigate to any git repository in your shell and run <code class="font-mono text-[#090a0f] font-medium">december</code> to start an interactive session, or launch with an initial instruction like <code class="font-mono text-[#090a0f] font-medium">december "fix failing unit tests"</code>.
+              Then navigate to any git repository in your shell and run <code class="font-mono text-[#090a0f]">december</code> to start an interactive session, or launch with an initial instruction like <code class="font-mono text-[#090a0f]">december "fix failing unit tests"</code>.
             </p>
           </div>
         </div>
@@ -943,7 +947,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 <span class="text-[#cbd5e1]">/</span>
                 <span>Models &amp; BYOK</span>
               </div>
-              <h4 class="text-sm sm:text-base font-medium text-[#090a0f] group-hover:text-[#87b2f4] transition-colors leading-snug">
+              <h4 class="text-sm sm:text-[15px] font-normal text-[#090a0f] leading-snug">
                 Do I need extra AI subscriptions or proprietary credits?
               </h4>
             </div>
@@ -956,7 +960,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               No! December is 100% model-agnostic with zero token markup. Bring your own API keys for Claude 3.7 Sonnet, OpenAI (GPT-4o, o3-mini), Google Gemini 2.5, DeepSeek, or run local offline models privately with Ollama.
             </p>
             <p class="mt-2">
-              If you prefer zero setup, you can also sign in to December Cloud to use bundled monthly credits across top-tier models. Configure your keys anytime by running <code class="font-mono text-[#090a0f] font-medium">december login</code>.
+              If you prefer zero setup, you can also sign in to December Cloud to use bundled monthly credits across top-tier models. Configure your keys anytime by running <code class="font-mono text-[#090a0f]">december login</code>.
             </p>
           </div>
         </div>
@@ -974,7 +978,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 <span class="text-[#cbd5e1]">/</span>
                 <span>Privacy &amp; Security</span>
               </div>
-              <h4 class="text-sm sm:text-base font-medium text-[#090a0f] group-hover:text-[#87b2f4] transition-colors leading-snug">
+              <h4 class="text-sm sm:text-[15px] font-normal text-[#090a0f] leading-snug">
                 What about data privacy and codebase security?
               </h4>
             </div>
@@ -987,7 +991,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               December operates locally on your machine. Your codebase, git history, and local environment files never leave your system. When you use BYOK mode, requests travel directly from your machine to your configured LLM endpoint (or stay completely offline when using Ollama).
             </p>
             <p class="mt-2">
-              Code is only synchronized to an isolated cloud micro-VM when you explicitly execute the <code class="font-mono text-[#090a0f] font-medium">/handoff</code> command.
+              Code is only synchronized to an isolated cloud micro-VM when you explicitly execute the <code class="font-mono text-[#090a0f]">/handoff</code> command.
             </p>
           </div>
         </div>
@@ -997,31 +1001,30 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
     <!-- Brand Banner above Footer -->
     <div class="mb-1 sm:mb-2">
-      <div class="relative w-full bg-[#f0f7ff] overflow-hidden group transition-all">
-        <!-- Brand Banner Background Image spanning full width -->
+      <a
+        href={`${appUrl}/login`}
+        class="relative block w-full border border-[#e2e8f0] bg-white overflow-hidden group min-h-[100px] sm:min-h-[120px] flex items-center"
+        aria-label="start building with december"
+      >
+        <!-- Pure Dither Background Image -->
         <img
           src="/illustrations/banner.webp"
-          alt="Start building with December"
-          class="absolute inset-0 w-full h-full object-cover object-top select-none pointer-events-none opacity-95 group-hover:opacity-100 transition-opacity duration-300"
+          alt=""
+          class="absolute inset-0 w-full h-full object-cover object-right select-none pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity duration-300"
           loading="lazy"
           decoding="async"
         />
 
-        <!-- Soft gradient overlay ensuring optimal contrast for text on the left without obscuring center figures -->
-        <div class="absolute inset-y-0 left-0 w-full sm:w-1/2 bg-gradient-to-r from-white/90 via-white/35 to-transparent pointer-events-none"></div>
+        <!-- Soft gradient on the left ensuring crisp text contrast -->
+        <div class="absolute inset-y-0 left-0 w-full sm:w-[48%] md:w-[40%] bg-gradient-to-r from-white via-white/80 to-transparent pointer-events-none"></div>
 
-        <!-- Banner Content: Compact text layout to maximize focus on the illustration -->
-        <div class="relative z-10 p-5 sm:p-6 md:p-7 flex flex-col justify-center min-h-[160px] sm:min-h-[180px] md:min-h-[200px]">
-          <div class="max-w-xs sm:max-w-sm">
-            <h3 class="text-base sm:text-lg font-medium text-[#090a0f] tracking-tight leading-snug">
-              Start building with December.
-            </h3>
-            <p class="mt-1.5 text-xs sm:text-[13px] text-[#475569] leading-relaxed">
-              A (so much) better coding agent for terminal and cloud.
-            </p>
-          </div>
+        <!-- Banner Content -->
+        <div class="relative z-10 px-5 sm:px-7 py-3 sm:py-4 flex items-center">
+          <span class="text-xs sm:text-[13px] md:text-sm font-medium tracking-tight text-[#87b2f4] group-hover:text-[#6fa2ee] transition-colors">
+            start building with december
+          </span>
         </div>
-      </div>
+      </a>
     </div>
   </div>
 </BaseLayout>
@@ -1066,10 +1069,12 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         if (willOpen) {
           pmDropdownMenu.classList.remove('hidden');
           pmDropdownToggle.setAttribute('aria-expanded', 'true');
+          pmDropdownToggle.classList.add('bg-[#f1f5f9]', 'text-[#090a0f]');
           if (pmDropdownChevron) pmDropdownChevron.classList.add('rotate-180');
         } else {
           pmDropdownMenu.classList.add('hidden');
           pmDropdownToggle.setAttribute('aria-expanded', 'false');
+          pmDropdownToggle.classList.remove('bg-[#f1f5f9]', 'text-[#090a0f]');
           if (pmDropdownChevron) pmDropdownChevron.classList.remove('rotate-180');
         }
       };
@@ -1082,9 +1087,22 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             currentHeroCmd = cmd;
             heroDisplayCmd.textContent = cmd;
 
+            // Update active styles and checkmarks
+            pmOptions.forEach((opt) => {
+              const check = opt.querySelector('.pm-check');
+              if (check) check.classList.add('hidden');
+              opt.classList.remove('bg-[#f8fafc]', 'text-[#090a0f]', 'font-semibold');
+              opt.classList.add('text-[#1e293b]');
+            });
+            const activeCheck = option.querySelector('.pm-check');
+            if (activeCheck) activeCheck.classList.remove('hidden');
+            option.classList.remove('text-[#1e293b]');
+            option.classList.add('bg-[#f8fafc]', 'text-[#090a0f]', 'font-semibold');
+
             // Close dropdown & copy selected command
             pmDropdownMenu.classList.add('hidden');
             pmDropdownToggle.setAttribute('aria-expanded', 'false');
+            pmDropdownToggle.classList.remove('bg-[#f1f5f9]', 'text-[#090a0f]');
             if (pmDropdownChevron) {
               pmDropdownChevron.classList.remove('rotate-180');
             }
@@ -1094,27 +1112,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       });
     }
 
-    // 2. FAQ Install Command Copy Script
-    const faqCopyBtn = document.getElementById('faq-copy-btn');
-    const faqCopyIcon = document.getElementById('faq-copy-icon');
-    const faqInstallCmd = document.getElementById('faq-install-cmd');
-
-    if (faqCopyBtn && faqCopyIcon && faqInstallCmd) {
-      faqCopyBtn.onclick = async (e) => {
-        e.stopPropagation();
-        try {
-          await navigator.clipboard.writeText(faqInstallCmd.textContent?.trim() || 'curl -fsSL https://trydecember.com/install.sh | bash');
-          faqCopyIcon.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
-          setTimeout(() => {
-            faqCopyIcon.innerHTML = '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>';
-          }, 1200);
-        } catch {
-          // Intentionally swallowed: clipboard copy fallback
-        }
-      };
-    }
-
-    // 3. FAQ Accordion Toggle Script
+    // 2. FAQ Accordion Toggle Script
     const faqList = document.getElementById('faq-list');
     if (faqList) {
       faqList.onclick = (e) => {
@@ -1152,6 +1150,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         }
       };
     }
+
   }
 
   // Global click to dismiss dropdown
@@ -1163,6 +1162,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       if (!pmDropdownMenu.contains(e.target as Node) && !pmDropdownToggle.contains(e.target as Node)) {
         pmDropdownMenu.classList.add('hidden');
         pmDropdownToggle.setAttribute('aria-expanded', 'false');
+        pmDropdownToggle.classList.remove('bg-[#f1f5f9]', 'text-[#090a0f]');
         if (pmDropdownChevron) {
           pmDropdownChevron.classList.remove('rotate-180');
         }

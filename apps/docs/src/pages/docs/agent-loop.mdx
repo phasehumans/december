@@ -124,7 +124,7 @@ Rather than generating speculative code strings in a single pass, December enfor
 Before touching source code, the agent inspects project structure:
 
 - Reads `package.json`, `tsconfig.json`, or relevant build manifests
-- Searches symbols and dependencies using regex and AST indexing
+- Searches symbols and dependencies using regex and AST symbol analysis
 - Reads git status and existing test suites
 
 ### 2. Implementation Planning

@@ -41,7 +41,7 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('window.location.replace')
         })
 
-        it('renders full footer with legal and social links', () => {
+        it('renders full footer with legal and contact links', () => {
             const html = getLandingHtml()
             const footerHtml = html.slice(html.indexOf('<footer'))
 
@@ -53,16 +53,19 @@ describe('apps/docs page content & layout tests', () => {
             )
             expect(footerHtml).toContain('href="/privacy"')
             expect(footerHtml).toContain('href="/terms"')
-            expect(footerHtml).toContain('https://github.com/phasehumans/december')
-            expect(footerHtml).toContain('https://x.com/phasehumans')
-            expect(footerHtml).toContain('x')
+            expect(footerHtml).toContain('team@trydecember.com')
+            expect(footerHtml).toContain('mailto:team@trydecember.com')
+            expect(footerHtml).not.toContain('https://github.com/phasehumans/december')
+            expect(footerHtml).not.toContain('https://x.com/phasehumans')
             expect(footerHtml).not.toContain('https://www.npmjs.com/package/@trydecember/cli')
             expect(footerHtml).not.toContain('https://www.youtube.com/@phasehumans')
             expect(footerHtml).not.toContain('youtube')
             expect(footerHtml).not.toContain('twitter')
             expect(footerHtml).not.toContain('https://www.linkedin.com/in/phasehumans/')
             expect(footerHtml).not.toContain('linkedin')
-            expect(html).toContain('id="faq-copy-btn"')
+            expect(html).not.toContain('id="faq-copy-btn"')
+            expect(html).toContain('faq-toggle')
+            expect(html).toContain('faq-content hidden')
             expect(html).not.toContain('or bun / pnpm')
             expect(html).not.toContain('id="back-to-top-btn"')
         })
