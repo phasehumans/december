@@ -1,9 +1,10 @@
 {
-    "version": "0.4.5",
-    "title": "What's New in v0.4.5",
+    "version": "0.4.6",
+    "title": "What's New in v0.4.6",
     "bullets": [
-        "*(cli,tui)* Add voice input dictation and workspace trust verification",
-        "*(tools,cli)* Interactive cdp browser engine and browser_action tool (#506, #509)"
+        "*(providers,scripts)* Fix anthropic user key auth and update email scripts",
+        "*(docs,web)* Clean redundant png assets, add marathi readme, and update landing hero",
+        "*(docs)* Update brand blue banner, navbar links, and profile cards"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

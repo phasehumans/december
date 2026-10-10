@@ -2,8 +2,20 @@
 
 ### Features
 
+- _(providers,scripts)_ Fix anthropic user key auth and update email scripts
+- _(docs,web)_ Clean redundant png assets, add marathi readme, and update landing hero
+- _(docs)_ Update brand blue banner, navbar links, and profile cards
+
+## [0.4.5] - 2026-10-05
+
+### Features
+
 - _(cli,tui)_ Add voice input dictation and workspace trust verification
 - _(tools,cli)_ Interactive cdp browser engine and browser_action tool (#506, #509)
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.5
 
 ## [0.4.4] - 2026-10-03
 
