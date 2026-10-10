@@ -1,6 +1,6 @@
 {
-    "version": "0.4.7",
-    "title": "What's New in v0.4.7",
-    "bullets": ["*(docs)* Add installer redirects for install.sh and install"],
+    "version": "0.4.8",
+    "title": "What's New in v0.4.8",
+    "bullets": ["*(cli)* Remove standalone install script and update installer references to npm"],
     "url": "https://trydecember.com/docs/changelog"
 }

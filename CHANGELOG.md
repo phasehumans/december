@@ -2,7 +2,17 @@
 
 ### Features
 
+- _(cli)_ Remove standalone install script and update installer references to npm
+
+## [0.4.7] - 2026-10-10
+
+### Features
+
 - _(docs)_ Add installer redirects for install.sh and install
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.7
 
 ## [0.4.6] - 2026-10-10
 
