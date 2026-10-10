@@ -2,9 +2,19 @@
 
 ### Features
 
+- _(docs)_ Add installer redirects for install.sh and install
+
+## [0.4.6] - 2026-10-10
+
+### Features
+
 - _(providers,scripts)_ Fix anthropic user key auth and update email scripts
 - _(docs,web)_ Clean redundant png assets, add marathi readme, and update landing hero
 - _(docs)_ Update brand blue banner, navbar links, and profile cards
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.6
 
 ## [0.4.5] - 2026-10-05
 

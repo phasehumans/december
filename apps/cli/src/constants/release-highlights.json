@@ -1,10 +1,6 @@
 {
-    "version": "0.4.6",
-    "title": "What's New in v0.4.6",
-    "bullets": [
-        "*(providers,scripts)* Fix anthropic user key auth and update email scripts",
-        "*(docs,web)* Clean redundant png assets, add marathi readme, and update landing hero",
-        "*(docs)* Update brand blue banner, navbar links, and profile cards"
-    ],
+    "version": "0.4.7",
+    "title": "What's New in v0.4.7",
+    "bullets": ["*(docs)* Add installer redirects for install.sh and install"],
     "url": "https://trydecember.com/docs/changelog"
 }
