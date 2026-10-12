@@ -1,6 +1,6 @@
 import { Agent } from '@december/agent'
 import { Box, useInput } from 'ink'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { GlobalShortcuts } from './components/global-shortcuts'
 import { InputBar } from './components/input-bar'
@@ -87,7 +87,7 @@ export function ChatApp({
 
         const handleResize = () => {
             try {
-                process.stdout.write('\x1b[2J\x1b[H')
+                process.stdout.write('\x1b[?2026h\x1b[2J\x1b[H\x1b[?2026l')
             } catch {
                 // Intentionally swallowed: ignore stdout write errors on resize
             }
@@ -173,6 +173,8 @@ export function ChatApp({
             )
         ) : null
 
+    const [isReadingMode, setIsReadingMode] = useState(false)
+
     const handleFormSubmit = useCallback(
         (text: string) => {
             handleSubmit(text)
@@ -180,12 +182,14 @@ export function ChatApp({
         [handleSubmit]
     )
 
-    const totalTokens = [...staticMessages, ...activeMessages].reduce((acc, msg) => {
-        if (msg.usage) {
-            return acc + (msg.usage.promptTokens || 0) + (msg.usage.completionTokens || 0)
-        }
-        return acc
-    }, 0)
+    const totalTokens = useMemo(() => {
+        return [...staticMessages, ...activeMessages].reduce((acc, msg) => {
+            if (msg.usage) {
+                return acc + (msg.usage.promptTokens || 0) + (msg.usage.completionTokens || 0)
+            }
+            return acc
+        }, 0)
+    }, [staticMessages, activeMessages])
 
     const rows = useTerminalRows()
     const columns = useTerminalColumns()
@@ -200,6 +204,39 @@ export function ChatApp({
         scrollViewportRef.current?.scrollDown(delta)
     }, [])
 
+    const handleCopy = useCallback(() => {
+        import('./utils/clipboard')
+            .then((cb) => {
+                const allMsgs = [...staticMessages, ...activeMessages]
+                const lastAssistant = [...allMsgs]
+                    .reverse()
+                    .find((m) => m.role === 'assistant' && m.blocks)
+                if (lastAssistant) {
+                    const text =
+                        lastAssistant.blocks?.map((b: any) => b.content || '').join('\n') || ''
+                    cb.writeToClipboard(text)
+                }
+            })
+            .catch(() => {
+                // Intentionally swallowed: clipboard copy error fallback handled
+            })
+    }, [staticMessages, activeMessages])
+
+    const handleResetChat = useCallback(() => {
+        console.clear()
+        setStaticMessages([{ id: 'header-' + Date.now(), role: 'header' }])
+        setStaticKey((k: number) => k + 1)
+        setActiveMessages([])
+        session.setQueuedPrompts?.([])
+        session.addToast?.('Started a new conversation.', 'success')
+    }, [
+        setStaticMessages,
+        setStaticKey,
+        setActiveMessages,
+        session.setQueuedPrompts,
+        session.addToast,
+    ])
+
     const inputBarElement = (
         <InputBar
             onSubmit={handleFormSubmit}
@@ -207,22 +244,7 @@ export function ChatApp({
             onScrollDown={handleScrollDown}
             onStartVoice={session.onStartVoice}
             disabled={authMode !== 'none' || (Boolean(workflowUI) && !session.customInputMode)}
-            onCopy={() => {
-                import('./utils/clipboard')
-                    .then((cb) => {
-                        const allMsgs = [...staticMessages, ...activeMessages]
-                        const lastAssistant = [...allMsgs]
-                            .reverse()
-                            .find((m) => m.role === 'assistant' && m.blocks)
-                        if (lastAssistant) {
-                            const text =
-                                lastAssistant.blocks?.map((b: any) => b.content || '').join('\n') ||
-                                ''
-                            cb.writeToClipboard(text)
-                        }
-                    })
-                    .catch(console.error)
-            }}
+            onCopy={handleCopy}
             placeholder="Ask December to build features, fix bugs, or work on your code..."
             activeModel={session.activeModel || agent?.modelOptions?.model || 'gemini-3.7-flash'}
             contextTokens={totalTokens}
@@ -235,14 +257,7 @@ export function ChatApp({
             interactivePlanGoalMode={session.interactivePlanGoalMode}
             agent={agent}
             toasts={session.toasts}
-            resetChat={() => {
-                console.clear()
-                setStaticMessages([{ id: 'header-' + Date.now(), role: 'header' }])
-                setStaticKey((k: number) => k + 1)
-                setActiveMessages([])
-                session.setQueuedPrompts?.([])
-                session.addToast?.('Started a new conversation.', 'success')
-            }}
+            resetChat={handleResetChat}
             onUpdateSuccess={onUpdateSuccess}
             queuedPrompts={session.queuedPrompts}
             grillMode={grillMode}
@@ -281,6 +296,7 @@ export function ChatApp({
                 ref={scrollViewportRef}
                 isGenerating={session.isStreaming}
                 isActive={authMode === 'none'}
+                onScrollChange={(linesBelow) => setIsReadingMode(linesBelow > 0)}
             >
                 <MessageList
                     staticKey={staticKey}
@@ -293,6 +309,7 @@ export function ChatApp({
                     expandCommands={session.expandCommands}
                     fullscreen={true}
                     announcement={announcement}
+                    isReadingMode={isReadingMode}
                 />
             </ScrollViewport>
 

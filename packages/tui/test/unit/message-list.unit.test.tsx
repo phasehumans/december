@@ -278,4 +278,64 @@ describe('MessageList Component (Unit)', () => {
         expect(frame).not.toContain('Please follow the procedures from skill')
         expect(frame).not.toContain("You don't remember every skill, so ask.")
     })
+
+    it('windows messages in fullscreen mode when message history exceeds threshold and isReadingMode is false', () => {
+        const staticMessages = Array.from({ length: 30 }, (_, i) => ({
+            id: `msg-${i}`,
+            role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+            text: i % 2 === 0 ? `User message ${i}` : undefined,
+            blocks:
+                i % 2 !== 0
+                    ? [{ type: 'text' as const, content: `Assistant reply ${i}` }]
+                    : undefined,
+        }))
+
+        const { lastFrame } = renderWithProviders(
+            <MessageList
+                staticKey={0}
+                staticMessages={staticMessages}
+                activeMessages={[]}
+                isAuthenticated={true}
+                fullscreen={true}
+                isReadingMode={false}
+            />
+        )
+
+        const frame = lastFrame() || ''
+        // Recent messages should be present
+        expect(frame).toContain('User message 28')
+        expect(frame).toContain('Assistant reply 29')
+        // Earliest messages should be windowed out
+        expect(frame).not.toMatch(/\bUser message 0\b/)
+        expect(frame).not.toMatch(/\bUser message 2\b/)
+        expect(frame).not.toMatch(/\bAssistant reply 1\b/)
+    })
+
+    it('renders all messages in fullscreen mode when isReadingMode is true', () => {
+        const staticMessages = Array.from({ length: 25 }, (_, i) => ({
+            id: `msg-${i}`,
+            role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+            text: i % 2 === 0 ? `User message ${i}` : undefined,
+            blocks:
+                i % 2 !== 0
+                    ? [{ type: 'text' as const, content: `Assistant reply ${i}` }]
+                    : undefined,
+        }))
+
+        const { lastFrame } = renderWithProviders(
+            <MessageList
+                staticKey={0}
+                staticMessages={staticMessages}
+                activeMessages={[]}
+                isAuthenticated={true}
+                fullscreen={true}
+                isReadingMode={true}
+            />
+        )
+
+        const frame = lastFrame() || ''
+        // All messages should be visible when in reading mode
+        expect(frame).toContain('User message 0')
+        expect(frame).toContain('User message 24')
+    })
 })

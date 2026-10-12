@@ -180,7 +180,7 @@ export function FormattedErrorText({
     )
 }
 
-export function ErrorMessage({
+export const ErrorMessage = React.memo(function ErrorMessage({
     message,
     cause,
     hint,
@@ -207,4 +207,4 @@ export function ErrorMessage({
             )}
         </Box>
     )
-}
+})

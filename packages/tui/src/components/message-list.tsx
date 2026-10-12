@@ -1,6 +1,8 @@
 import { Box, Static } from 'ink'
 import React from 'react'
 
+import { THEME } from '../theme'
+
 import { Header } from './header'
 import { BotMessage } from './messages/bot-message'
 import { ErrorMessage } from './messages/error-message'
@@ -9,52 +11,72 @@ import { UserMessage } from './messages/user-message'
 import type { ReleaseAnnouncement } from '../constants/announcements'
 import type { Message } from '../types'
 
-function renderSingleMessage(
-    msg: Message,
-    index: number,
-    allMessages: Message[],
-    cliVersion?: string,
-    latestVersion?: string,
-    userEmail?: string,
-    expandCommands?: boolean,
+export interface MessageItemProps {
+    msg: Message
+    index: number
+    prevRole?: string | null
+    cliVersion?: string
+    latestVersion?: string
+    userEmail?: string
+    expandCommands?: boolean
     announcement?: ReleaseAnnouncement | null
-) {
-    const key = msg.id != null ? `${msg.id}-${index}` : `msg-idx-${index}`
-    if (msg.role === 'header') {
-        return (
-            <Header
-                key={key}
-                cliVersion={cliVersion}
-                latestVersion={latestVersion}
-                userEmail={userEmail}
-                announcement={announcement}
-            />
-        )
-    }
-    if (msg.role === 'user')
-        return <UserMessage key={key} message={msg.displayText || msg.text || ''} />
-    if (msg.role === 'error') {
-        const prevRole = index > 0 ? allMessages[index - 1]?.role : null
-        const hasTopMargin = prevRole !== 'user'
-        return (
-            <ErrorMessage
-                key={key}
-                message={msg.text ?? ''}
-                cause={msg.cause}
-                hint={msg.hint}
-                hasTopMargin={hasTopMargin}
-            />
-        )
-    }
-    return (
-        <BotMessage
-            key={key}
-            blocks={msg.blocks ?? []}
-            usage={msg.usage}
-            expandCommands={expandCommands}
-        />
-    )
 }
+
+export const MessageItem = React.memo(
+    function MessageItem({
+        msg,
+        prevRole,
+        cliVersion,
+        latestVersion,
+        userEmail,
+        expandCommands,
+        announcement,
+    }: MessageItemProps) {
+        if (msg.role === 'header') {
+            return (
+                <Header
+                    cliVersion={cliVersion}
+                    latestVersion={latestVersion}
+                    userEmail={userEmail}
+                    announcement={announcement}
+                />
+            )
+        }
+        if (msg.role === 'user') {
+            return <UserMessage message={msg.displayText || msg.text || ''} />
+        }
+        if (msg.role === 'error') {
+            const hasTopMargin = prevRole !== 'user'
+            return (
+                <ErrorMessage
+                    message={msg.text ?? ''}
+                    cause={msg.cause}
+                    hint={msg.hint}
+                    hasTopMargin={hasTopMargin}
+                />
+            )
+        }
+        return (
+            <BotMessage
+                blocks={msg.blocks ?? []}
+                usage={msg.usage}
+                expandCommands={expandCommands}
+            />
+        )
+    },
+    (prev, next) => {
+        if (prev.msg !== next.msg) return false
+        if (prev.prevRole !== next.prevRole) return false
+        if (prev.expandCommands !== next.expandCommands) return false
+        if (prev.cliVersion !== next.cliVersion) return false
+        if (prev.latestVersion !== next.latestVersion) return false
+        if (prev.userEmail !== next.userEmail) return false
+        if (prev.announcement !== next.announcement) return false
+        return true
+    }
+)
+
+const MAX_WINDOW_MESSAGES = 20
 
 export const MessageList = React.memo(function MessageList({
     staticKey,
@@ -67,6 +89,7 @@ export const MessageList = React.memo(function MessageList({
     expandCommands,
     fullscreen = true,
     announcement,
+    isReadingMode = false,
 }: {
     staticKey: number
     staticMessages: Message[]
@@ -78,23 +101,53 @@ export const MessageList = React.memo(function MessageList({
     expandCommands?: boolean
     fullscreen?: boolean
     announcement?: ReleaseAnnouncement | null
+    isReadingMode?: boolean
 }) {
     if (fullscreen) {
         const allMessages = [...staticMessages, ...activeMessages]
+        const shouldWindow = !isReadingMode && allMessages.length > MAX_WINDOW_MESSAGES
+        const visibleMessages = shouldWindow ? allMessages.slice(-MAX_WINDOW_MESSAGES) : allMessages
+        const hiddenCount = shouldWindow ? allMessages.length - MAX_WINDOW_MESSAGES : 0
+
         return (
             <Box flexDirection="column" width="100%">
-                {allMessages.map((msg, index) =>
-                    renderSingleMessage(
-                        msg,
-                        index,
-                        allMessages,
-                        cliVersion,
-                        latestVersion,
-                        userEmail,
-                        expandCommands,
-                        announcement
-                    )
+                {hiddenCount > 0 && (
+                    <Box
+                        paddingLeft={THEME.padding.paddingLeft ?? THEME.padding.paddingX}
+                        paddingRight={THEME.padding.paddingRight ?? 4}
+                        marginY={1}
+                    >
+                        <Box>
+                            <Box marginRight={1}>
+                                <Header
+                                    cliVersion={cliVersion}
+                                    latestVersion={latestVersion}
+                                    userEmail={userEmail}
+                                    announcement={announcement}
+                                />
+                            </Box>
+                        </Box>
+                    </Box>
                 )}
+                {visibleMessages.map((msg, index) => {
+                    const actualIndex = shouldWindow ? hiddenCount + index : index
+                    const prevRole = actualIndex > 0 ? allMessages[actualIndex - 1]?.role : null
+                    const key =
+                        msg.id != null ? `${msg.id}-${actualIndex}` : `msg-idx-${actualIndex}`
+                    return (
+                        <MessageItem
+                            key={key}
+                            msg={msg}
+                            index={actualIndex}
+                            prevRole={prevRole}
+                            cliVersion={cliVersion}
+                            latestVersion={latestVersion}
+                            userEmail={userEmail}
+                            expandCommands={expandCommands}
+                            announcement={announcement}
+                        />
+                    )
+                })}
             </Box>
         )
     }
@@ -103,32 +156,44 @@ export const MessageList = React.memo(function MessageList({
         <Box flexDirection="column" width="100%">
             {staticMessages.length > 0 && (
                 <Static key={staticKey} items={staticMessages} style={{ width: '100%' }}>
-                    {(msg, index) =>
-                        renderSingleMessage(
-                            msg,
-                            index,
-                            staticMessages,
-                            cliVersion,
-                            latestVersion,
-                            userEmail,
-                            expandCommands,
-                            announcement
+                    {(msg, index) => {
+                        const prevRole = index > 0 ? staticMessages[index - 1]?.role : null
+                        const key = msg.id != null ? `${msg.id}-${index}` : `msg-idx-${index}`
+                        return (
+                            <MessageItem
+                                key={key}
+                                msg={msg}
+                                index={index}
+                                prevRole={prevRole}
+                                cliVersion={cliVersion}
+                                latestVersion={latestVersion}
+                                userEmail={userEmail}
+                                expandCommands={expandCommands}
+                                announcement={announcement}
+                            />
                         )
-                    }
+                    }}
                 </Static>
             )}
-            {activeMessages.map((msg, index) =>
-                renderSingleMessage(
-                    msg,
-                    staticMessages.length + index,
-                    [...staticMessages, ...activeMessages],
-                    cliVersion,
-                    latestVersion,
-                    userEmail,
-                    expandCommands,
-                    announcement
+            {activeMessages.map((msg, index) => {
+                const actualIndex = staticMessages.length + index
+                const all = [...staticMessages, ...activeMessages]
+                const prevRole = actualIndex > 0 ? all[actualIndex - 1]?.role : null
+                const key = msg.id != null ? `${msg.id}-${actualIndex}` : `msg-idx-${actualIndex}`
+                return (
+                    <MessageItem
+                        key={key}
+                        msg={msg}
+                        index={actualIndex}
+                        prevRole={prevRole}
+                        cliVersion={cliVersion}
+                        latestVersion={latestVersion}
+                        userEmail={userEmail}
+                        expandCommands={expandCommands}
+                        announcement={announcement}
+                    />
                 )
-            )}
+            })}
         </Box>
     )
 })

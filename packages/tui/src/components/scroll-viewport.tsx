@@ -82,6 +82,8 @@ export const ScrollViewport = React.memo(
             scrollTop,
         }
 
+        const lastContentMeasureTimeRef = useRef<number>(0)
+
         // Measure viewport and content dimensions
         useLayoutEffect(() => {
             let vHeight = explicitHeight ?? viewportHeight
@@ -97,13 +99,31 @@ export const ScrollViewport = React.memo(
             }
 
             if (contentRef.current) {
+                // When actively generating and auto-following at the bottom,
+                // throttle synchronous layout measurement to avoid blocking the event loop on rapid token chunks
+                const now = Date.now()
+                const shouldThrottle = isGenerating && !isReadingMode
+                if (!shouldThrottle || now - lastContentMeasureTimeRef.current >= 80) {
+                    lastContentMeasureTimeRef.current = now
+                    const cMeasured = measureElement(contentRef.current)
+                    if (cMeasured.height !== prevContentHeightRef.current) {
+                        prevContentHeightRef.current = cMeasured.height
+                        setContentHeight(cMeasured.height)
+                    }
+                }
+            }
+        })
+
+        // When generation completes, perform an immediate layout measurement to ensure height accuracy
+        useEffect(() => {
+            if (!isGenerating && contentRef.current) {
                 const cMeasured = measureElement(contentRef.current)
                 if (cMeasured.height !== prevContentHeightRef.current) {
                     prevContentHeightRef.current = cMeasured.height
                     setContentHeight(cMeasured.height)
                 }
             }
-        })
+        }, [isGenerating])
 
         // If controlled prop is provided and changed externally
         useEffect(() => {

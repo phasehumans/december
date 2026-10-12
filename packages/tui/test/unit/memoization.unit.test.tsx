@@ -3,8 +3,9 @@ import { describe, expect, it } from 'bun:test'
 import { Header } from '../../src/components/header'
 import { InputBar } from '../../src/components/input-bar'
 import { Markdown } from '../../src/components/markdown'
-import { MessageList } from '../../src/components/message-list'
+import { MessageItem, MessageList } from '../../src/components/message-list'
 import { BotMessage } from '../../src/components/messages/bot-message'
+import { ErrorMessage } from '../../src/components/messages/error-message'
 import { UserMessage } from '../../src/components/messages/user-message'
 
 describe('TUI Component Memoization', () => {
@@ -14,6 +15,10 @@ describe('TUI Component Memoization', () => {
 
     it('UserMessage is a memoized React component', () => {
         expect((UserMessage as any).$$typeof).toBe(Symbol.for('react.memo'))
+    })
+
+    it('ErrorMessage is a memoized React component', () => {
+        expect((ErrorMessage as any).$$typeof).toBe(Symbol.for('react.memo'))
     })
 
     it('Markdown is a memoized React component', () => {
@@ -26,6 +31,10 @@ describe('TUI Component Memoization', () => {
 
     it('MessageList is a memoized React component', () => {
         expect((MessageList as any).$$typeof).toBe(Symbol.for('react.memo'))
+    })
+
+    it('MessageItem is a memoized React component', () => {
+        expect((MessageItem as any).$$typeof).toBe(Symbol.for('react.memo'))
     })
 
     it('InputBar is a memoized React component', () => {
