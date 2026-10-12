@@ -229,20 +229,24 @@ describe('BotMessage Component (Unit)', () => {
         ]
         const { lastFrame } = render(<BotMessage blocks={blocks} />)
         const frame = lastFrame() || ''
-        expect(frame).toContain('ListDir')
+        // Ephemeral discovery: ListDir evaporates upon success, while Create and Bash persist
+        expect(frame).not.toContain('ListDir')
+        expect(frame).toContain('Create')
+        expect(frame).toContain('Bash')
         expect(frame).not.toContain('ctrl+o')
-        // Verify there are no empty lines between the 5 command lines
+        // Verify there are no empty lines between the 4 persistent command lines
         const rawLines = frame.split('\n')
-        const firstIdx = rawLines.findIndex((l) => l.includes('ListDir'))
-        const slice = rawLines.slice(firstIdx, firstIdx + 5)
+        const firstIdx = rawLines.findIndex((l) => l.includes('Create'))
+        const slice = rawLines.slice(firstIdx, firstIdx + 4)
         expect(slice.every((l) => l.trim().length > 0)).toBe(true)
+        expect(slice.length).toBe(4)
     })
 
     it('locks spacing contract: tool calls followed by text response has exactly 1 blank line margin', () => {
         const blocks: any[] = [
             {
                 type: 'command',
-                command: 'ListDir(/home/chaitanya/code/december)',
+                command: 'Bash(npm test)',
                 status: 'success',
                 output: 'ok',
             },
@@ -254,7 +258,7 @@ describe('BotMessage Component (Unit)', () => {
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const cmdIdx = rawLines.findIndex((l) => l.includes('ListDir'))
+        const cmdIdx = rawLines.findIndex((l) => l.includes('Bash'))
         const textIdx = rawLines.findIndex((l) => l.includes('I have finished'))
         // Exactly 1 blank line between command and text (textIdx should be cmdIdx + 2)
         expect(textIdx).toBe(cmdIdx + 2)
@@ -265,7 +269,7 @@ describe('BotMessage Component (Unit)', () => {
         const blocks: any[] = [
             {
                 type: 'command',
-                command: 'ListDir(/home/chaitanya/code/december)',
+                command: 'Bash(npm test)',
                 status: 'success',
                 output: 'ok',
             },
@@ -277,42 +281,42 @@ describe('BotMessage Component (Unit)', () => {
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const cmdIdx = rawLines.findIndex((l) => l.includes('ListDir'))
+        const cmdIdx = rawLines.findIndex((l) => l.includes('Bash'))
         const loaderIdx = rawLines.findIndex((l) => l.includes('Working...'))
         expect(cmdIdx).toBeGreaterThanOrEqual(0)
         // 0 blank lines between command and loader: loader is immediately adjacent
         expect(loaderIdx).toBe(cmdIdx + 1)
     })
 
-    it('locks spacing contract: thoughts followed by tool calls has 0 blank lines (adjacent lines)', () => {
+    it('locks spacing contract: streaming thoughts followed by tool calls has 0 blank lines (adjacent lines)', () => {
         const blocks: any[] = [
             {
                 type: 'thinking',
                 content: 'Planning next steps',
+                isStreaming: true,
             },
             {
                 type: 'command',
-                command: 'ListDir(/home/chaitanya/code/december)',
-                status: 'success',
+                command: 'Bash(npm test)',
+                status: 'running',
                 output: 'ok',
             },
         ]
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const thoughtIdx = rawLines.findIndex(
-            (l) => l.includes('Thought') || l.includes('Planning next steps')
-        )
-        const cmdIdx = rawLines.findIndex((l) => l.includes('ListDir'))
+        const thoughtIdx = rawLines.findIndex((l) => l.includes('Thinking...'))
+        const cmdIdx = rawLines.findIndex((l) => l.includes('Bash'))
         // 0 blank lines: cmdIdx is directly thoughtIdx + 1
         expect(cmdIdx).toBe(thoughtIdx + 1)
     })
 
-    it('locks spacing contract: thoughts followed directly by text response has exactly 1 blank line', () => {
+    it('locks spacing contract: streaming thoughts followed directly by text response has exactly 1 blank line', () => {
         const blocks: any[] = [
             {
                 type: 'thinking',
                 content: 'Planning next steps',
+                isStreaming: true,
             },
             {
                 type: 'text',
@@ -322,13 +326,30 @@ describe('BotMessage Component (Unit)', () => {
         const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const thoughtIdx = rawLines.findIndex(
-            (l) => l.includes('Thought') || l.includes('Planning next steps')
-        )
+        const thoughtIdx = rawLines.findIndex((l) => l.includes('Thinking...'))
         const textIdx = rawLines.findIndex((l) => l.includes('Here is the answer'))
-        // Exactly 1 blank line between thoughts summary and text response
+        // Exactly 1 blank line between streaming thought and text response
         expect(textIdx).toBe(thoughtIdx + 2)
         expect(rawLines[thoughtIdx + 1]?.trim()).toBe('')
+    })
+
+    it('completed thoughts evaporate leaving no ghost blank lines before text response', () => {
+        const blocks: any[] = [
+            {
+                type: 'thinking',
+                content: 'Analyzing deep question',
+                isStreaming: false,
+            },
+            {
+                type: 'text',
+                content: 'Direct response without thoughts.',
+            },
+        ]
+        const { lastFrame } = render(<BotMessage blocks={blocks} />)
+        const frame = lastFrame() || ''
+        expect(frame).not.toContain('Thinking')
+        expect(frame).not.toContain('Analyzing')
+        expect(frame.trim()).toBe('Direct response without thoughts.')
     })
 
     it('does not insert spurious blank lines when previous thinking block has empty content', () => {
@@ -441,7 +462,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).toContain('(attempt 1/5)')
     })
 
-    it('consolidates parallel read tool calls into a single line with +N more', () => {
+    it('consolidates running parallel read tool calls into a single line with +N more', () => {
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
@@ -452,7 +473,7 @@ describe('BotMessage Component (Unit)', () => {
                         toolInput: JSON.stringify({
                             AbsolutePath: '/home/user/code/apps/cli/src/index.ts',
                         }),
-                        status: 'success',
+                        status: 'running',
                     },
                     {
                         type: 'command',
@@ -461,7 +482,7 @@ describe('BotMessage Component (Unit)', () => {
                         toolInput: JSON.stringify({
                             AbsolutePath: '/home/user/code/apps/cli/src/local-operations.ts',
                         }),
-                        status: 'success',
+                        status: 'running',
                     },
                     {
                         type: 'command',
@@ -470,7 +491,7 @@ describe('BotMessage Component (Unit)', () => {
                         toolInput: JSON.stringify({
                             AbsolutePath: '/home/user/code/packages/agent/src/agent.ts',
                         }),
-                        status: 'success',
+                        status: 'running',
                     },
                     {
                         type: 'command',
@@ -479,7 +500,7 @@ describe('BotMessage Component (Unit)', () => {
                         toolInput: JSON.stringify({
                             AbsolutePath: '/home/user/code/packages/agent/src/agent-loop.ts',
                         }),
-                        status: 'success',
+                        status: 'running',
                     },
                 ]}
             />
@@ -489,6 +510,29 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).toContain('+2 more')
         expect(frame).not.toContain('ctrl+o')
         expect(frame).not.toContain('✔')
+    })
+
+    it('evaporates completed successful read tool calls from terminal history', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/cli/src/index.ts)',
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/cli/src/local-operations.ts)',
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toBe('')
     })
 
     it('applies Option A tail truncation on 2 consolidated read files when paths exceed line width', () => {
@@ -502,7 +546,7 @@ describe('BotMessage Component (Unit)', () => {
                         toolInput: JSON.stringify({
                             AbsolutePath: 'apps/web/src/features/home/components/HomeHero.tsx',
                         }),
-                        status: 'success',
+                        status: 'running',
                     },
                     {
                         type: 'command',
@@ -511,7 +555,7 @@ describe('BotMessage Component (Unit)', () => {
                         toolInput: JSON.stringify({
                             AbsolutePath: 'apps/web/src/features/home/components/HomeHeader.tsx',
                         }),
-                        status: 'success',
+                        status: 'running',
                     },
                 ]}
             />
@@ -543,7 +587,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('●  Created')
     })
 
-    it('renders consolidated parallel reads cleanly on a single row without expanding', () => {
+    it('renders consolidated parallel reads cleanly on a single row when running', () => {
         const { lastFrame } = render(
             <BotMessage
                 expandCommands={true}
@@ -553,35 +597,50 @@ describe('BotMessage Component (Unit)', () => {
                         toolName: 'read_file',
                         command: 'Read(apps/cli/src/index.ts)',
                         toolInput: JSON.stringify({ filePath: 'apps/cli/src/index.ts' }),
-                        status: 'success',
+                        status: 'running',
                     },
                     {
                         type: 'command',
                         toolName: 'read_file',
                         command: 'Read(apps/cli/src/local-operations.ts)',
                         toolInput: JSON.stringify({ filePath: 'apps/cli/src/local-operations.ts' }),
-                        status: 'success',
+                        status: 'running',
                     },
                     {
                         type: 'command',
                         toolName: 'read_file',
                         command: 'Read(packages/agent/src/agent.ts)',
                         toolInput: JSON.stringify({ filePath: 'packages/agent/src/agent.ts' }),
-                        status: 'success',
+                        status: 'running',
                     },
                 ]}
             />
         )
         const frame = lastFrame() || ''
         expect(frame).toContain('Read')
-        expect(frame).toContain('3 files')
-        expect(frame).not.toContain('ctrl+o')
         expect(frame).toContain('apps/cli/src/index.ts')
+        expect(frame).not.toContain('ctrl+o')
         expect(frame).not.toContain('✔')
     })
 
-    it('renders a single read tool call standalone without consolidation or +N more', () => {
-        const { lastFrame } = render(
+    it('renders running standalone read and evaporates upon success', () => {
+        const { lastFrame: runningFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(apps/cli/src/index.ts)',
+                        toolInput: JSON.stringify({ filePath: 'apps/cli/src/index.ts' }),
+                        status: 'running',
+                    },
+                ]}
+            />
+        )
+        expect(runningFrame()).toContain('Read')
+        expect(runningFrame()).toContain('apps/cli/src/index.ts')
+
+        const { lastFrame: successFrame } = render(
             <BotMessage
                 blocks={[
                     {
@@ -594,15 +653,10 @@ describe('BotMessage Component (Unit)', () => {
                 ]}
             />
         )
-        const frame = lastFrame() || ''
-        expect(frame).toContain('Read')
-        expect(frame).toContain('apps/cli/src/index.ts')
-        expect(frame).not.toContain('+')
-        expect(frame).not.toContain('ctrl+o')
-        expect(frame).not.toContain('✔')
+        expect(successFrame()).toBe('')
     })
 
-    it('preserves other tool calls separately between consolidated read blocks', () => {
+    it('preserves mutating tool calls while completed discovery tools evaporate', () => {
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
@@ -614,8 +668,8 @@ describe('BotMessage Component (Unit)', () => {
                     },
                     {
                         type: 'command',
-                        toolName: 'read_file',
-                        command: 'Read(file2.ts)',
+                        toolName: 'write_file',
+                        command: 'Create(file2.ts)',
                         status: 'success',
                     },
                     {
@@ -626,26 +680,38 @@ describe('BotMessage Component (Unit)', () => {
                     },
                     {
                         type: 'command',
-                        toolName: 'read_file',
-                        command: 'Read(file3.ts)',
-                        status: 'success',
-                    },
-                    {
-                        type: 'command',
-                        toolName: 'read_file',
-                        command: 'Read(file4.ts)',
+                        toolName: 'bash',
+                        command: 'Bash(npm test)',
                         status: 'success',
                     },
                 ]}
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('Search(prisma)')
-        expect(frame).toContain('file1.ts')
-        expect(frame).toContain('file2.ts')
-        expect(frame).toContain('file3.ts')
-        expect(frame).toContain('file4.ts')
-        expect(frame).not.toContain('✔')
+        expect(frame).not.toContain('file1.ts')
+        expect(frame).not.toContain('Search(prisma)')
+        expect(frame).toContain('Create')
+        expect(frame).toContain('Bash')
+    })
+
+    it('never hides errors: failed discovery tools persist with error output', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(missing.ts)',
+                        status: 'error',
+                        output: 'ENOENT: no such file or directory, open missing.ts',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Read')
+        expect(frame).toContain('missing.ts')
+        expect(frame).toContain('ENOENT')
     })
 
     it('renders active spinner and reading status when consolidated reads are currently running', () => {

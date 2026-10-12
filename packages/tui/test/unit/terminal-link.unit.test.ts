@@ -43,6 +43,11 @@ describe('toRelativePath', () => {
         )
     })
 
+    it('converts cwd itself to "."', () => {
+        const cwd = '/home/user/project'
+        expect(toRelativePath('/home/user/project', cwd)).toBe('.')
+    })
+
     it('keeps absolute path if outside cwd', () => {
         const cwd = '/home/user/project'
         expect(toRelativePath('/var/log/test.log', cwd)).toBe('/var/log/test.log')

@@ -57,10 +57,10 @@ export function formatThought(raw: string): string {
         //    ### Goal Understanding: ...
         //    * Goal Understanding: ...
         trimmed = trimmed
-            .replace(/^[*•\-]*\s*\*\*([^*]+)\*\*:?\s*/i, '')
+            .replace(/^[*•-]*\s*\*\*([^*]+)\*\*:?\s*/i, '')
             .replace(/^#{1,4}\s*([^:\n]+):?\s*/i, '')
             .replace(
-                /^[*•\-]*\s*(?:goal understanding|analysis|next steps|approach|plan|execution plan|thoughts?|reasoning):\s*/i,
+                /^[*•-]*\s*(?:goal understanding|analysis|next steps|approach|plan|execution plan|thoughts?|reasoning):\s*/i,
                 ''
             )
 
@@ -69,8 +69,8 @@ export function formatThought(raw: string): string {
 
         // 2. Strip leading list bullet markers and numbered list markers:
         //    * item, - item, • item, 1. item, 1) item
-        trimmed = trimmed.replace(/^[*•\-]+\s*/, '')
-        trimmed = trimmed.replace(/^\d+[\.\)]\s*/, '')
+        trimmed = trimmed.replace(/^[*•-]+\s*/, '')
+        trimmed = trimmed.replace(/^\d+[.)]\s*/, '')
 
         // 3. Strip unparsed bold / italic markdown tags (**word**, *word*)
         //    while preserving backticks (`code`) and keeping natural casing
@@ -159,6 +159,47 @@ export function CollapsibleThought({
 
 export const ThoughtView = CollapsibleThought
 
+export function isDiscoveryTool(toolName?: string, command?: string): boolean {
+    const name = (toolName || '').toLowerCase()
+    if (
+        name === 'read_file' ||
+        name === 'view_file' ||
+        name === 'list_dir' ||
+        name === 'ls' ||
+        name === 'grep_search' ||
+        name === 'find_files' ||
+        name === 'search_code' ||
+        name === 'code_search' ||
+        name === 'search_tools' ||
+        name === 'code_intelligence' ||
+        name === 'search_web' ||
+        name === 'read_url_content' ||
+        name === 'list_permissions'
+    ) {
+        return true
+    }
+
+    if (command) {
+        const match = command.match(/^([A-Za-z_]+)\(/)
+        if (match && match[1]) {
+            const prefix = match[1].toLowerCase()
+            if (
+                prefix === 'read' ||
+                prefix === 'listdir' ||
+                prefix === 'ls' ||
+                prefix === 'grep' ||
+                prefix === 'find' ||
+                prefix === 'search' ||
+                prefix === 'websearch'
+            ) {
+                return true
+            }
+        }
+    }
+
+    return false
+}
+
 function StyledCommand({ command, truncate = true }: { command: string; truncate?: boolean }) {
     const columns = useTerminalColumns()
     const maxArgLength = Math.max(40, columns - 38)
@@ -169,7 +210,11 @@ function StyledCommand({ command, truncate = true }: { command: string; truncate
         const toolName = match[1]
         let displayArgs = args
         if (
-            (toolName === 'read_file' || toolName === 'view_file' || toolName === 'Read') &&
+            (toolName === 'read_file' ||
+                toolName === 'view_file' ||
+                toolName === 'Read' ||
+                toolName === 'list_dir' ||
+                toolName === 'ListDir') &&
             args &&
             !args.includes(' ')
         ) {
@@ -217,7 +262,11 @@ function StyledRunningCommand({
         const toolName = match[1]
         let displayArgs = args
         if (
-            (toolName === 'read_file' || toolName === 'view_file' || toolName === 'Read') &&
+            (toolName === 'read_file' ||
+                toolName === 'view_file' ||
+                toolName === 'Read' ||
+                toolName === 'list_dir' ||
+                toolName === 'ListDir') &&
             args &&
             !args.includes(' ')
         ) {
@@ -425,14 +474,18 @@ export function ConsolidatedReadsView({
     isLastBlock?: boolean
 }) {
     const columns = useTerminalColumns()
+    const isRunning = blocks.some((b) => b.status === 'running')
+    const hasError = blocks.some((b) => b.status === 'error')
+
+    // Under ephemeral discovery, completed successful reads evaporate
+    if (!isRunning && !hasError) {
+        return null
+    }
+
     const maxArgLength = Math.max(40, columns - 38)
     const paths = blocks.map(getReadBlockPath)
-    const count = paths.length
-
     const inlineArgs = formatConsolidatedReadArgs(paths, maxArgLength)
-
     const cmdColor = THEME.colors.warning
-    const isRunning = blocks.some((b) => b.status === 'running')
 
     if (isRunning) {
         return (
@@ -451,20 +504,13 @@ export function ConsolidatedReadsView({
         )
     }
 
+    const errorBlock = blocks.find((b) => b.status === 'error')
     return (
-        <Box flexDirection="column" marginY={0}>
-            <Box alignItems="center" gap={1}>
-                <Text>
-                    <Text color={cmdColor}>{`${THEME.glyphs.status} `}</Text>
-                    <Text color={cmdColor} bold>
-                        Read
-                    </Text>
-                    <Text color={THEME.colors.muted}>
-                        ({count > 2 ? `${count} files: ${inlineArgs}` : inlineArgs})
-                    </Text>
-                </Text>
-            </Box>
-        </Box>
+        <CompactCommandOutput
+            command={errorBlock?.command || 'Read()'}
+            output={errorBlock?.output}
+            status="error"
+        />
     )
 }
 
@@ -554,6 +600,14 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                     if (
                         (b.type === 'text' || b.type === 'thinking') &&
                         (!b.content || b.content.trim() === '')
+                    ) {
+                        continue
+                    }
+                    if (
+                        (b.type === 'thinking' && !b.isStreaming) ||
+                        (b.type === 'command' &&
+                            b.status === 'success' &&
+                            isDiscoveryTool(b.toolName, b.command))
                     ) {
                         continue
                     }
@@ -762,11 +816,18 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                         }
 
                         if (!isRunning) {
+                            // Ephemeral discovery: completed successful discovery tools evaporate completely
+                            if (
+                                block.status === 'success' &&
+                                isDiscoveryTool(block.toolName, block.command)
+                            ) {
+                                return null
+                            }
+
                             const isNoOutputTool =
-                                block.toolName === 'read_file' ||
-                                block.toolName === 'view_file' ||
-                                block.toolName === 'ask_permission' ||
-                                block.toolName === 'list_permissions'
+                                block.status !== 'error' &&
+                                (block.toolName === 'ask_permission' ||
+                                    block.toolName === 'list_permissions')
 
                             if (isNoOutputTool) {
                                 return (

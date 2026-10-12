@@ -140,4 +140,84 @@ graph LR
         expect(frame).toContain('2. ')
         expect(frame).toContain('Second step')
     })
+
+    it('renders headings with depth-based hash prefixes', () => {
+        const raw = '# Top Heading\n\n## Sub Heading\n\n### Minor Heading'
+        const { lastFrame } = render(<Markdown>{raw}</Markdown>)
+        const frame = lastFrame()
+        expect(frame).toContain('# Top Heading')
+        expect(frame).toContain('## Sub Heading')
+        expect(frame).toContain('### Minor Heading')
+    })
+
+    it('renders callout alerts with slim border bar and uppercase label without colon', () => {
+        const noteRaw = '> [!NOTE]\n> Test migrations must run before test execution.'
+        const { lastFrame: noteFrame } = render(<Markdown>{noteRaw}</Markdown>)
+        const nFrame = noteFrame()
+        expect(nFrame).toContain('▎')
+        expect(nFrame).toContain('NOTE')
+        expect(nFrame).not.toContain('NOTE:')
+        expect(nFrame).toContain('Test migrations must run before test execution.')
+
+        const warningRaw = '> [!WARNING]\n> High risk operation in progress.'
+        const { lastFrame: warnFrame } = render(<Markdown>{warningRaw}</Markdown>)
+        const wFrame = warnFrame()
+        expect(wFrame).toContain('▎')
+        expect(wFrame).toContain('WARNING')
+        expect(wFrame).not.toContain('WARNING:')
+        expect(wFrame).toContain('High risk operation in progress.')
+
+        const tipRaw = '> [!TIP]\n> Use bun for faster execution.'
+        const { lastFrame: tipFrame } = render(<Markdown>{tipRaw}</Markdown>)
+        const tFrame = tipFrame()
+        expect(tFrame).toContain('▎')
+        expect(tFrame).toContain('TIP')
+        expect(tFrame).toContain('Use bun for faster execution.')
+    })
+
+    it('renders plain blockquotes with slim bar without alert labels', () => {
+        const quoteRaw = '> Single-context layout at repo root.'
+        const { lastFrame } = render(<Markdown>{quoteRaw}</Markdown>)
+        const frame = lastFrame()
+        expect(frame).toContain('▎')
+        expect(frame).toContain('Single-context layout at repo root.')
+        expect(frame).not.toContain('NOTE')
+        expect(frame).not.toContain('WARNING')
+    })
+
+    it('renders complex multi-line tables with aligned borders and word wrapping', () => {
+        const complexTable = `
+| Dimension | Telemetry from CampusLab | Academic Metric |
+| :--- | :--- | :--- |
+| Pacing / Velocity | joinedAt vs lastAcceptedAt in ContestStandingRecord | Time-to-Solution (TTS) |
+| Trial-and-Error Behavior | Total failed submissions per user before Accepted status | Submission Thrashing / Guessing Factor |
+        `.trim()
+        const { lastFrame } = render(<Markdown>{complexTable}</Markdown>)
+        const frame = lastFrame()
+        expect(frame).toContain('Dimension')
+        expect(frame).toContain('Telemetry from CampusLab')
+        expect(frame).toContain('Academic Metric')
+        expect(frame).toContain('Pacing / Velocity')
+        expect(frame).toContain('ContestStandingRecord')
+        expect(frame).toContain('Submission Thrashing')
+        expect(frame).toContain('┌')
+        expect(frame).toContain('├')
+        expect(frame).toContain('└')
+    })
+
+    it('renders links with OSC 8 terminal hyperlink sequence and target url', () => {
+        const linkRaw = '[Documentation](https://december.dev/docs)'
+        const { lastFrame } = render(<Markdown>{linkRaw}</Markdown>)
+        const frame = lastFrame()
+        expect(frame).toContain('Documentation')
+        expect(frame).toContain('\x1b]8;;https://december.dev/docs\x1b\\')
+    })
+
+    it('renders inline code with slate pill background without breaking spaces', () => {
+        const codeRaw = 'Run `bun test` to execute.'
+        const { lastFrame } = render(<Markdown>{codeRaw}</Markdown>)
+        const frame = lastFrame()
+        expect(frame).toContain('Run bun test to execute.')
+        expect(frame).not.toContain('  bun test  ')
+    })
 })

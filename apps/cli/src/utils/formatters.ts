@@ -5,7 +5,10 @@ export function toRelativePath(filePath: string, cwd: string = process.cwd()): s
     const trimmed = filePath.trim()
     if (!path.isAbsolute(trimmed)) return trimmed
     const rel = path.relative(cwd, trimmed)
-    if (!rel || rel.startsWith('..')) {
+    if (rel === '') {
+        return '.'
+    }
+    if (rel.startsWith('..')) {
         return trimmed
     }
     return rel
@@ -53,8 +56,11 @@ export function getToolSummary(name: string, inputStr: string): string {
                     ''
                 return `Edit(${toRelativePath(rawPath)})`.trim()
             }
-            case 'list_dir':
-                return `ListDir(${args.DirectoryPath || args.dirPath || args.path || ''})`.trim()
+            case 'list_dir': {
+                const rawPath =
+                    args.DirectoryPath || args.dirPath || args.path || args.directory || ''
+                return `ListDir(${toRelativePath(rawPath)})`.trim()
+            }
             case 'bash':
             case 'run_command':
                 return `Bash(${args.CommandLine || args.command || ''})`.trim()

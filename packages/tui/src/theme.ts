@@ -14,6 +14,7 @@ export const THEME = {
         warning: '#FDD663',
         diffAddBg: '#122f1e',
         diffDeleteBg: '#3f1316',
+        codespanBg: '#1e2638',
     },
     padding: {
         paddingX: 2,

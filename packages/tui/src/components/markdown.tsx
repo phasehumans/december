@@ -3,7 +3,9 @@ import { Box, Text } from 'ink'
 import { marked } from 'marked'
 import React from 'react'
 
+import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import { THEME } from '../theme'
+import { terminalLink } from '../utils/terminal-link'
 
 import { Mermaid } from './mermaid'
 
@@ -11,27 +13,65 @@ type Props = {
     children: string
 }
 
-function renderTableCell(cell: any, index: number): React.ReactNode {
-    if (cell?.tokens && Array.isArray(cell.tokens)) {
-        return <Text key={index}>{cell.tokens.map((t: any, i: number) => renderToken(t, i))}</Text>
-    }
-    return <Text key={index}>{cell?.text || cell?.raw || ''}</Text>
+function getTokensPlainText(tokens: any[]): string {
+    if (!tokens) return ''
+    return tokens
+        .map((t: any) => {
+            if (t.tokens) return getTokensPlainText(t.tokens)
+            return t.text || t.raw || ''
+        })
+        .join('')
 }
 
-function getCellTextLength(cell: any): number {
-    if (!cell) return 0
-    if (typeof cell === 'string') return cell.length
-    if (cell.text) return cell.text.length
+function getCellPlainText(cell: any): string {
+    if (!cell) return ''
+    if (typeof cell === 'string') return cell
     if (cell.tokens && Array.isArray(cell.tokens)) {
-        return cell.tokens.reduce(
-            (acc: number, t: any) => acc + (t.text?.length || t.raw?.length || 0),
-            0
-        )
+        return getTokensPlainText(cell.tokens)
     }
-    return cell.raw?.length || 0
+    return cell.text || cell.raw || ''
+}
+
+function wrapCellText(text: string, width: number): string[] {
+    if (!text) return ['']
+    const words = text.split(/\s+/).filter(Boolean)
+    if (words.length === 0) return ['']
+    const lines: string[] = []
+    let currentLine = ''
+    for (const word of words) {
+        if (!currentLine) {
+            if (word.length <= width) {
+                currentLine = word
+            } else {
+                let remaining = word
+                while (remaining.length > width) {
+                    lines.push(remaining.slice(0, width))
+                    remaining = remaining.slice(width)
+                }
+                currentLine = remaining
+            }
+        } else if (currentLine.length + 1 + word.length <= width) {
+            currentLine += ' ' + word
+        } else {
+            lines.push(currentLine)
+            if (word.length <= width) {
+                currentLine = word
+            } else {
+                let remaining = word
+                while (remaining.length > width) {
+                    lines.push(remaining.slice(0, width))
+                    remaining = remaining.slice(width)
+                }
+                currentLine = remaining
+            }
+        }
+    }
+    if (currentLine) lines.push(currentLine)
+    return lines
 }
 
 function Table({ token }: { token: any }) {
+    const columns = useTerminalColumns()
     const headers = token.header || []
     const rows = token.rows || []
 
@@ -40,57 +80,231 @@ function Table({ token }: { token: any }) {
     }
 
     const colCount = Math.max(headers.length, ...rows.map((r: any[]) => r.length))
-    const colWidths: number[] = []
+    if (colCount === 0) return null
+
+    const maxIdeals: number[] = []
+    const minWidths: number[] = []
 
     for (let c = 0; c < colCount; c++) {
-        let maxLen = headers[c] ? getCellTextLength(headers[c]) : 0
+        let maxLen = headers[c] ? getCellPlainText(headers[c]).length : 0
+        let maxWord = 3
+        if (headers[c]) {
+            const hWords = getCellPlainText(headers[c]).split(/\s+/).filter(Boolean)
+            for (const w of hWords) maxWord = Math.max(maxWord, w.length)
+        }
         for (const row of rows) {
             if (row[c]) {
-                maxLen = Math.max(maxLen, getCellTextLength(row[c]))
+                const text = getCellPlainText(row[c])
+                maxLen = Math.max(maxLen, text.length)
+                const rWords = text.split(/\s+/).filter(Boolean)
+                for (const w of rWords) maxWord = Math.max(maxWord, w.length)
             }
         }
-        colWidths[c] = Math.min(Math.max(maxLen, 3), 40)
+        maxIdeals.push(Math.max(maxLen, 3))
+        minWidths.push(Math.max(maxWord, 4))
+    }
+
+    const borderOverhead = colCount * 3 + 1
+    const maxTableWidth = Math.max(30, columns - 6)
+    const availContentWidth = Math.max(colCount * 4, maxTableWidth - borderOverhead)
+
+    const sumMin = minWidths.reduce((a, b) => a + b, 0)
+    const sumMax = maxIdeals.reduce((a, b) => a + b, 0)
+    const colWidths: number[] = []
+
+    if (availContentWidth >= sumMax) {
+        for (let c = 0; c < colCount; c++) {
+            colWidths[c] = maxIdeals[c] ?? 3
+        }
+    } else if (availContentWidth <= sumMin) {
+        let distributed = 0
+        for (let c = 0; c < colCount; c++) {
+            const scaled = Math.max(
+                4,
+                Math.floor(((minWidths[c] ?? 4) / sumMin) * availContentWidth)
+            )
+            colWidths[c] = scaled
+            distributed += scaled
+        }
+        const remaining = availContentWidth - distributed
+        if (remaining > 0) {
+            const largestIdx = colWidths.indexOf(Math.max(...colWidths))
+            if (largestIdx !== -1) {
+                colWidths[largestIdx] = (colWidths[largestIdx] ?? 0) + remaining
+            }
+        }
+    } else {
+        const extraAvail = availContentWidth - sumMin
+        const sumFlex = maxIdeals.map((m, i) => m - (minWidths[i] ?? 4)).reduce((a, b) => a + b, 0)
+
+        let distributed = 0
+        for (let c = 0; c < colCount; c++) {
+            const minW = minWidths[c] ?? 4
+            const flex = (maxIdeals[c] ?? minW) - minW
+            const share = sumFlex > 0 ? Math.floor(extraAvail * (flex / sumFlex)) : 0
+            const allocated = minW + share
+            colWidths[c] = allocated
+            distributed += allocated
+        }
+        const remaining = availContentWidth - distributed
+        if (remaining > 0) {
+            const largestIdx = colWidths.indexOf(Math.max(...colWidths))
+            if (largestIdx !== -1) {
+                colWidths[largestIdx] = (colWidths[largestIdx] ?? 0) + remaining
+            }
+        }
     }
 
     const topBorder = `┌${colWidths.map((w) => '─'.repeat(w + 2)).join('┬')}┐`
     const headerSep = `├${colWidths.map((w) => '─'.repeat(w + 2)).join('┼')}┤`
     const bottomBorder = `└${colWidths.map((w) => '─'.repeat(w + 2)).join('┴')}┘`
 
+    const hLines = headers.map((h: any, c: number) =>
+        wrapCellText(getCellPlainText(h), colWidths[c] ?? 10)
+    )
+    const hMaxLines = Math.max(...hLines.map((l: string[]) => l.length), 1)
+
     return (
         <Box flexDirection="column" marginY={1}>
             <Text color={THEME.colors.dim}>{topBorder}</Text>
             {headers.length > 0 && (
                 <>
-                    <Box flexDirection="row">
-                        <Text color={THEME.colors.dim}>│</Text>
-                        {headers.map((cell: any, c: number) => (
-                            <React.Fragment key={c}>
-                                <Box width={colWidths[c] + 2} paddingX={1}>
-                                    <Text bold color={THEME.colors.text}>
-                                        {renderTableCell(cell, c)}
-                                    </Text>
-                                </Box>
-                                <Text color={THEME.colors.dim}>│</Text>
-                            </React.Fragment>
-                        ))}
-                    </Box>
+                    {Array.from({ length: hMaxLines }).map((_, l) => (
+                        <Box flexDirection="row" key={`h-${l}`}>
+                            <Text color={THEME.colors.dim}>│</Text>
+                            {colWidths.map((w, c) => (
+                                <React.Fragment key={c}>
+                                    <Box width={w + 2} paddingX={1}>
+                                        <Text bold color={THEME.colors.text}>
+                                            {(hLines[c] && hLines[c][l]) || ''}
+                                        </Text>
+                                    </Box>
+                                    <Text color={THEME.colors.dim}>│</Text>
+                                </React.Fragment>
+                            ))}
+                        </Box>
+                    ))}
                     <Text color={THEME.colors.dim}>{headerSep}</Text>
                 </>
             )}
-            {rows.map((row: any[], r: number) => (
-                <Box flexDirection="row" key={r}>
-                    <Text color={THEME.colors.dim}>│</Text>
-                    {row.map((cell: any, c: number) => (
-                        <React.Fragment key={c}>
-                            <Box width={colWidths[c] + 2} paddingX={1}>
-                                {renderTableCell(cell, c)}
+            {rows.map((row: any[], r: number) => {
+                const rLines = colWidths.map((w, c) => wrapCellText(getCellPlainText(row[c]), w))
+                const rMaxLines = Math.max(...rLines.map((l: string[]) => l.length), 1)
+                return (
+                    <React.Fragment key={r}>
+                        {Array.from({ length: rMaxLines }).map((_, l) => (
+                            <Box flexDirection="row" key={`r-${r}-${l}`}>
+                                <Text color={THEME.colors.dim}>│</Text>
+                                {colWidths.map((w, c) => (
+                                    <React.Fragment key={c}>
+                                        <Box width={w + 2} paddingX={1}>
+                                            <Text color={THEME.colors.text}>
+                                                {(rLines[c] && rLines[c][l]) || ''}
+                                            </Text>
+                                        </Box>
+                                        <Text color={THEME.colors.dim}>│</Text>
+                                    </React.Fragment>
+                                ))}
                             </Box>
-                            <Text color={THEME.colors.dim}>│</Text>
-                        </React.Fragment>
-                    ))}
-                </Box>
-            ))}
+                        ))}
+                    </React.Fragment>
+                )
+            })}
             <Text color={THEME.colors.dim}>{bottomBorder}</Text>
+        </Box>
+    )
+}
+
+const CALLOUT_BORDER = {
+    topLeft: '',
+    topRight: '',
+    bottomLeft: '',
+    bottomRight: '',
+    top: '',
+    bottom: '',
+    left: '▎',
+    right: '',
+}
+
+type AlertType = 'NOTE' | 'TIP' | 'IMPORTANT' | 'WARNING' | 'CAUTION'
+
+function getAlertColor(alertType: AlertType): string {
+    switch (alertType) {
+        case 'NOTE':
+        case 'IMPORTANT':
+            return THEME.colors.brand
+        case 'TIP':
+            return THEME.colors.success
+        case 'WARNING':
+            return THEME.colors.warning
+        case 'CAUTION':
+            return THEME.colors.error
+    }
+}
+
+function extractAlert(token: any): { alertType: AlertType | null; tokens: any[] } {
+    if (!token?.tokens || token.tokens.length === 0) {
+        return { alertType: null, tokens: token?.tokens || [] }
+    }
+
+    const firstBlock = token.tokens[0]
+    if (firstBlock?.type !== 'paragraph' || !firstBlock.tokens || firstBlock.tokens.length === 0) {
+        return { alertType: null, tokens: token.tokens }
+    }
+
+    const firstInline = firstBlock.tokens[0]
+    if (firstInline?.type !== 'text') {
+        return { alertType: null, tokens: token.tokens }
+    }
+
+    const match = (firstInline.text || '').match(
+        /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\r?\n|[ \t]*)/i
+    )
+    if (!match) {
+        return { alertType: null, tokens: token.tokens }
+    }
+
+    const alertType = match[1].toUpperCase() as AlertType
+    const remainingText = firstInline.text.slice(match[0].length)
+
+    const newTokens = JSON.parse(JSON.stringify(token.tokens))
+    if (!remainingText.trim()) {
+        newTokens[0].tokens.shift()
+        if (newTokens[0].tokens.length === 0) {
+            newTokens.shift()
+            if (newTokens[0]?.type === 'space') {
+                newTokens.shift()
+            }
+        }
+    } else {
+        newTokens[0].tokens[0].text = remainingText
+        newTokens[0].tokens[0].raw = remainingText
+    }
+
+    return { alertType, tokens: newTokens }
+}
+
+function CalloutBlock({ token }: { token: any }) {
+    const { alertType, tokens } = extractAlert(token)
+    const color = alertType ? getAlertColor(alertType) : THEME.colors.dim
+
+    return (
+        <Box
+            flexDirection="column"
+            borderStyle={CALLOUT_BORDER}
+            borderLeft
+            borderRight={false}
+            borderTop={false}
+            borderBottom={false}
+            borderColor={color}
+            paddingLeft={1}
+        >
+            {alertType && (
+                <Text bold color={color}>
+                    {alertType}
+                </Text>
+            )}
+            {tokens.map((t: any, i: number) => renderToken(t, i))}
         </Box>
     )
 }
@@ -128,12 +342,10 @@ const renderToken = (token: any, index: number): React.ReactNode => {
             return (
                 <Text
                     key={index}
-                    backgroundColor={THEME.colors.border}
+                    backgroundColor={THEME.colors.codespanBg}
                     color={THEME.colors.brand}
-                    bold={false}
                 >
-                    {' '}
-                    {token.text}{' '}
+                    {token.text}
                 </Text>
             )
         case 'space':
@@ -160,37 +372,32 @@ const renderToken = (token: any, index: number): React.ReactNode => {
                     ))}
                 </Box>
             )
-        case 'heading':
+        case 'heading': {
+            const depth = token.depth || 1
+            const prefix = '#'.repeat(depth) + ' '
             return (
                 <Box key={index}>
-                    <Text bold color={THEME.colors.text}>
+                    <Text color={THEME.colors.dim}>{prefix}</Text>
+                    <Text color={THEME.colors.brand}>
                         {token.tokens?.map((t: any, i: number) => renderToken(t, i))}
                     </Text>
                 </Box>
             )
-        case 'link':
+        }
+        case 'link': {
+            const href = token.href || ''
+            const label = getCellPlainText(token) || token.text || token.raw || ''
+            const display = href ? terminalLink(label, href) : label
             return (
                 <Text key={index} color={THEME.colors.brand} underline>
-                    {token.tokens?.map((t: any, i: number) => renderToken(t, i))}
+                    {display}
                 </Text>
             )
+        }
         case 'hr':
             return null
         case 'blockquote':
-            return (
-                <Box
-                    key={index}
-                    borderStyle="single"
-                    borderLeft
-                    borderRight={false}
-                    borderTop={false}
-                    borderBottom={false}
-                    borderColor={THEME.colors.brand}
-                    paddingLeft={1}
-                >
-                    {token.tokens?.map((t: any, i: number) => renderToken(t, i))}
-                </Box>
-            )
+            return <CalloutBlock key={index} token={token} />
         case 'html':
             return <Text key={index}>{token.text}</Text>
         case 'escape':

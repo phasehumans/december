@@ -36,6 +36,13 @@ describe('formatters', () => {
             expect(getToolSummary('list_dir', JSON.stringify({ dirPath: 'src/' }))).toBe(
                 'ListDir(src/)'
             )
+            const absPath = `${process.cwd()}/apps/cli/src`
+            expect(getToolSummary('list_dir', JSON.stringify({ DirectoryPath: absPath }))).toBe(
+                'ListDir(apps/cli/src)'
+            )
+            expect(
+                getToolSummary('list_dir', JSON.stringify({ DirectoryPath: process.cwd() }))
+            ).toBe('ListDir(.)')
         })
 
         test('formats bash', () => {

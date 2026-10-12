@@ -38,7 +38,10 @@ export function toRelativePath(filePath: string, cwd: string = process.cwd()): s
     const trimmed = filePath.trim()
     if (!path.isAbsolute(trimmed)) return trimmed
     const rel = path.relative(cwd, trimmed)
-    if (!rel || rel.startsWith('..')) {
+    if (rel === '') {
+        return '.'
+    }
+    if (rel.startsWith('..')) {
         return trimmed
     }
     return rel

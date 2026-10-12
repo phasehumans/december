@@ -133,7 +133,7 @@ describe('MessageList Component (Unit)', () => {
                 blocks: [
                     {
                         type: 'command' as const,
-                        command: 'ListDir(/root)',
+                        command: 'Bash(git status)',
                         output: 'ok',
                         status: 'success' as const,
                     },
@@ -177,7 +177,7 @@ describe('MessageList Component (Unit)', () => {
 
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const firstIdx = rawLines.findIndex((l) => l.includes('ListDir'))
+        const firstIdx = rawLines.findIndex((l) => l.includes('Bash(git status)'))
         const slice = rawLines.slice(firstIdx, firstIdx + 3)
         expect(slice.every((l) => l.trim().length > 0)).toBe(true)
         expect(slice.length).toBe(3)
