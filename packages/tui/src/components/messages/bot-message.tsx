@@ -4,7 +4,6 @@ import React from 'react'
 import { useTerminalColumns } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
 import { fileLink, toRelativePath } from '../../utils/terminal-link'
-import { DiffGutterView } from '../diff-gutter'
 import { InlineTip } from '../inline-tip'
 import { Spinner } from '../spinner'
 
@@ -87,59 +86,73 @@ export function formatThought(raw: string): string {
     return cleanedLines.join('\n')
 }
 
+export function extractThoughtTopic(raw: string): string {
+    if (!raw) return ''
+    const cleaned = formatThought(raw)
+    if (!cleaned) return ''
+
+    const lines = cleaned
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+    if (lines.length === 0) return ''
+
+    let current = lines[lines.length - 1]!
+    if (current.length < 5 && lines.length > 1) {
+        current = lines[lines.length - 2]!
+    }
+
+    const sentences = current
+        .split(/(?<=[.!?])\s+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    if (sentences.length > 0) {
+        current = sentences[sentences.length - 1]!
+    }
+
+    current = current
+        .replace(/^[^a-zA-Z0-9]+/, '')
+        .replace(/[.:;,]+$/, '')
+        .trim()
+    current = current
+        .replace(/^(?:line \d+|step \d+):\s*/i, '')
+        .replace(/^(?:i am|i'm|i need to|i should|i will|let's|let me|thinking about)\s+/i, '')
+        .trim()
+
+    if (current) {
+        current = current.charAt(0).toLowerCase() + current.slice(1)
+    }
+
+    const MAX_TOPIC_LEN = 48
+    if (current.length > MAX_TOPIC_LEN) {
+        current = current.substring(0, MAX_TOPIC_LEN - 3) + '...'
+    }
+
+    return current
+}
+
 export function CollapsibleThought({
     content,
     isStreaming,
-    forceExpanded,
 }: {
     content: string
     isStreaming?: boolean
     forceExpanded?: boolean
     durationMs?: number
 }) {
-    const formatted = formatThought(content)
-    if (!formatted && !isStreaming) return null
-
-    // While streaming: ⠹ Thinking...
-    if (isStreaming) {
-        return (
-            <Box flexDirection="row" marginY={0} gap={1} alignItems="center">
-                <Spinner />
-                <Text color={THEME.colors.muted}>Thinking...</Text>
-                <InlineTip active={Boolean(isStreaming)} />
-            </Box>
-        )
+    // When thinking is finished, it does not persist in the chat history
+    if (!isStreaming) {
+        return null
     }
 
-    // When done:
-    // Collapsed: ● Thought (ctrl+o to view)
-    // Expanded:  ● Thought (ctrl+o to collapse)
-    //            actual thoughts shown here in gray text (paddingLeft={2}, no left side dash)
-    const isExpanded = forceExpanded ?? false
-    const formattedLines = formatted.split(/\r?\n/).filter((l) => l.trim() !== '')
+    const topic = extractThoughtTopic(content)
+    const label = topic ? `Thinking... ${topic}` : 'Thinking...'
 
     return (
-        <Box flexDirection="column" marginY={0}>
-            <Box flexDirection="row" gap={1} alignItems="center">
-                <Text>
-                    <Text color={THEME.colors.warning}>{`${THEME.glyphs.status} `}</Text>
-                    <Text color={THEME.colors.warning} bold>
-                        Thought
-                    </Text>
-                </Text>
-                <Text color={THEME.colors.muted}>
-                    ({isExpanded ? 'ctrl+o to collapse' : 'ctrl+o to view'})
-                </Text>
-            </Box>
-            {isExpanded && formattedLines.length > 0 && (
-                <Box flexDirection="column" paddingLeft={2} marginTop={0}>
-                    {formattedLines.map((line, lidx) => (
-                        <Text key={lidx} color={THEME.colors.muted}>
-                            {line}
-                        </Text>
-                    ))}
-                </Box>
-            )}
+        <Box flexDirection="row" marginY={0} gap={1} alignItems="center">
+            <Spinner />
+            <Text color={THEME.colors.muted}>{label}</Text>
+            <InlineTip active={Boolean(isStreaming)} />
         </Box>
     )
 }
@@ -235,73 +248,88 @@ function StyledRunningCommand({
     return <Text color={THEME.colors.text}>{displayCmd}</Text>
 }
 
-function CollapsibleCommandOutput({
+export function CompactFileChange({
+    filePath,
+    action,
+    diff,
+    startLine,
+}: {
+    filePath?: string
+    action: 'created' | 'modified' | 'deleted' | 'Updated'
+    diff?: string
+    startLine?: number
+}) {
+    const cleanPath = filePath ? filePath.replace(/^\.\//, '') : ''
+    const displayPath = cleanPath ? toRelativePath(cleanPath) : ''
+    const linkedPath = displayPath ? fileLink(displayPath, filePath || displayPath, startLine) : ''
+
+    let stats = ''
+    if (diff) {
+        const lines = diff.split(/\r?\n/)
+        const additions = lines.filter((l) => l.startsWith('+') && !l.startsWith('+++')).length
+        const deletions = lines.filter((l) => l.startsWith('-') && !l.startsWith('---')).length
+
+        if (action === 'created') {
+            stats = additions > 0 ? ` (${additions} lines)` : ''
+        } else if (additions > 0 || deletions > 0) {
+            const parts: string[] = []
+            if (additions > 0) parts.push(`+${additions}`)
+            if (deletions > 0) parts.push(`-${deletions}`)
+            stats = ` (${parts.join(', ')})`
+        }
+    }
+
+    const actionText =
+        action === 'created' ? 'Created' : action === 'deleted' ? 'Deleted' : 'Edited'
+
+    return (
+        <Box flexDirection="row" gap={1} alignItems="center" marginY={0}>
+            <Text>
+                <Text color={THEME.colors.warning}>{`${THEME.glyphs.status} `}</Text>
+                <Text color={THEME.colors.warning} bold>
+                    {actionText}
+                </Text>
+            </Text>
+            {displayPath && <Text color={THEME.colors.text}>{linkedPath}</Text>}
+            {stats ? <Text color={THEME.colors.muted}>{stats}</Text> : null}
+        </Box>
+    )
+}
+
+function CompactCommandOutput({
     command,
     output,
-    forceExpanded,
+    status,
 }: {
     command: string
     output?: string
+    status?: 'running' | 'success' | 'error'
     forceExpanded?: boolean
 }) {
-    const isExpanded = forceExpanded ?? false
-
-    const lines = output ? output.trim().split(/\r?\n/) : []
-    const MAX_VISIBLE_LINES = 20
-    const visibleLines = isExpanded ? lines.slice(0, MAX_VISIBLE_LINES) : []
-    const isTruncated = isExpanded && lines.length > MAX_VISIBLE_LINES
-
+    const isError = status === 'error'
     return (
         <Box flexDirection="column" marginY={0}>
             <Box alignItems="center" gap={1}>
                 <StyledCommand command={command} />
-                {lines.length > 0 && (
-                    <Text color={THEME.colors.muted} wrap="truncate">
-                        ({isExpanded ? 'ctrl+o to collapse' : 'ctrl+o to expand'})
-                    </Text>
-                )}
             </Box>
-            {isExpanded && lines.length > 0 && (
-                <Box flexDirection="column" marginTop={0} paddingX={1}>
-                    {visibleLines.map((line, lidx) => {
-                        let color: string = THEME.colors.text
-                        let bgColor: string | undefined = undefined
-
-                        if (line.startsWith('+') && !line.startsWith('+++')) {
-                            color = THEME.colors.success
-                            bgColor = THEME.colors.diffAddBg
-                        } else if (line.startsWith('-') && !line.startsWith('---')) {
-                            color = THEME.colors.error
-                            bgColor = THEME.colors.diffDeleteBg
-                        } else if (
-                            line.startsWith('@@') ||
-                            line.startsWith('diff --git') ||
-                            line.startsWith('---') ||
-                            line.startsWith('+++')
-                        ) {
-                            color = THEME.colors.muted
-                        }
-
-                        return (
-                            <Box key={lidx} backgroundColor={bgColor} flexDirection="row">
-                                <Text color={color} wrap="truncate-end">
-                                    {line}
-                                </Text>
-                            </Box>
-                        )
-                    })}
-                    {isTruncated && (
-                        <Box paddingTop={0}>
-                            <Text color={THEME.colors.muted}>
-                                ... ({lines.length - MAX_VISIBLE_LINES} more lines)
+            {isError && output && (
+                <Box flexDirection="column" paddingLeft={2} marginTop={0}>
+                    {output
+                        .trim()
+                        .split(/\r?\n/)
+                        .slice(-3)
+                        .map((line, lidx) => (
+                            <Text key={lidx} color={THEME.colors.error} wrap="truncate-end">
+                                │ {line}
                             </Text>
-                        </Box>
-                    )}
+                        ))}
                 </Box>
             )}
         </Box>
     )
 }
+
+const CollapsibleCommandOutput = CompactCommandOutput
 
 type CommandBlock = Extract<MessageBlock, { type: 'command' }>
 
@@ -390,14 +418,12 @@ function formatConsolidatedReadArgs(
 
 export function ConsolidatedReadsView({
     blocks,
-    forceExpanded,
     isLastBlock,
 }: {
     blocks: CommandBlock[]
     forceExpanded?: boolean
     isLastBlock?: boolean
 }) {
-    const isExpanded = forceExpanded ?? false
     const columns = useTerminalColumns()
     const maxArgLength = Math.max(40, columns - 38)
     const paths = blocks.map(getReadBlockPath)
@@ -417,40 +443,10 @@ export function ConsolidatedReadsView({
                         <Text color={cmdColor} bold>
                             Read
                         </Text>
-                        <Text color={THEME.colors.muted}>
-                            ({isExpanded ? `${count} files` : inlineArgs})
-                        </Text>
+                        <Text color={THEME.colors.muted}>({inlineArgs})</Text>
                     </Text>
                     <InlineTip active={isLastBlock ?? true} />
                 </Box>
-                {isExpanded && (
-                    <Box flexDirection="column" paddingLeft={2} marginTop={0}>
-                        {paths.map((p, pidx) => {
-                            const fileRunning = blocks[pidx]?.status === 'running'
-                            return (
-                                <Box key={pidx} alignItems="center" gap={1}>
-                                    {fileRunning ? (
-                                        <Spinner />
-                                    ) : (
-                                        <Text>
-                                            <Text
-                                                color={cmdColor}
-                                            >{`${THEME.glyphs.status} `}</Text>
-                                            <Text color={THEME.colors.muted}>
-                                                {fileLink(p.display, p.target)}
-                                            </Text>
-                                        </Text>
-                                    )}
-                                    {fileRunning && (
-                                        <Text color={THEME.colors.muted}>
-                                            {fileLink(p.display, p.target)}
-                                        </Text>
-                                    )}
-                                </Box>
-                            )
-                        })}
-                    </Box>
-                )}
             </Box>
         )
     }
@@ -464,27 +460,10 @@ export function ConsolidatedReadsView({
                         Read
                     </Text>
                     <Text color={THEME.colors.muted}>
-                        ({isExpanded ? `${count} files` : inlineArgs})
+                        ({count > 2 ? `${count} files: ${inlineArgs}` : inlineArgs})
                     </Text>
                 </Text>
-                <Text color={THEME.colors.muted} wrap="truncate">
-                    ({isExpanded ? 'ctrl+o to collapse' : 'ctrl+o to expand'})
-                </Text>
             </Box>
-            {isExpanded && (
-                <Box flexDirection="column" paddingLeft={2} marginTop={0}>
-                    {paths.map((p, pidx) => (
-                        <Box key={pidx} alignItems="center" gap={1}>
-                            <Text>
-                                <Text color={cmdColor}>{`${THEME.glyphs.status} `}</Text>
-                                <Text color={THEME.colors.muted}>
-                                    {fileLink(p.display, p.target)}
-                                </Text>
-                            </Text>
-                        </Box>
-                    ))}
-                </Box>
-            )}
         </Box>
     )
 }
@@ -879,25 +858,28 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                                         parsedInput.path
                                     const startLine =
                                         parsedInput.StartLine ?? parsedInput.startLine ?? 1
+                                    const isCreated =
+                                        block.toolName === 'write_file' ||
+                                        block.toolName === 'write_to_file'
 
                                     return (
-                                        <DiffGutterView
+                                        <CompactFileChange
                                             key={idx}
-                                            diff={displayOutput}
                                             filePath={filePath}
+                                            action={isCreated ? 'created' : 'modified'}
+                                            diff={displayOutput}
                                             startLine={startLine}
-                                            forceExpanded={expandCommands}
                                         />
                                     )
                                 }
                             }
 
                             return (
-                                <CollapsibleCommandOutput
+                                <CompactCommandOutput
                                     key={idx}
                                     command={block.command}
                                     output={displayOutput}
-                                    forceExpanded={expandCommands}
+                                    status={block.status}
                                 />
                             )
                         }
@@ -982,37 +964,18 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                         const isCreated = block.action === 'created'
                         const isDeleted = block.action === 'deleted'
                         const actionLabel = isCreated
-                            ? 'CREATED'
+                            ? 'created'
                             : isDeleted
-                              ? 'DELETED'
-                              : 'MODIFIED'
-
-                        if (block.diff) {
-                            return (
-                                <DiffGutterView
-                                    key={idx}
-                                    diff={block.diff}
-                                    filePath={block.filePath}
-                                    actionLabel={actionLabel}
-                                    forceExpanded={expandCommands}
-                                />
-                            )
-                        }
+                              ? 'deleted'
+                              : 'modified'
 
                         return (
-                            <Box key={idx} gap={1} alignItems="center">
-                                <Text>
-                                    <Text
-                                        color={THEME.colors.warning}
-                                    >{`${THEME.glyphs.status} `}</Text>
-                                    <Text color={THEME.colors.warning} bold>
-                                        {actionLabel}
-                                    </Text>
-                                </Text>
-                                <Text color={THEME.colors.muted}>
-                                    {fileLink(block.filePath, block.filePath)}
-                                </Text>
-                            </Box>
+                            <CompactFileChange
+                                key={idx}
+                                filePath={block.filePath}
+                                action={actionLabel}
+                                diff={block.diff}
+                            />
                         )
                     }
                     case 'code': {

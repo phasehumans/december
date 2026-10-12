@@ -10,7 +10,7 @@ describe('ShortcutsMenu Component (Unit)', () => {
         const { lastFrame } = renderWithProviders(<ShortcutsMenu onClose={handleClose} />)
         const frame = lastFrame()
 
-        expect(SHORTCUTS.length).toBe(21)
+        expect(SHORTCUTS.length).toBe(20)
         expect(frame).toContain('Open slash commands')
         expect(frame).toContain('! <cmd>')
         expect(frame).toContain('↑ / ↓')
@@ -20,6 +20,6 @@ describe('ShortcutsMenu Component (Unit)', () => {
         expect(frame).toContain('ctrl+p')
         expect(frame).toContain('ctrl+n')
         expect(frame).toContain('ctrl+c')
-        expect(frame).toContain('↓ 6 more')
+        expect(frame).toContain('↓ 5 more')
     })
 })

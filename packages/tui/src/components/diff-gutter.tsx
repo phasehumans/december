@@ -125,9 +125,6 @@ export const DiffGutterView = React.memo(function DiffGutterView({
                         {deletions > 0 && <Text color={THEME.colors.error}>-{deletions}</Text>}
                     </Text>
                 )}
-                <Text color={THEME.colors.muted} wrap="truncate">
-                    ({isExpanded ? 'ctrl+o to collapse' : 'ctrl+o to view'})
-                </Text>
             </Box>
 
             {/* Expanded gutter diff */}

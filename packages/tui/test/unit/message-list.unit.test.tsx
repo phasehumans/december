@@ -91,7 +91,7 @@ describe('MessageList Component (Unit)', () => {
         expect(frame).not.toContain('ℹ')
     })
 
-    it('renders header banner on session resume and passes expandCommands to past messages', () => {
+    it('renders header banner on session resume and renders past commands compactly', () => {
         const staticMessages = [
             { id: 'header', role: 'header' as const },
             {
@@ -115,7 +115,6 @@ describe('MessageList Component (Unit)', () => {
                 activeMessages={[]}
                 isAuthenticated={true}
                 cliVersion="0.2.24"
-                expandCommands={true}
             />
         )
 
@@ -123,7 +122,7 @@ describe('MessageList Component (Unit)', () => {
         expect(frame).toContain('December v0.2.24')
         expect(frame).toContain('Press / for commands')
         expect(frame).toContain('git status')
-        expect(frame).toContain('On branch main')
+        expect(frame).not.toContain('On branch main')
     })
 
     it('renders consecutive assistant tool call messages compactly without gaps', () => {

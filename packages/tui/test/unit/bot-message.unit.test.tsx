@@ -12,52 +12,26 @@ describe('BotMessage Component (Unit)', () => {
         expect(lastFrame()).toContain('Assistant response text')
     })
 
-    it('renders thought blocks collapsed by default and expands with ctrl+o toggle', () => {
+    it('does not persist completed thought blocks once generation finishes', () => {
         const thoughtContent =
             'Line 1: Planning search\nLine 2: Locating files\nLine 3: Reading contents\nLine 4: Done'
-        const { lastFrame, rerender } = render(
+        const { lastFrame } = render(
             <BotMessage
-                expandCommands={false}
                 blocks={[
                     { type: 'thinking', content: thoughtContent },
                     { type: 'text', content: 'Final answer' },
                 ]}
             />
         )
-        let frame = lastFrame() || ''
-        expect(frame).toContain('●')
-        expect(frame).toContain('Thought')
-        expect(frame).not.toContain('Thought for')
-        expect(frame).toContain('ctrl+o to view')
+        const frame = lastFrame() || ''
+        expect(frame).not.toContain('Thought')
         expect(frame).not.toContain('Line 1: Planning search')
         expect(frame).toContain('Final answer')
-
-        // Re-render with expandCommands=true expands thoughts without vertical border
-        rerender(
-            <BotMessage
-                expandCommands={true}
-                blocks={[
-                    { type: 'thinking', content: thoughtContent },
-                    { type: 'text', content: 'Final answer' },
-                ]}
-            />
-        )
-
-        frame = lastFrame() || ''
-        expect(frame).toContain('●')
-        expect(frame).toContain('Thought')
-        expect(frame).not.toContain('Thought for')
-        expect(frame).toContain('ctrl+o to collapse')
-        expect(frame).toContain('Line 1: Planning search')
-        expect(frame).toContain('Line 4: Done')
-        expect(frame).toContain('Final answer')
-        expect(frame).not.toContain('│')
     })
 
-    it('parses both <thought> and <think> tags in text blocks and collapses or expands them', () => {
-        const { lastFrame, rerender } = render(
+    it('parses both <thought> and <think> tags in text blocks and leaves no static thought residue once finished', () => {
+        const { lastFrame } = render(
             <BotMessage
-                expandCommands={false}
                 blocks={[
                     {
                         type: 'text',
@@ -67,39 +41,21 @@ describe('BotMessage Component (Unit)', () => {
                 ]}
             />
         )
-        let frame = lastFrame() || ''
-        expect(frame).toContain('●')
-        expect(frame).toContain('Thought')
-        expect(frame).not.toContain('Thought for')
-        expect(frame).toContain('ctrl+o to view')
+        const frame = lastFrame() || ''
+        expect(frame).not.toContain('Thought')
+        expect(frame).not.toContain('Thinking deep on problem')
+        expect(frame).not.toContain('Reasoning with DeepSeek R1')
         expect(frame).toContain('First response part')
         expect(frame).toContain('Final response part')
         expect(frame).not.toContain('<thought>')
         expect(frame).not.toContain('</thought>')
         expect(frame).not.toContain('<think>')
         expect(frame).not.toContain('</think>')
-
-        // Expanded shows the thought contents
-        rerender(
-            <BotMessage
-                expandCommands={true}
-                blocks={[
-                    {
-                        type: 'text',
-                        content:
-                            '<thought>Thinking deep on problem</thought>First response part\n<think>Reasoning with DeepSeek R1</think>Final response part',
-                    },
-                ]}
-            />
-        )
-        frame = lastFrame() || ''
-        expect(frame).toContain('Thinking deep on problem')
-        expect(frame).toContain('Reasoning with DeepSeek R1')
     })
 
-    it('renders active streaming thought blocks cleanly with dots spinner and Thinking... label', () => {
+    it('renders active streaming thought blocks cleanly with dots spinner and live topic', () => {
         const thoughtContent =
-            'Line 1: Planning search\nLine 2: Locating files\nLine 3: Reading contents\nLine 4: Still thinking'
+            'Line 1: Planning search\nLine 2: Locating files\nLine 3: Analyzing scroll measurement bottleneck'
         const { lastFrame } = render(
             <BotMessage
                 blocks={[{ type: 'thinking', content: thoughtContent, isStreaming: true } as any]}
@@ -107,26 +63,24 @@ describe('BotMessage Component (Unit)', () => {
         )
         const frame = lastFrame() || ''
         expect(frame).toContain('Thinking...')
-        expect(frame).not.toContain('Line 4: Still thinking')
+        expect(frame).toContain('analyzing scroll measurement bottleneck')
+        expect(frame).not.toContain('4.1s')
     })
 
-    it('renders clean thought header without duration on thinking blocks', () => {
+    it('renders null for non-streaming thinking blocks', () => {
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
                     {
                         type: 'thinking',
                         content: 'Short thought',
-                        durationMs: 4200,
                     } as any,
                 ]}
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('●')
-        expect(frame).toContain('Thought')
-        expect(frame).not.toContain('Thought for')
-        expect(frame).toContain('ctrl+o to view')
+        expect(frame).not.toContain('Thought')
+        expect(frame).not.toContain('Thinking...')
     })
 
     it('renders HTTP 429 rate limit error messages correctly without badges', () => {
@@ -184,53 +138,31 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('ℹ')
     })
 
-    it('renders git diff outputs collapsed by default and respects expandCommands', () => {
+    it('renders git diff commands compactly without stdout dump on success', () => {
         const diffOutput = '--- a/file.ts\n+++ b/file.ts\n@@ -1,2 +1,2 @@\n-old code\n+new code'
-        const { lastFrame, rerender } = render(
-            <BotMessage
-                blocks={[
-                    {
-                        type: 'command',
-                        toolCallId: '101',
-                        toolName: 'bash',
-                        command: 'git diff',
-                        status: 'success',
-                        output: diffOutput,
-                    },
-                ]}
-            />
-        )
-        let frame = lastFrame() || ''
-        expect(frame).toContain('ctrl+o to expand')
-        expect(frame).not.toContain('-old code')
-
-        // Re-render with expandCommands=true
-        rerender(
-            <BotMessage
-                expandCommands={true}
-                blocks={[
-                    {
-                        type: 'command',
-                        toolCallId: '101',
-                        toolName: 'bash',
-                        command: 'git diff',
-                        status: 'success',
-                        output: diffOutput,
-                    },
-                ]}
-            />
-        )
-
-        frame = lastFrame() || ''
-        expect(frame).toContain('ctrl+o to collapse')
-        expect(frame).toContain('-old code')
-        expect(frame).toContain('+new code')
-    })
-
-    it('renders file modification commands with DiffGutterView line numbers and clickable links', () => {
         const { lastFrame } = render(
             <BotMessage
-                expandCommands={true}
+                blocks={[
+                    {
+                        type: 'command',
+                        toolCallId: '101',
+                        toolName: 'bash',
+                        command: 'git diff',
+                        status: 'success',
+                        output: diffOutput,
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('git diff')
+        expect(frame).not.toContain('ctrl+o')
+        expect(frame).not.toContain('-old code')
+    })
+
+    it('renders file modification commands with compact 1-line format and clickable links', () => {
+        const { lastFrame } = render(
+            <BotMessage
                 blocks={[
                     {
                         type: 'command',
@@ -249,12 +181,12 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('Updated')
+        expect(frame).toContain('Edited')
         expect(frame).toContain('src/theme.ts')
-        expect(frame).toContain('15')
-        expect(frame).toContain('│')
-        expect(frame).toContain('brand: "#89B4F8"')
-        expect(frame).toContain('brand: "#7AA2F7"')
+        expect(frame).toContain('+1')
+        expect(frame).toContain('-1')
+        expect(frame).not.toContain('ctrl+o')
+        expect(frame).not.toContain('brand: "#89B4F8"')
     })
 
     it('renders multiple command blocks compactly without gaps between them', () => {
@@ -295,10 +227,10 @@ describe('BotMessage Component (Unit)', () => {
                 output: 'ok',
             },
         ]
-        const { lastFrame } = render(<BotMessage blocks={blocks} expandCommands={false} />)
+        const { lastFrame } = render(<BotMessage blocks={blocks} />)
         const frame = lastFrame() || ''
-        const lines = frame.split('\n').filter((l) => l.includes('ctrl+o to expand'))
-        expect(lines.length).toBe(5)
+        expect(frame).toContain('ListDir')
+        expect(frame).not.toContain('ctrl+o')
         // Verify there are no empty lines between the 5 command lines
         const rawLines = frame.split('\n')
         const firstIdx = rawLines.findIndex((l) => l.includes('ListDir'))
@@ -460,30 +392,19 @@ describe('BotMessage Component (Unit)', () => {
         expect(formatted).not.toContain('...')
     })
 
-    it('renders thought block in BotMessage without bullets or scaffolding labels', () => {
+    it('formatThought strips bullets and scaffolding labels from thoughts', () => {
         const rawThought = `*  **Goal Understanding:** The user wants to check the database schema.
 *  **Analysis:**
    - Looking for schema.prisma in packages/database
    - Verifying User and Session models`
 
-        const { lastFrame } = render(
-            <BotMessage
-                expandCommands={true}
-                blocks={[
-                    { type: 'thinking', content: rawThought },
-                    { type: 'text', content: 'Final response' },
-                ]}
-            />
-        )
-
-        const frame = lastFrame() || ''
-        expect(frame).toContain('The user wants to check the database schema.')
-        expect(frame).toContain('Looking for schema.prisma in packages/database')
-        expect(frame).toContain('Verifying User and Session models')
-        expect(frame).toContain('Final response')
-        expect(frame).not.toContain('Goal Understanding:')
-        expect(frame).not.toContain('Analysis:')
-        expect(frame).not.toContain('**')
+        const formatted = formatThought(rawThought)
+        expect(formatted).toContain('The user wants to check the database schema.')
+        expect(formatted).toContain('Looking for schema.prisma in packages/database')
+        expect(formatted).toContain('Verifying User and Session models')
+        expect(formatted).not.toContain('Goal Understanding:')
+        expect(formatted).not.toContain('Analysis:')
+        expect(formatted).not.toContain('**')
     })
 
     it('renders retry status messages with muted spinner and formatted provider and attempt count', () => {
@@ -520,7 +441,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).toContain('(attempt 1/5)')
     })
 
-    it('consolidates parallel read tool calls into a single line with +N more and ctrl+o to expand', () => {
+    it('consolidates parallel read tool calls into a single line with +N more', () => {
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
@@ -566,7 +487,7 @@ describe('BotMessage Component (Unit)', () => {
         const frame = lastFrame() || ''
         expect(frame).toContain('Read')
         expect(frame).toContain('+2 more')
-        expect(frame).toContain('(ctrl+o to expand)')
+        expect(frame).not.toContain('ctrl+o')
         expect(frame).not.toContain('✔')
     })
 
@@ -598,12 +519,11 @@ describe('BotMessage Component (Unit)', () => {
         const frame = lastFrame() || ''
         expect(frame).toContain('Read')
         expect(frame).toContain('HomeHero.tsx')
-        expect(frame).toContain('(ctrl+o to expand)')
+        expect(frame).not.toContain('ctrl+o')
         expect(frame).toContain('...')
-        // Entire read collapsed row must fit with hint on a single line
+        // Entire read collapsed row must fit on a single line
         const readLines = frame.split('\n').filter((l) => l.includes('Read'))
         expect(readLines.length).toBe(1)
-        expect(readLines[0]).toContain('(ctrl+o to expand)')
     })
 
     it('renders file_change block with single space after bullet', () => {
@@ -619,11 +539,11 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('● CREATED')
-        expect(frame).not.toContain('●  CREATED')
+        expect(frame).toContain('● Created')
+        expect(frame).not.toContain('●  Created')
     })
 
-    it('expands consolidated parallel reads when expandCommands is true', () => {
+    it('renders consolidated parallel reads cleanly on a single row without expanding', () => {
         const { lastFrame } = render(
             <BotMessage
                 expandCommands={true}
@@ -653,11 +573,10 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('Read(3 files)')
-        expect(frame).toContain('(ctrl+o to collapse)')
+        expect(frame).toContain('Read')
+        expect(frame).toContain('3 files')
+        expect(frame).not.toContain('ctrl+o')
         expect(frame).toContain('apps/cli/src/index.ts')
-        expect(frame).toContain('apps/cli/src/local-operations.ts')
-        expect(frame).toContain('packages/agent/src/agent.ts')
         expect(frame).not.toContain('✔')
     })
 

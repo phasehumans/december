@@ -8,7 +8,7 @@ export const TIPS: readonly string[] = [
     '/copy copies the last assistant response to your clipboard',
     '/resume lets you browse and switch to past sessions',
     '/usage displays your token consumption and quota',
-    'press Ctrl+O to expand or collapse thoughts and tool outputs',
+    'press Ctrl+T to view running background tasks',
     'press Tab to autocomplete slash commands and file paths',
     'press Ctrl+J or Shift+Enter to insert a newline',
     'press Ctrl+C once to cancel a running tool or command',

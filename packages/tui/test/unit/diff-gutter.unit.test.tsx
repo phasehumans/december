@@ -57,7 +57,7 @@ describe('DiffGutterView Component', () => {
         expect(frame).toContain('src/theme.ts')
         expect(frame).toContain('+1')
         expect(frame).toContain('-1')
-        expect(frame).toContain('ctrl+o to view')
+        expect(frame).not.toContain('ctrl+o')
         // In collapsed state, lines should not be rendered
         expect(frame).not.toContain('│')
     })
@@ -73,7 +73,7 @@ describe('DiffGutterView Component', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('ctrl+o to collapse')
+        expect(frame).not.toContain('ctrl+o')
         expect(frame).toContain('15')
         expect(frame).toContain('│')
         expect(frame).toContain('old code')
@@ -91,6 +91,6 @@ describe('DiffGutterView Component', () => {
         expect(frame).toContain('● Updated')
         expect(frame).not.toContain('●  Updated')
         expect(frame).toContain('...')
-        expect(frame).toContain('ctrl+o to view')
+        expect(frame).not.toContain('ctrl+o')
     })
 })
