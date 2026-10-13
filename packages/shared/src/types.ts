@@ -68,6 +68,7 @@ export interface AgentStartEvent {
 
 export interface TurnStartEvent {
     type: 'TurnStart'
+    initialStatus?: string
 }
 
 export interface StreamChunkEvent {

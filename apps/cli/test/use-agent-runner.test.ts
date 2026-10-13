@@ -99,4 +99,59 @@ describe('processAgentStream Frame-Budget Throttler', () => {
         expect(assistantMsg.blocks[0].content).toBe('Here is the response')
         expect(assistantMsg.blocks[0].color).toBeUndefined()
     })
+
+    it('initializes block with Thinking... when TurnStart provides initialStatus Thinking...', async () => {
+        let activeMessages: any[] = [{ id: 'assistant-1', role: 'assistant', blocks: [] }]
+        const snapshots: any[] = []
+
+        const setActiveMessages = (updater: any) => {
+            activeMessages = typeof updater === 'function' ? updater(activeMessages) : updater
+            snapshots.push(JSON.parse(JSON.stringify(activeMessages)))
+        }
+
+        async function* stream() {
+            yield { type: 'TurnStart', initialStatus: 'Thinking...' }
+            await new Promise((r) => setTimeout(r, 10))
+            yield { type: 'StreamChunk', content: 'Finished' }
+        }
+
+        await processAgentStream({
+            stream: stream(),
+            setActiveMessages,
+            assistantMsgId: 'assistant-1',
+        })
+
+        expect(snapshots.length).toBeGreaterThanOrEqual(1)
+        const turnStartSnapshot = snapshots[0]
+        const assistantMsg = turnStartSnapshot.find((m: any) => m.id === 'assistant-1')
+        expect(assistantMsg).toBeDefined()
+        expect(assistantMsg.blocks[0].type).toBe('text')
+        expect(assistantMsg.blocks[0].content).toBe('Thinking...')
+    })
+
+    it('replaces Thinking... status block with streaming thinking block upon ThinkingChunk', async () => {
+        let activeMessages: any[] = [{ id: 'assistant-1', role: 'assistant', blocks: [] }]
+
+        const setActiveMessages = (updater: any) => {
+            activeMessages = typeof updater === 'function' ? updater(activeMessages) : updater
+        }
+
+        const events = [
+            { type: 'TurnStart', initialStatus: 'Thinking...' },
+            { type: 'ThinkingChunk', content: 'Analyzing problem space...' },
+        ]
+
+        const stream = createAsyncStream(events, 0)
+        await processAgentStream({
+            stream,
+            setActiveMessages,
+            assistantMsgId: 'assistant-1',
+        })
+
+        const assistantMsg = activeMessages.find((m) => m.id === 'assistant-1')
+        expect(assistantMsg).toBeDefined()
+        const thinkingBlock = assistantMsg.blocks.find((b: any) => b.type === 'thinking')
+        expect(thinkingBlock).toBeDefined()
+        expect(thinkingBlock.content).toContain('Analyzing problem space...')
+    })
 })

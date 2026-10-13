@@ -49,10 +49,16 @@ export function getAdaptiveThinkingLevel(
         'help',
     ]
 
-    if (
-        simpleGreetings.includes(lower) ||
-        (text.length < 15 && !text.includes('```') && !text.includes('\n'))
-    ) {
+    if (simpleGreetings.includes(lower)) {
+        return 'off'
+    }
+
+    // If configuredLevel is explicitly provided and not 'auto' or 'off', respect user preference
+    if (configuredLevel && configuredLevel !== 'auto' && configuredLevel !== 'off') {
+        return configuredLevel as any
+    }
+
+    if (text.length < 15 && !text.includes('```') && !text.includes('\n')) {
         return 'off'
     }
 
@@ -362,7 +368,15 @@ async function runInnerLoop(
             }
         }
 
-        eventQueue.push({ type: 'TurnStart' })
+        const modelName = (agent.modelOptions as any)?.model
+        const modelSupportsThinking = modelName ? supportsModelThinking(modelName) : true
+        const effectiveThinkingLevel =
+            modelSupportsThinking && agent.thinkingLevel !== 'off'
+                ? getAdaptiveThinkingLevel(agent.messages, agent.thinkingLevel)
+                : 'off'
+        const initialStatus = effectiveThinkingLevel !== 'off' ? 'Thinking...' : 'Working...'
+
+        eventQueue.push({ type: 'TurnStart', initialStatus })
 
         // stream assistant response
         const { assistantMessage, toolCalls, thinking, error } = await streamAssistantResponse(
@@ -470,8 +484,6 @@ async function streamAssistantResponse(
                 lastUsage = undefined
                 if (signal.aborted) throw new AbortError(new Error('Aborted'))
 
-                eventQueue.push({ type: 'AgentStatus', message: 'Preparing...' })
-
                 const compactionResult = await agent.conversation.compactIfNeeded(
                     agent.llm,
                     undefined,
@@ -540,7 +552,9 @@ async function streamAssistantResponse(
                 loggedMessages = providerMessages
                 loggedModel = (providerModelOptions as any).model || agent.modelOptions?.model
 
-                eventQueue.push({ type: 'AgentStatus', message: 'Working...' })
+                const initialStatus =
+                    effectiveThinkingLevel !== 'off' ? 'Thinking...' : 'Working...'
+                eventQueue.push({ type: 'AgentStatus', message: initialStatus })
 
                 const generator = agent.llm.stream(
                     providerMessages,

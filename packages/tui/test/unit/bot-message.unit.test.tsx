@@ -229,17 +229,15 @@ describe('BotMessage Component (Unit)', () => {
         ]
         const { lastFrame } = render(<BotMessage blocks={blocks} />)
         const frame = lastFrame() || ''
-        // Ephemeral discovery: ListDir evaporates upon success, while Create and Bash persist
-        expect(frame).not.toContain('ListDir')
+        expect(frame).toContain('ListDir')
         expect(frame).toContain('Create')
         expect(frame).toContain('Bash')
         expect(frame).not.toContain('ctrl+o')
-        // Verify there are no empty lines between the 4 persistent command lines
+        // Verify there are no empty lines between the 5 command lines
         const rawLines = frame.split('\n')
-        const firstIdx = rawLines.findIndex((l) => l.includes('Create'))
-        const slice = rawLines.slice(firstIdx, firstIdx + 4)
+        const firstIdx = rawLines.findIndex((l) => l.includes('ListDir'))
+        const slice = rawLines.slice(firstIdx, firstIdx + 5)
         expect(slice.every((l) => l.trim().length > 0)).toBe(true)
-        expect(slice.length).toBe(4)
     })
 
     it('locks spacing contract: tool calls followed by text response has exactly 1 blank line margin', () => {
@@ -512,7 +510,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('✔')
     })
 
-    it('evaporates completed successful read tool calls from terminal history', () => {
+    it('renders consolidated completed read tool calls in terminal history', () => {
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
@@ -532,7 +530,8 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).toBe('')
+        expect(frame).toContain('Read')
+        expect(frame).toContain('apps/cli/src/index.ts')
     })
 
     it('applies Option A tail truncation on 2 consolidated read files when paths exceed line width', () => {
@@ -623,7 +622,7 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('✔')
     })
 
-    it('renders running standalone read and evaporates upon success', () => {
+    it('renders running standalone read and preserves upon success', () => {
         const { lastFrame: runningFrame } = render(
             <BotMessage
                 blocks={[
@@ -653,10 +652,11 @@ describe('BotMessage Component (Unit)', () => {
                 ]}
             />
         )
-        expect(successFrame()).toBe('')
+        expect(successFrame()).toContain('Read')
+        expect(successFrame()).toContain('apps/cli/src/index.ts')
     })
 
-    it('preserves mutating tool calls while completed discovery tools evaporate', () => {
+    it('preserves other tool calls separately between consolidated read blocks', () => {
         const { lastFrame } = render(
             <BotMessage
                 blocks={[
@@ -688,8 +688,8 @@ describe('BotMessage Component (Unit)', () => {
             />
         )
         const frame = lastFrame() || ''
-        expect(frame).not.toContain('file1.ts')
-        expect(frame).not.toContain('Search(prisma)')
+        expect(frame).toContain('file1.ts')
+        expect(frame).toContain('Search(prisma)')
         expect(frame).toContain('Create')
         expect(frame).toContain('Bash')
     })

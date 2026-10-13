@@ -107,6 +107,13 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
         ).toBe('medium')
     })
 
+    it('honors explicitly configured level for short non-greeting prompts', () => {
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix typo' }], 'high')).toBe(
+            'high'
+        )
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hi' }], 'high')).toBe('off')
+    })
+
     it('handles non-string user message content safely', () => {
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: null as any }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: undefined as any }])).toBe('off')

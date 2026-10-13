@@ -168,7 +168,10 @@ export async function processAgentStream({
                 for (const event of eventsToProcess) {
                     switch (event.type) {
                         case 'TurnStart':
-                            blocks.push({ type: 'text', content: 'Working...' })
+                            blocks.push({
+                                type: 'text',
+                                content: (event as any).initialStatus || 'Thinking...',
+                            })
                             break
                         case 'AgentError': {
                             finalizeThinking(blocks)
@@ -343,6 +346,17 @@ export async function processAgentStream({
     const FRAME_BUDGET_MS = 16 // ~60 FPS frame budget for terminal rendering
 
     for await (const event of stream) {
+        if (
+            (event.type === 'ToolCallStart' || event.type === 'StreamChunk') &&
+            pendingEvents.some((e: any) => e.type === 'ThinkingChunk')
+        ) {
+            if (flushTimeout) {
+                clearTimeout(flushTimeout)
+                flushTimeout = null
+            }
+            flush()
+        }
+
         pendingEvents.push(event)
 
         const isImmediateEvent =
@@ -350,7 +364,8 @@ export async function processAgentStream({
             event.type === 'AgentError' ||
             event.type === 'AgentInterrupt' ||
             event.type === 'ToolCallStart' ||
-            event.type === 'ToolCallResult'
+            event.type === 'ToolCallResult' ||
+            (event.type === 'ThinkingChunk' && !thinkingStartTime)
 
         if (isImmediateEvent) {
             if (flushTimeout) {

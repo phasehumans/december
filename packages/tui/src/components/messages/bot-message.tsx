@@ -116,7 +116,10 @@ export function extractThoughtTopic(raw: string): string {
         .trim()
     current = current
         .replace(/^(?:line \d+|step \d+):\s*/i, '')
-        .replace(/^(?:i am|i'm|i need to|i should|i will|let's|let me|thinking about)\s+/i, '')
+        .replace(
+            /^(?:first(?:ly)?|now|next|then|so)?\s*,?\s*(?:i am|i'm|i need to|i should|i will|i want to|let's|let me|we need to|we should|thinking about|going to)\s+/i,
+            ''
+        )
         .trim()
 
     if (current) {
@@ -477,13 +480,9 @@ export function ConsolidatedReadsView({
     const isRunning = blocks.some((b) => b.status === 'running')
     const hasError = blocks.some((b) => b.status === 'error')
 
-    // Under ephemeral discovery, completed successful reads evaporate
-    if (!isRunning && !hasError) {
-        return null
-    }
-
     const maxArgLength = Math.max(40, columns - 38)
     const paths = blocks.map(getReadBlockPath)
+    const count = paths.length
     const inlineArgs = formatConsolidatedReadArgs(paths, maxArgLength)
     const cmdColor = THEME.colors.warning
 
@@ -504,13 +503,31 @@ export function ConsolidatedReadsView({
         )
     }
 
-    const errorBlock = blocks.find((b) => b.status === 'error')
+    if (hasError) {
+        const errorBlock = blocks.find((b) => b.status === 'error')
+        return (
+            <CompactCommandOutput
+                command={errorBlock?.command || 'Read()'}
+                output={errorBlock?.output}
+                status="error"
+            />
+        )
+    }
+
     return (
-        <CompactCommandOutput
-            command={errorBlock?.command || 'Read()'}
-            output={errorBlock?.output}
-            status="error"
-        />
+        <Box flexDirection="column" marginY={0}>
+            <Box alignItems="center" gap={1}>
+                <Text>
+                    <Text color={cmdColor}>{`${THEME.glyphs.status} `}</Text>
+                    <Text color={cmdColor} bold>
+                        Read
+                    </Text>
+                    <Text color={THEME.colors.muted}>
+                        ({count > 2 ? `${count} files: ${inlineArgs}` : inlineArgs})
+                    </Text>
+                </Text>
+            </Box>
+        </Box>
     )
 }
 
@@ -603,12 +620,7 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                     ) {
                         continue
                     }
-                    if (
-                        (b.type === 'thinking' && !b.isStreaming) ||
-                        (b.type === 'command' &&
-                            b.status === 'success' &&
-                            isDiscoveryTool(b.toolName, b.command))
-                    ) {
+                    if (b.type === 'thinking' && !b.isStreaming) {
                         continue
                     }
                     prevBlock = b
@@ -816,17 +828,12 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
                         }
 
                         if (!isRunning) {
-                            // Ephemeral discovery: completed successful discovery tools evaporate completely
-                            if (
-                                block.status === 'success' &&
-                                isDiscoveryTool(block.toolName, block.command)
-                            ) {
-                                return null
-                            }
-
                             const isNoOutputTool =
                                 block.status !== 'error' &&
-                                (block.toolName === 'ask_permission' ||
+                                (block.toolName === 'read_file' ||
+                                    block.toolName === 'view_file' ||
+                                    block.command?.startsWith('Read(') ||
+                                    block.toolName === 'ask_permission' ||
                                     block.toolName === 'list_permissions')
 
                             if (isNoOutputTool) {
