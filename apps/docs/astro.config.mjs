@@ -32,6 +32,7 @@ export default defineConfig({
         '/changelog': '/docs/changelog',
         '/blogs': '/blog',
         '/llm.txt': '/llms.txt',
+        '/login': 'https://app.trydecember.com/login',
     },
     integrations: [mdx()],
     markdown: {

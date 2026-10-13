@@ -213,11 +213,29 @@ graph LR
         expect(frame).toContain('\x1b]8;;https://december.dev/docs\x1b\\')
     })
 
-    it('renders inline code with slate pill background without breaking spaces', () => {
-        const codeRaw = 'Run `bun test` to execute.'
+    it('renders code tokens with brand blue color and grey background without backticks', () => {
+        const codeRaw = 'Run `bun test` and update `submission`.'
         const { lastFrame } = render(<Markdown>{codeRaw}</Markdown>)
         const frame = lastFrame()
-        expect(frame).toContain('Run bun test to execute.')
-        expect(frame).not.toContain('  bun test  ')
+        expect(frame).toContain('Run bun test and update submission.')
+        expect(frame).not.toContain('`bun test`')
+    })
+
+    it('renders file paths as normal text with OSC 8 file links', () => {
+        const codeRaw = 'Check `/server/src/shared/codeRunner.ts` for details.'
+        const { lastFrame } = render(<Markdown>{codeRaw}</Markdown>)
+        const frame = lastFrame()
+        expect(frame).toContain('/server/src/shared/codeRunner.ts')
+        expect(frame).toContain('file://')
+    })
+
+    it('identifies file paths correctly with isFilePath', async () => {
+        const { isFilePath } = await import('../../src/components/markdown')
+        expect(isFilePath('/server/src/shared/codeRunner.ts')).toBe(true)
+        expect(isFilePath('packages/tui/src/app.tsx:42')).toBe(true)
+        expect(isFilePath('session.service.ts')).toBe(true)
+        expect(isFilePath('bun test')).toBe(false)
+        expect(isFilePath('submission')).toBe(false)
+        expect(isFilePath('const x = 1')).toBe(false)
     })
 })

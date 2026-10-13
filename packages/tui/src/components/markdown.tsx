@@ -5,7 +5,7 @@ import React from 'react'
 
 import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import { THEME } from '../theme'
-import { terminalLink } from '../utils/terminal-link'
+import { fileLink, terminalLink } from '../utils/terminal-link'
 
 import { Mermaid } from './mermaid'
 
@@ -309,6 +309,25 @@ function CalloutBlock({ token }: { token: any }) {
     )
 }
 
+export function isFilePath(text: string): boolean {
+    if (!text || text.includes('\n')) return false
+    const trimmed = text.trim()
+    if (trimmed.includes(' ')) return false
+    if (/^(\/|\.\/|\.\.\/|~\/|[a-zA-Z]:[/\\])/.test(trimmed)) return true
+    if (trimmed.includes('/') || trimmed.includes('\\')) return true
+    if (
+        /\.(tsx?|jsx?|json|mdx?|css|scss|html|py|go|rs|sh|bash|zsh|ya?ml|toml|prisma|sql|env(\.[\w-]+)?|lock|log|svg|png|jpg|ico|dockerignore|gitignore)(:\d+(:\d+)?)?$/i.test(
+            trimmed
+        )
+    ) {
+        return true
+    }
+    if (/^(Dockerfile|Makefile|LICENSE|README|CONTAINERFILE)(:\d+(:\d+)?)?$/i.test(trimmed)) {
+        return true
+    }
+    return false
+}
+
 const renderToken = (token: any, index: number): React.ReactNode => {
     switch (token.type) {
         case 'paragraph':
@@ -338,7 +357,19 @@ const renderToken = (token: any, index: number): React.ReactNode => {
                     {token.tokens?.map((t: any, i: number) => renderToken(t, i))}
                 </Text>
             )
-        case 'codespan':
+        case 'codespan': {
+            if (isFilePath(token.text)) {
+                const lineMatch = token.text.match(/^([^:]+):(\d+)(?::(\d+))?$/)
+                const targetPath = lineMatch ? lineMatch[1] : token.text
+                const lineNum = lineMatch ? parseInt(lineMatch[2], 10) : undefined
+                const colNum = lineMatch && lineMatch[3] ? parseInt(lineMatch[3], 10) : undefined
+                const linkedPath = fileLink(token.text, targetPath, lineNum, colNum)
+                return (
+                    <Text key={index} color={THEME.colors.text} bold={false}>
+                        {linkedPath}
+                    </Text>
+                )
+            }
             return (
                 <Text
                     key={index}
@@ -348,6 +379,7 @@ const renderToken = (token: any, index: number): React.ReactNode => {
                     {token.text}
                 </Text>
             )
+        }
         case 'space':
             return null
         case 'code':
@@ -389,7 +421,7 @@ const renderToken = (token: any, index: number): React.ReactNode => {
             const label = getCellPlainText(token) || token.text || token.raw || ''
             const display = href ? terminalLink(label, href) : label
             return (
-                <Text key={index} color={THEME.colors.brand} underline>
+                <Text key={index} color={THEME.colors.brand}>
                     {display}
                 </Text>
             )
