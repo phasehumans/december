@@ -83,6 +83,7 @@ export const ScrollViewport = React.memo(
         }
 
         const lastContentMeasureTimeRef = useRef<number>(0)
+        const pendingX10MouseRef = useRef<boolean>(false)
 
         // Measure viewport and content dimensions
         useLayoutEffect(() => {
@@ -225,15 +226,53 @@ export const ScrollViewport = React.memo(
             (input, key) => {
                 if (!isActive) return
 
-                // Mouse Wheel Up: \x1b[<64;...M or [<64;...M (including modifier flags: 68, 72, 80, 84)
-                if (/\[<(?:64|68|72|80|84);/.test(input)) {
-                    handleScrollUp(3)
+                // X10 mouse reporting split sequence handling
+                if (pendingX10MouseRef.current) {
+                    pendingX10MouseRef.current = false
+                    if (input.startsWith('`') || input.startsWith('@')) {
+                        handleScrollUp(3)
+                        return
+                    }
+                    if (input.startsWith('a')) {
+                        handleScrollDown(3)
+                        return
+                    }
+                }
+
+                if (input === '[M' || input === '\x1b[M') {
+                    pendingX10MouseRef.current = true
                     return
                 }
 
-                // Mouse Wheel Down: \x1b[<65;...M or [<65;...M (including modifier flags: 69, 73, 81, 85)
-                if (/\[<(?:65|69|73|81|85);/.test(input)) {
-                    handleScrollDown(3)
+                // Mouse Wheel Up: SGR (\x1b[<64...M), X10 (\x1b[M` / \x1b[M@), rxvt (\x1b[64~)
+                if (
+                    /\[<(?:64|68|72|80|84);/.test(input) ||
+                    /\[M[`@]/.test(input) ||
+                    /\[64~/.test(input)
+                ) {
+                    const upCount = Math.max(
+                        1,
+                        (input.match(/\[<(?:64|68|72|80|84);/g) || []).length +
+                            (input.match(/\[M[`@]/g) || []).length +
+                            (input.match(/\[64~/g) || []).length
+                    )
+                    handleScrollUp(3 * upCount)
+                    return
+                }
+
+                // Mouse Wheel Down: SGR (\x1b[<65...M), X10 (\x1b[Ma), rxvt (\x1b[65~)
+                if (
+                    /\[<(?:65|69|73|81|85);/.test(input) ||
+                    /\[Ma/.test(input) ||
+                    /\[65~/.test(input)
+                ) {
+                    const downCount = Math.max(
+                        1,
+                        (input.match(/\[<(?:65|69|73|81|85);/g) || []).length +
+                            (input.match(/\[Ma/g) || []).length +
+                            (input.match(/\[65~/g) || []).length
+                    )
+                    handleScrollDown(3 * downCount)
                     return
                 }
 
@@ -257,6 +296,17 @@ export const ScrollViewport = React.memo(
 
                 if (key.end) {
                     handleScrollToBottom()
+                    return
+                }
+
+                // Ctrl+Up and Ctrl+Down
+                if (key.ctrl && key.upArrow) {
+                    handleScrollUp(3)
+                    return
+                }
+
+                if (key.ctrl && key.downArrow) {
+                    handleScrollDown(3)
                     return
                 }
 

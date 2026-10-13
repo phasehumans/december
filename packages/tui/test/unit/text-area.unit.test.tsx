@@ -332,4 +332,89 @@ describe('TextArea Component (Unit)', () => {
         await new Promise((resolve) => setTimeout(resolve, 20))
         expect(onHistoryDown).toHaveBeenCalledTimes(1)
     })
+
+    it('triggers onScrollUp and onScrollDown on mouse wheel events in TextArea', async () => {
+        const onScrollUp = mock()
+        const onScrollDown = mock()
+        const { stdin } = render(
+            <TextArea
+                value="active prompt"
+                onChange={() => {}}
+                onSubmit={() => {}}
+                onScrollUp={onScrollUp}
+                onScrollDown={onScrollDown}
+                focus={true}
+            />
+        )
+
+        // Mouse wheel up SGR: \u001B[<64;20;10M
+        stdin.write('\u001B[<64;20;10M')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollUp).toHaveBeenCalledWith(3)
+
+        // Mouse wheel down SGR: \u001B[<65;20;10M
+        stdin.write('\u001B[<65;20;10M')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollDown).toHaveBeenCalledWith(3)
+
+        // X10 mouse wheel up: \u001B[M`
+        stdin.write('\u001B[M`!!')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollUp).toHaveBeenCalledWith(3)
+
+        // X10 mouse wheel down: \u001B[Ma
+        stdin.write('\u001B[Ma!!')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollDown).toHaveBeenCalledWith(3)
+    })
+
+    it('triggers onScrollUp and onScrollDown on PageUp and PageDown in TextArea', async () => {
+        const onScrollUp = mock()
+        const onScrollDown = mock()
+        const { stdin } = render(
+            <TextArea
+                value="some prompt"
+                onChange={() => {}}
+                onSubmit={() => {}}
+                onScrollUp={onScrollUp}
+                onScrollDown={onScrollDown}
+                focus={true}
+            />
+        )
+
+        // PageUp: \u001B[5~
+        stdin.write('\u001B[5~')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollUp).toHaveBeenCalledWith(10)
+
+        // PageDown: \u001B[6~
+        stdin.write('\u001B[6~')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollDown).toHaveBeenCalledWith(10)
+    })
+
+    it('triggers onScrollUp and onScrollDown on Ctrl+Up and Ctrl+Down in TextArea', async () => {
+        const onScrollUp = mock()
+        const onScrollDown = mock()
+        const { stdin } = render(
+            <TextArea
+                value="multi\nline\nprompt"
+                onChange={() => {}}
+                onSubmit={() => {}}
+                onScrollUp={onScrollUp}
+                onScrollDown={onScrollDown}
+                focus={true}
+            />
+        )
+
+        // Ctrl+Up: \u001B[1;5A
+        stdin.write('\u001B[1;5A')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollUp).toHaveBeenCalledWith(3)
+
+        // Ctrl+Down: \u001B[1;5B
+        stdin.write('\u001B[1;5B')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(onScrollDown).toHaveBeenCalledWith(3)
+    })
 })

@@ -221,6 +221,39 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
             const lines = rawOut.split(/\r?\n/)
             const maxOff = Math.max(0, lines.length - state.visibleLineCount)
 
+            // Mouse Wheel Up: SGR, X10, rxvt
+            if (
+                /\[<(?:64|68|72|80|84);/.test(input) ||
+                /\[M[`@]/.test(input) ||
+                /\[64~/.test(input)
+            ) {
+                const upCount = Math.max(
+                    1,
+                    (input.match(/\[<(?:64|68|72|80|84);/g) || []).length +
+                        (input.match(/\[M[`@]/g) || []).length +
+                        (input.match(/\[64~/g) || []).length
+                )
+                setIsFollowing(false)
+                changeScrollOffset((prev) => Math.max(0, Math.min(maxOff, prev - 3 * upCount)))
+                return
+            }
+
+            // Mouse Wheel Down: SGR, X10, rxvt
+            if (/\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)) {
+                const downCount = Math.max(
+                    1,
+                    (input.match(/\[<(?:65|69|73|81|85);/g) || []).length +
+                        (input.match(/\[Ma/g) || []).length +
+                        (input.match(/\[65~/g) || []).length
+                )
+                changeScrollOffset((prev) => {
+                    const next = Math.min(maxOff, prev + 3 * downCount)
+                    if (next >= maxOff) setIsFollowing(true)
+                    return next
+                })
+                return
+            }
+
             if (key.upArrow || input === 'k') {
                 setIsFollowing(false)
                 changeScrollOffset((prev) => Math.max(0, Math.min(maxOff, prev - 1)))

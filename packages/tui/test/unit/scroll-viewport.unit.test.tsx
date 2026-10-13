@@ -68,6 +68,52 @@ describe('ScrollViewport Component (Unit)', () => {
         stdin.write('\u001B[<65;20;10M')
         await new Promise((resolve) => setTimeout(resolve, 50))
         expect(handleScrollChange).toHaveBeenCalledTimes(3)
+
+        // X10 mouse wheel up: \u001B[M`!!
+        stdin.write('\u001B[M`!!')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(handleScrollChange).toHaveBeenCalledTimes(4)
+
+        // X10 mouse wheel down: \u001B[Ma!!
+        stdin.write('\u001B[Ma!!')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(handleScrollChange).toHaveBeenCalledTimes(5)
+
+        // Rxvt mouse wheel up: \u001B[64~
+        stdin.write('\u001B[64~')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(handleScrollChange).toHaveBeenCalledTimes(6)
+
+        // Rxvt mouse wheel down: \u001B[65~
+        stdin.write('\u001B[65~')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(handleScrollChange).toHaveBeenCalledTimes(7)
+    })
+
+    it('navigates with Ctrl+Up and Ctrl+Down keys', async () => {
+        const handleScrollChange = mock((linesBelow: number) => {})
+
+        const { stdin } = render(
+            <RootLayout>
+                <ScrollViewport height={5} onScrollChange={handleScrollChange}>
+                    {Array.from({ length: 20 }, (_, i) => (
+                        <Box key={i} flexShrink={0}>
+                            <Text>{`Row ${i + 1}`}</Text>
+                        </Box>
+                    ))}
+                </ScrollViewport>
+            </RootLayout>
+        )
+
+        // Ctrl+Up: \u001B[1;5A
+        stdin.write('\u001B[1;5A')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(handleScrollChange).toHaveBeenCalled()
+
+        // Ctrl+Down: \u001B[1;5B
+        stdin.write('\u001B[1;5B')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(handleScrollChange).toHaveBeenCalledTimes(2)
     })
 
     it('navigates with PageUp, PageDown, Home, and End keys', async () => {

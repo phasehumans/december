@@ -57,6 +57,7 @@ export function TextArea({
 
     const isPastingRef = useRef(false)
     const pasteBufferRef = useRef('')
+    const pendingX10MouseRef = useRef(false)
 
     const handlePastedText = (pasted: string, offset?: number) => {
         const cleaned = pasted.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
@@ -98,8 +99,55 @@ export function TextArea({
     useInput((input, key) => {
         if (!focus) return
 
-        // Ignore terminal mouse reporting escape sequences
-        if (input.includes('[<') || input.includes('\x1b[<') || input.includes('\x1b[M')) {
+        // X10 mouse reporting split sequence handling
+        if (pendingX10MouseRef.current) {
+            pendingX10MouseRef.current = false
+            if (input.startsWith('`') || input.startsWith('@')) {
+                onScrollUp?.(3)
+                return
+            }
+            if (input.startsWith('a')) {
+                onScrollDown?.(3)
+                return
+            }
+        }
+
+        if (input === '[M' || input === '\x1b[M') {
+            pendingX10MouseRef.current = true
+            return
+        }
+
+        // Mouse Wheel Up: SGR (\x1b[<64...M), X10 (\x1b[M` / \x1b[M@), rxvt (\x1b[64~)
+        if (/\[<(?:64|68|72|80|84);/.test(input) || /\[M[`@]/.test(input) || /\[64~/.test(input)) {
+            const upCount = Math.max(
+                1,
+                (input.match(/\[<(?:64|68|72|80|84);/g) || []).length +
+                    (input.match(/\[M[`@]/g) || []).length +
+                    (input.match(/\[64~/g) || []).length
+            )
+            onScrollUp?.(3 * upCount)
+            return
+        }
+
+        // Mouse Wheel Down: SGR (\x1b[<65...M), X10 (\x1b[Ma), rxvt (\x1b[65~)
+        if (/\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)) {
+            const downCount = Math.max(
+                1,
+                (input.match(/\[<(?:65|69|73|81|85);/g) || []).length +
+                    (input.match(/\[Ma/g) || []).length +
+                    (input.match(/\[65~/g) || []).length
+            )
+            onScrollDown?.(3 * downCount)
+            return
+        }
+
+        // Ignore remaining terminal mouse reporting escape sequences
+        if (
+            input.includes('[<') ||
+            input.includes('\x1b[<') ||
+            input.includes('\x1b[M') ||
+            input.includes('[M')
+        ) {
             return
         }
 
@@ -179,7 +227,12 @@ export function TextArea({
             setCursorOffset(Math.min(value.length, offset + 1))
             return
         }
-        if (key.pageUp || key.pageDown) {
+        if (key.pageUp) {
+            onScrollUp?.(10)
+            return
+        }
+        if (key.pageDown) {
+            onScrollDown?.(10)
             return
         }
 
@@ -199,6 +252,10 @@ export function TextArea({
             if (disableHistoryNav) return
             if (key.shift) {
                 onScrollUp?.(1)
+                return
+            }
+            if (key.ctrl || key.meta) {
+                onScrollUp?.(3)
                 return
             }
             if (value.length === 0) {
@@ -225,6 +282,10 @@ export function TextArea({
             if (disableHistoryNav) return
             if (key.shift) {
                 onScrollDown?.(1)
+                return
+            }
+            if (key.ctrl || key.meta) {
+                onScrollDown?.(3)
                 return
             }
             if (value.length === 0) {

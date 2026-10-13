@@ -13,7 +13,7 @@ export const SHORTCUTS = [
     { key: '! <cmd>', desc: 'Execute shell command directly (e.g. !git status)' },
     { key: '↑ / ↓', desc: 'Scroll chat up / down (when prompt empty)' },
     { key: 'pageup / pagedown', desc: 'Scroll chat by page' },
-    { key: 'shift + ↑ / ↓', desc: 'Scroll chat line by line' },
+    { key: 'ctrl / shift + ↑ / ↓', desc: 'Scroll chat smoothly / line by line' },
     { key: 'home / end', desc: 'Jump to top / bottom' },
     { key: 'ctrl+p', desc: 'Previous prompt history' },
     { key: 'ctrl+n', desc: 'Next prompt history' },
