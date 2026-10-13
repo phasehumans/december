@@ -2,7 +2,28 @@
 
 ### Features
 
+- _(tui)_ Remove expand mode and make thoughts transient with live topic tracking
+- _(tui)_ Implement ephemeral discovery and silent reads for clean terminal history
+- _(cli)_ Stream transient thinking topics and initialize turn with thinking status
+- _(tui)_ Add clickable file links in markdown and login navigation to docs
+
+### Bug Fixes
+
+- _(tui)_ Enable alternate scroll mode and mouse wheel support across terminals
+
+### Performance
+
+- _(tui)_ Optimize scrolling, memoization, and input responsiveness for large chats
+
+## [0.4.8] - 2026-10-10
+
+### Features
+
 - _(cli)_ Remove standalone install script and update installer references to npm
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.8
 
 ## [0.4.7] - 2026-10-10
 
