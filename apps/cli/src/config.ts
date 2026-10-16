@@ -279,6 +279,9 @@ export function getLegacyConfigDir(): string {
     if (isTestEnv && home === os.homedir()) {
         return path.join(os.tmpdir(), 'december-test-config', '.config', 'december')
     }
+    if (process.env.XDG_CONFIG_HOME) {
+        return path.join(process.env.XDG_CONFIG_HOME, 'december')
+    }
     return path.join(home, '.config', 'december')
 }
 
@@ -360,7 +363,25 @@ export async function loadConfig(): Promise<DecemberConfig> {
                 throw readErr
             }
         }
-        let config = JSON.parse(data)
+        let config: DecemberConfig
+        try {
+            config = JSON.parse(data)
+        } catch {
+            // Attempt simple repair for trailing commas e.g. {"a": 1,}
+            try {
+                const repaired = data.replace(/,\s*([\]}])/g, '$1')
+                config = JSON.parse(repaired)
+            } catch {
+                // config.json exists but is corrupted. Backup corrupted file so user credentials are not lost
+                try {
+                    const backupFile = `${configFile}.corrupt.${Date.now()}`
+                    await fs.writeFile(backupFile, data, 'utf-8')
+                } catch {
+                    // Intentionally swallowed: backup failure handled gracefully
+                }
+                return { providers: {} }
+            }
+        }
 
         try {
             const workspacePath = path.join(process.cwd(), '.december', 'settings.json')
@@ -371,13 +392,16 @@ export async function loadConfig(): Promise<DecemberConfig> {
             // workspace config is optional
         }
 
-        // self-heal: if providers exist but activeProvider is missing, select the first available
-        if (
-            !config.activeProvider &&
-            config.providers &&
-            Object.keys(config.providers).length > 0
-        ) {
-            config.activeProvider = Object.keys(config.providers)[0]
+        // self-heal: if providers or subscriptions exist but activeProvider is missing, select the first available
+        if (!config.activeProvider) {
+            if (config.providers && Object.keys(config.providers).length > 0) {
+                config.activeProvider = Object.keys(config.providers)[0]
+            } else if (config.subscriptions && Object.keys(config.subscriptions).length > 0) {
+                config.activeProvider = Object.keys(config.subscriptions)[0]
+                if (!config.authPriority) {
+                    config.authPriority = 'subscription'
+                }
+            }
         }
 
         return config
@@ -444,6 +468,38 @@ function resolveSubscriptionBundle(
         return { provider: activeProvider, bundle: config.subscriptions[activeProvider] }
     }
 
+    // Check alias maps (e.g. anthropic <-> claude, openai <-> codex, google <-> gemini <-> antigravity)
+    if (activeProvider) {
+        if (
+            (activeProvider === 'anthropic' || activeProvider === 'claude') &&
+            config.subscriptions['claude']
+        ) {
+            return { provider: 'claude', bundle: config.subscriptions['claude'] }
+        }
+        if (
+            (activeProvider === 'openai' ||
+                activeProvider === 'codex' ||
+                activeProvider === 'chatgpt') &&
+            config.subscriptions['codex']
+        ) {
+            return { provider: 'codex', bundle: config.subscriptions['codex'] }
+        }
+        if (
+            (activeProvider === 'google' ||
+                activeProvider === 'gemini' ||
+                activeProvider === 'antigravity') &&
+            (config.subscriptions['gemini'] ||
+                config.subscriptions['google'] ||
+                config.subscriptions['antigravity'])
+        ) {
+            const bundle =
+                config.subscriptions['gemini'] ||
+                config.subscriptions['google'] ||
+                config.subscriptions['antigravity']
+            return { provider: bundle.provider || 'gemini', bundle }
+        }
+    }
+
     // Only map aliases if priority is explicitly subscription OR if activeProvider has no BYOK key
     const hasByokForActive = !!(
         activeProvider &&
@@ -451,22 +507,11 @@ function resolveSubscriptionBundle(
         config.providers[activeProvider]
     )
 
-    if (config.authPriority === 'subscription' || !hasByokForActive) {
-        // Check alias maps (e.g. anthropic -> claude, openai -> codex, google -> gemini)
-        if (activeProvider === 'anthropic' && config.subscriptions['claude']) {
-            return { provider: 'claude', bundle: config.subscriptions['claude'] }
-        }
-        if (activeProvider === 'openai' && config.subscriptions['codex']) {
-            return { provider: 'codex', bundle: config.subscriptions['codex'] }
-        }
-        if (activeProvider === 'google' && config.subscriptions['gemini']) {
-            return { provider: 'gemini', bundle: config.subscriptions['gemini'] }
-        }
-    }
-
-    if (config.authPriority === 'subscription') {
+    if (config.authPriority === 'subscription' || !hasByokForActive || !activeProvider) {
         const firstKey = Object.keys(config.subscriptions)[0]
-        return { provider: firstKey, bundle: config.subscriptions[firstKey] }
+        if (firstKey && config.subscriptions[firstKey]) {
+            return { provider: firstKey, bundle: config.subscriptions[firstKey] }
+        }
     }
 
     return undefined
@@ -509,7 +554,12 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
     }
 
     // 3. Subscription (explicit subscription priority, or active subscription without conflicting BYOK activeProvider)
-    if (subMatch && config.authPriority !== 'byok' && config.authPriority !== 'december') {
+    if (
+        subMatch &&
+        (config.authPriority === 'subscription' ||
+            (!hasByokConfig && config.authPriority !== 'december') ||
+            (config.authPriority !== 'byok' && config.authPriority !== 'december'))
+    ) {
         const { resolveSubscriptionToken } =
             await import('./auth/subscriptions/subscription-manager')
         const resolvedBundle = await resolveSubscriptionToken(subMatch.provider, subMatch.bundle)

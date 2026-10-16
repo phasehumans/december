@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-import { getProviderConfig, getAuthStatus, saveConfig } from '../src/config'
+import { getProviderConfig, getAuthStatus, saveConfig, loadConfig } from '../src/config'
 
 describe('Subscription Config & Priority Resolution Hierarchy (Unit)', () => {
     let originalEnv: NodeJS.ProcessEnv
@@ -142,5 +142,63 @@ describe('Subscription Config & Priority Resolution Hierarchy (Unit)', () => {
 
         expect(writeFileSpy).toHaveBeenCalled()
         expect(chmodSpy).toHaveBeenCalledWith(expect.stringContaining('config.json'), 0o600)
+    })
+
+    it('self-heals missing activeProvider to subscription when no BYOK providers exist', async () => {
+        vi.spyOn(fs, 'readFile').mockImplementation(async (filePath: any) => {
+            if (String(filePath).includes('settings.json')) throw new Error('ENOENT')
+            return JSON.stringify({
+                subscriptions: {
+                    gemini: {
+                        provider: 'gemini',
+                        accessToken: 'ya29.test-gemini-token',
+                        subscriptionType: 'gemini_advanced',
+                    },
+                },
+                providers: {},
+            })
+        })
+
+        const config = await loadConfig()
+        expect(config.activeProvider).toBe('gemini')
+        expect(config.authPriority).toBe('subscription')
+
+        const providerConfig = await getProviderConfig()
+        expect(providerConfig?.authMethod).toBe('subscription')
+        expect(providerConfig?.provider).toBe('gemini')
+        expect(providerConfig?.apiKey).toBe('ya29.test-gemini-token')
+    })
+
+    it('repairs trailing commas in config.json without wiping credentials', async () => {
+        vi.spyOn(fs, 'readFile').mockImplementation(async (filePath: any) => {
+            if (String(filePath).includes('settings.json')) throw new Error('ENOENT')
+            // Notice trailing comma after gemini subscription
+            return '{\n  "subscriptions": {\n    "gemini": {\n      "provider": "gemini",\n      "accessToken": "ya29.repaired-token",\n    },\n  },\n  "providers": {},\n}'
+        })
+
+        const config = await loadConfig()
+        expect(config.subscriptions?.gemini?.accessToken).toBe('ya29.repaired-token')
+    })
+
+    it('resolves gemini subscription when activeProvider is google or antigravity alias', async () => {
+        vi.spyOn(fs, 'readFile').mockImplementation(async (filePath: any) => {
+            if (String(filePath).includes('settings.json')) throw new Error('ENOENT')
+            return JSON.stringify({
+                activeProvider: 'google',
+                subscriptions: {
+                    gemini: {
+                        provider: 'gemini',
+                        accessToken: 'ya29.alias-token',
+                        subscriptionType: 'gemini_advanced',
+                    },
+                },
+                providers: {},
+            })
+        })
+
+        const providerConfig = await getProviderConfig()
+        expect(providerConfig?.authMethod).toBe('subscription')
+        expect(providerConfig?.provider).toBe('gemini')
+        expect(providerConfig?.apiKey).toBe('ya29.alias-token')
     })
 })

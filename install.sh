@@ -207,8 +207,8 @@ else
         node -e 'const fs=require("fs"); const f=process.argv[1]; try { const c=JSON.parse(fs.readFileSync(f,"utf8")); c.installMethod="curl"; fs.writeFileSync(f, JSON.stringify(c,null,2)); } catch(e){}' "$CONFIG_FILE" 2>/dev/null || true
     elif command -v bun >/dev/null 2>&1; then
         bun -e 'const fs=require("fs"); const f=process.argv[1]; try { const c=JSON.parse(fs.readFileSync(f,"utf8")); c.installMethod="curl"; fs.writeFileSync(f, JSON.stringify(c,null,2)); } catch(e){}' "$CONFIG_FILE" 2>/dev/null || true
-    else
-        grep -v '"installMethod"' "$CONFIG_FILE" | awk 'NR==1{print "{\n  \"installMethod\": \"curl\","} NR>1{print}' > "${CONFIG_FILE}.tmp" 2>/dev/null && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE" || true
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import json, sys; f=sys.argv[1]; (lambda: (c := json.load(open(f))) and c.update({"installMethod": "curl"}) and json.dump(c, open(f, "w"), indent=2))()' "$CONFIG_FILE" 2>/dev/null || true
     fi
 fi
 
