@@ -9,33 +9,32 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
             expect(detectInstallMethod({ configInstallMethod: 'pnpm' })).toBe('pnpm')
             expect(detectInstallMethod({ configInstallMethod: 'npm' })).toBe('npm')
             expect(detectInstallMethod({ configInstallMethod: 'npx' })).toBe('npx')
+            expect(detectInstallMethod({ configInstallMethod: 'curl' })).toBe('curl')
             expect(detectInstallMethod({ configInstallMethod: 'source' })).toBe('source')
         })
 
-        test('falls back to npm for legacy curl config', () => {
-            expect(
-                detectInstallMethod({
-                    configInstallMethod: 'curl',
-                    execPath: '/usr/local/bin/node',
-                    argv1: '/usr/local/lib/node_modules/@trydecember/cli/dist/december.js',
-                })
-            ).toBe('npm')
-        })
-
-        test('falls back to npm for standalone binary installation', () => {
+        test('detects curl method for standalone binary installation', () => {
             const method = detectInstallMethod({
                 execPath: '/home/user/.local/bin/december',
                 argv1: '/home/user/.local/bin/december',
             })
-            expect(method).toBe('npm')
+            expect(method).toBe('curl')
         })
 
-        test('falls back to npm for legacy binary in ~/.december/bin', () => {
+        test('detects curl method for binary in ~/.december/bin', () => {
             const method = detectInstallMethod({
                 execPath: '/home/user/.december/bin/december',
                 argv1: '/home/user/.december/bin/december',
             })
-            expect(method).toBe('npm')
+            expect(method).toBe('curl')
+        })
+
+        test('detects curl method for windows executable', () => {
+            const method = detectInstallMethod({
+                execPath: 'C:/Users/user/AppData/Local/Programs/december/december.exe',
+                argv1: 'C:/Users/user/AppData/Local/Programs/december/december.exe',
+            })
+            expect(method).toBe('curl')
         })
 
         test('detects bun global installation', () => {
@@ -100,6 +99,20 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
             expect(info.command).toBe('npx @trydecember/cli@latest')
         })
 
+        test('returns curl update command for standalone binary on unix', () => {
+            const info = getUpdateCommand('curl', 'linux')
+            expect(info.command).toBe('curl -fsSL https://trydecember.com/install.sh | bash')
+            expect(info.description).toContain('curl')
+        })
+
+        test('returns powershell update command for standalone binary on windows', () => {
+            const info = getUpdateCommand('curl', 'win32')
+            expect(info.command).toBe(
+                'powershell -c "irm https://trydecember.com/install.ps1 | iex"'
+            )
+            expect(info.description).toContain('PowerShell')
+        })
+
         test('returns git pull command for source development', () => {
             const info = getUpdateCommand('source')
             expect(info.command).toBe('git pull && bun install && bun --cwd apps/cli run build')
@@ -107,6 +120,21 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
     })
 
     describe('performCliUpdate', () => {
+        test('handles curl mode without executing child process', async () => {
+            let progressMsg = ''
+            const result = await performCliUpdate({
+                configInstallMethod: 'curl',
+                onProgress: (msg) => {
+                    progressMsg = msg
+                },
+            })
+
+            expect(result.success).toBe(true)
+            expect(result.method).toBe('curl')
+            expect(result.command).toContain('trydecember.com')
+            expect(progressMsg).toContain('re-run the installer')
+        })
+
         test('handles source development mode without executing child process', async () => {
             let progressMsg = ''
             const result = await performCliUpdate({

@@ -23,6 +23,13 @@ December is a (so much) better coding agent for terminal and cloud. It understan
 1. Install December:
 
 ```bash
+# macOS & Linux (curl)
+curl -fsSL https://trydecember.com/install.sh | bash
+
+# Windows (PowerShell)
+powershell -c "irm https://trydecember.com/install.ps1 | iex"
+
+# Or via npm
 npm install -g @trydecember/cli
 ```
 

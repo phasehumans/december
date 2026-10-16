@@ -46,15 +46,23 @@ describe('apps/docs astro configuration', () => {
         expect(rawConfig.redirects['/changelog']).toBe('/docs/changelog')
     })
 
-    it('configures installer redirects to npm package', async () => {
-        const NPM_PACKAGE_URL = 'https://www.npmjs.com/package/@trydecember/cli'
-        expect(rawConfig.redirects['/install.sh']).toBe(NPM_PACKAGE_URL)
-        expect(rawConfig.redirects['/install']).toBe(NPM_PACKAGE_URL)
+    it('configures static install scripts and /install redirect', async () => {
+        expect(rawConfig.redirects['/install']).toBe('/install.sh')
 
         const redirectsPath = new URL('../public/_redirects', import.meta.url).pathname
-        const content = await Bun.file(redirectsPath).text()
-        expect(content).toContain('/install.sh')
-        expect(content).toContain(NPM_PACKAGE_URL)
-        expect(content).toContain('/install')
+        const redirectsContent = await Bun.file(redirectsPath).text()
+        expect(redirectsContent).toContain('/install')
+        expect(redirectsContent).toContain('/install.sh')
+
+        const installShPath = new URL('../public/install.sh', import.meta.url).pathname
+        const installShContent = await Bun.file(installShPath).text()
+        expect(installShContent).toContain('REPO="phasehumans/december"')
+        expect(installShContent).toContain('detect_target()')
+
+        const installPs1Path = new URL('../public/install.ps1', import.meta.url).pathname
+        const installPs1Content = await Bun.file(installPs1Path).text()
+        expect(installPs1Content).toContain('$Repo = "phasehumans/december"')
+        expect(installPs1Content).toContain('$Target = "x86_64-pc-windows-msvc"')
+        expect(installPs1Content).toContain('december-$Target.zip')
     })
 })

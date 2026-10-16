@@ -26,7 +26,7 @@ function isPermissionDeniedError(errMsg: string): boolean {
     )
 }
 
-export type InstallMethod = 'npm' | 'bun' | 'pnpm' | 'npx' | 'source'
+export type InstallMethod = 'npm' | 'bun' | 'pnpm' | 'npx' | 'curl' | 'source'
 
 export interface UpdateCommandInfo {
     command: string
@@ -65,7 +65,7 @@ export interface DetectOptions {
 
 export function detectInstallMethod(options?: DetectOptions): InstallMethod {
     const configMethod = options?.configInstallMethod
-    const validMethods: InstallMethod[] = ['npm', 'bun', 'pnpm', 'npx', 'source']
+    const validMethods: InstallMethod[] = ['npm', 'bun', 'pnpm', 'npx', 'curl', 'source']
     if (configMethod && validMethods.includes(configMethod as InstallMethod)) {
         return configMethod as InstallMethod
     }
@@ -105,7 +105,24 @@ export function detectInstallMethod(options?: DetectOptions): InstallMethod {
         return 'npx'
     }
 
-    // 3. Bun global
+    // 3. Standalone binary / curl installer
+    // e.g. ~/.december/bin/december, ~/.local/bin/december or running binary directly outside node/bun runtime
+    if (
+        execPath.includes('.december/bin') ||
+        combined.includes('.december/bin') ||
+        execPath.includes('.local/bin/december') ||
+        combined.includes('.local/bin/december') ||
+        (execPath.endsWith('/december') &&
+            !execPath.includes('node_modules') &&
+            !execPath.includes('.bun') &&
+            !execPath.includes('/node')) ||
+        execPath.endsWith('/december.exe') ||
+        combined.includes('december.exe')
+    ) {
+        return 'curl'
+    }
+
+    // 4. Bun global
     if (
         combined.includes('.bun/bin') ||
         combined.includes('/.bun/') ||
@@ -114,7 +131,7 @@ export function detectInstallMethod(options?: DetectOptions): InstallMethod {
         return 'bun'
     }
 
-    // 4. PNPM global
+    // 5. PNPM global
     if (
         combined.includes('pnpm') ||
         combined.includes('.pnpm') ||
@@ -123,7 +140,7 @@ export function detectInstallMethod(options?: DetectOptions): InstallMethod {
         return 'pnpm'
     }
 
-    // 5. NPM global (default)
+    // 6. NPM global (default)
     return 'npm'
 }
 
@@ -132,6 +149,20 @@ export function getUpdateCommand(
     _platform: string = process.platform
 ): UpdateCommandInfo {
     switch (method) {
+        case 'curl': {
+            const isWin = _platform === 'win32' || process.platform === 'win32'
+            const cmd = isWin
+                ? 'powershell -c "irm https://trydecember.com/install.ps1 | iex"'
+                : 'curl -fsSL https://trydecember.com/install.sh | bash'
+            return {
+                command: cmd,
+                manualCmd: cmd,
+                description: isWin
+                    ? 'Standalone binary via PowerShell installer'
+                    : 'Standalone binary via curl installer',
+            }
+        }
+
         case 'bun': {
             return {
                 command: 'bun add -g @trydecember/cli@latest',
@@ -234,9 +265,11 @@ export async function performCliUpdate(options?: PerformUpdateOptions): Promise<
             activeMgr === 'bun' ||
             activeMgr === 'npm' ||
             activeMgr === 'pnpm' ||
+            activeMgr === 'curl' ||
+            activeMgr === 'standalone' ||
             activeMgr === 'source'
         ) {
-            detectedMethod = activeMgr
+            detectedMethod = activeMgr === 'standalone' ? 'curl' : activeMgr
         }
     }
 
@@ -249,6 +282,19 @@ export async function performCliUpdate(options?: PerformUpdateOptions): Promise<
         return {
             success: true,
             method: 'source',
+            command,
+            manualCmd,
+            verified: true,
+            output: msg,
+        }
+    }
+
+    if (method === 'curl') {
+        const msg = `Standalone installation detected. To update, re-run the installer:\n  ${manualCmd}`
+        options?.onProgress?.(msg)
+        return {
+            success: true,
+            method: 'curl',
             command,
             manualCmd,
             verified: true,
