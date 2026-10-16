@@ -68,7 +68,7 @@ TARGET=$(detect_target)
 if [ "$TARGET" = "windows" ]; then
     log_error "Windows detected: Please use the PowerShell installer command:"
     log_space
-    echo -e "${TRUNK}│${RESET}  ${WHITE}powershell -c \"irm https://trydecember.com/install.ps1 | iex\"${RESET}"
+    echo -e "${TRUNK}│${RESET}  ${WHITE}irm https://trydecember.com/install.ps1 | iex${RESET}"
     log_space
     log_tree "Or install via package manager:"
     echo -e "${TRUNK}│${RESET}  ${WHITE}npm install -g @trydecember/cli${RESET}"

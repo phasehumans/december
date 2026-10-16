@@ -22,6 +22,20 @@ December はターミナルとクラウドに対応した (so much) better な�
 
 1. December をインストール:
 
+macOS & Linux:
+
+```bash
+curl -fsSL https://trydecember.com/install.sh | bash
+```
+
+Windows:
+
+```powershell
+irm https://trydecember.com/install.ps1 | iex
+```
+
+npm:
+
 ```bash
 npm install -g @trydecember/cli
 ```

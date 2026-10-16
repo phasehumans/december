@@ -278,6 +278,7 @@ export const geminiAdapter: SubscriptionAdapter = {
                 subscriptionType: 'gemini_advanced',
                 source: 'local_import',
                 updatedAt: Date.now(),
+                expiresAt: Date.now() + 55 * 60 * 1000,
                 extra: { source: 'gcloud_cli' },
             }
         }
@@ -287,6 +288,17 @@ export const geminiAdapter: SubscriptionAdapter = {
 
     async refreshToken(bundle: SubscriptionTokenBundle): Promise<SubscriptionTokenBundle> {
         if (!bundle.refreshToken) {
+            if (bundle.extra?.source === 'gcloud_cli') {
+                const fresh = getGcloudToken()
+                if (fresh) {
+                    return {
+                        ...bundle,
+                        accessToken: fresh,
+                        updatedAt: Date.now(),
+                        expiresAt: Date.now() + 55 * 60 * 1000,
+                    }
+                }
+            }
             return bundle
         }
 
@@ -489,6 +501,7 @@ export const geminiAdapter: SubscriptionAdapter = {
     async verifyToken(bundle: SubscriptionTokenBundle): Promise<boolean> {
         if (!bundle) return false
         if (!bundle.accessToken && !bundle.refreshToken) return false
+        if (bundle.extra?.source === 'gcloud_cli') return true
         if (bundle.expiresAt && bundle.expiresAt < Date.now() && !bundle.refreshToken) {
             return false
         }

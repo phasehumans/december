@@ -22,6 +22,20 @@ December는 터미널과 클라우드를 위한 (so much) better 코딩 에이�
 
 1. December 설치:
 
+macOS & Linux:
+
+```bash
+curl -fsSL https://trydecember.com/install.sh | bash
+```
+
+Windows:
+
+```powershell
+irm https://trydecember.com/install.ps1 | iex
+```
+
+npm:
+
 ```bash
 npm install -g @trydecember/cli
 ```

@@ -201,4 +201,92 @@ describe('Antigravity Provider Adapter (Unit)', () => {
         expect(thrownError.message).toContain('Antigravity API error (403)')
         expect(thrownError.message).toContain('Antigravity quota exceeded or unauthorized')
     })
+
+    it('dynamically calls getToken before stream to refresh bearer token', async () => {
+        let authHeader = ''
+        const mockFetch: typeof fetch = async (_url, options) => {
+            authHeader = (options?.headers as any)?.['Authorization']
+            const encoder = new TextEncoder()
+            const stream = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(
+                        encoder.encode(
+                            'data: {"candidates":[{"content":{"parts":[{"text":"hello"}]}}]}\n\n'
+                        )
+                    )
+                    controller.close()
+                },
+            })
+            return new Response(stream, {
+                status: 200,
+                headers: { 'Content-Type': 'text/event-stream' },
+            })
+        }
+
+        const getToken = async () => 'ya29.refreshed-dynamic-token'
+        const provider = antigravityProvider('ya29.stale-token', {
+            fetchFn: mockFetch,
+            getToken,
+        })
+
+        const stream = provider.stream([{ role: 'user', content: 'test' }])
+        for await (const _ of stream) {
+            // consume
+        }
+
+        expect(authHeader).toBe('Bearer ya29.refreshed-dynamic-token')
+    })
+
+    it('retries request once with fresh token when initial response is 401 unauthorized', async () => {
+        let attempts = 0
+        const tokensUsed: string[] = []
+
+        const mockFetch: typeof fetch = async (_url, options) => {
+            attempts++
+            const auth = (options?.headers as any)?.['Authorization']
+            tokensUsed.push(auth)
+
+            if (attempts === 1) {
+                return new Response('Unauthorized: token expired', { status: 401 })
+            }
+
+            const encoder = new TextEncoder()
+            const stream = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(
+                        encoder.encode(
+                            'data: {"candidates":[{"content":{"parts":[{"text":"success after 401 retry"}]}}]}\n\n'
+                        )
+                    )
+                    controller.close()
+                },
+            })
+            return new Response(stream, {
+                status: 200,
+                headers: { 'Content-Type': 'text/event-stream' },
+            })
+        }
+
+        let tokenCounter = 0
+        const getToken = async () => {
+            tokenCounter++
+            return tokenCounter === 1 ? 'ya29.initial-token' : 'ya29.freshly-refreshed-token'
+        }
+
+        const provider = antigravityProvider('ya29.initial-token', {
+            fetchFn: mockFetch,
+            getToken,
+        })
+
+        const chunks: any[] = []
+        const stream = provider.stream([{ role: 'user', content: 'test' }])
+        for await (const chunk of stream) {
+            chunks.push(chunk)
+        }
+
+        expect(attempts).toBe(2)
+        expect(tokensUsed[0]).toBe('Bearer ya29.initial-token')
+        expect(tokensUsed[1]).toBe('Bearer ya29.freshly-refreshed-token')
+        expect(chunks.some((c) => c.text === 'success after 401 retry')).toBe(true)
+    })
 })

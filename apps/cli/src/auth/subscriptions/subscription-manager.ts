@@ -80,7 +80,10 @@ export async function resolveSubscriptionToken(
     const fiveMinutes = 5 * 60 * 1000
     const isExpiringSoon =
         !bundle.accessToken ||
-        (bundle.expiresAt !== undefined && Date.now() >= bundle.expiresAt - fiveMinutes)
+        (bundle.expiresAt !== undefined && Date.now() >= bundle.expiresAt - fiveMinutes) ||
+        (bundle.expiresAt === undefined &&
+            bundle.refreshToken !== undefined &&
+            (bundle.updatedAt === undefined || Date.now() - bundle.updatedAt > 50 * 60 * 1000))
 
     // For Copilot with raw github token or expiring token, always ensure token refresh/exchange
     const isCopilotRaw =

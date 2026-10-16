@@ -81,11 +81,31 @@ export function instantiateProvider(
             }
             return openaiProvider(undefined, apiKey)
         }
-        case 'antigravity':
+        case 'antigravity': {
+            const subscription = options?.subscription
+            const getToken = subscription
+                ? async () => {
+                      try {
+                          const refreshed = await resolveSubscriptionToken('gemini', subscription)
+                          if (refreshed?.accessToken) {
+                              subscription.accessToken = refreshed.accessToken
+                              subscription.expiresAt = refreshed.expiresAt
+                              subscription.endpoint = refreshed.endpoint
+                              return refreshed.accessToken
+                          }
+                      } catch {
+                          // Intentionally swallowed: fallback to current token if dynamic refresh fails
+                      }
+                      return subscription.accessToken
+                  }
+                : undefined
+
             return antigravityProvider(apiKey, {
                 endpoint: options?.baseURL,
                 headers: options?.headers,
+                getToken,
             })
+        }
         case 'claude':
         case 'anthropic': {
             if (options?.authMethod === 'subscription' || options?.subscription) {
@@ -104,9 +124,31 @@ export function instantiateProvider(
         case 'google': {
             if (options?.authMethod === 'subscription' || options?.subscription) {
                 const endpoint = options?.baseURL || options?.subscription?.endpoint
+                const subscription = options?.subscription
+                const getToken = subscription
+                    ? async () => {
+                          try {
+                              const refreshed = await resolveSubscriptionToken(
+                                  'gemini',
+                                  subscription
+                              )
+                              if (refreshed?.accessToken) {
+                                  subscription.accessToken = refreshed.accessToken
+                                  subscription.expiresAt = refreshed.expiresAt
+                                  subscription.endpoint = refreshed.endpoint
+                                  return refreshed.accessToken
+                              }
+                          } catch {
+                              // Intentionally swallowed: fallback to current token if dynamic refresh fails
+                          }
+                          return subscription.accessToken
+                      }
+                    : undefined
+
                 return antigravityProvider(apiKey, {
                     endpoint,
                     headers: options?.headers,
+                    getToken,
                 })
             }
             return geminiProvider(apiKey)

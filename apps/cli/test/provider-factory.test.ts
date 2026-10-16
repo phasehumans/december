@@ -69,6 +69,26 @@ describe('instantiateProvider', () => {
         })
     })
 
+    it('passes dynamic getToken callback to antigravityProvider when subscription bundle is provided', () => {
+        const subscription: any = {
+            provider: 'gemini',
+            accessToken: 'ya29.token-123',
+            refreshToken: 'refresh-token-abc',
+        }
+        const p = instantiateProvider('gemini', 'ya29.token-123', {
+            authMethod: 'subscription',
+            subscription,
+        })
+        expect(p).toBe('mock-antigravity')
+        expect(providers.antigravityProvider).toHaveBeenCalledWith(
+            'ya29.token-123',
+            expect.objectContaining({
+                endpoint: undefined,
+                getToken: expect.any(Function),
+            })
+        )
+    })
+
     it('instantiates openrouter provider', () => {
         const p = instantiateProvider('openrouter', 'key-123')
         expect(p).toBe('mock-openrouter')

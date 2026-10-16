@@ -40,6 +40,7 @@ export interface AntigravityProviderOptions {
     headers?: Record<string, string>
     projectId?: string
     fetchFn?: typeof fetch
+    getToken?: () => Promise<string | undefined>
 }
 
 export function antigravityProvider(
@@ -48,7 +49,7 @@ export function antigravityProvider(
 ): LLMProvider {
     const endpoint = options?.endpoint || ANTIGRAVITY_DEFAULT_ENDPOINT
     const fetchFn = options?.fetchFn || fetch
-    const bearerToken =
+    let bearerToken =
         token ||
         process.env.ANTIGRAVITY_TOKEN ||
         process.env.GEMINI_OAUTH_TOKEN ||
@@ -216,6 +217,17 @@ export function antigravityProvider(
                 request: innerRequest,
             }
 
+            if (options?.getToken) {
+                try {
+                    const freshToken = await options.getToken()
+                    if (freshToken) {
+                        bearerToken = freshToken
+                    }
+                } catch {
+                    // Intentionally swallowed: fallback to current bearerToken if dynamic refresh fails
+                }
+            }
+
             const headers: Record<string, string> = {
                 'Content-Type': 'application/json',
                 Accept: 'text/event-stream',
@@ -232,6 +244,32 @@ export function antigravityProvider(
                 body: JSON.stringify(requestBody),
                 signal,
             })
+
+            // Dynamic retry on 401 or 403 if token refresh is available
+            if (
+                !response.ok &&
+                (response.status === 401 || response.status === 403) &&
+                options?.getToken
+            ) {
+                try {
+                    const freshToken = await options.getToken()
+                    if (freshToken && freshToken !== bearerToken) {
+                        bearerToken = freshToken
+                        headers.Authorization = `Bearer ${bearerToken}`
+                        const retryResponse = await fetchFn(targetUrl, {
+                            method: 'POST',
+                            headers,
+                            body: JSON.stringify(requestBody),
+                            signal,
+                        })
+                        if (retryResponse.ok) {
+                            response = retryResponse
+                        }
+                    }
+                } catch {
+                    // Intentionally swallowed: fallback to reporting response error
+                }
+            }
 
             // Fallback between daily and prod endpoints, or fallback to Generative Language API
             if (
