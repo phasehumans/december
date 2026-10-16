@@ -2,6 +2,18 @@
 
 ### Features
 
+- _(cli,docs)_ Restore curl and powershell installers with client os detection and binary releases
+- _(docs)_ Use official gnu bash and powershell vector icons in install dropdown
+- _(cli)_ Show changelog highlights on every launch capped to 3 bullets
+
+### Documentation
+
+- Update install commands to irm style and separate boxes without comments across all readmes
+
+## [0.4.9] - 2026-10-13
+
+### Features
+
 - _(tui)_ Remove expand mode and make thoughts transient with live topic tracking
 - _(tui)_ Implement ephemeral discovery and silent reads for clean terminal history
 - _(cli)_ Stream transient thinking topics and initialize turn with thinking status
@@ -14,6 +26,10 @@
 ### Performance
 
 - _(tui)_ Optimize scrolling, memoization, and input responsiveness for large chats
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.9
 
 ## [0.4.8] - 2026-10-10
 
