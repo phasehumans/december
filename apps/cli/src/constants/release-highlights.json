@@ -2,9 +2,9 @@
     "version": "0.4.9",
     "title": "What's New in v0.4.9",
     "bullets": [
-        "*(tui)* Remove expand mode and make thoughts transient with live topic tracking",
-        "*(tui)* Implement ephemeral discovery and silent reads for clean terminal history",
-        "*(cli)* Stream transient thinking topics and initialize turn with thinking status"
+        "Remove expand mode and make thoughts transient with live topic tracking",
+        "Implement ephemeral discovery and silent reads for clean terminal history",
+        "Stream transient thinking topics and initialize turn with thinking status"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

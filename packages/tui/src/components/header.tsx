@@ -120,7 +120,7 @@ export const Header = React.memo(function Header({
                             {announcement.title || `What's New in v${announcement.version}`}
                         </Text>
                     </Box>
-                    {announcement.bullets.map((bullet, idx) => (
+                    {announcement.bullets.slice(0, 3).map((bullet, idx) => (
                         <Box key={idx}>
                             <Text color={THEME.colors.brand}>▎ </Text>
                             <Text color={THEME.colors.muted}>{bullet}</Text>

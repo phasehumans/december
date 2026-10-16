@@ -56,6 +56,28 @@ describe('Header Component (Unit)', () => {
         expect(frame).toContain('https://trydecember.com/docs/changelog')
     })
 
+    it('caps announcement bullets to at most 3 items even if more are provided', () => {
+        const announcement = {
+            version: '0.4.0',
+            title: "What's New in v0.4.0",
+            bullets: [
+                'Item 1',
+                'Item 2',
+                'Item 3',
+                'Item 4 should be omitted',
+                'Item 5 should be omitted',
+            ],
+            url: 'https://trydecember.com/docs/changelog',
+        }
+        const { lastFrame } = render(<Header announcement={announcement} />)
+        const frame = lastFrame()
+        expect(frame).toContain('Item 1')
+        expect(frame).toContain('Item 2')
+        expect(frame).toContain('Item 3')
+        expect(frame).not.toContain('Item 4 should be omitted')
+        expect(frame).not.toContain('Item 5 should be omitted')
+    })
+
     it('does not render announcement when announcement is null or undefined', () => {
         const { lastFrame: frameUndefined } = render(<Header />)
         expect(frameUndefined()).not.toContain("What's New")

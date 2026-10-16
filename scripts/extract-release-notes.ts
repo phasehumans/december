@@ -10,8 +10,8 @@ export interface ReleaseHighlights {
 
 export function cleanBullet(raw: string): string {
     let clean = raw.trim().replace(/^[-*]\s*/, '')
-    // remove commit scope like _(cli)_ or _(auth,docs)_
-    clean = clean.replace(/^_\([^)]+\)_\s*/, '')
+    // remove commit scope like _(cli)_, *(tui)*, or (cli)
+    clean = clean.replace(/^[*_]*\([^)]+\)[*_]*\s*/, '')
     // remove PR number suffix like (#525)
     clean = clean.replace(/\s*\(#\d+\)\s*$/, '')
     clean = clean.trim()

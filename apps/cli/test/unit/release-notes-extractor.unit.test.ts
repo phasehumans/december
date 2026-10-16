@@ -12,6 +12,14 @@ describe('Release Notes Extractor (Unit)', () => {
             'Transition to default fullscreen mode'
         )
 
+        expect(cleanBullet('*(tui)* Remove expand mode and make thoughts transient')).toBe(
+            'Remove expand mode and make thoughts transient'
+        )
+
+        expect(cleanBullet('- (cli) stream transient thinking topics')).toBe(
+            'Stream transient thinking topics'
+        )
+
         expect(cleanBullet('  - support 140+ providers ')).toBe('Support 140+ providers')
     })
 

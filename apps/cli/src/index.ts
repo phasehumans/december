@@ -421,24 +421,23 @@ async function main() {
     }
 
     const { compareVersions } = await import('./utils/bin-discovery')
-    const isFirstRun =
+    const isNewVersion =
         !config.lastSeenVersion || compareVersions(pkg.version, config.lastSeenVersion) > 0
 
-    let announcement: any = null
-    if (isFirstRun) {
-        if (
-            releaseHighlights &&
-            Array.isArray(releaseHighlights.bullets) &&
-            releaseHighlights.bullets.length > 0
-        ) {
-            announcement = releaseHighlights
-        }
-
+    if (isNewVersion) {
         config.lastSeenVersion = pkg.version
         saveConfig(config).catch(() => {
             // Intentionally swallowed: config save failure should not block cli startup
         })
     }
+
+    const { resolveAnnouncement } = await import('./utils/banner')
+    const announcement = resolveAnnouncement({
+        config,
+        isInline: parsedArgs.isInline,
+        isNewVersion,
+        releaseHighlights,
+    })
 
     function AppWrapper(props: any) {
         const [latestVersion, setLatestVersion] = React.useState(undefined as string | undefined)

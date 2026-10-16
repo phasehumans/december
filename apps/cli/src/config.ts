@@ -270,6 +270,7 @@ export interface DecemberConfig {
     }
     trustedWorkspaces?: string[]
     lastSeenVersion?: string
+    showChangelogBanner?: boolean
     browserVisible?: boolean
 }
 
