@@ -1,9 +1,9 @@
 import { Box, Text } from 'ink'
-import TextInput from 'ink-text-input'
 import React from 'react'
 
 import { THEME } from '../../theme'
 import { Spinner } from '../spinner'
+import TextInput from '../text-input'
 
 import { PROVIDER_MENU_ITEMS } from './byok-provider-menu'
 import { MenuFooter } from './menu-footer'

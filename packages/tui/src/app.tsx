@@ -111,7 +111,7 @@ export function ChatApp({
         const originalWrite = process.stdout.write.bind(process.stdout)
         try {
             // Enter alternate screen buffer and enable SGR mouse tracking
-            originalWrite('\x1b[?1049h\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h')
+            originalWrite('\x1b[?1049h\x1b[?1000h\x1b[?1006h\x1b[?1007h')
         } catch {
             // Intentionally swallowed: ignore stdout write errors on mount
         }
@@ -143,7 +143,7 @@ export function ChatApp({
             process.stdout.off('resize', handleResize)
             process.stdout.write = originalWrite
             try {
-                originalWrite('\x1b[?2026l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l')
+                originalWrite('\x1b[?2026l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l')
             } catch {
                 // Intentionally swallowed: cleanup on unmount
             }

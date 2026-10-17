@@ -130,4 +130,31 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain('Submit')
         expect(output).toContain('Cancel')
     })
+
+    it('ignores mouse wheel and drag escape sequences without mutating apiKey', async () => {
+        const handleKeySubmit = mock()
+        const setApiKey = mock()
+        const { stdin } = render(
+            <ByokKeyMenu
+                selectedProvider="perplexity"
+                apiKey=""
+                setApiKey={setApiKey}
+                handleKeySubmit={handleKeySubmit}
+                isStreaming={false}
+            />
+        )
+
+        // SGR mouse wheel down and drag sequences from user report
+        stdin.write('[<65;90;20M')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(setApiKey).not.toHaveBeenCalled()
+
+        stdin.write('[<32;3;2M')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(setApiKey).not.toHaveBeenCalled()
+
+        stdin.write('[<0;8;4m')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(setApiKey).not.toHaveBeenCalled()
+    })
 })

@@ -1,8 +1,8 @@
 import { Box, Text, useInput } from 'ink'
-import TextInput from 'ink-text-input'
 import React, { useState, useMemo, useRef } from 'react'
 
 import { THEME } from '../../theme'
+import TextInput from '../text-input'
 
 import { MenuFooter } from './menu-footer'
 
@@ -86,17 +86,38 @@ export function SubscriptionSelectMenu(props: SubscriptionSelectMenuProps) {
             return
         }
 
-        if (key.upArrow || input === 'k') {
+        const isWheelUp =
+            /\[<(?:64|68|72|80|84);/.test(input) || /\[M[`@]/.test(input) || /\[64~/.test(input)
+        const isWheelDown =
+            /\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)
+
+        if (key.upArrow || input === 'k' || isWheelUp) {
+            const count = isWheelUp
+                ? Math.max(1, (input.match(/\[<(?:64|68|72|80|84);/g) || []).length)
+                : 1
             if (selectedIndex > 0) {
-                setSelectedIndex(selectedIndex - 1)
+                setSelectedIndex(Math.max(0, selectedIndex - count))
             }
             return
         }
 
-        if (key.downArrow || input === 'j') {
+        if (key.downArrow || input === 'j' || isWheelDown) {
+            const count = isWheelDown
+                ? Math.max(1, (input.match(/\[<(?:65|69|73|81|85);/g) || []).length)
+                : 1
             if (selectedIndex < filteredItems.length - 1) {
-                setSelectedIndex(selectedIndex + 1)
+                setSelectedIndex(Math.min(filteredItems.length - 1, selectedIndex + count))
             }
+            return
+        }
+
+        // Ignore unhandled mouse sequences
+        if (
+            input.includes('[<') ||
+            input.includes('\x1b[<') ||
+            input.includes('[M') ||
+            input.includes('\x1b[M')
+        ) {
             return
         }
 

@@ -1,9 +1,9 @@
 import { Box, Text, useInput } from 'ink'
 import SelectInput from 'ink-select-input'
-import TextInput from 'ink-text-input'
 import React from 'react'
 
 import { THEME } from '../../theme'
+import TextInput from '../text-input'
 
 import { MenuFooter } from './menu-footer'
 import { CustomIndicator, CustomItem } from './menu-items'

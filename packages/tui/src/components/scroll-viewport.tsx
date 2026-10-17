@@ -353,6 +353,19 @@ export const ScrollViewport = React.memo(
                     return
                 }
 
+                // Ignore any other terminal mouse reporting escape sequences
+                if (
+                    input.includes('[<') ||
+                    input.includes('\x1b[<') ||
+                    input.includes('\x1b[M') ||
+                    input.includes('[M') ||
+                    /\[<[0-9;]+[Mm]/.test(input) ||
+                    /\[M[`@a]/.test(input) ||
+                    /\[6[45]~/.test(input)
+                ) {
+                    return
+                }
+
                 // Keyboard navigation
                 const pageSize = Math.max(1, stateRef.current.viewportHeight - 2)
 

@@ -1,9 +1,10 @@
 import { Box, Text, useInput } from 'ink'
-import TextInput from 'ink-text-input'
 import { useState, useCallback } from 'react'
 
 import { useKeyboardLayer } from '../providers/keyboard-layer'
 import { THEME } from '../theme'
+
+import TextInput from './text-input'
 
 import type { ReactNode } from 'react'
 
@@ -42,22 +43,33 @@ export function DialogSearchList<T>({
     const filtered = searchValue ? items.filter((item) => filterFn(item, searchValue)) : items
     const visible = filtered.slice(0, MAX_VISIBLE_ITEMS)
 
-    useInput((_input, key) => {
+    useInput((input, key) => {
         if (!isTopLayer('dialog')) return
+
+        const isWheelUp =
+            /\[<(?:64|68|72|80|84);/.test(input) || /\[M[`@]/.test(input) || /\[64~/.test(input)
+        const isWheelDown =
+            /\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)
 
         if (key.return) {
             const item = filtered[selectedIndex]
             if (item) onSelect(item)
-        } else if (key.upArrow) {
+        } else if (key.upArrow || isWheelUp) {
+            const count = isWheelUp
+                ? Math.max(1, (input.match(/\[<(?:64|68|72|80|84);/g) || []).length)
+                : 1
             setSelectedIndex((i) => {
-                const newIndex = Math.max(0, i - 1)
+                const newIndex = Math.max(0, i - count)
                 const item = filtered[newIndex]
                 if (item && onHighlight) onHighlight(item)
                 return newIndex
             })
-        } else if (key.downArrow) {
+        } else if (key.downArrow || isWheelDown) {
+            const count = isWheelDown
+                ? Math.max(1, (input.match(/\[<(?:65|69|73|81|85);/g) || []).length)
+                : 1
             setSelectedIndex((i) => {
-                const newIndex = Math.min(filtered.length - 1, i + 1)
+                const newIndex = Math.min(filtered.length - 1, i + count)
                 const item = filtered[newIndex]
                 if (item && onHighlight) onHighlight(item)
                 return newIndex

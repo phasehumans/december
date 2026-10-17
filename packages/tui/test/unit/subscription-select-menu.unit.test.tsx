@@ -228,4 +228,26 @@ describe('SubscriptionSelectMenu Component (Unit)', () => {
         const output = lastFrame() || ''
         expect(output).toContain('No providers found.')
     })
+
+    it('navigates with mouse wheel down and mouse wheel up', async () => {
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <SubscriptionSelectMenu handleSubscriptionSelect={mock()} />
+            </KeyboardLayerProvider>
+        )
+
+        expect(lastFrame()).toContain('❭ Anthropic (Claude)')
+
+        // Mouse wheel down: \u001B[<65;10;10M
+        stdin.write('\u001B[<65;10;10M')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+
+        expect(lastFrame()).toContain('❭ GitHub (Copilot)')
+
+        // Mouse wheel up: \u001B[<64;10;10M
+        stdin.write('\u001B[<64;10;10M')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+
+        expect(lastFrame()).toContain('❭ Anthropic (Claude)')
+    })
 })

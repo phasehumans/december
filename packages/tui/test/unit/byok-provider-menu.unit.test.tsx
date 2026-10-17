@@ -751,4 +751,28 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(frame).toContain('❭ xAI')
         expect(frame).toContain('↓ 178 more')
     })
+
+    it('navigates with mouse wheel down and mouse wheel up', async () => {
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu handleProviderSelect={mock()} />
+            </KeyboardLayerProvider>
+        )
+
+        expect(lastFrame()).toContain('❭ Anthropic (Claude)')
+
+        // Mouse wheel down: \u001B[<65;10;10M
+        stdin.write('\u001B[<65;10;10M')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+
+        const frameAfterWheelDown = lastFrame() || ''
+        expect(frameAfterWheelDown).toContain('❭ GitHub (Copilot)')
+
+        // Mouse wheel up: \u001B[<64;10;10M
+        stdin.write('\u001B[<64;10;10M')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+
+        const frameAfterWheelUp = lastFrame() || ''
+        expect(frameAfterWheelUp).toContain('❭ Anthropic (Claude)')
+    })
 })

@@ -359,4 +359,30 @@ describe('SessionSelectMenu Component (Unit)', () => {
 
         expect(setSessionSelectedIndex).toHaveBeenCalledWith(1)
     })
+
+    it('navigates sessions with mouse wheel down', async () => {
+        const setSessionSelectedIndex = mock()
+        const { stdin } = render(
+            <SessionSelectMenu
+                sessionsData={mockSessions}
+                sessionPage={0}
+                sessionSelectedIndex={0}
+                sessionRenameMode={false}
+                sessionNewName=""
+                setSessionNewName={mock()}
+                setSessionsData={mock()}
+                setSessionRenameMode={mock()}
+                setSessionSelectedIndex={setSessionSelectedIndex}
+                setSessionPage={mock()}
+                handleSessionSelect={mock()}
+                setAuthMode={mock()}
+            />
+        )
+
+        // Mouse wheel down: \u001B[<65;10;10M
+        stdin.write('\u001B[<65;10;10M')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(setSessionSelectedIndex).toHaveBeenCalledWith(1)
+    })
 })
