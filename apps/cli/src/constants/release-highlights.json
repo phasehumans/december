@@ -1,9 +1,9 @@
 {
-    "version": "0.4.11",
-    "title": "What's New in v0.4.11",
+    "version": "0.4.12",
+    "title": "What's New in v0.4.12",
     "bullets": [
-        "Add fullscreen renderer mode with synchronized updates and mouse auto-copy",
-        "Update december billing label to december wallet and clean up inline mode"
+        "Add /diff command to view git and workspace changes",
+        "Smooth scroll viewport with height compensation and single mouse listener"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

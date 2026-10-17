@@ -2,6 +2,25 @@
 
 ### Features
 
+- _(tui)_ Add /diff command to view git and workspace changes
+
+### Bug Fixes
+
+- _(tui)_ Smooth scroll viewport with height compensation and single mouse listener
+- _(tui)_ Fix diff status path slicing, persistent footer visibility, and remove full file mode
+- _(tui)_ Sanitize mouse escape sequences in text inputs and disable drag tracking
+- _(tui)_ Add sliding window to diff file list, lock uniform gutter width, and clean up footer
+- _(tui)_ Remove diff summary title and fix uniform background width in diff viewer
+
+### Refactor
+
+- _(tui)_ Remove redundant /tui command
+- _(tui)_ Simplify diff viewer, remove tabs and comments, and polish navigation
+
+## [0.4.11] - 2026-10-17
+
+### Features
+
 - _(tui)_ Add fullscreen renderer mode with synchronized updates and mouse auto-copy
 - _(tui)_ Update december billing label to december wallet and clean up inline mode
 - _(cli)_ Add first-launch device auth and wallet balance transition
@@ -14,6 +33,10 @@
 
 - _(tui)_ Cleanly restore terminal buffer and clear screen on exit
 - _(cli,tui)_ Add line spacing before login success and fix header memo reactivity on auth change
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.11
 
 ## [0.4.10] - 2026-10-16
 
