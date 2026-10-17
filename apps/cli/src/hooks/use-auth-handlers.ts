@@ -176,7 +176,7 @@ export function useAuthHandlers(
                 const successBlocks: any[] = [
                     {
                         type: 'text',
-                        content: MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE,
+                        content: `\n${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}`,
                         color: '#6EE7B7',
                     },
                 ]

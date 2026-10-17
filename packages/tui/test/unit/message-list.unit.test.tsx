@@ -337,4 +337,43 @@ describe('MessageList Component (Unit)', () => {
         expect(frame).toContain('User message 0')
         expect(frame).toContain('User message 24')
     })
+
+    it('immediately re-renders header when isAuthenticated transitions from false to true', () => {
+        const staticMessages = [{ id: 'header', role: 'header' as const }]
+
+        const { rerender, lastFrame } = renderWithProviders(
+            <MessageList
+                staticKey={0}
+                staticMessages={staticMessages}
+                activeMessages={[]}
+                isAuthenticated={false}
+                cliVersion="0.4.10"
+                userEmail="dev@example.com"
+                activeModel="december-auto"
+                authMethod="december"
+            />
+        )
+
+        let frame = lastFrame() || ''
+        expect(frame).toContain('dev@example.com')
+        expect(frame).toContain('Not connected · Run /login')
+
+        rerender(
+            <MessageList
+                staticKey={0}
+                staticMessages={staticMessages}
+                activeMessages={[]}
+                isAuthenticated={true}
+                cliVersion="0.4.10"
+                userEmail="dev@example.com"
+                activeModel="december-auto"
+                authMethod="december"
+            />
+        )
+
+        frame = lastFrame() || ''
+        expect(frame).toContain('dev@example.com')
+        expect(frame).not.toContain('Not connected · Run /login')
+        expect(frame).toContain('Humans R1 · December Wallet')
+    })
 })

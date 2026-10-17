@@ -85,6 +85,11 @@ export const MessageItem = React.memo(
         if (prev.latestVersion !== next.latestVersion) return false
         if (prev.userEmail !== next.userEmail) return false
         if (prev.announcement !== next.announcement) return false
+        if (prev.isAuthenticated !== next.isAuthenticated) return false
+        if (prev.activeModel !== next.activeModel) return false
+        if (prev.modelLabel !== next.modelLabel) return false
+        if (prev.authMethod !== next.authMethod) return false
+        if (prev.selectedProvider !== next.selectedProvider) return false
         return true
     }
 )

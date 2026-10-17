@@ -19,7 +19,7 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
         const successBlocks: { type: string; content: string; color?: string }[] = [
             {
                 type: 'text',
-                content: MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE,
+                content: `\n${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}`,
                 color: '#6EE7B7',
             },
         ]
@@ -31,7 +31,7 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
             })
         }
 
-        expect(successBlocks[0].content).toBe(MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE)
+        expect(successBlocks[0].content).toBe(`\n${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}`)
         expect(successBlocks[0].color).toBe('#6EE7B7')
         expect(successBlocks[1].content).toContain('Your December Wallet balance is $0.00.')
         expect(successBlocks[1].content).toContain('[https://app.trydecember.com/settings/billing]')
@@ -44,7 +44,7 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
         const successBlocks: { type: string; content: string; color?: string }[] = [
             {
                 type: 'text',
-                content: MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE,
+                content: `\n${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}`,
                 color: '#6EE7B7',
             },
         ]
