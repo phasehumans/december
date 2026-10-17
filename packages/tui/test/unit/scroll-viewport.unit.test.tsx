@@ -226,4 +226,41 @@ describe('ScrollViewport Component (Unit)', () => {
         await new Promise((resolve) => setTimeout(resolve, 10))
         expect(handleCopy).toHaveBeenCalledTimes(1)
     })
+
+    it('compensates scroll position when older content is prepended upon entering reading mode', async () => {
+        let linesBelowObserved: number | null = null
+        const handleScrollChange = mock((linesBelow: number) => {
+            linesBelowObserved = linesBelow
+        })
+
+        function DynamicWrapper({ messageCount }: { messageCount: number }) {
+            return (
+                <RootLayout>
+                    <ScrollViewport height={5} onScrollChange={handleScrollChange}>
+                        {Array.from({ length: messageCount }, (_, i) => (
+                            <Box key={i} flexShrink={0}>
+                                <Text>{`Message Item ${i + 1}`}</Text>
+                            </Box>
+                        ))}
+                    </ScrollViewport>
+                </RootLayout>
+            )
+        }
+
+        // Render initial 10 messages (showing bottom 5, i.e., items 6-10)
+        const { stdin, rerender } = render(<DynamicWrapper messageCount={10} />)
+        await new Promise((resolve) => setTimeout(resolve, 50))
+
+        // Scroll up 2 lines (enters reading mode; linesBelow = 2)
+        stdin.write('\u001B[<64;20;10M')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(linesBelowObserved).toBe(2)
+
+        // Prepend 10 older messages (total 20 messages, simulating un-windowing)
+        rerender(<DynamicWrapper messageCount={20} />)
+        await new Promise((resolve) => setTimeout(resolve, 50))
+
+        // Visible position relative to bottom should be preserved without teleporting
+        expect(linesBelowObserved).toBe(2)
+    })
 })

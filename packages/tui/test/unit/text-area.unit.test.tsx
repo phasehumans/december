@@ -333,13 +333,16 @@ describe('TextArea Component (Unit)', () => {
         expect(onHistoryDown).toHaveBeenCalledTimes(1)
     })
 
-    it('triggers onScrollUp and onScrollDown on mouse wheel events in TextArea', async () => {
+    it('ignores mouse wheel escape sequences in TextArea without inserting text or duplicating scroll', async () => {
         const onScrollUp = mock()
         const onScrollDown = mock()
+        let val = 'active prompt'
         const { stdin } = render(
             <TextArea
-                value="active prompt"
-                onChange={() => {}}
+                value={val}
+                onChange={(next) => {
+                    val = next
+                }}
                 onSubmit={() => {}}
                 onScrollUp={onScrollUp}
                 onScrollDown={onScrollDown}
@@ -350,22 +353,26 @@ describe('TextArea Component (Unit)', () => {
         // Mouse wheel up SGR: \u001B[<64;20;10M
         stdin.write('\u001B[<64;20;10M')
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(onScrollUp).toHaveBeenCalledWith(3)
+        expect(onScrollUp).not.toHaveBeenCalled()
+        expect(val).toBe('active prompt')
 
         // Mouse wheel down SGR: \u001B[<65;20;10M
         stdin.write('\u001B[<65;20;10M')
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(onScrollDown).toHaveBeenCalledWith(3)
+        expect(onScrollDown).not.toHaveBeenCalled()
+        expect(val).toBe('active prompt')
 
         // X10 mouse wheel up: \u001B[M`
         stdin.write('\u001B[M`!!')
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(onScrollUp).toHaveBeenCalledWith(3)
+        expect(onScrollUp).not.toHaveBeenCalled()
+        expect(val).toBe('active prompt')
 
         // X10 mouse wheel down: \u001B[Ma
         stdin.write('\u001B[Ma!!')
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(onScrollDown).toHaveBeenCalledWith(3)
+        expect(onScrollDown).not.toHaveBeenCalled()
+        expect(val).toBe('active prompt')
     })
 
     it('triggers onScrollUp and onScrollDown on PageUp and PageDown in TextArea', async () => {

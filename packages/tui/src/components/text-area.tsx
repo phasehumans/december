@@ -102,12 +102,7 @@ export function TextArea({
         // X10 mouse reporting split sequence handling
         if (pendingX10MouseRef.current) {
             pendingX10MouseRef.current = false
-            if (input.startsWith('`') || input.startsWith('@')) {
-                onScrollUp?.(3)
-                return
-            }
-            if (input.startsWith('a')) {
-                onScrollDown?.(3)
+            if (input.startsWith('`') || input.startsWith('@') || input.startsWith('a')) {
                 return
             }
         }
@@ -117,36 +112,16 @@ export function TextArea({
             return
         }
 
-        // Mouse Wheel Up: SGR (\x1b[<64...M), X10 (\x1b[M` / \x1b[M@), rxvt (\x1b[64~)
-        if (/\[<(?:64|68|72|80|84);/.test(input) || /\[M[`@]/.test(input) || /\[64~/.test(input)) {
-            const upCount = Math.max(
-                1,
-                (input.match(/\[<(?:64|68|72|80|84);/g) || []).length +
-                    (input.match(/\[M[`@]/g) || []).length +
-                    (input.match(/\[64~/g) || []).length
-            )
-            onScrollUp?.(3 * upCount)
-            return
-        }
-
-        // Mouse Wheel Down: SGR (\x1b[<65...M), X10 (\x1b[Ma), rxvt (\x1b[65~)
-        if (/\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)) {
-            const downCount = Math.max(
-                1,
-                (input.match(/\[<(?:65|69|73|81|85);/g) || []).length +
-                    (input.match(/\[Ma/g) || []).length +
-                    (input.match(/\[65~/g) || []).length
-            )
-            onScrollDown?.(3 * downCount)
-            return
-        }
-
-        // Ignore remaining terminal mouse reporting escape sequences
+        // Ignore terminal mouse reporting escape sequences (including mouse wheel sequences)
+        // Mouse wheel scrolling is handled centrally by ScrollViewport to prevent double-firing
         if (
             input.includes('[<') ||
             input.includes('\x1b[<') ||
             input.includes('\x1b[M') ||
-            input.includes('[M')
+            input.includes('[M') ||
+            /\[<(?:64|65|68|69|72|73|80|81|84|85);/.test(input) ||
+            /\[M[`@a]/.test(input) ||
+            /\[6[45]~/.test(input)
         ) {
             return
         }

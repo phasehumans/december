@@ -60,6 +60,7 @@ export const ScrollViewport = React.memo(
 
         const prevContentHeightRef = useRef<number>(0)
         const prevViewportHeightRef = useRef<number>(0)
+        const justEnteredReadingModeRef = useRef<boolean>(false)
 
         // Compute max scrollTop
         const maxScrollTop = Math.max(0, contentHeight - viewportHeight)
@@ -89,6 +90,22 @@ export const ScrollViewport = React.memo(
         const throttleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
         const pendingX10MouseRef = useRef<boolean>(false)
 
+        const applyContentHeight = useCallback((newHeight: number) => {
+            const prevHeight = prevContentHeightRef.current
+            const heightDiff = newHeight - prevHeight
+            prevContentHeightRef.current = newHeight
+            setContentHeight(newHeight)
+
+            if (justEnteredReadingModeRef.current) {
+                justEnteredReadingModeRef.current = false
+                if (heightDiff > 0 && prevHeight > 0) {
+                    const adjustedTop = stateRef.current.internalScrollTop + heightDiff
+                    setInternalScrollTop(adjustedTop)
+                    stateRef.current.internalScrollTop = adjustedTop
+                }
+            }
+        }, [])
+
         // Measure viewport and content dimensions
         useLayoutEffect(() => {
             let vHeight = explicitHeight ?? viewportHeight
@@ -117,10 +134,7 @@ export const ScrollViewport = React.memo(
                     }
                     lastContentMeasureTimeRef.current = now
                     const cMeasured = measureElement(contentRef.current)
-                    if (cMeasured.height !== prevContentHeightRef.current) {
-                        prevContentHeightRef.current = cMeasured.height
-                        setContentHeight(cMeasured.height)
-                    }
+                    applyContentHeight(cMeasured.height)
                 } else if (!throttleTimerRef.current) {
                     // Schedule a trailing measurement so layout is never left stale if streaming pauses
                     throttleTimerRef.current = setTimeout(
@@ -129,10 +143,7 @@ export const ScrollViewport = React.memo(
                             if (contentRef.current) {
                                 lastContentMeasureTimeRef.current = Date.now()
                                 const cMeasured = measureElement(contentRef.current)
-                                if (cMeasured.height !== prevContentHeightRef.current) {
-                                    prevContentHeightRef.current = cMeasured.height
-                                    setContentHeight(cMeasured.height)
-                                }
+                                applyContentHeight(cMeasured.height)
                             }
                         },
                         Math.max(10, 80 - elapsed)
@@ -150,12 +161,9 @@ export const ScrollViewport = React.memo(
                 }
                 lastContentMeasureTimeRef.current = Date.now()
                 const cMeasured = measureElement(contentRef.current)
-                if (cMeasured.height !== prevContentHeightRef.current) {
-                    prevContentHeightRef.current = cMeasured.height
-                    setContentHeight(cMeasured.height)
-                }
+                applyContentHeight(cMeasured.height)
             }
-        }, [isGenerating])
+        }, [isGenerating, applyContentHeight])
 
         // Cleanup trailing measurement timer on unmount
         useEffect(() => {
@@ -171,8 +179,12 @@ export const ScrollViewport = React.memo(
         useEffect(() => {
             if (controlledScrollFromBottom !== undefined) {
                 if (controlledScrollFromBottom === 0) {
+                    justEnteredReadingModeRef.current = false
                     setIsReadingMode(false)
                 } else {
+                    if (!stateRef.current.isReadingMode) {
+                        justEnteredReadingModeRef.current = true
+                    }
                     setIsReadingMode(true)
                     setInternalScrollTop(Math.max(0, maxScrollTop - controlledScrollFromBottom))
                 }
@@ -203,9 +215,13 @@ export const ScrollViewport = React.memo(
                     ? Math.min(stateRef.current.internalScrollTop, currentMax)
                     : currentMax
                 const newTop = Math.max(0, currentTop - delta)
-                setIsReadingMode(newTop < currentMax)
+                const willBeReading = newTop < currentMax
+                if (!stateRef.current.isReadingMode && willBeReading) {
+                    justEnteredReadingModeRef.current = true
+                }
+                setIsReadingMode(willBeReading)
                 setInternalScrollTop(newTop)
-                stateRef.current.isReadingMode = newTop < currentMax
+                stateRef.current.isReadingMode = willBeReading
                 stateRef.current.internalScrollTop = newTop
                 notifyStateChange(newTop)
             },
@@ -220,6 +236,7 @@ export const ScrollViewport = React.memo(
                     : currentMax
                 const newTop = Math.min(currentMax, currentTop + delta)
                 if (newTop >= currentMax) {
+                    justEnteredReadingModeRef.current = false
                     setIsReadingMode(false)
                     setInternalScrollTop(currentMax)
                     stateRef.current.isReadingMode = false
@@ -236,6 +253,7 @@ export const ScrollViewport = React.memo(
 
         const handleScrollToTop = useCallback(() => {
             const currentMax = stateRef.current.maxScrollTop
+            justEnteredReadingModeRef.current = false
             setIsReadingMode(currentMax > 0)
             setInternalScrollTop(0)
             stateRef.current.isReadingMode = currentMax > 0
@@ -245,6 +263,7 @@ export const ScrollViewport = React.memo(
 
         const handleScrollToBottom = useCallback(() => {
             const currentMax = stateRef.current.maxScrollTop
+            justEnteredReadingModeRef.current = false
             setIsReadingMode(false)
             setInternalScrollTop(currentMax)
             stateRef.current.isReadingMode = false
@@ -271,11 +290,11 @@ export const ScrollViewport = React.memo(
                 if (pendingX10MouseRef.current) {
                     pendingX10MouseRef.current = false
                     if (input.startsWith('`') || input.startsWith('@')) {
-                        handleScrollUp(3)
+                        handleScrollUp(2)
                         return
                     }
                     if (input.startsWith('a')) {
-                        handleScrollDown(3)
+                        handleScrollDown(2)
                         return
                     }
                 }
@@ -297,7 +316,8 @@ export const ScrollViewport = React.memo(
                             (input.match(/\[M[`@]/g) || []).length +
                             (input.match(/\[64~/g) || []).length
                     )
-                    handleScrollUp(3 * upCount)
+                    const delta = Math.min(5, upCount > 1 ? 1 + upCount : 2)
+                    handleScrollUp(delta)
                     return
                 }
 
@@ -313,7 +333,8 @@ export const ScrollViewport = React.memo(
                             (input.match(/\[Ma/g) || []).length +
                             (input.match(/\[65~/g) || []).length
                     )
-                    handleScrollDown(3 * downCount)
+                    const delta = Math.min(5, downCount > 1 ? 1 + downCount : 2)
+                    handleScrollDown(delta)
                     return
                 }
 
