@@ -172,4 +172,33 @@ describe('ErrorMessage Component (Unit)', () => {
         expect(frame).toContain('Insufficient credits in your Sarvam AI account.')
         expect(frame).toContain('https://indus.sarvam.ai/')
     })
+
+    it('parses single-line December Wallet error strings via parseTuiError and renders structured layout', () => {
+        const singleLine =
+            'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
+        const parsed = parseTuiError(singleLine)
+
+        expect(parsed.message).toBe('Insufficient credits in December Wallet.')
+        expect(parsed.hint).toBe(
+            'Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
+        )
+
+        const { lastFrame } = render(<ErrorMessage message={singleLine} />)
+        const frame = lastFrame() || ''
+
+        expect(frame).toContain('Insufficient credits in December Wallet.')
+        expect(frame).toContain('https://app.trydecember.com/settings/billing')
+        expect(frame).toContain('/login')
+        expect(frame).not.toContain('Error:')
+    })
+
+    it('parses multi-line December Wallet 402 error strings via parseTuiError', () => {
+        const multiLine =
+            '402 Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.\n402 status code (no body)'
+        const parsed = parseTuiError(multiLine)
+
+        expect(parsed.message).toBe('Insufficient credits in December Wallet.')
+        expect(parsed.cause).toBe('402 status code (no body)')
+        expect(parsed.hint).toContain('https://app.trydecember.com/settings/billing')
+    })
 })

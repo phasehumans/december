@@ -46,4 +46,38 @@ describe('TUI Keyboard Navigation (Unit)', () => {
         expect(setAuthMode).toHaveBeenCalledWith('none')
         expect(session.handleAbort).not.toHaveBeenCalled()
     })
+
+    it('triggers handleOpenDeviceAuthUrl on "o" keypress when pendingDeviceAuthUrl is active', async () => {
+        const handleOpenDeviceAuthUrl = mock()
+        const session = {
+            authMode: 'none',
+            pendingDeviceAuthUrl: 'https://app.trydecember.com/device/activate?code=ABCD-EFGH',
+            handleOpenDeviceAuthUrl,
+            handleAbort: mock(),
+        }
+
+        const { stdin } = renderWithProviders(<GlobalShortcuts {...session} />)
+        stdin.write('o')
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        expect(handleOpenDeviceAuthUrl).toHaveBeenCalledTimes(1)
+        expect(session.handleAbort).not.toHaveBeenCalled()
+    })
+
+    it('triggers handleAbort on Escape keypress when pendingDeviceAuthUrl is active', async () => {
+        const handleAbort = mock()
+        const session = {
+            authMode: 'none',
+            pendingDeviceAuthUrl: 'https://app.trydecember.com/device/activate?code=ABCD-EFGH',
+            handleOpenDeviceAuthUrl: mock(),
+            handleAbort,
+        }
+
+        const { stdin } = renderWithProviders(<GlobalShortcuts {...session} />)
+        stdin.write('\u001B') // Escape
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        expect(handleAbort).toHaveBeenCalledTimes(1)
+        expect(session.handleOpenDeviceAuthUrl).not.toHaveBeenCalled()
+    })
 })

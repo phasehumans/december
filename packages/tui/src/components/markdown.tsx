@@ -167,12 +167,12 @@ function Table({ token }: { token: any }) {
 
     return (
         <Box flexDirection="column" marginY={1}>
-            <Text color={THEME.colors.dim}>{topBorder}</Text>
+            <Text color={THEME.colors.border}>{topBorder}</Text>
             {headers.length > 0 && (
                 <>
                     {Array.from({ length: hMaxLines }).map((_, l) => (
                         <Box flexDirection="row" key={`h-${l}`}>
-                            <Text color={THEME.colors.dim}>│</Text>
+                            <Text color={THEME.colors.border}>│</Text>
                             {colWidths.map((w, c) => (
                                 <React.Fragment key={c}>
                                     <Box width={w + 2} paddingX={1}>
@@ -180,12 +180,12 @@ function Table({ token }: { token: any }) {
                                             {(hLines[c] && hLines[c][l]) || ''}
                                         </Text>
                                     </Box>
-                                    <Text color={THEME.colors.dim}>│</Text>
+                                    <Text color={THEME.colors.border}>│</Text>
                                 </React.Fragment>
                             ))}
                         </Box>
                     ))}
-                    <Text color={THEME.colors.dim}>{headerSep}</Text>
+                    <Text color={THEME.colors.border}>{headerSep}</Text>
                 </>
             )}
             {rows.map((row: any[], r: number) => {
@@ -195,7 +195,7 @@ function Table({ token }: { token: any }) {
                     <React.Fragment key={r}>
                         {Array.from({ length: rMaxLines }).map((_, l) => (
                             <Box flexDirection="row" key={`r-${r}-${l}`}>
-                                <Text color={THEME.colors.dim}>│</Text>
+                                <Text color={THEME.colors.border}>│</Text>
                                 {colWidths.map((w, c) => (
                                     <React.Fragment key={c}>
                                         <Box width={w + 2} paddingX={1}>
@@ -203,7 +203,7 @@ function Table({ token }: { token: any }) {
                                                 {(rLines[c] && rLines[c][l]) || ''}
                                             </Text>
                                         </Box>
-                                        <Text color={THEME.colors.dim}>│</Text>
+                                        <Text color={THEME.colors.border}>│</Text>
                                     </React.Fragment>
                                 ))}
                             </Box>
@@ -211,7 +211,7 @@ function Table({ token }: { token: any }) {
                     </React.Fragment>
                 )
             })}
-            <Text color={THEME.colors.dim}>{bottomBorder}</Text>
+            <Text color={THEME.colors.border}>{bottomBorder}</Text>
         </Box>
     )
 }

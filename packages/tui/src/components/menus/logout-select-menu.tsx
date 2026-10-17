@@ -10,7 +10,7 @@ import { CustomIndicator, CustomItem } from './menu-items'
 export function LogoutSelectMenu(props: any) {
     const { handleLogoutSelect, logoutItems } = props
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1}>
                 <Text color={THEME.colors.text}>Select credential to remove:</Text>
             </Box>

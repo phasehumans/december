@@ -242,7 +242,7 @@ export function UsageSelectMenu(props: UsageSelectMenuProps) {
             : 'None'
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1}>
                 <Text color={THEME.colors.text}>
                     Usage · <Text color={THEME.colors.brand}>{activeModelId}</Text>{' '}
@@ -254,7 +254,7 @@ export function UsageSelectMenu(props: UsageSelectMenuProps) {
                 {/* Left Column: Daily Volume (Past 7 Days) */}
                 <Box flexDirection="column" width={34}>
                     <Text color={THEME.colors.text}>Daily Volume (Past 7 Days)</Text>
-                    <Text color={THEME.colors.border}>──────────────────────────</Text>
+                    <Text color={THEME.colors.border}>{'─'.repeat(34)}</Text>
 
                     {dailyItems.map((item) => {
                         const spark = getSpark(item.tokens)
@@ -288,7 +288,7 @@ export function UsageSelectMenu(props: UsageSelectMenuProps) {
                         <Text color={THEME.colors.muted}>More</Text>
                     </Box>
 
-                    <Text color={THEME.colors.border}>──────────────────────────</Text>
+                    <Text color={THEME.colors.border}>{'─'.repeat(34)}</Text>
                     <Box gap={1}>
                         <Text color={THEME.colors.muted}>Weekly Total:</Text>
                         <Text color={THEME.colors.text}>{formatK(weekly.totalTokens)} tokens</Text>
@@ -302,7 +302,7 @@ export function UsageSelectMenu(props: UsageSelectMenuProps) {
                 {/* Right Column: Session Stats & Account & Quota */}
                 <Box flexDirection="column" width={38}>
                     <Text color={THEME.colors.text}>Session Stats</Text>
-                    <Text color={THEME.colors.border}>─────────────</Text>
+                    <Text color={THEME.colors.border}>{'─'.repeat(38)}</Text>
 
                     <Box gap={1}>
                         <Text color={THEME.colors.muted}>· Requests:</Text>
@@ -336,7 +336,7 @@ export function UsageSelectMenu(props: UsageSelectMenuProps) {
                     <Box marginTop={1}>
                         <Text color={THEME.colors.text}>Account & Quota</Text>
                     </Box>
-                    <Text color={THEME.colors.border}>───────────────</Text>
+                    <Text color={THEME.colors.border}>{'─'.repeat(38)}</Text>
 
                     <Box gap={1}>
                         <Text color={THEME.colors.muted}>· Balance:</Text>

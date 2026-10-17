@@ -96,7 +96,7 @@ export function AskQuestionMenu({ questions, onComplete }: AskQuestionMenuProps)
     if (!currentQ) return null
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX} gap={1}>
+        <Box flexDirection="column" gap={1}>
             <Box flexDirection="row" gap={1}>
                 <Text
                     color={THEME.colors.brand}

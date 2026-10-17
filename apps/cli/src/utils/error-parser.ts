@@ -1444,23 +1444,50 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
     // 2. Provider credits & Universal balance fallback
     const isDecemberCredits =
         combined.includes('december wallet') ||
-        combined.includes('trydecember.com') ||
-        combined.includes('december cloud')
+        (isCreditOrBalanceError(combined) &&
+            (combined.includes('trydecember.com') || combined.includes('december cloud')))
 
-    if (!isDecemberCredits) {
-        const creditRule = findMatchingCreditRule(combined, context)
-        if (creditRule) {
-            const parts = fullMessage.split('\n')
-            const cause =
-                explicitCause || (parts.length > 1 ? parts.slice(1).join('\n').trim() : fullMessage)
-            return {
-                message: creditRule.message,
-                cause:
-                    cause && !cause.startsWith(creditRule.message)
-                        ? cause
-                        : explicitCause || parts[0],
-                hint: creditRule.hint,
-            }
+    if (isDecemberCredits) {
+        const parts = fullMessage
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean)
+        const firstLine = parts[0] || fullMessage
+        const cause =
+            explicitCause || (parts.length > 1 ? parts.slice(1).join('\n').trim() : undefined)
+        const hintMatch = firstLine.match(
+            /Please (?:add credits|top up|check|upgrade|run|switch|configure).*$/i
+        )
+        const summary = hintMatch
+            ? firstLine
+                  .replace(
+                      /Please (?:add credits|top up|check|upgrade|run|switch|configure).*$/i,
+                      ''
+                  )
+                  .replace(/^402\s*/, '')
+                  .trim()
+            : firstLine.replace(/^402\s*/, '').trim() || 'Insufficient credits in December Wallet.'
+        const hint = hintMatch
+            ? hintMatch[0].trim()
+            : 'Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
+
+        return {
+            message: summary || 'Insufficient credits in December Wallet.',
+            cause: cause && !cause.startsWith(summary) ? cause : explicitCause,
+            hint,
+        }
+    }
+
+    const creditRule = findMatchingCreditRule(combined, context)
+    if (creditRule) {
+        const parts = fullMessage.split('\n')
+        const cause =
+            explicitCause || (parts.length > 1 ? parts.slice(1).join('\n').trim() : fullMessage)
+        return {
+            message: creditRule.message,
+            cause:
+                cause && !cause.startsWith(creditRule.message) ? cause : explicitCause || parts[0],
+            hint: creditRule.hint,
         }
     }
 

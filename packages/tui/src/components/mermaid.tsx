@@ -210,7 +210,7 @@ export function Mermaid({ code }: Props) {
             flexDirection="column"
             paddingX={2}
             paddingY={1}
-            borderStyle="round"
+            borderStyle="single"
             borderColor={THEME.colors.border}
         >
             <Box justifyContent="space-between" alignItems="center" marginBottom={1}>
@@ -263,7 +263,7 @@ function RenderFlowchart({ code }: { code: string }) {
                         return (
                             <React.Fragment key={node.id}>
                                 <Box
-                                    borderStyle="round"
+                                    borderStyle="single"
                                     borderColor={THEME.colors.border}
                                     paddingX={1}
                                 >
@@ -296,7 +296,7 @@ function RenderFlowchart({ code }: { code: string }) {
                         return (
                             <Box key={node.id} flexDirection="column">
                                 <Box
-                                    borderStyle="round"
+                                    borderStyle="single"
                                     borderColor={THEME.colors.border}
                                     paddingX={1}
                                 >
@@ -356,7 +356,12 @@ function RenderSequence({ code }: { code: string }) {
         <Box flexDirection="column" gap={1}>
             <Box flexDirection="row" gap={2}>
                 {participants.map((p) => (
-                    <Box key={p} borderStyle="round" borderColor={THEME.colors.border} paddingX={1}>
+                    <Box
+                        key={p}
+                        borderStyle="single"
+                        borderColor={THEME.colors.border}
+                        paddingX={1}
+                    >
                         <Text color={THEME.colors.text}>{p}</Text>
                     </Box>
                 ))}

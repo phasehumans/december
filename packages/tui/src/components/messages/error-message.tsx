@@ -14,7 +14,7 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
     const cleanMessage = (m: string) => m.replace(/^Error:\s*/i, '').trim()
     const cleanHint = (h?: string) => h?.replace(/^Hint:\s*/i, '').trim()
 
-    if (cause || hint) {
+    if (hint) {
         return {
             message: cleanMessage(message),
             cause: cleanCause(cause),
@@ -23,6 +23,43 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
     }
 
     const clean = cleanMessage(message)
+
+    // Check for December Wallet error notice
+    if (clean.includes('Insufficient credits in December Wallet')) {
+        const lines = clean
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean)
+        const firstLine = lines[0] || ''
+        const rest = cleanCause(lines.slice(1).join('\n'))
+        const hintMatch = firstLine.match(
+            /Please (?:add credits|top up|check|upgrade|run|switch|configure).*$/i
+        )
+        const summary = hintMatch
+            ? firstLine
+                  .replace(
+                      /Please (?:add credits|top up|check|upgrade|run|switch|configure).*$/i,
+                      ''
+                  )
+                  .replace(/^402\s*/, '')
+                  .trim()
+            : firstLine.replace(/^402\s*/, '').trim() || 'Insufficient credits in December Wallet.'
+        return {
+            message: summary || 'Insufficient credits in December Wallet.',
+            cause: rest || cleanCause(cause),
+            hint: hintMatch
+                ? hintMatch[0].trim()
+                : 'Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.',
+        }
+    }
+
+    if (cause) {
+        return {
+            message: cleanMessage(message),
+            cause: cleanCause(cause),
+            hint: cleanHint(hint),
+        }
+    }
 
     // If message is multi-line, separate notice from cause/hint
     if (clean.includes('\n')) {

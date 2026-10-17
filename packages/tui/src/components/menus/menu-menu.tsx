@@ -57,7 +57,7 @@ export function MenuMenu(props: MenuMenuProps) {
     })
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1}>
                 <Text color={THEME.colors.text}>Select authentication method:</Text>
             </Box>

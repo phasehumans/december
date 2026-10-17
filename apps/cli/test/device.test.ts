@@ -68,7 +68,7 @@ describe('loginViaDeviceCode', () => {
             if (onCodeGenerated.mock.calls.length > 0) break
         }
         expect(onCodeGenerated).toHaveBeenCalledWith('USER-123', 'https://mock.login/device')
-        expect(openSpy).toHaveBeenCalledWith('https://mock.login/device?code=USER-123')
+        expect(openSpy).not.toHaveBeenCalled()
 
         // Advance timer to trigger the first poll (1 second)
         vi.advanceTimersByTime(1000)
@@ -97,5 +97,14 @@ describe('loginViaDeviceCode', () => {
         await expect(loginViaDeviceCode('https://api.mock', vi.fn())).rejects.toThrow(
             'Unable to connect. Is the computer able to access the url?'
         )
+    })
+
+    it('should reject with Login cancelled when signal is aborted', async () => {
+        const controller = new AbortController()
+        controller.abort()
+
+        await expect(
+            loginViaDeviceCode('https://api.mock', vi.fn(), controller.signal)
+        ).rejects.toThrow('Login cancelled')
     })
 })

@@ -71,7 +71,7 @@ describe('ContextSelectMenu Component (Unit)', () => {
         expect(frame).toContain('Free space:')
 
         // Verify dots and grid glyphs
-        expect(frame).toContain('●')
+        expect(frame).toContain('■')
         expect(frame).toContain('□')
 
         // Verify footer items

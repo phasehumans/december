@@ -770,15 +770,7 @@ export const InputBar = React.memo(function InputBar({
                                         ) : null}
                                         {!isAuthenticated
                                             ? 'Not connected (run /login)'
-                                            : `${modelLabel || activeModel}${
-                                                  authMethod === 'subscription'
-                                                      ? ' (Subscription)'
-                                                      : authMethod === 'december'
-                                                        ? ' (December Cloud)'
-                                                        : authMethod === 'byok'
-                                                          ? ' (BYOK)'
-                                                          : ''
-                                              }`}
+                                            : modelLabel || activeModel}
                                     </Text>
                                     {totalTasksCount > 0 && (
                                         <Text

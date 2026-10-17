@@ -128,7 +128,7 @@ describe('InputBar Component (Unit)', () => {
         expect(frame).not.toContain('gemini-3.8-flash')
     })
 
-    it('renders active model with subscription tag when isAuthenticated is true', () => {
+    it('renders active model without subscription tag when isAuthenticated is true', () => {
         const handleSubmit = mock(() => {})
         const { lastFrame } = render(
             <RootLayout>
@@ -142,7 +142,8 @@ describe('InputBar Component (Unit)', () => {
             </RootLayout>
         )
         const frame = lastFrame()
-        expect(frame).toContain('gemini-3.8-flash (Subscription)')
+        expect(frame).toContain('gemini-3.8-flash')
+        expect(frame).not.toContain('(Subscription)')
     })
 
     it('autofills command with trailing space on first return when partially typed in command menu, and submits on second return', async () => {

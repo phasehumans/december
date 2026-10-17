@@ -63,10 +63,10 @@ export function ShortcutsMenu({ onClose }: { onClose: () => void }) {
     const itemsBelow = SHORTCUTS.length - windowEnd
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             {/* ↑ n more */}
             {itemsAbove > 0 && (
-                <Box paddingLeft={1}>
+                <Box paddingLeft={2}>
                     <Text color={THEME.colors.muted}>↑ {itemsAbove} more</Text>
                 </Box>
             )}
@@ -97,12 +97,12 @@ export function ShortcutsMenu({ onClose }: { onClose: () => void }) {
 
             {/* ↓ n more */}
             {itemsBelow > 0 && (
-                <Box paddingLeft={1}>
+                <Box paddingLeft={2}>
                     <Text color={THEME.colors.muted}>↓ {itemsBelow} more</Text>
                 </Box>
             )}
 
-            <Box paddingLeft={1} paddingTop={1}>
+            <Box paddingLeft={2} paddingTop={1}>
                 <Text color={THEME.colors.muted}>
                     [{selectedIndex + 1}-{windowEnd} of {SHORTCUTS.length} items]
                 </Text>

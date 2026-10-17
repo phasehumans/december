@@ -72,10 +72,12 @@ export function useAgentSession({
     userEmail?: string
     sessionRepository?: any
     onLogin?: (
-        onCode: (code: string, uri: string) => void
+        onCode: (code: string, uri: string) => void,
+        signal?: AbortSignal
     ) => Promise<{ token: string; email: string | null }>
     onLoginHeadless?: (
-        onCode: (code: string, uri: string) => void
+        onCode: (code: string, uri: string) => void,
+        signal?: AbortSignal
     ) => Promise<{ token: string; email: string | null }>
 }) {
     const state = useCliStore()
@@ -2337,20 +2339,6 @@ ${decStatus}
         ]
     )
 
-    const handleAbort = useCallback(() => {
-        if (activeShellAbortRef.current) {
-            activeShellAbortRef.current()
-            activeShellAbortRef.current = null
-        }
-        if (isStreaming && agent) {
-            agent.abort()
-            setQueuedPrompts([])
-        }
-        if (useCliStore.getState().planWorkflow.phase === 'executing') {
-            setPlanWorkflow({ phase: 'idle' })
-        }
-    }, [isStreaming, agent, setQueuedPrompts, setPlanWorkflow])
-
     const { handleSettingsMainSelect } = useSettingsHandlers()
 
     const {
@@ -2367,15 +2355,41 @@ ${decStatus}
         handleOllamaRetry,
         handleOllamaCancel,
         handleOllamaProceed,
+        handleOpenDeviceAuthUrl,
+        handleAbortAuth,
     } = useAuthHandlers(agent, onLogin, onLoginHeadless)
 
+    const handleAbort = useCallback(() => {
+        if (activeShellAbortRef.current) {
+            activeShellAbortRef.current()
+            activeShellAbortRef.current = null
+        }
+        if (handleAbortAuth) {
+            handleAbortAuth()
+        }
+        if (isStreaming && agent) {
+            agent.abort()
+            setQueuedPrompts([])
+        }
+        if (useCliStore.getState().planWorkflow.phase === 'executing') {
+            setPlanWorkflow({ phase: 'idle' })
+        }
+    }, [isStreaming, agent, setQueuedPrompts, setPlanWorkflow, handleAbortAuth])
+
+    const hasTriggeredFirstLaunchRef = useRef(false)
+    const handleAuthMenuSelectRef = useRef(handleAuthMenuSelect)
+    handleAuthMenuSelectRef.current = handleAuthMenuSelect
+
     useEffect(() => {
+        if (hasTriggeredFirstLaunchRef.current) return
+        hasTriggeredFirstLaunchRef.current = true
+
         let isMounted = true
         const checkFirstLaunchAuth = async () => {
             const { loadConfig } = await import('../config')
             const config = await loadConfig()
             if (!config.email && !config.decemberToken && !initialAuth && isMounted) {
-                await handleAuthMenuSelect({ value: 'december' })
+                await handleAuthMenuSelectRef.current({ value: 'december' })
             }
         }
         checkFirstLaunchAuth().catch(() => {
@@ -2384,7 +2398,7 @@ ${decStatus}
         return () => {
             isMounted = false
         }
-    }, [initialAuth, handleAuthMenuSelect])
+    }, [initialAuth])
 
     const handlePlanApprovalSelect = useCallback(
         async (item: any) => {
@@ -2729,5 +2743,9 @@ ${decStatus}
         onOpenBilling: handleOpenBilling,
         isInline: useCliStore((state) => state.isInline),
         setIsInline: useCliStore((state) => state.setIsInline),
+        handleOpenDeviceAuthUrl,
+        handleAbortAuth,
+        pendingDeviceAuthUrl: useCliStore((state) => state.pendingDeviceAuthUrl),
+        setPendingDeviceAuthUrl: useCliStore((state) => state.setPendingDeviceAuthUrl),
     }
 }

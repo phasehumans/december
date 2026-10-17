@@ -241,4 +241,43 @@ describe('ChatApp TUI Integration', () => {
         await new Promise((r) => setTimeout(r, 50))
         expect(handleExit).toHaveBeenCalledTimes(1)
     })
+
+    it('exits immediately on single Ctrl+C when pendingDeviceAuthUrl is active without requiring double-tap or opening menu', async () => {
+        const mockAgent = {
+            abort: mock(),
+            modelOptions: { model: 'test-model' },
+        } as any
+
+        const mockSession = {
+            staticKey: 0,
+            staticMessages: [{ id: 'header-1', role: 'header' }],
+            activeMessages: [],
+            isAuthenticated: false,
+            authMode: 'none',
+            pendingDeviceAuthUrl: 'https://app.trydecember.com/device/activate?code=ABCD-EFGH',
+            setStaticMessages: mock(),
+            setStaticKey: mock(),
+            setActiveMessages: mock(),
+            setAuthMode: mock(),
+            handleSubmit: mock(),
+            getProviderModels: mock(async () => []),
+        }
+
+        const handleExit = mock()
+
+        const { stdin } = renderWithProviders(
+            <ChatApp
+                agent={mockAgent}
+                isAuthenticated={false}
+                cliVersion="0.4.10"
+                session={mockSession}
+                onExit={handleExit}
+            />
+        )
+
+        stdin.write('\x03') // Ctrl+C
+        await new Promise((r) => setTimeout(r, 50))
+        expect(handleExit).toHaveBeenCalledTimes(1)
+        expect(mockSession.setAuthMode).not.toHaveBeenCalledWith('menu')
+    })
 })

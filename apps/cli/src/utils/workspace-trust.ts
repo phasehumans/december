@@ -143,10 +143,10 @@ export async function promptWorkspaceTrust(workspaceRoot: string): Promise<boole
     const isHomeOrRoot = workspaceRoot === homeDir || workspaceRoot === '/'
     const displayPath = formatDisplayPath(workspaceRoot)
 
-    const BLUE = '\x1b[38;2;135;178;244m'
+    const BRAND_BLUE = '\x1b[38;2;137;180;248m'
+    const BLUE = BRAND_BLUE
     const WHITE = '\x1b[38;2;244;244;245m'
     const GRAY = '\x1b[38;2;161;161;170m'
-    const TRUNK = '\x1b[38;2;63;63;70m'
     const YELLOW = '\x1b[38;2;253;224;71m'
     const BOLD = '\x1b[1m'
     const RESET = '\x1b[0m'
@@ -160,6 +160,9 @@ export async function promptWorkspaceTrust(workspaceRoot: string): Promise<boole
               { label: 'Trust and continue', value: true },
               { label: 'Cancel', value: false },
           ]
+
+    // Clear terminal screen so shell command line is hidden immediately on initialization
+    console.clear()
 
     return new Promise<boolean>((resolve) => {
         let selectedIndex = 0
@@ -184,7 +187,7 @@ export async function promptWorkspaceTrust(workspaceRoot: string): Promise<boole
         const clearRenderedLines = () => {
             if (renderedLineCount > 0) {
                 readline.cursorTo(process.stdout, 0)
-                readline.moveCursor(process.stdout, 0, -renderedLineCount)
+                readline.moveCursor(process.stdout, 0, -(renderedLineCount - 1))
                 readline.clearScreenDown(process.stdout)
             }
         }
@@ -195,28 +198,27 @@ export async function promptWorkspaceTrust(workspaceRoot: string): Promise<boole
             const lines: string[] = []
             lines.push('')
             lines.push(
-                `${BLUE}✱${RESET}  ${BOLD}${WHITE}Trust workspace:${RESET} ${GRAY}${displayPath}${RESET}`
+                `  ${BOLD}${WHITE}Trust workspace:${RESET} ${BRAND_BLUE}${displayPath}${RESET}`
             )
             if (isHomeOrRoot) {
                 lines.push(
-                    `${TRUNK}│${RESET}  ${YELLOW}⚠  Warning: Home or root directory gives access to all personal files.${RESET}`
+                    `  ${YELLOW}Warning: Home or root directory gives access to all personal files.${RESET}`
                 )
             }
-            lines.push(`${TRUNK}│${RESET}`)
+            lines.push('')
 
             for (let i = 0; i < options.length; i++) {
                 const opt = options[i]
                 if (i === selectedIndex) {
-                    lines.push(
-                        `${TRUNK}│${RESET}  ${BLUE}❯${RESET}  ${BOLD}${WHITE}${opt.label}${RESET}`
-                    )
+                    lines.push(`  ${BLUE}❭${RESET} ${BOLD}${WHITE}${opt.label}${RESET}`)
                 } else {
-                    lines.push(`${TRUNK}│${RESET}     ${GRAY}${opt.label}${RESET}`)
+                    lines.push(`    ${GRAY}${opt.label}${RESET}`)
                 }
             }
 
-            lines.push(`${TRUNK}│${RESET}`)
-            lines.push(`${TRUNK}╰─${RESET} ${GRAY}Enter confirm · Esc cancel${RESET}`)
+            lines.push('')
+            lines.push(`  ${GRAY}Enter confirm · Esc cancel${RESET}`)
+            lines.push('')
 
             renderedLineCount = lines.length
             process.stdout.write(lines.join('\n'))
@@ -303,12 +305,4 @@ export async function ensureWorkspaceTrust(
     }
 
     await addTrustedWorkspace(workspaceRoot)
-
-    const GREEN = '\x1b[38;2;110;231;183m'
-    const WHITE = '\x1b[38;2;244;244;245m'
-    const GRAY = '\x1b[38;2;161;161;170m'
-    const RESET = '\x1b[0m'
-    console.log(
-        `${GREEN}✔${RESET}  ${WHITE}Trusted workspace:${RESET} ${GRAY}${formatDisplayPath(workspaceRoot)}${RESET}`
-    )
 }

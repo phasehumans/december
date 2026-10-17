@@ -356,7 +356,7 @@ export function ByokKeyMenu(props: any) {
         : undefined
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box flexDirection="column" marginBottom={1}>
                 <Text color={THEME.colors.text}>Enter API Key for {formattedProvider}:</Text>
                 {keyUrl && (

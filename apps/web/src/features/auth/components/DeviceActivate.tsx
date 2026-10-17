@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import React, { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -37,6 +36,7 @@ const isDeviceActivatedInStorage = (code?: string): boolean => {
 }
 
 export const DeviceActivate: React.FC = () => {
+    const queryClient = useQueryClient()
     const [searchParams] = useSearchParams()
 
     const rawCode = searchParams.get('code') || searchParams.get('user_code') || ''
@@ -130,6 +130,24 @@ export const DeviceActivate: React.FC = () => {
             }
         } catch (err: any) {
             const msg = (err.message || '').toLowerCase()
+            const isAuthError =
+                err?.status === 401 ||
+                err?.status === 403 ||
+                msg.includes('unauthorized') ||
+                msg.includes('unauthenticated') ||
+                msg.includes('session expired') ||
+                msg.includes('invalid token')
+
+            if (isAuthError) {
+                queryClient.setQueryData(['profile'], null)
+                setStatus('idle')
+                setErrorMessage(
+                    'Your session has expired. Please sign in to authorize your terminal.'
+                )
+                setShowAuthModal(true)
+                return
+            }
+
             if (
                 msg.includes('no longer pending') ||
                 msg.includes('already') ||
@@ -172,14 +190,6 @@ export const DeviceActivate: React.FC = () => {
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-[#141414] font-sans overflow-y-auto p-4 sm:p-6 relative selection:bg-[#87b2f4]/30 selection:text-white">
-            <a
-                href="/"
-                className="absolute top-5 left-5 text-[#888888] hover:text-[#EDEDED] p-2 rounded-lg hover:bg-white/5 transition-colors z-50 flex items-center gap-1.5 font-sans text-xs"
-            >
-                <ChevronLeft size={16} strokeWidth={1.75} />
-                <span>Home</span>
-            </a>
-
             <div className="w-full flex items-center justify-center relative">
                 <div className="w-full max-w-[380px] relative z-10 flex flex-col">
                     {isSuccess ? (
@@ -199,19 +209,11 @@ export const DeviceActivate: React.FC = () => {
                                     : 'Your terminal session has been linked. You can close this window and return to your terminal.'}
                             </p>
 
-                            <button
-                                type="button"
-                                onClick={() => window.close()}
-                                className="w-full font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer bg-[#EDEDED] hover:bg-white text-[#090a0f] border border-transparent shadow-none"
-                            >
-                                Close Window
-                            </button>
-
                             <a
                                 href="/"
-                                className="mt-3 font-sans text-xs text-[#888888] hover:text-[#EDEDED] transition-colors"
+                                className="w-full font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer bg-[#EDEDED] hover:bg-white text-[#090a0f] border border-transparent shadow-none"
                             >
-                                Return to Dashboard
+                                Return
                             </a>
                         </div>
                     ) : (

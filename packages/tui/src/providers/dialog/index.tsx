@@ -74,7 +74,7 @@ export function InlineDialog({ config, close }: InlineDialogProps) {
         <Box
             flexDirection="column"
             width={panelWidth}
-            borderStyle="round"
+            borderStyle="single"
             borderColor={THEME.colors.border}
             paddingX={1}
             paddingY={0}

@@ -110,29 +110,13 @@ export function ContextSelectMenu(props: ContextSelectMenuProps) {
         }
     }
 
-    addSquares(
-        Math.round((basePromptTokens / maxTokens) * totalSquares),
-        THEME.glyphs.status,
-        THEME.colors.muted
-    )
-    addSquares(
-        Math.round((rulesTokens / maxTokens) * totalSquares),
-        THEME.glyphs.status,
-        THEME.colors.warning
-    )
-    addSquares(
-        Math.round((skillsTokens / maxTokens) * totalSquares),
-        THEME.glyphs.status,
-        THEME.colors.error
-    )
-    addSquares(
-        Math.round((toolsTokens / maxTokens) * totalSquares),
-        THEME.glyphs.status,
-        THEME.colors.brand
-    )
+    addSquares(Math.round((basePromptTokens / maxTokens) * totalSquares), '■', THEME.colors.muted)
+    addSquares(Math.round((rulesTokens / maxTokens) * totalSquares), '■', THEME.colors.warning)
+    addSquares(Math.round((skillsTokens / maxTokens) * totalSquares), '■', THEME.colors.error)
+    addSquares(Math.round((toolsTokens / maxTokens) * totalSquares), '■', THEME.colors.brand)
     addSquares(
         Math.round((conversationHistoryTokens / maxTokens) * totalSquares),
-        THEME.glyphs.status,
+        '■',
         THEME.colors.success
     )
 
@@ -155,7 +139,7 @@ export function ContextSelectMenu(props: ContextSelectMenuProps) {
     }
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1}>
                 <Text color={THEME.colors.text}>Context</Text>
             </Box>
@@ -174,34 +158,34 @@ export function ContextSelectMenu(props: ContextSelectMenuProps) {
                     </Box>
                     <Box flexDirection="column">
                         <Box gap={1}>
-                            <Text color={THEME.colors.muted}>{THEME.glyphs.status}</Text>
+                            <Text color={THEME.colors.muted}>■</Text>
                             <Text color={THEME.colors.muted}>
                                 Base System Prompt: {formatK(basePromptTokens)} tokens (
                                 {pct(basePromptTokens)}%)
                             </Text>
                         </Box>
                         <Box gap={1}>
-                            <Text color={THEME.colors.warning}>{THEME.glyphs.status}</Text>
+                            <Text color={THEME.colors.warning}>■</Text>
                             <Text color={THEME.colors.muted}>
                                 Project Rules (AGENTS.md / rules.md): {formatK(rulesTokens)} tokens
                                 ({pct(rulesTokens)}%)
                             </Text>
                         </Box>
                         <Box gap={1}>
-                            <Text color={THEME.colors.error}>{THEME.glyphs.status}</Text>
+                            <Text color={THEME.colors.error}>■</Text>
                             <Text color={THEME.colors.muted}>
                                 Workspace Skills (skills.md): {formatK(skillsTokens)} tokens (
                                 {pct(skillsTokens)}%)
                             </Text>
                         </Box>
                         <Box gap={1}>
-                            <Text color={THEME.colors.brand}>{THEME.glyphs.status}</Text>
+                            <Text color={THEME.colors.brand}>■</Text>
                             <Text color={THEME.colors.muted}>
                                 Tool Schemas: {formatK(toolsTokens)} tokens ({pct(toolsTokens)}%)
                             </Text>
                         </Box>
                         <Box gap={1}>
-                            <Text color={THEME.colors.success}>{THEME.glyphs.status}</Text>
+                            <Text color={THEME.colors.success}>■</Text>
                             <Text color={THEME.colors.muted}>
                                 Conversation History: {formatK(conversationHistoryTokens)} tokens (
                                 {pct(conversationHistoryTokens)}%)

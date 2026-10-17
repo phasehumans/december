@@ -3,6 +3,7 @@ import { Box, useInput } from 'ink'
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { GlobalShortcuts } from './components/global-shortcuts'
+import { formatModelDisplayName } from './components/header'
 import { InputBar } from './components/input-bar'
 import { AskQuestionMenu } from './components/menus/ask-question-menu'
 import { AuthMenus } from './components/menus/auth-menus'
@@ -40,7 +41,8 @@ export function ChatApp({
     userEmail?: string
     sessionRepository?: any
     onLogin?: (
-        onCode: (code: string, uri: string) => void
+        onCode: (code: string, uri: string) => void,
+        signal?: AbortSignal
     ) => Promise<{ token: string; email: string | null }>
     onUpdateSuccess?: () => Promise<void>
     session: any
@@ -55,6 +57,15 @@ export function ChatApp({
     const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const handleInterrupt = useCallback(() => {
+        if (session.pendingDeviceAuthUrl) {
+            if (onExit) {
+                onExit()
+            } else {
+                process.exit(0)
+            }
+            return
+        }
+
         if (session.isStreaming) {
             if (session.handleAbort) {
                 session.handleAbort()
@@ -272,17 +283,35 @@ export function ChatApp({
         session.addToast?.('Started a new conversation.', 'success')
     }, [setStaticMessages, setStaticKey, setActiveMessages, session])
 
+    const effectiveModel =
+        session.activeModel || activeModel || agent?.modelOptions?.model || 'gemini-3.7-flash'
+    const effectiveModelLabel = session.activeModel
+        ? formatModelDisplayName(session.activeModel)
+        : modelLabel || formatModelDisplayName(effectiveModel)
+    const effectiveAuthMethod = session.authMethod || authMethod
+    const effectiveProvider = session.selectedProvider || selectedProvider
+
+    const isDeviceAuthPending = Boolean(session.pendingDeviceAuthUrl)
+
     const inputBarElement = (
         <InputBar
             onSubmit={handleFormSubmit}
             onScrollUp={handleScrollUp}
             onScrollDown={handleScrollDown}
             onStartVoice={session.onStartVoice}
-            disabled={authMode !== 'none' || (Boolean(workflowUI) && !session.customInputMode)}
+            disabled={
+                authMode !== 'none' ||
+                (Boolean(workflowUI) && !session.customInputMode) ||
+                isDeviceAuthPending
+            }
             onCopy={handleCopy}
-            placeholder="Ask December to build features, fix bugs, or work on your code..."
-            activeModel={session.activeModel || agent?.modelOptions?.model || 'gemini-3.7-flash'}
-            modelLabel={modelLabel}
+            placeholder={
+                isDeviceAuthPending
+                    ? 'Waiting for approval... Press [o] to open in browser'
+                    : 'Ask December to build features, fix bugs, or work on your code...'
+            }
+            activeModel={effectiveModel}
+            modelLabel={effectiveModelLabel}
             contextTokens={totalTokens}
             authMethod={session.authMethod}
             isAuthenticated={isAuthenticated}
@@ -304,10 +333,6 @@ export function ChatApp({
             onExit={onExit}
         />
     )
-
-    const effectiveModel = session.activeModel || activeModel || agent?.modelOptions?.model
-    const effectiveAuthMethod = session.authMethod || authMethod
-    const effectiveProvider = session.selectedProvider || selectedProvider
 
     return (
         <Box flexDirection="column" height={rows} width={columns} overflow="hidden">
@@ -332,7 +357,7 @@ export function ChatApp({
                     announcement={announcement}
                     isReadingMode={isReadingMode}
                     activeModel={effectiveModel}
-                    modelLabel={modelLabel}
+                    modelLabel={effectiveModelLabel}
                     authMethod={effectiveAuthMethod}
                     selectedProvider={effectiveProvider}
                 />

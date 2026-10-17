@@ -39,6 +39,8 @@ export interface CliState {
     setApiKey: (key: string) => void
     authError: string | null
     setAuthError: (err: string | null) => void
+    pendingDeviceAuthUrl: string | null
+    setPendingDeviceAuthUrl: (url: string | null) => void
     openRouterModels: { label: string; value: string }[]
     setOpenRouterModels: (models: { label: string; value: string }[]) => void
     ollamaStatus: {
@@ -199,6 +201,8 @@ export const useCliStore = create<CliState>((set) => ({
     setApiKey: (apiKey) => set({ apiKey }),
     authError: null,
     setAuthError: (authError) => set({ authError }),
+    pendingDeviceAuthUrl: null,
+    setPendingDeviceAuthUrl: (pendingDeviceAuthUrl) => set({ pendingDeviceAuthUrl }),
     openRouterModels: [],
     setOpenRouterModels: (openRouterModels) => set({ openRouterModels }),
     ollamaStatus: null,

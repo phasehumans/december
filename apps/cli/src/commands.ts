@@ -385,19 +385,66 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
 
     // Default December device code login
     const { loginViaDeviceCode } = await import('./auth')
+    const { openUrl } = await import('./utils/open')
     console.log('\nGenerating device code for December login...')
-    const { token, email } = await loginViaDeviceCode(undefined, (code, uri) => {
-        console.log(
-            `\nPlease open ${uri} on any device and enter code: ${code}\nWaiting for authorization...`
-        )
-    })
-    const configToSave = await loadConfig()
-    configToSave.decemberToken = token
-    if (email) configToSave.email = email
-    configToSave.authPriority = 'december'
-    configToSave.activeModel = 'december-auto'
-    await saveConfig(configToSave)
-    console.log('\x1b[32mSuccessfully logged in via device code!\x1b[0m\n')
+
+    let keypressListener: ((data: Buffer) => void) | null = null
+    const cleanupKeypress = () => {
+        if (keypressListener && process.stdin.isTTY) {
+            process.stdin.removeListener('data', keypressListener)
+            keypressListener = null
+            try {
+                process.stdin.setRawMode(false)
+                process.stdin.pause()
+            } catch {
+                // Intentionally swallowed: stdin raw mode cleanup fallback
+            }
+        }
+    }
+
+    try {
+        const { token, email } = await loginViaDeviceCode(undefined, (code, uri) => {
+            const fullUrl = uri.includes('?')
+                ? `${uri}&code=${encodeURIComponent(code)}`
+                : `${uri}?code=${encodeURIComponent(code)}`
+
+            console.log(
+                `\nConfirm code: ${code}\nOpen URL: ${fullUrl}\n\nPress [o] to open in browser · Esc to cancel\nWaiting for approval...`
+            )
+
+            if (process.stdin.isTTY) {
+                try {
+                    process.stdin.setRawMode(true)
+                    process.stdin.resume()
+                    keypressListener = (data: Buffer) => {
+                        const char = data.toString()
+                        if (char === 'o' || char === 'O') {
+                            openUrl(fullUrl).catch(() => {
+                                // Intentionally swallowed: browser launch error handled
+                            })
+                        } else if (char === '\u0003' || char === '\u001b') {
+                            cleanupKeypress()
+                            process.exit(0)
+                        }
+                    }
+                    process.stdin.on('data', keypressListener)
+                } catch {
+                    // Intentionally swallowed: raw mode error fallback
+                }
+            }
+        })
+        cleanupKeypress()
+        const configToSave = await loadConfig()
+        configToSave.decemberToken = token
+        if (email) configToSave.email = email
+        configToSave.authPriority = 'december'
+        configToSave.activeModel = 'december-auto'
+        await saveConfig(configToSave)
+        console.log('\x1b[32mSuccessfully logged in via device code!\x1b[0m\n')
+    } catch (err) {
+        cleanupKeypress()
+        throw err
+    }
 }
 
 export async function handleUpdateCommand(options?: { force?: boolean }): Promise<void> {

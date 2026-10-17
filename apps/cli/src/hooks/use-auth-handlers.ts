@@ -18,10 +18,12 @@ import { getNextMsgId, convertAgentMessagesToTuiMessages } from './use-agent-run
 export function useAuthHandlers(
     agent: any,
     onLogin?: (
-        onCode: (code: string, uri: string) => void
+        onCode: (code: string, uri: string) => void,
+        signal?: AbortSignal
     ) => Promise<{ token: string; email: string | null }>,
     onLoginHeadless?: (
-        onCode: (code: string, uri: string) => void
+        onCode: (code: string, uri: string) => void,
+        signal?: AbortSignal
     ) => Promise<{ token: string; email: string | null }>
 ) {
     const {
@@ -44,6 +46,8 @@ export function useAuthHandlers(
         setSwitchItems,
     } = useCliStore.getState()
 
+    const deviceAuthAbortRef = { current: null as AbortController | null }
+
     const handleAuthMenuSelect = async (item: any) => {
         if (item.value === 'subscriptions' || item.value === 'subscription_select') {
             setAuthMode('subscription_select')
@@ -56,16 +60,23 @@ export function useAuthHandlers(
         }
 
         if (item.value === 'december' || item.value === 'december_headless') {
+            if (useCliStore.getState().isStreaming) {
+                return
+            }
             setAuthMode('none')
             setIsStreaming(true)
 
+            const authAbortController = new AbortController()
+            deviceAuthAbortRef.current = authAbortController
+
+            let codeMsgId: string | number | null = null
             try {
                 const loginFn = onLogin || onLoginHeadless
                 if (!loginFn) {
                     throw new Error('Login functionality is not provided by the host environment.')
                 }
 
-                const codeMsgId = getNextMsgId()
+                codeMsgId = getNextMsgId()
                 setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                 setActiveMessages([
                     {
@@ -80,6 +91,8 @@ export function useAuthHandlers(
                         ? `${uri}&code=${encodeURIComponent(code)}`
                         : `${uri}?code=${encodeURIComponent(code)}`
 
+                    useCliStore.getState().setPendingDeviceAuthUrl(fullUrl)
+
                     setActiveMessages([
                         {
                             id: codeMsgId,
@@ -87,14 +100,15 @@ export function useAuthHandlers(
                             blocks: [
                                 {
                                     type: 'text',
-                                    content: `\nWelcome to December! Please link your account:\n\nOpen [${fullUrl}](${fullUrl}) and confirm code: \`${code}\`\n\nWaiting for authorization in browser...`,
+                                    content: `\nConfirm code: \`${code}\`\nOpen URL: [${fullUrl}](${fullUrl})\n\nPress [o] to open in browser · Esc to cancel\nWaiting for approval...`,
                                 },
                             ],
                         },
                     ])
                 }
 
-                const { token, email } = await loginFn(onCode)
+                const { token, email } = await loginFn(onCode, authAbortController.signal)
+                useCliStore.getState().setPendingDeviceAuthUrl(null)
 
                 const config = await loadConfig()
                 config.decemberToken = token
@@ -137,8 +151,36 @@ export function useAuthHandlers(
                     setSettingsAuthPriority(authStatus.authPriority)
                 }
 
-                let loginNotice = MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE
-                let shouldPromptByok = false
+                const cleanActiveMessages = useCliStore.getState().activeMessages.map((m) => {
+                    if (m.id === codeMsgId) {
+                        return {
+                            ...m,
+                            blocks: m.blocks?.map((b) => {
+                                if (b.type === 'text') {
+                                    return {
+                                        ...b,
+                                        content: b.content
+                                            .replace(/\n\s*Waiting for approval\.\.\./g, '')
+                                            .replace(/\n\s*Press \[o\].*$/gm, '')
+                                            .trim(),
+                                    }
+                                }
+                                return b
+                            }),
+                        }
+                    }
+                    return m
+                })
+                setStaticMessages((prev) => [...prev, ...cleanActiveMessages])
+
+                const successBlocks: any[] = [
+                    {
+                        type: 'text',
+                        content: MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE,
+                        color: '#6EE7B7',
+                    },
+                ]
+
                 if (providerConfig?.authMethod === 'december' && token) {
                     try {
                         const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -150,10 +192,15 @@ export function useAuthHandlers(
                             const overviewJson = (await overviewRes.json()) as any
                             const balanceCents = overviewJson.data?.creditBalance ?? 0
                             if (balanceCents <= 0) {
-                                loginNotice = `${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}\n\nNotice: Your December Wallet balance is $0.00.\n\nTo start generating:\n- Add credits at https://app.trydecember.com/settings/billing\n- Or use your own AI Subscription or API key (select a provider below):`
-                                shouldPromptByok = true
+                                successBlocks.push({
+                                    type: 'text',
+                                    content: `\nYour December Wallet balance is $0.00.\nTo add credits, visit [https://app.trydecember.com/settings/billing](https://app.trydecember.com/settings/billing).\nYou can also connect an AI Subscription or API key anytime with \`/login\`.`,
+                                })
                             } else {
-                                loginNotice = `${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}\n\nDecember Wallet: $${(balanceCents / 100).toFixed(2)}. Ready to code!`
+                                successBlocks.push({
+                                    type: 'text',
+                                    content: `\nDecember Wallet: $${(balanceCents / 100).toFixed(2)}. Ready to code!`,
+                                })
                             }
                         }
                     } catch {
@@ -161,25 +208,55 @@ export function useAuthHandlers(
                     }
                 }
 
-                setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                 setActiveMessages([
                     {
                         id: getNextMsgId(),
                         role: 'assistant',
-                        blocks: [
-                            {
-                                type: 'text',
-                                content: loginNotice,
-                                color: '#6EE7B7',
-                            },
-                        ],
+                        blocks: successBlocks,
                     },
                 ])
-
-                if (shouldPromptByok) {
-                    setAuthMode('byok_provider')
-                }
             } catch (err: any) {
+                useCliStore.getState().setPendingDeviceAuthUrl(null)
+                const cleanActiveMessages = useCliStore.getState().activeMessages.map((m) => {
+                    if (m.id === codeMsgId) {
+                        return {
+                            ...m,
+                            blocks: m.blocks?.map((b) => {
+                                if (b.type === 'text') {
+                                    return {
+                                        ...b,
+                                        content: b.content
+                                            .replace(/\n\s*Waiting for approval\.\.\./g, '')
+                                            .replace(/\n\s*Press \[o\].*$/gm, '')
+                                            .trim(),
+                                    }
+                                }
+                                return b
+                            }),
+                        }
+                    }
+                    return m
+                })
+                setStaticMessages((prev) => [...prev, ...cleanActiveMessages])
+
+                if (err?.name === 'AbortError' || err?.message?.includes('cancelled')) {
+                    setActiveMessages([
+                        {
+                            id: getNextMsgId(),
+                            role: 'assistant',
+                            blocks: [
+                                {
+                                    type: 'text',
+                                    content:
+                                        'Login cancelled. Run /login anytime to connect an account.',
+                                    color: '#888888',
+                                },
+                            ],
+                        },
+                    ])
+                    setAuthMode('none')
+                    return
+                }
                 const parsed = parseError(err)
                 let cleanMsg = parsed.message
                 if (
@@ -189,11 +266,13 @@ export function useAuthHandlers(
                     cleanMsg.includes('Failed to fetch') ||
                     cleanMsg.includes('Unable to connect')
                 ) {
-                    cleanMsg = 'Unable to connect. Is the computer able to access the url?'
+                    cleanMsg =
+                        'Unable to connect to December. Check your connection and run /login again.'
+                } else if (cleanMsg.toLowerCase().includes('expired')) {
+                    cleanMsg = 'Device code expired. Run /login to generate a new code.'
                 }
                 const errorText = `Login failed: ${cleanMsg}`
                 setAuthError(errorText)
-                setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                 setActiveMessages([
                     {
                         id: getNextMsgId(),
@@ -205,10 +284,10 @@ export function useAuthHandlers(
                             'Check your network connection or verify the authentication endpoint.',
                     },
                 ])
-                if (!useCliStore.getState().isAuthenticated) {
-                    setAuthMode('menu')
-                }
+                setAuthMode('none')
             } finally {
+                useCliStore.getState().setPendingDeviceAuthUrl(null)
+                deviceAuthAbortRef.current = null
                 setIsStreaming(false)
             }
         } else if (item.value === 'byok') {
@@ -1046,6 +1125,27 @@ export function useAuthHandlers(
         await applyOllamaConfig(urlToUse, targetModel, currentProvider)
     }
 
+    const handleOpenDeviceAuthUrl = async () => {
+        const url = useCliStore.getState().pendingDeviceAuthUrl
+        if (url) {
+            const { openUrl } = await import('../utils/open')
+            await openUrl(url).catch(() => {
+                // Intentionally swallowed: browser launch error handled
+            })
+            addToast('Opening authorization link in browser...', 'info')
+        }
+    }
+
+    const handleAbortAuth = () => {
+        if (deviceAuthAbortRef.current) {
+            deviceAuthAbortRef.current.abort()
+            deviceAuthAbortRef.current = null
+        }
+        useCliStore.getState().setPendingDeviceAuthUrl(null)
+        useCliStore.getState().setIsStreaming(false)
+        useCliStore.getState().setAuthMode('none')
+    }
+
     return {
         handleAuthMenuSelect,
         handleModelSelect,
@@ -1060,5 +1160,7 @@ export function useAuthHandlers(
         handleOllamaRetry,
         handleOllamaCancel,
         handleOllamaProceed,
+        handleOpenDeviceAuthUrl,
+        handleAbortAuth,
     }
 }

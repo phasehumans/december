@@ -101,7 +101,7 @@ export function OllamaSetupMenu({
     }
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1}>
                 <Text color={THEME.colors.brand}>
                     {info.name} Local Provider Diagnostics & Setup

@@ -122,13 +122,13 @@ export function ToolPermissionMenu({ toolCall, questions, onComplete }: ToolPerm
     })
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1} flexDirection="column" gap={0}>
                 <Text color={THEME.colors.text}>{title}</Text>
                 {toolSummary && (
                     <Box
                         flexDirection="column"
-                        borderStyle="round"
+                        borderStyle="single"
                         borderColor={THEME.colors.border}
                         paddingX={1}
                         marginTop={1}

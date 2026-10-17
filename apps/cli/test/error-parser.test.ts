@@ -491,5 +491,34 @@ describe('error-parser', () => {
             expect(parsed.hint).toContain('https://platform.deepseek.com/top_up')
             expect(parsed.hint).not.toContain('OpenAI, Anthropic, Gemini')
         })
+
+        test('extracts structured details from December Wallet insufficient credits error', () => {
+            const rawErr =
+                'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in December Wallet.')
+            expect(parsed.hint).toBe(
+                'Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
+            )
+        })
+
+        test('extracts structured details from December Wallet 402 error with HTTP status code and cause', () => {
+            const raw402Err =
+                '402 Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.\n402 status code (no body)'
+            const parsed = parseError(raw402Err)
+            expect(parsed.message).toBe('Insufficient credits in December Wallet.')
+            expect(parsed.hint).toBe(
+                'Please add credits at https://app.trydecember.com/settings/billing or configure Bring Your Own Key (BYOK) via `/login` to continue using December.'
+            )
+            expect(parsed.cause).toContain('402 status code (no body)')
+        })
+
+        test('extracts structured details from December Wallet message without explicit hint', () => {
+            const rawErr = 'Insufficient credits in December Wallet.'
+            const parsed = parseError(rawErr)
+            expect(parsed.message).toBe('Insufficient credits in December Wallet.')
+            expect(parsed.hint).toContain('https://app.trydecember.com/settings/billing')
+            expect(parsed.hint).toContain('/login')
+        })
     })
 })

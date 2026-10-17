@@ -535,9 +535,9 @@ async function main() {
                 selectedProvider: activeProvider,
                 sessionRepository,
                 onExit: handleExit,
-                onLogin: (onCode: (code: string, uri: string) => void) =>
+                onLogin: (onCode: (code: string, uri: string) => void, signal?: AbortSignal) =>
                     import('./auth').then(({ loginViaDeviceCode }) =>
-                        loginViaDeviceCode(undefined, onCode)
+                        loginViaDeviceCode(undefined, onCode, signal)
                     ),
             })
         ),

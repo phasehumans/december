@@ -94,7 +94,7 @@ export function ModelSelectMenu(props: ModelSelectMenuProps) {
     const itemsBelow = items.length - windowEnd
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1}>
                 <Text color={THEME.colors.text}>Select Model:</Text>
             </Box>

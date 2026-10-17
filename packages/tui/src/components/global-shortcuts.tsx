@@ -89,6 +89,17 @@ export function GlobalShortcuts(session: any) {
             return
         }
 
+        if (session.pendingDeviceAuthUrl) {
+            if (input === 'o' || input === 'O') {
+                if (session.handleOpenDeviceAuthUrl) {
+                    session.handleOpenDeviceAuthUrl()
+                }
+            } else if (key.escape || input === '\u001B') {
+                session.handleAbort()
+            }
+            return
+        }
+
         if (session.isStreaming && (key.escape || input === '\u001B')) {
             session.handleAbort()
             return

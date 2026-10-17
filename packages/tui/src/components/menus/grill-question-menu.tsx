@@ -90,7 +90,7 @@ export function GrillQuestionMenu(props: any) {
 
     if (confirmExit) {
         return (
-            <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+            <Box flexDirection="column">
                 <Box marginBottom={1} flexDirection="column" gap={1}>
                     <Text color={THEME.colors.warning}>
                         Exit interview? Any unanswered questions will be skipped.
@@ -133,7 +133,7 @@ export function GrillQuestionMenu(props: any) {
             { label: 'Finish interview & generate plan now', value: '__finish_now__' },
         ]
         return (
-            <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+            <Box flexDirection="column">
                 <Box marginBottom={1} flexDirection="column">
                     {q.docSource && (
                         <Text color={THEME.colors.brand}>[Doc Grounding: {q.docSource}]</Text>

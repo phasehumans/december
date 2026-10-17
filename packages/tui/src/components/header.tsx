@@ -205,7 +205,7 @@ export const Header = React.memo(function Header({
     let modelStatusLine: string | null = null
     if (isAuthenticated === false) {
         modelStatusLine = 'Not connected · Run /login'
-    } else if (activeModel || modelLabel) {
+    } else {
         const modelName = modelLabel || formatModelDisplayName(activeModel)
         const billingLabel = formatBillingLabel(
             authMethod,
@@ -213,7 +213,13 @@ export const Header = React.memo(function Header({
             activeModel,
             isAuthenticated ?? true
         )
-        modelStatusLine = `${modelName} · ${billingLabel}`
+        if (modelName && billingLabel) {
+            modelStatusLine = `${modelName} · ${billingLabel}`
+        } else if (modelName) {
+            modelStatusLine = modelName
+        } else if (billingLabel) {
+            modelStatusLine = billingLabel
+        }
     }
 
     return (

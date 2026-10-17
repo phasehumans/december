@@ -403,7 +403,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         const task = tasksData.find((t) => t.id === viewingId)
         if (!task) {
             return (
-                <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+                <Box flexDirection="column">
                     <Box marginBottom={1}>
                         <Text color={THEME.colors.error}>Task not found or has been removed.</Text>
                     </Box>
@@ -424,7 +424,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         const gutterWidth = Math.max(2, outputLines.length.toString().length)
 
         return (
-            <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+            <Box flexDirection="column">
                 <Box marginBottom={1} justifyContent="space-between" flexDirection="row">
                     <Box flexDirection="row" gap={2}>
                         <Text color={THEME.colors.text}>Task: {task.id}</Text>
@@ -455,7 +455,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
 
                 <Box
                     borderColor={THEME.colors.border}
-                    borderStyle="round"
+                    borderStyle="single"
                     flexDirection="column"
                     paddingX={1}
                 >
@@ -509,7 +509,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
 
     // List View Render
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1} justifyContent="space-between" flexDirection="row">
                 <Box flexDirection="row" gap={2}>
                     <Text color={THEME.colors.text} bold>

@@ -54,47 +54,55 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
 
     const modelLabel = activeModel || 'default'
 
+    const formatSettingRow = (title: string, value: string) => `${title.padEnd(25, ' ')}[${value}]`
+
     const mainItems = [
         {
-            label: `Active Provider          [${providerLabel}]`,
+            label: formatSettingRow('Active Provider', providerLabel),
             value: 'switchProvider',
         },
         {
-            label: `Active Model             [${modelLabel}]`,
+            label: formatSettingRow('Active Model', modelLabel),
             value: 'activeModel',
         },
         {
-            label: `Tool Permission          [${settingsToolPermission}]`,
+            label: formatSettingRow('Tool Permission', settingsToolPermission),
             value: 'toolPermission',
         },
         {
-            label: `PathGuard Protection     [${settingsPathGuard !== false ? 'on' : 'off'}]`,
+            label: formatSettingRow(
+                'PathGuard Protection',
+                settingsPathGuard !== false ? 'on' : 'off'
+            ),
             value: 'pathGuard',
         },
         {
-            label: `Non-Workspace Access     [${settingsNonWorkspace ? 'on' : 'off'}]`,
+            label: formatSettingRow('Non-Workspace Access', settingsNonWorkspace ? 'on' : 'off'),
             value: 'nonWorkspaceAccess',
         },
         {
-            label: `Thinking Level           [${settingsThinkingLevel}]`,
+            label: formatSettingRow('Thinking Level', settingsThinkingLevel),
             value: 'thinkingLevel',
         },
         {
-            label: `Steering Mode            [${settingsSteeringMode}]`,
+            label: formatSettingRow('Steering Mode', settingsSteeringMode),
             value: 'steeringMode',
         },
         {
-            label: `Follow-Up Mode           [${settingsFollowUpMode}]`,
+            label: formatSettingRow('Follow-Up Mode', settingsFollowUpMode),
             value: 'followUpMode',
         },
         {
-            label: `Browser Window           [${settingsBrowserVisible !== false ? 'on' : 'off'}]`,
+            label: formatSettingRow(
+                'Browser Window',
+                settingsBrowserVisible !== false ? 'on' : 'off'
+            ),
             value: 'browserVisible',
         },
     ]
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1}>
                 <Text color={THEME.colors.text}>Settings</Text>
             </Box>

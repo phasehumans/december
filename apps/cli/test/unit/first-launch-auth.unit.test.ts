@@ -14,40 +14,53 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
         })
     })
 
-    it('sets authMode to byok_provider when device login completes with $0 wallet balance', () => {
+    it('keeps authMode as none and shows clean notice when device login completes with $0 wallet balance', () => {
         const balanceCents = 0
-        let loginNotice = MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE
-        let shouldPromptByok = false
+        const successBlocks: { type: string; content: string; color?: string }[] = [
+            {
+                type: 'text',
+                content: MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE,
+                color: '#6EE7B7',
+            },
+        ]
 
         if (balanceCents <= 0) {
-            loginNotice = `${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}\n\nNotice: Your December Wallet balance is $0.00.\n\nTo start generating:\n- Add credits at https://app.trydecember.com/settings/billing\n- Or use your own AI Subscription or API key (select a provider below):`
-            shouldPromptByok = true
+            successBlocks.push({
+                type: 'text',
+                content: `\nYour December Wallet balance is $0.00.\nTo add credits, visit [https://app.trydecember.com/settings/billing](https://app.trydecember.com/settings/billing).\nYou can also connect an AI Subscription or API key anytime with \`/login\`.`,
+            })
         }
 
-        expect(shouldPromptByok).toBe(true)
-        expect(loginNotice).toContain('Your December Wallet balance is $0.00.')
-        expect(loginNotice).toContain('select a provider below')
-
-        if (shouldPromptByok) {
-            useCliStore.getState().setAuthMode('byok_provider')
-        }
-
-        expect(useCliStore.getState().authMode).toBe('byok_provider')
+        expect(successBlocks[0].content).toBe(MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE)
+        expect(successBlocks[0].color).toBe('#6EE7B7')
+        expect(successBlocks[1].content).toContain('Your December Wallet balance is $0.00.')
+        expect(successBlocks[1].content).toContain('[https://app.trydecember.com/settings/billing]')
+        expect(successBlocks[1].content).toContain('anytime with `/login`')
+        expect(useCliStore.getState().authMode).toBe('none')
     })
 
     it('keeps authMode as none when device login completes with positive wallet balance', () => {
         const balanceCents = 500
-        let loginNotice = MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE
+        const successBlocks: { type: string; content: string; color?: string }[] = [
+            {
+                type: 'text',
+                content: MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE,
+                color: '#6EE7B7',
+            },
+        ]
         let shouldPromptByok = false
 
         if (balanceCents <= 0) {
             shouldPromptByok = true
         } else {
-            loginNotice = `${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}\n\nDecember Wallet: $${(balanceCents / 100).toFixed(2)}. Ready to code!`
+            successBlocks.push({
+                type: 'text',
+                content: `\nDecember Wallet: $${(balanceCents / 100).toFixed(2)}. Ready to code!`,
+            })
         }
 
         expect(shouldPromptByok).toBe(false)
-        expect(loginNotice).toContain('December Wallet: $5.00. Ready to code!')
+        expect(successBlocks[1].content).toContain('December Wallet: $5.00. Ready to code!')
 
         if (shouldPromptByok) {
             useCliStore.getState().setAuthMode('byok_provider')
@@ -56,7 +69,7 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
         expect(useCliStore.getState().authMode).toBe('none')
     })
 
-    it('formats onCode with prefilled code query parameter in verification URL', () => {
+    it('formats onCode with Option 1 interactive prompt and prefilled code URL', () => {
         const code = 'ABCD-EFGH'
         const uri = 'https://app.trydecember.com/device/activate'
         const fullUrl = uri.includes('?')
@@ -65,23 +78,35 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
 
         expect(fullUrl).toBe('https://app.trydecember.com/device/activate?code=ABCD-EFGH')
 
-        const message = `Welcome to December! Please link your account:\n\nOpen [${fullUrl}](${fullUrl}) and confirm code: \`${code}\`\n\nWaiting for authorization in browser...`
-        expect(message).toContain('code: `ABCD-EFGH`')
-        expect(message).toContain('https://app.trydecember.com/device/activate?code=ABCD-EFGH')
+        const message = `\nConfirm code: \`${code}\`\nOpen URL: [${fullUrl}](${fullUrl})\n\nPress [o] to open in browser · Esc to cancel\nWaiting for approval...`
+        expect(message).toContain('Confirm code: `ABCD-EFGH`')
+        expect(message).toContain(
+            'Open URL: [https://app.trydecember.com/device/activate?code=ABCD-EFGH](https://app.trydecember.com/device/activate?code=ABCD-EFGH)'
+        )
+        expect(message).toContain('Press [o] to open in browser · Esc to cancel')
+        expect(message).toContain('Waiting for approval...')
     })
 
-    it('falls back to authMode menu if device login fails or is cancelled', () => {
+    it('tracks pendingDeviceAuthUrl in store during login and clears it upon completion or cancel', () => {
+        const url = 'https://app.trydecember.com/device/activate?code=ABCD-EFGH'
+        useCliStore.getState().setPendingDeviceAuthUrl(url)
+        expect(useCliStore.getState().pendingDeviceAuthUrl).toBe(url)
+
+        useCliStore.getState().setPendingDeviceAuthUrl(null)
+        expect(useCliStore.getState().pendingDeviceAuthUrl).toBeNull()
+    })
+
+    it('keeps authMode as none when device login fails or is cancelled', () => {
         const store = useCliStore.getState()
         store.setIsAuthenticated(false)
+        store.setAuthMode('none')
 
         try {
-            throw new Error('Device code expired')
+            throw new Error('Login cancelled')
         } catch {
-            if (!useCliStore.getState().isAuthenticated) {
-                useCliStore.getState().setAuthMode('menu')
-            }
+            useCliStore.getState().setAuthMode('none')
         }
 
-        expect(useCliStore.getState().authMode).toBe('menu')
+        expect(useCliStore.getState().authMode).toBe('none')
     })
 })

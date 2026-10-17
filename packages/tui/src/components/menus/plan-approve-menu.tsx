@@ -32,7 +32,11 @@ function PlanItemComponent({
         color = THEME.colors.error
     }
 
-    return <Text color={color}>{label}</Text>
+    return (
+        <Text color={isSelected ? color : THEME.colors.muted} bold={isSelected}>
+            {label}
+        </Text>
+    )
 }
 
 export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanApproveMenuProps) {
@@ -57,10 +61,10 @@ export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanA
     })
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1} flexDirection="column" gap={1}>
                 {planSummary && (
-                    <Box borderStyle="round" borderColor={THEME.colors.border} paddingX={1}>
+                    <Box borderStyle="single" borderColor={THEME.colors.border} paddingX={1}>
                         <Text color={THEME.colors.brand}>{planSummary}</Text>
                     </Box>
                 )}

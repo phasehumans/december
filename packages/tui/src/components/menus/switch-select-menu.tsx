@@ -116,7 +116,7 @@ export function SwitchSelectMenu(props: SwitchSelectMenuProps) {
           ]
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column">
             <Box marginBottom={1}>
                 <Text color={THEME.colors.text}>Select active provider:</Text>
             </Box>
