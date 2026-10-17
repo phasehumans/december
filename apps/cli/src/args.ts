@@ -13,6 +13,7 @@ export interface ParsedCliArgs {
     isLocal: boolean
     resume: boolean
     isInline: boolean
+    fullscreen?: boolean
     model?: string
     provider?: string
     sessionId?: string
@@ -36,6 +37,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 local: { type: 'boolean', short: 'l' },
                 resume: { type: 'boolean', short: 'r' },
                 inline: { type: 'boolean' },
+                fullscreen: { type: 'boolean' },
                 model: { type: 'string', short: 'm' },
                 provider: { type: 'string', short: 'p' },
                 'session-id': { type: 'string' },
@@ -55,7 +57,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const isGlobal = Boolean(values.global)
         const isLocal = Boolean(values.local)
         const isResume = Boolean(values.resume)
-        const isInline = Boolean(values.inline)
+        const isInline = values.fullscreen ? false : Boolean(values.inline)
         const model = values.model as string | undefined
         const provider = values.provider as string | undefined
         const sessionId = values['session-id'] as string | undefined

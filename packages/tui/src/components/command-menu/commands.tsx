@@ -309,6 +309,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'tui',
+        description: 'Switch TUI renderer mode (fullscreen / classic)',
+        value: '/tui',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'update',
         description: 'Update to the latest version',
         value: '/update',

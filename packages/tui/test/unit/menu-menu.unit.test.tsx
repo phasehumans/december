@@ -6,7 +6,7 @@ import { MenuMenu } from '../../src/components/menus/menu-menu'
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('MenuMenu Component (Unit)', () => {
-    it('renders all 3 authentication method options', () => {
+    it('renders both authentication method options (Bring Your Own Key or Subscription, Login via December)', () => {
         const { lastFrame } = render(
             <KeyboardLayerProvider>
                 <MenuMenu />
@@ -15,8 +15,8 @@ describe('MenuMenu Component (Unit)', () => {
 
         const frame = lastFrame() || ''
         expect(frame).toContain('Select authentication method:')
-        expect(frame).toContain('Bring Your Own Key')
-        expect(frame).toContain('Use AI Subscription')
+        expect(frame).toContain('Bring Your Own Key or Subscription')
+        expect(frame).not.toContain('Use AI Subscription')
         expect(frame).toContain('Login via December')
     })
 
@@ -32,20 +32,20 @@ describe('MenuMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('❭ Bring Your Own Key')
+        expect(lastFrame()).toContain('❭ Bring Your Own Key or Subscription')
 
-        // Down arrow to Use AI Subscription
+        // Down arrow to Login via December
         stdin.write('\u001B[B')
         await new Promise((resolve) => setTimeout(resolve, 10))
 
-        expect(lastFrame()).toContain('❭ Use AI Subscription')
+        expect(lastFrame()).toContain('❭ Login via December')
 
         // Press Enter
         stdin.write('\r')
         await new Promise((resolve) => setTimeout(resolve, 10))
 
         expect(selectedItem).toBeDefined()
-        expect(selectedItem?.value).toBe('subscriptions')
+        expect(selectedItem?.value).toBe('december')
     })
 
     it('cancels menu on pressing escape key', async () => {

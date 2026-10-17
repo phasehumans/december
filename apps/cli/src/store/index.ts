@@ -95,6 +95,8 @@ export interface CliState {
     setIsStreaming: (isStreaming: boolean) => void
     queuedPrompts: string[]
     setQueuedPrompts: (prompts: string[] | ((prev: string[]) => string[])) => void
+    isInline: boolean
+    setIsInline: (isInline: boolean) => void
 
     // sessions feature
     sessionItems: { label: string; value: string }[]
@@ -260,6 +262,8 @@ export const useCliStore = create<CliState>((set) => ({
         set((state) => ({
             queuedPrompts: typeof updater === 'function' ? updater(state.queuedPrompts) : updater,
         })),
+    isInline: false,
+    setIsInline: (isInline) => set({ isInline }),
 
     // sessions
     sessionItems: [],

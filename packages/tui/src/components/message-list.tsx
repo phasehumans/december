@@ -20,6 +20,11 @@ export interface MessageItemProps {
     userEmail?: string
     expandCommands?: boolean
     announcement?: ReleaseAnnouncement | null
+    activeModel?: string
+    modelLabel?: string
+    authMethod?: string
+    selectedProvider?: string
+    isAuthenticated?: boolean
 }
 
 export const MessageItem = React.memo(
@@ -31,6 +36,11 @@ export const MessageItem = React.memo(
         userEmail,
         expandCommands,
         announcement,
+        activeModel,
+        modelLabel,
+        authMethod,
+        selectedProvider,
+        isAuthenticated,
     }: MessageItemProps) {
         if (msg.role === 'header') {
             return (
@@ -39,6 +49,11 @@ export const MessageItem = React.memo(
                     latestVersion={latestVersion}
                     userEmail={userEmail}
                     announcement={announcement}
+                    activeModel={activeModel}
+                    modelLabel={modelLabel}
+                    authMethod={authMethod}
+                    selectedProvider={selectedProvider}
+                    isAuthenticated={isAuthenticated}
                 />
             )
         }
@@ -90,6 +105,10 @@ export const MessageList = React.memo(function MessageList({
     fullscreen = true,
     announcement,
     isReadingMode = false,
+    activeModel,
+    modelLabel,
+    authMethod,
+    selectedProvider,
 }: {
     staticKey: number
     staticMessages: Message[]
@@ -102,6 +121,10 @@ export const MessageList = React.memo(function MessageList({
     fullscreen?: boolean
     announcement?: ReleaseAnnouncement | null
     isReadingMode?: boolean
+    activeModel?: string
+    modelLabel?: string
+    authMethod?: string
+    selectedProvider?: string
 }) {
     if (fullscreen) {
         const allMessages = [...staticMessages, ...activeMessages]
@@ -124,6 +147,11 @@ export const MessageList = React.memo(function MessageList({
                                     latestVersion={latestVersion}
                                     userEmail={userEmail}
                                     announcement={announcement}
+                                    activeModel={activeModel}
+                                    modelLabel={modelLabel}
+                                    authMethod={authMethod}
+                                    selectedProvider={selectedProvider}
+                                    isAuthenticated={isAuthenticated}
                                 />
                             </Box>
                         </Box>
@@ -132,8 +160,7 @@ export const MessageList = React.memo(function MessageList({
                 {visibleMessages.map((msg, index) => {
                     const actualIndex = shouldWindow ? hiddenCount + index : index
                     const prevRole = actualIndex > 0 ? allMessages[actualIndex - 1]?.role : null
-                    const key =
-                        msg.id != null ? `${msg.id}-${actualIndex}` : `msg-idx-${actualIndex}`
+                    const key = msg.id != null ? `${msg.id}` : `msg-idx-${actualIndex}`
                     return (
                         <MessageItem
                             key={key}
@@ -145,6 +172,11 @@ export const MessageList = React.memo(function MessageList({
                             userEmail={userEmail}
                             expandCommands={expandCommands}
                             announcement={announcement}
+                            activeModel={activeModel}
+                            modelLabel={modelLabel}
+                            authMethod={authMethod}
+                            selectedProvider={selectedProvider}
+                            isAuthenticated={isAuthenticated}
                         />
                     )
                 })}
@@ -158,7 +190,7 @@ export const MessageList = React.memo(function MessageList({
                 <Static key={staticKey} items={staticMessages} style={{ width: '100%' }}>
                     {(msg, index) => {
                         const prevRole = index > 0 ? staticMessages[index - 1]?.role : null
-                        const key = msg.id != null ? `${msg.id}-${index}` : `msg-idx-${index}`
+                        const key = msg.id != null ? `${msg.id}` : `msg-idx-${index}`
                         return (
                             <MessageItem
                                 key={key}
@@ -170,6 +202,11 @@ export const MessageList = React.memo(function MessageList({
                                 userEmail={userEmail}
                                 expandCommands={expandCommands}
                                 announcement={announcement}
+                                activeModel={activeModel}
+                                modelLabel={modelLabel}
+                                authMethod={authMethod}
+                                selectedProvider={selectedProvider}
+                                isAuthenticated={isAuthenticated}
                             />
                         )
                     }}
@@ -179,7 +216,7 @@ export const MessageList = React.memo(function MessageList({
                 const actualIndex = staticMessages.length + index
                 const all = [...staticMessages, ...activeMessages]
                 const prevRole = actualIndex > 0 ? all[actualIndex - 1]?.role : null
-                const key = msg.id != null ? `${msg.id}-${actualIndex}` : `msg-idx-${actualIndex}`
+                const key = msg.id != null ? `${msg.id}` : `msg-idx-${actualIndex}`
                 return (
                     <MessageItem
                         key={key}
@@ -191,6 +228,11 @@ export const MessageList = React.memo(function MessageList({
                         userEmail={userEmail}
                         expandCommands={expandCommands}
                         announcement={announcement}
+                        activeModel={activeModel}
+                        modelLabel={modelLabel}
+                        authMethod={authMethod}
+                        selectedProvider={selectedProvider}
+                        isAuthenticated={isAuthenticated}
                     />
                 )
             })}

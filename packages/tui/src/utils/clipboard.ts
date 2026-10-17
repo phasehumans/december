@@ -2,6 +2,18 @@ import { spawnSync } from 'child_process'
 import * as os from 'os'
 
 export function writeToClipboard(text: string) {
+    if (!text) return
+
+    // Write OSC 52 escape sequence for zero-latency terminal clipboard copy
+    try {
+        if (process.stdout?.isTTY) {
+            const base64 = Buffer.from(text, 'utf8').toString('base64')
+            process.stdout.write(`\x1b]52;c;${base64}\x07`)
+        }
+    } catch {
+        // Intentionally swallowed: ignore OSC 52 write errors on unsupported terminals
+    }
+
     const platform = os.platform()
     try {
         const isWsl =
@@ -19,7 +31,7 @@ export function writeToClipboard(text: string) {
                 spawnSync('xsel', ['--clipboard', '--input'], { input: text })
             }
         }
-    } catch (err) {
-        console.error('Failed to copy to clipboard', err)
+    } catch {
+        // Intentionally swallowed: fallback to terminal-based clipboard handling
     }
 }

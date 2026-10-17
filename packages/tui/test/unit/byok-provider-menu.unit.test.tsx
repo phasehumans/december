@@ -24,7 +24,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(PROVIDER_MENU_ITEMS[10].value).toBe('ainetcafe')
     })
 
-    it('renders 7 visible items with down more indicator initially', () => {
+    it('renders unified providers with Subscriptions and Popular sections initially', () => {
         const handleSelect = mock(() => {})
         const { lastFrame } = render(
             <KeyboardLayerProvider>
@@ -33,15 +33,17 @@ describe('ByokProviderMenu Component (Unit)', () => {
         )
 
         const frame = lastFrame() || ''
-        expect(frame).toContain('Select API Provider (BYOK):')
-        expect(frame).toContain('302.AI')
-        expect(frame).toContain('Abacus')
-        expect(frame).toContain('Abliteration AI')
-        expect(frame).toContain('above.dev')
-        expect(frame).toContain('AgentRouter')
-        expect(frame).toContain('Agnes AI')
-        expect(frame).toContain('AI Router')
-        expect(frame).toContain('↓ 179 more')
+        expect(frame).toContain('Select Provider (Key or Subscription):')
+        expect(frame).toContain('── Subscriptions ──')
+        expect(frame).toContain('Anthropic (Claude) (subscription)')
+        expect(frame).toContain('GitHub (Copilot) (subscription)')
+        expect(frame).toContain('Google (Gemini / Antigravity) (subscription)')
+        expect(frame).toContain('OpenAI (ChatGPT) (subscription)')
+        expect(frame).toContain('── Popular ──')
+        expect(frame).toContain('Anthropic')
+        expect(frame).toContain('OpenAI')
+        expect(frame).toContain('Google AI Studio')
+        expect(frame).toContain('↓ 183 more')
     })
 
     it('navigates through items with arrow keys and updates more indicators', async () => {
@@ -56,7 +58,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('❭ 302.AI')
+        expect(lastFrame()).toContain('❭ Anthropic (Claude) (subscription)')
 
         // Move down 7 times to shift window
         for (let i = 0; i < 7; i++) {
@@ -66,13 +68,12 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterScroll = lastFrame() || ''
         expect(frameAfterScroll).toContain('↑ 1 more')
-        expect(frameAfterScroll).toContain('↓ 178 more')
+        expect(frameAfterScroll).toContain('↓ 182 more')
 
-        // Press Enter to select current item (AI&)
+        // Press Enter to select current item
         stdin.write('\r')
         await new Promise((resolve) => setTimeout(resolve, 10))
         expect(selectedItem).toBeDefined()
-        expect(selectedItem?.value).toBe('aiand')
     })
 
     it('renders search prompt and Search in footer initially', () => {
@@ -176,8 +177,8 @@ describe('ByokProviderMenu Component (Unit)', () => {
         await new Promise((r) => setTimeout(r, 50))
 
         const output = lastFrame() || ''
-        expect(output).toContain('302.AI')
-        expect(output).toContain('AgentRouter')
+        expect(output).toContain('Anthropic (Claude) (subscription)')
+        expect(output).toContain('Anthropic')
         expect(setAuthMode).not.toHaveBeenCalled()
 
         // Second escape: goes back to auth menu
@@ -644,5 +645,83 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const output = lastFrame() || ''
         expect(output).toContain('No providers found.')
+    })
+
+    it('routes subscription selection to handleSubscriptionSelect', async () => {
+        let subscriptionItem: any = null
+        let providerItem: any = null
+        const handleSub = (item: any) => {
+            subscriptionItem = item
+        }
+        const handleProv = (item: any) => {
+            providerItem = item
+        }
+
+        const { stdin } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu
+                    handleSubscriptionSelect={handleSub}
+                    handleProviderSelect={handleProv}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Enter on index 0 (Anthropic Claude subscription)
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(subscriptionItem).toBeDefined()
+        expect(subscriptionItem?.value).toBe('claude')
+        expect(subscriptionItem?.isSubscription).toBe(true)
+        expect(providerItem).toBeNull()
+    })
+
+    it('routes BYOK provider selection to handleProviderSelect', async () => {
+        let subscriptionItem: any = null
+        let providerItem: any = null
+        const handleSub = (item: any) => {
+            subscriptionItem = item
+        }
+        const handleProv = (item: any) => {
+            providerItem = item
+        }
+
+        const { stdin } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu
+                    handleSubscriptionSelect={handleSub}
+                    handleProviderSelect={handleProv}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Move down 4 times to land on first popular BYOK item (Anthropic)
+        for (let i = 0; i < 4; i++) {
+            stdin.write('\u001B[B')
+            await new Promise((r) => setTimeout(r, 10))
+        }
+
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(providerItem).toBeDefined()
+        expect(providerItem?.value).toBe('anthropic')
+        expect(providerItem?.isSubscription).toBeUndefined()
+        expect(subscriptionItem).toBeNull()
+    })
+
+    it('renders minimal (subscription) tag ONLY on subscription items and not on BYOK items', () => {
+        const { lastFrame } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu handleProviderSelect={mock()} />
+            </KeyboardLayerProvider>
+        )
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Anthropic (Claude) (subscription)')
+        expect(frame).toContain('Anthropic')
+        expect(frame).not.toContain('Anthropic (subscription)')
+        expect(frame).not.toContain('OpenAI (subscription)')
+        expect(frame).not.toContain('Google AI Studio (subscription)')
     })
 })

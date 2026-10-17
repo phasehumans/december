@@ -17,12 +17,8 @@ export function MenuMenu(props: MenuMenuProps) {
 
     const items = [
         {
-            label: 'Bring Your Own Key',
+            label: 'Bring Your Own Key or Subscription',
             value: 'byok',
-        },
-        {
-            label: 'Use AI Subscription',
-            value: 'subscriptions',
         },
         {
             label: 'Login via December',

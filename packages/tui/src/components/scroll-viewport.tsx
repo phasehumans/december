@@ -26,6 +26,7 @@ export interface ScrollViewportProps {
     isGenerating?: boolean
     isActive?: boolean
     showIndicator?: boolean
+    onCopy?: () => void
 }
 
 export const ScrollViewport = React.memo(
@@ -39,11 +40,13 @@ export const ScrollViewport = React.memo(
             isGenerating = false,
             isActive = true,
             showIndicator = true,
+            onCopy,
         }: ScrollViewportProps,
         ref
     ) {
         const viewportRef = useRef<any>(null)
         const contentRef = useRef<any>(null)
+        const isDraggingRef = useRef<boolean>(false)
 
         const defaultHeight =
             explicitHeight ??
@@ -273,6 +276,21 @@ export const ScrollViewport = React.memo(
                             (input.match(/\[65~/g) || []).length
                     )
                     handleScrollDown(3 * downCount)
+                    return
+                }
+
+                // Mouse Drag / Selection tracking (SGR \x1b[<32;...M or left click \x1b[<0;...M)
+                if (/\[<32;\d+;\d+;M/.test(input)) {
+                    isDraggingRef.current = true
+                    return
+                }
+
+                // Mouse Release tracking (SGR \x1b[<0;...m or \x1b[<32;...m) for auto-copy on select
+                if (/\[<(?:0|32);\d+;\d+;m/.test(input)) {
+                    if (isDraggingRef.current) {
+                        isDraggingRef.current = false
+                        onCopy?.()
+                    }
                     return
                 }
 

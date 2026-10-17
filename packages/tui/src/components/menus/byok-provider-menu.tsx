@@ -197,19 +197,74 @@ export const PROVIDER_MENU_ITEMS = [
     { label: 'ZenMux', value: 'zenmux' },
 ]
 
+export interface ProviderMenuItem {
+    label: string
+    value: string
+    isSubscription?: boolean
+    section?: 'subscription' | 'popular' | 'all'
+}
+
+export const POPULAR_PROVIDER_VALUES = [
+    'anthropic',
+    'openai',
+    'google',
+    'openrouter',
+    'deepseek',
+    'groq',
+    'mistral',
+    'xai',
+    'ollama',
+    'perplexity',
+    'cohere',
+    'together',
+    'fireworks',
+    'cerebras',
+    'sambanova',
+]
+
+export const SUBSCRIPTION_PROVIDER_ITEMS: ProviderMenuItem[] = [
+    { label: 'Anthropic (Claude)', value: 'claude', isSubscription: true, section: 'subscription' },
+    { label: 'GitHub (Copilot)', value: 'copilot', isSubscription: true, section: 'subscription' },
+    {
+        label: 'Google (Gemini / Antigravity)',
+        value: 'gemini',
+        isSubscription: true,
+        section: 'subscription',
+    },
+    { label: 'OpenAI (ChatGPT)', value: 'codex', isSubscription: true, section: 'subscription' },
+]
+
+export const POPULAR_BYOK_ITEMS: ProviderMenuItem[] = POPULAR_PROVIDER_VALUES.map((val) => {
+    const found = PROVIDER_MENU_ITEMS.find((item) => item.value === val)
+    return found ? { ...found, section: 'popular' as const } : null
+}).filter(Boolean) as ProviderMenuItem[]
+
+export const REMAINING_BYOK_ITEMS: ProviderMenuItem[] = PROVIDER_MENU_ITEMS.filter(
+    (item) => !POPULAR_PROVIDER_VALUES.includes(item.value)
+).map((item) => ({ ...item, section: 'all' as const }))
+
+export const UNIFIED_PROVIDER_MENU_ITEMS: ProviderMenuItem[] = [
+    ...SUBSCRIPTION_PROVIDER_ITEMS,
+    ...POPULAR_BYOK_ITEMS,
+    ...REMAINING_BYOK_ITEMS,
+]
+
 export interface ByokProviderMenuProps {
-    handleProviderSelect?: (item: { label: string; value: string }) => void
-    handleByokSelect?: (item: { label: string; value: string }) => void
+    handleProviderSelect?: (item: ProviderMenuItem) => void
+    handleByokSelect?: (item: ProviderMenuItem) => void
+    handleSubscriptionSelect?: (item: ProviderMenuItem) => void
     setAuthMode?: (mode: string) => void
-    items?: { label: string; value: string }[]
+    items?: ProviderMenuItem[]
+    title?: string
 }
 
 export function ByokProviderMenu(props: ByokProviderMenuProps) {
     const {
         handleProviderSelect,
         handleByokSelect,
+        handleSubscriptionSelect,
         setAuthMode,
-        items = PROVIDER_MENU_ITEMS,
+        items = UNIFIED_PROVIDER_MENU_ITEMS,
     } = props
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [windowStart, setWindowStart] = useState(0)
@@ -274,8 +329,15 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
         }
 
         if (key.return) {
-            if (onSelect && filteredItems[selectedIndex]) {
-                onSelect(filteredItems[selectedIndex])
+            const item = filteredItems[selectedIndex]
+            if (item) {
+                if (item.isSubscription && handleSubscriptionSelect) {
+                    handleSubscriptionSelect(item)
+                    return
+                }
+                if (onSelect) {
+                    onSelect(item)
+                }
             }
             return
         }
@@ -311,10 +373,17 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
               { key: 'esc', label: 'Back' },
           ]
 
+    const hasSubscriptions = items.some((i) => i.isSubscription)
+    const menuTitle =
+        props.title ||
+        (hasSubscriptions
+            ? 'Select Provider (Key or Subscription):'
+            : 'Select API Provider (BYOK):')
+
     return (
         <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
             <Box marginBottom={1} flexDirection="column" gap={1}>
-                <Text color={THEME.colors.text}>Select API Provider (BYOK):</Text>
+                <Text color={THEME.colors.text}>{menuTitle}</Text>
                 <Box flexDirection="row" gap={1}>
                     <Text color={isSearching ? THEME.colors.brand : THEME.colors.muted}>
                         Search:
@@ -357,17 +426,42 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
             {visibleItems.map((item, relIdx) => {
                 const absIdx = windowStart + relIdx
                 const isSelected = absIdx === selectedIndex
+                const prevItem = absIdx > 0 ? filteredItems[absIdx - 1] : null
+                const isFirstInSection =
+                    item.section && (!prevItem || prevItem.section !== item.section)
+
+                let sectionHeader: string | null = null
+                if (isFirstInSection) {
+                    if (item.section === 'subscription') {
+                        sectionHeader = '── Subscriptions ──'
+                    } else if (item.section === 'popular') {
+                        sectionHeader = '── Popular ──'
+                    } else if (item.section === 'all') {
+                        sectionHeader = '── All Providers ──'
+                    }
+                }
+
                 return (
-                    <Box key={item.value} paddingLeft={0}>
-                        <Box marginRight={1}>
-                            <Text color={THEME.colors.brand}>
-                                {isSelected ? THEME.glyphs.selector : ' '}
+                    <React.Fragment key={`${item.value}-${absIdx}`}>
+                        {sectionHeader && (
+                            <Box paddingLeft={2} marginY={0}>
+                                <Text color={THEME.colors.subtle}>{sectionHeader}</Text>
+                            </Box>
+                        )}
+                        <Box paddingLeft={0}>
+                            <Box marginRight={1}>
+                                <Text color={THEME.colors.brand}>
+                                    {isSelected ? THEME.glyphs.selector : ' '}
+                                </Text>
+                            </Box>
+                            <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>
+                                {item.label}
                             </Text>
+                            {item.isSubscription && (
+                                <Text color={THEME.colors.muted}> (subscription)</Text>
+                            )}
                         </Box>
-                        <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>
-                            {item.label}
-                        </Text>
-                    </Box>
+                    </React.Fragment>
                 )
             })}
 

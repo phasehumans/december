@@ -205,4 +205,25 @@ describe('ScrollViewport Component (Unit)', () => {
         expect(frame).toContain('Compact line 1')
         expect(frame).toContain('Compact line 2')
     })
+
+    it('triggers onCopy on mouse drag and release (SGR 1006)', async () => {
+        const handleCopy = mock(() => {})
+        const { stdin } = render(
+            <RootLayout>
+                <ScrollViewport height={5} onCopy={handleCopy}>
+                    <Text>Sample text to select</Text>
+                </ScrollViewport>
+            </RootLayout>
+        )
+
+        // Mouse Drag: SGR \x1b[<32;10;5;M
+        stdin.write('\x1b[<32;10;5;M')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        expect(handleCopy).not.toHaveBeenCalled()
+
+        // Mouse Release: SGR \x1b[<0;10;5;m
+        stdin.write('\x1b[<0;10;5;m')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        expect(handleCopy).toHaveBeenCalledTimes(1)
+    })
 })

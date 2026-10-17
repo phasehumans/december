@@ -11,6 +11,7 @@ import { Mermaid } from './mermaid'
 
 type Props = {
     children: string
+    isStreaming?: boolean
 }
 
 function getTokensPlainText(tokens: any[]): string {
@@ -328,19 +329,19 @@ export function isFilePath(text: string): boolean {
     return false
 }
 
-const renderToken = (token: any, index: number): React.ReactNode => {
+const renderToken = (token: any, index: number, isStreaming?: boolean): React.ReactNode => {
     switch (token.type) {
         case 'paragraph':
             return (
                 <Text key={index}>
-                    {token.tokens?.map((t: any, i: number) => renderToken(t, i))}
+                    {token.tokens?.map((t: any, i: number) => renderToken(t, i, isStreaming))}
                 </Text>
             )
         case 'text':
             if ('tokens' in token && token.tokens) {
                 return (
                     <Text key={index}>
-                        {token.tokens.map((t: any, i: number) => renderToken(t, i))}
+                        {token.tokens.map((t: any, i: number) => renderToken(t, i, isStreaming))}
                     </Text>
                 )
             }
@@ -348,13 +349,13 @@ const renderToken = (token: any, index: number): React.ReactNode => {
         case 'strong':
             return (
                 <Text key={index} bold>
-                    {token.tokens?.map((t: any, i: number) => renderToken(t, i))}
+                    {token.tokens?.map((t: any, i: number) => renderToken(t, i, isStreaming))}
                 </Text>
             )
         case 'em':
             return (
                 <Text key={index} italic>
-                    {token.tokens?.map((t: any, i: number) => renderToken(t, i))}
+                    {token.tokens?.map((t: any, i: number) => renderToken(t, i, isStreaming))}
                 </Text>
             )
         case 'codespan': {
@@ -386,7 +387,7 @@ const renderToken = (token: any, index: number): React.ReactNode => {
             if (token.lang === 'mermaid') {
                 return <Mermaid key={index} code={token.text} />
             }
-            return <CodeBlock token={token} key={index} />
+            return <CodeBlock token={token} key={index} isStreaming={isStreaming} />
         case 'list':
             return (
                 <Box key={index} flexDirection="column" paddingLeft={1}>
@@ -398,7 +399,9 @@ const renderToken = (token: any, index: number): React.ReactNode => {
                                     : `${THEME.glyphs.bullet} `}
                             </Text>
                             <Box flexDirection="column" flexShrink={1}>
-                                {item.tokens.map((t: any, j: number) => renderToken(t, j))}
+                                {item.tokens.map((t: any, j: number) =>
+                                    renderToken(t, j, isStreaming)
+                                )}
                             </Box>
                         </Box>
                     ))}
@@ -411,7 +414,7 @@ const renderToken = (token: any, index: number): React.ReactNode => {
                 <Box key={index}>
                     <Text color={THEME.colors.dim}>{prefix}</Text>
                     <Text color={THEME.colors.brand}>
-                        {token.tokens?.map((t: any, i: number) => renderToken(t, i))}
+                        {token.tokens?.map((t: any, i: number) => renderToken(t, i, isStreaming))}
                     </Text>
                 </Box>
             )
@@ -503,13 +506,22 @@ export function getMarkdownCacheStats(): { astCacheSize: number; highlightCacheS
     }
 }
 
-const CodeBlock = React.memo(function CodeBlock({ token }: { token: any }) {
+const CodeBlock = React.memo(function CodeBlock({
+    token,
+    isStreaming,
+}: {
+    token: any
+    isStreaming?: boolean
+}) {
     const lang = token.lang || 'typescript'
 
     const highlighted = React.useMemo(() => {
         if (!token.text) return ''
+        if (isStreaming) {
+            return token.text
+        }
         return getHighlightedCode(token.text, lang)
-    }, [token.text, lang])
+    }, [token.text, lang, isStreaming])
 
     return (
         <Box flexDirection="column" paddingY={1} paddingLeft={2}>
@@ -518,7 +530,7 @@ const CodeBlock = React.memo(function CodeBlock({ token }: { token: any }) {
     )
 })
 
-export const Markdown = React.memo(function Markdown({ children }: Props) {
+export const Markdown = React.memo(function Markdown({ children, isStreaming }: Props) {
     const tokens = React.useMemo(() => {
         return parseMarkdownTokens(children)
     }, [children])
@@ -527,7 +539,7 @@ export const Markdown = React.memo(function Markdown({ children }: Props) {
 
     return (
         <Box flexDirection="column" gap={1}>
-            {tokens.map((token, index) => renderToken(token, index))}
+            {tokens.map((token, index) => renderToken(token, index, isStreaming))}
         </Box>
     )
 })

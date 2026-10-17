@@ -137,6 +137,26 @@ export function useAuthHandlers(
                     setSettingsAuthPriority(authStatus.authPriority)
                 }
 
+                let loginNotice = MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE
+                if (providerConfig?.authMethod === 'december' && token) {
+                    try {
+                        const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
+                        const overviewRes = await fetch(`${serverUrl}/api/v1/billing/overview`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                            signal: AbortSignal.timeout(2000),
+                        })
+                        if (overviewRes.ok) {
+                            const overviewJson = (await overviewRes.json()) as any
+                            const balanceCents = overviewJson.data?.creditBalance ?? 0
+                            if (balanceCents <= 0) {
+                                loginNotice = `${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}\n\nNotice: Your December Wallet balance is $0.00.\n\nTo start generating:\n- Add credits at https://app.trydecember.com/settings/billing\n- Or switch to Bring Your Own Key (BYOK) via \`/login\` to use your own Claude, OpenAI, or Gemini key\n- Or link an AI Subscription (Claude, Copilot, ChatGPT) via \`/login\``
+                            }
+                        }
+                    } catch {
+                        // Intentionally swallowed: network error fetching december wallet balance on login
+                    }
+                }
+
                 setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                 setActiveMessages([
                     {
@@ -145,7 +165,7 @@ export function useAuthHandlers(
                         blocks: [
                             {
                                 type: 'text',
-                                content: MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE,
+                                content: loginNotice,
                                 color: '#6EE7B7',
                             },
                         ],

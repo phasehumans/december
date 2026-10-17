@@ -43,6 +43,13 @@ describe('CLI Args Parser (Unit)', () => {
         expect(parsed.cwd).toBe('/tmp')
     })
 
+    it('parses --inline and --fullscreen flags correctly', () => {
+        expect(parseCliArgs(['--inline']).isInline).toBe(true)
+        expect(parseCliArgs(['--fullscreen']).isInline).toBe(false)
+        expect(parseCliArgs(['--inline', '--fullscreen']).isInline).toBe(false)
+        expect(parseCliArgs([]).isInline).toBe(false)
+    })
+
     it('formats help text containing version number', () => {
         const help = getHelpText('0.3.9')
         expect(help).toContain('December CLI v0.3.9')

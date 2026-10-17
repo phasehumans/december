@@ -303,7 +303,7 @@ async function main() {
         { useAgentSession },
         { localOperations, setActiveScopeDir },
         { instantiateProvider },
-        { ensureValidModelForProvider },
+        { ensureValidModelForProvider, getModelLabel },
         { useCliStore },
     ] = await Promise.all([
         import('@december/agent'),
@@ -376,6 +376,14 @@ async function main() {
 
     useCliStore.getState().setActiveModel(initialModel)
     useCliStore.getState().setSelectedProvider(activeProvider)
+    useCliStore.getState().setIsAuthenticated(isAuthenticated)
+    if (providerConfig?.authMethod) {
+        useCliStore.getState().setAuthMethod(providerConfig.authMethod)
+    }
+    useCliStore.getState().setIsInline(Boolean(parsedArgs.isInline))
+    if (!isAuthenticated) {
+        useCliStore.getState().setAuthMode('menu')
+    }
 
     const harness = new AgentHarness({
         llm: llm,
@@ -466,16 +474,18 @@ async function main() {
         })
     }
 
-    const userEmail = config.decemberToken ? config.email : undefined
+    const userEmail = config.decemberToken
+        ? config.email
+        : providerConfig?.subscription?.email || config.email || undefined
 
     const isFullscreen = !parsedArgs.isInline
 
     if (process.stdout.isTTY) {
         const enterSequences = isFullscreen
-            ? '\x1b[?2004h\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h'
+            ? '\x1b[?1049h\x1b[?2004h\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h'
             : '\x1b[?2004h'
         const exitSequences = isFullscreen
-            ? '\x1b[?2026l\x1b[?2004l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l'
+            ? '\x1b[?2026l\x1b[?2004l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l'
             : '\x1b[?2026l\x1b[?2004l'
 
         process.stdout.write(enterSequences)
@@ -503,6 +513,9 @@ async function main() {
                 settingsAuthPriority: authStatus.authPriority,
                 cliVersion: pkg.version,
                 userEmail,
+                activeModel: initialModel,
+                modelLabel: getModelLabel(initialModel),
+                selectedProvider: activeProvider,
                 sessionRepository,
                 isInline: parsedArgs.isInline,
                 onLogin: (onCode: (code: string, uri: string) => void) =>

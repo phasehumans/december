@@ -238,4 +238,11 @@ graph LR
         expect(isFilePath('submission')).toBe(false)
         expect(isFilePath('const x = 1')).toBe(false)
     })
+
+    it('renders plain text code blocks when isStreaming is true to eliminate syntax regex overhead', () => {
+        const markdown = '```typescript\nconst greeting = "hello"\n```'
+        const { lastFrame } = render(<Markdown isStreaming={true}>{markdown}</Markdown>)
+        const frame = lastFrame() || ''
+        expect(frame).toContain('const greeting = "hello"')
+    })
 })

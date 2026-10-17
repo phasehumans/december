@@ -447,6 +447,7 @@ export const InputBar = React.memo(function InputBar({
                 '/copy',
                 '/handoff',
                 '/docs',
+                '/tui',
             ]
 
             if (command.value === '/voice') {

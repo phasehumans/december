@@ -60,7 +60,7 @@ export function SmoothMarkdown({ text, isRunning }: { text: string; isRunning?: 
         <Box flexDirection="column" gap={1}>
             {committed ? <MemoizedCommittedMarkdown content={committed} /> : null}
             {sanitizedTail && sanitizedTail.trim() !== '' ? (
-                <Markdown>{sanitizedTail}</Markdown>
+                <Markdown isStreaming>{sanitizedTail}</Markdown>
             ) : null}
         </Box>
     )

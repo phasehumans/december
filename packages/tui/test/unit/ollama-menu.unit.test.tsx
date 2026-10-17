@@ -16,7 +16,7 @@ describe('Local Provider Setup Menus (Unit)', () => {
             <ByokProviderMenu handleProviderSelect={handleProviderSelect} />
         )
         const frame = lastFrame() || ''
-        expect(frame).toContain('Select API Provider (BYOK):')
+        expect(frame).toContain('Select Provider (Key or Subscription):')
     })
 
     it('renders OllamaSetupMenu with offline guidance when server is unreachable', () => {

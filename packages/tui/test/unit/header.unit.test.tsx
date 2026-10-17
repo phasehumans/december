@@ -85,4 +85,99 @@ describe('Header Component (Unit)', () => {
         const { lastFrame: frameNull } = render(<Header announcement={null} />)
         expect(frameNull()).not.toContain("What's New")
     })
+
+    it('renders full model name and byok API line for Claude', () => {
+        const { lastFrame } = render(
+            <Header
+                activeModel="claude-3-7-sonnet"
+                selectedProvider="claude"
+                authMethod="byok"
+                isAuthenticated={true}
+            />
+        )
+        const frame = lastFrame()
+        expect(frame).toContain('Claude 3.7 Sonnet · Claude API')
+    })
+
+    it('renders Claude Subscription when using Claude subscription auth', () => {
+        const { lastFrame } = render(
+            <Header
+                activeModel="claude-3-7-sonnet"
+                selectedProvider="claude"
+                authMethod="subscription"
+                isAuthenticated={true}
+            />
+        )
+        const frame = lastFrame()
+        expect(frame).toContain('Claude 3.7 Sonnet · Claude Subscription')
+    })
+
+    it('renders Copilot Subscription when using Copilot provider', () => {
+        const { lastFrame } = render(
+            <Header
+                activeModel="claude-3.5-sonnet"
+                selectedProvider="copilot"
+                authMethod="subscription"
+                isAuthenticated={true}
+            />
+        )
+        const frame = lastFrame()
+        expect(frame).toContain('Claude 3.5 Sonnet · Copilot Subscription')
+    })
+
+    it('renders December Billing when authMethod is december', () => {
+        const { lastFrame } = render(
+            <Header
+                activeModel="claude-3-7-sonnet"
+                selectedProvider="december"
+                authMethod="december"
+                isAuthenticated={true}
+            />
+        )
+        const frame = lastFrame()
+        expect(frame).toContain('Claude 3.7 Sonnet · December Billing')
+    })
+
+    it('renders custom modelLabel when provided', () => {
+        const { lastFrame } = render(
+            <Header
+                modelLabel="Sonnet 5.5"
+                selectedProvider="claude"
+                authMethod="byok"
+                isAuthenticated={true}
+            />
+        )
+        const frame = lastFrame()
+        expect(frame).toContain('Sonnet 5.5 · Claude API')
+    })
+
+    it('renders "Not connected · Run /login" when isAuthenticated is false', () => {
+        const { lastFrame } = render(<Header isAuthenticated={false} />)
+        const frame = lastFrame()
+        expect(frame).toContain('Not connected · Run /login')
+    })
+
+    it('preserves Option A vertical hierarchy: title -> email -> model/billing -> cwd path', () => {
+        const { lastFrame } = render(
+            <Header
+                cliVersion="0.4.10"
+                userEmail="alex@example.com"
+                activeModel="claude-3-7-sonnet"
+                selectedProvider="claude"
+                authMethod="byok"
+                isAuthenticated={true}
+            />
+        )
+        const frame = lastFrame()
+        expect(frame).toContain('December v0.4.10')
+        expect(frame).toContain('alex@example.com')
+        expect(frame).toContain('Claude 3.7 Sonnet · Claude API')
+
+        const titleIdx = frame.indexOf('December v0.4.10')
+        const emailIdx = frame.indexOf('alex@example.com')
+        const modelIdx = frame.indexOf('Claude 3.7 Sonnet · Claude API')
+
+        expect(titleIdx).toBeLessThan(emailIdx)
+        expect(emailIdx).toBeLessThan(modelIdx)
+    })
 })

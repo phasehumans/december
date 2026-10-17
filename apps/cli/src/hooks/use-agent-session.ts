@@ -2024,6 +2024,32 @@ ${decStatus}
                 return
             }
 
+            if (text.trim() === '/tui' || text.trim().startsWith('/tui ')) {
+                const subArg = text.trim().slice('/tui'.length).trim().toLowerCase()
+                const currentIsInline = useCliStore.getState().isInline
+                let targetInline: boolean
+
+                if (subArg === 'fullscreen' || subArg === 'full') {
+                    targetInline = false
+                } else if (subArg === 'classic' || subArg === 'inline') {
+                    targetInline = true
+                } else {
+                    targetInline = !currentIsInline
+                }
+
+                useCliStore.getState().setIsInline(targetInline)
+
+                if (!targetInline) {
+                    addToast(
+                        'Switched to fullscreen renderer (DEC 2026 synchronized updates, alternate buffer, mouse auto-copy).',
+                        'info'
+                    )
+                } else {
+                    addToast('Switched to classic inline renderer.', 'info')
+                }
+                return
+            }
+
             if (text.trim() === '/usage') {
                 await fetchUsageData()
                 setAuthMode('usage')
@@ -2159,6 +2185,7 @@ ${decStatus}
                         'skill',
                         'skills',
                         'tasks',
+                        'tui',
                         'update',
                         'usage',
                     ])
@@ -2683,5 +2710,7 @@ ${decStatus}
         handleOpenBilling,
         onRefresh: fetchUsageData,
         onOpenBilling: handleOpenBilling,
+        isInline: useCliStore((state) => state.isInline),
+        setIsInline: useCliStore((state) => state.setIsInline),
     }
 }
