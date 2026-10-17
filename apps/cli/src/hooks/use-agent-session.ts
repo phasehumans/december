@@ -2369,6 +2369,23 @@ ${decStatus}
         handleOllamaProceed,
     } = useAuthHandlers(agent, onLogin, onLoginHeadless)
 
+    useEffect(() => {
+        let isMounted = true
+        const checkFirstLaunchAuth = async () => {
+            const { loadConfig } = await import('../config')
+            const config = await loadConfig()
+            if (!config.email && !config.decemberToken && !initialAuth && isMounted) {
+                await handleAuthMenuSelect({ value: 'december' })
+            }
+        }
+        checkFirstLaunchAuth().catch(() => {
+            // Intentionally swallowed: fallback to manual /login if first-launch check fails
+        })
+        return () => {
+            isMounted = false
+        }
+    }, [initialAuth, handleAuthMenuSelect])
+
     const handlePlanApprovalSelect = useCallback(
         async (item: any) => {
             const originalPrompt =

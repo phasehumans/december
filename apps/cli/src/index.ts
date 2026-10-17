@@ -381,7 +381,11 @@ async function main() {
         useCliStore.getState().setAuthMethod(providerConfig.authMethod)
     }
     if (!isAuthenticated) {
-        useCliStore.getState().setAuthMode('menu')
+        if (!config.email && !config.decemberToken) {
+            useCliStore.getState().setAuthMode('none')
+        } else {
+            useCliStore.getState().setAuthMode('menu')
+        }
     }
 
     const harness = new AgentHarness({

@@ -153,6 +153,20 @@ export const DeviceActivate: React.FC = () => {
         verifyCode()
     }
 
+    // Auto-open AuthModal for unauthenticated users when redirected with code in URL
+    useEffect(() => {
+        if (hasUrlCode && !profile && !isLoading && status === 'idle' && !showAuthModal) {
+            setShowAuthModal(true)
+        }
+    }, [hasUrlCode, profile, isLoading, status, showAuthModal])
+
+    // Auto-verify if user is already logged in and arrived with code in URL
+    useEffect(() => {
+        if (hasUrlCode && profile && userCode.length === 9 && status === 'idle' && !isLoading) {
+            verifyCode()
+        }
+    }, [hasUrlCode, profile, userCode, status, isLoading])
+
     const isReady = userCode.length === 9
     const isSuccess = status === 'success' || status === 'already_activated'
 

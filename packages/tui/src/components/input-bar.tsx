@@ -551,7 +551,7 @@ export const InputBar = React.memo(function InputBar({
 
     const paddingLeft = THEME.padding.paddingLeft ?? THEME.padding.paddingX
     const paddingRight = THEME.padding.paddingRight ?? 4
-    const sepWidth = Math.max(10, columns - paddingLeft - paddingRight - 2)
+    const sepWidth = Math.max(10, columns - paddingLeft - paddingRight)
     const sep = '─'.repeat(sepWidth)
 
     const isOverlayActive = Boolean(authUI || workflowUI) && !customInputMode
@@ -594,11 +594,11 @@ export const InputBar = React.memo(function InputBar({
 
             {/* file mention popup */}
             {showFileMenu && matchingFiles.length > 0 && (
-                <Box flexDirection="column" paddingLeft={1} marginBottom={0}>
+                <Box flexDirection="column" marginBottom={0}>
                     {matchingFiles.map((file, idx) => {
                         const isSelected = idx === selectedFileIndex
                         return (
-                            <Box key={file} flexDirection="row" gap={1}>
+                            <Box key={file} flexDirection="row">
                                 <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
                                     {isSelected ? `${THEME.glyphs.selector} ` : '  '}
                                 </Text>
@@ -760,7 +760,7 @@ export const InputBar = React.memo(function InputBar({
                                         ) : null}
                                         {!isAuthenticated
                                             ? 'Not connected (run /login)'
-                                            : `${activeModel}${
+                                            : `${modelLabel || formatModelDisplayName(activeModel) || activeModel}${
                                                   authMethod === 'subscription'
                                                       ? ' (Subscription)'
                                                       : authMethod === 'december'

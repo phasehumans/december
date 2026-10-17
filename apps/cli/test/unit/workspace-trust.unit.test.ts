@@ -7,6 +7,7 @@ import {
     resolveWorkspaceRoot,
     isWorkspaceTrusted,
     ensureWorkspaceTrust,
+    formatDisplayPath,
 } from '../../src/utils/workspace-trust'
 
 import type { DecemberConfig } from '../../src/config'
@@ -23,6 +24,18 @@ describe('Workspace Trust Utility (Unit)', () => {
     afterEach(() => {
         process.exit = originalExit
         console.error = originalConsoleError
+    })
+
+    describe('formatDisplayPath', () => {
+        it('replaces the home directory with ~', () => {
+            const home = path.resolve(os.homedir())
+            expect(formatDisplayPath(home)).toBe('~')
+            expect(formatDisplayPath(path.join(home, 'code', 'december'))).toBe('~/code/december')
+        })
+
+        it('leaves paths outside the home directory intact', () => {
+            expect(formatDisplayPath('/var/log')).toBe('/var/log')
+        })
     })
 
     describe('resolveWorkspaceRoot', () => {

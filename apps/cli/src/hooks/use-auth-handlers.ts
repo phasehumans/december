@@ -76,6 +76,10 @@ export function useAuthHandlers(
                 ])
 
                 const onCode = (code: string, uri: string) => {
+                    const fullUrl = uri.includes('?')
+                        ? `${uri}&code=${encodeURIComponent(code)}`
+                        : `${uri}?code=${encodeURIComponent(code)}`
+
                     setActiveMessages([
                         {
                             id: codeMsgId,
@@ -83,11 +87,7 @@ export function useAuthHandlers(
                             blocks: [
                                 {
                                     type: 'text',
-                                    content: `\nPlease open [${uri}](${uri}) on any device and enter code: \`${code}\``,
-                                },
-                                {
-                                    type: 'text',
-                                    content: 'Waiting for authorization...',
+                                    content: `\nWelcome to December! Please link your account:\n\nOpen [${fullUrl}](${fullUrl}) and confirm code: \`${code}\`\n\nWaiting for authorization in browser...`,
                                 },
                             ],
                         },
@@ -138,6 +138,7 @@ export function useAuthHandlers(
                 }
 
                 let loginNotice = MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE
+                let shouldPromptByok = false
                 if (providerConfig?.authMethod === 'december' && token) {
                     try {
                         const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -149,7 +150,10 @@ export function useAuthHandlers(
                             const overviewJson = (await overviewRes.json()) as any
                             const balanceCents = overviewJson.data?.creditBalance ?? 0
                             if (balanceCents <= 0) {
-                                loginNotice = `${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}\n\nNotice: Your December Wallet balance is $0.00.\n\nTo start generating:\n- Add credits at https://app.trydecember.com/settings/billing\n- Or switch to Bring Your Own Key (BYOK) via \`/login\` to use your own Claude, OpenAI, or Gemini key\n- Or link an AI Subscription (Claude, Copilot, ChatGPT) via \`/login\``
+                                loginNotice = `${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}\n\nNotice: Your December Wallet balance is $0.00.\n\nTo start generating:\n- Add credits at https://app.trydecember.com/settings/billing\n- Or use your own AI Subscription or API key (select a provider below):`
+                                shouldPromptByok = true
+                            } else {
+                                loginNotice = `${MESSAGES.AUTH.LOGIN_SUCCESS_DEVICE}\n\nDecember Wallet: $${(balanceCents / 100).toFixed(2)}. Ready to code!`
                             }
                         }
                     } catch {
@@ -171,6 +175,10 @@ export function useAuthHandlers(
                         ],
                     },
                 ])
+
+                if (shouldPromptByok) {
+                    setAuthMode('byok_provider')
+                }
             } catch (err: any) {
                 const parsed = parseError(err)
                 let cleanMsg = parsed.message
@@ -197,6 +205,9 @@ export function useAuthHandlers(
                             'Check your network connection or verify the authentication endpoint.',
                     },
                 ])
+                if (!useCliStore.getState().isAuthenticated) {
+                    setAuthMode('menu')
+                }
             } finally {
                 setIsStreaming(false)
             }

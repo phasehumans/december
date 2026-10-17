@@ -49,14 +49,43 @@ export function resolveWorkspaceRoot(targetDir: string = process.cwd()): string 
 }
 
 /**
+ * Formats a directory path for display by replacing the home directory with '~'.
+ */
+export function formatDisplayPath(targetPath: string): string {
+    const home = path.resolve(os.homedir())
+    const resolved = path.resolve(targetPath)
+    if (resolved === home) {
+        return '~'
+    }
+    if (resolved.startsWith(home + path.sep)) {
+        return '~' + resolved.slice(home.length)
+    }
+    return resolved
+}
+
+/**
  * Checks whether a workspace root is trusted according to the December configuration.
  * Exact matches are trusted. Child directories of a trusted folder inherit trust,
  * unless the trusted folder is the home directory or system root.
  */
 export function isWorkspaceTrusted(workspaceRoot: string, config: DecemberConfig): boolean {
-    const canonicalRoot = path.resolve(workspaceRoot)
+    let canonicalRoot = path.resolve(workspaceRoot)
+    try {
+        if (fs.existsSync(canonicalRoot)) {
+            canonicalRoot = fs.realpathSync(canonicalRoot)
+        }
+    } catch {
+        // Intentionally swallowed: fallback to resolved path
+    }
     const homeDir = path.resolve(os.homedir())
-    const trustedList = (config.trustedWorkspaces || []).map((p) => path.resolve(p))
+    const trustedList = (config.trustedWorkspaces || []).map((p) => {
+        const resolved = path.resolve(p)
+        try {
+            return fs.existsSync(resolved) ? fs.realpathSync(resolved) : resolved
+        } catch {
+            return resolved
+        }
+    })
 
     for (const trustedPath of trustedList) {
         if (canonicalRoot === trustedPath) {
@@ -79,8 +108,22 @@ export function isWorkspaceTrusted(workspaceRoot: string, config: DecemberConfig
  */
 export async function addTrustedWorkspace(workspaceRoot: string): Promise<void> {
     const config = await loadConfig()
-    const canonical = path.resolve(workspaceRoot)
-    const existing = (config.trustedWorkspaces || []).map((p) => path.resolve(p))
+    let canonical = path.resolve(workspaceRoot)
+    try {
+        if (fs.existsSync(canonical)) {
+            canonical = fs.realpathSync(canonical)
+        }
+    } catch {
+        // Intentionally swallowed: fallback to resolved path
+    }
+    const existing = (config.trustedWorkspaces || []).map((p) => {
+        const resolved = path.resolve(p)
+        try {
+            return fs.existsSync(resolved) ? fs.realpathSync(resolved) : resolved
+        } catch {
+            return resolved
+        }
+    })
     if (!existing.includes(canonical)) {
         config.trustedWorkspaces = [...existing, canonical]
         await saveConfig(config)
@@ -98,23 +141,24 @@ export async function promptWorkspaceTrust(workspaceRoot: string): Promise<boole
 
     const homeDir = path.resolve(os.homedir())
     const isHomeOrRoot = workspaceRoot === homeDir || workspaceRoot === '/'
+    const displayPath = formatDisplayPath(workspaceRoot)
 
-    const BRAND = '\x1b[38;2;137;180;248m'
-    const TEXT = '\x1b[38;2;244;244;245m'
-    const MUTED = '\x1b[38;2;170;170;170m'
-    const GRAY = '\x1b[38;2;119;119;119m'
-    const YELLOW = '\x1b[38;2;253;214;99m'
+    const BLUE = '\x1b[38;2;135;178;244m'
+    const WHITE = '\x1b[38;2;244;244;245m'
+    const GRAY = '\x1b[38;2;161;161;170m'
+    const TRUNK = '\x1b[38;2;63;63;70m'
+    const YELLOW = '\x1b[38;2;253;224;71m'
     const BOLD = '\x1b[1m'
     const RESET = '\x1b[0m'
 
     const options = isHomeOrRoot
         ? [
-              { label: 'No, exit', value: false },
-              { label: 'Yes, trust folder anyway', value: true },
+              { label: 'Cancel', value: false },
+              { label: 'Trust and continue anyway', value: true },
           ]
         : [
-              { label: 'Yes, trust folder', value: true },
-              { label: 'No, exit', value: false },
+              { label: 'Trust and continue', value: true },
+              { label: 'Cancel', value: false },
           ]
 
     return new Promise<boolean>((resolve) => {
@@ -150,36 +194,29 @@ export async function promptWorkspaceTrust(workspaceRoot: string): Promise<boole
 
             const lines: string[] = []
             lines.push('')
-            lines.push(`  ${BOLD}${TEXT}Trust workspace?${RESET}`)
-            lines.push('')
-            lines.push(`  ${GRAY}Directory${RESET}   ${BOLD}${BRAND}${workspaceRoot}${RESET}`)
-
+            lines.push(
+                `${BLUE}✱${RESET}  ${BOLD}${WHITE}Trust workspace:${RESET} ${GRAY}${displayPath}${RESET}`
+            )
             if (isHomeOrRoot) {
                 lines.push(
-                    `  ${YELLOW}Warning${RESET}     ${YELLOW}Home or system root directory. Gives access to all personal files.${RESET}`
-                )
-            } else {
-                lines.push(
-                    `  ${GRAY}Permission${RESET}  ${TEXT}Read, edit, and run commands${RESET}`
+                    `${TRUNK}│${RESET}  ${YELLOW}⚠  Warning: Home or root directory gives access to all personal files.${RESET}`
                 )
             }
-
-            lines.push('')
+            lines.push(`${TRUNK}│${RESET}`)
 
             for (let i = 0; i < options.length; i++) {
                 const opt = options[i]
                 if (i === selectedIndex) {
-                    lines.push(`  ${BRAND}❭${RESET} ${BOLD}${TEXT}${opt.label}${RESET}`)
+                    lines.push(
+                        `${TRUNK}│${RESET}  ${BLUE}❯${RESET}  ${BOLD}${WHITE}${opt.label}${RESET}`
+                    )
                 } else {
-                    lines.push(`    ${MUTED}${opt.label}${RESET}`)
+                    lines.push(`${TRUNK}│${RESET}     ${GRAY}${opt.label}${RESET}`)
                 }
             }
 
-            lines.push('')
-            lines.push(
-                `  ${BRAND}Enter${RESET} ${MUTED}confirm${RESET} ${MUTED}·${RESET} ${BRAND}Esc${RESET} ${MUTED}cancel${RESET} ${MUTED}·${RESET} ${BRAND}↑↓${RESET} ${MUTED}navigate${RESET}`
-            )
-            lines.push('')
+            lines.push(`${TRUNK}│${RESET}`)
+            lines.push(`${TRUNK}╰─${RESET} ${GRAY}Enter confirm · Esc cancel${RESET}`)
 
             renderedLineCount = lines.length
             process.stdout.write(lines.join('\n'))
@@ -191,14 +228,14 @@ export async function promptWorkspaceTrust(workspaceRoot: string): Promise<boole
             const lowerStr = (str || '').toLowerCase()
             const keyName = key?.name
 
-            if (lowerStr === 'y' || keyName === 'y') {
+            if (lowerStr === 't' || lowerStr === 'y') {
                 cleanup()
                 clearRenderedLines()
                 resolve(true)
                 return
             }
 
-            if (lowerStr === 'n' || keyName === 'n') {
+            if (lowerStr === 'c' || lowerStr === 'n') {
                 cleanup()
                 clearRenderedLines()
                 resolve(false)
@@ -211,7 +248,7 @@ export async function promptWorkspaceTrust(workspaceRoot: string): Promise<boole
             } else if (keyName === 'down' || keyName === 'j' || keyName === 'tab') {
                 selectedIndex = Math.min(options.length - 1, selectedIndex + 1)
                 render()
-            } else if (keyName === 'return' || keyName === 'enter') {
+            } else if (keyName === 'return' || keyName === 'enter' || keyName === 'space') {
                 cleanup()
                 clearRenderedLines()
                 resolve(options[selectedIndex].value)
@@ -266,4 +303,12 @@ export async function ensureWorkspaceTrust(
     }
 
     await addTrustedWorkspace(workspaceRoot)
+
+    const GREEN = '\x1b[38;2;110;231;183m'
+    const WHITE = '\x1b[38;2;244;244;245m'
+    const GRAY = '\x1b[38;2;161;161;170m'
+    const RESET = '\x1b[0m'
+    console.log(
+        `${GREEN}✔${RESET}  ${WHITE}Trusted workspace:${RESET} ${GRAY}${formatDisplayPath(workspaceRoot)}${RESET}`
+    )
 }

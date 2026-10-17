@@ -1,8 +1,6 @@
 import { Box, Static } from 'ink'
 import React from 'react'
 
-import { THEME } from '../theme'
-
 import { Header } from './header'
 import { BotMessage } from './messages/bot-message'
 import { ErrorMessage } from './messages/error-message'
@@ -135,27 +133,17 @@ export const MessageList = React.memo(function MessageList({
         return (
             <Box flexDirection="column" width="100%">
                 {hiddenCount > 0 && (
-                    <Box
-                        paddingLeft={THEME.padding.paddingLeft ?? THEME.padding.paddingX}
-                        paddingRight={THEME.padding.paddingRight ?? 4}
-                        marginY={1}
-                    >
-                        <Box>
-                            <Box marginRight={1}>
-                                <Header
-                                    cliVersion={cliVersion}
-                                    latestVersion={latestVersion}
-                                    userEmail={userEmail}
-                                    announcement={announcement}
-                                    activeModel={activeModel}
-                                    modelLabel={modelLabel}
-                                    authMethod={authMethod}
-                                    selectedProvider={selectedProvider}
-                                    isAuthenticated={isAuthenticated}
-                                />
-                            </Box>
-                        </Box>
-                    </Box>
+                    <Header
+                        cliVersion={cliVersion}
+                        latestVersion={latestVersion}
+                        userEmail={userEmail}
+                        announcement={announcement}
+                        activeModel={activeModel}
+                        modelLabel={modelLabel}
+                        authMethod={authMethod}
+                        selectedProvider={selectedProvider}
+                        isAuthenticated={isAuthenticated}
+                    />
                 )}
                 {visibleMessages.map((msg, index) => {
                     const actualIndex = shouldWindow ? hiddenCount + index : index
