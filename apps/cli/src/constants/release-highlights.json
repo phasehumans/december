@@ -1,9 +1,9 @@
 {
-    "version": "0.4.10",
-    "title": "What's New in v0.4.10",
+    "version": "0.4.11",
+    "title": "What's New in v0.4.11",
     "bullets": [
-        "Restore curl and powershell installers with client os detection and binary releases",
-        "Use official gnu bash and powershell vector icons in install dropdown"
+        "Add fullscreen renderer mode with synchronized updates and mouse auto-copy",
+        "Update december billing label to december wallet and clean up inline mode"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

@@ -2,6 +2,23 @@
 
 ### Features
 
+- _(tui)_ Add fullscreen renderer mode with synchronized updates and mouse auto-copy
+- _(tui)_ Update december billing label to december wallet and clean up inline mode
+- _(cli)_ Add first-launch device auth and wallet balance transition
+- _(tui,cli)_ Restore model name in startup header and format wallet credit errors
+- _(tui,cli)_ Rename december-auto display label to humans r1
+- _(cli,tui)_ Add confirmation when already logged in via december on re-login
+- _(install)_ Add edge cdn fallback, post-install verification, and onboarding ui
+
+### Bug Fixes
+
+- _(tui)_ Cleanly restore terminal buffer and clear screen on exit
+- _(cli,tui)_ Add line spacing before login success and fix header memo reactivity on auth change
+
+## [0.4.10] - 2026-10-16
+
+### Features
+
 - _(cli,docs)_ Restore curl and powershell installers with client os detection and binary releases
 - _(docs)_ Use official gnu bash and powershell vector icons in install dropdown
 - _(cli)_ Show changelog highlights on every launch capped to 3 bullets
@@ -9,6 +26,10 @@
 ### Documentation
 
 - Update install commands to irm style and separate boxes without comments across all readmes
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.10
 
 ## [0.4.9] - 2026-10-13
 
