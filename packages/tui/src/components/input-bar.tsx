@@ -24,6 +24,7 @@ type Props = {
     disabled?: boolean
     placeholder?: string
     activeModel?: string
+    modelLabel?: string
     authMethod?: 'byok' | 'december' | 'env' | 'subscription'
     isAuthenticated?: boolean
     tasks?: TaskItem[]
@@ -51,6 +52,7 @@ type Props = {
         onTranscript: (text: string, isFinal: boolean) => void
         onError: (err: Error) => void
     }) => Promise<{ stop: () => Promise<string>; cancel: () => void } | null>
+    onExit?: () => void
 }
 
 const MAX_FILE_SUGGESTIONS = 5
@@ -72,6 +74,7 @@ export const InputBar = React.memo(function InputBar({
     disabled = false,
     placeholder = 'Ask December to build features, fix bugs, or work on your code...',
     activeModel = 'unknown',
+    modelLabel,
     authMethod,
     isAuthenticated = true,
     hasBothAuth = false,
@@ -96,6 +99,7 @@ export const InputBar = React.memo(function InputBar({
     onScrollUp,
     onScrollDown,
     onStartVoice,
+    onExit,
 }: Props) {
     const [value, setValue] = useState('')
     const [isVoiceActive, setIsVoiceActive] = useState(false)
@@ -447,7 +451,6 @@ export const InputBar = React.memo(function InputBar({
                 '/copy',
                 '/handoff',
                 '/docs',
-                '/tui',
             ]
 
             if (command.value === '/voice') {
@@ -468,7 +471,13 @@ export const InputBar = React.memo(function InputBar({
 
             if (command.action) {
                 command.action({
-                    exit: () => process.exit(0),
+                    exit: () => {
+                        if (onExit) {
+                            onExit()
+                        } else {
+                            process.exit(0)
+                        }
+                    },
                     toast,
                     dialog,
                     agent,
@@ -478,6 +487,7 @@ export const InputBar = React.memo(function InputBar({
             }
         },
         [
+            onExit,
             toast,
             dialog,
             agent,
@@ -760,7 +770,7 @@ export const InputBar = React.memo(function InputBar({
                                         ) : null}
                                         {!isAuthenticated
                                             ? 'Not connected (run /login)'
-                                            : `${modelLabel || formatModelDisplayName(activeModel) || activeModel}${
+                                            : `${modelLabel || activeModel}${
                                                   authMethod === 'subscription'
                                                       ? ' (Subscription)'
                                                       : authMethod === 'december'

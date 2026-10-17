@@ -480,25 +480,45 @@ async function main() {
         ? config.email
         : providerConfig?.subscription?.email || config.email || undefined
 
-    if (process.stdout.isTTY) {
-        const enterSequences = '\x1b[?1049h\x1b[?2004h\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h'
-        const exitSequences =
-            '\x1b[?2026l\x1b[?2004l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l'
+    let inkInstance: any = null
 
-        process.stdout.write(enterSequences)
+    const handleExit = () => {
+        if (inkInstance) {
+            try {
+                inkInstance.clear()
+                inkInstance.unmount()
+            } catch {
+                // Intentionally swallowed: ignore unmount errors on exit
+            }
+        }
+        process.exit(0)
+    }
+
+    if (process.stdout.isTTY) {
+        const exitSequences =
+            '\x1b[?2026l\x1b[?2004l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l\x1b[?25h'
+
         const cleanupTerminal = () => {
             try {
+                if (inkInstance) {
+                    try {
+                        inkInstance.clear()
+                        inkInstance.unmount()
+                    } catch {
+                        // Intentionally swallowed: ignore unmount errors on exit
+                    }
+                }
                 process.stdout.write(exitSequences)
             } catch {
                 // Intentionally swallowed: cleanup terminal escape sequences on exit
             }
         }
         process.on('exit', cleanupTerminal)
-        process.on('SIGINT', cleanupTerminal)
-        process.on('SIGTERM', cleanupTerminal)
+        process.on('SIGINT', handleExit)
+        process.on('SIGTERM', handleExit)
     }
 
-    render(
+    inkInstance = render(
         React.createElement(
             RootLayout,
             { fullscreen: true },
@@ -514,6 +534,7 @@ async function main() {
                 modelLabel: getModelLabel(initialModel),
                 selectedProvider: activeProvider,
                 sessionRepository,
+                onExit: handleExit,
                 onLogin: (onCode: (code: string, uri: string) => void) =>
                     import('./auth').then(({ loginViaDeviceCode }) =>
                         loginViaDeviceCode(undefined, onCode)
@@ -526,6 +547,9 @@ async function main() {
             maxFps: 60,
         }
     )
+
+    await inkInstance.waitUntilExit()
+    handleExit()
 }
 
 main().catch(console.error)

@@ -198,4 +198,47 @@ describe('ChatApp TUI Integration', () => {
             process.exit = originalExit
         }
     })
+
+    it('invokes onExit callback on second Ctrl+C when onExit is provided', async () => {
+        const mockAgent = { modelOptions: { model: 'gemini-3.6-flash' } } as any
+        const mockSession = {
+            staticKey: 0,
+            staticMessages: [{ id: 'header-1', role: 'header' }],
+            activeMessages: [],
+            isStreaming: false,
+            isAuthenticated: true,
+            authMode: 'none',
+            setStaticMessages: mock(),
+            setStaticKey: mock(),
+            setActiveMessages: mock(),
+            setAuthMode: mock(),
+            handleSubmit: mock(),
+            authMethod: 'API Key',
+            hasBothAuth: false,
+            getProviderModels: mock(async () => []),
+        }
+
+        const handleExit = mock()
+
+        const { stdin, lastFrame } = renderWithProviders(
+            <ChatApp
+                agent={mockAgent}
+                isAuthenticated={true}
+                cliVersion="0.4.10"
+                session={mockSession}
+                onExit={handleExit}
+            />
+        )
+
+        // First Ctrl+C
+        stdin.write('\x03')
+        await new Promise((r) => setTimeout(r, 50))
+        expect(lastFrame()).toContain('Press Ctrl+C again to exit')
+        expect(handleExit).not.toHaveBeenCalled()
+
+        // Second Ctrl+C
+        stdin.write('\x03')
+        await new Promise((r) => setTimeout(r, 50))
+        expect(handleExit).toHaveBeenCalledTimes(1)
+    })
 })

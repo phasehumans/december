@@ -10,6 +10,8 @@ export * from './layouts/root-layout'
 export * from './components/menus/menu-items'
 export * from './components/menus/auth-menus'
 export * from './components/menus/ask-question-menu'
+export * from './components/command-menu'
+export * from './components/command-menu/use-command-menu'
 
 export { Spinner } from './components/spinner'
 export { InlineTip } from './components/inline-tip'

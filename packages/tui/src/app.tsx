@@ -31,6 +31,7 @@ export function ChatApp({
     authMethod,
     selectedProvider,
     modelLabel,
+    onExit,
 }: {
     agent: Agent
     isAuthenticated: boolean
@@ -48,6 +49,7 @@ export function ChatApp({
     authMethod?: string
     selectedProvider?: string
     modelLabel?: string
+    onExit?: () => void
 }) {
     const [exitConfirm, setExitConfirm] = useState(false)
     const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -66,7 +68,11 @@ export function ChatApp({
                 clearTimeout(exitTimerRef.current)
                 exitTimerRef.current = null
             }
-            process.exit(0)
+            if (onExit) {
+                onExit()
+            } else {
+                process.exit(0)
+            }
         } else {
             setExitConfirm(true)
             if (exitTimerRef.current) {
@@ -77,7 +83,7 @@ export function ChatApp({
                 exitTimerRef.current = null
             }, 3000)
         }
-    }, [exitConfirm, session, agent])
+    }, [exitConfirm, session, agent, onExit])
 
     useEffect(() => {
         return () => {
@@ -276,6 +282,7 @@ export function ChatApp({
             onCopy={handleCopy}
             placeholder="Ask December to build features, fix bugs, or work on your code..."
             activeModel={session.activeModel || agent?.modelOptions?.model || 'gemini-3.7-flash'}
+            modelLabel={modelLabel}
             contextTokens={totalTokens}
             authMethod={session.authMethod}
             isAuthenticated={isAuthenticated}
@@ -294,6 +301,7 @@ export function ChatApp({
             customInputMode={session.customInputMode || false}
             showExitConfirm={exitConfirm}
             tasks={session.tasks}
+            onExit={onExit}
         />
     )
 
