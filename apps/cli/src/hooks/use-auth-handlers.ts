@@ -64,9 +64,10 @@ export function useAuthHandlers(
                 return
             }
 
-            const currentEmail = useCliStore.getState().currentEmail
-            const isAuthenticated = useCliStore.getState().isAuthenticated
-            if (!item.force && isAuthenticated && currentEmail) {
+            const hasDecember =
+                useCliStore.getState().hasDecember ||
+                useCliStore.getState().authMethod === 'december'
+            if (!item.force && hasDecember) {
                 setAuthMode('menu')
                 return
             }
@@ -157,6 +158,10 @@ export function useAuthHandlers(
                     setAuthMethod(providerConfig.authMethod)
                     setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
                     setSettingsAuthPriority(authStatus.authPriority)
+                    useCliStore.getState().setHasDecember(authStatus.hasDecember)
+                    if (email || config.email) {
+                        useCliStore.getState().setDecemberEmail(email || config.email)
+                    }
                 }
 
                 const cleanActiveMessages = useCliStore.getState().activeMessages.map((m) => {
@@ -365,8 +370,11 @@ export function useAuthHandlers(
 
         const { getSubscriptionAdapter, verifyAndResolveSubscription, loginSubscription } =
             await import('../auth/subscriptions/subscription-manager')
-        const { formatSubscriptionToast, formatSubscriptionCard } =
-            await import('../auth/subscriptions/formatters')
+        const {
+            formatSubscriptionToast,
+            formatSubscriptionCard,
+            formatSubscriptionSuccessMessage,
+        } = await import('../auth/subscriptions/formatters')
 
         if (getSubscriptionAdapter(item.value)) {
             const { getDefaultModelForProvider } = await import('../utils/models')
@@ -428,8 +436,9 @@ export function useAuthHandlers(
             if (isOauthProvider) {
                 setAuthMode('none')
                 setIsStreaming(true)
+                let codeMsgId: string | null = null
                 try {
-                    const codeMsgId = getNextMsgId()
+                    codeMsgId = getNextMsgId()
                     setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
                     setActiveMessages([
                         {
@@ -499,7 +508,35 @@ export function useAuthHandlers(
                     setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
                     setSettingsAuthPriority(authStatus.authPriority)
 
-                    setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
+                    const cleanActiveMessages = useCliStore.getState().activeMessages.map((m) => {
+                        if (m.id === codeMsgId) {
+                            return {
+                                ...m,
+                                blocks: m.blocks
+                                    ?.filter(
+                                        (b) =>
+                                            b.type !== 'text' ||
+                                            !b.content.includes('Waiting for authorization')
+                                    )
+                                    .map((b) => {
+                                        if (b.type === 'text') {
+                                            return {
+                                                ...b,
+                                                content: b.content
+                                                    .replace(
+                                                        /\n\s*Waiting for authorization.*$/gm,
+                                                        ''
+                                                    )
+                                                    .trim(),
+                                            }
+                                        }
+                                        return b
+                                    }),
+                            }
+                        }
+                        return m
+                    })
+                    setStaticMessages((prev) => [...prev, ...cleanActiveMessages])
                     setActiveMessages([
                         {
                             id: getNextMsgId(),
@@ -507,7 +544,12 @@ export function useAuthHandlers(
                             blocks: [
                                 {
                                     type: 'text',
-                                    content: `\n${formatSubscriptionCard(bundle, targetModel)}`,
+                                    content: `\n${formatSubscriptionSuccessMessage(bundle.provider)}`,
+                                    color: '#6EE7B7',
+                                },
+                                {
+                                    type: 'text',
+                                    content: formatSubscriptionCard(bundle, targetModel),
                                 },
                             ],
                         },
@@ -528,7 +570,35 @@ export function useAuthHandlers(
                             ? parsed.message
                             : `Subscription verification failed: ${parsed.message}`
                     setAuthError(errorText)
-                    setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
+                    const cleanActiveMessages = useCliStore.getState().activeMessages.map((m) => {
+                        if (m.id === codeMsgId) {
+                            return {
+                                ...m,
+                                blocks: m.blocks
+                                    ?.filter(
+                                        (b) =>
+                                            b.type !== 'text' ||
+                                            !b.content.includes('Waiting for authorization')
+                                    )
+                                    .map((b) => {
+                                        if (b.type === 'text') {
+                                            return {
+                                                ...b,
+                                                content: b.content
+                                                    .replace(
+                                                        /\n\s*Waiting for authorization.*$/gm,
+                                                        ''
+                                                    )
+                                                    .trim(),
+                                            }
+                                        }
+                                        return b
+                                    }),
+                            }
+                        }
+                        return m
+                    })
+                    setStaticMessages((prev) => [...prev, ...cleanActiveMessages])
                     setActiveMessages([
                         {
                             id: getNextMsgId(),
@@ -755,6 +825,7 @@ export function useAuthHandlers(
             const finalModel = testModel || getDefaultModelForProvider(selectedProvider)
 
             const config = await loadConfig()
+            config.providers = config.providers || {}
             config.providers[selectedProvider] = trimmedKey
             config.activeProvider = selectedProvider
             config.activeModel = finalModel
@@ -821,6 +892,7 @@ export function useAuthHandlers(
                 const finalModel = testModel || getDefaultModelForProvider(selectedProvider)
 
                 const config = await loadConfig()
+                config.providers = config.providers || {}
                 config.providers[selectedProvider] = trimmedKey
                 config.activeProvider = selectedProvider
                 config.activeModel = finalModel
@@ -926,6 +998,8 @@ export function useAuthHandlers(
             config.decemberToken = undefined
             config.email = undefined
             setCurrentEmail(undefined)
+            useCliStore.getState().setHasDecember(false)
+            useCliStore.getState().setDecemberEmail(undefined)
             removedName = 'December Cloud Wallet'
             if (
                 config.activeProvider === 'december' ||
@@ -956,7 +1030,7 @@ export function useAuthHandlers(
                 if (config.activeProvider === provider) {
                     config.activeProvider =
                         Object.keys(config.subscriptions || {})[0] ||
-                        Object.keys(config.providers)[0] ||
+                        Object.keys(config.providers || {})[0] ||
                         (config.decemberToken ? 'december_proxy' : undefined)
                 }
             }
@@ -969,6 +1043,7 @@ export function useAuthHandlers(
 
         setIsAuthenticated(!!providerConfig)
         setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
+        useCliStore.getState().setHasDecember(authStatus.hasDecember)
         setSettingsAuthPriority(authStatus.authPriority)
 
         if (providerConfig && agent) {

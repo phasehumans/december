@@ -43,7 +43,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 title="Click to copy command"
               >
                 <span class="text-[#87b2f4] select-none font-semibold shrink-0">$</span>
-                <span id="hero-display-cmd" class="font-normal text-[#0f172a] truncate">curl -fsSL https://trydecember.com/install.sh | bash</span>
+                <span id="hero-display-cmd" data-cmd="curl -fsSL https://trydecember.com/install.sh | bash" class="font-normal text-[#0f172a] truncate">curl -fsSL https://trydecember.com/install.sh <span class="text-[#87b2f4] font-semibold">|</span> bash</span>
               </button>
 
               <!-- Actions: Copy Button + Dropdown Toggle -->
@@ -1052,7 +1052,15 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     const pmDropdownMenu = document.getElementById('pm-dropdown-menu');
     const pmOptions = document.querySelectorAll('.pm-option');
 
-    let currentHeroCmd = heroDisplayCmd?.textContent?.trim() || "curl -fsSL https://trydecember.com/install.sh | bash";
+    const formatHeroCmd = (cmd: string) => {
+      if (cmd.includes(' | ')) {
+        const parts = cmd.split(' | ');
+        return `${parts[0]} <span class="text-[#87b2f4] font-semibold">|</span> ${parts[1]}`;
+      }
+      return cmd;
+    };
+
+    let currentHeroCmd = heroDisplayCmd?.getAttribute('data-cmd') || heroDisplayCmd?.textContent?.trim() || "curl -fsSL https://trydecember.com/install.sh | bash";
 
     const selectPmOption = (pmName: string, shouldCopy = false) => {
       const option = Array.from(pmOptions).find((opt) => {
@@ -1063,7 +1071,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       const cmd = option.getAttribute('data-cmd');
       if (cmd && heroDisplayCmd) {
         currentHeroCmd = cmd;
-        heroDisplayCmd.textContent = cmd;
+        heroDisplayCmd.innerHTML = formatHeroCmd(cmd);
+        heroDisplayCmd.setAttribute('data-cmd', cmd);
 
         // Update active styles and checkmarks
         pmOptions.forEach((opt) => {

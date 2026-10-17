@@ -361,6 +361,24 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
     const itemsAbove = windowStart
     const itemsBelow = filteredItems.length - windowEnd
 
+    const hasInlineHeader = visibleItems.some((item, relIdx) => {
+        const absIdx = windowStart + relIdx
+        const prevItem = absIdx > 0 ? filteredItems[absIdx - 1] : null
+        return Boolean(item.section && (!prevItem || prevItem.section !== item.section))
+    })
+
+    const topSection = visibleItems[0]?.section
+    let stickyHeader: string | null = null
+    if (!hasInlineHeader && topSection) {
+        if (topSection === 'subscription') {
+            stickyHeader = `${THEME.glyphs.bullet} Subscriptions`
+        } else if (topSection === 'popular') {
+            stickyHeader = `${THEME.glyphs.bullet} Popular`
+        } else if (topSection === 'all') {
+            stickyHeader = `${THEME.glyphs.bullet} All Providers`
+        }
+    }
+
     const footerItems = isSearching
         ? [
               { key: 'enter / ↓', label: 'Focus List' },
@@ -415,68 +433,75 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
                 </Box>
             </Box>
 
-            {/* ↑ n more */}
-            {itemsAbove > 0 && (
-                <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>↑ {itemsAbove} more</Text>
-                </Box>
-            )}
+            {/* List container with minHeight to prevent layout shift during navigation and search */}
+            <Box flexDirection="column" minHeight={10}>
+                {/* ↑ n more */}
+                {itemsAbove > 0 && (
+                    <Box paddingLeft={2}>
+                        <Text color={THEME.colors.muted}>↑ {itemsAbove} more</Text>
+                    </Box>
+                )}
 
-            {/* visible items */}
-            {visibleItems.map((item, relIdx) => {
-                const absIdx = windowStart + relIdx
-                const isSelected = absIdx === selectedIndex
-                const prevItem = absIdx > 0 ? filteredItems[absIdx - 1] : null
-                const isFirstInSection =
-                    item.section && (!prevItem || prevItem.section !== item.section)
+                {/* Sticky section header when scrolled into a section */}
+                {stickyHeader && (
+                    <Box paddingLeft={2} marginY={0}>
+                        <Text color={THEME.colors.subtle}>{stickyHeader}</Text>
+                    </Box>
+                )}
 
-                let sectionHeader: string | null = null
-                if (isFirstInSection) {
-                    if (item.section === 'subscription') {
-                        sectionHeader = '── Subscriptions ──'
-                    } else if (item.section === 'popular') {
-                        sectionHeader = '── Popular ──'
-                    } else if (item.section === 'all') {
-                        sectionHeader = '── All Providers ──'
+                {/* visible items */}
+                {visibleItems.map((item, relIdx) => {
+                    const absIdx = windowStart + relIdx
+                    const isSelected = absIdx === selectedIndex
+                    const prevItem = absIdx > 0 ? filteredItems[absIdx - 1] : null
+                    const isFirstInSection =
+                        item.section && (!prevItem || prevItem.section !== item.section)
+
+                    let sectionHeader: string | null = null
+                    if (isFirstInSection) {
+                        if (item.section === 'subscription') {
+                            sectionHeader = `${THEME.glyphs.bullet} Subscriptions`
+                        } else if (item.section === 'popular') {
+                            sectionHeader = `${THEME.glyphs.bullet} Popular`
+                        } else if (item.section === 'all') {
+                            sectionHeader = `${THEME.glyphs.bullet} All Providers`
+                        }
                     }
-                }
 
-                return (
-                    <React.Fragment key={`${item.value}-${absIdx}`}>
-                        {sectionHeader && (
-                            <Box paddingLeft={2} marginY={0}>
-                                <Text color={THEME.colors.subtle}>{sectionHeader}</Text>
-                            </Box>
-                        )}
-                        <Box paddingLeft={0}>
-                            <Box marginRight={1}>
-                                <Text color={THEME.colors.brand}>
-                                    {isSelected ? THEME.glyphs.selector : ' '}
+                    return (
+                        <React.Fragment key={`${item.value}-${absIdx}`}>
+                            {sectionHeader && (
+                                <Box paddingLeft={2} marginY={0}>
+                                    <Text color={THEME.colors.subtle}>{sectionHeader}</Text>
+                                </Box>
+                            )}
+                            <Box paddingLeft={0}>
+                                <Box marginRight={1}>
+                                    <Text color={THEME.colors.brand}>
+                                        {isSelected ? THEME.glyphs.selector : ' '}
+                                    </Text>
+                                </Box>
+                                <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>
+                                    {item.label}
                                 </Text>
                             </Box>
-                            <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>
-                                {item.label}
-                            </Text>
-                            {item.isSubscription && (
-                                <Text color={THEME.colors.muted}> (subscription)</Text>
-                            )}
-                        </Box>
-                    </React.Fragment>
-                )
-            })}
+                        </React.Fragment>
+                    )
+                })}
 
-            {/* ↓ n more */}
-            {itemsBelow > 0 && (
-                <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>↓ {itemsBelow} more</Text>
-                </Box>
-            )}
+                {/* ↓ n more */}
+                {itemsBelow > 0 && (
+                    <Box paddingLeft={2}>
+                        <Text color={THEME.colors.muted}>↓ {itemsBelow} more</Text>
+                    </Box>
+                )}
 
-            {filteredItems.length === 0 && (
-                <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>No providers found.</Text>
-                </Box>
-            )}
+                {filteredItems.length === 0 && (
+                    <Box paddingLeft={2}>
+                        <Text color={THEME.colors.muted}>No providers found.</Text>
+                    </Box>
+                )}
+            </Box>
 
             <MenuFooter items={footerItems} />
         </Box>

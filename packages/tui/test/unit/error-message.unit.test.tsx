@@ -201,4 +201,33 @@ describe('ErrorMessage Component (Unit)', () => {
         expect(parsed.cause).toBe('402 status code (no body)')
         expect(parsed.hint).toContain('https://app.trydecember.com/settings/billing')
     })
+
+    it('parses bare Connection error string into informative message without hint', () => {
+        const parsed = parseTuiError('Connection error.')
+
+        expect(parsed.message).toBe('Unable to connect to LLM provider (Connection error).')
+        expect(parsed.hint).toBeUndefined()
+
+        const { lastFrame } = render(<ErrorMessage message="Connection error." />)
+        const frame = lastFrame() || ''
+
+        expect(frame).toContain('Unable to connect to LLM provider (Connection error).')
+        expect(frame).not.toContain('Error:')
+    })
+
+    it('renders multi-line connection error preserving endpoint and root cause without hint', () => {
+        const errorText =
+            'Unable to connect to December Cloud (Humans R1).\nEndpoint: https://api.trydecember.com/api/v1/cli (fetch failed: ENOTFOUND api.trydecember.com)'
+        const parsed = parseTuiError(errorText)
+
+        expect(parsed.message).toContain('Unable to connect to December Cloud (Humans R1).')
+        expect(parsed.message).toContain('Endpoint: https://api.trydecember.com/api/v1/cli')
+        expect(parsed.hint).toBeUndefined()
+
+        const { lastFrame } = render(<ErrorMessage message={errorText} />)
+        const frame = lastFrame() || ''
+
+        expect(frame).toContain('Unable to connect to December Cloud (Humans R1).')
+        expect(frame).toContain('https://api.trydecember.com/api/v1/cli')
+    })
 })

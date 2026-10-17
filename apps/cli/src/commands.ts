@@ -342,6 +342,8 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
             formatSubscriptionDisplayName,
             formatSubscriptionPlan,
             formatSubscriptionIdentity,
+            formatSubscriptionSuccessMessage,
+            formatSubscriptionCard,
         } = await import('./auth/subscriptions')
         const providerName = formatSubscriptionDisplayName(targetProvider)
         console.log(`\nInitiating subscription login for ${providerName}...`)
@@ -368,17 +370,10 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
         )
 
         const GREEN = '\x1b[38;2;110;231;183m'
-        const WHITE = '\x1b[38;2;244;244;245m'
-        const BRAND = '\x1b[38;2;137;180;248m'
         const RESET = '\x1b[0m'
-        const plan = formatSubscriptionPlan(bundle)
-        const identity = formatSubscriptionIdentity(bundle)
 
-        console.log(`\n${GREEN}Linked ${providerName} Subscription${RESET}`)
-        console.log(`  • Plan:         ${WHITE}${plan}${RESET}`)
-        if (identity) {
-            console.log(`  • Account:      ${BRAND}${identity}${RESET}`)
-        }
+        console.log(`\n${GREEN}${formatSubscriptionSuccessMessage(bundle.provider)}${RESET}`)
+        console.log(formatSubscriptionCard(bundle))
         console.log()
         return
     }

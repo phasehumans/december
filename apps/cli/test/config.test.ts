@@ -127,6 +127,28 @@ describe('config', () => {
             const config = await loadConfig()
             expect(config.activeProvider).toBe('first')
         })
+
+        test('ensures providers is an object even when config on disk has no providers field', async () => {
+            mockReadFile.mockImplementation(async (filePath: string) => {
+                if (filePath.includes('settings.json')) throw new Error('No workspace')
+                return JSON.stringify({ activeProvider: 'december', decemberToken: 'token123' })
+            })
+
+            const config = await loadConfig()
+            expect(config.providers).toBeDefined()
+            expect(config.providers).toEqual({})
+        })
+
+        test('ensures providers is an object when providers on disk is null or not an object', async () => {
+            mockReadFile.mockImplementation(async (filePath: string) => {
+                if (filePath.includes('settings.json')) throw new Error('No workspace')
+                return JSON.stringify({ providers: null })
+            })
+
+            const config = await loadConfig()
+            expect(config.providers).toBeDefined()
+            expect(config.providers).toEqual({})
+        })
     })
 
     describe('saveConfig', () => {

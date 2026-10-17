@@ -251,6 +251,14 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
       pre.style.overflowY = 'hidden';
       pre.style.scrollbarWidth = 'none';
 
+      // Style pipe operators with brand blue
+      code.querySelectorAll('span').forEach((span) => {
+        if (span.textContent?.trim() === '|') {
+          span.style.color = '#87b2f4';
+          span.style.fontWeight = '600';
+        }
+      });
+
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'code-copy-btn';

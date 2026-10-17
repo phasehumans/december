@@ -157,4 +157,52 @@ describe('BYOK Provider Selection vs Subscription Selection (Unit)', () => {
             globalThis.fetch = originalFetch
         }
     })
+
+    it('successfully saves provider key when initial config on disk has no providers property', async () => {
+        const configDir = path.join(testConfigDir, '.december')
+        await fs.mkdir(configDir, { recursive: true })
+        await fs.writeFile(
+            path.join(configDir, 'config.json'),
+            JSON.stringify({ activeProvider: 'december', decemberToken: 'tok123' }),
+            'utf-8'
+        )
+
+        useCliStore.setState({ selectedProvider: 'agnes', authMode: 'byok_key' })
+
+        const originalFetch = globalThis.fetch
+        globalThis.fetch = (async () => {
+            const stream = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(
+                        new TextEncoder().encode(
+                            'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\ndata: [DONE]\n\n'
+                        )
+                    )
+                    controller.close()
+                },
+            })
+            return new Response(stream, {
+                status: 200,
+                headers: { 'Content-Type': 'text/event-stream' },
+            })
+        }) as any
+
+        try {
+            const handlers = useAuthHandlers(null)
+            await handlers.handleKeySubmit('sk-rXxBGNXzrkUu6DoS55avUxGDo605Q8TremjbFhgHSkxZVLH2')
+
+            expect(useCliStore.getState().authError).toBeNull()
+            expect(useCliStore.getState().authMode).toBe('none')
+            expect(useCliStore.getState().isAuthenticated).toBe(true)
+
+            const { loadConfig } = await import('../src/config')
+            const updatedConfig = await loadConfig()
+            expect(updatedConfig.providers?.agnes).toBe(
+                'sk-rXxBGNXzrkUu6DoS55avUxGDo605Q8TremjbFhgHSkxZVLH2'
+            )
+            expect(updatedConfig.activeProvider).toBe('agnes')
+        } finally {
+            globalThis.fetch = originalFetch
+        }
+    })
 })

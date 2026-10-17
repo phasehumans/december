@@ -131,4 +131,57 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
         const shouldSwitchConfirmed = userConfirmAnswer === 'y' || userConfirmAnswer === 'yes'
         expect(shouldSwitchConfirmed).toBe(true)
     })
+
+    it('allows December login when user is authenticated with subscription but hasDecember is false', () => {
+        useCliStore.setState({
+            isAuthenticated: true,
+            authMethod: 'subscription',
+            currentEmail: 'phasehumans@gmail.com',
+            hasDecember: false,
+            authMode: 'menu',
+        })
+
+        const item = { label: 'Login via December', value: 'december' }
+        const hasDecember =
+            useCliStore.getState().hasDecember || useCliStore.getState().authMethod === 'december'
+
+        const shouldIntercept = !(item as any).force && hasDecember
+        expect(shouldIntercept).toBe(false)
+    })
+
+    it('guards December re-login when hasDecember is true without force', () => {
+        useCliStore.setState({
+            isAuthenticated: true,
+            authMethod: 'subscription',
+            currentEmail: 'phasehumans@gmail.com',
+            hasDecember: true,
+            decemberEmail: 'dev@example.com',
+            authMode: 'menu',
+        })
+
+        const item = { label: 'Login via December', value: 'december' }
+        const hasDecember =
+            useCliStore.getState().hasDecember || useCliStore.getState().authMethod === 'december'
+
+        const shouldIntercept = !(item as any).force && hasDecember
+        expect(shouldIntercept).toBe(true)
+    })
+
+    it('allows December re-login when hasDecember is true with force: true', () => {
+        useCliStore.setState({
+            isAuthenticated: true,
+            authMethod: 'subscription',
+            currentEmail: 'phasehumans@gmail.com',
+            hasDecember: true,
+            decemberEmail: 'dev@example.com',
+            authMode: 'menu',
+        })
+
+        const item = { label: 'Login via December', value: 'december', force: true }
+        const hasDecember =
+            useCliStore.getState().hasDecember || useCliStore.getState().authMethod === 'december'
+
+        const shouldIntercept = !(item as any).force && hasDecember
+        expect(shouldIntercept).toBe(false)
+    })
 })

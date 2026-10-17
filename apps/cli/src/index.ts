@@ -377,6 +377,10 @@ async function main() {
     useCliStore.getState().setActiveModel(initialModel)
     useCliStore.getState().setSelectedProvider(activeProvider)
     useCliStore.getState().setIsAuthenticated(isAuthenticated)
+    useCliStore.getState().setHasDecember(authStatus.hasDecember)
+    if (config.decemberToken && config.email) {
+        useCliStore.getState().setDecemberEmail(config.email)
+    }
     if (providerConfig?.authMethod) {
         useCliStore.getState().setAuthMethod(providerConfig.authMethod)
     }
@@ -527,6 +531,8 @@ async function main() {
                 isAuthenticated,
                 authMethod: providerConfig?.authMethod,
                 hasBothAuth: authStatus.hasByok && authStatus.hasDecember,
+                hasDecember: authStatus.hasDecember,
+                decemberEmail: config.decemberToken ? config.email : undefined,
                 settingsAuthPriority: authStatus.authPriority,
                 cliVersion: pkg.version,
                 userEmail,

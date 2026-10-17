@@ -22,19 +22,19 @@ December हा टर्मिनल आणि क्लाउडसाठी�
 
 1. December इन्स्टॉल करा:
 
-macOS आणि Linux:
+Bash (macOS आणि Linux):
 
 ```bash
 curl -fsSL https://trydecember.com/install.sh | bash
 ```
 
-Windows:
+PowerShell (Windows):
 
 ```powershell
 irm https://trydecember.com/install.ps1 | iex
 ```
 
-npm:
+NPM:
 
 ```bash
 npm install -g @trydecember/cli

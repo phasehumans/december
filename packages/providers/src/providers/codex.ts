@@ -3,12 +3,12 @@ import type { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '..
 export const CODEX_DEFAULT_ENDPOINT = 'https://chatgpt.com/backend-api'
 
 export const CODEX_SUPPORTED_MODELS = [
-    'gpt-5.4',
-    'gpt-5.4-mini',
-    'gpt-5.5',
     'gpt-5.6-sol',
     'gpt-5.6-terra',
     'gpt-5.6-luna',
+    'gpt-5.5',
+    'gpt-5.4',
+    'gpt-5.4-mini',
 ] as const
 
 export function resolveCodexModel(model?: string): string {
@@ -20,17 +20,18 @@ export function resolveCodexModel(model?: string): string {
         name = name.slice('openai/'.length)
     }
 
+    if (name.includes('5.6-sol') || name.includes('sol')) return 'gpt-5.6-sol'
+    if (name.includes('5.6-terra') || name.includes('terra')) return 'gpt-5.6-terra'
+    if (name.includes('5.6-luna') || name.includes('luna')) return 'gpt-5.6-luna'
+    if (name.includes('5.5')) return 'gpt-5.5'
+    if (name.includes('mini')) return 'gpt-5.4-mini'
+    if (name.includes('5.4')) return 'gpt-5.4'
+
     if (CODEX_SUPPORTED_MODELS.includes(name as any)) {
         return name
     }
 
-    if (name.includes('5.5')) return 'gpt-5.5'
-    if (name.includes('5.6-sol') || name.includes('sol')) return 'gpt-5.6-sol'
-    if (name.includes('5.6-terra') || name.includes('terra')) return 'gpt-5.6-terra'
-    if (name.includes('5.6-luna') || name.includes('luna')) return 'gpt-5.6-luna'
-    if (name.includes('mini')) return 'gpt-5.4-mini'
-
-    return 'gpt-5.4'
+    return 'gpt-5.6-sol'
 }
 
 export function extractChatGPTAccountId(token: string): string | undefined {

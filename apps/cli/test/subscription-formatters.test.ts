@@ -5,6 +5,7 @@ import {
     formatSubscriptionPlan,
     formatSubscriptionToast,
     formatSubscriptionCard,
+    formatSubscriptionSuccessMessage,
 } from '../src/auth/subscriptions/formatters'
 
 describe('Subscription Formatters (Unit)', () => {
@@ -131,29 +132,47 @@ describe('Subscription Formatters (Unit)', () => {
         })
     })
 
+    describe('formatSubscriptionSuccessMessage', () => {
+        it('formats provider success messages correctly', () => {
+            expect(formatSubscriptionSuccessMessage('copilot')).toBe(
+                'GitHub Copilot connected successfully'
+            )
+            expect(formatSubscriptionSuccessMessage('claude')).toBe(
+                'Anthropic Claude connected successfully'
+            )
+            expect(formatSubscriptionSuccessMessage('chatgpt')).toBe(
+                'OpenAI ChatGPT connected successfully'
+            )
+            expect(formatSubscriptionSuccessMessage('gemini')).toBe(
+                'Google Gemini connected successfully'
+            )
+        })
+    })
+
     describe('formatSubscriptionCard', () => {
-        it('formats full structured card without checkmark symbol', () => {
+        it('formats compact plan card with email identity', () => {
             const card = formatSubscriptionCard(
                 { provider: 'claude', subscriptionType: 'claude_pro', email: 'alex@example.com' },
                 'claude-sonnet-5'
             )
-            expect(card).not.toContain('✔')
-            expect(card).toContain('Linked Anthropic Claude Subscription')
-            expect(card).toContain('• Plan:         Claude Pro')
-            expect(card).toContain('• Account:      alex@example.com')
-            expect(card).not.toContain('Active Model')
-            expect(card).not.toContain('Auth Mode')
+            expect(card).toBe('Plan: Claude Pro (alex@example.com)')
         })
 
-        it('formats Copilot card with @handle as markdown link', () => {
+        it('formats Copilot card with @handle as markdown link in parentheses', () => {
             const card = formatSubscriptionCard({
                 provider: 'copilot',
                 subscriptionType: 'copilot',
                 accountName: 'octocat',
             })
-            expect(card).toContain('Linked GitHub Copilot Subscription')
-            expect(card).toContain('• Plan:         Copilot Individual')
-            expect(card).toContain('• Account:      [@octocat](https://github.com/octocat)')
+            expect(card).toBe('Plan: Copilot Individual ([@octocat](https://github.com/octocat))')
+        })
+
+        it('formats card without identity when none provided', () => {
+            const card = formatSubscriptionCard({
+                provider: 'copilot',
+                subscriptionType: 'copilot',
+            })
+            expect(card).toBe('Plan: Copilot Individual')
         })
     })
 })

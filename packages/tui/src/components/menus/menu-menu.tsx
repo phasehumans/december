@@ -5,8 +5,15 @@ import { THEME } from '../../theme'
 
 import { MenuFooter } from './menu-footer'
 
+export interface MenuMenuItem {
+    label: string
+    value: string
+    status?: string
+    force?: boolean
+}
+
 export interface MenuMenuProps {
-    handleAuthMenuSelect?: (item: { label: string; value: string; force?: boolean }) => void
+    handleAuthMenuSelect?: (item: MenuMenuItem) => void
     setAuthMode?: (mode: string) => void
     detectedSubscriptions?: Record<string, any> | string[]
     userEmail?: string
@@ -14,6 +21,8 @@ export interface MenuMenuProps {
     isAuthenticated?: boolean
     authMethod?: string
     hasBothAuth?: boolean
+    hasDecember?: boolean
+    decemberEmail?: string
     addToast?: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void
 }
 
@@ -26,25 +35,32 @@ export function MenuMenu(props: MenuMenuProps) {
         isAuthenticated,
         authMethod,
         hasBothAuth,
+        hasDecember,
+        decemberEmail,
         addToast,
     } = props
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [confirmSwitch, setConfirmSwitch] = useState(false)
 
-    const email = currentEmail || userEmail
+    const email = decemberEmail || currentEmail || userEmail
     const isDecemberLoggedIn = Boolean(
-        isAuthenticated && email && (authMethod === 'december' || hasBothAuth || !authMethod)
+        hasDecember !== undefined
+            ? hasDecember || authMethod === 'december'
+            : isAuthenticated && email && (authMethod === 'december' || hasBothAuth || !authMethod)
     )
 
-    const items = [
+    const items: MenuMenuItem[] = [
         {
             label: 'Bring Your Own Key or Subscription',
             value: 'byok',
         },
         {
-            label: isDecemberLoggedIn
-                ? `Login via December (Logged in as ${email})`
-                : 'Login via December',
+            label: 'Login via December',
+            status: isDecemberLoggedIn
+                ? email
+                    ? `(Logged in as ${email})`
+                    : '(Logged in)'
+                : undefined,
             value: 'december',
         },
     ]
@@ -69,8 +85,8 @@ export function MenuMenu(props: MenuMenuProps) {
                 if (setAuthMode) {
                     setAuthMode('none')
                 }
-                if (addToast && email) {
-                    addToast(`Already logged in as ${email}.`, 'info')
+                if (addToast) {
+                    addToast(`Already logged in as ${email || 'December user'}.`, 'info')
                 }
                 return
             }
@@ -121,7 +137,7 @@ export function MenuMenu(props: MenuMenuProps) {
                     <Text color={THEME.colors.text}>
                         You are already logged in as{' '}
                         <Text color={THEME.colors.brand} bold>
-                            {email}
+                            {email || 'December user'}
                         </Text>
                         .
                     </Text>
@@ -160,6 +176,9 @@ export function MenuMenu(props: MenuMenuProps) {
                         <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>
                             {item.label}
                         </Text>
+                        {item.status ? (
+                            <Text color={THEME.colors.success}> {item.status}</Text>
+                        ) : null}
                     </Box>
                 )
             })}

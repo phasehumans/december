@@ -62,7 +62,12 @@ describe('apps/docs astro configuration', () => {
         const installPs1Path = new URL('../public/install.ps1', import.meta.url).pathname
         const installPs1Content = await Bun.file(installPs1Path).text()
         expect(installPs1Content).toContain('$Repo = "phasehumans/december"')
+        expect(installPs1Content).toContain('$ProgressPreference = "SilentlyContinue"')
         expect(installPs1Content).toContain('$Target = "x86_64-pc-windows-msvc"')
         expect(installPs1Content).toContain('december-$Target.zip')
+        expect(installPs1Content).toContain('Log-Success')
+        expect(installPs1Content).toContain('SHASUMS256.txt')
+        expect(installPs1Content).toContain('Get-FileHash')
+        expect(installPs1Content).toContain('curl.exe')
     })
 })

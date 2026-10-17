@@ -167,12 +167,23 @@ export async function processAgentStream({
 
                 for (const event of eventsToProcess) {
                     switch (event.type) {
-                        case 'TurnStart':
-                            blocks.push({
-                                type: 'text',
-                                content: (event as any).initialStatus || 'Thinking...',
-                            })
+                        case 'TurnStart': {
+                            const initialStatus = (event as any).initialStatus || 'Thinking...'
+                            const lastBlock = blocks[blocks.length - 1]
+                            if (
+                                lastBlock &&
+                                lastBlock.type === 'text' &&
+                                isStatusMessage(lastBlock.content)
+                            ) {
+                                lastBlock.content = initialStatus
+                            } else {
+                                blocks.push({
+                                    type: 'text',
+                                    content: initialStatus,
+                                })
+                            }
                             break
+                        }
                         case 'AgentError': {
                             finalizeThinking(blocks)
                             const lastBlock = blocks[blocks.length - 1]
@@ -365,6 +376,7 @@ export async function processAgentStream({
             event.type === 'AgentInterrupt' ||
             event.type === 'ToolCallStart' ||
             event.type === 'ToolCallResult' ||
+            event.type === 'AgentStatus' ||
             (event.type === 'ThinkingChunk' && !thinkingStartTime)
 
         if (isImmediateEvent) {

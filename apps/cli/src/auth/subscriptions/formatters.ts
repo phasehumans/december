@@ -100,15 +100,17 @@ export function formatSubscriptionToast(
     return `Connected to ${subject}${accountPart}${modelPart}`
 }
 
+export function formatSubscriptionSuccessMessage(provider?: string): string {
+    const providerName = formatSubscriptionDisplayName(provider)
+    return `${providerName} connected successfully`
+}
+
 export function formatSubscriptionCard(
     bundle: Partial<SubscriptionTokenBundle>,
     _activeModel?: string
 ): string {
-    const providerName = formatSubscriptionDisplayName(bundle.provider)
     const plan = formatSubscriptionPlan(bundle)
     const identity = formatSubscriptionIdentity(bundle)
-
-    const lines = [`Linked ${providerName} Subscription`, `  • Plan:         ${plan}`]
 
     if (identity) {
         const isGithub = bundle.provider === 'copilot' || bundle.provider === 'github'
@@ -116,8 +118,8 @@ export function formatSubscriptionCard(
             isGithub && identity.startsWith('@')
                 ? `[${identity}](https://github.com/${identity.slice(1)})`
                 : identity
-        lines.push(`  • Account:      ${accountDisplay}`)
+        return `Plan: ${plan} (${accountDisplay})`
     }
 
-    return lines.join('\n')
+    return `Plan: ${plan}`
 }

@@ -86,6 +86,7 @@ export const ScrollViewport = React.memo(
         }
 
         const lastContentMeasureTimeRef = useRef<number>(0)
+        const throttleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
         const pendingX10MouseRef = useRef<boolean>(false)
 
         // Measure viewport and content dimensions
@@ -107,20 +108,47 @@ export const ScrollViewport = React.memo(
                 // throttle synchronous layout measurement to avoid blocking the event loop on rapid token chunks
                 const now = Date.now()
                 const shouldThrottle = isGenerating && !isReadingMode
-                if (!shouldThrottle || now - lastContentMeasureTimeRef.current >= 80) {
+                const elapsed = now - lastContentMeasureTimeRef.current
+
+                if (!shouldThrottle || elapsed >= 80) {
+                    if (throttleTimerRef.current) {
+                        clearTimeout(throttleTimerRef.current)
+                        throttleTimerRef.current = null
+                    }
                     lastContentMeasureTimeRef.current = now
                     const cMeasured = measureElement(contentRef.current)
                     if (cMeasured.height !== prevContentHeightRef.current) {
                         prevContentHeightRef.current = cMeasured.height
                         setContentHeight(cMeasured.height)
                     }
+                } else if (!throttleTimerRef.current) {
+                    // Schedule a trailing measurement so layout is never left stale if streaming pauses
+                    throttleTimerRef.current = setTimeout(
+                        () => {
+                            throttleTimerRef.current = null
+                            if (contentRef.current) {
+                                lastContentMeasureTimeRef.current = Date.now()
+                                const cMeasured = measureElement(contentRef.current)
+                                if (cMeasured.height !== prevContentHeightRef.current) {
+                                    prevContentHeightRef.current = cMeasured.height
+                                    setContentHeight(cMeasured.height)
+                                }
+                            }
+                        },
+                        Math.max(10, 80 - elapsed)
+                    )
                 }
             }
         })
 
-        // When generation completes, perform an immediate layout measurement to ensure height accuracy
+        // Immediate unthrottled layout measurement whenever generation starts or completes
         useEffect(() => {
-            if (!isGenerating && contentRef.current) {
+            if (contentRef.current) {
+                if (throttleTimerRef.current) {
+                    clearTimeout(throttleTimerRef.current)
+                    throttleTimerRef.current = null
+                }
+                lastContentMeasureTimeRef.current = Date.now()
                 const cMeasured = measureElement(contentRef.current)
                 if (cMeasured.height !== prevContentHeightRef.current) {
                     prevContentHeightRef.current = cMeasured.height
@@ -128,6 +156,16 @@ export const ScrollViewport = React.memo(
                 }
             }
         }, [isGenerating])
+
+        // Cleanup trailing measurement timer on unmount
+        useEffect(() => {
+            return () => {
+                if (throttleTimerRef.current) {
+                    clearTimeout(throttleTimerRef.current)
+                    throttleTimerRef.current = null
+                }
+            }
+        }, [])
 
         // If controlled prop is provided and changed externally
         useEffect(() => {

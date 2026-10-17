@@ -393,6 +393,16 @@ export async function loadConfig(): Promise<DecemberConfig> {
             // workspace config is optional
         }
 
+        if (!config || typeof config !== 'object') {
+            config = { providers: {} }
+        } else if (
+            !config.providers ||
+            typeof config.providers !== 'object' ||
+            Array.isArray(config.providers)
+        ) {
+            config.providers = {}
+        }
+
         // self-heal: if providers or subscriptions exist but activeProvider is missing, select the first available
         if (!config.activeProvider) {
             if (config.providers && Object.keys(config.providers).length > 0) {

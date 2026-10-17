@@ -11,18 +11,18 @@ import {
 import type { Message, ProviderTool } from '../../src/types'
 
 describe('Codex Responses Provider Adapter (Unit)', () => {
-    it('resolves supported models correctly and defaults invalid/legacy models to gpt-5.4', () => {
+    it('resolves supported models correctly and defaults invalid/legacy models to gpt-5.6-sol', () => {
         expect(resolveCodexModel('gpt-5.4')).toBe('gpt-5.4')
         expect(resolveCodexModel('gpt-5.5')).toBe('gpt-5.5')
         expect(resolveCodexModel('gpt-5.6-sol')).toBe('gpt-5.6-sol')
         expect(resolveCodexModel('gpt-5.6-terra')).toBe('gpt-5.6-terra')
         expect(resolveCodexModel('gpt-5.6-luna')).toBe('gpt-5.6-luna')
         expect(resolveCodexModel('gpt-5.4-mini')).toBe('gpt-5.4-mini')
-        expect(resolveCodexModel('gpt-4.1')).toBe('gpt-5.4')
-        expect(resolveCodexModel('gpt-4o')).toBe('gpt-5.4')
+        expect(resolveCodexModel('gpt-4.1')).toBe('gpt-5.6-sol')
+        expect(resolveCodexModel('gpt-4o')).toBe('gpt-5.6-sol')
         expect(resolveCodexModel('gpt-4o-mini')).toBe('gpt-5.4-mini')
-        expect(resolveCodexModel('unknown-model')).toBe('gpt-5.4')
-        expect(resolveCodexModel()).toBe('gpt-5.4')
+        expect(resolveCodexModel('unknown-model')).toBe('gpt-5.6-sol')
+        expect(resolveCodexModel()).toBe('gpt-5.6-sol')
     })
 
     it('extracts chatgpt_account_id from valid JWT token payload', () => {

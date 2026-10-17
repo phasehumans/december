@@ -408,6 +408,7 @@ async function runInnerLoop(
 
             // execute tools
             await executeToolCalls(agent, toolCalls, eventQueue, signal, options)
+            eventQueue.push({ type: 'AgentStatus', message: 'Working...' })
         }
 
         await agent.saveContext()

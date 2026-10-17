@@ -520,5 +520,68 @@ describe('error-parser', () => {
             expect(parsed.hint).toContain('https://app.trydecember.com/settings/billing')
             expect(parsed.hint).toContain('/login')
         })
+
+        test('extracts structured details from bare Connection error without hint', () => {
+            const err = new Error('Connection error.')
+            const parsed = parseError(err)
+            expect(parsed.message).toBe('Unable to connect to LLM provider (Connection error).')
+            expect(parsed.hint).toBeUndefined()
+        })
+
+        test('extracts provider context, endpoint, and nested cause from connection failure without hint', () => {
+            const fetchErr = new Error('fetch failed')
+            ;(fetchErr as any).cause = {
+                code: 'ENOTFOUND',
+                message: 'getaddrinfo ENOTFOUND api.anthropic.com',
+            }
+            const connErr = new Error('Connection error.')
+            ;(connErr as any).cause = fetchErr
+
+            const parsed = parseError(connErr, { provider: 'anthropic' })
+            expect(parsed.message).toContain('Unable to connect to Anthropic (DNS lookup failed).')
+            expect(parsed.message).toContain('Endpoint: https://api.anthropic.com/v1/messages')
+            expect(parsed.message).toContain(
+                'fetch failed (getaddrinfo ENOTFOUND api.anthropic.com)'
+            )
+            expect(parsed.hint).toBeUndefined()
+        })
+
+        test('extracts timeout error with endpoint into structured details without hint', () => {
+            const timeoutErr = new Error('connect ETIMEDOUT')
+            const parsed = parseError(timeoutErr, { provider: 'openai' })
+            expect(parsed.message).toContain('Connection to OpenAI timed out.')
+            expect(parsed.message).toContain('Endpoint: https://api.openai.com/v1/chat/completions')
+            expect(parsed.cause).toContain('ETIMEDOUT')
+            expect(parsed.hint).toBeUndefined()
+        })
+
+        test('extracts Ollama connection refused error with local daemon details without hint', () => {
+            const ollamaErr = new Error('connect ECONNREFUSED 127.0.0.1:11434')
+            const parsed = parseError(ollamaErr, { provider: 'ollama' })
+            expect(parsed.message).toContain('Unable to connect to Ollama (Connection refused).')
+            expect(parsed.message).toContain('Endpoint: http://localhost:11434/v1')
+            expect(parsed.hint).toBeUndefined()
+        })
+
+        test('extracts December Cloud connection error with Humans R1 and CLI proxy endpoint without hint', () => {
+            const fetchErr = new Error('fetch failed')
+            ;(fetchErr as any).cause = {
+                code: 'ENOTFOUND',
+                message: 'getaddrinfo ENOTFOUND api.trydecember.com',
+            }
+            const connErr = new Error('Connection error.')
+            ;(connErr as any).cause = fetchErr
+
+            const parsed = parseError(connErr, {
+                provider: 'december_proxy',
+                model: 'december-auto',
+            })
+            expect(parsed.message).toContain('Unable to connect to December Cloud (Humans R1).')
+            expect(parsed.message).toContain('Endpoint: https://api.trydecember.com/api/v1/cli')
+            expect(parsed.message).toContain(
+                'fetch failed (getaddrinfo ENOTFOUND api.trydecember.com)'
+            )
+            expect(parsed.hint).toBeUndefined()
+        })
     })
 })

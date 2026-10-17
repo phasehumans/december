@@ -1,11 +1,43 @@
 import util from 'util'
 
+import { formatProviderName } from '../config'
+
+import { getModelLabel } from './models'
 import { inferProviderFromModel } from './usage-rates'
 
 export interface ErrorParseContext {
     provider?: string
     model?: string
     baseURL?: string
+}
+
+export function inferProviderEndpoint(provider?: string, baseURL?: string): string | undefined {
+    if (baseURL) return baseURL
+    const norm = (provider || '').toLowerCase().trim()
+    switch (norm) {
+        case 'december':
+        case 'december_proxy':
+            return 'https://api.trydecember.com/api/v1/cli'
+        case 'anthropic':
+        case 'claude':
+            return 'https://api.anthropic.com/v1/messages'
+        case 'openai':
+        case 'chatgpt':
+            return 'https://api.openai.com/v1/chat/completions'
+        case 'gemini':
+        case 'google':
+            return 'https://generativelanguage.googleapis.com/v1beta'
+        case 'ollama':
+            return 'http://localhost:11434/v1'
+        case 'openrouter':
+            return 'https://openrouter.ai/api/v1/chat/completions'
+        case 'deepseek':
+            return 'https://api.deepseek.com/chat/completions'
+        case 'groq':
+            return 'https://api.groq.com/openai/v1/chat/completions'
+        default:
+            return undefined
+    }
 }
 
 export interface ProviderCreditRule {
@@ -1385,11 +1417,26 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
     // Check for explicit cause or originalError on err
     let explicitCause: string | undefined
     if (err?.cause) {
-        explicitCause =
-            typeof err.cause === 'string'
-                ? err.cause
-                : err.cause?.message ||
-                  (typeof err.cause === 'object' ? util.inspect(err.cause) : String(err.cause))
+        if (typeof err.cause === 'string') {
+            explicitCause = err.cause
+        } else if (err.cause?.message) {
+            const nested = err.cause?.cause
+            const nestedDetail =
+                typeof nested === 'string'
+                    ? nested
+                    : nested?.message ||
+                      nested?.code ||
+                      (typeof nested === 'object' ? util.inspect(nested) : undefined)
+            if (nestedDetail && nestedDetail !== err.cause.message) {
+                explicitCause = `${err.cause.message} (${nestedDetail})`
+            } else {
+                explicitCause = err.cause.message
+            }
+        } else if (typeof err.cause === 'object') {
+            explicitCause = util.inspect(err.cause)
+        } else {
+            explicitCause = String(err.cause)
+        }
     } else if (err?.originalError) {
         explicitCause =
             typeof err.originalError === 'string'
@@ -1601,16 +1648,109 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
         }
     }
 
-    // 10. ECONNREFUSED network error
-    if (combined.includes('econnrefused')) {
-        const primaryMessage =
-            err?.message && !err.message.includes('ECONNREFUSED')
-                ? err.message
-                : 'Connection refused by destination host.'
+    // 10. Network & connection errors (ECONNREFUSED, ENOTFOUND, ETIMEDOUT, ECONNRESET, APIConnectionError, fetch failed)
+    const isNetworkOrConnectionError =
+        combined.includes('connection error') ||
+        combined.includes('econnrefused') ||
+        combined.includes('enotfound') ||
+        combined.includes('etimedout') ||
+        combined.includes('econnreset') ||
+        combined.includes('ehostunreach') ||
+        combined.includes('enetunreach') ||
+        combined.includes('fetch failed') ||
+        combined.includes('socket hang up') ||
+        err?.name === 'APIConnectionError'
+
+    if (isNetworkOrConnectionError) {
+        const inferred = context?.model ? inferProviderFromModel(context.model) : undefined
+        const rawProvider = context?.provider || inferred
+        const isDecember = rawProvider === 'december_proxy' || rawProvider === 'december'
+        const providerDisplayName = isDecember
+            ? 'December Cloud'
+            : rawProvider
+              ? formatProviderName(rawProvider)
+              : undefined
+
+        const endpoint = inferProviderEndpoint(rawProvider, context?.baseURL)
+        const isLocalOllama =
+            rawProvider === 'ollama' ||
+            context?.baseURL?.includes('11434') ||
+            combined.includes('11434') ||
+            combined.includes('ollama')
+
+        const modelLabel = context?.model
+            ? isDecember && context.model === 'december-auto'
+                ? 'Humans R1'
+                : getModelLabel(context.model)
+            : undefined
+
+        let headline: string
+        if (isDecember) {
+            headline = `Unable to connect to December Cloud (${modelLabel || 'Humans R1'}).`
+        } else if (isLocalOllama) {
+            headline = 'Unable to connect to Ollama (Connection refused).'
+        } else if (combined.includes('enotfound')) {
+            const target = providerDisplayName || 'destination host'
+            headline = modelLabel
+                ? `Unable to connect to ${target} (${modelLabel}).`
+                : `Unable to connect to ${target} (DNS lookup failed).`
+        } else if (combined.includes('etimedout') || combined.includes('timed out')) {
+            const target = providerDisplayName || 'destination host'
+            headline = modelLabel
+                ? `Connection to ${target} (${modelLabel}) timed out.`
+                : `Connection to ${target} timed out.`
+        } else if (combined.includes('econnrefused') && !rawProvider && !isDecember) {
+            const primaryMessage =
+                err?.message && !err.message.includes('ECONNREFUSED')
+                    ? err.message
+                    : 'Connection refused by destination host.'
+            return {
+                message: primaryMessage,
+                cause: explicitCause || fullMessage,
+                hint: 'Verify that the server or target service is running and network is reachable.',
+            }
+        } else if (combined.includes('econnrefused')) {
+            headline = providerDisplayName
+                ? `Connection to ${providerDisplayName} was refused.`
+                : err?.message && !err.message.includes('ECONNREFUSED')
+                  ? err.message
+                  : 'Connection refused by destination host.'
+        } else {
+            const target = providerDisplayName || 'LLM provider'
+            headline = modelLabel
+                ? `Unable to connect to ${target} (${modelLabel}).`
+                : err?.message &&
+                    err.message !== 'Connection error.' &&
+                    !err.message.includes('fetch failed')
+                  ? err.message
+                  : `Unable to connect to ${target} (Connection error).`
+        }
+
+        const rawCause =
+            explicitCause && explicitCause !== 'Connection error.'
+                ? explicitCause
+                : fullMessage &&
+                    fullMessage !== 'Connection error.' &&
+                    fullMessage !== headline &&
+                    !headline.includes(fullMessage)
+                  ? fullMessage
+                  : undefined
+
+        let detailLine: string | undefined
+        if (endpoint && rawCause) {
+            detailLine = `Endpoint: ${endpoint} (${rawCause})`
+        } else if (endpoint) {
+            detailLine = `Endpoint: ${endpoint}`
+        } else if (rawCause) {
+            detailLine = rawCause
+        }
+
+        const fullMsg = detailLine ? `${headline}\n${detailLine}` : headline
+
         return {
-            message: primaryMessage,
-            cause: explicitCause || fullMessage,
-            hint: 'Verify that the server or target service is running and network is reachable.',
+            message: fullMsg,
+            cause: rawCause,
+            hint: undefined,
         }
     }
 

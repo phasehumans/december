@@ -22,19 +22,19 @@ December 是一个面向终端与云端的 (so much) better 编程智能体。�
 
 1. 安装 December：
 
-macOS 与 Linux：
+Bash (macOS 与 Linux)：
 
 ```bash
 curl -fsSL https://trydecember.com/install.sh | bash
 ```
 
-Windows：
+PowerShell (Windows)：
 
 ```powershell
 irm https://trydecember.com/install.ps1 | iex
 ```
 
-npm：
+NPM：
 
 ```bash
 npm install -g @trydecember/cli

@@ -34,12 +34,13 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frame = lastFrame() || ''
         expect(frame).toContain('Select Provider (Key or Subscription):')
-        expect(frame).toContain('── Subscriptions ──')
-        expect(frame).toContain('Anthropic (Claude) (subscription)')
-        expect(frame).toContain('GitHub (Copilot) (subscription)')
-        expect(frame).toContain('Google (Gemini / Antigravity) (subscription)')
-        expect(frame).toContain('OpenAI (ChatGPT) (subscription)')
-        expect(frame).toContain('── Popular ──')
+        expect(frame).toContain('• Subscriptions')
+        expect(frame).toContain('Anthropic (Claude)')
+        expect(frame).toContain('GitHub (Copilot)')
+        expect(frame).toContain('Google (Gemini / Antigravity)')
+        expect(frame).toContain('OpenAI (ChatGPT)')
+        expect(frame).not.toContain('(subscription)')
+        expect(frame).toContain('• Popular')
         expect(frame).toContain('Anthropic')
         expect(frame).toContain('OpenAI')
         expect(frame).toContain('Google AI Studio')
@@ -58,7 +59,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('❭ Anthropic (Claude) (subscription)')
+        expect(lastFrame()).toContain('❭ Anthropic (Claude)')
 
         // Move down 7 times to shift window
         for (let i = 0; i < 7; i++) {
@@ -177,7 +178,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         await new Promise((r) => setTimeout(r, 50))
 
         const output = lastFrame() || ''
-        expect(output).toContain('Anthropic (Claude) (subscription)')
+        expect(output).toContain('Anthropic (Claude)')
         expect(output).toContain('Anthropic')
         expect(setAuthMode).not.toHaveBeenCalled()
 
@@ -666,7 +667,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        // Enter on index 0 (Anthropic Claude subscription)
+        // Enter on index 0 (Claude subscription)
         stdin.write('\r')
         await new Promise((r) => setTimeout(r, 50))
 
@@ -710,7 +711,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(subscriptionItem).toBeNull()
     })
 
-    it('renders minimal (subscription) tag ONLY on subscription items and not on BYOK items', () => {
+    it('does not render (subscription) tag on subscription items', () => {
         const { lastFrame } = render(
             <KeyboardLayerProvider>
                 <ByokProviderMenu handleProviderSelect={mock()} />
@@ -718,10 +719,36 @@ describe('ByokProviderMenu Component (Unit)', () => {
         )
 
         const frame = lastFrame() || ''
-        expect(frame).toContain('Anthropic (Claude) (subscription)')
-        expect(frame).toContain('Anthropic')
-        expect(frame).not.toContain('Anthropic (subscription)')
-        expect(frame).not.toContain('OpenAI (subscription)')
-        expect(frame).not.toContain('Google AI Studio (subscription)')
+        expect(frame).toContain('Anthropic (Claude)')
+        expect(frame).toContain('GitHub (Copilot)')
+        expect(frame).toContain('Google (Gemini / Antigravity)')
+        expect(frame).toContain('OpenAI (ChatGPT)')
+        expect(frame).not.toContain('(subscription)')
+    })
+
+    it('renders sticky section header when scrolled into Popular section without layout shift', async () => {
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu handleProviderSelect={mock()} />
+            </KeyboardLayerProvider>
+        )
+
+        // Move down 11 times to reach xAI (index 11) in Popular
+        for (let i = 0; i < 11; i++) {
+            stdin.write('\u001B[B') // Down arrow
+            await new Promise((resolve) => setTimeout(resolve, 10))
+        }
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('↑ 5 more')
+        expect(frame).toContain('• Popular')
+        expect(frame).toContain('OpenAI')
+        expect(frame).toContain('Google AI Studio')
+        expect(frame).toContain('OpenRouter')
+        expect(frame).toContain('DeepSeek')
+        expect(frame).toContain('Groq')
+        expect(frame).toContain('Mistral AI')
+        expect(frame).toContain('❭ xAI')
+        expect(frame).toContain('↓ 178 more')
     })
 })

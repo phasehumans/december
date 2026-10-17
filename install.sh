@@ -102,38 +102,60 @@ log_space
 VERSION="${DECEMBER_VERSION:-latest}"
 ARCHIVE="december-${TARGET}.tar.gz"
 
+CDN_BASE="https://dl.trydecember.com/releases"
+GITHUB_BASE="https://github.com/${REPO}/releases"
+
 if [ "$VERSION" = "latest" ]; then
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${ARCHIVE}"
-    SHASUMS_URL="https://github.com/${REPO}/releases/latest/download/SHASUMS256.txt"
+    PRIMARY_URL="${CDN_BASE}/latest/${ARCHIVE}"
+    FALLBACK_URL="${GITHUB_BASE}/latest/download/${ARCHIVE}"
+    PRIMARY_SHASUMS_URL="${CDN_BASE}/latest/SHASUMS256.txt"
+    FALLBACK_SHASUMS_URL="${GITHUB_BASE}/latest/download/SHASUMS256.txt"
 else
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION#v}/${ARCHIVE}"
-    SHASUMS_URL="https://github.com/${REPO}/releases/download/v${VERSION#v}/SHASUMS256.txt"
+    PRIMARY_URL="${CDN_BASE}/v${VERSION#v}/${ARCHIVE}"
+    FALLBACK_URL="${GITHUB_BASE}/download/v${VERSION#v}/${ARCHIVE}"
+    PRIMARY_SHASUMS_URL="${CDN_BASE}/v${VERSION#v}/SHASUMS256.txt"
+    FALLBACK_SHASUMS_URL="${GITHUB_BASE}/download/v${VERSION#v}/SHASUMS256.txt"
 fi
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+CURL_TIMEOUT_OPTS=(--connect-timeout 15 --retry 2 --retry-delay 2 --speed-limit 10240 --speed-time 25)
+
 log_tree "downloading pre-compiled release binary..."
+DOWNLOAD_SUCCESS=0
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
-    if ! curl -fL --progress-bar "$DOWNLOAD_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
-        log_space
-        log_error "Failed to download from ${DOWNLOAD_URL}"
-        log_tree "Check https://github.com/${REPO}/releases for available versions."
-        exit 1
+    if curl -fL "${CURL_TIMEOUT_OPTS[@]}" --progress-bar "$PRIMARY_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>/dev/null; then
+        DOWNLOAD_SUCCESS=1
+        printf "\033[1A\033[2K"
+    elif curl -fL "${CURL_TIMEOUT_OPTS[@]}" --progress-bar "$FALLBACK_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
+        DOWNLOAD_SUCCESS=1
+        printf "\033[1A\033[2K"
     fi
-    printf "\033[1A\033[2K"
 else
-    if ! curl -fsSL "$DOWNLOAD_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
-        log_space
-        log_error "Failed to download from ${DOWNLOAD_URL}"
-        log_tree "Check https://github.com/${REPO}/releases for available versions."
-        exit 1
+    if curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$PRIMARY_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>/dev/null; then
+        DOWNLOAD_SUCCESS=1
+    elif curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$FALLBACK_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
+        DOWNLOAD_SUCCESS=1
     fi
+fi
+
+if [ "$DOWNLOAD_SUCCESS" -ne 1 ]; then
+    log_space
+    log_error "Failed to download release asset."
+    log_tree "Primary CDN and GitHub fallback downloads timed out or failed."
+    log_space
+    log_tree "Tip: You can install via package manager in seconds:"
+    echo -e "${TRUNK}│${RESET}    ${WHITE}npm install -g @trydecember/cli${RESET}"
+    echo -e "${TRUNK}│${RESET}    ${WHITE}bun add -g @trydecember/cli${RESET}"
+    log_space
+    exit 1
 fi
 log_success "downloaded release asset"
 
 # Verify sha256 checksum if manifest is available
-if curl -fsSL "$SHASUMS_URL" -o "${TMP_DIR}/SHASUMS256.txt" 2>/dev/null; then
+if curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$PRIMARY_SHASUMS_URL" -o "${TMP_DIR}/SHASUMS256.txt" 2>/dev/null || \
+   curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$FALLBACK_SHASUMS_URL" -o "${TMP_DIR}/SHASUMS256.txt" 2>/dev/null; then
     (
         cd "$TMP_DIR"
         VERIFIED=0
@@ -182,6 +204,17 @@ fi
 
 log_success "installed binary to ${WHITE}${INSTALL_DIR}/${BINARY_NAME}${RESET}"
 
+# Verify binary execution
+INSTALLED_VERSION=""
+if [ -x "${INSTALL_DIR}/${BINARY_NAME}" ]; then
+    INSTALLED_VERSION="$("${INSTALL_DIR}/${BINARY_NAME}" --version 2>/dev/null || true)"
+fi
+
+if [ -n "$INSTALLED_VERSION" ]; then
+    CLEAN_VER="${INSTALLED_VERSION#v}"
+    log_success "verified binary execution (v${CLEAN_VER})"
+fi
+
 # Clean up legacy ~/.local/bin/december to prevent PATH shadowing
 if [ "$INSTALL_DIR" != "$HOME/.local/bin" ] && [ -e "$HOME/.local/bin/december" ]; then
     rm -f "$HOME/.local/bin/december" 2>/dev/null || true
@@ -211,13 +244,16 @@ else
         python3 -c 'import json, sys; f=sys.argv[1]; (lambda: (c := json.load(open(f))) and c.update({"installMethod": "curl"}) and json.dump(c, open(f, "w"), indent=2))()' "$CONFIG_FILE" 2>/dev/null || true
     fi
 fi
+log_success "initialized config at ${WHITE}${CONFIG_FILE}${RESET}"
 
 # Check if INSTALL_DIR is in PATH
+PATH_NEEDS_SOURCE=0
+SHELL_PROFILE=""
+
 if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
     log_space
     log_tree "configuring PATH in shell profile..."
 
-    SHELL_PROFILE=""
     DETECTED_SHELL="$(basename "${SHELL:-bash}")"
 
     if [ "$DETECTED_SHELL" = "zsh" ] || [ -n "${ZSH_VERSION:-}" ] || [ -f "$HOME/.zshrc" ]; then
@@ -246,19 +282,30 @@ if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
         echo "# Added by December CLI installer" >> "$SHELL_PROFILE"
         echo "$EXPORT_LINE" >> "$SHELL_PROFILE"
         log_success "added ${INSTALL_DIR} to ${WHITE}${SHELL_PROFILE}${RESET}"
+        PATH_NEEDS_SOURCE=1
     fi
-
-    log_space
-    log_step "december successfully installed"
-    log_space
-    log_tree "run: ${WHITE}source ${SHELL_PROFILE} && december${RESET}"
-else
-    log_space
-    log_step "december successfully installed"
-    log_space
-    log_tree "run: ${WHITE}december${RESET}"
 fi
 
+log_space
+log_step "december successfully installed!"
+log_space
+
+if [ "$PATH_NEEDS_SOURCE" -eq 1 ] && [ -n "$SHELL_PROFILE" ]; then
+    log_tree "To get started:"
+    echo -e "${TRUNK}│${RESET}    ${WHITE}source ${SHELL_PROFILE} && december${RESET}"
+else
+    log_tree "To get started:"
+    echo -e "${TRUNK}│${RESET}    ${WHITE}december${RESET}"
+fi
+
+log_space
+log_tree "Quick commands:"
+echo -e "${TRUNK}│${RESET}    ${WHITE}december${RESET}              start coding agent in current project"
+echo -e "${TRUNK}│${RESET}    ${WHITE}december login${RESET}        connect december cloud and wallet credits"
+echo -e "${TRUNK}│${RESET}    ${WHITE}december key${RESET}          configure byok api keys (anthropic, openai, etc.)"
+echo -e "${TRUNK}│${RESET}    ${WHITE}december docs${RESET}         open documentation in browser"
+log_space
+log_tree "Docs: ${WHITE}https://trydecember.com${RESET}"
 log_space
 log_step "ready"
 echo ""

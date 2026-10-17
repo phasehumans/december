@@ -163,4 +163,57 @@ describe('MenuMenu Component (Unit)', () => {
         expect(selectedItem?.value).toBe('december')
         expect(selectedItem?.force).toBe(true)
     })
+
+    it('renders logged in label when active authMethod is subscription but December account is linked (hasDecember: true)', () => {
+        const { lastFrame } = render(
+            <KeyboardLayerProvider>
+                <MenuMenu
+                    isAuthenticated={true}
+                    currentEmail="phasehumans@gmail.com"
+                    authMethod="subscription"
+                    hasDecember={true}
+                    decemberEmail="dev.chaitanyasonawane@gmail.com"
+                />
+            </KeyboardLayerProvider>
+        )
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Login via December (Logged in as dev.chaitanyasonawane@gmail.com)')
+    })
+
+    it('renders unlinked label and selects December without confirmation when on subscription and hasDecember is false', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <MenuMenu
+                    isAuthenticated={true}
+                    currentEmail="phasehumans@gmail.com"
+                    authMethod="subscription"
+                    hasDecember={false}
+                    handleAuthMenuSelect={handleSelect}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Login via December')
+        expect(frame).not.toContain('(Logged in')
+
+        // Down arrow to December
+        stdin.write('\u001B[B')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        // Press Enter
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        // Should directly call handleSelect without switch confirmation
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem?.value).toBe('december')
+        expect(selectedItem?.force).toBeUndefined()
+    })
 })

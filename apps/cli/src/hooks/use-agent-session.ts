@@ -56,6 +56,8 @@ export function useAgentSession({
     isAuthenticated: initialAuth,
     authMethod: initialAuthMethod,
     hasBothAuth: initialHasBothAuth,
+    hasDecember: initialHasDecember,
+    decemberEmail: initialDecemberEmail,
     settingsAuthPriority: initialSettingsAuthPriority,
     cliVersion,
     userEmail,
@@ -67,6 +69,8 @@ export function useAgentSession({
     isAuthenticated: boolean
     authMethod?: 'byok' | 'december' | 'env' | 'subscription'
     hasBothAuth?: boolean
+    hasDecember?: boolean
+    decemberEmail?: string
     settingsAuthPriority?: 'byok' | 'december' | 'subscription'
     cliVersion?: string
     userEmail?: string
@@ -88,6 +92,10 @@ export function useAgentSession({
         setAuthMethod,
         hasBothAuth,
         setHasBothAuth,
+        hasDecember,
+        setHasDecember,
+        decemberEmail,
+        setDecemberEmail,
         settingsAuthPriority,
         setSettingsAuthPriority,
         currentEmail,
@@ -227,13 +235,24 @@ export function useAgentSession({
             isAuthenticated: initialAuth,
             authMethod: initialAuthMethod,
             hasBothAuth: initialHasBothAuth !== undefined ? initialHasBothAuth : prev.hasBothAuth,
+            hasDecember: initialHasDecember !== undefined ? initialHasDecember : prev.hasDecember,
+            decemberEmail:
+                initialDecemberEmail !== undefined ? initialDecemberEmail : prev.decemberEmail,
             settingsAuthPriority:
                 initialSettingsAuthPriority !== undefined
                     ? initialSettingsAuthPriority
                     : prev.settingsAuthPriority,
             currentEmail: userEmail !== undefined ? userEmail : prev.currentEmail,
         }))
-    }, [initialAuth, initialAuthMethod, initialHasBothAuth, initialSettingsAuthPriority, userEmail])
+    }, [
+        initialAuth,
+        initialAuthMethod,
+        initialHasBothAuth,
+        initialHasDecember,
+        initialDecemberEmail,
+        initialSettingsAuthPriority,
+        userEmail,
+    ])
 
     useEffect(() => {
         if (agent) {
@@ -615,7 +634,11 @@ export function useAgentSession({
                     role: 'user',
                     text: `Generate plan from grill interview for: "${originalPrompt}"`,
                 },
-                { id: assistantMsgId, role: 'assistant', blocks: [] },
+                {
+                    id: assistantMsgId,
+                    role: 'assistant',
+                    blocks: [{ type: 'text', content: 'Thinking...' }],
+                },
             ])
             let planSuccess = false
             const errorContext = {
@@ -719,7 +742,11 @@ export function useAgentSession({
                     role: 'user',
                     text: `Refine plan: "${feedback}"`,
                 },
-                { id: assistantMsgId, role: 'assistant', blocks: [] },
+                {
+                    id: assistantMsgId,
+                    role: 'assistant',
+                    blocks: [{ type: 'text', content: 'Thinking...' }],
+                },
             ])
             let planSuccess = false
             const errorContext = {
@@ -837,7 +864,11 @@ export function useAgentSession({
                     role: 'user',
                     text: `/plan ${trimmedGoal}`,
                 },
-                { id: assistantMsgId, role: 'assistant', blocks: [] },
+                {
+                    id: assistantMsgId,
+                    role: 'assistant',
+                    blocks: [{ type: 'text', content: 'Thinking...' }],
+                },
             ])
             let planSuccess = false
             const errorContext = {
@@ -2235,7 +2266,13 @@ ${decStatus}
                     })
                     return [...prev, ...currentActive, newUserMsg]
                 })
-                setActiveMessages([{ id: assistantMsgId, role: 'assistant', blocks: [] }])
+                setActiveMessages([
+                    {
+                        id: assistantMsgId,
+                        role: 'assistant',
+                        blocks: [{ type: 'text', content: 'Thinking...' }],
+                    },
+                ])
 
                 const errorContext = {
                     provider:
@@ -2467,7 +2504,13 @@ ${decStatus}
                         })
                         return [...prev, ...currentActive, newUserMsg]
                     })
-                    setActiveMessages([{ id: assistantMsgId, role: 'assistant', blocks: [] }])
+                    setActiveMessages([
+                        {
+                            id: assistantMsgId,
+                            role: 'assistant',
+                            blocks: [{ type: 'text', content: 'Thinking...' }],
+                        },
+                    ])
 
                     const errorContext = {
                         provider:
@@ -2651,6 +2694,10 @@ ${decStatus}
         setIsAuthenticated,
         authMethod,
         hasBothAuth,
+        hasDecember,
+        setHasDecember,
+        decemberEmail,
+        setDecemberEmail,
         settingsAuthPriority,
         currentEmail,
         setCurrentEmail,

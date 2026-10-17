@@ -70,6 +70,19 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
         const firstLine = lines[0] || ''
         const rest = cleanCause(lines.slice(1).join('\n'))
 
+        if (
+            firstLine.startsWith('Unable to connect') ||
+            firstLine.includes('Connection error') ||
+            firstLine.includes('Connection refused') ||
+            firstLine.includes('timed out') ||
+            clean.includes('Endpoint:')
+        ) {
+            return {
+                message: clean,
+                cause: cleanCause(cause),
+            }
+        }
+
         if (firstLine.includes('Rate limit or quota exhausted')) {
             const hintMatch = firstLine.match(/Please.*$/i)
             const summary = firstLine.replace(/Please.*$/i, '').trim()
@@ -160,6 +173,25 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
         return {
             message: firstLine,
             cause: rest,
+        }
+    }
+
+    const cleanLower = clean.toLowerCase()
+    if (
+        clean === 'Connection error.' ||
+        cleanLower === 'connection error' ||
+        cleanLower.startsWith('connection error')
+    ) {
+        return {
+            message: 'Unable to connect to LLM provider (Connection error).',
+            cause: cleanCause(cause),
+            hint: cleanHint(hint),
+        }
+    }
+    if (clean.startsWith('Unable to connect to ') && !hint) {
+        return {
+            message: clean,
+            cause: cleanCause(cause),
         }
     }
 

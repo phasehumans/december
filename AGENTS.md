@@ -40,6 +40,7 @@ Reference gold standard modules: `auth`, `notification`, `session`.
     ```bash
     bun --cwd packages/database db:migrate:test
     ```
+- **No Redundant Test Runs**: Do not run test suites or typechecks on minor copy/UI tweaks or during back-and-forth discussions. Keep iteration fast and run tests only when completing a feature or when explicitly requested by the user.
 
 ## Code Quality & Linting Standards
 

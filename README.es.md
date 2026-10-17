@@ -22,19 +22,19 @@ December es un (so much) better agente de programación para terminal y nube. Co
 
 1. Instala December:
 
-macOS y Linux:
+Bash (macOS y Linux):
 
 ```bash
 curl -fsSL https://trydecember.com/install.sh | bash
 ```
 
-Windows:
+PowerShell (Windows):
 
 ```powershell
 irm https://trydecember.com/install.ps1 | iex
 ```
 
-npm:
+NPM:
 
 ```bash
 npm install -g @trydecember/cli
