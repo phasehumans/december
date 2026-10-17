@@ -95,6 +95,13 @@ describe('/logout command', () => {
     })
 })
 
+describe('/tui command', () => {
+    test('is removed and not registered in COMMANDS', () => {
+        const tuiCmd = COMMANDS.find((c) => c.name === 'tui' || c.value === '/tui')
+        expect(tuiCmd).toBeUndefined()
+    })
+})
+
 describe('/switch command', () => {
     test('should define switch command forwarded to chat screen', () => {
         const switchCmd = COMMANDS.find((c) => c.name === 'switch')
