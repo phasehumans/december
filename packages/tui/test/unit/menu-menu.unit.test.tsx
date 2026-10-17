@@ -61,4 +61,106 @@ describe('MenuMenu Component (Unit)', () => {
 
         expect(setAuthMode).toHaveBeenCalledWith('none')
     })
+
+    it('renders logged in label when user is already authenticated with December', () => {
+        const { lastFrame } = render(
+            <KeyboardLayerProvider>
+                <MenuMenu
+                    isAuthenticated={true}
+                    currentEmail="dev.chaitanyasonawane@gmail.com"
+                    authMethod="december"
+                />
+            </KeyboardLayerProvider>
+        )
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Login via December (Logged in as dev.chaitanyasonawane@gmail.com)')
+    })
+
+    it('prompts confirmation when selecting December while already logged in and cancels on n', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+        const setAuthMode = mock(() => {})
+        const addToast = mock(() => {})
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <MenuMenu
+                    isAuthenticated={true}
+                    currentEmail="dev.chaitanyasonawane@gmail.com"
+                    authMethod="december"
+                    handleAuthMenuSelect={handleSelect}
+                    setAuthMode={setAuthMode}
+                    addToast={addToast}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Down arrow to December
+        stdin.write('\u001B[B')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        // Press Enter
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        // Should NOT have called handleSelect yet; should render confirmation
+        expect(selectedItem).toBeNull()
+        const frame = lastFrame() || ''
+        expect(frame).toContain('You are already logged in as dev.chaitanyasonawane@gmail.com.')
+        expect(frame).toContain('Do you want to switch to a different account? (y/N)')
+
+        // Press 'n' to cancel
+        stdin.write('n')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        expect(setAuthMode).toHaveBeenCalledWith('none')
+        expect(addToast).toHaveBeenCalledWith(
+            'Already logged in as dev.chaitanyasonawane@gmail.com.',
+            'info'
+        )
+        expect(selectedItem).toBeNull()
+    })
+
+    it('confirms account switch and invokes handleSelect with force: true on y', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+        const setAuthMode = mock(() => {})
+        const addToast = mock(() => {})
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <MenuMenu
+                    isAuthenticated={true}
+                    currentEmail="dev.chaitanyasonawane@gmail.com"
+                    authMethod="december"
+                    handleAuthMenuSelect={handleSelect}
+                    setAuthMode={setAuthMode}
+                    addToast={addToast}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Down arrow to December
+        stdin.write('\u001B[B')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        // Press Enter
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        expect(lastFrame()).toContain('Do you want to switch to a different account? (y/N)')
+
+        // Press 'y' to confirm
+        stdin.write('y')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem?.value).toBe('december')
+        expect(selectedItem?.force).toBe(true)
+    })
 })

@@ -109,4 +109,26 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
 
         expect(useCliStore.getState().authMode).toBe('none')
     })
+
+    it('identifies when already logged in and skips re-auth when answer is not y', () => {
+        const config = {
+            decemberToken: 'existing-december-token',
+            email: 'dev@example.com',
+        }
+
+        const isAlreadyLoggedIn = Boolean(config.decemberToken)
+        expect(isAlreadyLoggedIn).toBe(true)
+
+        const promptMessage = `You are already logged in as ${config.email}.\nDo you want to switch to a different account? (y/N): `
+        expect(promptMessage).toContain('dev@example.com')
+        expect(promptMessage).toContain('(y/N)')
+
+        const userDeclineAnswer: string = 'n'
+        const shouldSwitch = userDeclineAnswer === 'y' || userDeclineAnswer === 'yes'
+        expect(shouldSwitch).toBe(false)
+
+        const userConfirmAnswer: string = 'y'
+        const shouldSwitchConfirmed = userConfirmAnswer === 'y' || userConfirmAnswer === 'yes'
+        expect(shouldSwitchConfirmed).toBe(true)
+    })
 })

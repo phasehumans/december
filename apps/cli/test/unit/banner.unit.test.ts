@@ -26,10 +26,9 @@ describe('Announcement Banner Resolution (Unit)', () => {
 
         expect(result).not.toBeNull()
         expect(result?.title).toBe("What's New in v0.4.9")
-        expect(result?.bullets.length).toBe(3)
+        expect(result?.bullets.length).toBe(2)
         expect(result?.bullets[0]).toBe('Remove expand mode and make thoughts transient')
         expect(result?.bullets[1]).toBe('Implement ephemeral discovery and silent reads')
-        expect(result?.bullets[2]).toBe('Stream transient thinking topics')
     })
 
     it('suppresses announcement when showChangelogBanner is explicitly set to false', () => {
@@ -63,7 +62,7 @@ describe('Announcement Banner Resolution (Unit)', () => {
         })
 
         expect(result).not.toBeNull()
-        expect(result?.bullets.length).toBe(3)
+        expect(result?.bullets.length).toBe(2)
     })
 
     it('returns null if release highlights are missing or have empty bullets', () => {

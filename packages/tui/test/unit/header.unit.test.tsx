@@ -35,14 +35,13 @@ describe('Header Component (Unit)', () => {
         expect(branch2).toBe(branch)
     })
 
-    it('renders announcement with 3 items and heading when provided', () => {
+    it('renders announcement with 2 items and heading when provided', () => {
         const announcement = {
             version: '0.4.0',
             title: "What's New in v0.4.0",
             bullets: [
                 'Fullscreen alternate-screen TUI by default',
                 '140+ Direct BYOK provider integrations',
-                'Configure aws rds postgresql connection',
             ],
             url: 'https://trydecember.com/docs/changelog',
         }
@@ -51,19 +50,18 @@ describe('Header Component (Unit)', () => {
         expect(frame).toContain("▎ What's New in v0.4.0")
         expect(frame).toContain('▎ Fullscreen alternate-screen TUI by default')
         expect(frame).toContain('▎ 140+ Direct BYOK provider integrations')
-        expect(frame).toContain('▎ Configure aws rds postgresql connection')
         expect(frame).toContain('Check out detailed changelog on')
         expect(frame).toContain('https://trydecember.com/docs/changelog')
     })
 
-    it('caps announcement bullets to at most 3 items even if more are provided', () => {
+    it('caps announcement bullets to at most 2 items even if more are provided', () => {
         const announcement = {
             version: '0.4.0',
             title: "What's New in v0.4.0",
             bullets: [
                 'Item 1',
                 'Item 2',
-                'Item 3',
+                'Item 3 should be omitted',
                 'Item 4 should be omitted',
                 'Item 5 should be omitted',
             ],
@@ -73,7 +71,7 @@ describe('Header Component (Unit)', () => {
         const frame = lastFrame()
         expect(frame).toContain('Item 1')
         expect(frame).toContain('Item 2')
-        expect(frame).toContain('Item 3')
+        expect(frame).not.toContain('Item 3 should be omitted')
         expect(frame).not.toContain('Item 4 should be omitted')
         expect(frame).not.toContain('Item 5 should be omitted')
     })

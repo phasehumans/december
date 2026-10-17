@@ -24,7 +24,7 @@ export function cleanBullet(raw: string): string {
 export function extractReleaseHighlights(
     changelogContent: string,
     targetVersion?: string,
-    maxBullets = 3
+    maxBullets = 2
 ): ReleaseHighlights | null {
     const lines = changelogContent.split('\n')
     let inTarget = false
@@ -77,14 +77,15 @@ export function extractReleaseHighlights(
 export function updateReleaseHighlightsFile(
     changelogPath: string,
     outputPath: string,
-    targetVersion: string
+    targetVersion: string,
+    maxBullets = 2
 ): ReleaseHighlights | null {
     if (!fs.existsSync(changelogPath)) {
         return null
     }
 
     const content = fs.readFileSync(changelogPath, 'utf-8')
-    const highlights = extractReleaseHighlights(content, targetVersion)
+    const highlights = extractReleaseHighlights(content, targetVersion, maxBullets)
     if (!highlights) {
         return null
     }

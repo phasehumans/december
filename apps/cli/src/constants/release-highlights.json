@@ -3,8 +3,7 @@
     "title": "What's New in v0.4.10",
     "bullets": [
         "Restore curl and powershell installers with client os detection and binary releases",
-        "Use official gnu bash and powershell vector icons in install dropdown",
-        "Show changelog highlights on every launch capped to 3 bullets"
+        "Use official gnu bash and powershell vector icons in install dropdown"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

@@ -23,7 +23,7 @@ describe('Release Notes Extractor (Unit)', () => {
         expect(cleanBullet('  - support 140+ providers ')).toBe('Support 140+ providers')
     })
 
-    it('extracts top 3 highlights from markdown for target version', () => {
+    it('extracts top 2 highlights from markdown by default for target version', () => {
         const markdown = `
 # Changelog
 
@@ -46,14 +46,13 @@ describe('Release Notes Extractor (Unit)', () => {
 
 - _(githubapp)_ Make userid nullable
 `
-        const highlights = extractReleaseHighlights(markdown, '0.4.0', 3)
+        const highlights = extractReleaseHighlights(markdown, '0.4.0')
         expect(highlights).not.toBeNull()
         expect(highlights?.version).toBe('0.4.0')
         expect(highlights?.title).toBe("What's New in v0.4.0")
-        expect(highlights?.bullets.length).toBe(3)
+        expect(highlights?.bullets.length).toBe(2)
         expect(highlights?.bullets[0]).toBe('Enhance device activation flow')
         expect(highlights?.bullets[1]).toBe('Transition to default fullscreen mode')
-        expect(highlights?.bullets[2]).toBe('Configure aws rds postgresql connection')
         expect(highlights?.url).toBe('https://trydecember.com/docs/changelog')
     })
 
@@ -70,11 +69,10 @@ describe('Release Notes Extractor (Unit)', () => {
 - _(core)_ Fix memory leak in streaming
 - _(cli)_ Prevent crash on invalid token
 `
-        const highlights = extractReleaseHighlights(markdown, '0.4.1', 3)
+        const highlights = extractReleaseHighlights(markdown, '0.4.1')
         expect(highlights).not.toBeNull()
-        expect(highlights?.bullets.length).toBe(3)
+        expect(highlights?.bullets.length).toBe(2)
         expect(highlights?.bullets[0]).toBe('Add new animation')
         expect(highlights?.bullets[1]).toBe('Fix memory leak in streaming')
-        expect(highlights?.bullets[2]).toBe('Prevent crash on invalid token')
     })
 })

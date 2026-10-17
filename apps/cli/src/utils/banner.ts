@@ -37,6 +37,6 @@ export function resolveAnnouncement(
 
     return {
         ...releaseHighlights,
-        bullets: releaseHighlights.bullets.slice(0, 3),
+        bullets: releaseHighlights.bullets.slice(0, 2),
     }
 }

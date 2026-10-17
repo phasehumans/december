@@ -384,6 +384,28 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
     }
 
     // Default December device code login
+    const config = await loadConfig()
+    if (config.decemberToken) {
+        const userEmail = config.email || 'December user'
+        if (process.stdin.isTTY) {
+            const readline = await import('node:readline/promises')
+            const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+            const answer = (
+                await rl.question(
+                    `\nYou are already logged in as ${userEmail}.\nDo you want to switch to a different account? (y/N): `
+                )
+            )
+                .trim()
+                .toLowerCase()
+            rl.close()
+
+            if (answer !== 'y' && answer !== 'yes') {
+                console.log(`\nAlready logged in as ${userEmail}. Keeping current session.\n`)
+                return
+            }
+        }
+    }
+
     const { loginViaDeviceCode } = await import('./auth')
     const { openUrl } = await import('./utils/open')
     console.log('\nGenerating device code for December login...')

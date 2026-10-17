@@ -63,6 +63,14 @@ export function useAuthHandlers(
             if (useCliStore.getState().isStreaming) {
                 return
             }
+
+            const currentEmail = useCliStore.getState().currentEmail
+            const isAuthenticated = useCliStore.getState().isAuthenticated
+            if (!item.force && isAuthenticated && currentEmail) {
+                setAuthMode('menu')
+                return
+            }
+
             setAuthMode('none')
             setIsStreaming(true)
 
