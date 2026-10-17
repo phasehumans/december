@@ -188,6 +188,7 @@ describe('models utils', () => {
             expect(getModelLabel('claude-opus-5')).toBe('Claude Opus 5')
             expect(getModelLabel('gpt-5.6-sol')).toBe('GPT-5.6 Sol')
             expect(getModelLabel('o4-mini')).toBe('o4-mini')
+            expect(getModelLabel('december-auto')).toBe('Humans R1')
         })
 
         it('returns the value itself if model is not found', () => {

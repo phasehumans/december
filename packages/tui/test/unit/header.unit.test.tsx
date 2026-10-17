@@ -138,6 +138,19 @@ describe('Header Component (Unit)', () => {
         expect(frame).toContain('Claude 3.7 Sonnet · December Wallet')
     })
 
+    it('renders Humans R1 when activeModel is december-auto', () => {
+        const { lastFrame } = render(
+            <Header
+                activeModel="december-auto"
+                selectedProvider="december"
+                authMethod="december"
+                isAuthenticated={true}
+            />
+        )
+        const frame = lastFrame()
+        expect(frame).toContain('Humans R1 · December Wallet')
+    })
+
     it('renders custom modelLabel when provided', () => {
         const { lastFrame } = render(
             <Header

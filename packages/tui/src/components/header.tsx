@@ -93,7 +93,9 @@ export function formatModelDisplayName(model?: string): string {
         o3: 'o3',
         'o3-mini': 'o3-mini',
         'o4-mini': 'o4-mini',
-        'december-auto': 'December Auto',
+        'december-auto': 'Humans R1',
+        auto: 'Humans R1',
+        'humans-r1': 'Humans R1',
     }
 
     if (curated[lower]) return curated[lower]

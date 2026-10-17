@@ -389,7 +389,7 @@ export const getCuratedProviderModels = (provider: string) => {
             ]
         case 'december':
         case 'december_proxy':
-            return [{ label: 'december-auto', value: 'december-auto' }]
+            return [{ label: 'Humans R1', value: 'december-auto' }]
         case 'copilot':
         case 'github_copilot':
         case 'github':
