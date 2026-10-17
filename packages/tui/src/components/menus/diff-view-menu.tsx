@@ -8,7 +8,6 @@ import { useTerminalColumns, useTerminalRows } from '../../hooks/use-terminal-co
 import { THEME } from '../../theme'
 import {
     type DiffFileEntry,
-    type DiffRow,
     formatDiffSummary,
     parseUnifiedDiffToRows,
     fetchGitStatusFiles,
@@ -40,13 +39,16 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
 
     // Bounded heights to ensure headers, viewport, and footer are always visible on screen
     const visibleLineCount = Math.max(5, Math.min(14, rows - 14))
-    const maxFileListCount = Math.max(5, Math.min(10, rows - 10))
+    const WINDOW_SIZE = 6
 
     // State
     const [files, setFiles] = useState<DiffFileEntry[]>(initialFiles || [])
     const [isLoading, setIsLoading] = useState(!initialFiles)
 
     const [selectedFileIndex, setSelectedFileIndex] = useState(initialSelectedIndex)
+    const [windowStart, setWindowStart] = useState(() =>
+        Math.max(0, initialSelectedIndex - WINDOW_SIZE + 1)
+    )
     const [isDetailView, setIsDetailView] = useState(initialDetailView)
     const [cursorLineIndex, setCursorLineIndex] = useState(0)
     const [detailScrollOffset, setDetailScrollOffset] = useState(0)
@@ -174,6 +176,11 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
 
             const nextIndex = (safeFileIndex + delta + files.length) % files.length
             setSelectedFileIndex(nextIndex)
+            setWindowStart((ws) => {
+                if (nextIndex < ws) return nextIndex
+                if (nextIndex >= ws + WINDOW_SIZE) return Math.max(0, nextIndex - WINDOW_SIZE + 1)
+                return ws
+            })
 
             const nextFile = files[nextIndex]
             if (nextFile && filePositionsRef.current[nextFile.path]) {
@@ -204,13 +211,36 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
 
         // List View Navigation
         if (!isDetailView) {
+            const isWheelUp =
+                /\[<(?:64|68|72|80|84);/.test(input) || /\[M[`@]/.test(input) || /\[64~/.test(input)
+            const isWheelDown =
+                /\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)
+
             // Navigate files up/down
-            if (key.upArrow || input === 'k') {
-                setSelectedFileIndex((prev) => Math.max(0, prev - 1))
+            if (key.upArrow || input === 'k' || isWheelUp) {
+                const count = isWheelUp
+                    ? Math.max(1, (input.match(/\[<(?:64|68|72|80|84);/g) || []).length)
+                    : 1
+                if (selectedFileIndex > 0) {
+                    const next = Math.max(0, selectedFileIndex - count)
+                    setSelectedFileIndex(next)
+                    if (next < windowStart) {
+                        setWindowStart(next)
+                    }
+                }
                 return
             }
-            if (key.downArrow || input === 'j') {
-                setSelectedFileIndex((prev) => Math.min(files.length - 1, prev + 1))
+            if (key.downArrow || input === 'j' || isWheelDown) {
+                const count = isWheelDown
+                    ? Math.max(1, (input.match(/\[<(?:65|69|73|81|85);/g) || []).length)
+                    : 1
+                if (selectedFileIndex < files.length - 1) {
+                    const next = Math.min(files.length - 1, selectedFileIndex + count)
+                    setSelectedFileIndex(next)
+                    if (next >= windowStart + WINDOW_SIZE) {
+                        setWindowStart(Math.max(0, next - WINDOW_SIZE + 1))
+                    }
+                }
                 return
             }
 
@@ -235,11 +265,27 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 handleClose()
                 return
             }
+
+            // Ignore unhandled mouse sequences
+            if (
+                input.includes('[<') ||
+                input.includes('\x1b[<') ||
+                input.includes('[M') ||
+                input.includes('\x1b[M')
+            ) {
+                return
+            }
+
             return
         }
 
         // Detail View Navigation
         if (isDetailView) {
+            const isWheelUp =
+                /\[<(?:64|68|72|80|84);/.test(input) || /\[M[`@]/.test(input) || /\[64~/.test(input)
+            const isWheelDown =
+                /\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)
+
             // Cycle files
             if (key.leftArrow) {
                 cycleFile(-1)
@@ -251,12 +297,18 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
             }
 
             // Cursor up/down
-            if (key.upArrow || input === 'k') {
-                setCursorLineIndex((prev) => Math.max(0, prev - 1))
+            if (key.upArrow || input === 'k' || isWheelUp) {
+                const count = isWheelUp
+                    ? Math.max(1, (input.match(/\[<(?:64|68|72|80|84);/g) || []).length)
+                    : 1
+                setCursorLineIndex((prev) => Math.max(0, prev - count))
                 return
             }
-            if (key.downArrow || input === 'j') {
-                setCursorLineIndex((prev) => Math.min(diffRows.length - 1, prev + 1))
+            if (key.downArrow || input === 'j' || isWheelDown) {
+                const count = isWheelDown
+                    ? Math.max(1, (input.match(/\[<(?:65|69|73|81|85);/g) || []).length)
+                    : 1
+                setCursorLineIndex((prev) => Math.min(diffRows.length - 1, prev + count))
                 return
             }
 
@@ -277,31 +329,23 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 return
             }
 
-            // Toggle fold with ctrl+o
-            if (key.ctrl && input === 'o') {
+            // Toggle fold with Enter, Space, or ctrl+o when on a fold row
+            if (key.return || input === ' ' || (key.ctrl && input === 'o')) {
                 const currentRow = diffRows[cursorLineIndex]
                 if (currentRow && currentRow.type === 'fold') {
                     const fid = currentRow.data.id
                     setExpandedFolds((prev) => ({ ...prev, [fid]: !prev[fid] }))
-                } else {
-                    const nearestFold = diffRows
-                        .filter((r) => r.type === 'fold')
-                        .reduce(
-                            (closest, r) => {
-                                if (!closest) return r
-                                return Math.abs(r.index - cursorLineIndex) <
-                                    Math.abs(closest.index - cursorLineIndex)
-                                    ? r
-                                    : closest
-                            },
-                            null as DiffRow | null
-                        )
-
-                    if (nearestFold && nearestFold.type === 'fold') {
-                        const fid = nearestFold.data.id
-                        setExpandedFolds((prev) => ({ ...prev, [fid]: !prev[fid] }))
-                    }
                 }
+                return
+            }
+
+            // Ignore unhandled mouse sequences
+            if (
+                input.includes('[<') ||
+                input.includes('\x1b[<') ||
+                input.includes('[M') ||
+                input.includes('\x1b[M')
+            ) {
                 return
             }
         }
@@ -317,7 +361,6 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     const detailFooterItems = [
         { key: 'n/N', label: 'next/prev diff' },
         { key: '←/→', label: 'cycle file' },
-        { key: 'ctrl+o', label: 'expand' },
         { key: 'esc', label: 'back' },
     ]
 
@@ -369,14 +412,15 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
 
                             if (row.type === 'fold') {
                                 return (
-                                    <Box key={`fold-${row.index}`} flexDirection="row" gap={1}>
+                                    <Box key={`fold-${row.index}`} width="100%" flexDirection="row">
                                         <Text
                                             color={isCursor ? THEME.colors.brand : THEME.colors.dim}
                                         >
-                                            {isCursor ? '> ' : '  '}
+                                            {isCursor ? `${THEME.glyphs.selector} ` : '  '}
                                         </Text>
                                         <Text color={THEME.colors.dim}>
-                                            ↕ {row.data.count} unchanged lines · {row.data.preview}
+                                            {'      '}↕ {row.data.count} unchanged lines ·{' '}
+                                            {row.data.preview}
                                         </Text>
                                     </Box>
                                 )
@@ -415,11 +459,12 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                             return (
                                 <Box
                                     key={`line-${row.index}`}
+                                    width="100%"
                                     backgroundColor={bgColor}
                                     flexDirection="row"
                                 >
                                     <Text color={isCursor ? THEME.colors.brand : THEME.colors.dim}>
-                                        {isCursor ? '>' : ' '}
+                                        {isCursor ? `${THEME.glyphs.selector} ` : '  '}
                                     </Text>
                                     <Text color={THEME.colors.dim}>{paddedLineNum} </Text>
                                     <Text color={signColor}>{sign} </Text>
@@ -445,9 +490,11 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         )
     }
 
-    // ==========================================
-    // RENDER: LIST VIEW
-    // ==========================================
+    const windowEnd = Math.min(windowStart + WINDOW_SIZE, files.length)
+    const visibleFiles = files.slice(windowStart, windowEnd)
+    const filesAbove = windowStart
+    const filesBelow = files.length - windowEnd
+
     return (
         <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
             {/* Diff Summary Count */}
@@ -455,43 +502,58 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 <Text color={THEME.colors.text}>{formatDiffSummary(files.length)}</Text>
             </Box>
 
-            {/* Files List - Clean height fitting actual items without huge blank gap */}
+            {/* Files List - Sliding window with pagination indicators */}
             <Box flexDirection="column" marginY={1}>
                 {isLoading ? (
                     <Text color={THEME.colors.dim}>Loading diffs...</Text>
                 ) : files.length === 0 ? (
                     <Text color={THEME.colors.dim}>No changes detected in working copy.</Text>
                 ) : (
-                    files.slice(0, maxFileListCount).map((file, idx) => {
-                        const isSelected = idx === safeFileIndex
-                        return (
-                            <Box key={file.path} flexDirection="row" gap={1}>
-                                <Text color={isSelected ? THEME.colors.brand : THEME.colors.dim}>
-                                    {isSelected ? '>' : ' '}
-                                </Text>
-                                <Text
-                                    bold={isSelected}
-                                    color={isSelected ? THEME.colors.brand : THEME.colors.text}
-                                >
-                                    {file.path}
-                                </Text>
-                                <Box marginLeft={1}>
-                                    <Text>
-                                        {file.additions > 0 && (
-                                            <Text color={THEME.colors.success}>
-                                                +{file.additions}{' '}
-                                            </Text>
-                                        )}
-                                        {file.deletions > 0 && (
-                                            <Text color={THEME.colors.error}>
-                                                -{file.deletions}
-                                            </Text>
-                                        )}
-                                    </Text>
-                                </Box>
+                    <>
+                        {filesAbove > 0 && (
+                            <Box paddingLeft={2}>
+                                <Text color={THEME.colors.muted}>↑ {filesAbove} more</Text>
                             </Box>
-                        )
-                    })
+                        )}
+                        {visibleFiles.map((file, relIdx) => {
+                            const absIdx = windowStart + relIdx
+                            const isSelected = absIdx === safeFileIndex
+                            return (
+                                <Box key={file.path} flexDirection="row">
+                                    <Text
+                                        color={isSelected ? THEME.colors.brand : THEME.colors.dim}
+                                    >
+                                        {isSelected ? `${THEME.glyphs.selector} ` : '  '}
+                                    </Text>
+                                    <Text
+                                        bold={isSelected}
+                                        color={isSelected ? THEME.colors.brand : THEME.colors.text}
+                                    >
+                                        {file.path}
+                                    </Text>
+                                    <Box marginLeft={1}>
+                                        <Text>
+                                            {file.additions > 0 && (
+                                                <Text color={THEME.colors.success}>
+                                                    +{file.additions}{' '}
+                                                </Text>
+                                            )}
+                                            {file.deletions > 0 && (
+                                                <Text color={THEME.colors.error}>
+                                                    -{file.deletions}
+                                                </Text>
+                                            )}
+                                        </Text>
+                                    </Box>
+                                </Box>
+                            )
+                        })}
+                        {filesBelow > 0 && (
+                            <Box paddingLeft={2}>
+                                <Text color={THEME.colors.muted}>↓ {filesBelow} more</Text>
+                            </Box>
+                        )}
+                    </>
                 )}
             </Box>
 

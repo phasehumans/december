@@ -3,6 +3,7 @@ import { render } from 'ink-testing-library'
 import React from 'react'
 
 import { DiffViewMenu } from '../../src/components/menus/diff-view-menu'
+import { THEME } from '../../src/theme'
 
 import type { DiffFileEntry } from '../../src/utils/diff'
 
@@ -77,15 +78,15 @@ describe('DiffViewMenu Component (Unit)', () => {
 
     it('navigates file list with down and up arrows', async () => {
         const { lastFrame, stdin } = render(<DiffViewMenu filesData={mockFiles} />)
-        expect(lastFrame()).toContain('> public/_headers')
+        expect(lastFrame()).toContain(`${THEME.glyphs.selector} public/_headers`)
 
         stdin.write('\u001B[B') // Down arrow
         await new Promise((r) => setTimeout(r, 20))
-        expect(lastFrame()).toContain('> public/install.ps1')
+        expect(lastFrame()).toContain(`${THEME.glyphs.selector} public/install.ps1`)
 
         stdin.write('\u001B[A') // Up arrow
         await new Promise((r) => setTimeout(r, 20))
-        expect(lastFrame()).toContain('> public/_headers')
+        expect(lastFrame()).toContain(`${THEME.glyphs.selector} public/_headers`)
     })
 
     it('opens detail view on Enter and renders diff lines, line numbers, and position indicator', async () => {
@@ -104,13 +105,13 @@ describe('DiffViewMenu Component (Unit)', () => {
         expect(output).toContain('file 2/4')
         expect(output).toContain('change')
 
-        // Detail footer items
+        // Detail footer items (clean without ctrl+o)
         expect(output).toContain('n/N')
         expect(output).toContain('next/prev diff')
         expect(output).toContain('←/→')
         expect(output).toContain('cycle file')
-        expect(output).toContain('ctrl+o')
-        expect(output).toContain('expand')
+        expect(output).not.toContain('ctrl+o')
+        expect(output).not.toContain('expand')
         expect(output).toContain('esc')
         expect(output).toContain('back')
 
@@ -179,5 +180,61 @@ describe('DiffViewMenu Component (Unit)', () => {
 
         expect(lastFrame()).toContain('public/_headers')
         expect(lastFrame()).toContain('file 1/4')
+    })
+
+    it('windows file list with sliding window and indicators when files exceed WINDOW_SIZE (6)', async () => {
+        const manyFiles: DiffFileEntry[] = Array.from({ length: 9 }, (_, i) => ({
+            path: `src/file-${i + 1}.ts`,
+            additions: 5,
+            deletions: 2,
+            status: 'modified' as const,
+            diff: '@@ -1,1 +1,2 @@\n-old\n+new',
+        }))
+
+        const { lastFrame, stdin } = render(<DiffViewMenu filesData={manyFiles} />)
+        const frameInitial = lastFrame() || ''
+
+        // Initially shows first 6 files and indicator for remaining 3 files below
+        expect(frameInitial).toContain('src/file-1.ts')
+        expect(frameInitial).toContain('src/file-6.ts')
+        expect(frameInitial).not.toContain('src/file-7.ts')
+        expect(frameInitial).toContain('↓ 3 more')
+        expect(frameInitial).not.toContain('more lines')
+
+        // Move down 6 times past file 6 to reach file 7
+        for (let i = 0; i < 6; i++) {
+            stdin.write('\u001B[B') // Down arrow
+            await new Promise((r) => setTimeout(r, 10))
+        }
+
+        const frameAfterScroll = lastFrame() || ''
+        expect(frameAfterScroll).toContain('↑ 1 more')
+        expect(frameAfterScroll).toContain('src/file-7.ts')
+        expect(frameAfterScroll).toContain('↓ 2 more')
+    })
+
+    it('navigates file list with mouse wheel down and up', async () => {
+        const manyFiles: DiffFileEntry[] = Array.from({ length: 9 }, (_, i) => ({
+            path: `src/file-${i + 1}.ts`,
+            additions: 5,
+            deletions: 2,
+            status: 'modified' as const,
+            diff: '@@ -1,1 +1,2 @@\n-old\n+new',
+        }))
+
+        const { lastFrame, stdin } = render(<DiffViewMenu filesData={manyFiles} />)
+        expect(lastFrame()).toContain(`${THEME.glyphs.selector} src/file-1.ts`)
+
+        // Mouse wheel down: \u001B[<65;10;10M
+        stdin.write('\u001B[<65;10;10M')
+        await new Promise((r) => setTimeout(r, 20))
+
+        expect(lastFrame()).toContain(`${THEME.glyphs.selector} src/file-2.ts`)
+
+        // Mouse wheel up: \u001B[<64;10;10M
+        stdin.write('\u001B[<64;10;10M')
+        await new Promise((r) => setTimeout(r, 20))
+
+        expect(lastFrame()).toContain(`${THEME.glyphs.selector} src/file-1.ts`)
     })
 })
