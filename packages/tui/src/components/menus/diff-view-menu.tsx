@@ -1,58 +1,38 @@
+import fs from 'node:fs/promises'
+import path from 'node:path'
+
 import { Box, Text, useInput } from 'ink'
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 
 import { useTerminalColumns, useTerminalRows } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
 import {
-    type DiffTab,
     type DiffFileEntry,
     type DiffRow,
-    type DiffComment,
     formatDiffSummary,
     parseUnifiedDiffToRows,
     fetchGitStatusFiles,
-    fetchGitCommitTree,
-    extractTurnDiffs,
 } from '../../utils/diff'
+
+import { MenuFooter } from './menu-footer'
 
 export interface DiffViewMenuProps {
     agent?: any
     filesData?: DiffFileEntry[]
-    commitTreeData?: string[]
-    turnsData?: Array<{ turn: number; files: DiffFileEntry[] }>
-    initialTab?: DiffTab
     initialSelectedIndex?: number
     initialDetailView?: boolean
-    modelLabel?: string
-    activeModel?: string
     setAuthMode?: (mode: string) => void
     onClose?: () => void
-    onCommentAdded?: (comment: DiffComment) => void
     addToast?: (msg: string, variant?: string) => void
 }
 
-const TABS: Array<{ id: DiffTab; label: string }> = [
-    { id: 'git', label: 'Diff (git)' },
-    { id: 'all', label: 'All Changes' },
-    { id: 'turns', label: 'Per Turn' },
-    { id: 'tree', label: 'Commit Tree' },
-]
-
 export function DiffViewMenu(props: DiffViewMenuProps) {
     const {
-        agent,
         filesData: initialFiles,
-        commitTreeData: initialTree,
-        turnsData: initialTurns,
-        initialTab = 'git',
         initialSelectedIndex = 0,
         initialDetailView = false,
-        modelLabel,
-        activeModel,
         setAuthMode,
         onClose,
-        onCommentAdded,
-        addToast,
     } = props
 
     const columns = useTerminalColumns()
@@ -60,12 +40,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     const maxVisibleRows = Math.max(8, rows - 7)
 
     // State
-    const [activeTab, setActiveTab] = useState<DiffTab>(initialTab)
     const [files, setFiles] = useState<DiffFileEntry[]>(initialFiles || [])
-    const [commitTree, setCommitTree] = useState<string[]>(initialTree || [])
-    const [turns, setTurns] = useState<Array<{ turn: number; files: DiffFileEntry[] }>>(
-        initialTurns || (agent?.messages ? extractTurnDiffs(agent.messages) : [])
-    )
     const [isLoading, setIsLoading] = useState(!initialFiles)
 
     const [selectedFileIndex, setSelectedFileIndex] = useState(initialSelectedIndex)
@@ -74,11 +49,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     const [detailScrollOffset, setDetailScrollOffset] = useState(0)
     const [fullFileMode, setFullFileMode] = useState(false)
     const [expandedFolds, setExpandedFolds] = useState<Record<string, boolean>>({})
-
-    // Review comments: filePath -> (lineNumber -> commentText)
-    const [comments, setComments] = useState<Record<string, Record<number, string>>>({})
-    const [isCommenting, setIsCommenting] = useState(false)
-    const [commentInput, setCommentInput] = useState('')
+    const [fileContent, setFileContent] = useState<string | null>(null)
 
     // Per-file scroll & cursor memory
     const filePositionsRef = useRef<Record<string, { cursorIndex: number; scrollOffset: number }>>(
@@ -86,31 +57,22 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     )
 
     const handleClose = useCallback(() => {
-        const totalComments = Object.values(comments).reduce(
-            (acc, fileMap) => acc + Object.keys(fileMap).length,
-            0
-        )
-        if (totalComments > 0 && addToast) {
-            addToast(`Recorded ${totalComments} review comment(s).`, 'success')
-        }
-
         if (onClose) {
             onClose()
         } else if (setAuthMode) {
             setAuthMode('none')
         }
-    }, [comments, onClose, setAuthMode, addToast])
+    }, [onClose, setAuthMode])
 
     // Load live git data if not provided
     useEffect(() => {
         let isMounted = true
         if (!initialFiles) {
             setIsLoading(true)
-            Promise.all([fetchGitStatusFiles(), fetchGitCommitTree()])
-                .then(([loadedFiles, loadedTree]) => {
+            fetchGitStatusFiles()
+                .then((loadedFiles) => {
                     if (isMounted) {
                         setFiles(loadedFiles)
-                        setCommitTree(loadedTree)
                         setIsLoading(false)
                     }
                 })
@@ -126,43 +88,51 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         }
     }, [initialFiles])
 
-    // Current files depending on tab
-    const currentFiles = useMemo(() => {
-        if (activeTab === 'turns') {
-            const allTurnFiles: DiffFileEntry[] = []
-            for (const t of turns) {
-                allTurnFiles.push(...t.files)
-            }
-            return allTurnFiles
-        }
-        return files
-    }, [activeTab, files, turns])
+    const safeFileIndex = Math.min(Math.max(0, selectedFileIndex), Math.max(0, files.length - 1))
+    const currentFile = files[safeFileIndex]
 
-    const safeFileIndex = Math.min(
-        Math.max(0, selectedFileIndex),
-        Math.max(0, currentFiles.length - 1)
-    )
-    const currentFile = currentFiles[safeFileIndex]
+    // Read file content for detail view (to display fold previews and full file view)
+    useEffect(() => {
+        let active = true
+        if (isDetailView && currentFile?.path) {
+            fs.readFile(path.resolve(process.cwd(), currentFile.path), 'utf8')
+                .then((content) => {
+                    if (active) setFileContent(content)
+                })
+                .catch(() => {
+                    // Intentionally swallowed: file might be deleted or unreadable in test env
+                    if (active) setFileContent(null)
+                })
+        } else {
+            setFileContent(null)
+        }
+        return () => {
+            active = false
+        }
+    }, [isDetailView, currentFile?.path])
 
     // Parse diff rows for current file
     const { diffRows, totalChanges, changeIndices } = useMemo(() => {
         if (!currentFile || !currentFile.diff) {
             return { diffRows: [], totalChanges: 0, changeIndices: [] }
         }
-        const parsed = parseUnifiedDiffToRows(currentFile.diff, { expandedFolds })
+        const parsed = parseUnifiedDiffToRows(currentFile.diff, {
+            fullContent: fileContent,
+            expandedFolds,
+            fullFileMode,
+        })
         return {
             diffRows: parsed.rows,
             totalChanges: parsed.totalChanges,
             changeIndices: parsed.changeIndices,
         }
-    }, [currentFile, expandedFolds])
+    }, [currentFile, fileContent, expandedFolds, fullFileMode])
 
     // Calculate current change index under cursor
     const currentChangeUnderCursor = useMemo(() => {
-        if (changeIndices.length === 0) return '–'
+        if (changeIndices.length === 0) return '-'
         const pos = changeIndices.indexOf(cursorLineIndex)
         if (pos >= 0) return `${pos + 1}`
-        // Find nearest change before cursor
         let nearestBefore = -1
         for (let i = 0; i < changeIndices.length; i++) {
             const idx = changeIndices[i]
@@ -170,7 +140,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 nearestBefore = i + 1
             }
         }
-        return nearestBefore > 0 ? `${nearestBefore}` : '–'
+        return nearestBefore > 0 ? `${nearestBefore}` : '-'
     }, [changeIndices, cursorLineIndex])
 
     // Ensure cursor stays within bounds when diffRows changes
@@ -193,8 +163,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     // Cycle files helper
     const cycleFile = useCallback(
         (delta: number) => {
-            if (currentFiles.length === 0) return
-            // Save current file scroll
+            if (files.length === 0) return
             if (currentFile) {
                 filePositionsRef.current[currentFile.path] = {
                     cursorIndex: cursorLineIndex,
@@ -202,10 +171,10 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 }
             }
 
-            const nextIndex = (safeFileIndex + delta + currentFiles.length) % currentFiles.length
+            const nextIndex = (safeFileIndex + delta + files.length) % files.length
             setSelectedFileIndex(nextIndex)
 
-            const nextFile = currentFiles[nextIndex]
+            const nextFile = files[nextIndex]
             if (nextFile && filePositionsRef.current[nextFile.path]) {
                 const saved = filePositionsRef.current[nextFile.path]
                 if (saved) {
@@ -217,99 +186,36 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 setDetailScrollOffset(0)
             }
         },
-        [currentFiles, currentFile, safeFileIndex, cursorLineIndex, detailScrollOffset]
+        [files, currentFile, safeFileIndex, cursorLineIndex, detailScrollOffset]
     )
 
     // Handle Input
     useInput((input, key) => {
-        // Comment Input Mode
-        if (isCommenting) {
-            if (key.escape) {
-                setIsCommenting(false)
-                setCommentInput('')
-                return
-            }
-            if (key.return) {
-                if (currentFile && commentInput.trim()) {
-                    const row = diffRows[cursorLineIndex]
-                    const lineNum =
-                        row?.type === 'line'
-                            ? row.data.newLineNumber ||
-                              row.data.oldLineNumber ||
-                              cursorLineIndex + 1
-                            : cursorLineIndex + 1
-
-                    setComments((prev) => {
-                        const fileComments = { ...(prev[currentFile.path] || {}) }
-                        fileComments[lineNum] = commentInput.trim()
-                        return { ...prev, [currentFile.path]: fileComments }
-                    })
-
-                    if (onCommentAdded) {
-                        onCommentAdded({
-                            filePath: currentFile.path,
-                            lineNumber: lineNum,
-                            text: commentInput.trim(),
-                            createdAt: new Date(),
-                        })
-                    }
-                }
-                setIsCommenting(false)
-                setCommentInput('')
-                return
-            }
-            if (key.backspace || key.delete) {
-                setCommentInput((prev) => prev.slice(0, -1))
-                return
-            }
-            if (input && !key.ctrl && !key.meta) {
-                setCommentInput((prev) => prev + input)
-                return
-            }
-            return
-        }
-
-        // Global dismiss / escape
+        // Esc: strict 1-step back (detail view -> file list -> close)
         if (key.escape || input === '\u001B') {
             if (isDetailView) {
                 setIsDetailView(false)
-            } else {
-                handleClose()
+                return
             }
+            handleClose()
             return
         }
 
         // List View Navigation
         if (!isDetailView) {
-            // Tab switching
-            if (key.tab || input === 'l' || key.rightArrow) {
-                const currentIdx = TABS.findIndex((t) => t.id === activeTab)
-                const nextTab = TABS[(currentIdx + 1) % TABS.length]?.id || 'git'
-                setActiveTab(nextTab)
-                setSelectedFileIndex(0)
-                return
-            }
-            if ((key.shift && key.tab) || input === 'h' || key.leftArrow) {
-                const currentIdx = TABS.findIndex((t) => t.id === activeTab)
-                const prevTab = TABS[(currentIdx - 1 + TABS.length) % TABS.length]?.id || 'git'
-                setActiveTab(prevTab)
-                setSelectedFileIndex(0)
-                return
-            }
-
-            // Up / Down
+            // Navigate files up/down
             if (key.upArrow || input === 'k') {
                 setSelectedFileIndex((prev) => Math.max(0, prev - 1))
                 return
             }
             if (key.downArrow || input === 'j') {
-                setSelectedFileIndex((prev) => Math.min(currentFiles.length - 1, prev + 1))
+                setSelectedFileIndex((prev) => Math.min(files.length - 1, prev + 1))
                 return
             }
 
-            // Enter view diff
-            if (key.return) {
-                if (currentFiles.length > 0 && currentFile) {
+            // View diff
+            if (key.return || key.rightArrow) {
+                if (files.length > 0 && currentFile) {
                     setIsDetailView(true)
                     const saved = filePositionsRef.current[currentFile.path]
                     if (saved) {
@@ -320,6 +226,12 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                         setDetailScrollOffset(0)
                     }
                 }
+                return
+            }
+
+            // Dismiss
+            if (key.leftArrow) {
+                handleClose()
                 return
             }
             return
@@ -337,7 +249,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 return
             }
 
-            // Move cursor up/down
+            // Cursor up/down
             if (key.upArrow || input === 'k') {
                 setCursorLineIndex((prev) => Math.max(0, prev - 1))
                 return
@@ -371,7 +283,6 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                     const fid = currentRow.data.id
                     setExpandedFolds((prev) => ({ ...prev, [fid]: !prev[fid] }))
                 } else {
-                    // Find nearest fold
                     const nearestFold = diffRows
                         .filter((r) => r.type === 'fold')
                         .reduce(
@@ -398,44 +309,30 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 setFullFileMode((prev) => !prev)
                 return
             }
-
-            // Add comment on current line
-            if (input === 'c') {
-                setIsCommenting(true)
-                setCommentInput('')
-                return
-            }
-
-            // Delete comment on current line
-            if (input === 'd') {
-                if (currentFile) {
-                    const row = diffRows[cursorLineIndex]
-                    const lineNum =
-                        row?.type === 'line'
-                            ? row.data.newLineNumber ||
-                              row.data.oldLineNumber ||
-                              cursorLineIndex + 1
-                            : cursorLineIndex + 1
-
-                    setComments((prev) => {
-                        const fileComments = { ...(prev[currentFile.path] || {}) }
-                        delete fileComments[lineNum]
-                        return { ...prev, [currentFile.path]: fileComments }
-                    })
-                }
-                return
-            }
         }
     })
 
-    const effectiveModelLabel = modelLabel || activeModel || 'Gemini 3.8 Flash · high'
+    const listFooterItems = [
+        { key: '←/→', label: 'switch view' },
+        { key: '↑/↓/j/k', label: 'navigate' },
+        { key: 'enter', label: 'view diff' },
+        { key: 'esc', label: 'dismiss' },
+    ]
+
+    const detailFooterItems = [
+        { key: 'n/N', label: 'next/prev diff' },
+        { key: '←/→', label: 'cycle file' },
+        { key: 'ctrl+o', label: 'expand' },
+        { key: 'f', label: 'full file' },
+        { key: 'esc', label: 'back' },
+    ]
 
     // ==========================================
     // RENDER: DETAIL VIEW
     // ==========================================
     if (isDetailView && currentFile) {
         const visibleRows = diffRows.slice(detailScrollOffset, detailScrollOffset + maxVisibleRows)
-        const fileComments = comments[currentFile.path] || {}
+        const remainingBelow = Math.max(0, diffRows.length - (detailScrollOffset + maxVisibleRows))
 
         return (
             <Box flexDirection="column" paddingX={THEME.padding.paddingX} paddingY={1}>
@@ -457,7 +354,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                     <Box>
                         <Text color={THEME.colors.dim}>
                             change {currentChangeUnderCursor}/{totalChanges || 0} · file{' '}
-                            {safeFileIndex + 1}/{currentFiles.length}
+                            {safeFileIndex + 1}/{files.length}
                         </Text>
                     </Box>
                 </Box>
@@ -515,65 +412,35 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                                       ? THEME.colors.error
                                       : THEME.colors.text
 
-                            const lineComment = lineNum ? fileComments[lineNum] : undefined
-
                             return (
-                                <Box key={`line-${row.index}`} flexDirection="column">
-                                    <Box backgroundColor={bgColor} flexDirection="row">
-                                        <Text
-                                            color={isCursor ? THEME.colors.brand : THEME.colors.dim}
-                                        >
-                                            {isCursor ? '>' : ' '}
-                                        </Text>
-                                        <Text color={THEME.colors.dim}>{paddedLineNum} </Text>
-                                        <Text color={signColor}>{sign} </Text>
-                                        <Text color={textColor} wrap="truncate-end">
-                                            {line.content}
-                                        </Text>
-                                    </Box>
-
-                                    {/* Existing review comment */}
-                                    {lineComment && (
-                                        <Box paddingLeft={8} backgroundColor="#25241b">
-                                            <Text color={THEME.colors.warning}>
-                                                💬 Comment: {lineComment}
-                                            </Text>
-                                        </Box>
-                                    )}
-
-                                    {/* Inline comment editor */}
-                                    {isCommenting && isCursor && (
-                                        <Box
-                                            paddingLeft={8}
-                                            backgroundColor="#1e293b"
-                                            flexDirection="row"
-                                        >
-                                            <Text color={THEME.colors.brand}>
-                                                💬 Comment: {commentInput}
-                                                <Text color={THEME.colors.dim}>
-                                                    _ (Enter to save, Esc to cancel)
-                                                </Text>
-                                            </Text>
-                                        </Box>
-                                    )}
+                                <Box
+                                    key={`line-${row.index}`}
+                                    backgroundColor={bgColor}
+                                    flexDirection="row"
+                                >
+                                    <Text color={isCursor ? THEME.colors.brand : THEME.colors.dim}>
+                                        {isCursor ? '>' : ' '}
+                                    </Text>
+                                    <Text color={THEME.colors.dim}>{paddedLineNum} </Text>
+                                    <Text color={signColor}>{sign} </Text>
+                                    <Text color={textColor} wrap="truncate-end">
+                                        {line.content}
+                                    </Text>
                                 </Box>
                             )
                         })
                     )}
+                    {remainingBelow > 0 && (
+                        <Box marginTop={1}>
+                            <Text color={THEME.colors.dim}>
+                                … {remainingBelow} more lines (↓ to scroll)
+                            </Text>
+                        </Box>
+                    )}
                 </Box>
 
-                {/* Footer */}
-                <Box justifyContent="space-between" marginTop={1}>
-                    <Box gap={1}>
-                        <Text color={THEME.colors.dim}>
-                            n/N next/prev diff · ←/→ cycle file · ctrl+o expand · f full file · c
-                            comment · d delete comment · esc back
-                        </Text>
-                    </Box>
-                    <Box>
-                        <Text color={THEME.colors.dim}>{effectiveModelLabel}</Text>
-                    </Box>
-                </Box>
+                {/* Branded Footer */}
+                <MenuFooter items={detailFooterItems} />
             </Box>
         )
     }
@@ -583,56 +450,19 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     // ==========================================
     return (
         <Box flexDirection="column" paddingX={THEME.padding.paddingX} paddingY={1}>
-            {/* Tabs Header */}
-            <Box flexDirection="row" gap={3} marginBottom={1}>
-                {TABS.map((tab) => {
-                    const isActive = tab.id === activeTab
-                    return (
-                        <Text
-                            key={tab.id}
-                            bold={isActive}
-                            color={isActive ? THEME.colors.brand : THEME.colors.dim}
-                        >
-                            {tab.label}
-                        </Text>
-                    )
-                })}
+            {/* Diff Summary Count */}
+            <Box marginBottom={1}>
+                <Text color={THEME.colors.text}>{formatDiffSummary(files.length)}</Text>
             </Box>
 
-            {/* Tab Summary Count */}
-            {activeTab !== 'tree' && (
-                <Box marginBottom={1}>
-                    <Text color={THEME.colors.text}>{formatDiffSummary(currentFiles.length)}</Text>
-                </Box>
-            )}
-
-            {/* Tab Content */}
+            {/* Files List */}
             <Box flexDirection="column" minHeight={maxVisibleRows}>
                 {isLoading ? (
                     <Text color={THEME.colors.dim}>Loading diffs...</Text>
-                ) : activeTab === 'tree' ? (
-                    /* Commit Tree View */
-                    <Box flexDirection="column" gap={0}>
-                        {commitTree.slice(0, maxVisibleRows).map((line, idx) => {
-                            const isWorkingCopy = line.includes('Working Copy')
-                            return (
-                                <Text
-                                    key={idx}
-                                    bold={isWorkingCopy}
-                                    color={isWorkingCopy ? THEME.colors.brand : THEME.colors.text}
-                                >
-                                    {line}
-                                </Text>
-                            )
-                        })}
-                    </Box>
-                ) : activeTab === 'turns' && turns.length === 0 ? (
-                    <Text color={THEME.colors.dim}>No agent changes in current session yet.</Text>
-                ) : currentFiles.length === 0 ? (
+                ) : files.length === 0 ? (
                     <Text color={THEME.colors.dim}>No changes detected in working copy.</Text>
                 ) : (
-                    /* Files List */
-                    currentFiles.slice(0, maxVisibleRows).map((file, idx) => {
+                    files.slice(0, maxVisibleRows).map((file, idx) => {
                         const isSelected = idx === safeFileIndex
                         return (
                             <Box key={file.path} flexDirection="row" gap={1}>
@@ -665,17 +495,8 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 )}
             </Box>
 
-            {/* Footer */}
-            <Box justifyContent="space-between" marginTop={1}>
-                <Box gap={1}>
-                    <Text color={THEME.colors.dim}>
-                        ←/→ switch view · ↑/↓/j/k navigate · enter view diff · esc dismiss
-                    </Text>
-                </Box>
-                <Box>
-                    <Text color={THEME.colors.dim}>{effectiveModelLabel}</Text>
-                </Box>
-            </Box>
+            {/* Branded Footer */}
+            <MenuFooter items={listFooterItems} />
         </Box>
     )
 }

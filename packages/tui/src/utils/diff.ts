@@ -51,11 +51,26 @@ export function formatDiffSummary(count: number): string {
 
 export function parseUnifiedDiffToRows(
     diffText: string,
-    options?: { fullContent?: string; expandedFolds?: Record<string, boolean> }
+    options?: {
+        fullContent?: string | null
+        expandedFolds?: Record<string, boolean>
+        fullFileMode?: boolean
+    }
 ): { rows: DiffRow[]; totalChanges: number; changeIndices: number[] } {
     const rawLines = (diffText || '').trim().split(/\r?\n/)
     const rows: DiffRow[] = []
     const changeIndices: number[] = []
+    const fullLines = options?.fullContent ? options.fullContent.split(/\r?\n/) : null
+
+    const getFoldPreview = (start: number, count: number): string => {
+        if (fullLines && start - 1 >= 0 && start - 1 < fullLines.length) {
+            const line = fullLines[start - 1]?.trim()
+            if (line) {
+                return line.length > 50 ? `${line.slice(0, 47)}...` : line
+            }
+        }
+        return `line ${start}..${start + count - 1}`
+    }
 
     let oldLine = 1
     let newLine = 1
@@ -80,18 +95,36 @@ export function parseUnifiedDiffToRows(
                     const foldCount = hunkOldStart - 1
                     const foldId = `fold-0-${hunkOldStart}`
                     const isExpanded = options?.expandedFolds?.[foldId] ?? false
-                    rows.push({
-                        type: 'fold',
-                        index: rowIndex++,
-                        data: {
-                            id: foldId,
-                            count: foldCount,
-                            startOld: 1,
-                            startNew: 1,
-                            preview: `line 1..${foldCount}`,
-                            isExpanded,
-                        },
-                    })
+
+                    if (fullLines && (options?.fullFileMode || isExpanded)) {
+                        for (let f = 0; f < foldCount; f++) {
+                            const curOld = 1 + f
+                            const curNew = 1 + f
+                            rows.push({
+                                type: 'line',
+                                index: rowIndex++,
+                                data: {
+                                    oldLineNumber: curOld,
+                                    newLineNumber: curNew,
+                                    type: 'context',
+                                    content: fullLines[curOld - 1] ?? '',
+                                },
+                            })
+                        }
+                    } else {
+                        rows.push({
+                            type: 'fold',
+                            index: rowIndex++,
+                            data: {
+                                id: foldId,
+                                count: foldCount,
+                                startOld: 1,
+                                startNew: 1,
+                                preview: getFoldPreview(1, foldCount),
+                                isExpanded,
+                            },
+                        })
+                    }
                 }
                 isFirstHunk = false
             } else if (hunkOldStart > lastOldLine) {
@@ -99,18 +132,36 @@ export function parseUnifiedDiffToRows(
                 if (gapCount > 0) {
                     const foldId = `fold-${lastOldLine}-${hunkOldStart}`
                     const isExpanded = options?.expandedFolds?.[foldId] ?? false
-                    rows.push({
-                        type: 'fold',
-                        index: rowIndex++,
-                        data: {
-                            id: foldId,
-                            count: gapCount,
-                            startOld: lastOldLine,
-                            startNew: lastNewLine,
-                            preview: `line ${lastOldLine}..${hunkOldStart - 1}`,
-                            isExpanded,
-                        },
-                    })
+
+                    if (fullLines && (options?.fullFileMode || isExpanded)) {
+                        for (let f = 0; f < gapCount; f++) {
+                            const curOld = lastOldLine + f
+                            const curNew = lastNewLine + f
+                            rows.push({
+                                type: 'line',
+                                index: rowIndex++,
+                                data: {
+                                    oldLineNumber: curOld,
+                                    newLineNumber: curNew,
+                                    type: 'context',
+                                    content: fullLines[curOld - 1] ?? '',
+                                },
+                            })
+                        }
+                    } else {
+                        rows.push({
+                            type: 'fold',
+                            index: rowIndex++,
+                            data: {
+                                id: foldId,
+                                count: gapCount,
+                                startOld: lastOldLine,
+                                startNew: lastNewLine,
+                                preview: getFoldPreview(lastOldLine, gapCount),
+                                isExpanded,
+                            },
+                        })
+                    }
                 }
             }
 
@@ -161,6 +212,43 @@ export function parseUnifiedDiffToRows(
             })
             lastOldLine = oldLine
             lastNewLine = newLine
+        }
+    }
+
+    if (fullLines && lastOldLine <= fullLines.length) {
+        const trailingCount = fullLines.length - lastOldLine + 1
+        if (trailingCount > 0) {
+            const foldId = `fold-${lastOldLine}-${fullLines.length}`
+            const isExpanded = options?.expandedFolds?.[foldId] ?? false
+            if (options?.fullFileMode || isExpanded) {
+                for (let f = 0; f < trailingCount; f++) {
+                    const curOld = lastOldLine + f
+                    const curNew = lastNewLine + f
+                    rows.push({
+                        type: 'line',
+                        index: rowIndex++,
+                        data: {
+                            oldLineNumber: curOld,
+                            newLineNumber: curNew,
+                            type: 'context',
+                            content: fullLines[curOld - 1] ?? '',
+                        },
+                    })
+                }
+            } else {
+                rows.push({
+                    type: 'fold',
+                    index: rowIndex,
+                    data: {
+                        id: foldId,
+                        count: trailingCount,
+                        startOld: lastOldLine,
+                        startNew: lastNewLine,
+                        preview: getFoldPreview(lastOldLine, trailingCount),
+                        isExpanded,
+                    },
+                })
+            }
         }
     }
 

@@ -63,7 +63,7 @@ export function GlobalShortcuts(session: any) {
             return
         }
 
-        if (authMode === 'session_select') {
+        if (authMode === 'session_select' || authMode === 'diff_view') {
             return
         }
 

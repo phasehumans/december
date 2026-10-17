@@ -38,27 +38,15 @@ describe('DiffViewMenu Component (Unit)', () => {
         },
     ]
 
-    const mockCommitTree = [
-        '@  Working Copy (Uncommitted Changes)',
-        '* 3ff91f8 - feat: add /diff command (2m ago) <chaitanya>',
-        '* 1234abc - fix: previous bug (1h ago) <chaitanya>',
-    ]
-
-    it('renders tabs, file count summary, and list of changed files with additions/deletions', () => {
-        const { lastFrame } = render(
-            <DiffViewMenu
-                filesData={mockFiles}
-                commitTreeData={mockCommitTree}
-                modelLabel="Gemini 3.8 Flash · high"
-            />
-        )
+    it('renders file count summary, list of changed files with additions/deletions, and branded footer without tabs or model', () => {
+        const { lastFrame } = render(<DiffViewMenu filesData={mockFiles} />)
         const output = lastFrame() || ''
 
-        // Tabs
-        expect(output).toContain('Diff (git)')
-        expect(output).toContain('All Changes')
-        expect(output).toContain('Per Turn')
-        expect(output).toContain('Commit Tree')
+        // No tabs
+        expect(output).not.toContain('Diff (git)')
+        expect(output).not.toContain('All Changes')
+        expect(output).not.toContain('Per Turn')
+        expect(output).not.toContain('Commit Tree')
 
         // File count summary
         expect(output).toContain('4 file(s) changed')
@@ -72,16 +60,23 @@ describe('DiffViewMenu Component (Unit)', () => {
         expect(output).toContain('test/config.test.ts')
         expect(output).toContain('install.ps1')
 
-        // Footer & model
-        expect(output).toContain('←/→ switch view')
-        expect(output).toContain('enter view diff')
-        expect(output).toContain('Gemini 3.8 Flash · high')
+        // Branded footer items
+        expect(output).toContain('←/→')
+        expect(output).toContain('switch view')
+        expect(output).toContain('↑/↓/j/k')
+        expect(output).toContain('navigate')
+        expect(output).toContain('enter')
+        expect(output).toContain('view diff')
+        expect(output).toContain('esc')
+        expect(output).toContain('dismiss')
+
+        // No model label
+        expect(output).not.toContain('Gemini')
+        expect(output).not.toContain('Flash')
     })
 
     it('navigates file list with down and up arrows', async () => {
-        const { lastFrame, stdin } = render(
-            <DiffViewMenu filesData={mockFiles} commitTreeData={mockCommitTree} />
-        )
+        const { lastFrame, stdin } = render(<DiffViewMenu filesData={mockFiles} />)
         expect(lastFrame()).toContain('> public/_headers')
 
         stdin.write('\u001B[B') // Down arrow
@@ -93,35 +88,9 @@ describe('DiffViewMenu Component (Unit)', () => {
         expect(lastFrame()).toContain('> public/_headers')
     })
 
-    it('switches to Commit Tree tab on Tab keypress', async () => {
-        const { lastFrame, stdin } = render(
-            <DiffViewMenu filesData={mockFiles} commitTreeData={mockCommitTree} />
-        )
-
-        // Press Tab to switch views
-        stdin.write('\t')
-        await new Promise((r) => setTimeout(r, 20))
-        // Tab 1 -> All Changes
-        stdin.write('\t')
-        await new Promise((r) => setTimeout(r, 20))
-        // Tab 2 -> Per Turn
-        stdin.write('\t')
-        await new Promise((r) => setTimeout(r, 20))
-        // Tab 3 -> Commit Tree
-
-        const output = lastFrame() || ''
-        expect(output).toContain('Working Copy (Uncommitted Changes)')
-        expect(output).toContain('3ff91f8')
-    })
-
     it('opens detail view on Enter and renders diff lines, line numbers, and position indicator', async () => {
         const { lastFrame, stdin } = render(
-            <DiffViewMenu
-                filesData={mockFiles}
-                commitTreeData={mockCommitTree}
-                initialSelectedIndex={1} // public/install.ps1
-                modelLabel="Gemini 3.8 Flash · high"
-            />
+            <DiffViewMenu filesData={mockFiles} initialSelectedIndex={1} />
         )
 
         // Press Enter to view diff
@@ -134,43 +103,82 @@ describe('DiffViewMenu Component (Unit)', () => {
         expect(output).toContain('-17')
         expect(output).toContain('file 2/4')
         expect(output).toContain('change')
-        expect(output).toContain('n/N next/prev diff')
-        expect(output).toContain('ctrl+o expand')
-        expect(output).toContain('c comment')
 
-        // Esc returns back to file list
-        stdin.write('\u001B')
-        await new Promise((r) => setTimeout(r, 20))
-        expect(lastFrame()).toContain('4 file(s) changed')
+        // Detail footer items
+        expect(output).toContain('n/N')
+        expect(output).toContain('next/prev diff')
+        expect(output).toContain('←/→')
+        expect(output).toContain('cycle file')
+        expect(output).toContain('ctrl+o')
+        expect(output).toContain('expand')
+        expect(output).toContain('f')
+        expect(output).toContain('full file')
+        expect(output).toContain('esc')
+        expect(output).toContain('back')
+
+        // No comments or model label in detail view
+        expect(output).not.toContain('comment')
+        expect(output).not.toContain('Gemini')
     })
 
-    it('allows adding and viewing review comments with c key in detail view', async () => {
-        const onCommentAdded = mock(() => {})
+    it('strict 1-step Esc navigation: Esc in detail view returns to file list without calling onClose or setAuthMode', async () => {
+        const onClose = mock(() => {})
+        const setAuthMode = mock(() => {})
+
         const { lastFrame, stdin } = render(
             <DiffViewMenu
                 filesData={mockFiles}
-                commitTreeData={mockCommitTree}
                 initialSelectedIndex={0}
                 initialDetailView={true}
-                onCommentAdded={onCommentAdded}
+                onClose={onClose}
+                setAuthMode={setAuthMode}
             />
         )
 
-        // Press 'c' to initiate comment
-        stdin.write('c')
+        // Currently in detail view
+        expect(lastFrame()).toContain('public/_headers')
+        expect(lastFrame()).toContain('file 1/4')
+
+        // Press Esc in detail view
+        stdin.write('\u001B')
         await new Promise((r) => setTimeout(r, 20))
 
-        expect(lastFrame()).toContain('💬 Comment:')
+        // Must step back to file list view
+        expect(lastFrame()).toContain('4 file(s) changed')
+        expect(lastFrame()).toContain('public/_headers')
 
-        // Type comment text
-        stdin.write('Keep this header')
+        // Must NOT have closed the menu
+        expect(onClose).not.toHaveBeenCalled()
+        expect(setAuthMode).not.toHaveBeenCalled()
+
+        // Press Esc again from file list view
+        stdin.write('\u001B')
         await new Promise((r) => setTimeout(r, 20))
 
-        // Press Enter to save
-        stdin.write('\r')
+        // Now it must dismiss the diff viewer
+        expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('cycles files in detail view with left and right arrow keys', async () => {
+        const { lastFrame, stdin } = render(
+            <DiffViewMenu filesData={mockFiles} initialSelectedIndex={0} initialDetailView={true} />
+        )
+
+        expect(lastFrame()).toContain('public/_headers')
+        expect(lastFrame()).toContain('file 1/4')
+
+        // Press right arrow to cycle next file
+        stdin.write('\u001B[C')
         await new Promise((r) => setTimeout(r, 20))
 
-        expect(lastFrame()).toContain('💬 Comment: Keep this header')
-        expect(onCommentAdded).toHaveBeenCalled()
+        expect(lastFrame()).toContain('public/install.ps1')
+        expect(lastFrame()).toContain('file 2/4')
+
+        // Press left arrow to cycle back
+        stdin.write('\u001B[D')
+        await new Promise((r) => setTimeout(r, 20))
+
+        expect(lastFrame()).toContain('public/_headers')
+        expect(lastFrame()).toContain('file 1/4')
     })
 })
