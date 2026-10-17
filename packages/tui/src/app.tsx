@@ -26,7 +26,6 @@ export function ChatApp({
     onLogin,
     onUpdateSuccess,
     session,
-    isInline = false,
     announcement,
     activeModel,
     authMethod,
@@ -44,7 +43,6 @@ export function ChatApp({
     ) => Promise<{ token: string; email: string | null }>
     onUpdateSuccess?: () => Promise<void>
     session: any
-    isInline?: boolean
     announcement?: ReleaseAnnouncement | null
     activeModel?: string
     authMethod?: string
@@ -90,56 +88,50 @@ export function ChatApp({
         }
     }, [])
 
-    const activeIsInline = session?.isInline !== undefined ? session.isInline : isInline
-
     useEffect(() => {
         if (!process.stdout?.isTTY) return
 
-        if (!activeIsInline) {
-            const originalWrite = process.stdout.write.bind(process.stdout)
+        const originalWrite = process.stdout.write.bind(process.stdout)
+        try {
+            // Enter alternate screen buffer and enable SGR mouse tracking
+            originalWrite('\x1b[?1049h\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h')
+        } catch {
+            // Intentionally swallowed: ignore stdout write errors on mount
+        }
+
+        // Hook process.stdout.write to atomically bracket frame renders with DEC Mode 2026
+        const synchronizedWrite = (chunk: any, ...rest: any[]) => {
+            if (
+                typeof chunk === 'string' &&
+                chunk.length > 0 &&
+                !chunk.startsWith('\x1b]52;') &&
+                !chunk.includes('\x1b[?2026h')
+            ) {
+                return originalWrite(`\x1b[?2026h${chunk}\x1b[?2026l`, ...rest)
+            }
+            return (originalWrite as any)(chunk, ...rest)
+        }
+        process.stdout.write = synchronizedWrite as any
+
+        const handleResize = () => {
             try {
-                // Enter alternate screen buffer and enable SGR mouse tracking
-                originalWrite('\x1b[?1049h\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h')
+                originalWrite('\x1b[?2026h\x1b[2J\x1b[H\x1b[?2026l')
             } catch {
-                // Intentionally swallowed: ignore stdout write errors on mount
-            }
-
-            // Hook process.stdout.write to atomically bracket frame renders with DEC Mode 2026
-            const synchronizedWrite = (chunk: any, ...rest: any[]) => {
-                if (
-                    typeof chunk === 'string' &&
-                    chunk.length > 0 &&
-                    !chunk.startsWith('\x1b]52;') &&
-                    !chunk.includes('\x1b[?2026h')
-                ) {
-                    return originalWrite(`\x1b[?2026h${chunk}\x1b[?2026l`, ...rest)
-                }
-                return (originalWrite as any)(chunk, ...rest)
-            }
-            process.stdout.write = synchronizedWrite as any
-
-            const handleResize = () => {
-                try {
-                    originalWrite('\x1b[?2026h\x1b[2J\x1b[H\x1b[?2026l')
-                } catch {
-                    // Intentionally swallowed: ignore stdout write errors on resize
-                }
-            }
-
-            process.stdout.on('resize', handleResize)
-            return () => {
-                process.stdout.off('resize', handleResize)
-                process.stdout.write = originalWrite
-                try {
-                    originalWrite(
-                        '\x1b[?2026l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l'
-                    )
-                } catch {
-                    // Intentionally swallowed: cleanup on unmount
-                }
+                // Intentionally swallowed: ignore stdout write errors on resize
             }
         }
-    }, [activeIsInline])
+
+        process.stdout.on('resize', handleResize)
+        return () => {
+            process.stdout.off('resize', handleResize)
+            process.stdout.write = originalWrite
+            try {
+                originalWrite('\x1b[?2026l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l')
+            } catch {
+                // Intentionally swallowed: cleanup on unmount
+            }
+        }
+    }, [])
 
     useInput((input, key) => {
         if (key.ctrl && input === 'c') {
@@ -308,31 +300,6 @@ export function ChatApp({
     const effectiveModel = session.activeModel || activeModel || agent?.modelOptions?.model
     const effectiveAuthMethod = session.authMethod || authMethod
     const effectiveProvider = session.selectedProvider || selectedProvider
-
-    if (activeIsInline) {
-        return (
-            <Box flexDirection="column" width="100%">
-                <GlobalShortcuts {...session} agent={agent} />
-                <MessageList
-                    staticKey={staticKey}
-                    staticMessages={staticMessages}
-                    activeMessages={activeMessages}
-                    isAuthenticated={isAuthenticated}
-                    cliVersion={cliVersion}
-                    latestVersion={latestVersion}
-                    userEmail={currentEmail || userEmail}
-                    expandCommands={session.expandCommands}
-                    fullscreen={false}
-                    announcement={announcement}
-                    activeModel={effectiveModel}
-                    modelLabel={modelLabel}
-                    authMethod={effectiveAuthMethod}
-                    selectedProvider={effectiveProvider}
-                />
-                {inputBarElement}
-            </Box>
-        )
-    }
 
     return (
         <Box flexDirection="column" height={rows} width={columns} overflow="hidden">

@@ -72,8 +72,7 @@ describe('parseCliArgs', () => {
         expect(parsed.cwd).toBe('/workspace')
     })
 
-    it('parses --inline flag for classic inline mode', () => {
-        expect(parseCliArgs(['--inline']).isInline).toBe(true)
+    it('defaults isInline to false for permanent fullscreen mode', () => {
         expect(parseCliArgs([]).isInline).toBe(false)
     })
 

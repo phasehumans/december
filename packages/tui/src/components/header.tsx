@@ -162,7 +162,7 @@ export function formatBillingLabel(
     }
 
     if (authMethod === 'december') {
-        return 'December Billing'
+        return 'December Wallet'
     }
 
     if (authMethod === 'subscription') {

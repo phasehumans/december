@@ -125,7 +125,7 @@ describe('Header Component (Unit)', () => {
         expect(frame).toContain('Claude 3.5 Sonnet · Copilot Subscription')
     })
 
-    it('renders December Billing when authMethod is december', () => {
+    it('renders December Wallet when authMethod is december', () => {
         const { lastFrame } = render(
             <Header
                 activeModel="claude-3-7-sonnet"
@@ -135,7 +135,7 @@ describe('Header Component (Unit)', () => {
             />
         )
         const frame = lastFrame()
-        expect(frame).toContain('Claude 3.7 Sonnet · December Billing')
+        expect(frame).toContain('Claude 3.7 Sonnet · December Wallet')
     })
 
     it('renders custom modelLabel when provided', () => {

@@ -380,7 +380,6 @@ async function main() {
     if (providerConfig?.authMethod) {
         useCliStore.getState().setAuthMethod(providerConfig.authMethod)
     }
-    useCliStore.getState().setIsInline(Boolean(parsedArgs.isInline))
     if (!isAuthenticated) {
         useCliStore.getState().setAuthMode('menu')
     }
@@ -442,7 +441,6 @@ async function main() {
     const { resolveAnnouncement } = await import('./utils/banner')
     const announcement = resolveAnnouncement({
         config,
-        isInline: parsedArgs.isInline,
         isNewVersion,
         releaseHighlights,
     })
@@ -478,15 +476,10 @@ async function main() {
         ? config.email
         : providerConfig?.subscription?.email || config.email || undefined
 
-    const isFullscreen = !parsedArgs.isInline
-
     if (process.stdout.isTTY) {
-        const enterSequences = isFullscreen
-            ? '\x1b[?1049h\x1b[?2004h\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h'
-            : '\x1b[?2004h'
-        const exitSequences = isFullscreen
-            ? '\x1b[?2026l\x1b[?2004l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l'
-            : '\x1b[?2026l\x1b[?2004l'
+        const enterSequences = '\x1b[?1049h\x1b[?2004h\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h'
+        const exitSequences =
+            '\x1b[?2026l\x1b[?2004l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l'
 
         process.stdout.write(enterSequences)
         const cleanupTerminal = () => {
@@ -504,7 +497,7 @@ async function main() {
     render(
         React.createElement(
             RootLayout,
-            { fullscreen: isFullscreen },
+            { fullscreen: true },
             React.createElement(AppWrapper, {
                 agent,
                 isAuthenticated,
@@ -517,7 +510,6 @@ async function main() {
                 modelLabel: getModelLabel(initialModel),
                 selectedProvider: activeProvider,
                 sessionRepository,
-                isInline: parsedArgs.isInline,
                 onLogin: (onCode: (code: string, uri: string) => void) =>
                     import('./auth').then(({ loginViaDeviceCode }) =>
                         loginViaDeviceCode(undefined, onCode)
@@ -525,7 +517,7 @@ async function main() {
             })
         ),
         {
-            alternateScreen: isFullscreen,
+            alternateScreen: true,
             exitOnCtrlC: false,
             maxFps: 60,
         }

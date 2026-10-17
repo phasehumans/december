@@ -43,10 +43,7 @@ describe('CLI Args Parser (Unit)', () => {
         expect(parsed.cwd).toBe('/tmp')
     })
 
-    it('parses --inline and --fullscreen flags correctly', () => {
-        expect(parseCliArgs(['--inline']).isInline).toBe(true)
-        expect(parseCliArgs(['--fullscreen']).isInline).toBe(false)
-        expect(parseCliArgs(['--inline', '--fullscreen']).isInline).toBe(false)
+    it('defaults isInline to false for permanent fullscreen mode', () => {
         expect(parseCliArgs([]).isInline).toBe(false)
     })
 
