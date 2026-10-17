@@ -39,7 +39,7 @@ describe('DiffViewMenu Component (Unit)', () => {
         },
     ]
 
-    it('renders file count summary, list of changed files with additions/deletions, and branded footer without tabs or model', () => {
+    it('renders list of changed files with additions/deletions, and branded footer without tabs or model', () => {
         const { lastFrame } = render(<DiffViewMenu filesData={mockFiles} />)
         const output = lastFrame() || ''
 
@@ -49,8 +49,8 @@ describe('DiffViewMenu Component (Unit)', () => {
         expect(output).not.toContain('Per Turn')
         expect(output).not.toContain('Commit Tree')
 
-        // File count summary
-        expect(output).toContain('4 file(s) changed')
+        // No diff summary title
+        expect(output).not.toContain('file(s) changed')
 
         // Files with stats
         expect(output).toContain('public/_headers')
@@ -144,8 +144,8 @@ describe('DiffViewMenu Component (Unit)', () => {
         await new Promise((r) => setTimeout(r, 20))
 
         // Must step back to file list view
-        expect(lastFrame()).toContain('4 file(s) changed')
         expect(lastFrame()).toContain('public/_headers')
+        expect(lastFrame()).not.toContain('file 1/4')
 
         // Must NOT have closed the menu
         expect(onClose).not.toHaveBeenCalled()
@@ -236,5 +236,31 @@ describe('DiffViewMenu Component (Unit)', () => {
         await new Promise((r) => setTimeout(r, 20))
 
         expect(lastFrame()).toContain(`${THEME.glyphs.selector} src/file-1.ts`)
+    })
+
+    it('renders detail view with fixed gutter alignment and diff rows', () => {
+        const singleDiff: DiffFileEntry[] = [
+            {
+                path: 'src/example.ts',
+                additions: 1,
+                deletions: 1,
+                status: 'modified',
+                diff: '@@ -10,2 +10,2 @@\n-const oldVal = 1\n+const newVal = 2',
+            },
+        ]
+        const { lastFrame } = render(
+            <DiffViewMenu
+                filesData={singleDiff}
+                initialSelectedIndex={0}
+                initialDetailView={true}
+            />
+        )
+        const output = lastFrame() || ''
+        expect(output).toContain('src/example.ts')
+        expect(output).toContain('+1')
+        expect(output).toContain('-1')
+        expect(output).toContain('10')
+        expect(output).toContain('const oldVal = 1')
+        expect(output).toContain('const newVal = 2')
     })
 })

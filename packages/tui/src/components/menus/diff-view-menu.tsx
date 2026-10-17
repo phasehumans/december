@@ -6,12 +6,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 
 import { useTerminalColumns, useTerminalRows } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
-import {
-    type DiffFileEntry,
-    formatDiffSummary,
-    parseUnifiedDiffToRows,
-    fetchGitStatusFiles,
-} from '../../utils/diff'
+import { type DiffFileEntry, parseUnifiedDiffToRows, fetchGitStatusFiles } from '../../utils/diff'
 
 import { MenuFooter } from './menu-footer'
 
@@ -34,7 +29,8 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         onClose,
     } = props
 
-    const columns = useTerminalColumns()
+    const terminalColumns = useTerminalColumns()
+    const columns = terminalColumns > 0 ? terminalColumns : 80
     const rows = useTerminalRows()
 
     // Bounded heights to ensure headers, viewport, and footer are always visible on screen
@@ -378,7 +374,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         )
 
         return (
-            <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
+            <Box flexDirection="column" width={columns} paddingX={THEME.padding.paddingX}>
                 {/* Header */}
                 <Box justifyContent="space-between" width="100%">
                     <Box gap={1}>
@@ -403,7 +399,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 </Box>
 
                 {/* Diff Viewport */}
-                <Box flexDirection="column" marginTop={1}>
+                <Box flexDirection="column" width="100%" marginTop={1}>
                     {visibleRows.length === 0 ? (
                         <Text color={THEME.colors.dim}>(Empty diff)</Text>
                     ) : (
@@ -418,10 +414,13 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                                         >
                                             {isCursor ? `${THEME.glyphs.selector} ` : '  '}
                                         </Text>
-                                        <Text color={THEME.colors.dim}>
-                                            {'      '}↕ {row.data.count} unchanged lines ·{' '}
-                                            {row.data.preview}
-                                        </Text>
+                                        <Text color={THEME.colors.dim}>{'      '} </Text>
+                                        <Box flexGrow={1}>
+                                            <Text color={THEME.colors.dim} wrap="truncate-end">
+                                                ↕ {row.data.count} unchanged lines ·{' '}
+                                                {row.data.preview}
+                                            </Text>
+                                        </Box>
                                     </Box>
                                 )
                             }
@@ -468,9 +467,11 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                                     </Text>
                                     <Text color={THEME.colors.dim}>{paddedLineNum} </Text>
                                     <Text color={signColor}>{sign} </Text>
-                                    <Text color={textColor} wrap="truncate-end">
-                                        {line.content}
-                                    </Text>
+                                    <Box flexGrow={1}>
+                                        <Text color={textColor} wrap="truncate-end">
+                                            {line.content}
+                                        </Text>
+                                    </Box>
                                 </Box>
                             )
                         })
@@ -496,14 +497,9 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     const filesBelow = files.length - windowEnd
 
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
-            {/* Diff Summary Count */}
-            <Box>
-                <Text color={THEME.colors.text}>{formatDiffSummary(files.length)}</Text>
-            </Box>
-
+        <Box flexDirection="column" width={columns} paddingX={THEME.padding.paddingX}>
             {/* Files List - Sliding window with pagination indicators */}
-            <Box flexDirection="column" marginY={1}>
+            <Box flexDirection="column" width="100%" marginY={1}>
                 {isLoading ? (
                     <Text color={THEME.colors.dim}>Loading diffs...</Text>
                 ) : files.length === 0 ? (
