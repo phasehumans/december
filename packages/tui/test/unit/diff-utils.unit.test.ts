@@ -87,4 +87,14 @@ describe('Diff Utils (TDD)', () => {
         expect(turns[0]?.files[0]?.additions).toBe(1)
         expect(turns[0]?.files[0]?.deletions).toBe(1)
     })
+
+    it('parses git status porcelain lines preserving first letter for unstaged files with leading space', async () => {
+        const { fetchGitStatusFiles } = await import('../../src/utils/diff')
+        const files = await fetchGitStatusFiles()
+        // If there are changed files, verify every file starts with a valid path and not a sliced character
+        for (const f of files) {
+            expect(f.path).not.toMatch(/^ackages\//)
+            expect(f.path.length).toBeGreaterThan(0)
+        }
+    })
 })

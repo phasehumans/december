@@ -111,12 +111,11 @@ describe('DiffViewMenu Component (Unit)', () => {
         expect(output).toContain('cycle file')
         expect(output).toContain('ctrl+o')
         expect(output).toContain('expand')
-        expect(output).toContain('f')
-        expect(output).toContain('full file')
         expect(output).toContain('esc')
         expect(output).toContain('back')
 
-        // No comments or model label in detail view
+        // No full file, comments, or model label in detail view
+        expect(output).not.toContain('full file')
         expect(output).not.toContain('comment')
         expect(output).not.toContain('Gemini')
     })

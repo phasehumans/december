@@ -54,7 +54,6 @@ export function parseUnifiedDiffToRows(
     options?: {
         fullContent?: string | null
         expandedFolds?: Record<string, boolean>
-        fullFileMode?: boolean
     }
 ): { rows: DiffRow[]; totalChanges: number; changeIndices: number[] } {
     const rawLines = (diffText || '').trim().split(/\r?\n/)
@@ -96,7 +95,7 @@ export function parseUnifiedDiffToRows(
                     const foldId = `fold-0-${hunkOldStart}`
                     const isExpanded = options?.expandedFolds?.[foldId] ?? false
 
-                    if (fullLines && (options?.fullFileMode || isExpanded)) {
+                    if (fullLines && isExpanded) {
                         for (let f = 0; f < foldCount; f++) {
                             const curOld = 1 + f
                             const curNew = 1 + f
@@ -133,7 +132,7 @@ export function parseUnifiedDiffToRows(
                     const foldId = `fold-${lastOldLine}-${hunkOldStart}`
                     const isExpanded = options?.expandedFolds?.[foldId] ?? false
 
-                    if (fullLines && (options?.fullFileMode || isExpanded)) {
+                    if (fullLines && isExpanded) {
                         for (let f = 0; f < gapCount; f++) {
                             const curOld = lastOldLine + f
                             const curNew = lastNewLine + f
@@ -220,7 +219,7 @@ export function parseUnifiedDiffToRows(
         if (trailingCount > 0) {
             const foldId = `fold-${lastOldLine}-${fullLines.length}`
             const isExpanded = options?.expandedFolds?.[foldId] ?? false
-            if (options?.fullFileMode || isExpanded) {
+            if (isExpanded) {
                 for (let f = 0; f < trailingCount; f++) {
                     const curOld = lastOldLine + f
                     const curNew = lastNewLine + f
@@ -269,7 +268,7 @@ export async function fetchGitStatusFiles(
             return []
         }
 
-        const lines = statusOut.trim().split('\n')
+        const lines = statusOut.split(/\r?\n/)
         const results: DiffFileEntry[] = []
 
         // Fetch numstat for tracked files
@@ -365,10 +364,27 @@ export async function fetchGitStatusFiles(
         }
 
         for (const line of lines) {
-            if (!line.trim()) continue
-            const code = line.slice(0, 2)
-            const rawFilePath = line.slice(3).trim()
-            const cleanPath = rawFilePath.replace(/^"|"$/g, '')
+            if (!line || line.trim().length === 0) continue
+
+            let code = ''
+            let rawFilePath = ''
+            if (/^[ MADRCU?!]{2} /.test(line)) {
+                code = line.slice(0, 2)
+                rawFilePath = line.slice(3).trim()
+            } else if (/^[MADRCU?!] /.test(line.trimStart())) {
+                const trimmed = line.trimStart()
+                code = trimmed.slice(0, 1)
+                rawFilePath = trimmed.slice(2).trim()
+            } else {
+                code = line.slice(0, 2)
+                rawFilePath = line.slice(3).trim()
+            }
+
+            if (rawFilePath.includes(' -> ')) {
+                rawFilePath = rawFilePath.split(' -> ').pop() || rawFilePath
+            }
+            const cleanPath = rawFilePath.replace(/^"|"$/g, '').trim()
+            if (!cleanPath) continue
 
             let status: DiffFileEntry['status'] = 'modified'
             if (code === '??') {

@@ -37,7 +37,10 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
 
     const columns = useTerminalColumns()
     const rows = useTerminalRows()
-    const maxVisibleRows = Math.max(8, rows - 7)
+
+    // Bounded heights to ensure headers, viewport, and footer are always visible on screen
+    const visibleLineCount = Math.max(5, Math.min(14, rows - 14))
+    const maxFileListCount = Math.max(5, Math.min(10, rows - 10))
 
     // State
     const [files, setFiles] = useState<DiffFileEntry[]>(initialFiles || [])
@@ -47,7 +50,6 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     const [isDetailView, setIsDetailView] = useState(initialDetailView)
     const [cursorLineIndex, setCursorLineIndex] = useState(0)
     const [detailScrollOffset, setDetailScrollOffset] = useState(0)
-    const [fullFileMode, setFullFileMode] = useState(false)
     const [expandedFolds, setExpandedFolds] = useState<Record<string, boolean>>({})
     const [fileContent, setFileContent] = useState<string | null>(null)
 
@@ -91,7 +93,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     const safeFileIndex = Math.min(Math.max(0, selectedFileIndex), Math.max(0, files.length - 1))
     const currentFile = files[safeFileIndex]
 
-    // Read file content for detail view (to display fold previews and full file view)
+    // Read file content for detail view (to display fold previews)
     useEffect(() => {
         let active = true
         if (isDetailView && currentFile?.path) {
@@ -119,14 +121,13 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         const parsed = parseUnifiedDiffToRows(currentFile.diff, {
             fullContent: fileContent,
             expandedFolds,
-            fullFileMode,
         })
         return {
             diffRows: parsed.rows,
             totalChanges: parsed.totalChanges,
             changeIndices: parsed.changeIndices,
         }
-    }, [currentFile, fileContent, expandedFolds, fullFileMode])
+    }, [currentFile, fileContent, expandedFolds])
 
     // Calculate current change index under cursor
     const currentChangeUnderCursor = useMemo(() => {
@@ -155,10 +156,10 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         if (!isDetailView) return
         if (cursorLineIndex < detailScrollOffset) {
             setDetailScrollOffset(cursorLineIndex)
-        } else if (cursorLineIndex >= detailScrollOffset + maxVisibleRows) {
-            setDetailScrollOffset(cursorLineIndex - maxVisibleRows + 1)
+        } else if (cursorLineIndex >= detailScrollOffset + visibleLineCount) {
+            setDetailScrollOffset(cursorLineIndex - visibleLineCount + 1)
         }
-    }, [cursorLineIndex, detailScrollOffset, maxVisibleRows, isDetailView])
+    }, [cursorLineIndex, detailScrollOffset, visibleLineCount, isDetailView])
 
     // Cycle files helper
     const cycleFile = useCallback(
@@ -303,12 +304,6 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 }
                 return
             }
-
-            // Full file toggle
-            if (input === 'f') {
-                setFullFileMode((prev) => !prev)
-                return
-            }
         }
     })
 
@@ -323,7 +318,6 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         { key: 'n/N', label: 'next/prev diff' },
         { key: '←/→', label: 'cycle file' },
         { key: 'ctrl+o', label: 'expand' },
-        { key: 'f', label: 'full file' },
         { key: 'esc', label: 'back' },
     ]
 
@@ -331,11 +325,17 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     // RENDER: DETAIL VIEW
     // ==========================================
     if (isDetailView && currentFile) {
-        const visibleRows = diffRows.slice(detailScrollOffset, detailScrollOffset + maxVisibleRows)
-        const remainingBelow = Math.max(0, diffRows.length - (detailScrollOffset + maxVisibleRows))
+        const visibleRows = diffRows.slice(
+            detailScrollOffset,
+            detailScrollOffset + visibleLineCount
+        )
+        const remainingBelow = Math.max(
+            0,
+            diffRows.length - (detailScrollOffset + visibleLineCount)
+        )
 
         return (
-            <Box flexDirection="column" paddingX={THEME.padding.paddingX} paddingY={1}>
+            <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
                 {/* Header */}
                 <Box justifyContent="space-between" width="100%">
                     <Box gap={1}>
@@ -360,7 +360,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 </Box>
 
                 {/* Diff Viewport */}
-                <Box flexDirection="column" marginTop={1} minHeight={maxVisibleRows}>
+                <Box flexDirection="column" marginTop={1}>
                     {visibleRows.length === 0 ? (
                         <Text color={THEME.colors.dim}>(Empty diff)</Text>
                     ) : (
@@ -439,7 +439,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                     )}
                 </Box>
 
-                {/* Branded Footer */}
+                {/* Branded Footer - Always rendered directly under viewport */}
                 <MenuFooter items={detailFooterItems} />
             </Box>
         )
@@ -449,20 +449,20 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     // RENDER: LIST VIEW
     // ==========================================
     return (
-        <Box flexDirection="column" paddingX={THEME.padding.paddingX} paddingY={1}>
+        <Box flexDirection="column" paddingX={THEME.padding.paddingX}>
             {/* Diff Summary Count */}
-            <Box marginBottom={1}>
+            <Box>
                 <Text color={THEME.colors.text}>{formatDiffSummary(files.length)}</Text>
             </Box>
 
-            {/* Files List */}
-            <Box flexDirection="column" minHeight={maxVisibleRows}>
+            {/* Files List - Clean height fitting actual items without huge blank gap */}
+            <Box flexDirection="column" marginY={1}>
                 {isLoading ? (
                     <Text color={THEME.colors.dim}>Loading diffs...</Text>
                 ) : files.length === 0 ? (
                     <Text color={THEME.colors.dim}>No changes detected in working copy.</Text>
                 ) : (
-                    files.slice(0, maxVisibleRows).map((file, idx) => {
+                    files.slice(0, maxFileListCount).map((file, idx) => {
                         const isSelected = idx === safeFileIndex
                         return (
                             <Box key={file.path} flexDirection="row" gap={1}>
