@@ -12,6 +12,7 @@ export * from './components/menus/auth-menus'
 export * from './components/menus/ask-question-menu'
 export * from './components/command-menu'
 export * from './components/command-menu/use-command-menu'
+export * from './components/command-menu/commands'
 
 export { Spinner } from './components/spinner'
 export { InlineTip } from './components/inline-tip'
@@ -39,6 +40,8 @@ export * from './components/menus/settings-main-menu'
 export * from './components/menus/tool-permission-menu'
 export * from './components/menus/ollama-setup-menu'
 export * from './components/menus/usage-select-menu'
+export * from './components/menus/diff-view-menu'
+export * from './utils/diff'
 
 export * from './app'
 

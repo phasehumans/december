@@ -17,6 +17,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'changelog',
+        description: 'Open December changelog in your browser',
+        value: '/changelog',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'clear',
         description: 'Clear conversation history',
         value: '/clear',
@@ -66,6 +74,14 @@ export const COMMANDS: Command[] = [
             } else {
                 ctx.toast.show({ variant: 'error', message: 'Nothing to copy.' })
             }
+        },
+    },
+    {
+        name: 'diff',
+        description: 'View git diff and workspace changes',
+        value: '/diff',
+        action: (ctx) => {
+            // forwarded to chat screen
         },
     },
     {

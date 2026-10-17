@@ -135,3 +135,26 @@ describe('/ask command', () => {
         expect(askCmd?.description).toContain('Ask a question about the codebase')
     })
 })
+
+describe('/changelog and /docs commands', () => {
+    test('should define /changelog command forwarded to chat screen', () => {
+        const changelogCmd = COMMANDS.find((c) => c.name === 'changelog')
+        expect(changelogCmd).toBeDefined()
+        expect(changelogCmd?.value).toBe('/changelog')
+        expect(changelogCmd?.description).toContain('Open December changelog in your browser')
+    })
+
+    test('should define /docs command forwarded to chat screen', () => {
+        const docsCmd = COMMANDS.find((c) => c.name === 'docs')
+        expect(docsCmd).toBeDefined()
+        expect(docsCmd?.value).toBe('/docs')
+        expect(docsCmd?.description).toContain('Open December documentation in your browser')
+    })
+
+    test('should define /diff command forwarded to chat screen', () => {
+        const diffCmd = COMMANDS.find((c) => c.name === 'diff')
+        expect(diffCmd).toBeDefined()
+        expect(diffCmd?.value).toBe('/diff')
+        expect(diffCmd?.description).toContain('View git diff and workspace changes')
+    })
+})

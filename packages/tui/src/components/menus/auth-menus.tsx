@@ -3,6 +3,7 @@ import React from 'react'
 import { ByokKeyMenu } from './byok-key-menu'
 import { ByokProviderMenu } from './byok-provider-menu'
 import { ContextSelectMenu } from './context-select-menu'
+import { DiffViewMenu } from './diff-view-menu'
 import { GrillQuestionMenu } from './grill-question-menu'
 import { LogoutSelectMenu } from './logout-select-menu'
 import { MenuMenu } from './menu-menu'
@@ -58,6 +59,8 @@ export function AuthMenus(props: any) {
             return <SettingsMainMenu {...props} />
         case 'usage':
             return <UsageSelectMenu {...props} />
+        case 'diff_view':
+            return <DiffViewMenu {...props} />
         case 'tool_permission':
             return (
                 <ToolPermissionMenu

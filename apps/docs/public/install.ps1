@@ -19,13 +19,18 @@ $Grey  = "$ESC[38;2;161;161;170m"
 $Trunk = "$ESC[38;2;63;63;70m"
 $Reset = "$ESC[0m"
 
-function Log-Step($msg)    { Write-Host "$Blue✱$Reset  $White$msg$Reset" }
-function Log-Tree($msg)    { Write-Host "$Trunk│$Reset  $Grey$msg$Reset" }
-function Log-Item($k, $v)  { Write-Host "$Trunk│$Reset  $White$k:$Reset $Grey$v$Reset" }
-function Log-Success($msg) { Write-Host "$Trunk│$Reset  $Green✔$Reset  $White$msg$Reset" }
-function Log-Warn($msg)    { Write-Host "$Trunk│$Reset  $Yellow⚠$Reset  $White$msg$Reset" }
-function Log-Space         { Write-Host "$Trunk│$Reset" }
-function Log-Error($msg)   { Write-Host "$Blue✱$Reset  $Red$msg$Reset" }
+$CharAsterisk = [char]0x2731
+$CharPipe     = [char]0x2502
+$CharCheck    = [char]0x2714
+$CharWarn     = [char]0x26A0
+
+function Log-Step($msg)    { Write-Host "$Blue$CharAsterisk$Reset  ${White}$msg$Reset" }
+function Log-Tree($msg)    { Write-Host "$Trunk$CharPipe$Reset  ${Grey}$msg$Reset" }
+function Log-Item($k, $v)  { Write-Host "$Trunk$CharPipe$Reset  ${White}${k}:$Reset ${Grey}${v}$Reset" }
+function Log-Success($msg) { Write-Host "$Trunk$CharPipe$Reset  $Green$CharCheck$Reset  ${White}$msg$Reset" }
+function Log-Warn($msg)    { Write-Host "$Trunk$CharPipe$Reset  $Yellow$CharWarn$Reset  ${White}$msg$Reset" }
+function Log-Space         { Write-Host "$Trunk$CharPipe$Reset" }
+function Log-Error($msg)   { Write-Host "$Blue$CharAsterisk$Reset  ${Red}$msg$Reset" }
 
 function Download-WithRetry($url, $dest, $retries = 3) {
     if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
@@ -101,8 +106,8 @@ try {
         Log-Tree "Primary CDN and GitHub fallback downloads timed out or failed."
         Log-Space
         Log-Tree "Tip: You can install via package manager in seconds:"
-        Write-Host "$Trunk│$Reset    $White"npm install -g @trydecember/cli"$Reset"
-        Write-Host "$Trunk│$Reset    $White"bun add -g @trydecember/cli"$Reset"
+        Write-Host "$Trunk$CharPipe$Reset    ${White}npm install -g @trydecember/cli$Reset"
+        Write-Host "$Trunk$CharPipe$Reset    ${White}bun add -g @trydecember/cli$Reset"
         Log-Space
         exit 1
     }
@@ -137,7 +142,7 @@ try {
 
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     Move-Item -Path (Join-Path $TempDir $BinaryName) -Destination (Join-Path $InstallDir $BinaryName) -Force
-    Log-Success "installed binary to $White$InstallDir\$BinaryName$Reset"
+    Log-Success "installed binary to ${White}$InstallDir\$BinaryName$Reset"
 
     # Verify binary execution
     try {
@@ -166,7 +171,7 @@ try {
             # Intentionally swallowed: fallback when config cannot be rewritten
         }
     }
-    Log-Success "initialized config at $White$ConfigFile$Reset"
+    Log-Success "initialized config at ${White}$ConfigFile$Reset"
 
     # Add to User PATH if missing
     $UserPath = [Environment]::GetEnvironmentVariable("PATH", "User")
@@ -185,7 +190,7 @@ try {
     Log-Step "december successfully installed!"
     Log-Space
     Log-Tree "To get started:"
-    Write-Host "$Trunk│$Reset    $White"december"$Reset"
+    Write-Host "$Trunk$CharPipe$Reset    ${White}december$Reset"
 
     if ($NeedsRestart) {
         Log-Space
@@ -194,12 +199,13 @@ try {
 
     Log-Space
     Log-Tree "Quick commands:"
-    Write-Host "$Trunk│$Reset    $White"december"$Reset              start coding agent in current project"
-    Write-Host "$Trunk│$Reset    $White"december login"$Reset        connect december cloud and wallet credits"
-    Write-Host "$Trunk│$Reset    $White"december key"$Reset          configure byok api keys (anthropic, openai, etc.)"
-    Write-Host "$Trunk│$Reset    $White"december docs"$Reset         open documentation in browser"
+    Write-Host "$Trunk$CharPipe$Reset    ${White}december$Reset              start coding agent in current project"
+    Write-Host "$Trunk$CharPipe$Reset    ${White}december login$Reset        connect december cloud and wallet credits"
+    Write-Host "$Trunk$CharPipe$Reset    ${White}december key$Reset          configure byok api keys (anthropic, openai, etc.)"
+    Write-Host "$Trunk$CharPipe$Reset    ${White}december docs$Reset         open documentation in browser"
+    Write-Host "$Trunk$CharPipe$Reset    ${White}december changelog$Reset    open changelog in browser"
     Log-Space
-    Log-Tree "Docs: $Whitehttps://trydecember.com$Reset"
+    Log-Tree "Docs: ${White}https://trydecember.com$Reset"
     Log-Space
     Log-Step "ready"
     Write-Host ""

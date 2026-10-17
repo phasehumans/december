@@ -147,6 +147,12 @@ async function main() {
         process.exit(0)
     }
 
+    if (parsedArgs.command === 'changelog') {
+        const { handleChangelogCommand } = await import('./commands')
+        await handleChangelogCommand()
+        process.exit(0)
+    }
+
     if (parsedArgs.command === 'docs') {
         const section = parsedArgs.positionals[1]
         const { handleDocsCommand } = await import('./commands')

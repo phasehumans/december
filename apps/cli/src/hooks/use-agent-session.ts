@@ -401,6 +401,9 @@ export function useAgentSession({
         }
     }, [setTasksData, addToast])
 
+    // Explicitly documented ref per AGENTS.md React Hook guidelines
+    const generatePlanFromGrillRef = useRef<((answers: string[]) => Promise<void>) | null>(null)
+
     const generateGrillQuestions = useCallback(
         async (userPrompt: string) => {
             const trimmedPrompt = userPrompt.trim()
@@ -515,7 +518,7 @@ export function useAgentSession({
                     setActiveMessages([])
                     setGrillPrompt(trimmedPrompt)
                     setGrillMode(false)
-                    await generatePlanFromGrill([])
+                    await generatePlanFromGrillRef.current?.([])
                 }
             } catch (err: any) {
                 const errorContext = {
@@ -716,6 +719,7 @@ export function useAgentSession({
             setStaticMessages,
         ]
     )
+    generatePlanFromGrillRef.current = generatePlanFromGrill
 
     const generatePlanRefinement = useCallback(
         async (feedback: string) => {
@@ -1612,6 +1616,26 @@ ${decStatus}
             }
 
             const trimmedCmd = text.trim().toLowerCase()
+            if (trimmedCmd === '/changelog') {
+                const baseUrl = (process.env.WEB_URL || 'https://trydecember.com').replace(
+                    /\/$/,
+                    ''
+                )
+                const targetUrl = `${baseUrl}/docs/changelog/`
+
+                addToast('Opening changelog in your browser...', 'info')
+
+                try {
+                    const { openUrl } = await import('../utils/open')
+                    await openUrl(targetUrl)
+                    addToast('Opened changelog in browser.', 'success')
+                } catch {
+                    // Intentionally swallowed: fallback URL displayed in toast
+                    addToast(`Changelog: ${targetUrl}`, 'info')
+                }
+                return
+            }
+
             if (trimmedCmd === '/docs' || trimmedCmd.startsWith('/docs ')) {
                 const parts = text.trim().split(/\s+/)
                 const section = parts[1]
@@ -2057,6 +2081,11 @@ ${decStatus}
                 return
             }
 
+            if (text.trim() === '/diff' || text.trim().startsWith('/diff ')) {
+                setAuthMode('diff_view')
+                return
+            }
+
             if (text.trim() === '/tui' || text.trim().startsWith('/tui ')) {
                 const subArg = text.trim().slice('/tui'.length).trim().toLowerCase()
                 const currentIsInline = useCliStore.getState().isInline
@@ -2199,9 +2228,11 @@ ${decStatus}
                     // Core built-ins take priority unless explicitly prefixed with /skill:
                     const coreBuiltins = new Set([
                         'ask',
+                        'changelog',
                         'clear',
                         'context',
                         'copy',
+                        'diff',
                         'docs',
                         'exit',
                         'feedback',
@@ -2361,6 +2392,7 @@ ${decStatus}
             setSettingsSteeringMode,
             setSettingsThinkingLevel,
             setSettingsToolPermission,
+            setSettingsBrowserVisible,
             setShouldExit,
             setStaticMessages,
             setStaticKey,

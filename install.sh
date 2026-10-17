@@ -304,6 +304,7 @@ echo -e "${TRUNK}│${RESET}    ${WHITE}december${RESET}              start codi
 echo -e "${TRUNK}│${RESET}    ${WHITE}december login${RESET}        connect december cloud and wallet credits"
 echo -e "${TRUNK}│${RESET}    ${WHITE}december key${RESET}          configure byok api keys (anthropic, openai, etc.)"
 echo -e "${TRUNK}│${RESET}    ${WHITE}december docs${RESET}         open documentation in browser"
+echo -e "${TRUNK}│${RESET}    ${WHITE}december changelog${RESET}    open changelog in browser"
 log_space
 log_tree "Docs: ${WHITE}https://trydecember.com${RESET}"
 log_space

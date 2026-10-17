@@ -451,6 +451,8 @@ export const InputBar = React.memo(function InputBar({
                 '/copy',
                 '/handoff',
                 '/docs',
+                '/changelog',
+                '/diff',
             ]
 
             if (command.value === '/voice') {
@@ -556,6 +558,10 @@ export const InputBar = React.memo(function InputBar({
             handleCommand,
             onSubmit,
             handleContentChange,
+            handleStartVoice,
+            handleStopVoice,
+            isTranscribing,
+            isVoiceActive,
         ]
     )
 

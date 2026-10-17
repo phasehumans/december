@@ -72,6 +72,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'link',
             'key',
             'resume',
+            'changelog',
             'docs',
             'ask',
         ]
@@ -142,6 +143,7 @@ Usage:
   december switch [provider]        Switch active provider and restore remembered model
   december update                   Update December CLI to the latest version
   december doctor [--fix]           Inspect installations, health, and resolve PATH collisions
+  december changelog                Open changelog in your browser
   december docs [section]           Open documentation in your browser
 
 Options:

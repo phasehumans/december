@@ -69,5 +69,20 @@ describe('apps/docs astro configuration', () => {
         expect(installPs1Content).toContain('SHASUMS256.txt')
         expect(installPs1Content).toContain('Get-FileHash')
         expect(installPs1Content).toContain('curl.exe')
+
+        // Ensure install.ps1 uses pure ASCII to avoid encoding corruption in PowerShell 5.1
+        // eslint-disable-next-line no-control-regex
+        expect(/[^\x00-\x7F]/.test(installPs1Content)).toBe(false)
+
+        // Ensure root install.ps1 and public/install.ps1 are in sync
+        const rootInstallPs1Path = new URL('../../../install.ps1', import.meta.url).pathname
+        const rootInstallPs1Content = await Bun.file(rootInstallPs1Path).text()
+        expect(installPs1Content).toBe(rootInstallPs1Content)
+
+        // Verify _headers configures UTF-8 content-type for installer scripts
+        const headersPath = new URL('../public/_headers', import.meta.url).pathname
+        const headersContent = await Bun.file(headersPath).text()
+        expect(headersContent).toContain('/install.ps1')
+        expect(headersContent).toContain('Content-Type: text/plain; charset=utf-8')
     })
 })
