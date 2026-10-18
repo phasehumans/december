@@ -9,7 +9,7 @@ import { PROVIDER_MENU_ITEMS } from '../../src/components/menus/byok-provider-me
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
     it('ensures all BYOK providers have corresponding key URLs starting with https://', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(113)
+        expect(PROVIDER_MENU_ITEMS.length).toBe(112)
 
         for (const item of PROVIDER_MENU_ITEMS) {
             const url = PROVIDER_KEY_URLS[item.value]

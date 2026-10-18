@@ -36,7 +36,7 @@ describe('SwitchSelectMenu Component (Unit)', () => {
         )
 
         const frame = lastFrame() || ''
-        expect(frame).toContain('Select active provider:')
+        expect(frame).toContain('Switch Provider')
         expect(frame).toContain('Claude (Subscription)')
         expect(frame).toContain('(Active)')
         expect(frame).toContain('OpenAI')

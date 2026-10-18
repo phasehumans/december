@@ -32,7 +32,7 @@ describe('ModelSelectMenu Component (Unit)', () => {
         )
 
         const frame = lastFrame() || ''
-        expect(frame).toContain('Select Model:')
+        expect(frame).toContain('Models')
         expect(frame).toContain('GPT-5.6 Sol')
         expect(frame).toContain('GPT-5.6 Terra')
         expect(frame).toContain('GPT-5.4 Mini')

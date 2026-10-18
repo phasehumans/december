@@ -1,0 +1,54 @@
+name: Model Catalog Sync Canary
+
+on:
+    schedule:
+        # Run weekly on Monday at 00:00 UTC
+        - cron: '0 0 * * 1'
+    workflow_dispatch:
+
+jobs:
+    sync-models:
+        name: Check and Sync Live Models
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile
+
+            - name: Sync model catalog
+              run: bun run models:sync
+              env:
+                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+                  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+                  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+                  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+            - name: Check for model catalog changes
+              id: git-diff
+              run: |
+                  git diff --quiet packages/providers/src/model-catalog.json || echo "changed=true" >> "$GITHUB_OUTPUT"
+
+            - name: Create Pull Request if models updated
+              if: steps.git-diff.outputs.changed == 'true'
+              uses: peter-evans/create-pull-request@v6
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  commit-message: 'chore(models): auto-sync provider models and context windows'
+                  title: 'chore(models): auto-sync provider models and context windows'
+                  body: |
+                      automated weekly model catalog sync.
+
+                      updates context windows, display labels, and active models across cloud providers.
+                  branch: 'auto-sync-models'
+                  delete-branch: true

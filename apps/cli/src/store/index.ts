@@ -49,16 +49,6 @@ export interface CliState {
     setPendingDeviceAuthUrl: (url: string | null) => void
     openRouterModels: { label: string; value: string }[]
     setOpenRouterModels: (models: { label: string; value: string }[]) => void
-    ollamaStatus: {
-        running: boolean
-        models: string[]
-        compatibleModels: string[]
-        baseUrl?: string
-        error?: string
-    } | null
-    setOllamaStatus: (status: any) => void
-    ollamaModels: { label: string; value: string }[]
-    setOllamaModels: (models: { label: string; value: string }[]) => void
     dynamicModels: { label: string; value: string }[]
     setDynamicModels: (models: { label: string; value: string }[]) => void
 
@@ -246,10 +236,6 @@ export const useCliStore = create<CliState>((set) => ({
     setPendingDeviceAuthUrl: (pendingDeviceAuthUrl) => set({ pendingDeviceAuthUrl }),
     openRouterModels: [],
     setOpenRouterModels: (openRouterModels) => set({ openRouterModels }),
-    ollamaStatus: null,
-    setOllamaStatus: (ollamaStatus) => set({ ollamaStatus }),
-    ollamaModels: [],
-    setOllamaModels: (ollamaModels) => set({ ollamaModels }),
     dynamicModels: [],
     setDynamicModels: (dynamicModels) => set({ dynamicModels }),
 

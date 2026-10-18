@@ -58,7 +58,6 @@ export interface ProviderConfig {
         | 'baseten'
         | 'basetenco'
         | 'baseten-co'
-        | '302ai'
         | 'abacus'
         | 'above'
         | 'ai21'
@@ -176,6 +175,7 @@ export interface DecemberConfig {
     lastUsedModels?: Record<string, string>
     providers: Record<string, string>
     subscriptions?: Record<string, SubscriptionTokenBundle>
+    unlinkedSubscriptions?: string[]
     decemberToken?: string
     email?: string
     nonWorkspaceAccess?: boolean
@@ -551,7 +551,9 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
         const { detectAllSubscriptions, resolveSubscriptionToken } =
             await import('./auth/subscriptions/subscription-manager')
         const detected = await detectAllSubscriptions()
-        const firstKey = Object.keys(detected)[0]
+        const unlinked = config.unlinkedSubscriptions || []
+        const availableKeys = Object.keys(detected).filter((k) => !unlinked.includes(k))
+        const firstKey = availableKeys[0]
         if (firstKey && detected[firstKey]) {
             const resolvedBundle = await resolveSubscriptionToken(firstKey, detected[firstKey])
             const targetProvider = resolvedBundle.provider || firstKey
@@ -693,8 +695,6 @@ export function formatProviderName(provider: string): string {
         case 'basetenco':
         case 'baseten-co':
             return 'Baseten'
-        case '302ai':
-            return '302.AI'
         case 'abacus':
             return 'Abacus'
         case 'above':

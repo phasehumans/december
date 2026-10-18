@@ -32,7 +32,6 @@ export type AuthMode =
     | 'settings_main'
     | 'tasks_mode'
     | 'usage'
-    | 'ollama_setup'
     | 'diff_view'
 
 export interface GrillQuestion {

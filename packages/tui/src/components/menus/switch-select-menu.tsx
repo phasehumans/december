@@ -135,7 +135,9 @@ export function SwitchSelectMenu(props: SwitchSelectMenuProps) {
     return (
         <Box flexDirection="column">
             <Box marginBottom={1}>
-                <Text color={THEME.colors.text}>Select active provider:</Text>
+                <Text bold color={THEME.colors.text}>
+                    Switch Provider
+                </Text>
             </Box>
 
             {switchItems.map((item, idx) => {

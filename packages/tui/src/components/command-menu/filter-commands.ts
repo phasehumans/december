@@ -19,21 +19,40 @@ export function formatSingleLineDescription(desc: string, maxLen: number = 70): 
 }
 
 export function getAllAvailableCommands(workspaceDir: string = process.cwd()): Command[] {
-    let skillItems: Command[] = []
+    const skillCommands: Command[] = []
     try {
         const engine = new SkillDiscoveryEngine({ workspaceDir })
         const skills = engine.discoverAllSkills()
-        skillItems = skills.map((s) => ({
-            name: `skill:${s.name}`,
-            description: formatSingleLineDescription(s.metadata.description),
-            value: `/skill:${s.name}`,
-        }))
+        for (const s of skills) {
+            const desc = formatSingleLineDescription(s.metadata.description)
+            skillCommands.push({
+                name: s.name,
+                description: desc,
+                value: `/${s.name}`,
+            })
+            skillCommands.push({
+                name: `skill:${s.name}`,
+                description: desc,
+                value: `/skill:${s.name}`,
+            })
+        }
     } catch {
         // Intentionally swallowed: fallback when skills cannot be discovered
     }
 
-    // Core built-in commands (e.g. /handoff) always take precedence and are never overwritten
-    return [...COMMANDS, ...skillItems]
+    const skillMap = new Map(skillCommands.map((c) => [c.name.toLowerCase(), c]))
+    const coreCommands = COMMANDS.map((c) => {
+        const nameLower = c.name.toLowerCase()
+        if (skillMap.has(nameLower)) {
+            return skillMap.get(nameLower)!
+        }
+        return c
+    })
+
+    const coreNames = new Set(coreCommands.map((c) => c.name.toLowerCase()))
+    const additionalSkills = skillCommands.filter((s) => !coreNames.has(s.name.toLowerCase()))
+
+    return [...coreCommands, ...additionalSkills]
 }
 
 export function getFilteredCommands(

@@ -27,8 +27,6 @@ export function inferProviderEndpoint(provider?: string, baseURL?: string): stri
         case 'gemini':
         case 'google':
             return 'https://generativelanguage.googleapis.com/v1beta'
-        case 'ollama':
-            return 'http://localhost:11434/v1'
         case 'openrouter':
             return 'https://openrouter.ai/api/v1/chat/completions'
         case 'deepseek':
@@ -1562,7 +1560,7 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
         return {
             message: 'No active GitHub Copilot subscription found.',
             cause: cause,
-            hint: 'Please subscribe at https://github.com/github-copilot/signup, ensure your browser is logged into the correct GitHub account, or use BYOK / Ollama instead.',
+            hint: 'Please subscribe at https://github.com/github-copilot/signup, ensure your browser is logged into the correct GitHub account, or use BYOK instead.',
         }
     }
 
@@ -1658,11 +1656,6 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
               : undefined
 
         const endpoint = inferProviderEndpoint(rawProvider, context?.baseURL)
-        const isLocalOllama =
-            rawProvider === 'ollama' ||
-            context?.baseURL?.includes('11434') ||
-            combined.includes('11434') ||
-            combined.includes('ollama')
 
         const modelLabel = context?.model
             ? isDecember && context.model === 'december-auto'
@@ -1673,8 +1666,6 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
         let headline: string
         if (isDecember) {
             headline = `Unable to connect to December Cloud (${modelLabel || 'Humans R1'}).`
-        } else if (isLocalOllama) {
-            headline = 'Unable to connect to Ollama (Connection refused).'
         } else if (combined.includes('enotfound')) {
             const target = providerDisplayName || 'destination host'
             headline = modelLabel

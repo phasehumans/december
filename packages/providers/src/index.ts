@@ -1,7 +1,12 @@
 export * from './types.ts'
 export { registerProvider, getProvider, getAllProviders } from './registry.ts'
 
-export { MODEL_CONTEXT_WINDOWS, getModelContextWindow, supportsModelThinking } from './models.ts'
+export {
+    MODEL_CATALOG,
+    MODEL_CONTEXT_WINDOWS,
+    getModelContextWindow,
+    supportsModelThinking,
+} from './models.ts'
 export * from './providers/openai.ts'
 export * from './providers/anthropic.ts'
 export * from './providers/gemini.ts'
@@ -44,7 +49,6 @@ export * from './providers/aki.ts'
 export * from './providers/ambient.ts'
 export * from './providers/auriko.ts'
 export * from './providers/baseten.ts'
-export * from './providers/302ai.ts'
 export * from './providers/abacus.ts'
 export * from './providers/above.ts'
 export * from './providers/ai21.ts'

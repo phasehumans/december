@@ -205,4 +205,139 @@ describe('BYOK Provider Selection vs Subscription Selection (Unit)', () => {
             globalThis.fetch = originalFetch
         }
     })
+
+    it('prompts for byok_key when forceNewKey is true even if provider already has configured key', async () => {
+        const { loadConfig, saveConfig } = await import('../src/config')
+        const initialConfig = await loadConfig()
+        initialConfig.providers = { anthropic: 'sk-ant-existing-key' }
+        await saveConfig(initialConfig)
+
+        const handlers = useAuthHandlers(null)
+        await handlers.handleProviderSelect({
+            label: 'Anthropic',
+            value: 'anthropic',
+            forceNewKey: true,
+        })
+
+        expect(useCliStore.getState().authMode).toBe('byok_key')
+        expect(useCliStore.getState().selectedProvider).toBe('anthropic')
+    })
+
+    it('unlinks subscription on handleDeleteProvider and excludes it from auto-detection', async () => {
+        const { loadConfig, saveConfig, getProviderConfig } = await import('../src/config')
+        const configDir = path.join(testConfigDir, '.claude')
+        await fs.mkdir(configDir, { recursive: true })
+        await fs.writeFile(
+            path.join(configDir, '.credentials.json'),
+            JSON.stringify({
+                claudeAiOauth: {
+                    accessToken: 'sk-ant-test-token',
+                    subscriptionType: 'claude_pro',
+                },
+            }),
+            'utf-8'
+        )
+
+        const initialConfig = await loadConfig()
+        initialConfig.subscriptions = {
+            claude: {
+                provider: 'claude',
+                accessToken: 'sk-ant-test-token',
+            },
+        }
+        initialConfig.activeProvider = 'claude'
+        await saveConfig(initialConfig)
+
+        const handlers = useAuthHandlers(null)
+        await handlers.handleDeleteProvider('subscription:claude')
+
+        const updatedConfig = await loadConfig()
+        expect(updatedConfig.subscriptions?.claude).toBeUndefined()
+        expect(updatedConfig.unlinkedSubscriptions).toContain('claude')
+
+        // getProviderConfig should not auto-detect claude when unlinked
+        const detectedProvider = await getProviderConfig()
+        expect(detectedProvider).toBeUndefined()
+    })
+
+    it('unlinks gemini subscription and all aliases on handleDeleteProvider and skips auto-detection in verifyAndResolveSubscription', async () => {
+        const { loadConfig, saveConfig } = await import('../src/config')
+        const { verifyAndResolveSubscription } =
+            await import('../src/auth/subscriptions/subscription-manager')
+
+        // Mock local gemini credentials on disk
+        const antigravityDir = path.join(testConfigDir, '.gemini', 'antigravity-cli')
+        await fs.mkdir(antigravityDir, { recursive: true })
+        await fs.writeFile(
+            path.join(antigravityDir, 'auth.json'),
+            JSON.stringify({
+                token: {
+                    access_token: 'ya29.test-local-token',
+                    refresh_token: '1//test-refresh-token',
+                },
+            }),
+            'utf-8'
+        )
+
+        const initialConfig = await loadConfig()
+        initialConfig.subscriptions = {
+            gemini: {
+                provider: 'gemini',
+                accessToken: 'ya29.test-local-token',
+            },
+        }
+        initialConfig.activeProvider = 'gemini'
+        await saveConfig(initialConfig)
+
+        const handlers = useAuthHandlers(null)
+        await handlers.handleDeleteProvider('subscription:gemini')
+
+        const updatedConfig = await loadConfig()
+        expect(updatedConfig.subscriptions?.gemini).toBeUndefined()
+        expect(updatedConfig.unlinkedSubscriptions).toContain('gemini')
+        expect(updatedConfig.unlinkedSubscriptions).toContain('google')
+        expect(updatedConfig.unlinkedSubscriptions).toContain('antigravity')
+
+        // verifyAndResolveSubscription must return null (not silently re-link local token)
+        const verified = await verifyAndResolveSubscription('gemini')
+        expect(verified).toBeNull()
+    })
+
+    it('geminiAdapter.loginOAuth launches OAuth flow with select_account consent instead of returning local detected token', async () => {
+        const { geminiAdapter } = await import('../src/auth/subscriptions/adapters/gemini')
+
+        // Setup local gemini token that would previously have short-circuited
+        const antigravityDir = path.join(testConfigDir, '.gemini', 'antigravity-cli')
+        await fs.mkdir(antigravityDir, { recursive: true })
+        await fs.writeFile(
+            path.join(antigravityDir, 'auth.json'),
+            JSON.stringify({
+                token: {
+                    access_token: 'ya29.test-local-token',
+                },
+            }),
+            'utf-8'
+        )
+
+        let capturedCode = ''
+        let capturedUrl = ''
+
+        // Start loginOAuth and catch via onCode callback
+        const loginPromise = geminiAdapter.loginOAuth!((code, uri) => {
+            capturedCode = code
+            capturedUrl = uri
+        })
+
+        // Give it a brief moment to generate the URL and trigger onCode
+        await new Promise((r) => setTimeout(r, 100))
+
+        expect(capturedCode).toBe('GOOGLE-AUTH')
+        expect(capturedUrl).toContain('accounts.google.com/o/oauth2/v2/auth')
+        expect(capturedUrl).toContain('select_account')
+
+        // Clean up: loginPromise will time out or reject when done, so swallow error
+        loginPromise.catch(() => {
+            // Intentionally swallowed: test cleanup for hanging oauth server
+        })
+    })
 })

@@ -1,6 +1,25 @@
-import type { LLMProvider, Message, ProviderTool, ProviderStreamChunk } from './types.ts'
+import catalogData from './model-catalog.json' with { type: 'json' }
 
-export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
+import type {
+    LLMProvider,
+    Message,
+    ProviderTool,
+    ProviderStreamChunk,
+    ModelCatalog,
+} from './types.ts'
+
+export const MODEL_CATALOG: ModelCatalog = catalogData as ModelCatalog
+
+const catalogWindows: Record<string, number> = {}
+for (const p of Object.values(MODEL_CATALOG.providers)) {
+    for (const m of p.models) {
+        if (m.id && typeof m.contextWindow === 'number') {
+            catalogWindows[m.id] = m.contextWindow
+        }
+    }
+}
+
+const STATIC_MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'december-auto': 1000000,
     'humans-r1': 1000000,
     'gemini-3.8-flash': 1000000,
@@ -334,16 +353,6 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'baseten/openai/gpt-oss-120b': 128072,
 
     // Models.dev BYOK Providers
-    '302ai/claude-sonnet-4-6': 1000000,
-    'claude-sonnet-4-6-thinking': 1000000,
-    '302ai/claude-sonnet-4-6-thinking': 1000000,
-    '302ai/claude-opus-5': 1000000,
-    '302ai/claude-fable-5-1': 1000000,
-    'claude-opus-4-7-thinking': 1000000,
-    '302ai/claude-opus-4-7-thinking': 1000000,
-    '302ai/claude-opus-4-7': 1000000,
-    '302ai/claude-fable-5': 1000000,
-    '302ai/claude-opus-4-8': 1000000,
     'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8': 1048576,
     'abacus/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8': 1048576,
     'abacus/claude-sonnet-4-6': 1000000,
@@ -1364,15 +1373,17 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
     'groq/compound-mini': 131072,
 }
 
+export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
+    ...catalogWindows,
+    ...STATIC_MODEL_CONTEXT_WINDOWS,
+}
+
 export function getModelContextWindow(value: string): number {
     if (!value) return 100000
     if (MODEL_CONTEXT_WINDOWS[value]) {
         return MODEL_CONTEXT_WINDOWS[value]
     }
-    let lower = value.toLowerCase()
-    if (lower.startsWith('ollama/')) {
-        lower = lower.slice('ollama/'.length)
-    }
+    const lower = value.toLowerCase()
     if (lower.includes('december-auto') || lower.includes('humans-r1')) return 1000000
     if (lower.includes('gemini')) return 1000000
     if (
@@ -1509,9 +1520,6 @@ export function getModelContextWindow(value: string): number {
 export function supportsModelThinking(model?: string): boolean {
     if (!model) return false
     let lower = model.toLowerCase()
-    if (lower.startsWith('ollama/')) {
-        lower = lower.slice('ollama/'.length)
-    }
     if (lower.startsWith('openai/')) {
         lower = lower.slice('openai/'.length)
     }

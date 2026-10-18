@@ -21,7 +21,6 @@ import {
     AbacusProvider,
     FastrouterProvider,
     VolcengineProvider,
-    ThreeZeroTwoAIProvider,
 } from '../../src/index'
 
 describe('Extended BYOK Providers (Unit)', () => {
@@ -51,7 +50,6 @@ describe('Extended BYOK Providers (Unit)', () => {
         expect(new AbacusProvider('dummy-key').id).toBe('abacus')
         expect(new FastrouterProvider('dummy-key').id).toBe('fastrouter')
         expect(new VolcengineProvider('dummy-key').id).toBe('volcengine')
-        expect(new ThreeZeroTwoAIProvider('dummy-key').id).toBe('302ai')
     })
 
     test('returns accurate context windows for extended models', () => {

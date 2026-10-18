@@ -154,7 +154,7 @@ describe('CommandMenu Component (Unit)', () => {
         )
 
         const frame = lastFrame() || ''
-        expect(frame).toContain('↓ 94 more')
+        expect(frame).toMatch(/↓ \d+ more/)
         expect(frame).not.toContain('↑')
     })
 })

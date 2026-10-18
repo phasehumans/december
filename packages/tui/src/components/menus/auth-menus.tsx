@@ -7,7 +7,6 @@ import { DiffViewMenu } from './diff-view-menu'
 import { GrillQuestionMenu } from './grill-question-menu'
 import { MenuMenu } from './menu-menu'
 import { ModelSelectMenu } from './model-select-menu'
-import { OllamaSetupMenu } from './ollama-setup-menu'
 import { PlanApproveMenu } from './plan-approve-menu'
 import { SessionSelectMenu } from './session-select-menu'
 import { SettingsMainMenu } from './settings-main-menu'
@@ -27,16 +26,6 @@ export function AuthMenus(props: any) {
             return <ByokProviderMenu {...props} />
         case 'byok_key':
             return <ByokKeyMenu {...props} />
-        case 'ollama_setup':
-            return (
-                <OllamaSetupMenu
-                    provider={props.selectedProvider || props.ollamaStatus?.provider || 'ollama'}
-                    status={props.ollamaStatus}
-                    onRetry={props.handleOllamaRetry}
-                    onCancel={props.handleOllamaCancel}
-                    onProceed={props.handleOllamaProceed}
-                />
-            )
         case 'model_select':
             return <ModelSelectMenu {...props} />
         case 'context_select':

@@ -351,11 +351,6 @@ export const geminiAdapter: SubscriptionAdapter = {
     async loginOAuth(
         onCode?: (code: string, uri: string) => void
     ): Promise<SubscriptionTokenBundle> {
-        const detected = await this.detectLocal()
-        if (detected) {
-            return detected
-        }
-
         const { openUrl } = await import('../../../utils/open')
         const { startLocalOAuthServer, generatePKCE } = await import('../oauth-server')
 
@@ -407,7 +402,7 @@ export const geminiAdapter: SubscriptionAdapter = {
                 codeChallenge
             )}&code_challenge_method=S256&state=${encodeURIComponent(
                 state
-            )}&access_type=offline&prompt=consent`
+            )}&access_type=offline&prompt=${encodeURIComponent('select_account consent')}`
 
             if (onCode) {
                 onCode('GOOGLE-AUTH', authUrl)

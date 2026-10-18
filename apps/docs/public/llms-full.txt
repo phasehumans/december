@@ -1,6 +1,6 @@
 # December Documentation
 
-December is a (so much) better coding agent. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
+December is a (so much) better coding agent. It helps you build faster by writing code, fixing bugs, and running commands directly in your terminal or alongside your favorite IDE.
 
 **Also available on the web at [trydecember.com](https://trydecember.com)**
 
@@ -110,7 +110,6 @@ Bring your own API keys for 100+ providers:
 - **Google**: Gemini 3.8 Flash, Gemini 3.8 Pro.
 - **DeepSeek**: DeepSeek-V3, DeepSeek-R1.
 - **Groq**: Fast open-weights inference (Llama 3.3 70B, Qwen 2.5 Coder).
-- **Ollama**: Run offline on `localhost:11434`.
 
 ---
 
@@ -137,7 +136,7 @@ December was built by software engineer **Chaitanya Sonawane** (also known as Ch
 - Email: chetan@trydecember.com
 
 ### What is December?
-December is a coding agent that lives in your terminal. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
+December is a (so much) better coding agent that lives in your terminal. It helps you build faster by writing code, fixing bugs, and running commands directly in your terminal or alongside your favorite IDE.
 
 ### How does December compare to Cursor or Devin?
 Unlike Cursor (which is a VS Code fork), December runs directly in your existing terminal and works with any editor (Neovim, VS Code, JetBrains). Unlike Devin, December can run 100% locally with zero latency, handing off to the cloud only when you want background runs or shareable previews.

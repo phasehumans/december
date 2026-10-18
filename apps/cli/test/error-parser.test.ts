@@ -555,14 +555,6 @@ describe('error-parser', () => {
             expect(parsed.hint).toBeUndefined()
         })
 
-        test('extracts Ollama connection refused error with local daemon details without hint', () => {
-            const ollamaErr = new Error('connect ECONNREFUSED 127.0.0.1:11434')
-            const parsed = parseError(ollamaErr, { provider: 'ollama' })
-            expect(parsed.message).toContain('Unable to connect to Ollama (Connection refused).')
-            expect(parsed.message).toContain('Endpoint: http://localhost:11434/v1')
-            expect(parsed.hint).toBeUndefined()
-        })
-
         test('extracts December Cloud connection error with Humans R1 and CLI proxy endpoint without hint', () => {
             const fetchErr = new Error('fetch failed')
             ;(fetchErr as any).cause = {

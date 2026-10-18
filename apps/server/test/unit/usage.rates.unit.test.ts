@@ -74,15 +74,7 @@ describe('Usage Rates & Cost Calculation - Unit Tests', () => {
             expect(mixtralRate.outputRate).toBe(0.24)
         })
 
-        it('resolves zero cost for local and free models', () => {
-            const ollamaRate = resolveModelRate('ollama/qwen2.5')
-            expect(ollamaRate.inputRate).toBe(0)
-            expect(ollamaRate.outputRate).toBe(0)
-
-            const localRate = resolveModelRate('local/llama3')
-            expect(localRate.inputRate).toBe(0)
-            expect(localRate.outputRate).toBe(0)
-
+        it('resolves zero cost for free models', () => {
             const freeRate = resolveModelRate('openai/gpt-oss-20b:free')
             expect(freeRate.inputRate).toBe(0)
             expect(freeRate.outputRate).toBe(0)
@@ -258,9 +250,9 @@ describe('Usage Rates & Cost Calculation - Unit Tests', () => {
             }
         })
 
-        it('returns 0 cost for local models regardless of token volume', () => {
+        it('returns 0 cost for free models regardless of token volume', () => {
             const cost = usageService.calculateGenerationCost({
-                modelName: 'ollama/llama3.3',
+                modelName: 'openai/gpt-oss-20b:free',
                 inputTokens: 50000,
                 outputTokens: 25000,
             })

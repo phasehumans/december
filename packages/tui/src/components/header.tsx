@@ -144,8 +144,6 @@ export function formatBillingLabel(
         brand = 'Mistral'
     } else if (p === 'openrouter') {
         brand = 'OpenRouter'
-    } else if (p === 'ollama') {
-        brand = 'Ollama'
     } else if (p) {
         brand = p.charAt(0).toUpperCase() + p.slice(1)
     } else if (
@@ -172,7 +170,7 @@ export function formatBillingLabel(
     }
 
     if (authMethod === 'byok' || authMethod === 'env') {
-        return brand === 'Ollama' ? 'Ollama Local' : `${brand} API`
+        return `${brand} API`
     }
 
     return brand ? `${brand} API` : 'API'

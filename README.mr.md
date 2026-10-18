@@ -6,7 +6,7 @@
   <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a> | <b>मराठी</b>
 </p>
 
-December हा एक (so much) better कोडिंग एजंट आहे. तो तुमचा कोडबेस समजून घेतो आणि कोड लिहून, बग्स दुरुस्त करून आणि कमांड्स चालवून तुम्हाला जलद काम करण्यास मदत करतो. याचा वापर थेट तुमच्या टर्मिनलमध्ये किंवा तुमच्या आवडत्या IDE सोबत करा.
+December हा एक (so much) better कोडिंग एजंट आहे. तो कोड लिहून, बग्स दुरुस्त करून आणि कमांड्स चालवून तुम्हाला जलद काम करण्यास मदत करतो. याचा वापर थेट तुमच्या टर्मिनलमध्ये किंवा तुमच्या आवडत्या IDE सोबत करा.
 
 **वेबवर देखील उपलब्ध: <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 

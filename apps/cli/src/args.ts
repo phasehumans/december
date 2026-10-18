@@ -75,6 +75,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'changelog',
             'docs',
             'ask',
+            'skill',
+            'skills',
         ]
         let command: string | undefined
         let prompt: string | undefined

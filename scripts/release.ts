@@ -14,6 +14,10 @@ if (!version) {
 
 console.log(`Releasing v${version}...`)
 
+// Pre-flight: verify and sync model provider catalog
+console.log('Syncing model provider catalog with live endpoints...')
+await $`bun run models:sync`
+
 const glob = new Bun.Glob('**/package.json')
 for await (const file of glob.scan('.')) {
     if (file.includes('node_modules')) continue

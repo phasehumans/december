@@ -1,3 +1,7 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
 import pkg from '../package.json' with { type: 'json' }
 
 import {
@@ -803,5 +807,181 @@ export async function handleDocsCommand(options?: { section?: string }): Promise
         await openUrl(targetUrl)
     } catch {
         // Intentionally swallowed: fallback URL is printed above for headless environments
+    }
+}
+
+export async function handleSkillCommand(options?: {
+    action?: string
+    target?: string
+    isGlobal?: boolean
+}): Promise<void> {
+    const { SkillDiscoveryEngine } = await import('@december/shared')
+    const action = (options?.action || 'list').toLowerCase().trim()
+    const target = options?.target?.trim()
+    const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir()
+
+    switch (action) {
+        case 'list': {
+            const engine = new SkillDiscoveryEngine({ workspaceDir: process.cwd(), homeDir })
+            const skills = engine.discoverAllSkills()
+
+            console.log(`\n\x1b[1mDiscovered Skills (${skills.length}):\x1b[0m\n`)
+            if (skills.length === 0) {
+                console.log(
+                    'No skills discovered. Install skills using "december skill add <repo>".\n'
+                )
+                return
+            }
+
+            for (const s of skills) {
+                const originLabel = `[\x1b[38;2;135;178;244m${s.origin}\x1b[0m]`
+                const nameLabel = `\x1b[1m/${s.name}\x1b[0m`
+                const rawDesc = s.metadata.description || ''
+                const desc = rawDesc ? ` - ${rawDesc.replace(/\s+/g, ' ').slice(0, 75)}...` : ''
+                console.log(`  ${originLabel} ${nameLabel}${desc}`)
+            }
+            console.log(
+                '\nUse /<skill-name> in the December TUI or "december skill info <name>" for details.\n'
+            )
+            return
+        }
+
+        case 'info': {
+            if (!target) {
+                console.error(
+                    '\x1b[31mError:\x1b[0m Please specify a skill name: december skill info <name>\n'
+                )
+                process.exitCode = 1
+                return
+            }
+            const engine = new SkillDiscoveryEngine({ workspaceDir: process.cwd(), homeDir })
+            const skills = engine.discoverAllSkills()
+            const found = skills.find((s) => s.name.toLowerCase() === target.toLowerCase())
+            if (!found) {
+                console.error(`\x1b[31mError:\x1b[0m Skill "${target}" not found.\n`)
+                process.exitCode = 1
+                return
+            }
+
+            console.log(`\n\x1b[1mSkill: /${found.name}\x1b[0m`)
+            console.log(`Origin: ${found.origin}`)
+            console.log(`Path: ${found.directoryPath}`)
+            if (found.metadata.argumentHint) {
+                console.log(`Arguments: ${found.metadata.argumentHint}`)
+            }
+            console.log(`\nDescription:\n${found.metadata.description}\n`)
+            return
+        }
+
+        case 'add': {
+            if (!target) {
+                console.error(
+                    '\x1b[31mError:\x1b[0m Please specify a repository: december skill add <repo-or-url>\n'
+                )
+                console.error('Examples:')
+                console.error('  december skill add phasehumans/skills')
+                console.error('  december skill add mattpocock/skills\n')
+                process.exitCode = 1
+                return
+            }
+
+            const targetDir = options?.isGlobal
+                ? path.join(homeDir, '.december', 'skills')
+                : path.join(process.cwd(), '.december', 'skills')
+
+            if (!fs.existsSync(targetDir)) {
+                fs.mkdirSync(targetDir, { recursive: true })
+            }
+
+            let repoUrl = target
+            let folderName = target.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()
+            if (
+                !target.startsWith('http://') &&
+                !target.startsWith('https://') &&
+                !target.startsWith('git@')
+            ) {
+                repoUrl = `https://github.com/${target}.git`
+                const parts = target.split('/')
+                folderName = (parts[parts.length - 1] || target).replace(/\.git$/, '')
+            }
+
+            const destPath = path.join(targetDir, folderName)
+            if (fs.existsSync(destPath)) {
+                console.log(
+                    `Skill package "${folderName}" already exists at ${destPath}. Updating...`
+                )
+                try {
+                    const { execSync } = await import('node:child_process')
+                    execSync('git pull', { cwd: destPath, stdio: 'inherit' })
+                    console.log(`\x1b[32mSuccessfully updated skills in ${destPath}\x1b[0m\n`)
+                } catch (err: any) {
+                    console.error(`Failed to update skill: ${err.message}`)
+                    process.exitCode = 1
+                }
+                return
+            }
+
+            console.log(`Downloading skills from ${repoUrl} into ${destPath}...`)
+            try {
+                const { execSync } = await import('node:child_process')
+                execSync(`git clone --depth 1 ${repoUrl} "${destPath}"`, { stdio: 'inherit' })
+                console.log(`\n\x1b[32mSuccessfully added skills from ${target}!\x1b[0m`)
+                console.log(`Installed to: ${destPath}\n`)
+            } catch (err: any) {
+                console.error(`Failed to add skill: ${err.message}`)
+                process.exitCode = 1
+            }
+            return
+        }
+
+        case 'remove': {
+            if (!target) {
+                console.error(
+                    '\x1b[31mError:\x1b[0m Please specify a skill name to remove: december skill remove <name>\n'
+                )
+                process.exitCode = 1
+                return
+            }
+
+            const localPath = path.join(process.cwd(), '.december', 'skills', target)
+            const globalPath = path.join(homeDir, '.december', 'skills', target)
+
+            let removed = false
+            if (fs.existsSync(localPath)) {
+                fs.rmSync(localPath, { recursive: true, force: true })
+                console.log(`Removed local skill: ${localPath}`)
+                removed = true
+            }
+            if (fs.existsSync(globalPath)) {
+                fs.rmSync(globalPath, { recursive: true, force: true })
+                console.log(`Removed global skill: ${globalPath}`)
+                removed = true
+            }
+
+            if (!removed) {
+                console.error(
+                    `Skill "${target}" was not found in local or global .december/skills.\n`
+                )
+                process.exitCode = 1
+            } else {
+                console.log(`\x1b[32mSkill "${target}" removed successfully.\x1b[0m\n`)
+            }
+            return
+        }
+
+        default: {
+            console.log('\nUsage: december skill [list|info|add|remove] [options]')
+            console.log('\nCommands:')
+            console.log('  list             List all discovered skills')
+            console.log('  info <name>      Display skill metadata and runbook')
+            console.log(
+                '  add <repo>       Add skills from GitHub (e.g. phasehumans/skills or mattpocock/skills)'
+            )
+            console.log('  remove <name>    Remove an installed skill package')
+            console.log('\nOptions:')
+            console.log(
+                '  --global, -g     Install or operate on global user skills (~/.december/skills)\n'
+            )
+        }
     }
 }

@@ -12,7 +12,7 @@ describe('Provider Token & Model Context Parsers (Unit)', () => {
     })
 
     it('infers token context from model substring heuristics', () => {
-        expect(getModelContextWindow('ollama/llama-3.3-70b')).toBe(128_000)
+        expect(getModelContextWindow('groq/llama-3.3-70b')).toBe(128_000)
         expect(getModelContextWindow('openrouter/anthropic/claude-3.5-sonnet')).toBe(200_000)
         expect(getModelContextWindow('google/gemini-2.5-pro')).toBe(1_000_000)
         expect(getModelContextWindow('my-custom-model-128k')).toBe(131_072)

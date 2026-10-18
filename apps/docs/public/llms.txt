@@ -1,6 +1,6 @@
 # December
 
-> December is a (so much) better coding agent. It understands your codebase and helps you build faster by writing code, fixing bugs, and running commands. Use it directly in your terminal or alongside your favorite IDE.
+> December is a (so much) better coding agent. It helps you build faster by writing code, fixing bugs, and running commands directly in your terminal or alongside your favorite IDE.
 
 **Also available on the web at [trydecember.com](https://trydecember.com)**
 
@@ -36,7 +36,7 @@ npm install -g @trydecember/cli
 - **Loop**: Inspect files -> plan edits -> edit files -> run tests -> save checkpoint.
 - **Git Checkpoints**: Commits changes to a shadow branch before editing so you can undo anytime.
 - **MicroVMs**: Cloud sessions run in isolated Linux containers with port forwarding for previews.
-- **Models (BYOK)**: Supports 100+ providers: Anthropic (Claude Fable), OpenAI (GPT 5 series, GPT-6 Astra), Google (Gemini 3.8 Flash), DeepSeek, Groq, and Ollama.
+- **Models (BYOK)**: Supports 100+ providers: Anthropic (Claude Fable), OpenAI (GPT 5 series, GPT-6 Astra), Google (Gemini 3.8 Flash), DeepSeek, and Groq.
 
 ## Feedback & Bugs
 

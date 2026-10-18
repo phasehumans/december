@@ -189,6 +189,23 @@ export async function verifyAndResolveSubscription(
 
     // 2. If not in config (or invalid in config), attempt auto-detection from local files / env
     if (!bundle) {
+        if (config.unlinkedSubscriptions?.length) {
+            const unlinked = config.unlinkedSubscriptions.map((p) => p.toLowerCase())
+            const isUnlinked =
+                unlinked.includes(adapter.provider.toLowerCase()) ||
+                unlinked.includes(provider.toLowerCase()) ||
+                (adapter.provider === 'claude' && unlinked.includes('anthropic')) ||
+                (adapter.provider === 'codex' &&
+                    (unlinked.includes('openai') || unlinked.includes('chatgpt'))) ||
+                (adapter.provider === 'gemini' &&
+                    (unlinked.includes('google') || unlinked.includes('antigravity'))) ||
+                (adapter.provider === 'copilot' && unlinked.includes('github'))
+
+            if (isUnlinked) {
+                return null
+            }
+        }
+
         bundle = await adapter.detectLocal()
     }
 

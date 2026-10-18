@@ -498,9 +498,6 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
         inputRate: 0.1,
         outputRate: 0.5,
     },
-
-    // Ollama (Local)
-    ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
 
 export const PROVIDER_BILLING_LINKS: Record<string, string> = {
@@ -641,7 +638,6 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     ambient: 'Ambient',
     auriko: 'Auriko',
     baseten: 'Baseten',
-    ollama: 'Ollama (Local)',
 }
 
 export function inferProviderFromModel(modelName: string): string {
@@ -707,8 +703,6 @@ export function inferProviderFromModel(modelName: string): string {
     if (lower.startsWith('auriko') || lower.startsWith('auriko/')) return 'auriko'
     if (lower.startsWith('baseten') || lower.startsWith('baseten/')) return 'baseten'
     if (lower.includes('meta-llama') || lower.includes('qwen/')) return 'huggingface'
-    if (lower.includes('ollama') || lower.includes('llama') || lower.includes('qwen'))
-        return 'ollama'
     return 'openrouter'
 }
 
@@ -718,10 +712,6 @@ export function resolveModelRate(modelName: string): ModelRate {
 
     if (OFFICIAL_MODEL_RATES[normalized]) return OFFICIAL_MODEL_RATES[normalized]
     if (OFFICIAL_MODEL_RATES[stripped]) return OFFICIAL_MODEL_RATES[stripped]
-
-    if (normalized.includes('ollama') || stripped.includes('llama') || stripped.includes('qwen')) {
-        return { name: modelName, inputRate: 0.0, outputRate: 0.0 }
-    }
 
     return {
         name: modelName,
@@ -929,15 +919,6 @@ ${middleStr}*Usage is covered by your active ${subDisplayName} monthly subscript
 
     if (!providerKey || providerKey === 'december_proxy') {
         providerKey = inferProviderFromModel(model)
-    }
-
-    if (providerKey === 'ollama' || model.toLowerCase().includes('ollama')) {
-        const link = PROVIDER_BILLING_LINKS.ollama
-        const middle = formatStatsSection(sessionStats, weeklyStats, balance, 'Ollama (Local)')
-        const middleStr = middle.length > 0 ? `${middle.join('\n')}\n\n` : '\n'
-        return `Active Model: \`${model}\` (Local)
-Provider: Ollama (Local)
-${middleStr}*Running completely locally on your hardware with no API keys, no external network calls, and no usage fees. View status and local models at [${link}](${link})*`
     }
 
     const displayName = PROVIDER_DISPLAY_NAMES[providerKey] || providerKey.toUpperCase()

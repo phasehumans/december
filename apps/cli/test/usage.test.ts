@@ -121,7 +121,6 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(inferProviderFromModel('mimo-v2.5')).toBe('xiaomi')
         expect(inferProviderFromModel('glm-5.3')).toBe('zai')
         expect(inferProviderFromModel('grok-4.6')).toBe('xai')
-        expect(inferProviderFromModel('llama3.3:latest')).toBe('ollama')
     })
 
     it('formats BYOK usage card for Xiaomi with console link', () => {
@@ -252,23 +251,6 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(text).toContain(
             '[https://tinker.thinkingmachines.ai/](https://tinker.thinkingmachines.ai/)'
         )
-    })
-
-    it('formats Ollama usage card as local and offline without bold', () => {
-        const text = formatUsageCard({
-            model: 'llama3.3:latest',
-            authMethod: 'byok',
-            provider: 'ollama',
-            isAuthenticated: true,
-        })
-
-        expect(text).toContain('Active Model: `llama3.3:latest` (Local)')
-        expect(text).toContain('Provider: Ollama (Local)')
-        expect(text).toContain('http://localhost:11434')
-        expect(text).not.toContain('**')
-        expect(text).not.toContain('>')
-        expect(text).not.toContain('•')
-        expect(/[\u{1F300}-\u{1F9FF}]/u.test(text)).toBe(false)
     })
 
     it('formats unauthenticated notice matching the standard login prompt', () => {

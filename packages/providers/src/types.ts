@@ -55,3 +55,26 @@ export interface LLMProvider {
         signal?: AbortSignal
     ): AsyncGenerator<ProviderStreamChunk, void, unknown>
 }
+
+export interface CatalogModel {
+    id: string
+    label: string
+    contextWindow: number
+    thinking?: boolean
+}
+
+export interface CatalogProvider {
+    id: string
+    name: string
+    defaultModel: string
+    endpoint?: string
+    envKey?: string
+    openRouterPrefix?: string
+    models: CatalogModel[]
+}
+
+export interface ModelCatalog {
+    version: number
+    aliases: Record<string, string>
+    providers: Record<string, CatalogProvider>
+}

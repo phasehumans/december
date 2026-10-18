@@ -1,0 +1,140 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Agent Skills & Playbooks
+description: Modular engineering runbooks, Idea-to-Ship workflows, and universal agent skills for December.
+currentSlug: 'skills'
+---
+
+## Overview
+
+Agent Skills are lightweight, composable markdown runbooks (`SKILL.md`) that guide December through disciplined engineering workflows.
+
+Instead of stuffing large, fragile instructions into monolithic system prompts or hardcoding rigid CLI state machines, December uses the open cross-agent `SKILL.md` standard (compatible with Claude Code, Cursor, Codex, and Google Antigravity).
+
+Every discovered skill automatically becomes an interactive slash command in your terminal session (e.g. `/plan`, `/grill-me`, `/code-review`).
+
+---
+
+## Built-in Skills
+
+December ships with core engineering playbooks bundled out of the box:
+
+### `/plan [goal]`
+
+Generates a structured, phased implementation plan for your feature or refactor without modifying code yet. It inspects existing files, identifies blast radius, maps step-by-step tasks, provides verification commands, and uses interactive prompts for sign-off.
+
+### `/grill-me [topic]`
+
+Initiates a Socratic pre-implementation interview to surface hidden assumptions, clarify edge cases, evaluate trade-offs, and align on contracts before writing code.
+
+### `/code-review`
+
+Executes a thorough post-implementation code review across staged and unstaged diffs. It audits for architectural consistency, anti-patterns, missing tests, and performance regressions.
+
+---
+
+## The Idea-to-Ship Spine
+
+The official December engineering playbook repository ([phasehumans/skills](https://github.com/phasehumans/skills)) defines a 5-stage lifecycle from initial thought to verified deployment:
+
+```
+/grill-me  ──>  /to-spec (or /plan)  ──>  /to-tickets  ──>  /implement  ──>  /code-review
+(Align)         (Plan architecture)       (Decompose)       (TDD slice)      (Verify)
+```
+
+1. **/grill-me**: Ask tough questions to clarify requirements and eliminate ambiguity.
+2. **/to-spec** (or **/plan**): Draft unambiguous technical specifications and interface schemas.
+3. **/to-tickets**: Break down the specification into small, testable, vertical slices.
+4. **/implement**: Execute each slice test-first with empirical verification commands.
+5. **/code-review**: Catch defects, security issues, and style inconsistencies before merging.
+
+---
+
+## Managing Skills with December CLI
+
+December includes a dedicated `skill` subcommand to discover, inspect, and install packages:
+
+```bash
+# List all active skills (built-in, global, and workspace)
+december skill list
+
+# Inspect metadata, parameters, and instructions for a skill
+december skill info grill-me
+
+# Install skills from GitHub into current project (.december/skills)
+december skill add phasehumans/skills
+
+# Install skills globally (~/.december/skills)
+december skill add phasehumans/skills --global
+
+# Remove an installed skill
+december skill remove tdd
+```
+
+---
+
+## Universal Ecosystem & NPM Package
+
+December skills follow the open agent standard. You can install and synchronize playbooks using your preferred workflow:
+
+### Using December CLI
+
+```bash
+december skill add phasehumans/skills
+```
+
+### Using Vercel Skills CLI
+
+Install skills across Claude Code, Cursor, Codex, Antigravity, and December with the universal runner:
+
+```bash
+npx skills add phasehumans/skills
+```
+
+### Using NPM (`@trydecember/skills`)
+
+For projects with strict lockfile requirements, install the official package directly:
+
+```bash
+# Install as a dev dependency
+npm i -D @trydecember/skills
+
+# Synchronize skills from node_modules into your agent directory
+npx skills experimental_sync
+```
+
+---
+
+## Authoring Custom Project Skills
+
+You can create project-specific skills tailored to your codebase's architecture and conventions. Simply create a directory under `.december/skills/<skill-name>/` with a `SKILL.md` file:
+
+````markdown
+---
+name: db-migrate
+description: Safe database migration playbook with schema rollback verification
+argument-hint: [migration-name]
+tags:
+    - database
+    - prisma
+---
+
+# Database Migration Playbook
+
+When creating or modifying database schemas:
+
+1. Inspect the existing schema under `packages/database/prisma/schema.prisma`.
+2. Generate the migration using `bun db:migrate:dev --create-only`.
+3. Verify backward compatibility with the active production schema.
+4. Execute test migrations against the test database:
+    ```bash
+    bun db:migrate:test
+    ```
+````
+
+5. Run integration tests to ensure existing queries succeed.
+
+```
+
+Once saved, `/db-migrate` immediately appears in your December terminal slash command menu.
+```

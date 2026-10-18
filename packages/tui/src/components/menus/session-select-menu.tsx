@@ -277,7 +277,9 @@ export function SessionSelectMenu(props: any) {
     return (
         <Box flexDirection="column">
             <Box marginBottom={1} flexDirection="column" gap={1}>
-                <Text color={THEME.colors.text}>Sessions</Text>
+                <Text bold color={THEME.colors.text}>
+                    Sessions
+                </Text>
                 <Box flexDirection="row" gap={1}>
                     <Text color={isSearching ? THEME.colors.brand : THEME.colors.muted}>
                         Search:

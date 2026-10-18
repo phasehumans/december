@@ -14,7 +14,6 @@ export interface ModelSelectMenuProps {
     previousAuthMode?: string
     selectedProvider: string
     openRouterModels?: { label: string; value: string }[]
-    ollamaModels?: { label: string; value: string }[]
     getProviderModels?: (provider: string) => { label: string; value: string }[]
     items?: { label: string; value: string }[]
 }
@@ -26,7 +25,6 @@ export function ModelSelectMenu(props: ModelSelectMenuProps) {
         previousAuthMode,
         selectedProvider,
         openRouterModels,
-        ollamaModels,
         getProviderModels,
         items: customItems,
     } = props
@@ -43,16 +41,8 @@ export function ModelSelectMenu(props: ModelSelectMenuProps) {
                 ? getProviderModels('openrouter')
                 : [{ label: 'Loading models...', value: 'loading' }]
         }
-        if (selectedProvider === 'ollama') {
-            if (ollamaModels && ollamaModels.length > 0) {
-                return ollamaModels
-            }
-            return typeof getProviderModels === 'function'
-                ? getProviderModels('ollama')
-                : [{ label: 'Loading models...', value: 'loading' }]
-        }
         return typeof getProviderModels === 'function' ? getProviderModels(selectedProvider) : []
-    }, [customItems, selectedProvider, openRouterModels, ollamaModels, getProviderModels])
+    }, [customItems, selectedProvider, openRouterModels, getProviderModels])
 
     const [searchQuery, setSearchQuery] = useState('')
     const [isSearching, setIsSearching] = useState(false)
@@ -196,7 +186,9 @@ export function ModelSelectMenu(props: ModelSelectMenuProps) {
     return (
         <Box flexDirection="column">
             <Box marginBottom={1} flexDirection="column" gap={1}>
-                <Text color={THEME.colors.text}>Select Model:</Text>
+                <Text bold color={THEME.colors.text}>
+                    Models
+                </Text>
                 <Box flexDirection="row" gap={1}>
                     <Text color={isSearching ? THEME.colors.brand : THEME.colors.muted}>
                         Search:

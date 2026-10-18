@@ -31,7 +31,6 @@ describe('Extended BYOK CLI Integration (Unit)', () => {
         'abacus',
         'fastrouter',
         'volcengine',
-        '302ai',
     ]
 
     test('instantiates providers with valid endpoints and ID', () => {
@@ -51,7 +50,6 @@ describe('Extended BYOK CLI Integration (Unit)', () => {
         expect(formatProviderName('vultr')).toBe('Vultr')
         expect(formatProviderName('ai21')).toBe('AI21 Labs')
         expect(formatProviderName('volcengine')).toBe('Volcengine Ark')
-        expect(formatProviderName('302ai')).toBe('302.AI')
     })
 
     test('returns verified default models and static models list', () => {
@@ -68,8 +66,8 @@ describe('Extended BYOK CLI Integration (Unit)', () => {
         }
     })
 
-    test('provider menu contains all 113 curated BYOK items', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(113)
+    test('provider menu contains all 112 curated BYOK items', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(112)
         const values = new Set(PROVIDER_MENU_ITEMS.map((item) => item.value))
         for (const p of sampleProviders) {
             expect(values.has(p)).toBe(true)

@@ -160,6 +160,16 @@ async function main() {
         process.exit(0)
     }
 
+    if (parsedArgs.command === 'skill' || parsedArgs.command === 'skills') {
+        const { handleSkillCommand } = await import('./commands')
+        await handleSkillCommand({
+            action: parsedArgs.positionals[1],
+            target: parsedArgs.positionals[2],
+            isGlobal: parsedArgs.isGlobal,
+        })
+        process.exit(process.exitCode || 0)
+    }
+
     const isAskMode = parsedArgs.command === 'ask'
     if (isAskMode) {
         const question = parsedArgs.positionals.slice(1).join(' ').trim() || parsedArgs.prompt

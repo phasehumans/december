@@ -484,9 +484,6 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
         inputRate: 0.1,
         outputRate: 0.5,
     },
-
-    // Ollama / Local
-    ollama: { name: 'ollama', inputRate: 0.0, outputRate: 0.0 },
 }
 
 export function resolveModelRate(
@@ -503,10 +500,6 @@ export function resolveModelRate(
 
     if (OFFICIAL_MODEL_RATES[normalized]) return OFFICIAL_MODEL_RATES[normalized]
     if (OFFICIAL_MODEL_RATES[stripped]) return OFFICIAL_MODEL_RATES[stripped]
-
-    if (normalized.includes('ollama') || stripped.includes('llama') || stripped.includes('qwen')) {
-        return { name: modelName, inputRate: 0.0, outputRate: 0.0 }
-    }
 
     const fallbackInput = parseFloat(process.env.FALLBACK_MODEL_INPUT_RATE ?? '2.00')
     const fallbackOutput = parseFloat(process.env.FALLBACK_MODEL_OUTPUT_RATE ?? '8.00')
@@ -625,7 +618,6 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     ambient: 'https://app.ambient.xyz/keys',
     auriko: 'https://www.auriko.ai/dashboard',
     baseten: 'https://app.baseten.co/settings/api_keys',
-    ollama: 'http://localhost:11434',
 }
 
 export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {

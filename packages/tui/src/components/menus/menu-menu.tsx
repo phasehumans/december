@@ -161,7 +161,9 @@ export function MenuMenu(props: MenuMenuProps) {
     return (
         <Box flexDirection="column">
             <Box marginBottom={1}>
-                <Text color={THEME.colors.text}>Select authentication method:</Text>
+                <Text bold color={THEME.colors.text}>
+                    Authentication
+                </Text>
             </Box>
 
             {items.map((item, idx) => {

@@ -439,11 +439,6 @@ export function instantiateProvider(
                 openaiProvider('https://inference.baseten.co/v1', apiKey),
                 'baseten'
             )
-        case '302ai':
-            return withProviderId(
-                openaiProvider('https://api.302.ai/v1', apiKey, options?.headers),
-                '302ai'
-            )
         case 'abacus':
             return withProviderId(
                 openaiProvider('https://routellm.abacus.ai/v1', apiKey, options?.headers),

@@ -9,18 +9,18 @@ import {
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('ByokProviderMenu Component (Unit)', () => {
-    it('has 113 total API key provider items without subscriptions', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(113)
-        expect(PROVIDER_MENU_ITEMS[0].value).toBe('302ai')
-        expect(PROVIDER_MENU_ITEMS[1].value).toBe('abacus')
-        expect(PROVIDER_MENU_ITEMS[2].value).toBe('abliteration')
-        expect(PROVIDER_MENU_ITEMS[3].value).toBe('above')
-        expect(PROVIDER_MENU_ITEMS[4].value).toBe('agentrouter')
-        expect(PROVIDER_MENU_ITEMS[5].value).toBe('agnes')
-        expect(PROVIDER_MENU_ITEMS[6].value).toBe('aiand')
-        expect(PROVIDER_MENU_ITEMS[7].value).toBe('ai21')
-        expect(PROVIDER_MENU_ITEMS[8].value).toBe('aki')
-        expect(PROVIDER_MENU_ITEMS[9].value).toBe('ambient')
+    it('has 112 total API key provider items without subscriptions', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(112)
+        expect(PROVIDER_MENU_ITEMS[0].value).toBe('abacus')
+        expect(PROVIDER_MENU_ITEMS[1].value).toBe('abliteration')
+        expect(PROVIDER_MENU_ITEMS[2].value).toBe('above')
+        expect(PROVIDER_MENU_ITEMS[3].value).toBe('agentrouter')
+        expect(PROVIDER_MENU_ITEMS[4].value).toBe('agnes')
+        expect(PROVIDER_MENU_ITEMS[5].value).toBe('aiand')
+        expect(PROVIDER_MENU_ITEMS[6].value).toBe('ai21')
+        expect(PROVIDER_MENU_ITEMS[7].value).toBe('aki')
+        expect(PROVIDER_MENU_ITEMS[8].value).toBe('ambient')
+        expect(PROVIDER_MENU_ITEMS[9].value).toBe('amd')
     })
 
     it('renders unified providers with Subscriptions and Popular sections initially', () => {
@@ -32,7 +32,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         )
 
         const frame = lastFrame() || ''
-        expect(frame).toContain('Select Provider (Key or Subscription):')
+        expect(frame).toContain('Providers')
         expect(frame).toContain('• Subscriptions')
         expect(frame).toContain('Anthropic (Claude)')
         expect(frame).toContain('GitHub (Copilot)')
@@ -43,7 +43,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(frame).toContain('Anthropic')
         expect(frame).toContain('OpenAI')
         expect(frame).toContain('Google AI Studio')
-        expect(frame).toContain('↓ 110 more')
+        expect(frame).toContain('↓ 109 more')
     })
 
     it('navigates through items with arrow keys and updates more indicators', async () => {
@@ -68,7 +68,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterScroll = lastFrame() || ''
         expect(frameAfterScroll).toContain('↑ 1 more')
-        expect(frameAfterScroll).toContain('↓ 109 more')
+        expect(frameAfterScroll).toContain('↓ 108 more')
 
         // Press Enter to select current item
         stdin.write('\r')
@@ -722,7 +722,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(frame).toContain('Groq')
         expect(frame).toContain('Mistral AI')
         expect(frame).toContain('❭ xAI')
-        expect(frame).toContain('↓ 105 more')
+        expect(frame).toContain('↓ 104 more')
     })
 
     it('navigates with mouse wheel down and mouse wheel up', async () => {
@@ -747,5 +747,206 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterWheelUp = lastFrame() || ''
         expect(frameAfterWheelUp).toContain('❭ Anthropic (Claude)')
+    })
+
+    it('prompts to switch account when subscription credentials detected and handles y (forceLogin)', async () => {
+        let subscriptionItem: any = null
+        const handleSub = (item: any) => {
+            subscriptionItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu
+                    handleSubscriptionSelect={handleSub}
+                    detectedSubscriptions={['claude']}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Select Claude on index 0
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Existing credentials detected for Anthropic (Claude)')
+        expect(frame).toContain('Do you want to switch to a different account? (y/n)')
+
+        // Press 'y' to switch account
+        stdin.write('y')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(subscriptionItem).toBeDefined()
+        expect(subscriptionItem.value).toBe('claude')
+        expect(subscriptionItem.forceLogin).toBe(true)
+    })
+
+    it('prompts to switch account when subscription credentials detected and handles n (keep current)', async () => {
+        let subscriptionItem: any = null
+        const handleSub = (item: any) => {
+            subscriptionItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu
+                    handleSubscriptionSelect={handleSub}
+                    detectedSubscriptions={['claude']}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Select Claude on index 0
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Do you want to switch to a different account? (y/n)')
+
+        // Press 'n' to keep current
+        stdin.write('n')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(subscriptionItem).toBeDefined()
+        expect(subscriptionItem.value).toBe('claude')
+        expect(subscriptionItem.forceLogin).toBeUndefined()
+    })
+
+    it('prompts to replace key when BYOK provider already configured and handles y (forceNewKey)', async () => {
+        let providerItem: any = null
+        const handleProv = (item: any) => {
+            providerItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu
+                    handleProviderSelect={handleProv}
+                    configuredProviders={{ anthropic: 'existing-key' }}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Move down 4 times to select Anthropic in Popular section
+        for (let i = 0; i < 4; i++) {
+            stdin.write('\u001B[B')
+            await new Promise((r) => setTimeout(r, 10))
+        }
+
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('An API key for Anthropic is already configured')
+        expect(frame).toContain('Do you want to replace it with a new key? (y/n)')
+
+        // Press 'y' to enter new key
+        stdin.write('y')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(providerItem).toBeDefined()
+        expect(providerItem.value).toBe('anthropic')
+        expect(providerItem.forceNewKey).toBe(true)
+    })
+
+    it('prompts to replace key when BYOK provider already configured and handles n (use existing)', async () => {
+        let providerItem: any = null
+        const handleProv = (item: any) => {
+            providerItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu
+                    handleProviderSelect={handleProv}
+                    configuredProviders={{ anthropic: 'existing-key' }}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Move down 4 times to select Anthropic in Popular section
+        for (let i = 0; i < 4; i++) {
+            stdin.write('\u001B[B')
+            await new Promise((r) => setTimeout(r, 10))
+        }
+
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Do you want to replace it with a new key? (y/n)')
+
+        // Press 'n' to use existing key
+        stdin.write('n')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(providerItem).toBeDefined()
+        expect(providerItem.value).toBe('anthropic')
+        expect(providerItem.forceNewKey).toBeUndefined()
+    })
+
+    it('cancels confirmation dialog on escape in ByokProviderMenu', async () => {
+        let providerItem: any = null
+        const handleProv = (item: any) => {
+            providerItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu
+                    handleProviderSelect={handleProv}
+                    configuredProviders={{ anthropic: 'existing-key' }}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Move down 4 times to select Anthropic in Popular section
+        for (let i = 0; i < 4; i++) {
+            stdin.write('\u001B[B')
+            await new Promise((r) => setTimeout(r, 10))
+        }
+
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(lastFrame()).toContain('Do you want to replace it with a new key? (y/n)')
+
+        // Press escape
+        stdin.write('\u001B')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Back to menu list
+        expect(lastFrame()).toContain('Providers')
+        expect(providerItem).toBeNull()
+    })
+
+    it('bypasses switch prompt when subscription is in unlinkedSubscriptions', async () => {
+        let subscriptionItem: any = null
+        const handleSub = (item: any) => {
+            subscriptionItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <ByokProviderMenu
+                    handleSubscriptionSelect={handleSub}
+                    detectedSubscriptions={['claude']}
+                    unlinkedSubscriptions={['claude']}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Select Claude on index 0
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Should not show confirmation dialog
+        const frame = lastFrame() || ''
+        expect(frame).not.toContain('Do you want to switch to a different account? (y/n)')
+
+        // Directly triggers select
+        expect(subscriptionItem).toBeDefined()
+        expect(subscriptionItem.value).toBe('claude')
+        expect(subscriptionItem.forceLogin).toBeUndefined()
     })
 })

@@ -26,7 +26,6 @@ export function useSettingsHandlers() {
         setSelectedProvider,
         setSwitchItems,
         setDynamicModels,
-        setOllamaModels,
         agent,
         addToast,
     } = useCliStore.getState()
@@ -58,13 +57,7 @@ export function useSettingsHandlers() {
                 }
                 const activeProvider = config.activeProvider || ''
                 setSelectedProvider(activeProvider)
-                if (activeProvider === 'ollama') {
-                    const { fetchOllamaModels } = await import('../utils/models')
-                    const endpoint = config.providers?.['ollama'] || 'http://localhost:11434'
-                    fetchOllamaModels(endpoint).then((models) => {
-                        setOllamaModels(models)
-                    })
-                } else if (activeProvider) {
+                if (activeProvider) {
                     const { fetchLiveProviderModels } = await import('../utils/models')
                     const providerConfig = await getProviderConfig()
                     if (providerConfig?.apiKey) {

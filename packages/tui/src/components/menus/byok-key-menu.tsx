@@ -95,7 +95,6 @@ export const PROVIDER_NAMES: Record<string, string> = {
 }
 
 export const PROVIDER_KEY_URLS: Record<string, string> = {
-    '302ai': 'https://doc.302.ai',
     abacus: 'https://abacus.ai/help/api',
     abliteration: 'https://abliteration.ai/console',
     'abliteration-ai': 'https://abliteration.ai/console',

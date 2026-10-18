@@ -26,7 +26,7 @@ describe('SubscriptionSelectMenu Component (Unit)', () => {
         )
 
         const frame = lastFrame() || ''
-        expect(frame).toContain('Select AI Subscription Provider:')
+        expect(frame).toContain('Subscriptions')
         expect(frame).toContain('Anthropic (Claude)')
         expect(frame).not.toContain('[detected locally]')
         expect(frame).toContain('GitHub (Copilot)')
@@ -249,5 +249,128 @@ describe('SubscriptionSelectMenu Component (Unit)', () => {
         await new Promise((resolve) => setTimeout(resolve, 20))
 
         expect(lastFrame()).toContain('❭ Anthropic (Claude)')
+    })
+
+    it('prompts to switch account when credentials detected and handles y (forceLogin)', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <SubscriptionSelectMenu
+                    handleSubscriptionSelect={handleSelect}
+                    detectedSubscriptions={['claude']}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Select Claude on index 0
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Existing credentials detected for Anthropic (Claude)')
+        expect(frame).toContain('Do you want to switch to a different account? (y/n)')
+
+        // Press 'y' to switch account
+        stdin.write('y')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem.value).toBe('claude')
+        expect(selectedItem.forceLogin).toBe(true)
+    })
+
+    it('prompts to switch account when credentials detected and handles n (keep current)', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <SubscriptionSelectMenu
+                    handleSubscriptionSelect={handleSelect}
+                    detectedSubscriptions={['claude']}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Select Claude on index 0
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Do you want to switch to a different account? (y/n)')
+
+        // Press 'n' to keep current
+        stdin.write('n')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem.value).toBe('claude')
+        expect(selectedItem.forceLogin).toBeUndefined()
+    })
+
+    it('cancels switch prompt on escape in SubscriptionSelectMenu', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <SubscriptionSelectMenu
+                    handleSubscriptionSelect={handleSelect}
+                    detectedSubscriptions={['claude']}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Select Claude on index 0
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        expect(lastFrame()).toContain('Do you want to switch to a different account? (y/n)')
+
+        // Press escape
+        stdin.write('\u001B')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Back to menu list
+        expect(lastFrame()).toContain('❭ Anthropic (Claude)')
+        expect(selectedItem).toBeNull()
+    })
+
+    it('bypasses switch prompt when subscription is in unlinkedSubscriptions in SubscriptionSelectMenu', async () => {
+        let selectedItem: any = null
+        const handleSelect = (item: any) => {
+            selectedItem = item
+        }
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <SubscriptionSelectMenu
+                    handleSubscriptionSelect={handleSelect}
+                    detectedSubscriptions={['claude']}
+                    unlinkedSubscriptions={['claude']}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        // Select Claude on index 0
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 50))
+
+        // Should not show confirmation prompt
+        const frame = lastFrame() || ''
+        expect(frame).not.toContain('Do you want to switch to a different account? (y/n)')
+
+        // Directly triggers select
+        expect(selectedItem).toBeDefined()
+        expect(selectedItem.value).toBe('claude')
+        expect(selectedItem.forceLogin).toBeUndefined()
     })
 })

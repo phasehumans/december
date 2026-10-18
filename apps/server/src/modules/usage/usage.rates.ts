@@ -172,13 +172,8 @@ export function resolveModelRate(modelName: string): ModelRate {
         return OFFICIAL_MODEL_RATES[stripped]
     }
 
-    // 3. Local or free models (zero token cost)
-    if (
-        normalized.startsWith('local') ||
-        normalized.startsWith('ollama') ||
-        normalized.includes('local/') ||
-        normalized.endsWith(':free')
-    ) {
+    // 3. Free models (zero token cost)
+    if (normalized.endsWith(':free')) {
         return {
             name: modelName,
             inputRate: 0,

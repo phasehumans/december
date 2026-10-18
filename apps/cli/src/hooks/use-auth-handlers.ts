@@ -42,7 +42,6 @@ export function useAuthHandlers(
         setStaticKey,
         setAuthError,
         addToast,
-        setOllamaStatus,
         setSwitchItems,
     } = useCliStore.getState()
 
@@ -325,46 +324,6 @@ export function useAuthHandlers(
         addToast(`Model changed to ${item.value}`, 'success')
     }
 
-    const applyOllamaConfig = async (
-        urlToUse: string,
-        targetModel: string,
-        providerName: string = 'ollama'
-    ) => {
-        const config = await loadConfig()
-        config.providers = config.providers || {}
-        config.providers[providerName] = urlToUse
-        config.activeProvider = providerName
-        config.activeModel = targetModel
-        config.authPriority = 'byok'
-        await saveConfig(config)
-
-        const llm = instantiateProvider(providerName, urlToUse)
-        if (agent) {
-            agent.setLLM(llm)
-            agent.modelOptions = { ...agent.modelOptions, model: targetModel }
-        }
-        setActiveModel(targetModel)
-
-        const { getAuthStatus, getProviderConfig } = await import('../config')
-        const authStatus = await getAuthStatus()
-        const newProviderConfig = await getProviderConfig()
-        if (newProviderConfig) {
-            setAuthMethod(newProviderConfig.authMethod)
-        }
-        setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
-        setSettingsAuthPriority(authStatus.authPriority)
-        setIsAuthenticated(true)
-        setSelectedProvider(providerName)
-        setAuthMode('none')
-        const displayName =
-            providerName === 'lmstudio'
-                ? 'LM Studio'
-                : providerName === 'llamacpp'
-                  ? 'llama.cpp'
-                  : 'Ollama'
-        addToast(`Connected to local ${displayName} (${targetModel})`, 'success')
-    }
-
     const handleSubscriptionSelect = async (item: any) => {
         const config = await loadConfig()
 
@@ -380,49 +339,79 @@ export function useAuthHandlers(
             const { getDefaultModelForProvider } = await import('../utils/models')
             const { getAuthStatus } = await import('../config')
 
-            // Step 1: Check and auto-verify local credentials if present
-            const verifiedBundle = await verifyAndResolveSubscription(item.value)
-            if (verifiedBundle) {
-                const targetModel = getDefaultModelForProvider(item.value)
-                const llm = instantiateProvider(
-                    verifiedBundle.provider,
-                    verifiedBundle.accessToken,
-                    {
-                        authMethod: 'subscription',
-                        subscription: verifiedBundle,
-                        baseURL: verifiedBundle.endpoint,
+            // Step 1: Check and auto-verify local credentials if present (skip if forceLogin requested)
+            if (!item.forceLogin) {
+                const verifiedBundle = await verifyAndResolveSubscription(item.value)
+                if (verifiedBundle) {
+                    const targetModel = getDefaultModelForProvider(item.value)
+                    const llm = instantiateProvider(
+                        verifiedBundle.provider,
+                        verifiedBundle.accessToken,
+                        {
+                            authMethod: 'subscription',
+                            subscription: verifiedBundle,
+                            baseURL: verifiedBundle.endpoint,
+                        }
+                    )
+                    if (agent) {
+                        agent.setLLM(llm)
+                        agent.modelOptions = { ...agent.modelOptions, model: targetModel }
                     }
-                )
-                if (agent) {
-                    agent.setLLM(llm)
-                    agent.modelOptions = { ...agent.modelOptions, model: targetModel }
+                    setActiveModel(targetModel)
+                    setSelectedProvider(verifiedBundle.provider)
+                    setIsAuthenticated(true)
+                    setAuthMethod('subscription')
+
+                    const authStatus = await getAuthStatus()
+                    setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
+                    setSettingsAuthPriority(authStatus.authPriority)
+
+                    const { loadConfig, saveConfig } = await import('../config')
+                    const updatedConfig = await loadConfig()
+                    if (updatedConfig.unlinkedSubscriptions?.length) {
+                        const removeKeys = new Set([item.value, verifiedBundle.provider])
+                        if (
+                            removeKeys.has('gemini') ||
+                            removeKeys.has('google') ||
+                            removeKeys.has('antigravity')
+                        ) {
+                            removeKeys.add('gemini')
+                            removeKeys.add('google')
+                            removeKeys.add('antigravity')
+                        } else if (removeKeys.has('claude') || removeKeys.has('anthropic')) {
+                            removeKeys.add('claude')
+                            removeKeys.add('anthropic')
+                        } else if (
+                            removeKeys.has('codex') ||
+                            removeKeys.has('openai') ||
+                            removeKeys.has('chatgpt')
+                        ) {
+                            removeKeys.add('codex')
+                            removeKeys.add('openai')
+                            removeKeys.add('chatgpt')
+                        } else if (removeKeys.has('copilot') || removeKeys.has('github')) {
+                            removeKeys.add('copilot')
+                            removeKeys.add('github')
+                        }
+                        updatedConfig.unlinkedSubscriptions =
+                            updatedConfig.unlinkedSubscriptions.filter((p) => !removeKeys.has(p))
+                    }
+                    updatedConfig.activeProvider = item.value
+                    updatedConfig.activeModel = targetModel
+                    updatedConfig.authPriority = 'subscription'
+                    await saveConfig(updatedConfig)
+
+                    const { fetchLiveProviderModels } = await import('../utils/models')
+                    fetchLiveProviderModels(
+                        verifiedBundle.provider,
+                        verifiedBundle.accessToken,
+                        verifiedBundle.endpoint
+                    ).catch(() => {})
+
+                    setAuthMode('none')
+                    addToast(formatSubscriptionToast(verifiedBundle, targetModel), 'success')
+                    return
                 }
-                setActiveModel(targetModel)
-                setSelectedProvider(verifiedBundle.provider)
-                setIsAuthenticated(true)
-                setAuthMethod('subscription')
-
-                const authStatus = await getAuthStatus()
-                setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
-                setSettingsAuthPriority(authStatus.authPriority)
-
-                const { updateConfig } = await import('../config')
-                await updateConfig({
-                    activeProvider: item.value,
-                    activeModel: targetModel,
-                    authPriority: 'subscription',
-                })
-
-                const { fetchLiveProviderModels } = await import('../utils/models')
-                fetchLiveProviderModels(
-                    verifiedBundle.provider,
-                    verifiedBundle.accessToken,
-                    verifiedBundle.endpoint
-                ).catch(() => {})
-
-                setAuthMode('none')
-                addToast(formatSubscriptionToast(verifiedBundle, targetModel), 'success')
-                return
             }
 
             // Step 2: If no local credentials, launch interactive OAuth/device flow or key prompt
@@ -497,12 +486,40 @@ export function useAuthHandlers(
                     setIsAuthenticated(true)
                     setAuthMethod('subscription')
 
-                    const { updateConfig } = await import('../config')
-                    await updateConfig({
-                        activeProvider: bundle.provider,
-                        activeModel: targetModel,
-                        authPriority: 'subscription',
-                    })
+                    const { loadConfig, saveConfig } = await import('../config')
+                    const updatedConfig = await loadConfig()
+                    if (updatedConfig.unlinkedSubscriptions?.length) {
+                        const removeKeys = new Set([item.value, bundle.provider])
+                        if (
+                            removeKeys.has('gemini') ||
+                            removeKeys.has('google') ||
+                            removeKeys.has('antigravity')
+                        ) {
+                            removeKeys.add('gemini')
+                            removeKeys.add('google')
+                            removeKeys.add('antigravity')
+                        } else if (removeKeys.has('claude') || removeKeys.has('anthropic')) {
+                            removeKeys.add('claude')
+                            removeKeys.add('anthropic')
+                        } else if (
+                            removeKeys.has('codex') ||
+                            removeKeys.has('openai') ||
+                            removeKeys.has('chatgpt')
+                        ) {
+                            removeKeys.add('codex')
+                            removeKeys.add('openai')
+                            removeKeys.add('chatgpt')
+                        } else if (removeKeys.has('copilot') || removeKeys.has('github')) {
+                            removeKeys.add('copilot')
+                            removeKeys.add('github')
+                        }
+                        updatedConfig.unlinkedSubscriptions =
+                            updatedConfig.unlinkedSubscriptions.filter((p) => !removeKeys.has(p))
+                    }
+                    updatedConfig.activeProvider = bundle.provider
+                    updatedConfig.activeModel = targetModel
+                    updatedConfig.authPriority = 'subscription'
+                    await saveConfig(updatedConfig)
 
                     const authStatus = await getAuthStatus()
                     setHasBothAuth(authStatus.hasByok && authStatus.hasDecember)
@@ -623,32 +640,7 @@ export function useAuthHandlers(
     const handleProviderSelect = async (item: any) => {
         const config = await loadConfig()
 
-        if (item.value === 'ollama' || item.value === 'lmstudio' || item.value === 'llamacpp') {
-            const {
-                checkLocalServerStatus,
-                getDefaultModelForProvider,
-                getDefaultUrlForLocalProvider,
-            } = await import('../utils/models')
-            const defaultUrl = getDefaultUrlForLocalProvider(item.value)
-            const existingUrl =
-                config.providers?.[item.value] ||
-                (item.value === 'ollama' ? process.env.OLLAMA_HOST : undefined) ||
-                defaultUrl
-            const status = await checkLocalServerStatus(item.value, existingUrl)
-            setOllamaStatus({ ...status, baseUrl: existingUrl, provider: item.value })
-
-            if (status.running && status.compatibleModels.length > 0) {
-                const targetModel =
-                    status.compatibleModels[0] || getDefaultModelForProvider(item.value)
-                await applyOllamaConfig(existingUrl, targetModel, item.value)
-            } else {
-                setSelectedProvider(item.value)
-                setAuthMode('ollama_setup')
-            }
-            return
-        }
-
-        if (config.providers && config.providers[item.value]) {
+        if (config.providers && config.providers[item.value] && !item.forceNewKey) {
             const key = config.providers[item.value]
             config.activeProvider = item.value
             config.authPriority = 'byok'
@@ -686,6 +678,7 @@ export function useAuthHandlers(
             )
         } else {
             setSelectedProvider(item.value)
+            setApiKey('')
             setAuthError(null)
             setAuthMode('byok_key')
         }
@@ -1012,10 +1005,58 @@ export function useAuthHandlers(
             }
         } else if (value.startsWith('subscription:')) {
             const provider = value.split(':')[1]
-            if (provider && config.subscriptions) {
+            if (provider) {
+                config.subscriptions = config.subscriptions || {}
                 delete config.subscriptions[provider]
+                const aliasesToUnlink = [provider]
+                if (provider === 'claude' || provider === 'anthropic') {
+                    delete config.subscriptions['claude']
+                    delete config.subscriptions['anthropic']
+                    aliasesToUnlink.push('claude', 'anthropic')
+                } else if (
+                    provider === 'codex' ||
+                    provider === 'openai' ||
+                    provider === 'chatgpt'
+                ) {
+                    delete config.subscriptions['codex']
+                    delete config.subscriptions['openai']
+                    delete config.subscriptions['chatgpt']
+                    aliasesToUnlink.push('codex', 'openai', 'chatgpt')
+                } else if (
+                    provider === 'gemini' ||
+                    provider === 'google' ||
+                    provider === 'antigravity'
+                ) {
+                    delete config.subscriptions['gemini']
+                    delete config.subscriptions['google']
+                    delete config.subscriptions['antigravity']
+                    aliasesToUnlink.push('gemini', 'google', 'antigravity')
+                } else if (provider === 'copilot' || provider === 'github') {
+                    delete config.subscriptions['copilot']
+                    delete config.subscriptions['github']
+                    aliasesToUnlink.push('copilot', 'github')
+                }
+
+                config.unlinkedSubscriptions = config.unlinkedSubscriptions || []
+                for (const alias of aliasesToUnlink) {
+                    if (!config.unlinkedSubscriptions.includes(alias)) {
+                        config.unlinkedSubscriptions.push(alias)
+                    }
+                }
+
                 removedName = `${provider.charAt(0).toUpperCase() + provider.slice(1)} Subscription`
-                if (config.activeProvider === provider) {
+                const isActiveMatch =
+                    config.activeProvider === provider ||
+                    (provider === 'claude' && config.activeProvider === 'anthropic') ||
+                    (provider === 'codex' &&
+                        (config.activeProvider === 'openai' ||
+                            config.activeProvider === 'chatgpt')) ||
+                    (provider === 'gemini' &&
+                        (config.activeProvider === 'google' ||
+                            config.activeProvider === 'antigravity')) ||
+                    (provider === 'copilot' && config.activeProvider === 'github')
+
+                if (isActiveMatch) {
                     config.activeProvider =
                         Object.keys(config.subscriptions)[0] ||
                         Object.keys(config.providers || {})[0] ||
@@ -1026,8 +1067,34 @@ export function useAuthHandlers(
             const provider = value.split(':')[1]
             if (provider && config.providers) {
                 delete config.providers[provider]
+                if (provider === 'anthropic' || provider === 'claude') {
+                    delete config.providers['anthropic']
+                    delete config.providers['claude']
+                } else if (
+                    provider === 'openai' ||
+                    provider === 'codex' ||
+                    provider === 'chatgpt'
+                ) {
+                    delete config.providers['openai']
+                    delete config.providers['codex']
+                    delete config.providers['chatgpt']
+                } else if (provider === 'google' || provider === 'gemini') {
+                    delete config.providers['google']
+                    delete config.providers['gemini']
+                }
+
                 removedName = `${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key`
-                if (config.activeProvider === provider) {
+                const isActiveMatch =
+                    config.activeProvider === provider ||
+                    (provider === 'anthropic' && config.activeProvider === 'claude') ||
+                    (provider === 'openai' &&
+                        (config.activeProvider === 'codex' ||
+                            config.activeProvider === 'chatgpt')) ||
+                    (provider === 'google' &&
+                        (config.activeProvider === 'gemini' ||
+                            config.activeProvider === 'antigravity'))
+
+                if (isActiveMatch) {
                     config.activeProvider =
                         Object.keys(config.subscriptions || {})[0] ||
                         Object.keys(config.providers || {})[0] ||
@@ -1152,62 +1219,6 @@ export function useAuthHandlers(
         }
     }
 
-    const handleOllamaRetry = async (customUrl?: string) => {
-        const state = useCliStore.getState()
-        const currentProvider =
-            state.selectedProvider || (state.ollamaStatus as any)?.provider || 'ollama'
-        const {
-            checkLocalServerStatus,
-            getDefaultModelForProvider,
-            getDefaultUrlForLocalProvider,
-        } = await import('../utils/models')
-        const urlToUse =
-            customUrl ||
-            state.ollamaStatus?.baseUrl ||
-            getDefaultUrlForLocalProvider(currentProvider)
-        const status = await checkLocalServerStatus(currentProvider, urlToUse)
-        setOllamaStatus({ ...status, baseUrl: urlToUse, provider: currentProvider })
-
-        const displayName =
-            currentProvider === 'lmstudio'
-                ? 'LM Studio'
-                : currentProvider === 'llamacpp'
-                  ? 'llama.cpp'
-                  : 'Ollama'
-
-        if (status.running && status.compatibleModels.length > 0) {
-            const targetModel =
-                status.compatibleModels[0] || getDefaultModelForProvider(currentProvider)
-            await applyOllamaConfig(urlToUse, targetModel, currentProvider)
-        } else if (!status.running) {
-            addToast(`${displayName} server not reachable at ${urlToUse}`, 'error')
-        } else {
-            addToast(
-                `${displayName} is running, but no tool-compatible models were found.`,
-                'warning'
-            )
-        }
-    }
-
-    const handleOllamaCancel = () => {
-        setAuthMode('byok_provider')
-    }
-
-    const handleOllamaProceed = async (modelName?: string) => {
-        const state = useCliStore.getState()
-        const currentProvider =
-            state.selectedProvider || (state.ollamaStatus as any)?.provider || 'ollama'
-        const config = await loadConfig()
-        const { getDefaultUrlForLocalProvider, getDefaultModelForProvider } =
-            await import('../utils/models')
-        const urlToUse =
-            config.providers?.[currentProvider] ||
-            state.ollamaStatus?.baseUrl ||
-            getDefaultUrlForLocalProvider(currentProvider)
-        const targetModel = modelName || getDefaultModelForProvider(currentProvider) || 'default'
-        await applyOllamaConfig(urlToUse, targetModel, currentProvider)
-    }
-
     const handleOpenDeviceAuthUrl = async () => {
         const url = useCliStore.getState().pendingDeviceAuthUrl
         if (url) {
@@ -1240,9 +1251,6 @@ export function useAuthHandlers(
         handleDeleteProvider,
         handleSwitchSelect,
         handleSessionSelect,
-        handleOllamaRetry,
-        handleOllamaCancel,
-        handleOllamaProceed,
         handleOpenDeviceAuthUrl,
         handleAbortAuth,
     }

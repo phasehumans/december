@@ -17,7 +17,7 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(formatProviderName('agentrouter')).toBe('AgentRouter')
         expect(formatProviderName('deepseek')).toBe('DeepSeek')
         expect(formatProviderName('groq')).toBe('Groq')
-        expect(formatProviderName('ollama')).toBe('Ollama')
+        expect(formatProviderName('custom_test')).toBe('Custom_test')
         expect(formatProviderName('custom_provider')).toBe('Custom_provider')
         expect(formatProviderName()).toBe('Provider')
     })

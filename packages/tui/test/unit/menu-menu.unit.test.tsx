@@ -14,7 +14,7 @@ describe('MenuMenu Component (Unit)', () => {
         )
 
         const frame = lastFrame() || ''
-        expect(frame).toContain('Select authentication method:')
+        expect(frame).toContain('Authentication')
         expect(frame).toContain('Use your own Key or Subscription')
         expect(frame).not.toContain('Use AI Subscription')
         expect(frame).toContain('Login via December')

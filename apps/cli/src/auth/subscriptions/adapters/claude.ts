@@ -161,11 +161,6 @@ export const claudeAdapter: SubscriptionAdapter = {
     async loginOAuth(
         onCode?: (code: string, uri: string) => void
     ): Promise<SubscriptionTokenBundle> {
-        const detected = await this.detectLocal()
-        if (detected) {
-            return detected
-        }
-
         const { openUrl } = await import('../../../utils/open')
         const { startLocalOAuthServer, generatePKCE } = await import('../oauth-server')
 

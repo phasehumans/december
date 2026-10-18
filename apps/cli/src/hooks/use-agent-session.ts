@@ -117,10 +117,6 @@ export function useAgentSession({
         setAuthError,
         openRouterModels,
         setOpenRouterModels,
-        ollamaStatus,
-        setOllamaStatus,
-        ollamaModels,
-        setOllamaModels,
         planWorkflow,
         setPlanWorkflow,
         interactivePlanGoalMode,
@@ -219,6 +215,9 @@ export function useAgentSession({
     }, [])
 
     const [detectedSubscriptions, setDetectedSubscriptions] = useState<Record<string, any>>({})
+    const [configuredProviders, setConfiguredProviders] = useState<Record<string, string>>({})
+    const [configuredSubscriptions, setConfiguredSubscriptions] = useState<Record<string, any>>({})
+    const [unlinkedSubscriptions, setUnlinkedSubscriptions] = useState<string[]>([])
     const [usageData, setUsageData] = useState<any>(null)
 
     useEffect(() => {
@@ -229,6 +228,18 @@ export function useAgentSession({
             })
             .catch(() => {})
     }, [])
+
+    useEffect(() => {
+        loadConfig()
+            .then((c) => {
+                setConfiguredProviders(c.providers || {})
+                setConfiguredSubscriptions(c.subscriptions || {})
+                setUnlinkedSubscriptions(c.unlinkedSubscriptions || [])
+            })
+            .catch(() => {
+                // Intentionally swallowed: config load failure
+            })
+    }, [authMode])
 
     useEffect(() => {
         useCliStore.setState((prev) => ({
@@ -1858,17 +1869,6 @@ ${decStatus}
                 return
             }
 
-            if (text.trim() === '/plan' || text.trim().startsWith('/plan ')) {
-                const goal = text.trim().slice('/plan'.length).trim()
-                if (!goal) {
-                    setInteractivePlanGoalMode(true)
-                    addToast('Enter your plan goal below, or press Esc/cancel', 'info')
-                    return
-                }
-                await generatePlanFromGoal(goal)
-                return
-            }
-
             if (text.trim() === '/init') {
                 addToast(
                     'The /init command has been removed. Create AGENTS.md in project root for instructions.',
@@ -1975,13 +1975,7 @@ ${decStatus}
                     const providerConfig = await getProviderConfig()
                     const activeProvider = config.activeProvider || providerConfig?.provider || ''
                     setSelectedProvider(activeProvider)
-                    if (activeProvider === 'ollama') {
-                        const { fetchOllamaModels } = await import('../utils/models')
-                        const endpoint = config.providers?.['ollama'] || 'http://localhost:11434'
-                        fetchOllamaModels(endpoint).then((models) => {
-                            setOllamaModels(models)
-                        })
-                    } else if (activeProvider && providerConfig?.apiKey) {
+                    if (activeProvider && providerConfig?.apiKey) {
                         const { fetchLiveProviderModels } = await import('../utils/models')
                         fetchLiveProviderModels(
                             activeProvider,
@@ -2038,28 +2032,6 @@ ${decStatus}
                     setSessionRenameMode(false)
                     setAuthMode('session_select')
                 })
-                return
-            }
-
-            // intercept /grill-me or /grill commands anywhere in the text
-            const grillMatch = text.trim().match(/(.*?)(?:\s|^)\/(grill-me|grill)(?:\s(.*))?$/s)
-            if (grillMatch) {
-                const before = grillMatch[1] || ''
-                const after = grillMatch[3] || ''
-                const grillPromptText = `${before} ${after}`.trim()
-
-                if (grillPromptText.length > 0) {
-                    await generateGrillQuestions(grillPromptText)
-                } else {
-                    setGrillMode(!grillMode)
-                }
-                return
-            }
-
-            // handle active modes (if the user previously toggled them on)
-            if (grillMode) {
-                setGrillMode(false)
-                await generateGrillQuestions(text.trim())
                 return
             }
 
@@ -2215,13 +2187,11 @@ ${decStatus}
                         'exit',
                         'feedback',
                         'fork',
-                        'grill-me',
                         'handoff',
                         'init',
                         'login',
                         'model',
                         'new',
-                        'plan',
                         'resume',
                         'settings',
                         'skill',
@@ -2230,6 +2200,10 @@ ${decStatus}
                         'update',
                         'usage',
                     ])
+
+                    if (potentialCmd === 'grill') {
+                        potentialCmd = 'grill-me'
+                    }
 
                     if (isExplicitSkillPrefix || !coreBuiltins.has(potentialCmd)) {
                         try {
@@ -2240,7 +2214,10 @@ ${decStatus}
                             )
                             if (matchedSkill) {
                                 const fullArgs = restArgs.join(' ').trim()
-                                executionPrompt = `Execute skill '${matchedSkill.name}'${fullArgs ? ` with arguments: ${fullArgs}` : ''}. Use the 'run_skill' tool to delegate this procedure to an isolated subagent.`
+                                const taskDetail = fullArgs
+                                    ? `for: "${fullArgs}"`
+                                    : 'based on the conversation context or prompt the user to clarify requirements if needed'
+                                executionPrompt = `Execute skill '${matchedSkill.name}' ${taskDetail}. Use the 'run_skill' tool to delegate this procedure to an isolated subagent.`
                                 displayText = promptToProcess
                             }
                         } catch {
@@ -2372,7 +2349,6 @@ ${decStatus}
             setShouldExit,
             setStaticMessages,
             setStaticKey,
-            setOllamaModels,
             setActiveModel,
             setAuthMethod,
             setHasBothAuth,
@@ -2395,9 +2371,6 @@ ${decStatus}
         handleDeleteProvider,
         handleSwitchSelect,
         handleSessionSelect,
-        handleOllamaRetry,
-        handleOllamaCancel,
-        handleOllamaProceed,
         handleOpenDeviceAuthUrl,
         handleAbortAuth,
     } = useAuthHandlers(agent, onLogin, onLoginHeadless)
@@ -2777,18 +2750,14 @@ ${decStatus}
         toggleExpandCommands,
         queuedPrompts,
         setQueuedPrompts,
-        ollamaStatus,
-        setOllamaStatus,
-        ollamaModels,
-        setOllamaModels,
-        handleOllamaRetry,
-        handleOllamaCancel,
-        handleOllamaProceed,
         pendingToolCall,
         setPendingToolCall,
         activeModel,
         setActiveModel,
         detectedSubscriptions,
+        configuredProviders,
+        configuredSubscriptions,
+        unlinkedSubscriptions,
         usageData,
         setUsageData,
         handleRefreshUsage: fetchUsageData,

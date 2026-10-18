@@ -36,6 +36,12 @@ jobs:
             - name: Verify TypeScript types
               run: bun run typecheck
 
+            - name: Verify Model Provider Catalog
+              run: bun run models:check
+
+            - name: Run Model Unit Tests
+              run: bun test apps/cli/test/models.test.ts packages/providers
+
     gitleaks:
         name: Secret Scan
         runs-on: ubuntu-latest

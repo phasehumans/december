@@ -134,7 +134,9 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
     return (
         <Box flexDirection="column">
             <Box marginBottom={1}>
-                <Text color={THEME.colors.text}>Settings</Text>
+                <Text bold color={THEME.colors.text}>
+                    Settings
+                </Text>
             </Box>
             <SelectInput
                 items={mainItems}
