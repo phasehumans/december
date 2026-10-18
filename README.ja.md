@@ -6,7 +6,7 @@
   <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <b>日本語</b> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a> | <a href="README.mr.md">मराठी</a>
 </p>
 
-December はターミナルとクラウドに対応した (so much) better なコーディングエージェントです。コードベースを理解し、コードの作成、バグ修正、コマンドの実行を通じて、開発をより迅速に進めるサポートをします。ターミナルで直接利用することも、お気に入りの IDE と併用することも可能です。
+December は (so much) better なコーディングエージェントです。コードベースを理解し、コードの作成、バグ修正、コマンドの実行を通じて、開発をより迅速に進めるサポートをします。ターミナルで直接利用することも、お気に入りの IDE と併用することも可能です。
 
 **ウェブ版も利用可能: <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 

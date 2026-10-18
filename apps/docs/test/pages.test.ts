@@ -19,8 +19,7 @@ describe('apps/docs page content & layout tests', () => {
         it('renders hero title, description, and install command', () => {
             const html = getLandingHtml()
 
-            expect(html).toContain('december, a (so much) better coding agent')
-            expect(html).toContain('for terminal and cloud')
+            expect(html).toContain('december, a (so much) better coding agent.')
             expect(html).toContain('npm install -g @trydecember/cli')
         })
 
