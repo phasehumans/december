@@ -30,7 +30,7 @@ describe('TUI Keyboard Navigation (Unit)', () => {
         expect(onCompleteMock).toHaveBeenCalledWith('Next.js')
     })
 
-    it('closes authMode menu on Escape even while streaming in GlobalShortcuts', async () => {
+    it('does not abort streaming when menu is open on Escape in GlobalShortcuts', async () => {
         const setAuthMode = mock()
         const session = {
             authMode: 'model_select',
@@ -43,7 +43,6 @@ describe('TUI Keyboard Navigation (Unit)', () => {
         stdin.write('\u001B') // Escape
         await new Promise((resolve) => setTimeout(resolve, 100))
 
-        expect(setAuthMode).toHaveBeenCalledWith('none')
         expect(session.handleAbort).not.toHaveBeenCalled()
     })
 

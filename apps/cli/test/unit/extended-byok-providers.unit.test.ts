@@ -22,10 +22,10 @@ describe('Extended BYOK CLI Integration (Unit)', () => {
         'hetzner',
         'ai21',
         'amd',
-        'nova',
+        'chutes',
         'morph',
         'poe',
-        'v0',
+        'baseten',
         'opencode',
         'requesty',
         'abacus',
@@ -68,8 +68,8 @@ describe('Extended BYOK CLI Integration (Unit)', () => {
         }
     })
 
-    test('provider menu contains all 186 BYOK items', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBeGreaterThanOrEqual(186)
+    test('provider menu contains all 113 curated BYOK items', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(113)
         const values = new Set(PROVIDER_MENU_ITEMS.map((item) => item.value))
         for (const p of sampleProviders) {
             expect(values.has(p)).toBe(true)

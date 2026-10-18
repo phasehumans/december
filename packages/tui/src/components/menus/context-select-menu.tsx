@@ -3,6 +3,7 @@ import { decomposeContext } from '@december/shared'
 import { Box, Text, useInput } from 'ink'
 import React from 'react'
 
+import { useTerminalColumns } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
 
 import { MenuFooter } from './menu-footer'
@@ -24,6 +25,8 @@ export interface ContextSelectMenuProps {
 export function ContextSelectMenu(props: ContextSelectMenuProps) {
     const { agent, setAuthMode, handleSubmit, onClose, onClear, onModelSelect, onNewSession } =
         props
+    const columns = useTerminalColumns()
+    const isNarrow = columns > 0 && columns < 88
 
     useInput((input, key) => {
         if (key.escape || input === '\u001B') {
@@ -96,107 +99,125 @@ export function ContextSelectMenu(props: ContextSelectMenuProps) {
     const pct = (n: number) => ((n / maxTokens) * 100).toFixed(1)
     const formatK = (n: number) => (n > 1000 ? (n / 1000).toFixed(1) + 'k' : n.toString())
 
-    const totalSquares = 200
-    const squares = []
-    let filled = 0
-    const addSquares = (count: number, char: string, color: string) => {
-        for (let i = 0; i < count && filled < totalSquares; i++) {
-            squares.push(
-                <Text key={filled} color={color}>
-                    {char}
+    const barWidth = Math.min(48, Math.max(20, (columns > 0 ? columns : 80) - 10))
+    const totalFilled =
+        totalTokens > 0
+            ? Math.max(1, Math.min(barWidth, Math.round((totalTokens / maxTokens) * barWidth)))
+            : 0
+
+    const categories = [
+        { name: 'base', tokens: basePromptTokens, color: THEME.colors.muted },
+        { name: 'rules', tokens: rulesTokens, color: THEME.colors.warning },
+        { name: 'skills', tokens: skillsTokens, color: THEME.colors.error },
+        { name: 'tools', tokens: toolsTokens, color: THEME.colors.brand },
+        { name: 'history', tokens: conversationHistoryTokens, color: THEME.colors.success },
+    ]
+
+    let allocated = 0
+    const catBlocks = categories.map((cat, idx) => {
+        if (cat.tokens <= 0 || totalTokens <= 0) return 0
+        if (idx === categories.length - 1) {
+            return Math.max(0, totalFilled - allocated)
+        }
+        const count = Math.min(
+            totalFilled - allocated,
+            Math.round((cat.tokens / totalTokens) * totalFilled)
+        )
+        allocated += count
+        return count
+    })
+
+    if (allocated < totalFilled) {
+        let maxIdx = 0
+        let maxVal = -1
+        categories.forEach((cat, idx) => {
+            if (cat.tokens > maxVal) {
+                maxVal = cat.tokens
+                maxIdx = idx
+            }
+        })
+        catBlocks[maxIdx] += totalFilled - allocated
+    }
+
+    const barElements = []
+    categories.forEach((cat, idx) => {
+        const count = catBlocks[idx]
+        if (count > 0) {
+            barElements.push(
+                <Text key={cat.name} color={cat.color}>
+                    {'█'.repeat(count)}
                 </Text>
             )
-            filled++
         }
-    }
+    })
 
-    addSquares(Math.round((basePromptTokens / maxTokens) * totalSquares), '■', THEME.colors.muted)
-    addSquares(Math.round((rulesTokens / maxTokens) * totalSquares), '■', THEME.colors.warning)
-    addSquares(Math.round((skillsTokens / maxTokens) * totalSquares), '■', THEME.colors.error)
-    addSquares(Math.round((toolsTokens / maxTokens) * totalSquares), '■', THEME.colors.brand)
-    addSquares(
-        Math.round((conversationHistoryTokens / maxTokens) * totalSquares),
-        '■',
-        THEME.colors.success
-    )
-
-    while (filled < totalSquares) {
-        squares.push(
-            <Text key={filled} color={THEME.colors.border}>
-                □
+    const freeBlocks = Math.max(0, barWidth - totalFilled)
+    if (freeBlocks > 0) {
+        barElements.push(
+            <Text key="free" color={THEME.colors.border}>
+                {'░'.repeat(freeBlocks)}
             </Text>
-        )
-        filled++
-    }
-
-    const gridRows = []
-    for (let i = 0; i < totalSquares; i += 20) {
-        gridRows.push(
-            <Box key={i} gap={1}>
-                {squares.slice(i, i + 20)}
-            </Box>
         )
     }
 
     return (
         <Box flexDirection="column">
-            <Box marginBottom={1}>
-                <Text color={THEME.colors.text}>Context</Text>
+            <Box gap={1}>
+                <Text bold color={THEME.colors.text}>
+                    Context
+                </Text>
+                <Text color={THEME.colors.muted}>·</Text>
+                <Text color={THEME.colors.brand}>{currentModelName}</Text>
+                <Text color={THEME.colors.muted}>·</Text>
+                <Text color={THEME.colors.muted}>
+                    {formatK(totalTokens)}/{formatK(maxTokens)} tokens ({pct(totalTokens)}%)
+                </Text>
             </Box>
-            <Box flexDirection="row" gap={3}>
-                <Box flexDirection="column">{gridRows}</Box>
+
+            <Box marginTop={1}>{barElements}</Box>
+
+            <Box flexDirection={isNarrow ? 'column' : 'row'} gap={isNarrow ? 1 : 3} marginTop={1}>
+                <Box flexDirection="column">
+                    <Box gap={1}>
+                        <Text color={THEME.colors.muted}>■</Text>
+                        <Text color={THEME.colors.muted}>
+                            Base System Prompt: {formatK(basePromptTokens)} tokens (
+                            {pct(basePromptTokens)}%)
+                        </Text>
+                    </Box>
+                    <Box gap={1}>
+                        <Text color={THEME.colors.warning}>■</Text>
+                        <Text color={THEME.colors.muted}>
+                            Project Rules: {formatK(rulesTokens)} tokens ({pct(rulesTokens)}%)
+                        </Text>
+                    </Box>
+                    <Box gap={1}>
+                        <Text color={THEME.colors.error}>■</Text>
+                        <Text color={THEME.colors.muted}>
+                            Workspace Skills: {formatK(skillsTokens)} tokens ({pct(skillsTokens)}%)
+                        </Text>
+                    </Box>
+                </Box>
 
                 <Box flexDirection="column">
                     <Box gap={1}>
+                        <Text color={THEME.colors.brand}>■</Text>
                         <Text color={THEME.colors.muted}>
-                            {currentModelName} · {formatK(totalTokens)}/{formatK(maxTokens)} tokens
-                            ({pct(totalTokens)}%)
+                            Tool Schemas: {formatK(toolsTokens)} tokens ({pct(toolsTokens)}%)
                         </Text>
                     </Box>
-                    <Box marginTop={1}>
-                        <Text color={THEME.colors.text}>Token usage by category</Text>
+                    <Box gap={1}>
+                        <Text color={THEME.colors.success}>■</Text>
+                        <Text color={THEME.colors.muted}>
+                            Conversation History: {formatK(conversationHistoryTokens)} tokens (
+                            {pct(conversationHistoryTokens)}%)
+                        </Text>
                     </Box>
-                    <Box flexDirection="column">
-                        <Box gap={1}>
-                            <Text color={THEME.colors.muted}>■</Text>
-                            <Text color={THEME.colors.muted}>
-                                Base System Prompt: {formatK(basePromptTokens)} tokens (
-                                {pct(basePromptTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color={THEME.colors.warning}>■</Text>
-                            <Text color={THEME.colors.muted}>
-                                Project Rules (AGENTS.md / rules.md): {formatK(rulesTokens)} tokens
-                                ({pct(rulesTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color={THEME.colors.error}>■</Text>
-                            <Text color={THEME.colors.muted}>
-                                Workspace Skills (skills.md): {formatK(skillsTokens)} tokens (
-                                {pct(skillsTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color={THEME.colors.brand}>■</Text>
-                            <Text color={THEME.colors.muted}>
-                                Tool Schemas: {formatK(toolsTokens)} tokens ({pct(toolsTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color={THEME.colors.success}>■</Text>
-                            <Text color={THEME.colors.muted}>
-                                Conversation History: {formatK(conversationHistoryTokens)} tokens (
-                                {pct(conversationHistoryTokens)}%)
-                            </Text>
-                        </Box>
-                        <Box gap={1}>
-                            <Text color={THEME.colors.border}>□</Text>
-                            <Text color={THEME.colors.muted}>
-                                Free space: {formatK(freeTokens)} ({pct(freeTokens)}%)
-                            </Text>
-                        </Box>
+                    <Box gap={1}>
+                        <Text color={THEME.colors.border}>□</Text>
+                        <Text color={THEME.colors.muted}>
+                            Free space: {formatK(freeTokens)} ({pct(freeTokens)}%)
+                        </Text>
                     </Box>
                 </Box>
             </Box>

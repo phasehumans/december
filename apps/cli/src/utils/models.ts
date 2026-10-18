@@ -453,12 +453,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Muse Spark 1.2 Contributor', value: 'muse-spark-1.2-contributor' },
                 { label: 'Muse Spark 1.1', value: 'muse-spark-1.1' },
             ]
-        case 'poolside':
-            return [
-                { label: 'Laguna S 2.1', value: 'laguna-s-2.1' },
-                { label: 'Laguna M.1', value: 'laguna-m.1' },
-                { label: 'Laguna XS 2.1', value: 'laguna-xs-2.1' },
-            ]
         case 'sakana':
         case 'sakanaai':
         case 'sakana-ai':
@@ -530,30 +524,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 },
                 { label: 'Agnes 2.5 Flash', value: 'agnes-2.5-flash' },
                 { label: 'Agnes 2.5 Pro Beta', value: 'agnes-2.5-pro-beta' },
-            ]
-        case 'airouter':
-        case 'ai-router':
-            return [
-                {
-                    label: 'GPT-5.6 Luna (Flagship)',
-                    value: 'gpt-5.6-luna',
-                },
-                {
-                    label: 'GPT-5.6 Terra (Balanced)',
-                    value: 'gpt-5.6-terra',
-                },
-                {
-                    label: 'GPT-5.6 Sol (High-Compute)',
-                    value: 'gpt-5.6-sol',
-                },
-                {
-                    label: 'GPT-5.4',
-                    value: 'gpt-5.4',
-                },
-                {
-                    label: 'GPT-5.5',
-                    value: 'gpt-5.5',
-                },
             ]
         case 'aiand':
             return [
@@ -849,21 +819,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Jamba Large', value: 'jamba-large' },
                 { label: 'Jamba Mini', value: 'jamba-mini' },
             ]
-        case 'aihubmix':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                { label: 'Claude Opus 4.7 Thinking', value: 'claude-opus-4-7-think' },
-                { label: 'Claude Opus 5', value: 'claude-opus-5' },
-                { label: 'Claude Fable 5.1', value: 'claude-fable-5-1' },
-                { label: 'Claude Opus 4.6', value: 'claude-opus-4-6' },
-                { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
-                { label: 'Claude Fable 5', value: 'claude-fable-5' },
-                { label: 'Claude Sonnet 4.6 Thinking', value: 'claude-sonnet-4-6-think' },
-            ]
-        case 'ainetcafe':
-            return [{ label: 'Kimi K3', value: 'Kimi-K3' }]
-        case 'aixy':
-            return [{ label: 'GPT-4.1 mini', value: 'openai/gpt-4.1-mini' }]
         case 'amd':
             return [
                 { label: 'DeepSeek V4 Flash 0731', value: 'DeepSeek-V4-Flash' },
@@ -884,11 +839,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Claude Sonnet 4.5 (latest)', value: 'anthropic/claude-sonnet-4-5' },
                 { label: 'GPT-5.4', value: 'openai/gpt-5.4' },
             ]
-        case 'bailing':
-            return [
-                { label: 'Ling-1T', value: 'Ling-1T' },
-                { label: 'Ring-1T', value: 'Ring-1T' },
-            ]
         case 'berget':
             return [
                 {
@@ -905,17 +855,6 @@ export const getCuratedProviderModels = (provider: string) => {
             return [
                 { label: 'Qwen3.6 27B', value: 'Qwen3.6-27B' },
                 { label: 'Qwen3.6 35B A3B FP8', value: 'Qwen/Qwen3.6-35B-A3B-FP8' },
-            ]
-        case 'bothub':
-            return [
-                { label: 'GPT-5.6 Luna', value: 'gpt-5.6-luna' },
-                { label: 'Muse Spark 1.3 Contributor', value: 'muse-spark-1.3-contributor' },
-                { label: 'DeepSeek V4 Pro 0813', value: 'deepseek-v4-pro-0813' },
-                { label: 'DeepSeek V4 Flash 0731', value: 'deepseek-v4-flash-0731' },
-                { label: 'GLM-5.3-Flash', value: 'glm-5.3-flash' },
-                { label: 'Nemotron 3 Ultra (free)', value: 'nemotron-3-ultra-550b-a55b:free' },
-                { label: 'GLM-5.3', value: 'glm-5.3' },
-                { label: 'Gemma 4 31B IT (free)', value: 'gemma-4-31b-it:free' },
             ]
         case 'chutes':
             return [
@@ -963,25 +902,6 @@ export const getCuratedProviderModels = (provider: string) => {
                     value: 'mistralai/completion/models/Ministral-3-14B-Reasoning-2512',
                 },
             ]
-        case 'claudinio':
-            return [
-                { label: 'Claudinio', value: 'claudinio' },
-                { label: 'Claudius', value: 'claudius' },
-            ]
-        case 'cline-pass':
-            return [
-                { label: 'MiMo-V2.6-Pro', value: 'cline-pass/mimo-v2.6-pro' },
-                { label: 'MiniMax-M3', value: 'cline-pass/minimax-m3' },
-                { label: 'Kimi K3', value: 'cline-pass/kimi-k3' },
-                {
-                    label: 'Muse Spark 1.3 Contributor',
-                    value: 'cline-pass/muse-spark-1.3-contributor',
-                },
-                { label: 'MiMo-V2.6-Flash', value: 'cline-pass/mimo-v2.6-flash' },
-                { label: 'MiMo-V2.5', value: 'cline-pass/mimo-v2.5' },
-                { label: 'MiMo-V2.5-Pro', value: 'cline-pass/mimo-v2.5-pro' },
-                { label: 'Qwen3.7 Max', value: 'cline-pass/qwen3.7-max' },
-            ]
         case 'cloudferro-sherlock':
             return [
                 { label: 'Llama 3.3 70B Instruct', value: 'meta-llama/Llama-3.3-70B-Instruct' },
@@ -1019,28 +939,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Qwen3-Coder 30B-A3B Instruct', value: 'qwen3-coder-30b-a3b-instruct' },
                 { label: 'qwen3-30b-a3b-instruct-2507', value: 'qwen3-30b-a3b-instruct-2507' },
             ]
-        case 'crof':
-            return [
-                { label: 'MiMo-V2.5-Pro', value: 'mimo-v2.5-pro' },
-                { label: 'DeepSeek V4 Flash Vision Exp', value: 'deepseek-v4-flash-vision-exp' },
-                { label: 'DeepSeek V4 Pro (0813)', value: 'deepseek-v4-pro-0813' },
-                { label: 'DeepSeek V4 Flash (New)', value: 'deepseek-v4-flash-0731' },
-                { label: 'GLM-5.2', value: 'glm-5.2' },
-                { label: 'DeepSeek V4 Flash', value: 'deepseek-v4-flash' },
-                { label: 'Kimi K3', value: 'kimi-k3' },
-                { label: 'GLM 5.3-Flash', value: 'glm-5.3-flash' },
-            ]
-        case 'crossmodel':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'anthropic/claude-sonnet-4-6' },
-                { label: 'Claude Opus 5.5', value: 'anthropic/claude-opus-5-5' },
-                { label: 'Claude Opus 5', value: 'anthropic/claude-opus-5' },
-                { label: 'Claude Fable 5.1', value: 'anthropic/claude-fable-5-1' },
-                { label: 'Claude Opus 4.7', value: 'anthropic/claude-opus-4-7' },
-                { label: 'Claude Fable 5', value: 'anthropic/claude-fable-5' },
-                { label: 'Claude Opus 4.8', value: 'anthropic/claude-opus-4-8' },
-                { label: 'Claude Sonnet 5', value: 'anthropic/claude-sonnet-5' },
-            ]
         case 'crusoe':
             return [
                 {
@@ -1063,17 +961,6 @@ export const getCuratedProviderModels = (provider: string) => {
                     label: 'Nemotron 3 Nano Omni 30B A3B Reasoning',
                     value: 'nvidia/Nemotron-3-Nano-Omni-Reasoning-30B-A3B',
                 },
-            ]
-        case 'daoxe':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                { label: 'Claude Opus 4.8', value: 'claude-opus-4-8' },
-                { label: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' },
-                { label: 'GPT-5.4', value: 'gpt-5.4' },
-                { label: 'GPT-5.5', value: 'gpt-5.5' },
-                { label: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
-                { label: 'Grok 4.3', value: 'grok-4.3' },
-                { label: 'Grok 4.5', value: 'grok-4.5' },
             ]
         case 'deepinfra':
             return [
@@ -1121,15 +1008,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'MiniMax M2.5', value: 'public/minimax-m25' },
                 { label: 'DeepSeek V3', value: 'public/deepseek-v3' },
             ]
-        case 'ebcloud':
-            return [
-                { label: 'DeepSeek V4 Flash', value: 'DeepSeek-V4-Flash' },
-                { label: 'DeepSeek V4 Pro', value: 'DeepSeek-V4-Pro' },
-                { label: 'Kimi K2.6', value: 'Kimi-K2.6' },
-                { label: 'GLM-5.1', value: 'GLM-5.1' },
-            ]
-        case 'echo':
-            return [{ label: 'Echo', value: 'echo' }]
         case 'edenai':
             return [
                 { label: 'Qwen3 Coder Plus', value: 'qwen/qwen3-coder-plus' },
@@ -1177,17 +1055,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'GPT-5.5', value: 'openai/gpt-5.5' },
                 { label: 'Gemini 3.1 Pro Preview', value: 'google/gemini-3.1-pro-preview' },
             ]
-        case 'freemodel':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                { label: 'Claude Opus 4.6', value: 'claude-opus-4-6' },
-                { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
-                { label: 'Claude Fable 5', value: 'claude-fable-5' },
-                { label: 'Claude Opus 4.8', value: 'claude-opus-4-8' },
-                { label: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' },
-                { label: 'GPT-5.4', value: 'gpt-5.4' },
-                { label: 'GPT-5.5', value: 'gpt-5.5' },
-            ]
         case 'friendli':
             return [
                 { label: 'GLM-5.3', value: 'zai-org/GLM-5.3' },
@@ -1197,39 +1064,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'GLM-5.1', value: 'zai-org/GLM-5.1' },
                 { label: 'MiniMax-M2.5', value: 'MiniMaxAI/MiniMax-M2.5' },
                 { label: 'DeepSeek V3.2', value: 'deepseek-ai/DeepSeek-V3.2' },
-            ]
-        case 'frogbot':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                { label: 'Claude Opus 4.6', value: 'claude-opus-4-6' },
-                { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
-                { label: 'Claude Haiku 4.5', value: 'claude-haiku-4-5' },
-                { label: 'Grok 4.1 Fast (Non-Reasoning)', value: 'grok-4-1-fast-non-reasoning' },
-                { label: 'Grok 4.1 Fast (Reasoning)', value: 'grok-4-1-fast-reasoning' },
-                { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
-                { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
-            ]
-        case 'gmicloud':
-            return [
-                { label: 'Claude Opus 4.8', value: 'anthropic/claude-opus-4.8' },
-                { label: 'Claude Opus 4.7', value: 'anthropic/claude-opus-4.7' },
-                { label: 'Claude Sonnet 4.6', value: 'anthropic/claude-sonnet-4.6' },
-                { label: 'Claude Opus 4.6', value: 'anthropic/claude-opus-4.6' },
-                { label: 'GPT-5.5', value: 'openai/gpt-5.5' },
-                { label: 'DeepSeek V4 Pro', value: 'deepseek-ai/DeepSeek-V4-Pro' },
-                { label: 'MiniMax-M3', value: 'MiniMaxAI/MiniMax-M3' },
-                { label: 'DeepSeek V4 Flash', value: 'deepseek-ai/DeepSeek-V4-Flash' },
-            ]
-        case 'greenpt':
-            return [
-                { label: 'Qwen3 235B A22B Instruct 2507', value: 'qwen3-235b-a22b-instruct-2507' },
-                { label: 'Devstral 2', value: 'devstral-2-123b-instruct-2512' },
-                { label: 'Qwen3-Coder 30B-A3B Instruct', value: 'qwen3-coder-30b-a3b-instruct' },
-                { label: 'Mistral Small 3.2', value: 'mistral-small-3.2-24b-instruct-2506' },
-                { label: 'Llama-3.3-70B-Instruct', value: 'llama-3.3-70b-instruct' },
-                { label: 'Kimi K3', value: 'kimi-k3' },
-                { label: 'DeepSeek V4 Flash 0731', value: 'deepseek-v4-flash-0731' },
-                { label: 'GLM-5.2 Caveman Ultra', value: 'glm-5.2-caveman-ultra' },
             ]
         case 'helicone':
             return [
@@ -1272,40 +1106,11 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'DeepSeek V4 Flash 0731', value: 'deepseek-v4-flash-0731' },
                 { label: 'Qwen3.8 27B', value: 'qwen3.8-27b' },
             ]
-        case 'iflowcn':
-            return [
-                { label: 'Qwen3-Coder-Plus', value: 'qwen3-coder-plus' },
-                { label: 'Qwen3-235B-A22B-Instruct', value: 'qwen3-235b-a22b-instruct' },
-                { label: 'DeepSeek-R1', value: 'deepseek-r1' },
-                { label: 'Qwen3-235B-A22B-Thinking', value: 'qwen3-235b-a22b-thinking-2507' },
-                { label: 'Kimi-K2-0905', value: 'kimi-k2-0905' },
-                { label: 'Qwen3-VL-Plus', value: 'qwen3-vl-plus' },
-                { label: 'Qwen3-Max-Preview', value: 'qwen3-max-preview' },
-                { label: 'Qwen3-Max', value: 'qwen3-max' },
-            ]
-        case 'impossibl':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'anthropic/claude-sonnet-4-6' },
-                { label: 'Claude Opus 4.6', value: 'anthropic/claude-opus-4-6' },
-                { label: 'Claude Opus 4.7', value: 'anthropic/claude-opus-4-7' },
-                { label: 'Claude Fable 5', value: 'anthropic/claude-fable-5' },
-                { label: 'Claude Opus 4.8', value: 'anthropic/claude-opus-4-8' },
-                { label: 'Claude Sonnet 5', value: 'anthropic/claude-sonnet-5' },
-                { label: 'Claude Opus 4.5 (latest)', value: 'anthropic/claude-opus-4-5' },
-                { label: 'Claude Haiku 4.5 (latest)', value: 'anthropic/claude-haiku-4-5' },
-            ]
         case 'inception':
             return [
                 { label: 'Mercury 2.5', value: 'mercury-2.5' },
                 { label: 'Mercury 2', value: 'mercury-2' },
                 { label: 'Mercury Edit 2', value: 'mercury-edit-2' },
-            ]
-        case 'inceptron':
-            return [
-                { label: 'DeepSeek V4 Flash 0731', value: 'deepseek-ai/DeepSeek-V4-Flash-0731' },
-                { label: 'GLM 5.2', value: 'zai-org/GLM-5.2' },
-                { label: 'Kimi K2.7 Code', value: 'moonshotai/Kimi-K2.7-Code' },
-                { label: 'Kimi K2.6', value: 'moonshotai/Kimi-K2.6' },
             ]
         case 'inco':
             return [
@@ -1316,42 +1121,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'GLM-5.3 Fast', value: 'glm-5.3:fast' },
                 { label: 'GLM-5.3-Flash', value: 'glm-5.3-flash:fast' },
                 { label: 'GLM-5.3', value: 'glm-5.3' },
-            ]
-        case 'infer':
-            return [
-                { label: 'GPT-5.6 Sol (Official API)', value: 'infer/gpt-5.6-sol:official' },
-                { label: 'GPT-6 Astra (Official API)', value: 'infer/gpt-6-astra:official' },
-            ]
-        case 'inference':
-            return [
-                { label: 'Qwen 2.5 7B Vision Instruct', value: 'qwen/qwen-2.5-7b-vision-instruct' },
-                { label: 'Llama 3.1 8B Instruct', value: 'meta/llama-3.1-8b-instruct' },
-                { label: 'Llama 3.2 3B Instruct', value: 'meta/llama-3.2-3b-instruct' },
-                { label: 'Llama 3.2 1B Instruct', value: 'meta/llama-3.2-1b-instruct' },
-                {
-                    label: 'Llama 3.2 11B Vision Instruct',
-                    value: 'meta/llama-3.2-11b-vision-instruct',
-                },
-                { label: 'Mistral Nemo 12B Instruct', value: 'mistral/mistral-nemo-12b-instruct' },
-                { label: 'Google Gemma 3', value: 'google/gemma-3' },
-                { label: 'Osmosis Structure 0.6B', value: 'osmosis/osmosis-structure-0.6b' },
-            ]
-        case 'inferx':
-            return [
-                {
-                    label: 'Qwen3-Coder-Next-FP8-no-thinking',
-                    value: 'Qwen3-Coder-Next-FP8-no-thinking',
-                },
-                { label: 'Qwen3 Coder Next FP8', value: 'Qwen3-Coder-Next-FP8' },
-                {
-                    label: 'Devstral-2-123B-Instruct-2512-int4-AutoRound',
-                    value: 'Devstral-2-123B-Instruct-2512-int4-AutoRound',
-                },
-                { label: 'deepseek-v4-flash', value: 'deepseek-v4-flash' },
-                { label: 'mimo-v25', value: 'mimo-v25' },
-                { label: 'Gemma 4 31B IT FP8', value: 'gemma-4-31B-it-fp8' },
-                { label: 'Qwen3.6 27B FP8', value: 'Qwen3.6-27B-FP8' },
-                { label: 'Agents-A1', value: 'Agents-A1' },
             ]
         case 'io-net':
             return [
@@ -1387,42 +1156,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'DeepSeek V4 Flash 0731', value: 'deepseek/deepseek-v4-flash-0731' },
                 { label: 'Qwen3.8 27B', value: 'qwen/qwen3.8-27b' },
             ]
-        case 'jalapeno':
-            return [
-                { label: 'Qwen3 VL 235B A22B Instruct', value: 'Qwen3-VL-235B-A22B-Instruct' },
-                { label: 'Qwen3-Next 80B-A3B Instruct', value: 'Qwen3-Next-80B-A3B-Instruct' },
-                { label: 'DeepSeek V4 Flash', value: 'DeepSeek-V4-Flash' },
-                { label: 'GLM-5.2', value: 'GLM-5.2' },
-                { label: 'Kimi K3', value: 'Kimi-K3' },
-                { label: 'DeepSeek V4 Pro', value: 'DeepSeek-V4-Pro' },
-                { label: 'MiniMax-M3', value: 'MiniMax-M3' },
-                { label: 'Kimi K2.7 Code', value: 'Kimi-K2.7-Code' },
-            ]
-        case 'jiekou':
-            return [
-                { label: 'claude-opus-4-6', value: 'claude-opus-4-6' },
-                { label: 'gpt-5-chat-latest', value: 'gpt-5-chat-latest' },
-                { label: 'qwen/qwen3-coder-next', value: 'qwen/qwen3-coder-next' },
-                {
-                    label: 'Qwen3 Coder 480B A35B Instruct',
-                    value: 'qwen/qwen3-coder-480b-a35b-instruct',
-                },
-                { label: 'claude-opus-4-1-20250805', value: 'claude-opus-4-1-20250805' },
-                { label: 'claude-opus-4-20250514', value: 'claude-opus-4-20250514' },
-                { label: 'claude-sonnet-4-5-20250929', value: 'claude-sonnet-4-5-20250929' },
-                { label: 'claude-sonnet-4-20250514', value: 'claude-sonnet-4-20250514' },
-            ]
-        case 'kenari':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                { label: 'Claude Opus 5', value: 'claude-opus-5' },
-                { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
-                { label: 'Claude Fable 5', value: 'claude-fable-5' },
-                { label: 'Claude Opus 4.8', value: 'claude-opus-4-8' },
-                { label: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
-                { label: 'GPT-5.6 Terra', value: 'gpt-5-6-terra' },
-                { label: 'GPT-5.6 Sol', value: 'gpt-5-6-sol' },
-            ]
         case 'kilo':
             return [
                 { label: 'Qwen3 Coder Plus', value: 'qwen/qwen3-coder-plus' },
@@ -1454,46 +1187,8 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Kimi For Coding HighSpeed', value: 'kimi-for-coding-highspeed' },
                 { label: 'Kimi K3-256K', value: 'k3-256k' },
             ]
-        case 'klokintegration':
-            return [
-                { label: 'Kloker Integration Developer', value: 'Kloker-Integration-Developer' },
-                { label: 'Kloker Integration Architect', value: 'Kloker-Integration-Architect' },
-                { label: 'Kloker', value: 'Kloker' },
-            ]
         case 'kosmik':
             return [{ label: 'Qwen3.8 27B', value: 'qwen/qwen3.8-27b' }]
-        case 'lilac':
-            return [
-                { label: 'MiniMax M3', value: 'minimaxai/minimax-m3' },
-                { label: 'GLM 5.2', value: 'zai-org/glm-5.2' },
-                { label: 'Kimi K2.6', value: 'moonshotai/kimi-k2.6' },
-                { label: 'Gemma 4 31B IT', value: 'google/gemma-4-31b-it' },
-            ]
-        case 'llama':
-            return [
-                {
-                    label: 'Cerebras-Llama-4-Scout-17B-16E-Instruct',
-                    value: 'cerebras-llama-4-scout-17b-16e-instruct',
-                },
-                {
-                    label: 'Llama-4-Maverick-17B-128E-Instruct-FP8',
-                    value: 'llama-4-maverick-17b-128e-instruct-fp8',
-                },
-                {
-                    label: 'Groq-Llama-4-Maverick-17B-128E-Instruct',
-                    value: 'groq-llama-4-maverick-17b-128e-instruct',
-                },
-                {
-                    label: 'Llama-4-Scout-17B-16E-Instruct-FP8',
-                    value: 'llama-4-scout-17b-16e-instruct-fp8',
-                },
-                {
-                    label: 'Cerebras-Llama-4-Maverick-17B-128E-Instruct',
-                    value: 'cerebras-llama-4-maverick-17b-128e-instruct',
-                },
-                { label: 'Llama-3.3-70B-Instruct', value: 'llama-3.3-70b-instruct' },
-                { label: 'Llama-3.3-8B-Instruct', value: 'llama-3.3-8b-instruct' },
-            ]
         case 'llmgateway':
             return [
                 { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
@@ -1504,85 +1199,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Claude Fable 5.1', value: 'claude-fable-5-1' },
                 { label: 'Claude Opus 4.6', value: 'claude-opus-4-6' },
                 { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
-            ]
-        case 'llmgateway-providers':
-            return [
-                {
-                    label: 'Claude Sonnet 4.6 (Vertex AI (Anthropic))',
-                    value: 'vertex-anthropic/claude-sonnet-4-6',
-                },
-                {
-                    label: 'Claude Opus 4.6 (Vertex AI (Anthropic))',
-                    value: 'vertex-anthropic/claude-opus-4-6',
-                },
-                {
-                    label: 'Claude Opus 4.7 (Vertex AI (Anthropic))',
-                    value: 'vertex-anthropic/claude-opus-4-7',
-                },
-                {
-                    label: 'Claude Sonnet 5 (Vertex AI (Anthropic))',
-                    value: 'vertex-anthropic/claude-sonnet-5',
-                },
-                { label: 'Qwen3 Coder Plus (Alibaba Cloud)', value: 'alibaba/qwen3-coder-plus' },
-                { label: 'Qwen3 Coder Flash (Alibaba Cloud)', value: 'alibaba/qwen3-coder-flash' },
-                {
-                    label: 'Claude Sonnet 4.6 (AWS Bedrock)',
-                    value: 'aws-bedrock/claude-sonnet-4-6',
-                },
-                { label: 'Claude Opus 5 (AWS Bedrock)', value: 'aws-bedrock/claude-opus-5' },
-            ]
-        case 'llmtech':
-            return [{ label: 'Qwen3.8 27B', value: 'nvidia/Qwen3.8-27B-NVFP4' }]
-        case 'llmtr':
-            return [
-                { label: 'Qwen3 Coder Plus', value: 'qwen/qwen3-coder-plus' },
-                { label: 'Qwen3 Coder Flash', value: 'qwen/qwen3-coder-flash' },
-                { label: 'Apertus 8B Instruct', value: 'publicai/apertus-8b-instruct' },
-                { label: 'Apertus 70B Instruct', value: 'publicai/apertus-70b-instruct' },
-                { label: 'Gemini 2.5 Flash-Lite', value: 'google/gemini-2.5-flash-lite' },
-                { label: 'Muse Spark 1.2 Contributor', value: 'meta/muse-spark-1.2-contributor' },
-                { label: 'Qwen3.6 Plus', value: 'qwen/qwen3.6-plus' },
-                { label: 'Qwen Flash', value: 'qwen/qwen-flash' },
-            ]
-        case 'longcat':
-            return [{ label: 'LongCat-2.0', value: 'LongCat-2.0' }]
-        case 'lucidquery':
-            return [
-                { label: 'LucidQuery Nexus Coder', value: 'lucidquery-nexus-coder' },
-                { label: 'AGI-01 Frontier', value: 'lucidquery-agi-01-frontier' },
-                { label: 'AGI-01 Swift', value: 'lucidquery-agi-01-swift' },
-                { label: 'LucidNova RF1 100B', value: 'lucidnova-rf1-100b' },
-            ]
-        case 'meganova':
-            return [
-                {
-                    label: 'Qwen3 235B A22B Instruct 2507',
-                    value: 'Qwen/Qwen3-235B-A22B-Instruct-2507',
-                },
-                {
-                    label: 'Mistral Nemo Instruct 2407',
-                    value: 'mistralai/Mistral-Nemo-Instruct-2407',
-                },
-                { label: 'Llama 3.3 70B Instruct', value: 'meta-llama/Llama-3.3-70B-Instruct' },
-                {
-                    label: 'Mistral Small 3.2 24B Instruct',
-                    value: 'mistralai/Mistral-Small-3.2-24B-Instruct-2506',
-                },
-                { label: 'Qwen2.5 VL 32B Instruct', value: 'Qwen/Qwen2.5-VL-32B-Instruct' },
-                { label: 'Qwen3.5 Plus', value: 'Qwen/Qwen3.5-Plus' },
-                { label: 'Kimi K2 Thinking', value: 'moonshotai/Kimi-K2-Thinking' },
-                { label: 'Kimi K2.5', value: 'moonshotai/Kimi-K2.5' },
-            ]
-        case 'melious':
-            return [
-                { label: 'DeepSeek-R1', value: 'deepseek-r1-0528' },
-                { label: 'DeepSeek V4 Pro 0813', value: 'deepseek-v4-pro-0813' },
-                { label: 'DeepSeek V4 Flash 0731', value: 'deepseek-v4-flash-0731' },
-                { label: 'GLM-5.2', value: 'glm-5.2' },
-                { label: 'DeepSeek V4.1 Flash', value: 'deepseek-v4.1-flash' },
-                { label: 'Kimi K3', value: 'kimi-k3' },
-                { label: 'GLM-5.3-Flash', value: 'glm-5.3-flash' },
-                { label: 'DeepSeek V4 Pro', value: 'deepseek-v4-pro' },
             ]
         case 'merge-gateway':
             return [
@@ -1595,47 +1211,12 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Claude Opus 4.6', value: 'anthropic/claude-opus-4-6' },
                 { label: 'Claude Opus 4.7', value: 'anthropic/claude-opus-4-7' },
             ]
-        case 'mixlayer':
-            return [
-                { label: 'Qwen3.5 9B', value: 'qwen/qwen3.5-9b' },
-                { label: 'Qwen3.5 27B', value: 'qwen/qwen3.5-27b' },
-                { label: 'Qwen3.5 35B A3B', value: 'qwen/qwen3.5-35b-a3b' },
-                { label: 'Qwen3.5 397B A17B', value: 'qwen/qwen3.5-397b-a17b' },
-                { label: 'Qwen3.5 122B A10B', value: 'qwen/qwen3.5-122b-a10b' },
-            ]
-        case 'moark':
-            return [
-                { label: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
-                { label: 'GLM-4.7', value: 'GLM-4.7' },
-            ]
         case 'modal':
             return [
                 { label: 'Inkling', value: 'thinkingmachines/Inkling-NVFP4' },
                 { label: 'Kimi K3', value: 'moonshotai/Kimi-K3' },
                 { label: 'Qwen3.8-Max', value: 'Qwen/Qwen3.8-2.4T-A95B' },
                 { label: 'GLM 5.3 Flash', value: 'zai-org/GLM-5.3-Flash' },
-            ]
-        case 'model-oracle-ai':
-            return [
-                { label: 'Claude Opus 4.8', value: 'claude-opus-4.8' },
-                { label: 'Claude Fable 5', value: 'claude-fable-5' },
-                { label: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
-                { label: 'Claude Haiku 4.5 (latest)', value: 'claude-haiku-4.5' },
-                { label: 'GPT-5.4', value: 'gpt-5.4' },
-                { label: 'GPT-5.5', value: 'gpt-5.5' },
-                { label: 'GPT-4.1 mini', value: 'gpt-4.1-mini' },
-                { label: 'GPT-4.1', value: 'gpt-4.1' },
-            ]
-        case 'modelis':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                { label: 'Claude Fable 5', value: 'claude-fable-5' },
-                { label: 'Claude Opus 4.8', value: 'claude-opus-4-8' },
-                { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
-                { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
-                { label: 'DeepSeek V4 Flash', value: 'deepseek-v4-flash' },
-                { label: 'DeepSeek V4 Pro', value: 'deepseek-v4-pro' },
-                { label: 'Qwen3.7 Max', value: 'qwen/qwen3.7-max' },
             ]
         case 'modelscope':
             return [
@@ -1661,16 +1242,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Morph v3 Large', value: 'morph-v3-large' },
                 { label: 'Auto', value: 'auto' },
                 { label: 'Morph v3 Fast', value: 'morph-v3-fast' },
-            ]
-        case 'nan':
-            return [
-                { label: 'MiMo-V2.5', value: 'mimo-v2.5' },
-                { label: 'GLM-5.3', value: 'glm5.3' },
-                { label: 'DeepSeek V4.1 Flash', value: 'deepseek-v4-flash' },
-                { label: 'GLM-5.3-Flash', value: 'glm5.3-flash' },
-                { label: 'Qwen3.6 35B-A3B', value: 'qwen3.6' },
-                { label: 'Gemma 4 26B A4B IT', value: 'gemma4' },
-                { label: 'Qwen3.8 Flash', value: 'qwen3.8-flash' },
             ]
         case 'nano-gpt':
             return [
@@ -1714,29 +1285,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'MiniMax-M3', value: 'MiniMaxAI/MiniMax-M3' },
                 { label: 'Kimi K3', value: 'moonshotai/Kimi-K3' },
             ]
-        case 'neosmith':
-            return [
-                { label: 'NeoSmith Maestro', value: 'neosmith.intelligent-maestro' },
-                { label: 'NeoSmith Basic', value: 'neosmith.intelligent-basic' },
-                { label: 'NeoSmith Pro', value: 'neosmith.intelligent-pro' },
-                { label: 'NeoSmith NeoLite', value: 'neosmith.neolite' },
-            ]
-        case 'neuralwatt':
-            return [
-                { label: 'GLM-5.3 Flash Flex', value: 'glm-5.3-flash-flex' },
-                { label: 'GLM 5.3 Flex', value: 'glm-5.3-flex' },
-                { label: 'GLM 5.2 Flex', value: 'glm-5.2-flex' },
-                { label: 'GLM 5.2', value: 'glm-5.2' },
-                { label: 'DeepSeek V4 Flash', value: 'deepseek-v4-flash' },
-                { label: 'DeepSeek V4 Flash (Speed)', value: 'deepseek-v4-flash-speed' },
-                { label: 'DeepSeek V4.1 Flash', value: 'deepseek-v4.1-flash' },
-                { label: 'Kimi K3', value: 'kimi-k3' },
-            ]
-        case 'nova':
-            return [
-                { label: 'Nova 2 Lite', value: 'nova-2-lite-v1' },
-                { label: 'Nova 2 Pro', value: 'nova-2-pro-v1' },
-            ]
         case 'novita-ai':
             return [
                 { label: 'Qwen3 Coder Next', value: 'qwen/qwen3-coder-next' },
@@ -1756,28 +1304,6 @@ export const getCuratedProviderModels = (provider: string) => {
                     label: 'qwen/qwen3-vl-30b-a3b-instruct',
                     value: 'qwen/qwen3-vl-30b-a3b-instruct',
                 },
-            ]
-        case 'ofox':
-            return [
-                { label: 'Qwen3 Coder Plus', value: 'bailian/qwen3-coder-plus' },
-                { label: 'Qwen3 Coder Plus', value: 'qwen/qwen3-coder-plus' },
-                { label: 'Qwen3 Coder Flash', value: 'qwen/qwen3-coder-flash' },
-                { label: 'Qwen3 Coder Flash', value: 'bailian/qwen3-coder-flash' },
-                { label: 'Claude Opus 4.8', value: 'anthropic/claude-opus-4.8' },
-                { label: 'Claude Opus 4.7', value: 'anthropic/claude-opus-4.7' },
-                { label: 'Claude Opus 5', value: 'anthropic/claude-opus-5' },
-                { label: 'Claude Sonnet 4.6', value: 'anthropic/claude-sonnet-4.6' },
-            ]
-        case 'ollama-cloud':
-            return [
-                { label: 'DeepSeek V4 Flash 0731', value: 'deepseek-v4-flash:0731' },
-                { label: 'deepseek-v4-flash', value: 'deepseek-v4-flash' },
-                { label: 'DeepSeek V4 Pro 0813', value: 'deepseek-v4-pro:0813' },
-                { label: 'DeepSeek V4.1 Flash', value: 'deepseek-v4.1-flash' },
-                { label: 'nemotron-3-nano:30b', value: 'nemotron-3-nano:30b' },
-                { label: 'kimi-k3', value: 'kimi-k3' },
-                { label: 'deepseek-v4-pro', value: 'deepseek-v4-pro' },
-                { label: 'GLM-5.3', value: 'glm-5.3' },
             ]
         case 'opencode':
             return [
@@ -1866,17 +1392,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 },
                 { label: 'GPT-5.4', value: 'openai/gpt-5.4' },
             ]
-        case 'pioneer':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                { label: 'Claude Opus 5', value: 'claude-opus-5-fast' },
-                { label: 'Claude Opus 5', value: 'claude-opus-5' },
-                { label: 'Claude Opus 4.6', value: 'claude-opus-4-6' },
-                { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
-                { label: 'Claude Fable 5', value: 'claude-fable-5' },
-                { label: 'Claude Sonnet 3.7', value: 'claude-3-7-sonnet-latest' },
-                { label: 'Claude Sonnet 4.5 (latest)', value: 'claude-sonnet-4-5' },
-            ]
         case 'poe':
             return [
                 { label: 'Claude-Opus-4.8', value: 'anthropic/claude-opus-4.8' },
@@ -1887,17 +1402,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Claude-Sonnet-4', value: 'anthropic/claude-sonnet-4' },
                 { label: 'Claude-Sonnet-3.7', value: 'anthropic/claude-sonnet-3.7' },
                 { label: 'Claude-Opus-4.1', value: 'anthropic/claude-opus-4.1' },
-            ]
-        case 'qihang-ai':
-            return [
-                { label: 'Claude Sonnet 4.5', value: 'claude-sonnet-4-5-20250929' },
-                { label: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' },
-                { label: 'Claude Opus 4.5', value: 'claude-opus-4-5-20251101' },
-                { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
-                { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
-                { label: 'Gemini 3 Pro Preview', value: 'gemini-3-pro-preview' },
-                { label: 'GPT-5.2 Codex', value: 'gpt-5.2-codex' },
-                { label: 'GPT-5.2', value: 'gpt-5.2' },
             ]
         case 'qiniu-ai':
             return [
@@ -1912,17 +1416,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Claude 4.1 Opus', value: 'claude-4.1-opus' },
                 { label: 'Claude 3.5 Haiku', value: 'claude-3.5-haiku' },
                 { label: 'Claude 3.7 Sonnet', value: 'claude-3.7-sonnet' },
-            ]
-        case 'qvac':
-            return [
-                { label: 'Gemma 4 31B IT', value: 'gemma4-31b' },
-                { label: 'Qwen3.6 27B', value: 'qwen3.6-27b' },
-                { label: 'Qwen3.6 35B-A3B', value: 'qwen3.6-35b-a3b' },
-                { label: 'GPT OSS 20B', value: 'gpt-oss-20b' },
-                { label: 'GPT OSS 120B', value: 'gpt-oss-120b' },
-                { label: 'Qwen3.5 9B', value: 'qwen3.5-9b' },
-                { label: 'Qwen3.5 0.8B', value: 'qwen3.5-0.8b' },
-                { label: 'Qwen3.5 4B', value: 'qwen3.5-4b' },
             ]
         case 'regolo-ai':
             return [
@@ -1945,17 +1438,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Claude Opus 5', value: 'claude-opus-5' },
                 { label: 'Claude Sonnet 5 (EU)', value: 'claude-sonnet-5@eu' },
                 { label: 'Claude Fable 5 (EU)', value: 'claude-fable-5@eu' },
-            ]
-        case 'routing-run':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                { label: 'Claude Opus 4.8', value: 'claude-opus-4-8' },
-                { label: 'GPT-5.6 Sol', value: 'gpt-5.6-sol' },
-                { label: 'DeepSeek V4 Flash', value: 'deepseek-v4-flash' },
-                { label: 'GPT-5.6 Luna', value: 'gpt-5.6-luna' },
-                { label: 'DeepSeek V4 Pro', value: 'deepseek-v4-pro' },
-                { label: 'GPT-5.6 Terra', value: 'gpt-5.6-terra' },
-                { label: 'Qwen3.5 9B', value: 'qwen3.5-9b' },
             ]
         case 'runinfra':
             return [
@@ -1986,21 +1468,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'GLM-5.2', value: 'glm-5.2' },
                 { label: 'Qwen3.5 397B A17B', value: 'qwen3.5-397b-a17b' },
             ]
-        case 'scx-ai':
-            return [
-                { label: 'Qwen3.8 Max', value: 'Qwen3.8-Max' },
-                { label: 'GLM-5.2', value: 'GLM-5.2' },
-                { label: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
-                { label: 'GPT OSS 120B', value: 'gpt-oss-120b' },
-            ]
-        case 'sensenova':
-            return [
-                { label: 'Kimi K3', value: 'kimi-k3' },
-                { label: 'DeepSeek V4 Pro', value: 'deepseek-v4-pro' },
-                { label: 'GLM-5.2', value: 'glm-5.2' },
-                { label: 'DeepSeek V4 Flash', value: 'deepseek-v4-flash' },
-                { label: 'SenseNova 6.8 Flash Lite', value: 'sensenova-6.8-flash-lite' },
-            ]
         case 'stackit':
             return [
                 { label: 'Qwen3-VL 235B', value: 'Qwen/Qwen3-VL-235B-A22B-Instruct-FP8' },
@@ -2019,26 +1486,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'GLM-5.2', value: 'subconscious/glm-5.2' },
                 { label: 'TIM-Qwen3.6 27B', value: 'subconscious/tim-qwen3.6-27b' },
             ]
-        case 'submodel':
-            return [
-                {
-                    label: 'Qwen3 235B A22B Instruct 2507',
-                    value: 'Qwen/Qwen3-235B-A22B-Instruct-2507',
-                },
-                {
-                    label: 'Qwen3 Coder 480B A35B Instruct',
-                    value: 'Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8',
-                },
-                { label: 'DeepSeek R1 0528', value: 'deepseek-ai/DeepSeek-R1-0528' },
-                {
-                    label: 'Qwen3 235B A22B Thinking 2507',
-                    value: 'Qwen/Qwen3-235B-A22B-Thinking-2507',
-                },
-                { label: 'GLM 4.5 Air', value: 'zai-org/GLM-4.5-Air' },
-                { label: 'GLM 4.5 FP8', value: 'zai-org/GLM-4.5-FP8' },
-                { label: 'GPT OSS 120B', value: 'openai/gpt-oss-120b' },
-                { label: 'DeepSeek V3 0324', value: 'deepseek-ai/DeepSeek-V3-0324' },
-            ]
         case 'synthetic':
             return [
                 { label: 'DeepSeek V4.1 Flash', value: 'hf:deepseek-ai/DeepSeek-V4.1-Flash' },
@@ -2053,33 +1500,11 @@ export const getCuratedProviderModels = (provider: string) => {
                     value: 'hf:nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4',
                 },
             ]
-        case 'tempr':
-            return [
-                { label: 'Claude Sonnet 4.6', value: 'anthropic/claude-sonnet-4-6' },
-                { label: 'Claude Opus 5', value: 'anthropic/claude-opus-5' },
-                { label: 'Claude Fable 5.1', value: 'anthropic/claude-fable-5-1' },
-                { label: 'Claude Opus 4.6', value: 'anthropic/claude-opus-4-6' },
-                { label: 'Claude Opus 4.7', value: 'anthropic/claude-opus-4-7' },
-                { label: 'Claude Fable 5', value: 'anthropic/claude-fable-5' },
-                { label: 'Claude Opus 4.8', value: 'anthropic/claude-opus-4-8' },
-                { label: 'Claude Sonnet 5', value: 'anthropic/claude-sonnet-5' },
-            ]
         case 'tencent-tokenhub':
             return [
                 { label: 'Hy4 preview', value: 'hy4-preview' },
                 { label: 'Hy3', value: 'hy3' },
                 { label: 'Hy3 preview', value: 'hy3-preview' },
-            ]
-        case 'tensorx':
-            return [
-                { label: 'DeepSeek R1-0528', value: 'deepseek/deepseek-r1-0528' },
-                { label: 'MiniMax-M3', value: 'minimax/minimax-m3' },
-                { label: 'DeepSeek V4 Pro 0813', value: 'deepseek/deepseek-v4-pro-0813' },
-                { label: 'DeepSeek V4 Flash 0731', value: 'deepseek/deepseek-v4-flash-0731' },
-                { label: 'DeepSeek V4.1 Flash', value: 'deepseek/deepseek-v4.1-flash' },
-                { label: 'DeepSeek V4 Pro', value: 'deepseek/deepseek-v4-pro' },
-                { label: 'Kimi K3', value: 'moonshotai/kimi-k3' },
-                { label: 'GLM-5.2', value: 'z-ai/glm-5.2' },
             ]
         case 'the-grid-ai':
             return [
@@ -2103,66 +1528,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'gpt-oss-120b', value: 'gpt-oss-120b' },
                 { label: 'Llama-3.3-70B-Instruct', value: 'llama3-3-70b' },
             ]
-        case 'tokengo':
-            return [
-                { label: 'Kimi K3', value: 'moonshotai/kimi-k3' },
-                { label: 'DeepSeek V4 Flash', value: 'deepseek/deepseek-v4-flash' },
-                { label: 'DeepSeek V4 Pro', value: 'deepseek/deepseek-v4-pro' },
-                { label: 'GLM-5.2', value: 'z-ai/glm-5.2' },
-                { label: 'GLM-5.3-Flash', value: 'z-ai/glm-5.3-flash' },
-                { label: 'GLM-5.3', value: 'z-ai/glm-5.3' },
-                { label: 'Qwen3.5 397B-A17B', value: 'qwen/qwen3.5-397b-a17b' },
-                { label: 'Kimi K2.6', value: 'moonshotai/kimi-k2.6' },
-            ]
-        case 'tokenrouter':
-            return [{ label: 'GLM-5.3 (free)', value: 'z-ai/glm-5.3-free' }]
-        case 'trustedrouter':
-            return [
-                { label: 'Zero Data Retention', value: 'trustedrouter/zdr' },
-                { label: 'Synth', value: 'trustedrouter/synth' },
-                { label: 'End-to-End Encrypted', value: 'trustedrouter/e2e' },
-                { label: 'Synth Code', value: 'trustedrouter/synth-code' },
-                { label: 'Fast', value: 'trustedrouter/fast' },
-                { label: 'Cheap', value: 'trustedrouter/cheap' },
-                { label: 'Auto', value: 'trustedrouter/auto' },
-            ]
-        case 'umans-ai':
-            return [
-                { label: 'Umans Coder', value: 'umans-coder' },
-                { label: 'Kimi K3', value: 'umans-kimi-k3' },
-                { label: 'DeepSeek V4 Flash', value: 'umans-deepseek-v4-flash-0731' },
-                { label: 'GLM 5.3 Flash', value: 'umans-glm-5.3-flash' },
-                { label: 'DeepSeek V4 Pro', value: 'umans-deepseek-v4-pro-0813' },
-                { label: 'Umans Flash', value: 'umans-flash' },
-            ]
-        case 'unorouter':
-            return [
-                { label: 'Claude Opus 4.8', value: 'claude-opus-4-8' },
-                { label: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
-                { label: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' },
-                { label: 'GPT-5.4', value: 'gpt-5.4' },
-                { label: 'GPT-5.4', value: 'gpt-5.4:free' },
-                { label: 'GPT-5.5', value: 'gpt-5.5:free' },
-                { label: 'GPT-5.5', value: 'gpt-5.5' },
-                { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
-            ]
-        case 'v0':
-            return [
-                { label: 'v0-1.5-lg', value: 'v0-1.5-lg' },
-                { label: 'v0-1.5-md', value: 'v0-1.5-md' },
-                { label: 'v0-1.0-md', value: 'v0-1.0-md' },
-            ]
-        case 'vancine':
-            return [
-                { label: 'Kimi K3', value: 'kimi-k3' },
-                { label: 'MiniMax-M3', value: 'MiniMax-M3' },
-                { label: 'Hy4 preview', value: 'hy4-preview' },
-                { label: 'DeepSeek V4.1 Flash', value: 'deepseek-v4.1-flash' },
-                { label: 'GLM-5.3-Flash', value: 'glm-5.3-flash' },
-                { label: 'Qwen3.8 Flash', value: 'qwen3.8-flash' },
-                { label: 'Qwen3.8 Max', value: 'qwen3.8-max' },
-                { label: 'GLM-5.3', value: 'glm-5.3' },
-            ]
         case 'venice':
             return [
                 { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
@@ -2184,12 +1549,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Claude Opus 5.5 (Fast)', value: 'anthropic/claude-opus-5.5-fast' },
                 { label: 'Claude Sonnet 4.6', value: 'anthropic/claude-sonnet-4.6' },
                 { label: 'Claude Opus 5.5', value: 'anthropic/claude-opus-5.5' },
-            ]
-        case 'vispark':
-            return [
-                { label: 'Vision Large', value: 'vispark/vision-large' },
-                { label: 'Vision Medium', value: 'vispark/vision-medium' },
-                { label: 'Vision Small', value: 'vispark/vision-small' },
             ]
         case 'vivgrid':
             return [
@@ -2235,19 +1594,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Kimi K2.6', value: 'Kimi-K2.6' },
                 { label: 'GLM-5.1', value: 'GLM-5.1' },
             ]
-        case 'wallaby':
-            return [{ label: 'Kimi K3', value: 'moonshotai/kimi-k3' }]
-        case 'wandb':
-            return [
-                { label: 'Qwen3 30B A3B Instruct 2507', value: 'Qwen/Qwen3-30B-A3B-Instruct-2507' },
-                { label: 'Llama 3.1 8B', value: 'meta-llama/Llama-3.1-8B-Instruct' },
-                { label: 'Llama 3.1 70B', value: 'meta-llama/Llama-3.1-70B-Instruct' },
-                { label: 'Mellum2 12B A2.5B', value: 'JetBrains/Mellum2-12B-A2.5B-Instruct' },
-                { label: 'Llama 3.3 70B', value: 'meta-llama/Llama-3.3-70B-Instruct' },
-                { label: 'Qwen3 14B Instruct', value: 'OpenPipe/Qwen3-14B-Instruct' },
-                { label: 'DeepSeek V4 Flash', value: 'deepseek-ai/DeepSeek-V4-Flash' },
-                { label: 'DeepSeek V4.1 Flash', value: 'deepseek-ai/DeepSeek-V4.1-Flash' },
-            ]
         case 'watsonx':
             return [
                 {
@@ -2261,32 +1607,6 @@ export const getCuratedProviderModels = (provider: string) => {
                 { label: 'Llama-3.3-70B-Instruct', value: 'meta-llama/llama-3-3-70b-instruct' },
                 { label: 'Granite-4.0-H-Small', value: 'ibm/granite-4-h-small' },
                 { label: 'GPT OSS 120B', value: 'openai/gpt-oss-120b' },
-            ]
-        case 'xpersona':
-            return [
-                { label: 'Claude Fable 5', value: 'claude-fable-5' },
-                { label: 'Xpersona Frieren 1', value: 'xpersona-frieren-coder' },
-                { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                { label: 'Claude Haiku 4.5 (latest)', value: 'claude-haiku-4-5' },
-                { label: 'Claude Opus 4.8', value: 'claude-opus-4-8' },
-                { label: 'GPT-5.4', value: 'gpt-5.4' },
-                { label: 'GPT-5.5', value: 'gpt-5.5' },
-                { label: 'GPT-5.5', value: 'xpersona-gpt-5.5' },
-            ]
-        case 'zeldoc':
-            return [{ label: 'ZDev', value: 'zdev' }]
-        case 'zenifra':
-            return [{ label: 'Qwen3.6 35B-A3B', value: 'alibaba/qwen3.6-35b-a3b' }]
-        case 'zenmux':
-            return [
-                { label: 'Qwen3-Coder-Plus', value: 'qwen/qwen3-coder-plus' },
-                { label: 'Claude Sonnet 5 (Free)', value: 'anthropic/claude-sonnet-5-free' },
-                { label: 'Claude Opus 4.8', value: 'anthropic/claude-opus-4.8' },
-                { label: 'Claude Opus 4.7', value: 'anthropic/claude-opus-4.7' },
-                { label: 'Claude Sonnet 4.6', value: 'anthropic/claude-sonnet-4.6' },
-                { label: 'Claude Opus 4.6', value: 'anthropic/claude-opus-4.6' },
-                { label: 'Claude Fable 5', value: 'anthropic/claude-fable-5' },
-                { label: 'Claude Sonnet 4.5', value: 'anthropic/claude-sonnet-4.5' },
             ]
         case 'dashscope':
         case 'qwen':
@@ -2692,9 +2012,6 @@ export async function fetchLiveProviderModels(
                 case 'meta-ai':
                     endpoint = 'https://api.meta.ai/v1/models'
                     break
-                case 'poolside':
-                    endpoint = 'https://inference.poolside.ai/v1/models'
-                    break
                 case 'sakana':
                 case 'sakanaai':
                 case 'sakana-ai':
@@ -2729,8 +2046,6 @@ export async function fetchLiveProviderModels(
                         ? `${baseUrl.replace(/\/+$/, '')}/models`
                         : 'https://apihub.agnes-ai.com/v1/models'
                     break
-                case 'airouter':
-                case 'ai-router':
                     endpoint = baseUrl
                         ? `${baseUrl.replace(/\/+$/, '')}/models`
                         : 'https://api.ai-router.dev/v1/models'
@@ -2915,7 +2230,6 @@ export const getModelLabel = (value: string) => {
         'ollama',
         'arcee',
         'meta',
-        'poolside',
         'sakana',
         'sarvam',
         'stepfun',
@@ -2923,7 +2237,6 @@ export const getModelLabel = (value: string) => {
         'thinkingmachines',
         'abliteration',
         'agnes',
-        'airouter',
         'aiand',
         'aki',
         'ambient',
@@ -2968,11 +2281,7 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
         (model.includes('/') || model.startsWith('agnes'))
     )
         return true
-    if (
-        (normalized === 'airouter' || normalized === 'ai-router') &&
-        (model.includes('/') || model.startsWith('gpt-'))
-    )
-        return true
+
     if (
         normalized === 'aiand' &&
         (model.includes('/') ||
@@ -3033,8 +2342,6 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
             model.startsWith('gpt'))
     )
         return true
-    if (normalized === 'poolside' && (model.includes('/') || model.startsWith('laguna')))
-        return true
     if (
         normalized === 'sakana' &&
         (model.includes('/') || model.startsWith('fugu') || model.startsWith('sakana'))
@@ -3083,15 +2390,6 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'ai21') {
         return 'jamba-large'
     }
-    if (normalized === 'aihubmix') {
-        return 'claude-sonnet-4-6'
-    }
-    if (normalized === 'ainetcafe') {
-        return 'Kimi-K3'
-    }
-    if (normalized === 'aixy') {
-        return 'openai/gpt-4.1-mini'
-    }
     if (normalized === 'amd') {
         return 'DeepSeek-V4-Flash'
     }
@@ -3104,9 +2402,6 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'auriko' || normalized === 'aurikoai' || normalized === 'auriko-ai') {
         return 'deepseek-v4-flash'
     }
-    if (normalized === 'bailing') {
-        return 'Ling-1T'
-    }
     if (normalized === 'baseten' || normalized === 'basetenco' || normalized === 'baseten-co') {
         return 'deepseek-ai/DeepSeek-V4.1-Flash'
     }
@@ -3116,20 +2411,11 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'blueclaw') {
         return 'Qwen3.6-27B'
     }
-    if (normalized === 'bothub') {
-        return 'gpt-5.6-luna'
-    }
     if (normalized === 'chutes') {
         return 'deepseek-ai/DeepSeek-V4-Flash-0731-TEE'
     }
     if (normalized === 'clarifai') {
         return 'qwen/qwenCoder/models/Qwen3-Coder-30B-A3B-Instruct'
-    }
-    if (normalized === 'claudinio') {
-        return 'claudinio'
-    }
-    if (normalized === 'cline-pass') {
-        return 'cline-pass/mimo-v2.6-pro'
     }
     if (normalized === 'cloudferro-sherlock') {
         return 'meta-llama/Llama-3.3-70B-Instruct'
@@ -3143,17 +2429,8 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'cortecs') {
         return 'claude-opus-5'
     }
-    if (normalized === 'crof') {
-        return 'mimo-v2.5-pro'
-    }
-    if (normalized === 'crossmodel') {
-        return 'anthropic/claude-sonnet-4-6'
-    }
     if (normalized === 'crusoe') {
         return 'Qwen/Qwen3-235B-A22B-Instruct-2507'
-    }
-    if (normalized === 'daoxe') {
-        return 'claude-sonnet-4-6'
     }
     if (normalized === 'deepinfra') {
         return 'meta-llama/Llama-4-Scout-17B-16E-Instruct'
@@ -3167,12 +2444,6 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'drun') {
         return 'public/deepseek-r1'
     }
-    if (normalized === 'ebcloud') {
-        return 'DeepSeek-V4-Flash'
-    }
-    if (normalized === 'echo') {
-        return 'echo'
-    }
     if (normalized === 'edenai') {
         return 'qwen/qwen3-coder-plus'
     }
@@ -3185,20 +2456,8 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'fastrouter') {
         return 'anthropic/claude-opus-4.8'
     }
-    if (normalized === 'freemodel') {
-        return 'claude-sonnet-4-6'
-    }
     if (normalized === 'friendli') {
         return 'zai-org/GLM-5.3'
-    }
-    if (normalized === 'frogbot') {
-        return 'claude-sonnet-4-6'
-    }
-    if (normalized === 'gmicloud') {
-        return 'anthropic/claude-opus-4.8'
-    }
-    if (normalized === 'greenpt') {
-        return 'qwen3-235b-a22b-instruct-2507'
     }
     if (normalized === 'helicone') {
         return 'qwen3-coder'
@@ -3212,44 +2471,17 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'hyper') {
         return 'deepseek-v4.1-flash'
     }
-    if (normalized === 'iflowcn') {
-        return 'qwen3-coder-plus'
-    }
-    if (normalized === 'impossibl') {
-        return 'anthropic/claude-sonnet-4-6'
-    }
     if (normalized === 'inception') {
         return 'mercury-2.5'
     }
-    if (normalized === 'inceptron') {
-        return 'deepseek-ai/DeepSeek-V4-Flash-0731'
-    }
     if (normalized === 'inco') {
         return 'kimi-k3:fast'
-    }
-    if (normalized === 'infer') {
-        return 'infer/gpt-5.6-sol:official'
-    }
-    if (normalized === 'inference') {
-        return 'qwen/qwen-2.5-7b-vision-instruct'
-    }
-    if (normalized === 'inferx') {
-        return 'Qwen3-Coder-Next-FP8-no-thinking'
     }
     if (normalized === 'io-net') {
         return 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8'
     }
     if (normalized === 'iteracompute') {
         return 'minimax/minimax-m3'
-    }
-    if (normalized === 'jalapeno') {
-        return 'Qwen3-VL-235B-A22B-Instruct'
-    }
-    if (normalized === 'jiekou') {
-        return 'claude-opus-4-6'
-    }
-    if (normalized === 'kenari') {
-        return 'claude-sonnet-4-6'
     }
     if (normalized === 'kilo') {
         return 'qwen/qwen3-coder-plus'
@@ -3260,71 +2492,26 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'kimi-code-plan-global') {
         return 'kimi-for-coding'
     }
-    if (normalized === 'klokintegration') {
-        return 'Kloker-Integration-Developer'
-    }
     if (normalized === 'kosmik') {
         return 'qwen/qwen3.8-27b'
-    }
-    if (normalized === 'lilac') {
-        return 'minimaxai/minimax-m3'
-    }
-    if (normalized === 'llama') {
-        return 'cerebras-llama-4-scout-17b-16e-instruct'
     }
     if (normalized === 'llmgateway') {
         return 'claude-sonnet-4-6'
     }
-    if (normalized === 'llmgateway-providers') {
-        return 'vertex-anthropic/claude-sonnet-4-6'
-    }
-    if (normalized === 'llmtech') {
-        return 'nvidia/Qwen3.8-27B-NVFP4'
-    }
-    if (normalized === 'llmtr') {
-        return 'qwen/qwen3-coder-plus'
-    }
-    if (normalized === 'longcat') {
-        return 'LongCat-2.0'
-    }
-    if (normalized === 'lucidquery') {
-        return 'lucidquery-nexus-coder'
-    }
-    if (normalized === 'meganova') {
-        return 'Qwen/Qwen3-235B-A22B-Instruct-2507'
-    }
-    if (normalized === 'melious') {
-        return 'deepseek-r1-0528'
-    }
     if (normalized === 'merge-gateway') {
         return 'qwen/qwen3-coder-plus'
-    }
-    if (normalized === 'mixlayer') {
-        return 'qwen/qwen3.5-9b'
     }
     if (normalized === 'mistral' || normalized === 'mistralai' || normalized === 'mistral-ai') {
         return 'mistral-large-latest'
     }
-    if (normalized === 'moark') {
-        return 'MiniMax-M2.1'
-    }
     if (normalized === 'modal') {
         return 'thinkingmachines/Inkling-NVFP4'
-    }
-    if (normalized === 'model-oracle-ai') {
-        return 'claude-opus-4.8'
-    }
-    if (normalized === 'modelis') {
-        return 'claude-sonnet-4-6'
     }
     if (normalized === 'modelscope') {
         return 'Qwen/Qwen3-30B-A3B-Instruct-2507'
     }
     if (normalized === 'morph') {
         return 'morph-v3-large'
-    }
-    if (normalized === 'nan') {
-        return 'mimo-v2.5'
     }
     if (normalized === 'nano-gpt') {
         return 'openai/gpt-chat-latest'
@@ -3335,23 +2522,8 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'nebius') {
         return 'Qwen/Qwen3-30B-A3B-Instruct-2507'
     }
-    if (normalized === 'neosmith') {
-        return 'neosmith.intelligent-maestro'
-    }
-    if (normalized === 'neuralwatt') {
-        return 'glm-5.3-flash-flex'
-    }
-    if (normalized === 'nova') {
-        return 'nova-2-lite-v1'
-    }
     if (normalized === 'novita-ai') {
         return 'qwen/qwen3-coder-next'
-    }
-    if (normalized === 'ofox') {
-        return 'bailian/qwen3-coder-plus'
-    }
-    if (normalized === 'ollama-cloud') {
-        return 'deepseek-v4-flash:0731'
     }
     if (normalized === 'opencode') {
         return 'claude-sonnet-4-6'
@@ -3377,28 +2549,16 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'perplexity-agent') {
         return 'anthropic/claude-opus-4-7'
     }
-    if (normalized === 'pioneer') {
-        return 'claude-sonnet-4-6'
-    }
     if (normalized === 'poe') {
         return 'anthropic/claude-opus-4.8'
     }
-    if (normalized === 'qihang-ai') {
-        return 'claude-sonnet-4-5-20250929'
-    }
     if (normalized === 'qiniu-ai') {
         return 'qwen3-235b-a22b-instruct-2507'
-    }
-    if (normalized === 'qvac') {
-        return 'gemma4-31b'
     }
     if (normalized === 'regolo-ai') {
         return 'qwen3-coder-next'
     }
     if (normalized === 'requesty') {
-        return 'claude-sonnet-4-6'
-    }
-    if (normalized === 'routing-run') {
         return 'claude-sonnet-4-6'
     }
     if (normalized === 'runinfra') {
@@ -3410,12 +2570,6 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'scaleway') {
         return 'qwen3-235b-a22b-instruct-2507'
     }
-    if (normalized === 'scx-ai') {
-        return 'Qwen3.8-Max'
-    }
-    if (normalized === 'sensenova') {
-        return 'kimi-k3'
-    }
     if (normalized === 'stackit') {
         return 'Qwen/Qwen3-VL-235B-A22B-Instruct-FP8'
     }
@@ -3425,20 +2579,11 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'subconscious') {
         return 'subconscious/glm-5.2'
     }
-    if (normalized === 'submodel') {
-        return 'Qwen/Qwen3-235B-A22B-Instruct-2507'
-    }
     if (normalized === 'synthetic') {
         return 'hf:deepseek-ai/DeepSeek-V4.1-Flash'
     }
-    if (normalized === 'tempr') {
-        return 'anthropic/claude-sonnet-4-6'
-    }
     if (normalized === 'tencent-tokenhub') {
         return 'hy4-preview'
-    }
-    if (normalized === 'tensorx') {
-        return 'deepseek/deepseek-r1-0528'
     }
     if (normalized === 'the-grid-ai') {
         return 'agent-max'
@@ -3446,35 +2591,11 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'tinfoil') {
         return 'deepseek-v4-1-flash'
     }
-    if (normalized === 'tokengo') {
-        return 'moonshotai/kimi-k3'
-    }
-    if (normalized === 'tokenrouter') {
-        return 'z-ai/glm-5.3-free'
-    }
-    if (normalized === 'trustedrouter') {
-        return 'trustedrouter/zdr'
-    }
-    if (normalized === 'umans-ai') {
-        return 'umans-coder'
-    }
-    if (normalized === 'unorouter') {
-        return 'claude-opus-4-8'
-    }
-    if (normalized === 'v0') {
-        return 'v0-1.5-lg'
-    }
-    if (normalized === 'vancine') {
-        return 'kimi-k3'
-    }
     if (normalized === 'venice') {
         return 'claude-sonnet-4-6'
     }
     if (normalized === 'vercel') {
         return 'alibaba/qwen3-coder-plus'
-    }
-    if (normalized === 'vispark') {
-        return 'vispark/vision-large'
     }
     if (normalized === 'vivgrid') {
         return 'claude-opus-5'
@@ -3488,26 +2609,8 @@ export const getDefaultModelForProvider = (provider: string): string => {
     if (normalized === 'wafer.ai') {
         return 'glm5.2-fast'
     }
-    if (normalized === 'wallaby') {
-        return 'moonshotai/kimi-k3'
-    }
-    if (normalized === 'wandb') {
-        return 'Qwen/Qwen3-30B-A3B-Instruct-2507'
-    }
     if (normalized === 'watsonx') {
         return 'mistralai/mistral-small-3-1-24b-instruct-2503'
-    }
-    if (normalized === 'xpersona') {
-        return 'claude-fable-5'
-    }
-    if (normalized === 'zeldoc') {
-        return 'zdev'
-    }
-    if (normalized === 'zenifra') {
-        return 'alibaba/qwen3.6-35b-a3b'
-    }
-    if (normalized === 'zenmux') {
-        return 'qwen/qwen3-coder-plus'
     }
     if (normalized === 'ollama') {
         return 'qwen2.5-coder:7b'

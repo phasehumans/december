@@ -6,6 +6,7 @@ import {
 import { Box, Text, useInput } from 'ink'
 import React from 'react'
 
+import { useTerminalColumns } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
 
 import { MenuFooter } from './menu-footer'
@@ -241,6 +242,9 @@ export function UsageSelectMenu(props: UsageSelectMenuProps) {
             ? `${weekly.topModels[0].model} (${weekly.topModels[0].percentage}%)`
             : 'None'
 
+    const columns = useTerminalColumns()
+    const isNarrow = columns > 0 && columns < 80
+
     return (
         <Box flexDirection="column">
             <Box marginBottom={1}>
@@ -250,7 +254,7 @@ export function UsageSelectMenu(props: UsageSelectMenuProps) {
                 </Text>
             </Box>
 
-            <Box flexDirection="row" gap={4}>
+            <Box flexDirection={isNarrow ? 'column' : 'row'} gap={isNarrow ? 1 : 4}>
                 {/* Left Column: Daily Volume (Past 7 Days) */}
                 <Box flexDirection="column" width={34}>
                     <Text color={THEME.colors.text}>Daily Volume (Past 7 Days)</Text>

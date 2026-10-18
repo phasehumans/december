@@ -54,7 +54,7 @@ describe('apps/docs page content & layout tests', () => {
             expect(footerHtml).toContain('mailto:team@trydecember.com')
             expect(footerHtml).toContain('https://github.com/phasehumans')
             expect(footerHtml).toContain('https://x.com/phasehumans')
-            expect(footerHtml).toContain('https://www.linkedin.com/in/phasehumans/')
+            expect(footerHtml).not.toContain('https://www.linkedin.com/in/phasehumans/')
             expect(footerHtml).not.toContain('https://github.com/phasehumans/december')
             expect(footerHtml).not.toContain('https://www.npmjs.com/package/@trydecember/cli')
             expect(footerHtml).not.toContain('https://www.youtube.com/@phasehumans')

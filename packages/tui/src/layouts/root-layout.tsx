@@ -1,6 +1,4 @@
-import { DialogProvider } from '../providers/dialog'
 import { KeyboardLayerProvider } from '../providers/keyboard-layer'
-import { ThemeProvider } from '../providers/theme'
 import { ToastProvider } from '../providers/toast'
 
 import type { ReactNode } from 'react'
@@ -13,12 +11,8 @@ type Props = {
 
 export function RootLayout({ children, onToast }: Props) {
     return (
-        <ThemeProvider>
-            <KeyboardLayerProvider>
-                <ToastProvider onToast={onToast}>
-                    <DialogProvider>{children}</DialogProvider>
-                </ToastProvider>
-            </KeyboardLayerProvider>
-        </ThemeProvider>
+        <KeyboardLayerProvider>
+            <ToastProvider onToast={onToast}>{children}</ToastProvider>
+        </KeyboardLayerProvider>
     )
 }

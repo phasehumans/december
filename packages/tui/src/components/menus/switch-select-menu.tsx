@@ -10,6 +10,7 @@ export interface SwitchSelectMenuProps {
     handleDeleteProvider?: (value: string) => void
     switchItems?: { label: string; value: string; model?: string; isActive?: boolean }[]
     setAuthMode?: (mode: string) => void
+    previousAuthMode?: string
 }
 
 export interface SwitchItemProps {
@@ -26,7 +27,13 @@ export const SwitchItem = ({ label, isSelected, isActive }: SwitchItemProps) => 
 )
 
 export function SwitchSelectMenu(props: SwitchSelectMenuProps) {
-    const { handleSwitchSelect, handleDeleteProvider, switchItems = [], setAuthMode } = props
+    const {
+        handleSwitchSelect,
+        handleDeleteProvider,
+        switchItems = [],
+        setAuthMode,
+        previousAuthMode,
+    } = props
 
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [confirmDeleteValue, setConfirmDeleteValue] = useState<string | null>(null)
@@ -96,12 +103,22 @@ export function SwitchSelectMenu(props: SwitchSelectMenuProps) {
         }
 
         if (key.escape) {
-            if (setAuthMode) setAuthMode('none')
+            if (setAuthMode) {
+                const target =
+                    previousAuthMode && previousAuthMode !== 'switch_select'
+                        ? previousAuthMode
+                        : 'none'
+                setAuthMode(target)
+            }
             return
         }
     })
 
     const safeIndex = Math.min(selectedIndex, Math.max(0, switchItems.length - 1))
+
+    const isReturningBack = Boolean(
+        previousAuthMode && previousAuthMode !== 'none' && previousAuthMode !== 'switch_select'
+    )
 
     const footerItems = confirmDeleteValue
         ? [
@@ -112,7 +129,7 @@ export function SwitchSelectMenu(props: SwitchSelectMenuProps) {
               { key: '↑/↓', label: 'Navigate' },
               { key: 'enter', label: 'Switch' },
               { key: 'd', label: 'Delete' },
-              { key: 'esc', label: 'Cancel' },
+              { key: 'esc', label: isReturningBack ? 'Back' : 'Cancel' },
           ]
 
     return (

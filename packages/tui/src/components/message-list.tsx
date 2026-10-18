@@ -69,11 +69,13 @@ export const MessageItem = React.memo(
                 />
             )
         }
+        const hasTopMargin = prevRole === 'header'
         return (
             <BotMessage
                 blocks={msg.blocks ?? []}
                 usage={msg.usage}
                 expandCommands={expandCommands}
+                hasTopMargin={hasTopMargin}
             />
         )
     },

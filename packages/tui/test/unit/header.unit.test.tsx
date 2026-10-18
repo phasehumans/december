@@ -21,10 +21,22 @@ describe('Header Component (Unit)', () => {
         expect(frame).toContain('test@example.com')
     })
 
-    it('renders 3rd tip line when latestVersion is available', () => {
-        const { lastFrame } = render(<Header cliVersion="0.2.25" latestVersion="0.2.26" />)
+    it('renders 2-line update banner in place of announcement when latestVersion is available', () => {
+        const announcement = {
+            version: '0.2.25',
+            title: "What's New in v0.2.25",
+            bullets: ['Initial release highlights'],
+            url: 'https://trydecember.com/docs/changelog',
+        }
+        const { lastFrame } = render(
+            <Header cliVersion="0.2.25" latestVersion="0.2.26" announcement={announcement} />
+        )
         const frame = lastFrame()
-        expect(frame).toContain('Run /update to install December CLI 0.2.26')
+        expect(frame).toContain('▎ A new version is available: v0.2.25 → v0.2.26')
+        expect(frame).toContain('▎ Run /update to upgrade · Changelog:')
+        expect(frame).toContain('trydecember.com/docs/changelog')
+        expect(frame).toContain('https://trydecember.com/docs/changelog')
+        expect(frame).not.toContain("What's New in v0.2.25")
     })
 
     it('resolves git branch without throwing and caches result', () => {

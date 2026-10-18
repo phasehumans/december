@@ -111,7 +111,6 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(inferProviderFromModel('trinity-large-thinking')).toBe('arcee')
         expect(inferProviderFromModel('muse-spark-1.3')).toBe('meta')
         expect(inferProviderFromModel('MiniMax-M3')).toBe('minimax')
-        expect(inferProviderFromModel('laguna-s-2.1')).toBe('poolside')
         expect(inferProviderFromModel('fugu-ultra')).toBe('sakana')
         expect(inferProviderFromModel('sakana-namazu')).toBe('sakana')
         expect(inferProviderFromModel('sarvam-105b')).toBe('sarvam')

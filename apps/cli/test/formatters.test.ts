@@ -43,6 +43,7 @@ describe('formatters', () => {
             expect(
                 getToolSummary('list_dir', JSON.stringify({ DirectoryPath: process.cwd() }))
             ).toBe('ListDir(.)')
+            expect(getToolSummary('ls', JSON.stringify({ dirPath: 'src/' }))).toBe('ListDir(src/)')
         })
 
         test('formats bash', () => {
@@ -58,6 +59,12 @@ describe('formatters', () => {
             expect(getToolSummary('grep_search', JSON.stringify({ query: 'TODO' }))).toBe(
                 'Search(TODO)'
             )
+            expect(getToolSummary('code_search', JSON.stringify({ query: 'BotMessage' }))).toBe(
+                'Search(BotMessage)'
+            )
+            expect(
+                getToolSummary('read_url_content', JSON.stringify({ Url: 'https://example.com' }))
+            ).toBe('WebSearch(https://example.com)')
         })
 
         test('handles unknown tools', () => {

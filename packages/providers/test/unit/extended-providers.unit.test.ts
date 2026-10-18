@@ -14,10 +14,8 @@ import {
     FriendliProvider,
     Ai21Provider,
     AmdProvider,
-    NovaProvider,
     MorphProvider,
     PoeProvider,
-    V0Provider,
     OpencodeProvider,
     RequestyProvider,
     AbacusProvider,
@@ -43,10 +41,8 @@ describe('Extended BYOK Providers (Unit)', () => {
     test('instantiates frontier labs and model creators with correct ID', () => {
         expect(new Ai21Provider('dummy-key').id).toBe('ai21')
         expect(new AmdProvider('dummy-key').id).toBe('amd')
-        expect(new NovaProvider('dummy-key').id).toBe('nova')
         expect(new MorphProvider('dummy-key').id).toBe('morph')
         expect(new PoeProvider('dummy-key').id).toBe('poe')
-        expect(new V0Provider('dummy-key').id).toBe('v0')
     })
 
     test('instantiates gateways, routers, and emerging providers', () => {

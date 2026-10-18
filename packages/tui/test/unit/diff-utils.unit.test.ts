@@ -17,6 +17,8 @@ describe('Diff Utils (TDD)', () => {
         expect(result.totalChanges).toBe(2) // 1 delete + 1 add
         expect(result.changeIndices).toContain(1)
         expect(result.changeIndices).toContain(2)
+        expect(result.changeBlocks.length).toBe(1)
+        expect(result.changeBlocks[0]).toEqual({ startIndex: 1, endIndex: 2 })
 
         const firstRow = result.rows[0]
         expect(firstRow?.type).toBe('fold')

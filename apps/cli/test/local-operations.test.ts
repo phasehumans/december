@@ -17,6 +17,7 @@ import {
 
 import { localOperations } from '../src/local-operations'
 import { taskManager } from '../src/task-manager'
+import { browserRunner } from '../src/utils/browser/browser-runner'
 
 describe('local-operations', () => {
     describe('bash task management', () => {
@@ -237,10 +238,10 @@ describe('local-operations', () => {
     })
 
     describe('browser operations', () => {
-        let globalFetchSpy: any
+        let navigateSpy: any
 
         beforeEach(() => {
-            globalFetchSpy = spyOn(globalThis, 'fetch')
+            navigateSpy = spyOn(browserRunner, 'navigate')
         })
 
         afterEach(() => {
@@ -248,32 +249,45 @@ describe('local-operations', () => {
         })
 
         test('navigate returns cleaned text on success', async () => {
-            globalFetchSpy.mockResolvedValue({
-                ok: true,
-                text: async () =>
-                    '<html><body><script>alert("hi")</script>Hello   World<style>.css{}</style></body></html>',
-            } as any)
+            navigateSpy.mockResolvedValue({ text: 'Hello World' })
 
             const res = await localOperations.browser.navigate('http://example.com')
             expect(res).toEqual({ text: 'Hello World' })
+            expect(navigateSpy).toHaveBeenCalledWith('http://example.com')
         })
 
         test('navigate returns error on non-ok status', async () => {
-            globalFetchSpy.mockResolvedValue({
-                ok: false,
-                status: 404,
-                text: async () => 'Not Found',
-            } as any)
+            navigateSpy.mockResolvedValue({ text: '', error: 'HTTP Error (404): Not Found' })
 
             const res = await localOperations.browser.navigate('http://example.com')
             expect(res).toEqual({ text: '', error: 'HTTP Error (404): Not Found' })
+            expect(navigateSpy).toHaveBeenCalledWith('http://example.com')
         })
 
         test('navigate returns error if fetch throws', async () => {
-            globalFetchSpy.mockRejectedValue(new Error('Network error'))
+            navigateSpy.mockResolvedValue({ text: '', error: 'Network error' })
 
             const res = await localOperations.browser.navigate('http://example.com')
             expect(res).toEqual({ text: '', error: 'Network error' })
+            expect(navigateSpy).toHaveBeenCalledWith('http://example.com')
+        })
+
+        test('action delegates to browserRunner.action', async () => {
+            const actionSpy = spyOn(browserRunner, 'action').mockResolvedValue({
+                success: true,
+                action: 'click',
+            })
+
+            const res = await localOperations.browser.action({ action: 'click' })
+            expect(res).toEqual({ success: true, action: 'click' })
+            expect(actionSpy).toHaveBeenCalledWith({ action: 'click' })
+        })
+
+        test('close delegates to browserRunner.close', async () => {
+            const closeSpy = spyOn(browserRunner, 'close').mockResolvedValue(undefined)
+
+            await localOperations.browser.close()
+            expect(closeSpy).toHaveBeenCalled()
         })
     })
 

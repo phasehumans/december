@@ -31,7 +31,7 @@ export function GlobalShortcuts(session: any) {
     } = session
 
     useInput((input, key) => {
-        if (authMode === 'tasks_mode') {
+        if (authMode !== 'none') {
             return
         }
 
@@ -59,32 +59,6 @@ export function GlobalShortcuts(session: any) {
         if (session.planRefineMode) {
             if (key.escape && session.setPlanRefineMode) {
                 session.setPlanRefineMode(false)
-            }
-            return
-        }
-
-        if (authMode === 'session_select' || authMode === 'diff_view') {
-            return
-        }
-
-        if (authMode !== 'none') {
-            if ((key.escape || input === '\u001B') && authMode !== 'menu') {
-                if (authMode === 'grill_question') {
-                    setGrillQuestions([])
-                    setCurrentGrillIndex(0)
-                    setGrillAnswers([])
-                    setGrillPrompt(null)
-                    setCustomInputMode(false)
-                    setGrillMode(false)
-                } else if (authMode === 'byok_key') {
-                    if (session.setAuthError) {
-                        session.setAuthError(null)
-                    }
-                    if (session.setApiKey) {
-                        session.setApiKey('')
-                    }
-                }
-                setAuthMode('none')
             }
             return
         }

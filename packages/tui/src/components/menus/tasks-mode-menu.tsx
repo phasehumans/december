@@ -541,58 +541,62 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
                 </Box>
             </Box>
 
-            {/* Rows */}
-            {tasksData.length === 0 ? (
-                <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>No background tasks.</Text>
-                </Box>
-            ) : (
-                visibleTasks.map((task, idx) => {
-                    const isSelected = idx === pageSelectedIndex
-                    const cleanCmd = (task.command || '').replace(/\r?\n+/g, ' ').trim()
-                    const truncatedCommand =
-                        cleanCmd.length > availableCmdWidth
-                            ? cleanCmd.slice(0, availableCmdWidth - 3) + '...'
-                            : cleanCmd
-                    const durationStr = formatDuration(task.createdAt, task.completedAt)
-                    const pidStr = task.pid ? String(task.pid) : '-'
+            {/* Rows container with fixed minHeight to prevent page layout jumps */}
+            <Box flexDirection="column" minHeight={PAGE_SIZE}>
+                {tasksData.length === 0 ? (
+                    <Box paddingLeft={2}>
+                        <Text color={THEME.colors.muted}>No background tasks.</Text>
+                    </Box>
+                ) : (
+                    visibleTasks.map((task, idx) => {
+                        const isSelected = idx === pageSelectedIndex
+                        const cleanCmd = (task.command || '').replace(/\r?\n+/g, ' ').trim()
+                        const truncatedCommand =
+                            cleanCmd.length > availableCmdWidth
+                                ? cleanCmd.slice(0, availableCmdWidth - 3) + '...'
+                                : cleanCmd
+                        const durationStr = formatDuration(task.createdAt, task.completedAt)
+                        const pidStr = task.pid ? String(task.pid) : '-'
 
-                    return (
-                        <Box key={task.id} flexDirection="row">
-                            <Box width={indicatorWidth}>
-                                <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
-                                    {isSelected ? `${THEME.glyphs.selector} ` : '  '}
-                                </Text>
+                        return (
+                            <Box key={task.id} flexDirection="row">
+                                <Box width={indicatorWidth}>
+                                    <Text
+                                        color={isSelected ? THEME.colors.brand : THEME.colors.muted}
+                                    >
+                                        {isSelected ? `${THEME.glyphs.selector} ` : '  '}
+                                    </Text>
+                                </Box>
+                                <Box width={idWidth}>
+                                    <Text
+                                        color={isSelected ? THEME.colors.brand : THEME.colors.text}
+                                        wrap="truncate"
+                                    >
+                                        {task.id}
+                                    </Text>
+                                </Box>
+                                <Box width={statusWidth}>
+                                    {renderStatusBadge(task.status, task.exitCode)}
+                                </Box>
+                                <Box width={pidWidth}>
+                                    <Text color={THEME.colors.muted}>{pidStr}</Text>
+                                </Box>
+                                <Box width={durWidth}>
+                                    <Text color={THEME.colors.muted}>{durationStr}</Text>
+                                </Box>
+                                <Box width={availableCmdWidth}>
+                                    <Text
+                                        color={isSelected ? THEME.colors.brand : THEME.colors.text}
+                                        wrap="truncate"
+                                    >
+                                        {truncatedCommand}
+                                    </Text>
+                                </Box>
                             </Box>
-                            <Box width={idWidth}>
-                                <Text
-                                    color={isSelected ? THEME.colors.brand : THEME.colors.text}
-                                    wrap="truncate"
-                                >
-                                    {task.id}
-                                </Text>
-                            </Box>
-                            <Box width={statusWidth}>
-                                {renderStatusBadge(task.status, task.exitCode)}
-                            </Box>
-                            <Box width={pidWidth}>
-                                <Text color={THEME.colors.muted}>{pidStr}</Text>
-                            </Box>
-                            <Box width={durWidth}>
-                                <Text color={THEME.colors.muted}>{durationStr}</Text>
-                            </Box>
-                            <Box width={availableCmdWidth}>
-                                <Text
-                                    color={isSelected ? THEME.colors.brand : THEME.colors.text}
-                                    wrap="truncate"
-                                >
-                                    {truncatedCommand}
-                                </Text>
-                            </Box>
-                        </Box>
-                    )
-                })
-            )}
+                        )
+                    })
+                )}
+            </Box>
 
             {/* Pagination info */}
             {tasksData.length > PAGE_SIZE && (

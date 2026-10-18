@@ -34,6 +34,15 @@ class BrowserRunner {
             return this.activeSession
         }
 
+        const isTest =
+            process.env.NODE_ENV === 'test' ||
+            Boolean(process.env.BUN_TEST) ||
+            Boolean(process.env.VITEST)
+
+        if (isTest && process.env.DECEMBER_ENABLE_TEST_BROWSER !== '1') {
+            return null
+        }
+
         const chromePath = await findSystemChrome()
         if (!chromePath) {
             return null
@@ -47,11 +56,15 @@ class BrowserRunner {
                 process.platform !== 'linux' ||
                 Boolean(process.env.DISPLAY || process.env.WAYLAND_DISPLAY)
 
+            const isExplicitHeaded =
+                process.env.HEADED === '1' || process.env.DECEMBER_HEADED === '1'
+
+            const isExplicitHeadless =
+                process.env.HEADED === '0' || process.env.DECEMBER_HEADED === '0'
+
             const isVisible =
-                hasDisplay &&
-                config?.browserVisible !== false &&
-                process.env.HEADED !== '0' &&
-                process.env.DECEMBER_HEADED !== '0'
+                !isExplicitHeadless &&
+                (isExplicitHeaded || (!isTest && hasDisplay && config?.browserVisible !== false))
 
             const session = new CdpBrowserSession({
                 chromePath,

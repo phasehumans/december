@@ -41,7 +41,7 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain('https://platform.openai.com/api-keys')
         expect(output).toContain('sk-test-12345')
         expect(output).toContain('Submit')
-        expect(output).toContain('Cancel')
+        expect(output).toContain('Back')
         expect(output).not.toContain('Verifying and saving API key')
     })
 
@@ -64,7 +64,7 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain('https://agentrouter.org/console/token')
         expect(output).toContain('sk-ar-test')
         expect(output).toContain('Submit')
-        expect(output).toContain('Cancel')
+        expect(output).toContain('Back')
     })
 
     it('renders saving loader spinner mid-step and hides footer when isStreaming is true', () => {
@@ -84,7 +84,7 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain('Enter API Key for Anthropic:')
         expect(output).toContain('Verifying and saving API key for Anthropic...')
         expect(output).not.toContain('Submit')
-        expect(output).not.toContain('Cancel')
+        expect(output).not.toContain('Back')
     })
 
     it('renders error message when authError is passed and isStreaming is false', () => {
@@ -105,7 +105,7 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain('Enter API Key for Google:')
         expect(output).toContain('Invalid API Key for google: 401 Unauthorized')
         expect(output).toContain('Submit')
-        expect(output).toContain('Cancel')
+        expect(output).toContain('Back')
     })
 
     it('renders Deepgram provider with $200 free credit note', () => {
@@ -128,7 +128,7 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain('($200 free credit on signup)')
         expect(output).toContain('dg-test-key')
         expect(output).toContain('Submit')
-        expect(output).toContain('Cancel')
+        expect(output).toContain('Back')
     })
 
     it('ignores mouse wheel and drag escape sequences without mutating apiKey', async () => {
@@ -156,5 +156,38 @@ describe('ByokKeyMenu Component (Unit)', () => {
         stdin.write('[<0;8;4m')
         await new Promise((resolve) => setTimeout(resolve, 20))
         expect(setApiKey).not.toHaveBeenCalled()
+    })
+
+    it('returns to byok_provider menu and clears apiKey and authError on escape', async () => {
+        let currentAuthMode = 'byok_key'
+        let currentKey = 'partial-key'
+        let currentError: string | null = 'some error'
+        const handleKeySubmit = mock()
+
+        const { stdin } = render(
+            <ByokKeyMenu
+                selectedProvider="openai"
+                apiKey={currentKey}
+                setApiKey={(k) => {
+                    currentKey = k
+                }}
+                handleKeySubmit={handleKeySubmit}
+                isStreaming={false}
+                authError={currentError}
+                setAuthError={(err) => {
+                    currentError = err
+                }}
+                setAuthMode={(mode) => {
+                    currentAuthMode = mode
+                }}
+            />
+        )
+
+        stdin.write('\u001B')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+
+        expect(currentAuthMode).toBe('byok_provider')
+        expect(currentKey).toBe('')
+        expect(currentError).toBeNull()
     })
 })

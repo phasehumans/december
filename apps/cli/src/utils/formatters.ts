@@ -56,7 +56,8 @@ export function getToolSummary(name: string, inputStr: string): string {
                     ''
                 return `Edit(${toRelativePath(rawPath)})`.trim()
             }
-            case 'list_dir': {
+            case 'list_dir':
+            case 'ls': {
                 const rawPath =
                     args.DirectoryPath || args.dirPath || args.path || args.directory || ''
                 return `ListDir(${toRelativePath(rawPath)})`.trim()
@@ -66,9 +67,12 @@ export function getToolSummary(name: string, inputStr: string): string {
                 return `Bash(${args.CommandLine || args.command || ''})`.trim()
             case 'find_files':
             case 'grep_search':
+            case 'search_code':
+            case 'code_search':
                 return `Search(${args.Query || args.pattern || args.query || ''})`.trim()
             case 'search_web':
-                return `WebSearch(${args.query || ''})`.trim()
+            case 'read_url_content':
+                return `WebSearch(${args.query || args.Url || args.url || ''})`.trim()
             case 'ask_question':
                 return `AskQuestion()`
             case 'manage_task':
@@ -77,6 +81,7 @@ export function getToolSummary(name: string, inputStr: string): string {
                 return `${name}()`
         }
     } catch {
+        // Intentionally swallowed: fallback to name()
         return `${name}()`
     }
 }

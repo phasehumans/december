@@ -6,7 +6,12 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 
 import { useTerminalColumns, useTerminalRows } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
-import { type DiffFileEntry, parseUnifiedDiffToRows, fetchGitStatusFiles } from '../../utils/diff'
+import {
+    type DiffFileEntry,
+    type ChangeBlock,
+    parseUnifiedDiffToRows,
+    fetchGitStatusFiles,
+} from '../../utils/diff'
 
 import { MenuFooter } from './menu-footer'
 
@@ -112,9 +117,9 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     }, [isDetailView, currentFile?.path])
 
     // Parse diff rows for current file
-    const { diffRows, totalChanges, changeIndices } = useMemo(() => {
+    const { diffRows, totalChanges, changeBlocks } = useMemo(() => {
         if (!currentFile || !currentFile.diff) {
-            return { diffRows: [], totalChanges: 0, changeIndices: [] }
+            return { diffRows: [], totalChanges: 0, changeBlocks: [] }
         }
         const parsed = parseUnifiedDiffToRows(currentFile.diff, {
             fullContent: fileContent,
@@ -123,24 +128,28 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         return {
             diffRows: parsed.rows,
             totalChanges: parsed.totalChanges,
-            changeIndices: parsed.changeIndices,
+            changeBlocks: parsed.changeBlocks,
         }
     }, [currentFile, fileContent, expandedFolds])
 
-    // Calculate current change index under cursor
+    // Calculate current change block index under cursor
     const currentChangeUnderCursor = useMemo(() => {
-        if (changeIndices.length === 0) return '-'
-        const pos = changeIndices.indexOf(cursorLineIndex)
-        if (pos >= 0) return `${pos + 1}`
+        if (changeBlocks.length === 0) return '-'
+        const insideIdx = changeBlocks.findIndex(
+            (b) => cursorLineIndex >= b.startIndex && cursorLineIndex <= b.endIndex
+        )
+        if (insideIdx >= 0) {
+            return `${insideIdx + 1}`
+        }
         let nearestBefore = -1
-        for (let i = 0; i < changeIndices.length; i++) {
-            const idx = changeIndices[i]
-            if (idx !== undefined && idx <= cursorLineIndex) {
+        for (let i = 0; i < changeBlocks.length; i++) {
+            const b = changeBlocks[i]
+            if (b && b.startIndex <= cursorLineIndex) {
                 nearestBefore = i + 1
             }
         }
-        return nearestBefore > 0 ? `${nearestBefore}` : '-'
-    }, [changeIndices, cursorLineIndex])
+        return nearestBefore > 0 ? `${nearestBefore}` : '1'
+    }, [changeBlocks, cursorLineIndex])
 
     // Ensure cursor stays within bounds when diffRows changes
     useEffect(() => {
@@ -308,19 +317,39 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 return
             }
 
-            // Jump next/prev diff change
+            // Jump next/prev diff change block
             if (input === 'n') {
-                const nextChange = changeIndices.find((idx) => idx > cursorLineIndex)
-                if (nextChange !== undefined) {
-                    setCursorLineIndex(nextChange)
+                const currentBlock = changeBlocks.find(
+                    (b) => cursorLineIndex >= b.startIndex && cursorLineIndex <= b.endIndex
+                )
+                const nextBlock = currentBlock
+                    ? changeBlocks.find((b) => b.startIndex > currentBlock.endIndex)
+                    : changeBlocks.find((b) => b.startIndex > cursorLineIndex)
+
+                if (nextBlock) {
+                    setCursorLineIndex(nextBlock.startIndex)
                 }
                 return
             }
-            if (input === 'N') {
-                const prevChanges = changeIndices.filter((idx) => idx < cursorLineIndex)
-                const prevChange = prevChanges[prevChanges.length - 1]
-                if (prevChange !== undefined) {
-                    setCursorLineIndex(prevChange)
+            if (input === 'p' || input === 'N') {
+                const currentBlock = changeBlocks.find(
+                    (b) => cursorLineIndex >= b.startIndex && cursorLineIndex <= b.endIndex
+                )
+                let prevBlock: ChangeBlock | undefined
+                if (currentBlock) {
+                    const currentIdx = changeBlocks.indexOf(currentBlock)
+                    if (currentIdx > 0) {
+                        prevBlock = changeBlocks[currentIdx - 1]
+                    } else if (cursorLineIndex > currentBlock.startIndex) {
+                        prevBlock = currentBlock
+                    }
+                } else {
+                    const prevBlocks = changeBlocks.filter((b) => b.startIndex < cursorLineIndex)
+                    prevBlock = prevBlocks[prevBlocks.length - 1]
+                }
+
+                if (prevBlock) {
+                    setCursorLineIndex(prevBlock.startIndex)
                 }
                 return
             }
@@ -349,13 +378,14 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
 
     const listFooterItems = [
         { key: '←/→', label: 'switch view' },
-        { key: '↑/↓/j/k', label: 'navigate' },
+        { key: '↑/↓', label: 'navigate' },
         { key: 'enter', label: 'view diff' },
         { key: 'esc', label: 'dismiss' },
     ]
 
     const detailFooterItems = [
-        { key: 'n/N', label: 'next/prev diff' },
+        { key: 'p', label: 'prev diff' },
+        { key: 'n', label: 'next diff' },
         { key: '←/→', label: 'cycle file' },
         { key: 'esc', label: 'back' },
     ]
@@ -392,7 +422,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                     </Box>
                     <Box>
                         <Text color={THEME.colors.dim}>
-                            change {currentChangeUnderCursor}/{totalChanges || 0} · file{' '}
+                            change {currentChangeUnderCursor}/{changeBlocks.length || 0} · file{' '}
                             {safeFileIndex + 1}/{files.length}
                         </Text>
                     </Box>
@@ -495,6 +525,18 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
     const visibleFiles = files.slice(windowStart, windowEnd)
     const filesAbove = windowStart
     const filesBelow = files.length - windowEnd
+    const hasOverflow = files.length > WINDOW_SIZE
+
+    let statusText = ''
+    if (hasOverflow) {
+        if (filesAbove > 0 && filesBelow > 0) {
+            statusText = `↑ ${filesAbove} more · ↓ ${filesBelow} more`
+        } else if (filesAbove > 0) {
+            statusText = `↑ ${filesAbove} more`
+        } else if (filesBelow > 0) {
+            statusText = `↓ ${filesBelow} more`
+        }
+    }
 
     return (
         <Box flexDirection="column" width={columns} paddingX={THEME.padding.paddingX}>
@@ -506,11 +548,6 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                     <Text color={THEME.colors.dim}>No changes detected in working copy.</Text>
                 ) : (
                     <>
-                        {filesAbove > 0 && (
-                            <Box paddingLeft={2}>
-                                <Text color={THEME.colors.muted}>↑ {filesAbove} more</Text>
-                            </Box>
-                        )}
                         {visibleFiles.map((file, relIdx) => {
                             const absIdx = windowStart + relIdx
                             const isSelected = absIdx === safeFileIndex
@@ -544,9 +581,9 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                                 </Box>
                             )
                         })}
-                        {filesBelow > 0 && (
+                        {hasOverflow && statusText && (
                             <Box paddingLeft={2}>
-                                <Text color={THEME.colors.muted}>↓ {filesBelow} more</Text>
+                                <Text color={THEME.colors.muted}>{statusText}</Text>
                             </Box>
                         )}
                     </>

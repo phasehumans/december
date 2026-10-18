@@ -5,7 +5,6 @@ import { Box, Text, useInput } from 'ink'
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 
 import { useTerminalColumns } from '../hooks/use-terminal-columns'
-import { useDialog, InlineDialog } from '../providers/dialog'
 import { useToast } from '../providers/toast'
 import { THEME } from '../theme'
 import { expandPastes } from '../utils/paste-manager'
@@ -17,7 +16,7 @@ import { ShortcutsMenu } from './menus/shortcuts-menu'
 import { TextArea } from './text-area'
 
 import type { Command } from './command-menu/types'
-import type { TaskItem } from './task-tree'
+import type { TaskItem } from './menus/tasks-mode-menu'
 
 type Props = {
     onSubmit: (text: string) => void
@@ -109,7 +108,6 @@ export const InputBar = React.memo(function InputBar({
         cancel: () => void
     } | null>(null)
     const toast = useToast()
-    const dialog = useDialog()
     const columns = useTerminalColumns()
 
     const [selectedFileIndex, setSelectedFileIndex] = useState(0)
@@ -310,59 +308,66 @@ export const InputBar = React.memo(function InputBar({
     }
 
     const isCtrlW = useRef(false)
-    useInput((input, key) => {
-        const state = stateRef.current
-        if (key.escape) {
-            if (state.isVoiceActive || state.isTranscribing || voiceSessionRef.current) {
-                state.handleStopVoice(false)
-                return
-            }
-            if (state.showFileMenu && state.matchingFiles.length > 0) {
-                const nextVal = state.value.replace(/@\S*$/, '')
-                setValue(nextVal)
-                state.handleContentChange(nextVal)
-                return
-            }
-        }
+    useInput(
+        (input, key) => {
+            if (disabled) return
 
-        if (state.showFileMenu && state.matchingFiles.length > 0) {
-            if (key.upArrow) {
-                setSelectedFileIndex((prev) => Math.max(0, prev - 1))
-                return
-            }
-            if (key.downArrow) {
-                setSelectedFileIndex((prev) => Math.min(state.matchingFiles.length - 1, prev + 1))
-                return
-            }
-            if (key.tab || key.return) {
-                const selectedFile = state.matchingFiles[state.selectedFileIndex]
-                if (selectedFile) {
-                    const nextVal = state.value.replace(/@\S*$/, `@${selectedFile} `)
+            const state = stateRef.current
+            if (key.escape) {
+                if (state.isVoiceActive || state.isTranscribing || voiceSessionRef.current) {
+                    state.handleStopVoice(false)
+                    return
+                }
+                if (state.showFileMenu && state.matchingFiles.length > 0) {
+                    const nextVal = state.value.replace(/@\S*$/, '')
                     setValue(nextVal)
                     state.handleContentChange(nextVal)
-                    setSelectedFileIndex(0)
+                    return
                 }
+            }
+
+            if (state.showFileMenu && state.matchingFiles.length > 0) {
+                if (key.upArrow) {
+                    setSelectedFileIndex((prev) => Math.max(0, prev - 1))
+                    return
+                }
+                if (key.downArrow) {
+                    setSelectedFileIndex((prev) =>
+                        Math.min(state.matchingFiles.length - 1, prev + 1)
+                    )
+                    return
+                }
+                if (key.tab || key.return) {
+                    const selectedFile = state.matchingFiles[state.selectedFileIndex]
+                    if (selectedFile) {
+                        const nextVal = state.value.replace(/@\S*$/, `@${selectedFile} `)
+                        setValue(nextVal)
+                        state.handleContentChange(nextVal)
+                        setSelectedFileIndex(0)
+                    }
+                    return
+                }
+            }
+
+            if (key.ctrl && input === 'w') {
+                isCtrlW.current = true
+                setValue((prev) => {
+                    const match = prev.match(/(\s*\S+\s*)$/)
+                    const next = match ? prev.slice(0, -match[0].length) : prev
+                    state.handleContentChange(next)
+                    return next
+                })
+            }
+            if ((key.backspace || key.delete) && state.value.length === 0 && state.grillMode) {
+                state.onSubmit('/grill-me')
+            }
+            if (key.ctrl && input === 'y') {
+                if (state.onCopy) state.onCopy()
                 return
             }
-        }
-
-        if (key.ctrl && input === 'w') {
-            isCtrlW.current = true
-            setValue((prev) => {
-                const match = prev.match(/(\s*\S+\s*)$/)
-                const next = match ? prev.slice(0, -match[0].length) : prev
-                state.handleContentChange(next)
-                return next
-            })
-        }
-        if ((key.backspace || key.delete) && state.value.length === 0 && state.grillMode) {
-            state.onSubmit('/grill-me')
-        }
-        if (key.ctrl && input === 'y') {
-            if (state.onCopy) state.onCopy()
-            return
-        }
-    })
+        },
+        { isActive: !disabled }
+    )
 
     const handleChange = useCallback(
         (newValue: string) => {
@@ -481,7 +486,6 @@ export const InputBar = React.memo(function InputBar({
                         }
                     },
                     toast,
-                    dialog,
                     agent,
                     resetChat,
                     onUpdateSuccess,
@@ -491,7 +495,6 @@ export const InputBar = React.memo(function InputBar({
         [
             onExit,
             toast,
-            dialog,
             agent,
             resetChat,
             onUpdateSuccess,
@@ -592,12 +595,6 @@ export const InputBar = React.memo(function InputBar({
             paddingRight={paddingRight}
             marginTop={1}
         >
-            {/* inline dialog - shown on right above prompt when open */}
-            {dialog.isOpen && dialog.currentDialog && (
-                <Box justifyContent="flex-end">
-                    <InlineDialog config={dialog.currentDialog} close={dialog.close} />
-                </Box>
-            )}
             {/* queued prompts indicator */}
             {queuedPrompts && queuedPrompts.length > 0 && (
                 <Box width="100%" marginBottom={0}>
@@ -608,9 +605,16 @@ export const InputBar = React.memo(function InputBar({
                 </Box>
             )}
 
-            {/* file mention popup */}
+            {/* file mention popup with stable minHeight to prevent prompt jitter while typing */}
             {showFileMenu && matchingFiles.length > 0 && (
-                <Box flexDirection="column" marginBottom={0}>
+                <Box
+                    flexDirection="column"
+                    marginBottom={0}
+                    minHeight={Math.min(
+                        MAX_FILE_SUGGESTIONS,
+                        Math.max(1, allWorkspaceFiles.length)
+                    )}
+                >
                     {matchingFiles.map((file, idx) => {
                         const isSelected = idx === selectedFileIndex
                         return (
@@ -713,7 +717,7 @@ export const InputBar = React.memo(function InputBar({
                                                 : placeholder
                                 }
                                 placeholderColor={isVoiceActive ? THEME.colors.brand : undefined}
-                                focus={!disabled && !dialog.isOpen}
+                                focus={!disabled}
                                 disableHistoryNav={
                                     showCommandMenu || showFileMenu || showShortcutsMenu
                                 }

@@ -16,7 +16,7 @@ December는 (so much) better 코딩 에이전트입니다. 사용자의 코드�
 
 - **코드 작성 및 명령어 실행:** 기능 개발, 버그 수정, 테스트 실행을 요청해 보세요. 에이전트가 알아서 수행합니다.
 - **클라우드 핸드오프:** _/handoff_ 명령어를 사용하여 **<a href="https://trydecember.com" target="_blank">trydecember.com</a>** 에서 세션을 이어가세요.
-- **원하는 AI 모델 연결:** OpenAI, Anthropic, Gemini 및 150개 이상의 다른 모델 API 키를 사용하거나, December에 로그인하여 December 크레딧을 사용할 수 있습니다.
+- **원하는 AI 모델 연결:** OpenAI, Anthropic, Gemini 및 100개 이상의 다른 모델 API 키를 사용하거나, December에 로그인하여 December 크레딧을 사용할 수 있습니다.
 
 ### 시작하기
 

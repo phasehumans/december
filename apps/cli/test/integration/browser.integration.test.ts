@@ -3,12 +3,15 @@ import http from 'node:http'
 import { describe, expect, test, beforeAll, afterAll } from 'bun:test'
 
 import { localOperations } from '../../src/local-operations'
+import { resetChromePathCache } from '../../src/utils/browser/detector'
 
 describe('Browser Engine Integration', () => {
     let server: http.Server
     let serverUrl: string
 
     beforeAll(async () => {
+        process.env.DECEMBER_DISABLE_BROWSER = '1'
+        resetChromePathCache()
         server = http.createServer((req, res) => {
             if (req.url === '/dashboard') {
                 res.writeHead(200, { 'Content-Type': 'text/html' })
@@ -42,6 +45,8 @@ describe('Browser Engine Integration', () => {
     })
 
     afterAll(async () => {
+        delete process.env.DECEMBER_DISABLE_BROWSER
+        resetChromePathCache()
         if (localOperations.browser?.close) {
             await localOperations.browser.close()
         }

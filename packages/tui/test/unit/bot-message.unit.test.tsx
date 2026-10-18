@@ -760,4 +760,145 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).toContain('Bash')
         expect(frame).toContain('git status -s')
     })
+
+    it('renders completed read with >2 files without redundant files: prefix', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(packages/agent/src/index.ts)',
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(packages/agent/src/agent.ts)',
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(packages/agent/src/types.ts)',
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'read_file',
+                        command: 'Read(packages/agent/src/utils.ts)',
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Read')
+        expect(frame).toContain('packages/agent/src/index.ts')
+        expect(frame).toContain('+2 more')
+        expect(frame).not.toContain('files:')
+    })
+
+    it('consolidates consecutive search tool calls into a single line', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'grep_search',
+                        command: 'Search(prisma)',
+                        toolInput: JSON.stringify({ query: 'prisma' }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'grep_search',
+                        command: 'Search(schema)',
+                        toolInput: JSON.stringify({ query: 'schema' }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'find_files',
+                        command: 'Search(migrations)',
+                        toolInput: JSON.stringify({ pattern: 'migrations' }),
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Search')
+        expect(frame).toContain('prisma')
+        expect(frame).toContain('schema')
+        expect(frame).toContain('+1 more')
+        const searchLines = frame.split('\n').filter((l) => l.includes('Search'))
+        expect(searchLines.length).toBe(1)
+    })
+
+    it('consolidates consecutive list_dir tool calls into a single line', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'list_dir',
+                        command: 'ListDir(packages/tui)',
+                        toolInput: JSON.stringify({ dirPath: 'packages/tui' }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'list_dir',
+                        command: 'ListDir(packages/agent)',
+                        toolInput: JSON.stringify({ dirPath: 'packages/agent' }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'list_dir',
+                        command: 'ListDir(packages/tools)',
+                        toolInput: JSON.stringify({ dirPath: 'packages/tools' }),
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('ListDir')
+        expect(frame).toContain('packages/tui')
+        expect(frame).toContain('packages/agent')
+        expect(frame).toContain('+1 more')
+        const listLines = frame.split('\n').filter((l) => l.includes('ListDir'))
+        expect(listLines.length).toBe(1)
+    })
+
+    it('consolidates consecutive web_search tool calls into a single line', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'search_web',
+                        command: 'WebSearch(bun test mock)',
+                        toolInput: JSON.stringify({ query: 'bun test mock' }),
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'search_web',
+                        command: 'WebSearch(bun test watch)',
+                        toolInput: JSON.stringify({ query: 'bun test watch' }),
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('WebSearch')
+        expect(frame).toContain('bun test mock')
+        expect(frame).toContain('bun test watch')
+        const webLines = frame.split('\n').filter((l) => l.includes('WebSearch'))
+        expect(webLines.length).toBe(1)
+    })
 })

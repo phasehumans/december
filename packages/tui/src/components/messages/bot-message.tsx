@@ -38,6 +38,7 @@ type Props = {
     blocks: MessageBlock[]
     usage?: { promptTokens: number; completionTokens: number }
     expandCommands?: boolean
+    hasTopMargin?: boolean
 }
 
 export function formatThought(raw: string): string {
@@ -385,40 +386,116 @@ const CollapsibleCommandOutput = CompactCommandOutput
 
 type CommandBlock = Extract<MessageBlock, { type: 'command' }>
 
-function getReadBlockPath(block: CommandBlock): { display: string; target: string } {
-    let rawPath = ''
+export type DiscoveryCategory = 'read' | 'listdir' | 'search' | 'websearch'
+
+export function getDiscoveryCategory(block: MessageBlock): DiscoveryCategory | null {
+    if (block.type !== 'command') return null
+    const name = (block.toolName || '').toLowerCase()
+    const cmd = (block.command || '').trim()
+
+    if (
+        name === 'read_file' ||
+        name === 'view_file' ||
+        cmd.startsWith('Read(') ||
+        cmd.startsWith('read_file(') ||
+        cmd.startsWith('view_file(')
+    ) {
+        return 'read'
+    }
+    if (
+        name === 'list_dir' ||
+        name === 'ls' ||
+        cmd.startsWith('ListDir(') ||
+        cmd.startsWith('list_dir(') ||
+        cmd.startsWith('ls(')
+    ) {
+        return 'listdir'
+    }
+    if (
+        name === 'grep_search' ||
+        name === 'find_files' ||
+        name === 'search_code' ||
+        name === 'code_search' ||
+        name === 'search_tools' ||
+        name === 'code_intelligence' ||
+        cmd.startsWith('Search(') ||
+        cmd.startsWith('grep_search(') ||
+        cmd.startsWith('find_files(') ||
+        cmd.startsWith('grep(') ||
+        cmd.startsWith('find(')
+    ) {
+        return 'search'
+    }
+    if (
+        name === 'search_web' ||
+        name === 'read_url_content' ||
+        cmd.startsWith('WebSearch(') ||
+        cmd.startsWith('search_web(') ||
+        cmd.startsWith('websearch(') ||
+        cmd.startsWith('read_url_content(')
+    ) {
+        return 'websearch'
+    }
+
+    return null
+}
+
+function getDiscoveryBlockArg(
+    block: CommandBlock,
+    category: DiscoveryCategory
+): { display: string; target: string } {
+    let rawArg = ''
     try {
         const parsed = JSON.parse(block.toolInput || '{}')
-        rawPath =
-            parsed.AbsolutePath ??
-            parsed.TargetFile ??
-            parsed.filePath ??
-            parsed.filepath ??
-            parsed.path ??
-            parsed.file ??
-            ''
+        if (category === 'read') {
+            rawArg =
+                parsed.AbsolutePath ??
+                parsed.TargetFile ??
+                parsed.filePath ??
+                parsed.filepath ??
+                parsed.path ??
+                parsed.file ??
+                ''
+        } else if (category === 'listdir') {
+            rawArg = parsed.DirectoryPath ?? parsed.dirPath ?? parsed.path ?? parsed.directory ?? ''
+        } else if (category === 'search') {
+            rawArg = parsed.Query ?? parsed.pattern ?? parsed.query ?? parsed.symbol ?? ''
+        } else if (category === 'websearch') {
+            rawArg = parsed.query ?? parsed.url ?? parsed.Url ?? ''
+        }
     } catch {
         // Intentionally swallowed: fallback to parsing block.command
     }
-    if (!rawPath && block.command) {
+
+    if (!rawArg && block.command) {
         const match = block.command.match(/^([A-Za-z_]+)\(([\s\S]*)\)$/)
         if (match) {
-            rawPath = match[2].trim()
+            rawArg = match[2].trim()
         }
     }
-    const rel = toRelativePath(rawPath)
-    return { display: rel || rawPath, target: rawPath }
+
+    if (category === 'read' || category === 'listdir') {
+        const rel = toRelativePath(rawArg)
+        return { display: rel || rawArg, target: rawArg }
+    }
+
+    const cleanDisplay = rawArg.replace(/\r?\n/g, ' ').trim()
+    return { display: cleanDisplay, target: '' }
 }
 
-function formatConsolidatedReadArgs(
-    paths: { display: string; target: string }[],
+export function getReadBlockPath(block: CommandBlock): { display: string; target: string } {
+    return getDiscoveryBlockArg(block, 'read')
+}
+
+export function formatConsolidatedArgs(
+    items: { display: string; target: string }[],
     maxArgLength: number
 ): string {
-    const count = paths.length
+    const count = items.length
     if (count === 0) return ''
 
     if (count === 1) {
-        const p0 = paths[0]!
+        const p0 = items[0]!
         const label =
             p0.display.length > maxArgLength
                 ? p0.display.substring(0, Math.max(10, maxArgLength - 3)) + '...'
@@ -427,8 +504,8 @@ function formatConsolidatedReadArgs(
     }
 
     if (count === 2) {
-        const p0 = paths[0]!
-        const p1 = paths[1]!
+        const p0 = items[0]!
+        const p1 = items[1]!
         if (p0.display.length + 2 + p1.display.length <= maxArgLength) {
             return `${fileLink(p0.display, p0.target)}, ${fileLink(p1.display, p1.target)}`
         }
@@ -446,8 +523,8 @@ function formatConsolidatedReadArgs(
         return `${fileLink(truncatedP0, p0.target)}, ...`
     }
 
-    const p0 = paths[0]!
-    const p1 = paths[1]!
+    const p0 = items[0]!
+    const p1 = items[1]!
     const suffixTwo = `, +${count - 2} more`
     if (p0.display.length + 2 + p1.display.length + suffixTwo.length <= maxArgLength) {
         return `${fileLink(p0.display, p0.target)}, ${fileLink(p1.display, p1.target)}${suffixTwo}`
@@ -468,10 +545,14 @@ function formatConsolidatedReadArgs(
     return `${fileLink(label0, p0.target)}${suffixOne}`
 }
 
-export function ConsolidatedReadsView({
+export const formatConsolidatedReadArgs = formatConsolidatedArgs
+
+export function ConsolidatedDiscoveryView({
+    category,
     blocks,
     isLastBlock,
 }: {
+    category: DiscoveryCategory
     blocks: CommandBlock[]
     forceExpanded?: boolean
     isLastBlock?: boolean
@@ -481,10 +562,18 @@ export function ConsolidatedReadsView({
     const hasError = blocks.some((b) => b.status === 'error')
 
     const maxArgLength = Math.max(40, columns - 38)
-    const paths = blocks.map(getReadBlockPath)
-    const count = paths.length
-    const inlineArgs = formatConsolidatedReadArgs(paths, maxArgLength)
+    const items = blocks.map((b) => getDiscoveryBlockArg(b, category))
+    const inlineArgs = formatConsolidatedArgs(items, maxArgLength)
     const cmdColor = THEME.colors.warning
+
+    const label =
+        category === 'read'
+            ? 'Read'
+            : category === 'listdir'
+              ? 'ListDir'
+              : category === 'search'
+                ? 'Search'
+                : 'WebSearch'
 
     if (isRunning) {
         return (
@@ -493,7 +582,7 @@ export function ConsolidatedReadsView({
                     <Spinner />
                     <Text>
                         <Text color={cmdColor} bold>
-                            Read
+                            {label}
                         </Text>
                         <Text color={THEME.colors.muted}>({inlineArgs})</Text>
                     </Text>
@@ -507,7 +596,7 @@ export function ConsolidatedReadsView({
         const errorBlock = blocks.find((b) => b.status === 'error')
         return (
             <CompactCommandOutput
-                command={errorBlock?.command || 'Read()'}
+                command={errorBlock?.command || `${label}()`}
                 output={errorBlock?.output}
                 status="error"
             />
@@ -520,26 +609,45 @@ export function ConsolidatedReadsView({
                 <Text>
                     <Text color={cmdColor}>{`${THEME.glyphs.status} `}</Text>
                     <Text color={cmdColor} bold>
-                        Read
+                        {label}
                     </Text>
-                    <Text color={THEME.colors.muted}>
-                        ({count > 2 ? `${count} files: ${inlineArgs}` : inlineArgs})
-                    </Text>
+                    <Text color={THEME.colors.muted}>({inlineArgs})</Text>
                 </Text>
             </Box>
         </Box>
     )
 }
 
+export function ConsolidatedReadsView({
+    blocks,
+    forceExpanded,
+    isLastBlock,
+}: {
+    blocks: CommandBlock[]
+    forceExpanded?: boolean
+    isLastBlock?: boolean
+}) {
+    return (
+        <ConsolidatedDiscoveryView
+            category="read"
+            blocks={blocks}
+            forceExpanded={forceExpanded}
+            isLastBlock={isLastBlock}
+        />
+    )
+}
+
 type RenderItem =
     | { kind: 'single'; block: MessageBlock; originalIdx: number }
-    | { kind: 'consolidated_reads'; blocks: CommandBlock[]; originalIdx: number }
+    | {
+          kind: 'consolidated_discovery'
+          category: DiscoveryCategory
+          blocks: CommandBlock[]
+          originalIdx: number
+      }
 
-function isReadCommandBlock(block: MessageBlock): block is CommandBlock {
-    if (block.type !== 'command') return false
-    if (block.toolName === 'read_file' || block.toolName === 'view_file') return true
-    if (block.command?.startsWith('Read(')) return true
-    return false
+export function isReadCommandBlock(block: MessageBlock): block is CommandBlock {
+    return getDiscoveryCategory(block) === 'read'
 }
 
 function groupBlocks(blocks: MessageBlock[]): RenderItem[] {
@@ -553,23 +661,25 @@ function groupBlocks(blocks: MessageBlock[]): RenderItem[] {
             continue
         }
 
-        if (isReadCommandBlock(block)) {
-            const readGroup: CommandBlock[] = [block]
+        const category = getDiscoveryCategory(block)
+        if (category) {
+            const group: CommandBlock[] = [block as CommandBlock]
             let j = i + 1
             while (j < blocks.length) {
                 const nextBlock = blocks[j]
-                if (nextBlock && isReadCommandBlock(nextBlock)) {
-                    readGroup.push(nextBlock)
+                if (nextBlock && getDiscoveryCategory(nextBlock) === category) {
+                    group.push(nextBlock as CommandBlock)
                     j++
                 } else {
                     break
                 }
             }
 
-            if (readGroup.length > 1) {
+            if (group.length > 1) {
                 items.push({
-                    kind: 'consolidated_reads',
-                    blocks: readGroup,
+                    kind: 'consolidated_discovery',
+                    category,
+                    blocks: group,
                     originalIdx: i,
                 })
                 i = j
@@ -584,7 +694,12 @@ function groupBlocks(blocks: MessageBlock[]): RenderItem[] {
     return items
 }
 
-export const BotMessage = React.memo(function BotMessage({ blocks, usage, expandCommands }: Props) {
+export const BotMessage = React.memo(function BotMessage({
+    blocks,
+    usage,
+    expandCommands,
+    hasTopMargin,
+}: Props) {
     const groupedItems = groupBlocks(blocks)
 
     return (
@@ -594,13 +709,14 @@ export const BotMessage = React.memo(function BotMessage({ blocks, usage, expand
             paddingRight={THEME.padding.paddingRight ?? 4}
             paddingY={0}
             gap={0}
-            marginTop={0}
+            marginTop={hasTopMargin ? 1 : 0}
         >
             {groupedItems.map((item) => {
-                if (item.kind === 'consolidated_reads') {
+                if (item.kind === 'consolidated_discovery') {
                     return (
-                        <ConsolidatedReadsView
+                        <ConsolidatedDiscoveryView
                             key={item.originalIdx}
+                            category={item.category}
                             blocks={item.blocks}
                             forceExpanded={expandCommands}
                             isLastBlock={item.originalIdx + item.blocks.length >= blocks.length}

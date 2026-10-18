@@ -228,6 +228,41 @@ describe('MessageList Component (Unit)', () => {
         expect(rawLines[u2Idx + 1]?.trim()).toBe('')
     })
 
+    it('maintains 1-line margin between header and assistant message when assistant directly follows header', () => {
+        const staticMessages = [
+            { id: 'h1', role: 'header' as const },
+            {
+                id: 'b1',
+                role: 'assistant' as const,
+                blocks: [
+                    {
+                        type: 'text' as const,
+                        content: 'Have feedback, found a bug, or have a feature request?',
+                    },
+                ],
+            },
+        ]
+
+        const { lastFrame } = renderWithProviders(
+            <MessageList
+                staticKey={0}
+                staticMessages={staticMessages}
+                activeMessages={[]}
+                isAuthenticated={true}
+            />
+        )
+
+        const frame = lastFrame() || ''
+        const rawLines = frame.split('\n')
+        const headerEndIdx = rawLines.findIndex((l) => l.includes('Press / for commands'))
+        const botIdx = rawLines.findIndex((l) => l.includes('Have feedback, found a bug'))
+
+        expect(headerEndIdx).toBeGreaterThanOrEqual(0)
+        expect(botIdx).toBeGreaterThan(headerEndIdx)
+        const between = rawLines.slice(headerEndIdx + 1, botIdx)
+        expect(between.some((l) => l.trim() === '')).toBe(true)
+    })
+
     it('renders displayText over text when displayText is provided', () => {
         const staticMessages = [
             {

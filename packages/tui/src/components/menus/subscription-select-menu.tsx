@@ -22,7 +22,7 @@ export const SUBSCRIPTION_MENU_ITEMS: SubscriptionItem[] = [
         value: 'copilot',
     },
     {
-        label: 'Google (Gemini / Antigravity)',
+        label: 'Google (Antigravity)',
         value: 'gemini',
     },
     {
@@ -187,32 +187,35 @@ export function SubscriptionSelectMenu(props: SubscriptionSelectMenuProps) {
                 </Box>
             </Box>
 
-            {filteredItems.map((item, idx) => {
-                const isSelected = idx === selectedIndex
-                return (
-                    <Box key={item.value} paddingLeft={0}>
-                        <Box marginRight={1}>
-                            <Text color={THEME.colors.brand}>
-                                {isSelected ? THEME.glyphs.selector : ' '}
-                            </Text>
-                        </Box>
-                        <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>
-                            {item.label}
-                        </Text>
-                        {item.hint && (
-                            <Box marginLeft={1}>
-                                <Text color={THEME.colors.muted}>({item.hint})</Text>
+            {/* List container with minHeight to prevent layout shifts during search filtering */}
+            <Box flexDirection="column" minHeight={4}>
+                {filteredItems.map((item, idx) => {
+                    const isSelected = idx === selectedIndex
+                    return (
+                        <Box key={item.value} paddingLeft={0}>
+                            <Box marginRight={1}>
+                                <Text color={THEME.colors.brand}>
+                                    {isSelected ? THEME.glyphs.selector : ' '}
+                                </Text>
                             </Box>
-                        )}
-                    </Box>
-                )
-            })}
+                            <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>
+                                {item.label}
+                            </Text>
+                            {item.hint && (
+                                <Box marginLeft={1}>
+                                    <Text color={THEME.colors.muted}>({item.hint})</Text>
+                                </Box>
+                            )}
+                        </Box>
+                    )
+                })}
 
-            {filteredItems.length === 0 && (
-                <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>No providers found.</Text>
-                </Box>
-            )}
+                {filteredItems.length === 0 && (
+                    <Box paddingLeft={2}>
+                        <Text color={THEME.colors.muted}>No providers found.</Text>
+                    </Box>
+                )}
+            </Box>
 
             <MenuFooter items={footerItems} />
         </Box>

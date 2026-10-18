@@ -9,7 +9,6 @@ vi.mock('@december/providers', () => ({
     geminiProvider: vi.fn(),
     antigravityProvider: vi.fn(),
     openrouterProvider: vi.fn(),
-    ollamaProvider: vi.fn(),
 }))
 
 describe('instantiateProvider', () => {
@@ -23,7 +22,6 @@ describe('instantiateProvider', () => {
         ;(providers.geminiProvider as any).mockReturnValue('mock-gemini')
         ;(providers.antigravityProvider as any).mockReturnValue('mock-antigravity')
         ;(providers.openrouterProvider as any).mockReturnValue('mock-openrouter')
-        ;(providers.ollamaProvider as any).mockReturnValue('mock-ollama')
     })
 
     afterEach(() => {
@@ -335,14 +333,6 @@ describe('instantiateProvider', () => {
         expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.meta.ai/v1', 'key-123')
     })
 
-    it('instantiates poolside provider via openai compat', () => {
-        instantiateProvider('poolside', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://inference.poolside.ai/v1',
-            'key-123'
-        )
-    })
-
     it('instantiates sakana provider via openai compat', () => {
         instantiateProvider('sakana', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.sakana.ai/v1', 'key-123')
@@ -464,20 +454,6 @@ describe('instantiateProvider', () => {
         )
     })
 
-    it('instantiates airouter provider via openai compat', () => {
-        instantiateProvider('airouter', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.ai-router.dev/v1',
-            'key-123'
-        )
-
-        instantiateProvider('ai-router', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.ai-router.dev/v1',
-            'key-123'
-        )
-    })
-
     it('instantiates aiand provider via openai compat', () => {
         instantiateProvider('aiand', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.aiand.com/v1', 'key-123')
@@ -530,27 +506,6 @@ describe('instantiateProvider', () => {
         expect(providers.openaiProvider).toHaveBeenCalledWith(
             'https://inference.baseten.co/v1',
             'key-123'
-        )
-    })
-
-    it('instantiates ollama provider with default localhost endpoint', () => {
-        const p = instantiateProvider('ollama', '')
-        expect(p).toBe('mock-ollama')
-        expect(providers.ollamaProvider).toHaveBeenCalledWith('http://localhost:11434/v1', 'ollama')
-    })
-
-    it('instantiates ollama provider with custom endpoint when passed as apiKey or OLLAMA_HOST', () => {
-        instantiateProvider('ollama', 'http://192.168.1.50:11434')
-        expect(providers.ollamaProvider).toHaveBeenCalledWith(
-            'http://192.168.1.50:11434/v1',
-            'ollama'
-        )
-
-        process.env.OLLAMA_HOST = 'http://remote-ollama:11434/v1'
-        instantiateProvider('ollama', '')
-        expect(providers.ollamaProvider).toHaveBeenCalledWith(
-            'http://remote-ollama:11434/v1',
-            'ollama'
         )
     })
 

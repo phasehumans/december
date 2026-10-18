@@ -4,7 +4,6 @@ import { AbliterationProvider } from '../../src/providers/abliteration'
 import { AgentRouterProvider } from '../../src/providers/agentrouter'
 import { AgnesProvider } from '../../src/providers/agnes'
 import { AIAndProvider } from '../../src/providers/aiand'
-import { AIRouterProvider } from '../../src/providers/airouter'
 import { AKIProvider } from '../../src/providers/aki'
 import { AmbientProvider } from '../../src/providers/ambient'
 import { ArceeProvider } from '../../src/providers/arcee'
@@ -25,7 +24,6 @@ import { MistralProvider } from '../../src/providers/mistral'
 import { MoonshotProvider } from '../../src/providers/moonshot'
 import { NvidiaProvider } from '../../src/providers/nvidia'
 import { PerplexityProvider } from '../../src/providers/perplexity'
-import { PoolsideProvider } from '../../src/providers/poolside'
 import { SakanaProvider } from '../../src/providers/sakana'
 import { SambaNovaProvider } from '../../src/providers/sambanova'
 import { SarvamProvider } from '../../src/providers/sarvam'
@@ -152,11 +150,6 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
         expect(provider.id).toBe('meta')
     })
 
-    test('instantiates PoolsideProvider with correct ID', () => {
-        const provider = new PoolsideProvider('dummy-key')
-        expect(provider.id).toBe('poolside')
-    })
-
     test('instantiates SakanaProvider with correct ID', () => {
         const provider = new SakanaProvider('dummy-key')
         expect(provider.id).toBe('sakana')
@@ -205,11 +198,6 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates AgnesProvider with correct ID', () => {
         const provider = new AgnesProvider('dummy-key')
         expect(provider.id).toBe('agnes')
-    })
-
-    test('instantiates AIRouterProvider with correct ID', () => {
-        const provider = new AIRouterProvider('dummy-key')
-        expect(provider.id).toBe('airouter')
     })
 
     test('instantiates AIAndProvider with correct ID', () => {

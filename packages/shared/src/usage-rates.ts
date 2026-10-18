@@ -249,11 +249,6 @@ export const OFFICIAL_MODEL_RATES: Record<string, ModelRate> = {
     'gpt-5.6-sol': { name: 'gpt-5.6-sol', inputRate: 5.0, outputRate: 30.0 },
     'gpt-5.4': { name: 'gpt-5.4', inputRate: 2.5, outputRate: 15.0 },
     'gpt-5.5': { name: 'gpt-5.5', inputRate: 5.0, outputRate: 30.0 },
-    'airouter/gpt-5.6-luna': { name: 'airouter/gpt-5.6-luna', inputRate: 1.0, outputRate: 6.0 },
-    'airouter/gpt-5.6-terra': { name: 'airouter/gpt-5.6-terra', inputRate: 2.5, outputRate: 15.0 },
-    'airouter/gpt-5.6-sol': { name: 'airouter/gpt-5.6-sol', inputRate: 5.0, outputRate: 30.0 },
-    'airouter/gpt-5.4': { name: 'airouter/gpt-5.4', inputRate: 2.5, outputRate: 15.0 },
-    'airouter/gpt-5.5': { name: 'airouter/gpt-5.5', inputRate: 5.0, outputRate: 30.0 },
 
     // AI&
     'deepseek-ai/deepseek-v4-flash': {
@@ -608,7 +603,6 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     minimax: 'https://platform.minimax.io/console/access',
     minimaxai: 'https://platform.minimax.io/console/access',
     'minimax-ai': 'https://platform.minimax.io/console/access',
-    poolside: 'https://platform.poolside.ai/api-keys',
     sakana: 'https://console.sakana.ai/api-keys',
     sarvam: 'https://indus.sarvam.ai/',
     stepfun: 'https://platform.stepfun.ai/interface-key',
@@ -624,8 +618,6 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     agnes: 'https://platform.agnes-ai.com/settings/apiKeys',
     'agnes-ai': 'https://platform.agnes-ai.com/settings/apiKeys',
     agnesai: 'https://platform.agnes-ai.com/settings/apiKeys',
-    airouter: 'https://ai-router.dev/keys',
-    'ai-router': 'https://ai-router.dev/keys',
     aiand: 'https://console.aiand.com/api-keys',
     aki: 'https://aki.io/admin/user-dashboard',
     'aki-io': 'https://aki.io/admin/user-dashboard',
@@ -678,7 +670,6 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     minimax: 'MiniMax',
     minimaxai: 'MiniMax',
     'minimax-ai': 'MiniMax',
-    poolside: 'Poolside',
     sakana: 'Sakana AI',
     sarvam: 'Sarvam AI',
     stepfun: 'StepFun (Global)',
@@ -692,8 +683,6 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     agnes: 'Agnes AI',
     'agnes-ai': 'Agnes AI',
     agnesai: 'Agnes AI',
-    airouter: 'AI Router',
-    'ai-router': 'AI Router',
     aiand: 'AI&',
     aki: 'AKI.IO',
     'aki-io': 'AKI.IO',
@@ -701,7 +690,6 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     ambient: 'Ambient',
     auriko: 'Auriko',
     baseten: 'Baseten',
-    ollama: 'Ollama (Local)',
 }
 
 export function formatInsufficientCreditsNotice(
@@ -725,8 +713,6 @@ export function formatInsufficientCreditsNotice(
             normalized = 'meta'
         } else if (modelLower.includes('minimax')) {
             normalized = 'minimax'
-        } else if (modelLower.includes('laguna')) {
-            normalized = 'poolside'
         } else if (
             modelLower.includes('fugu') ||
             modelLower.includes('namazu') ||
@@ -755,8 +741,6 @@ export function formatInsufficientCreditsNotice(
             normalized = 'abliteration'
         } else if (modelLower.includes('agnes')) {
             normalized = 'agnes'
-        } else if (modelLower.includes('gpt-5.6') || modelLower.includes('airouter')) {
-            normalized = 'airouter'
         } else if (modelLower.includes('aiand')) {
             normalized = 'aiand'
         } else if (modelLower.includes('aki')) {
@@ -807,10 +791,6 @@ export function formatInsufficientCreditsNotice(
 
     if (normalized === 'agnes' || normalized === 'agnes-ai' || normalized === 'agnesai') {
         return 'Insufficient credits in your Agnes AI account. Please add credits or check your account at https://platform.agnes-ai.com/settings/apiKeys'
-    }
-
-    if (normalized === 'airouter' || normalized === 'ai-router') {
-        return 'Insufficient credits in your AI Router account. Please add credits or check your account at https://ai-router.dev/keys'
     }
 
     if (normalized === 'aiand') {
@@ -957,7 +937,6 @@ export function getCleanProviderDisplayName(providerId?: string, model?: string)
         upstage: 'Upstage Solar',
         arcee: 'Arcee AI',
         sakana: 'Sakana AI',
-        poolside: 'Poolside',
         sarvam: 'Sarvam AI',
         stepfun: 'StepFun',
         thinkingmachines: 'Thinking Machines',
@@ -965,15 +944,12 @@ export function getCleanProviderDisplayName(providerId?: string, model?: string)
         mimo: 'Xiaomi',
         abliteration: 'Abliteration AI',
         'abliteration-ai': 'Abliteration AI',
-        airouter: 'AI Router',
-        'ai-router': 'AI Router',
         aiand: 'AI&',
         aki: 'AKI.IO',
         'aki-io': 'AKI.IO',
         ambient: 'Ambient',
         auriko: 'Auriko',
         baseten: 'Baseten',
-        ollama: 'Ollama',
     }
 
     if (cleanMap[id]) return cleanMap[id]

@@ -119,9 +119,9 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
         const isAlreadyLoggedIn = Boolean(config.decemberToken)
         expect(isAlreadyLoggedIn).toBe(true)
 
-        const promptMessage = `You are already logged in as ${config.email}.\nDo you want to switch to a different account? (y/N): `
+        const promptMessage = `You are already logged in as ${config.email}.\nDo you want to switch to a different account? (y/n): `
         expect(promptMessage).toContain('dev@example.com')
-        expect(promptMessage).toContain('(y/N)')
+        expect(promptMessage).toContain('(y/n)')
 
         const userDeclineAnswer: string = 'n'
         const shouldSwitch = userDeclineAnswer === 'y' || userDeclineAnswer === 'yes'

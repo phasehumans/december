@@ -28,6 +28,8 @@ export interface CliState {
     currentEmail: string | undefined
     setCurrentEmail: (email: string | undefined) => void
     authMode: AuthMode
+    previousAuthMode: AuthMode
+    menuStack: AuthMode[]
     setAuthMode: (mode: AuthMode) => void
     logoutItems: { label: string; value: string }[]
     setLogoutItems: (items: { label: string; value: string }[]) => void
@@ -196,7 +198,38 @@ export const useCliStore = create<CliState>((set) => ({
     currentEmail: undefined,
     setCurrentEmail: (currentEmail) => set({ currentEmail }),
     authMode: 'none',
-    setAuthMode: (authMode) => set({ authMode }),
+    previousAuthMode: 'none',
+    menuStack: [],
+    setAuthMode: (authMode) =>
+        set((state) => {
+            if (authMode === 'none') {
+                return {
+                    authMode: 'none',
+                    previousAuthMode: 'none',
+                    menuStack: [],
+                }
+            }
+            if (state.authMode === authMode) {
+                return { authMode }
+            }
+            const existingIdx = state.menuStack.lastIndexOf(authMode)
+            if (existingIdx !== -1) {
+                const nextStack = state.menuStack.slice(0, existingIdx)
+                const prev = nextStack.length > 0 ? nextStack[nextStack.length - 1] : 'none'
+                return {
+                    authMode,
+                    previousAuthMode: prev,
+                    menuStack: nextStack,
+                }
+            }
+            const nextStack =
+                state.authMode !== 'none' ? [...state.menuStack, state.authMode] : state.menuStack
+            return {
+                authMode,
+                previousAuthMode: state.authMode,
+                menuStack: nextStack,
+            }
+        }),
     logoutItems: [],
     setLogoutItems: (logoutItems) => set({ logoutItems }),
     switchItems: [],

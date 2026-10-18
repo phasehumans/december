@@ -51,7 +51,7 @@ export function MenuMenu(props: MenuMenuProps) {
 
     const items: MenuMenuItem[] = [
         {
-            label: 'Bring Your Own Key or Subscription',
+            label: 'Use your own Key or Subscription',
             value: 'byok',
         },
         {
@@ -66,7 +66,7 @@ export function MenuMenu(props: MenuMenuProps) {
     ]
 
     useInput((input, key) => {
-        // Confirmation mode: "Do you want to switch to a different account? (y/N)"
+        // Confirmation mode: "Do you want to switch to a different account? (y/n)"
         if (confirmSwitch) {
             if (input === 'y' || input === 'Y') {
                 setConfirmSwitch(false)
@@ -144,7 +144,7 @@ export function MenuMenu(props: MenuMenuProps) {
                 </Box>
                 <Box marginBottom={1}>
                     <Text color={THEME.colors.warning}>
-                        Do you want to switch to a different account? (y/N)
+                        Do you want to switch to a different account? (y/n)
                     </Text>
                 </Box>
 

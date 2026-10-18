@@ -43,6 +43,11 @@ export interface DiffComment {
     createdAt: Date
 }
 
+export interface ChangeBlock {
+    startIndex: number
+    endIndex: number
+}
+
 export function formatDiffSummary(count: number): string {
     if (count === 0) return 'No files changed'
     if (count === 1) return '1 file changed'
@@ -55,7 +60,12 @@ export function parseUnifiedDiffToRows(
         fullContent?: string | null
         expandedFolds?: Record<string, boolean>
     }
-): { rows: DiffRow[]; totalChanges: number; changeIndices: number[] } {
+): {
+    rows: DiffRow[]
+    totalChanges: number
+    changeIndices: number[]
+    changeBlocks: ChangeBlock[]
+} {
     const rawLines = (diffText || '').trim().split(/\r?\n/)
     const rows: DiffRow[] = []
     const changeIndices: number[] = []
@@ -252,7 +262,30 @@ export function parseUnifiedDiffToRows(
     }
 
     const totalChanges = changeIndices.length
-    return { rows, totalChanges, changeIndices }
+
+    // Compute contiguous change blocks (hunks of additions/deletions)
+    const changeBlocks: ChangeBlock[] = []
+    let currentBlock: ChangeBlock | null = null
+
+    for (const row of rows) {
+        if (row.type === 'line' && (row.data.type === 'add' || row.data.type === 'delete')) {
+            if (!currentBlock) {
+                currentBlock = { startIndex: row.index, endIndex: row.index }
+            } else {
+                currentBlock.endIndex = row.index
+            }
+        } else {
+            if (currentBlock) {
+                changeBlocks.push(currentBlock)
+                currentBlock = null
+            }
+        }
+    }
+    if (currentBlock) {
+        changeBlocks.push(currentBlock)
+    }
+
+    return { rows, totalChanges, changeIndices, changeBlocks }
 }
 
 export async function fetchGitStatusFiles(

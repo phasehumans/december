@@ -309,71 +309,76 @@ export function SessionSelectMenu(props: any) {
                 </Box>
             </Box>
 
-            {visibleItems.map((session: any, idx: number) => {
-                const isSelected = idx === sessionSelectedIndex
+            {/* List container with fixed minHeight to prevent layout shifts during pagination and search */}
+            <Box flexDirection="column" minHeight={SESSION_PAGE_SIZE}>
+                {visibleItems.map((session: any, idx: number) => {
+                    const isSelected = idx === sessionSelectedIndex
 
-                if (isSelected && sessionRenameMode) {
+                    if (isSelected && sessionRenameMode) {
+                        return (
+                            <Box key={session.id} flexDirection="row">
+                                <Box width={2}>
+                                    <Text
+                                        color={THEME.colors.brand}
+                                    >{`${THEME.glyphs.selector} `}</Text>
+                                </Box>
+                                <Text color={THEME.colors.brand}>
+                                    <TextInput
+                                        value={sessionNewName}
+                                        onChange={setSessionNewName}
+                                        onSubmit={handleRenameSubmit}
+                                        focus={true}
+                                    />
+                                </Text>
+                            </Box>
+                        )
+                    }
+
+                    const isConfirmingDelete = session.id === confirmDeleteId
+                    const isCustomName = !session.id.startsWith('session-')
+                    const rawTitle = isCustomName ? session.id : session.preview || session.id
+                    const singleLineTitle = (rawTitle || '').replace(/\s+/g, ' ').trim()
+                    const maxTitleWidth = isConfirmingDelete
+                        ? Math.max(5, availableWidth - 17)
+                        : availableWidth
+                    const title =
+                        singleLineTitle.length > maxTitleWidth
+                            ? singleLineTitle.slice(0, maxTitleWidth - 3) + '...'
+                            : singleLineTitle
+                    const timeStr = timeAgo(session.updatedAt).padStart(12)
+
                     return (
                         <Box key={session.id} flexDirection="row">
                             <Box width={2}>
-                                <Text
-                                    color={THEME.colors.brand}
-                                >{`${THEME.glyphs.selector} `}</Text>
+                                <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
+                                    {isSelected ? `${THEME.glyphs.selector} ` : '  '}
+                                </Text>
                             </Box>
-                            <Text color={THEME.colors.brand}>
-                                <TextInput
-                                    value={sessionNewName}
-                                    onChange={setSessionNewName}
-                                    onSubmit={handleRenameSubmit}
-                                    focus={true}
-                                />
-                            </Text>
+                            <Box width={availableWidth}>
+                                <Text wrap="truncate">
+                                    <Text
+                                        color={isSelected ? THEME.colors.brand : THEME.colors.muted}
+                                    >
+                                        {title}
+                                    </Text>
+                                    {isConfirmingDelete && (
+                                        <Text color={THEME.colors.error}> [Delete? (y/n)]</Text>
+                                    )}
+                                </Text>
+                            </Box>
+                            <Box width={timeWidth}>
+                                <Text color={THEME.colors.muted}>{timeStr}</Text>
+                            </Box>
                         </Box>
                     )
-                }
+                })}
 
-                const isConfirmingDelete = session.id === confirmDeleteId
-                const isCustomName = !session.id.startsWith('session-')
-                const rawTitle = isCustomName ? session.id : session.preview || session.id
-                const singleLineTitle = (rawTitle || '').replace(/\s+/g, ' ').trim()
-                const maxTitleWidth = isConfirmingDelete
-                    ? Math.max(5, availableWidth - 17)
-                    : availableWidth
-                const title =
-                    singleLineTitle.length > maxTitleWidth
-                        ? singleLineTitle.slice(0, maxTitleWidth - 3) + '...'
-                        : singleLineTitle
-                const timeStr = timeAgo(session.updatedAt).padStart(12)
-
-                return (
-                    <Box key={session.id} flexDirection="row">
-                        <Box width={2}>
-                            <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
-                                {isSelected ? `${THEME.glyphs.selector} ` : '  '}
-                            </Text>
-                        </Box>
-                        <Box width={availableWidth}>
-                            <Text wrap="truncate">
-                                <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
-                                    {title}
-                                </Text>
-                                {isConfirmingDelete && (
-                                    <Text color={THEME.colors.error}> [Delete? (y/n)]</Text>
-                                )}
-                            </Text>
-                        </Box>
-                        <Box width={timeWidth}>
-                            <Text color={THEME.colors.muted}>{timeStr}</Text>
-                        </Box>
+                {totalItems === 0 && (
+                    <Box paddingLeft={2}>
+                        <Text color={THEME.colors.muted}>No sessions found.</Text>
                     </Box>
-                )
-            })}
-
-            {totalItems === 0 && (
-                <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>No sessions found.</Text>
-                </Box>
-            )}
+                )}
+            </Box>
 
             {totalItems > 0 && (
                 <Box marginTop={1} paddingLeft={2}>

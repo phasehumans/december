@@ -22,7 +22,7 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
 
     if (filtered.length === 0) {
         return (
-            <Box paddingLeft={2} paddingY={1}>
+            <Box paddingLeft={2}>
                 <Text color={THEME.colors.muted}>No matching commands</Text>
             </Box>
         )
@@ -32,16 +32,21 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
     const visibleItems = filtered.slice(windowStart, windowEnd)
     const itemsAbove = windowStart
     const itemsBelow = filtered.length - windowEnd
+    const hasOverflow = filtered.length > WINDOW_SIZE
+
+    let statusText = ''
+    if (hasOverflow) {
+        if (itemsAbove > 0 && itemsBelow > 0) {
+            statusText = `↑ ${itemsAbove} more · ↓ ${itemsBelow} more`
+        } else if (itemsAbove > 0) {
+            statusText = `↑ ${itemsAbove} more`
+        } else if (itemsBelow > 0) {
+            statusText = `↓ ${itemsBelow} more`
+        }
+    }
 
     return (
         <Box flexDirection="column">
-            {/* ↑ n more */}
-            {itemsAbove > 0 && (
-                <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>↑ {itemsAbove} more</Text>
-                </Box>
-            )}
-
             {/* command rows */}
             {visibleItems.map((cmd, relIdx) => {
                 const absIdx = windowStart + relIdx
@@ -69,10 +74,10 @@ export function CommandMenu({ query, selectedIndex, windowStart }: CommandMenuPr
                 )
             })}
 
-            {/* ↓ n more */}
-            {itemsBelow > 0 && (
+            {/* bottom status line for overflow pagination */}
+            {hasOverflow && statusText && (
                 <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>↓ {itemsBelow} more</Text>
+                    <Text color={THEME.colors.muted}>{statusText}</Text>
                 </Box>
             )}
         </Box>

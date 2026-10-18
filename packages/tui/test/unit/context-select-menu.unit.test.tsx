@@ -5,7 +5,7 @@ import { ContextSelectMenu } from '../../src/components/menus/context-select-men
 import { renderWithProviders } from '../test-providers'
 
 describe('ContextSelectMenu Component (Unit)', () => {
-    it('renders the 200-dot visual grid and all flat categorical token breakdown lines', () => {
+    it('renders the minimal progress bar and categorical token breakdown lines', () => {
         const base = 'You are December, an expert coding agent.'
         const skills = 'Available Skills:\n- Code refactoring\n- Performance tuning'
         const rules =
@@ -60,17 +60,18 @@ describe('ContextSelectMenu Component (Unit)', () => {
         // Verify title & model header
         expect(frame).toContain('Context')
         expect(frame).toContain('gemini-3.6-flash')
-        expect(frame).toContain('Token usage by category')
 
         // Verify flat category breakdown lines
         expect(frame).toContain('Base System Prompt:')
-        expect(frame).toContain('Project Rules (AGENTS.md / rules.md):')
-        expect(frame).toContain('Workspace Skills (skills.md):')
+        expect(frame).toContain('Project Rules:')
+        expect(frame).toContain('Workspace Skills:')
         expect(frame).toContain('Tool Schemas:')
         expect(frame).toContain('Conversation History:')
         expect(frame).toContain('Free space:')
 
-        // Verify dots and grid glyphs
+        // Verify bar and indicator glyphs
+        expect(frame).toContain('█')
+        expect(frame).toContain('░')
         expect(frame).toContain('■')
         expect(frame).toContain('□')
 
@@ -90,10 +91,9 @@ describe('ContextSelectMenu Component (Unit)', () => {
         const frame = lastFrame()
 
         expect(frame).toContain('Context')
-        expect(frame).toContain('Token usage by category')
         expect(frame).toContain('Base System Prompt: 0 tokens')
-        expect(frame).toContain('Project Rules (AGENTS.md / rules.md): 0 tokens')
-        expect(frame).toContain('Workspace Skills (skills.md): 0 tokens')
+        expect(frame).toContain('Project Rules: 0 tokens')
+        expect(frame).toContain('Workspace Skills: 0 tokens')
         expect(frame).toContain('Tool Schemas: 0 tokens')
         expect(frame).toContain('Conversation History: 0 tokens')
         expect(frame).toContain('Free space:')

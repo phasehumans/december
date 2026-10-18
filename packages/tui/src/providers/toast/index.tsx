@@ -1,18 +1,9 @@
-import { Box, Text } from 'ink'
 import { createContext, useContext, useRef, useState, useCallback } from 'react'
-
-import { THEME } from '../../theme'
 
 import { DEFAULT_DURATION } from './types'
 
-import type { ToastOptions, ToastVariant } from './types'
+import type { ToastOptions } from './types'
 import type { ReactNode } from 'react'
-
-const VARIANT_COLORS: Record<ToastVariant, string> = {
-    success: THEME.colors.success,
-    error: THEME.colors.error,
-    info: THEME.colors.muted,
-}
 
 export type ToastContextValue = {
     currentToast: ToastOptions | null
@@ -76,19 +67,4 @@ export function ToastProvider({ children, onToast }: ToastProviderProps) {
     }
 
     return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>
-}
-
-type ToastProps = {
-    toast: ToastOptions
-}
-
-function Toast({ toast }: ToastProps) {
-    const color = toast.variant ? VARIANT_COLORS[toast.variant] : VARIANT_COLORS.info
-
-    return (
-        <Box marginLeft={2}>
-            <Text color={color}>{`${THEME.glyphs.status} `}</Text>
-            <Text color={THEME.colors.text}>{toast.message}</Text>
-        </Box>
-    )
 }

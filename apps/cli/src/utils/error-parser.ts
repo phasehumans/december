@@ -485,16 +485,6 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         hint: 'Please top up your balance at https://open.bigmodel.cn/ or switch models using /model.',
     },
     {
-        id: 'poolside',
-        name: 'Poolside',
-        match: (str) =>
-            (str.includes('poolside') || str.includes('inference.poolside.ai')) &&
-            isCreditOrBalanceError(str),
-        notice: 'Rate limit or quota exhausted in your Poolside account. Please check your account at https://platform.poolside.ai/api-keys\n',
-        message: 'Rate limit or quota exhausted in your Poolside account.',
-        hint: 'Please check your account at https://platform.poolside.ai/api-keys or switch models using /model.',
-    },
-    {
         id: 'sakana',
         name: 'Sakana AI',
         match: (str) =>
@@ -744,7 +734,6 @@ export const PROVIDER_BILLING_URLS: Record<string, string> = {
     openai: 'https://platform.openai.com/account/billing',
     openrouter: 'https://openrouter.ai/settings/credits',
     perplexity: 'https://www.perplexity.ai/settings/api',
-    poolside: 'https://platform.poolside.ai/api-keys',
     sakana: 'https://console.sakana.ai/api-keys',
     sambanova: 'https://cloud.sambanova.ai/',
     sarvam: 'https://indus.sarvam.ai/',
@@ -802,7 +791,6 @@ export const PROVIDER_CREDIT_DISPLAY_NAMES: Record<string, string> = {
     openai: 'OpenAI',
     openrouter: 'OpenRouter',
     perplexity: 'Perplexity',
-    poolside: 'Poolside',
     sakana: 'Sakana AI',
     sambanova: 'SambaNova Cloud',
     sarvam: 'Sarvam AI',
@@ -1050,8 +1038,6 @@ export function detectProviderFromText(str: string): string | null {
         lower.includes('api.z.ai')
     )
         return 'zai'
-    if (lower.includes('poolside') || lower.includes('laguna') || lower.includes('poolside.ai'))
-        return 'poolside'
     if (
         lower.includes('sakana') ||
         lower.includes('fugu') ||

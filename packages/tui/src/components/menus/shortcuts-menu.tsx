@@ -36,24 +36,38 @@ export function ShortcutsMenu({ onClose }: { onClose: () => void }) {
     const [windowStart, setWindowStart] = useState(0)
 
     useInput((input, key) => {
-        if (key.upArrow) {
+        const isWheelUp =
+            /\[<(?:64|68|72|80|84);/.test(input) || /\[M[`@]/.test(input) || /\[64~/.test(input)
+        const isWheelDown =
+            /\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)
+
+        if (key.upArrow || input === 'k' || isWheelUp) {
             setSelectedIndex((prev) => {
-                const next = Math.max(0, prev - 1)
+                const count = isWheelUp
+                    ? Math.max(1, (input.match(/\[<(?:64|68|72|80|84);/g) || []).length)
+                    : 1
+                const next = Math.max(0, prev - count)
                 if (next < windowStart) setWindowStart(next)
                 return next
             })
+            return
         }
-        if (key.downArrow) {
+        if (key.downArrow || input === 'j' || isWheelDown) {
             setSelectedIndex((prev) => {
-                const next = Math.min(SHORTCUTS.length - 1, prev + 1)
+                const count = isWheelDown
+                    ? Math.max(1, (input.match(/\[<(?:65|69|73|81|85);/g) || []).length)
+                    : 1
+                const next = Math.min(SHORTCUTS.length - 1, prev + count)
                 if (next >= windowStart + WINDOW_SIZE) {
                     setWindowStart(next - WINDOW_SIZE + 1)
                 }
                 return next
             })
+            return
         }
         if (key.escape || (key.ctrl && input === 'c')) {
             onClose()
+            return
         }
     })
 
@@ -61,46 +75,54 @@ export function ShortcutsMenu({ onClose }: { onClose: () => void }) {
     const visibleItems = SHORTCUTS.slice(windowStart, windowEnd)
     const itemsAbove = windowStart
     const itemsBelow = SHORTCUTS.length - windowEnd
+    const hasOverflow = SHORTCUTS.length > WINDOW_SIZE
+
+    let statusText = ''
+    if (hasOverflow) {
+        if (itemsAbove > 0 && itemsBelow > 0) {
+            statusText = `↑ ${itemsAbove} more · ↓ ${itemsBelow} more`
+        } else if (itemsAbove > 0) {
+            statusText = `↑ ${itemsAbove} more`
+        } else if (itemsBelow > 0) {
+            statusText = `↓ ${itemsBelow} more`
+        }
+    }
 
     return (
         <Box flexDirection="column">
-            {/* ↑ n more */}
-            {itemsAbove > 0 && (
-                <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>↑ {itemsAbove} more</Text>
-                </Box>
-            )}
+            {/* List container with fixed minHeight to prevent layout shifts during scroll */}
+            <Box flexDirection="column" minHeight={17}>
+                {/* rows */}
+                {visibleItems.map((cmd, relIdx) => {
+                    const absIdx = windowStart + relIdx
+                    const isSelected = absIdx === selectedIndex
+                    return (
+                        <Box key={cmd.key} flexDirection="row">
+                            <Box width={2}>
+                                <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
+                                    {isSelected ? `${THEME.glyphs.selector} ` : '  '}
+                                </Text>
+                            </Box>
+                            <Box width={CMD_COL_WIDTH}>
+                                <Text
+                                    color={isSelected ? THEME.colors.brand : THEME.colors.muted}
+                                    bold={false}
+                                >
+                                    {cmd.key}
+                                </Text>
+                            </Box>
+                            <Text color={THEME.colors.muted}>{cmd.desc}</Text>
+                        </Box>
+                    )
+                })}
 
-            {/* rows */}
-            {visibleItems.map((cmd, relIdx) => {
-                const absIdx = windowStart + relIdx
-                const isSelected = absIdx === selectedIndex
-                return (
-                    <Box key={cmd.key} flexDirection="row">
-                        <Box width={2}>
-                            <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
-                                {isSelected ? `${THEME.glyphs.selector} ` : '  '}
-                            </Text>
-                        </Box>
-                        <Box width={CMD_COL_WIDTH}>
-                            <Text
-                                color={isSelected ? THEME.colors.brand : THEME.colors.muted}
-                                bold={false}
-                            >
-                                {cmd.key}
-                            </Text>
-                        </Box>
-                        <Text color={THEME.colors.muted}>{cmd.desc}</Text>
+                {/* bottom status line for overflow pagination */}
+                {hasOverflow && statusText && (
+                    <Box paddingLeft={2}>
+                        <Text color={THEME.colors.muted}>{statusText}</Text>
                     </Box>
-                )
-            })}
-
-            {/* ↓ n more */}
-            {itemsBelow > 0 && (
-                <Box paddingLeft={2}>
-                    <Text color={THEME.colors.muted}>↓ {itemsBelow} more</Text>
-                </Box>
-            )}
+                )}
+            </Box>
 
             <Box paddingLeft={2} paddingTop={1}>
                 <Text color={THEME.colors.muted}>

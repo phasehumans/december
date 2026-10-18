@@ -78,7 +78,7 @@ export function anthropicProvider(
         (isCustomClient ? (customClientOrDefaultHeaders as Anthropic) : customClient) ||
         new Anthropic({
             baseURL: resolvedBaseURL,
-            apiKey: isOAuth ? undefined : resolvedApiKey || process.env.ANTHROPIC_API_KEY,
+            apiKey: isOAuth ? null : resolvedApiKey || process.env.ANTHROPIC_API_KEY,
             authToken: isOAuth
                 ? resolvedApiKey ||
                   process.env.ANTHROPIC_AUTH_TOKEN ||

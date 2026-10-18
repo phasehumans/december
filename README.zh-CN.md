@@ -16,7 +16,7 @@ December 是一个 (so much) better 编程智能体。它能够理解你的代�
 
 - **编写代码与运行命令：** 让它构建新功能、修复 Bug 或运行测试，它会替你完成这些工作。
 - **云端接力：** 使用 _/handoff_ 命令在 **<a href="https://trydecember.com" target="_blank">trydecember.com</a>** 上继续你的会话。
-- **自带 AI 模型：** 支持 OpenAI、Anthropic、Gemini 以及其他 150+ 种模型的 API 密钥，也可以通过 December 登录直接使用 December 额度。
+- **自带 AI 模型：** 支持 OpenAI、Anthropic、Gemini 以及其他 100+ 种模型的 API 密钥，也可以通过 December 登录直接使用 December 额度。
 
 ### 快速上手
 

@@ -246,7 +246,7 @@ export async function handleLinkCommand(options?: { provider?: string }): Promis
         console.log(`\nSupported Providers:`)
         console.log(`  • ${WHITE}claude${RESET}    - Anthropic (Claude)`)
         console.log(`  • ${WHITE}copilot${RESET}   - GitHub (Copilot)`)
-        console.log(`  • ${WHITE}gemini${RESET}    - Google (Gemini / Antigravity)`)
+        console.log(`  • ${WHITE}gemini${RESET}    - Google (Antigravity)`)
         console.log(`  • ${WHITE}chatgpt${RESET}   - OpenAI (ChatGPT)\n`)
         return
     }
@@ -276,7 +276,7 @@ export async function handleKeyCommand(options?: {
         console.log(`  december key openrouter sk-or-...`)
         console.log(`  december key deepseek sk-...`)
         console.log(`  december key groq gsk_...`)
-        console.log(`  december key poolside ps_...`)
+        console.log(`  december key cerebras csk_...`)
         console.log(`  december key sakana sk_...\n`)
         return
     }
@@ -387,7 +387,7 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
             const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
             const answer = (
                 await rl.question(
-                    `\nYou are already logged in as ${userEmail}.\nDo you want to switch to a different account? (y/N): `
+                    `\nYou are already logged in as ${userEmail}.\nDo you want to switch to a different account? (y/n): `
                 )
             )
                 .trim()

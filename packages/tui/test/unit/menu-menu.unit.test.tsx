@@ -6,7 +6,7 @@ import { MenuMenu } from '../../src/components/menus/menu-menu'
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('MenuMenu Component (Unit)', () => {
-    it('renders both authentication method options (Bring Your Own Key or Subscription, Login via December)', () => {
+    it('renders both authentication method options (Use your own Key or Subscription, Login via December)', () => {
         const { lastFrame } = render(
             <KeyboardLayerProvider>
                 <MenuMenu />
@@ -15,7 +15,7 @@ describe('MenuMenu Component (Unit)', () => {
 
         const frame = lastFrame() || ''
         expect(frame).toContain('Select authentication method:')
-        expect(frame).toContain('Bring Your Own Key or Subscription')
+        expect(frame).toContain('Use your own Key or Subscription')
         expect(frame).not.toContain('Use AI Subscription')
         expect(frame).toContain('Login via December')
     })
@@ -32,7 +32,7 @@ describe('MenuMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('❭ Bring Your Own Key or Subscription')
+        expect(lastFrame()).toContain('❭ Use your own Key or Subscription')
 
         // Down arrow to Login via December
         stdin.write('\u001B[B')
@@ -110,7 +110,7 @@ describe('MenuMenu Component (Unit)', () => {
         expect(selectedItem).toBeNull()
         const frame = lastFrame() || ''
         expect(frame).toContain('You are already logged in as dev.chaitanyasonawane@gmail.com.')
-        expect(frame).toContain('Do you want to switch to a different account? (y/N)')
+        expect(frame).toContain('Do you want to switch to a different account? (y/n)')
 
         // Press 'n' to cancel
         stdin.write('n')
@@ -153,7 +153,7 @@ describe('MenuMenu Component (Unit)', () => {
         stdin.write('\r')
         await new Promise((resolve) => setTimeout(resolve, 10))
 
-        expect(lastFrame()).toContain('Do you want to switch to a different account? (y/N)')
+        expect(lastFrame()).toContain('Do you want to switch to a different account? (y/n)')
 
         // Press 'y' to confirm
         stdin.write('y')

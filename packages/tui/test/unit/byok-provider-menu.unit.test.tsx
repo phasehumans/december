@@ -9,19 +9,18 @@ import {
 import { KeyboardLayerProvider } from '../../src/providers/keyboard-layer'
 
 describe('ByokProviderMenu Component (Unit)', () => {
-    it('has 186 total API key and local provider items without subscriptions', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(186)
+    it('has 113 total API key provider items without subscriptions', () => {
+        expect(PROVIDER_MENU_ITEMS.length).toBe(113)
         expect(PROVIDER_MENU_ITEMS[0].value).toBe('302ai')
         expect(PROVIDER_MENU_ITEMS[1].value).toBe('abacus')
         expect(PROVIDER_MENU_ITEMS[2].value).toBe('abliteration')
         expect(PROVIDER_MENU_ITEMS[3].value).toBe('above')
         expect(PROVIDER_MENU_ITEMS[4].value).toBe('agentrouter')
         expect(PROVIDER_MENU_ITEMS[5].value).toBe('agnes')
-        expect(PROVIDER_MENU_ITEMS[6].value).toBe('airouter')
-        expect(PROVIDER_MENU_ITEMS[7].value).toBe('aiand')
-        expect(PROVIDER_MENU_ITEMS[8].value).toBe('ai21')
-        expect(PROVIDER_MENU_ITEMS[9].value).toBe('aihubmix')
-        expect(PROVIDER_MENU_ITEMS[10].value).toBe('ainetcafe')
+        expect(PROVIDER_MENU_ITEMS[6].value).toBe('aiand')
+        expect(PROVIDER_MENU_ITEMS[7].value).toBe('ai21')
+        expect(PROVIDER_MENU_ITEMS[8].value).toBe('aki')
+        expect(PROVIDER_MENU_ITEMS[9].value).toBe('ambient')
     })
 
     it('renders unified providers with Subscriptions and Popular sections initially', () => {
@@ -37,14 +36,14 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(frame).toContain('• Subscriptions')
         expect(frame).toContain('Anthropic (Claude)')
         expect(frame).toContain('GitHub (Copilot)')
-        expect(frame).toContain('Google (Gemini / Antigravity)')
+        expect(frame).toContain('Google (Antigravity)')
         expect(frame).toContain('OpenAI (ChatGPT)')
         expect(frame).not.toContain('(subscription)')
         expect(frame).toContain('• Popular')
         expect(frame).toContain('Anthropic')
         expect(frame).toContain('OpenAI')
         expect(frame).toContain('Google AI Studio')
-        expect(frame).toContain('↓ 183 more')
+        expect(frame).toContain('↓ 110 more')
     })
 
     it('navigates through items with arrow keys and updates more indicators', async () => {
@@ -69,7 +68,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
 
         const frameAfterScroll = lastFrame() || ''
         expect(frameAfterScroll).toContain('↑ 1 more')
-        expect(frameAfterScroll).toContain('↓ 182 more')
+        expect(frameAfterScroll).toContain('↓ 109 more')
 
         // Press Enter to select current item
         stdin.write('\r')
@@ -476,32 +475,6 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(selectedItem?.label).toBe('Agnes AI')
     })
 
-    it('selects AI Router provider on enter after searching', async () => {
-        let selectedItem: any = null
-        const handleSelect = (item: any) => {
-            selectedItem = item
-        }
-
-        const { stdin } = render(
-            <KeyboardLayerProvider>
-                <ByokProviderMenu handleProviderSelect={handleSelect} />
-            </KeyboardLayerProvider>
-        )
-
-        stdin.write('/')
-        await new Promise((r) => setTimeout(r, 50))
-        stdin.write('airouter')
-        await new Promise((r) => setTimeout(r, 50))
-        stdin.write('\r')
-        await new Promise((r) => setTimeout(r, 50))
-        stdin.write('\r')
-        await new Promise((r) => setTimeout(r, 50))
-
-        expect(selectedItem).toBeDefined()
-        expect(selectedItem?.value).toBe('airouter')
-        expect(selectedItem?.label).toBe('AI Router')
-    })
-
     it('selects AI& provider on enter after searching', async () => {
         let selectedItem: any = null
         const handleSelect = (item: any) => {
@@ -721,7 +694,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         const frame = lastFrame() || ''
         expect(frame).toContain('Anthropic (Claude)')
         expect(frame).toContain('GitHub (Copilot)')
-        expect(frame).toContain('Google (Gemini / Antigravity)')
+        expect(frame).toContain('Google (Antigravity)')
         expect(frame).toContain('OpenAI (ChatGPT)')
         expect(frame).not.toContain('(subscription)')
     })
@@ -749,7 +722,7 @@ describe('ByokProviderMenu Component (Unit)', () => {
         expect(frame).toContain('Groq')
         expect(frame).toContain('Mistral AI')
         expect(frame).toContain('❭ xAI')
-        expect(frame).toContain('↓ 178 more')
+        expect(frame).toContain('↓ 105 more')
     })
 
     it('navigates with mouse wheel down and mouse wheel up', async () => {

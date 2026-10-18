@@ -112,11 +112,16 @@ export function useCommandMenu(options?: UseCommandMenuOptions): UseCommandMenuR
         const state = stateRef.current
         if (!state.showCommandMenu) return
 
+        const isWheelUp =
+            /\[<(?:64|68|72|80|84);/.test(input) || /\[M[`@]/.test(input) || /\[64~/.test(input)
+        const isWheelDown =
+            /\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)
+
         if (key.escape) {
             state.close()
-        } else if (key.upArrow) {
+        } else if (key.upArrow || isWheelUp) {
             state.moveSelection('up')
-        } else if (key.downArrow) {
+        } else if (key.downArrow || isWheelDown) {
             state.moveSelection('down')
         } else if (key.tab || input === '\t') {
             const command = state.filteredCommands[state.selectedIndex]

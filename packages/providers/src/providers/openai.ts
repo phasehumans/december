@@ -47,7 +47,6 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('arcee.ai') ||
             baseURL.includes('meta.ai') ||
             baseURL.includes('minimax') ||
-            baseURL.includes('poolside.ai') ||
             baseURL.includes('sakana.ai') ||
             baseURL.includes('sarvam.ai') ||
             baseURL.includes('stepfun.ai') ||
@@ -55,7 +54,6 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('abliteration.ai') ||
             baseURL.includes('apihub.agnes-ai.com') ||
             baseURL.includes('agnes-ai.com') ||
-            baseURL.includes('ai-router.dev') ||
             baseURL.includes('aiand.com') ||
             baseURL.includes('aki.io') ||
             baseURL.includes('ambient.xyz') ||

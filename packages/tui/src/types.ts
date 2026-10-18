@@ -23,7 +23,6 @@ export type AuthMode =
     | 'byok_provider'
     | 'byok_key'
     | 'model_select'
-    | 'logout_select'
     | 'switch_select'
     | 'session_select'
     | 'plan_approve'

@@ -51,16 +51,51 @@ export function AskQuestionMenu({ questions, onComplete }: AskQuestionMenuProps)
     useInput((input, key) => {
         if (!currentQ) return
 
-        if (key.upArrow) {
-            const next = Math.max(0, selectedIndexRef.current - 1)
+        if (key.escape || input === '\u001B') {
+            if (currentQuestionIdx > 0) {
+                setCurrentQuestionIdx(currentQuestionIdx - 1)
+                setSelectedIndex(0)
+                selectedIndexRef.current = 0
+                setAnswers((prev) => prev.slice(0, -1))
+            } else {
+                onComplete(isMulti ? [] : '')
+            }
+            return
+        }
+
+        const isWheelUp =
+            /\[<(?:64|68|72|80|84);/.test(input) || /\[M[`@]/.test(input) || /\[64~/.test(input)
+        const isWheelDown =
+            /\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)
+
+        if (key.upArrow || input === 'k' || isWheelUp) {
+            const count = isWheelUp
+                ? Math.max(1, (input.match(/\[<(?:64|68|72|80|84);/g) || []).length)
+                : 1
+            const next = Math.max(0, selectedIndexRef.current - count)
             selectedIndexRef.current = next
             setSelectedIndex(next)
             return
         }
-        if (key.downArrow) {
-            const next = Math.min(options.length - 1, selectedIndexRef.current + 1)
+        if (key.downArrow || input === 'j' || isWheelDown) {
+            const count = isWheelDown
+                ? Math.max(1, (input.match(/\[<(?:65|69|73|81|85);/g) || []).length)
+                : 1
+            const next = Math.min(options.length - 1, selectedIndexRef.current + count)
             selectedIndexRef.current = next
             setSelectedIndex(next)
+            return
+        }
+
+        // Number keys (1-9) to jump to option
+        const num = parseInt(input, 10)
+        if (!isNaN(num) && num >= 1 && num <= options.length) {
+            const targetIdx = num - 1
+            selectedIndexRef.current = targetIdx
+            setSelectedIndex(targetIdx)
+            if (!isMulti) {
+                advanceQuestion(options[targetIdx])
+            }
             return
         }
 
@@ -94,6 +129,19 @@ export function AskQuestionMenu({ questions, onComplete }: AskQuestionMenuProps)
     })
 
     if (!currentQ) return null
+
+    const footerItems = isMulti
+        ? [
+              { key: '↑/↓', label: 'Navigate' },
+              { key: 'space', label: 'Toggle' },
+              { key: 'enter', label: 'Submit' },
+              { key: 'esc', label: currentQuestionIdx > 0 ? 'Back' : 'Cancel' },
+          ]
+        : [
+              { key: '↑/↓', label: 'Navigate' },
+              { key: 'enter', label: 'Select' },
+              { key: 'esc', label: currentQuestionIdx > 0 ? 'Back' : 'Cancel' },
+          ]
 
     return (
         <Box flexDirection="column" gap={1}>
@@ -133,20 +181,7 @@ export function AskQuestionMenu({ questions, onComplete }: AskQuestionMenuProps)
                     )
                 })}
             </Box>
-            <MenuFooter
-                items={
-                    isMulti
-                        ? [
-                              { key: '↑/↓', label: 'Navigate' },
-                              { key: 'space', label: 'Toggle' },
-                              { key: 'enter', label: 'Submit' },
-                          ]
-                        : [
-                              { key: '↑/↓', label: 'Navigate' },
-                              { key: 'enter', label: 'Select' },
-                          ]
-                }
-            />
+            <MenuFooter items={footerItems} />
         </Box>
     )
 }

@@ -64,7 +64,7 @@ describe('DiffViewMenu Component (Unit)', () => {
         // Branded footer items
         expect(output).toContain('←/→')
         expect(output).toContain('switch view')
-        expect(output).toContain('↑/↓/j/k')
+        expect(output).toContain('↑/↓')
         expect(output).toContain('navigate')
         expect(output).toContain('enter')
         expect(output).toContain('view diff')
@@ -106,8 +106,10 @@ describe('DiffViewMenu Component (Unit)', () => {
         expect(output).toContain('change')
 
         // Detail footer items (clean without ctrl+o)
-        expect(output).toContain('n/N')
-        expect(output).toContain('next/prev diff')
+        expect(output).toContain('p')
+        expect(output).toContain('prev diff')
+        expect(output).toContain('n')
+        expect(output).toContain('next diff')
         expect(output).toContain('←/→')
         expect(output).toContain('cycle file')
         expect(output).not.toContain('ctrl+o')
@@ -262,5 +264,68 @@ describe('DiffViewMenu Component (Unit)', () => {
         expect(output).toContain('10')
         expect(output).toContain('const oldVal = 1')
         expect(output).toContain('const newVal = 2')
+    })
+
+    it('jumps to next and previous diff change block with n, p, and N', async () => {
+        const multiChangeDiff: DiffFileEntry[] = [
+            {
+                path: 'src/example.ts',
+                additions: 2,
+                deletions: 2,
+                status: 'modified',
+                diff: '@@ -1,3 +1,3 @@\n-line 1\n+line 1 modified\n context\n@@ -10,3 +10,3 @@\n-line 10\n+line 10 modified\n',
+            },
+        ]
+        const { lastFrame, stdin } = render(
+            <DiffViewMenu
+                filesData={multiChangeDiff}
+                initialSelectedIndex={0}
+                initialDetailView={true}
+            />
+        )
+
+        // 2 distinct change blocks (hunks), not individual lines
+        expect(lastFrame()).toContain('change 1/2')
+
+        // Jump to next change block with 'n' (skips rest of block 1 directly to block 2)
+        stdin.write('n')
+        await new Promise((r) => setTimeout(r, 20))
+        expect(lastFrame()).toContain('change 2/2')
+
+        // Navigate down to second line of block 2
+        stdin.write('j')
+        await new Promise((r) => setTimeout(r, 20))
+        expect(lastFrame()).toContain('change 2/2')
+
+        // Jump back to previous change block from mid-block with 'p'
+        stdin.write('p')
+        await new Promise((r) => setTimeout(r, 20))
+        expect(lastFrame()).toContain('change 1/2')
+
+        // Jump to next with 'n' and back with 'N' (fallback)
+        stdin.write('n')
+        await new Promise((r) => setTimeout(r, 20))
+        expect(lastFrame()).toContain('change 2/2')
+
+        stdin.write('N')
+        await new Promise((r) => setTimeout(r, 20))
+        expect(lastFrame()).toContain('change 1/2')
+    })
+
+    it('renders clean compact layout without blank padding lines when files <= WINDOW_SIZE', () => {
+        const singleFile: DiffFileEntry[] = [
+            {
+                path: 'src/single.ts',
+                additions: 2,
+                deletions: 1,
+                status: 'modified' as const,
+                diff: '@@ -1,1 +1,2 @@\n-old\n+new',
+            },
+        ]
+
+        const { lastFrame } = render(<DiffViewMenu filesData={singleFile} />)
+        const frame = lastFrame() || ''
+        expect(frame).toContain('src/single.ts')
+        expect(frame).not.toContain('more')
     })
 })

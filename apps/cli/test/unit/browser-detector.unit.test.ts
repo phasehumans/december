@@ -100,4 +100,24 @@ describe('Browser Detector (Unit)', () => {
         resetChromePathCache()
         expect(await findSystemChrome()).not.toBe(fakeChrome)
     })
+
+    test('respects DECEMBER_DISABLE_BROWSER environment variable', async () => {
+        const fakeChrome = path.join(tempDir, 'mock-chrome-disabled')
+        await fs.writeFile(fakeChrome, '#!/bin/sh\necho mock', { mode: 0o755 })
+
+        process.env.CHROME_PATH = fakeChrome
+        process.env.DECEMBER_DISABLE_BROWSER = '1'
+        resetChromePathCache()
+
+        expect(await findSystemChrome()).toBeNull()
+        expect(await isChromeAvailable()).toBe(false)
+    })
+
+    test('respects CHROME_PATH=none to disable browser detection', async () => {
+        process.env.CHROME_PATH = 'none'
+        resetChromePathCache()
+
+        expect(await findSystemChrome()).toBeNull()
+        expect(await isChromeAvailable()).toBe(false)
+    })
 })

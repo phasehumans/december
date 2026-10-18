@@ -9,7 +9,7 @@ import { PROVIDER_MENU_ITEMS } from '../../src/components/menus/byok-provider-me
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
     it('ensures all BYOK providers have corresponding key URLs starting with https://', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(186)
+        expect(PROVIDER_MENU_ITEMS.length).toBe(113)
 
         for (const item of PROVIDER_MENU_ITEMS) {
             const url = PROVIDER_KEY_URLS[item.value]
@@ -32,7 +32,6 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
     it('validates specific exact destination URLs for major providers', () => {
         expect(PROVIDER_KEY_URLS['abliteration']).toBe('https://abliteration.ai/console')
         expect(PROVIDER_KEY_URLS['agnes']).toBe('https://platform.agnes-ai.com/settings/apiKeys')
-        expect(PROVIDER_KEY_URLS['airouter']).toBe('https://ai-router.dev/keys')
         expect(PROVIDER_KEY_URLS['aiand']).toBe('https://console.aiand.com/api-keys')
         expect(PROVIDER_KEY_URLS['aki']).toBe('https://aki.io/admin/user-dashboard')
         expect(PROVIDER_KEY_URLS['ambient']).toBe('https://app.ambient.xyz/keys')
@@ -44,7 +43,7 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         expect(PROVIDER_KEY_URLS['mistral']).toBe('https://console.mistral.ai/api-keys/')
         expect(PROVIDER_KEY_URLS['moonshot']).toBe('https://platform.moonshot.ai/console/api-keys')
         expect(PROVIDER_KEY_URLS['openai']).toBe('https://platform.openai.com/api-keys')
-        expect(PROVIDER_KEY_URLS['poolside']).toBe('https://platform.poolside.ai/api-keys')
+        expect(PROVIDER_KEY_URLS['cerebras']).toBe('https://cloud.cerebras.ai/platform')
         expect(PROVIDER_KEY_URLS['google']).toBe('https://aistudio.google.com/app/apikey')
         expect(PROVIDER_KEY_URLS['openrouter']).toBe('https://openrouter.ai/settings/keys')
         expect(PROVIDER_KEY_URLS['deepseek']).toBe('https://platform.deepseek.com/api_keys')
@@ -56,9 +55,6 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         expect(PROVIDER_KEY_URLS['thinkingmachines']).toBe('https://tinker.thinkingmachines.ai/')
         expect(PROVIDER_KEY_URLS['dashscope']).toBe('https://dashscope.console.aliyun.com/apiKey')
         expect(PROVIDER_KEY_URLS['minimax']).toBe('https://platform.minimax.io/console/access')
-        expect(PROVIDER_KEY_URLS['lmstudio']).toBe('https://lmstudio.ai/')
-        expect(PROVIDER_KEY_URLS['llamacpp']).toBe('https://github.com/ggerganov/llama.cpp')
-        expect(PROVIDER_KEY_URLS['ollama']).toBe('https://ollama.com/download')
         expect(PROVIDER_KEY_URLS['xiaomi']).toBe('https://platform.xiaomimimo.com/console/api-keys')
         expect(PROVIDER_KEY_URLS['xai']).toBe('https://console.x.ai/')
         expect(PROVIDER_KEY_URLS['zai']).toBe('https://z.ai/manage-apikey/apikey-list')

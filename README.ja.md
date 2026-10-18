@@ -16,7 +16,7 @@ December は (so much) better なコーディングエージェントです。�
 
 - **コード作成とコマンド実行:** 新機能の実装、バグ修正、テストの実行を指示すれば、自動で作業を行います。
 - **クラウドハンドオフ:** _/handoff_ コマンドを使用することで、**<a href="https://trydecember.com" target="_blank">trydecember.com</a>** 上でセッションを継続できます。
-- **お好みの AI を持ち込み:** OpenAI、Anthropic、Gemini、その他 150 以上のモデルの API キーを使用するか、December にログインして December クレジットを利用できます。
+- **お好みの AI を持ち込み:** OpenAI、Anthropic、Gemini、その他 100 以上のモデルの API キーを使用するか、December にログインして December クレジットを利用できます。
 
 ### クイックスタート
 

@@ -5,7 +5,6 @@ import { ByokProviderMenu } from './byok-provider-menu'
 import { ContextSelectMenu } from './context-select-menu'
 import { DiffViewMenu } from './diff-view-menu'
 import { GrillQuestionMenu } from './grill-question-menu'
-import { LogoutSelectMenu } from './logout-select-menu'
 import { MenuMenu } from './menu-menu'
 import { ModelSelectMenu } from './model-select-menu'
 import { OllamaSetupMenu } from './ollama-setup-menu'
@@ -15,7 +14,6 @@ import { SettingsMainMenu } from './settings-main-menu'
 import { SubscriptionSelectMenu } from './subscription-select-menu'
 import { SwitchSelectMenu } from './switch-select-menu'
 import { TasksModeMenu } from './tasks-mode-menu'
-import { ToolPermissionMenu } from './tool-permission-menu'
 import { UsageSelectMenu } from './usage-select-menu'
 
 export function AuthMenus(props: any) {
@@ -43,8 +41,6 @@ export function AuthMenus(props: any) {
             return <ModelSelectMenu {...props} />
         case 'context_select':
             return <ContextSelectMenu {...props} />
-        case 'logout_select':
-            return <LogoutSelectMenu {...props} />
         case 'switch_select':
             return <SwitchSelectMenu {...props} />
         case 'session_select':
@@ -61,18 +57,6 @@ export function AuthMenus(props: any) {
             return <UsageSelectMenu {...props} />
         case 'diff_view':
             return <DiffViewMenu {...props} />
-        case 'tool_permission':
-            return (
-                <ToolPermissionMenu
-                    toolCall={props.pendingToolCall?.toolCall}
-                    questions={props.pendingQuestions?.questions || []}
-                    onComplete={(result) => {
-                        props.pendingToolCall?.resolve(result)
-                        props.setAuthMode('none')
-                        props.setPendingToolCall(null)
-                    }}
-                />
-            )
 
         default:
             return null

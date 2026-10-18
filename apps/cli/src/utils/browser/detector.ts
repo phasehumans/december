@@ -25,6 +25,15 @@ export async function findSystemChrome(): Promise<string | null> {
         return cachedChromePath
     }
 
+    if (
+        process.env.DECEMBER_DISABLE_BROWSER === '1' ||
+        process.env.CHROME_PATH === 'none' ||
+        process.env.CHROME_PATH === 'disabled'
+    ) {
+        cachedChromePath = null
+        return null
+    }
+
     // 1. Check environment variables
     const envVars = ['CHROME_PATH', 'CHROME_BIN', 'CHROMIUM_PATH', 'PUPPETEER_EXECUTABLE_PATH']
 

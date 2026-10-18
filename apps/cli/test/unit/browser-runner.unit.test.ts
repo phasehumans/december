@@ -11,6 +11,7 @@ describe('Browser Runner (Unit)', () => {
 
     beforeAll(async () => {
         // Force fallback mode for deterministic runner unit testing
+        process.env.DECEMBER_DISABLE_BROWSER = '1'
         delete process.env.CHROME_PATH
         delete process.env.CHROME_BIN
         delete process.env.CHROMIUM_PATH
@@ -54,6 +55,8 @@ describe('Browser Runner (Unit)', () => {
     })
 
     afterAll(async () => {
+        delete process.env.DECEMBER_DISABLE_BROWSER
+        resetChromePathCache()
         await browserRunner.close()
         await new Promise<void>((resolve) => server.close(() => resolve()))
     })

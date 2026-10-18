@@ -1,4 +1,4 @@
-import { Box, Text } from 'ink'
+import { Box, Text, useInput } from 'ink'
 import SelectInput from 'ink-select-input'
 import React from 'react'
 
@@ -20,7 +20,10 @@ export interface SettingsMainMenuProps {
     settingsSteeringMode?: 'all' | 'one-at-a-time'
     settingsFollowUpMode?: 'all' | 'one-at-a-time'
     settingsBrowserVisible?: boolean
+    settingsSelectedIndex?: number
+    setSettingsSelectedIndex?: (index: number) => void
     handleSettingsMainSelect: (item: { label: string; value: string }) => void
+    setAuthMode?: (mode: string) => void
 }
 
 export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
@@ -36,8 +39,20 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
         settingsSteeringMode = 'all',
         settingsFollowUpMode = 'all',
         settingsBrowserVisible = true,
+        settingsSelectedIndex = 0,
+        setSettingsSelectedIndex,
         handleSettingsMainSelect,
+        setAuthMode,
     } = props
+
+    useInput((input, key) => {
+        if (key.escape || input === '\u001B') {
+            if (setAuthMode) {
+                setAuthMode('none')
+            }
+            return
+        }
+    })
 
     const providerKey = selectedProvider || activeProvider || ''
     const providerName =
@@ -101,6 +116,21 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
         },
     ]
 
+    const handleHighlight = (item: { value: string }) => {
+        const idx = mainItems.findIndex((i) => i.value === item.value)
+        if (idx !== -1 && setSettingsSelectedIndex) {
+            setSettingsSelectedIndex(idx)
+        }
+    }
+
+    const handleSelect = (item: { label: string; value: string }) => {
+        const idx = mainItems.findIndex((i) => i.value === item.value)
+        if (idx !== -1 && setSettingsSelectedIndex) {
+            setSettingsSelectedIndex(idx)
+        }
+        handleSettingsMainSelect(item)
+    }
+
     return (
         <Box flexDirection="column">
             <Box marginBottom={1}>
@@ -108,7 +138,9 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
             </Box>
             <SelectInput
                 items={mainItems}
-                onSelect={handleSettingsMainSelect}
+                initialIndex={settingsSelectedIndex || 0}
+                onSelect={handleSelect}
+                onHighlight={handleHighlight}
                 indicatorComponent={CustomIndicator}
                 itemComponent={CustomItem}
             />

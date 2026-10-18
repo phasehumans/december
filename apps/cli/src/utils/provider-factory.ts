@@ -3,7 +3,6 @@ import {
     anthropicProvider,
     geminiProvider,
     openrouterProvider,
-    ollamaProvider,
     copilotProvider,
     antigravityProvider,
     codexResponsesProvider,
@@ -320,11 +319,6 @@ export function instantiateProvider(
         case 'metaai':
         case 'meta-ai':
             return withProviderId(openaiProvider('https://api.meta.ai/v1', apiKey), 'meta')
-        case 'poolside':
-            return withProviderId(
-                openaiProvider('https://inference.poolside.ai/v1', apiKey),
-                'poolside'
-            )
         case 'sakana':
         case 'sakanaai':
         case 'sakana-ai':
@@ -375,22 +369,7 @@ export function instantiateProvider(
                 )
             }
             return withProviderId(openaiProvider('https://apihub.agnes-ai.com/v1', apiKey), 'agnes')
-        case 'airouter':
-        case 'ai-router':
-            if (options?.baseURL || options?.headers) {
-                return withProviderId(
-                    openaiProvider(
-                        options?.baseURL || 'https://api.ai-router.dev/v1',
-                        apiKey,
-                        options?.headers
-                    ),
-                    'airouter'
-                )
-            }
-            return withProviderId(
-                openaiProvider('https://api.ai-router.dev/v1', apiKey),
-                'airouter'
-            )
+
         case 'aiand':
             if (options?.baseURL || options?.headers) {
                 return withProviderId(
@@ -480,21 +459,6 @@ export function instantiateProvider(
                 openaiProvider('https://api.ai21.com/studio/v1', apiKey, options?.headers),
                 'ai21'
             )
-        case 'aihubmix':
-            return withProviderId(
-                openaiProvider('https://aihubmix.com/v1', apiKey, options?.headers),
-                'aihubmix'
-            )
-        case 'ainetcafe':
-            return withProviderId(
-                openaiProvider('https://microquickjs.com/v1', apiKey, options?.headers),
-                'ainetcafe'
-            )
-        case 'aixy':
-            return withProviderId(
-                openaiProvider('https://api.aixy-gateway.com/v1', apiKey, options?.headers),
-                'aixy'
-            )
         case 'amd':
             return withProviderId(
                 openaiProvider(
@@ -509,15 +473,6 @@ export function instantiateProvider(
                 openaiProvider('https://api.anyapi.ai/v1', apiKey, options?.headers),
                 'anyapi'
             )
-        case 'bailing':
-            return withProviderId(
-                openaiProvider(
-                    'https://api.tbox.cn/api/llm/v1/chat/completions',
-                    apiKey,
-                    options?.headers
-                ),
-                'bailing'
-            )
         case 'berget':
             return withProviderId(
                 openaiProvider('https://api.berget.ai/v1', apiKey, options?.headers),
@@ -527,11 +482,6 @@ export function instantiateProvider(
             return withProviderId(
                 openaiProvider('https://openai.blueclaw.network/v1', apiKey, options?.headers),
                 'blueclaw'
-            )
-        case 'bothub':
-            return withProviderId(
-                openaiProvider('https://openai.bothub.ru/v1', apiKey, options?.headers),
-                'bothub'
             )
         case 'chutes':
             return withProviderId(
@@ -546,16 +496,6 @@ export function instantiateProvider(
                     options?.headers
                 ),
                 'clarifai'
-            )
-        case 'claudinio':
-            return withProviderId(
-                openaiProvider('https://api.claudin.io/v1', apiKey, options?.headers),
-                'claudinio'
-            )
-        case 'cline-pass':
-            return withProviderId(
-                openaiProvider('https://api.cline.bot/api/v1', apiKey, options?.headers),
-                'cline-pass'
             )
         case 'cloudferro-sherlock':
             return withProviderId(
@@ -581,16 +521,6 @@ export function instantiateProvider(
                 openaiProvider('https://api.cortecs.ai/v1', apiKey, options?.headers),
                 'cortecs'
             )
-        case 'crof':
-            return withProviderId(
-                openaiProvider('https://crof.ai/v1', apiKey, options?.headers),
-                'crof'
-            )
-        case 'crossmodel':
-            return withProviderId(
-                openaiProvider('https://api.crossmodel.ai/v1', apiKey, options?.headers),
-                'crossmodel'
-            )
         case 'crusoe':
             return withProviderId(
                 openaiProvider(
@@ -599,11 +529,6 @@ export function instantiateProvider(
                     options?.headers
                 ),
                 'crusoe'
-            )
-        case 'daoxe':
-            return withProviderId(
-                openaiProvider('https://daoxe.com/v1', apiKey, options?.headers),
-                'daoxe'
             )
         case 'deepinfra':
             return withProviderId(
@@ -625,16 +550,6 @@ export function instantiateProvider(
                 openaiProvider('https://chat.d.run/v1', apiKey, options?.headers),
                 'drun'
             )
-        case 'ebcloud':
-            return withProviderId(
-                openaiProvider('https://maas-api.ebcloud.com/v1', apiKey, options?.headers),
-                'ebcloud'
-            )
-        case 'echo':
-            return withProviderId(
-                openaiProvider('https://echo.tracerml.ai/v1', apiKey, options?.headers),
-                'echo'
-            )
         case 'edenai':
             return withProviderId(
                 openaiProvider('https://api.edenai.run/v3', apiKey, options?.headers),
@@ -655,30 +570,10 @@ export function instantiateProvider(
                 openaiProvider('https://go.fastrouter.ai/api/v1', apiKey, options?.headers),
                 'fastrouter'
             )
-        case 'freemodel':
-            return withProviderId(
-                anthropicProvider('https://cc.freemodel.dev/v1', apiKey, options?.headers),
-                'freemodel'
-            )
         case 'friendli':
             return withProviderId(
                 openaiProvider('https://api.friendli.ai/serverless/v1', apiKey, options?.headers),
                 'friendli'
-            )
-        case 'frogbot':
-            return withProviderId(
-                openaiProvider('https://app.frogbot.ai/api/v1', apiKey, options?.headers),
-                'frogbot'
-            )
-        case 'gmicloud':
-            return withProviderId(
-                openaiProvider('https://api.gmi-serving.com/v1', apiKey, options?.headers),
-                'gmicloud'
-            )
-        case 'greenpt':
-            return withProviderId(
-                openaiProvider('https://api.greenpt.ai/v1', apiKey, options?.headers),
-                'greenpt'
             )
         case 'helicone':
             return withProviderId(
@@ -700,45 +595,15 @@ export function instantiateProvider(
                 openaiProvider('https://hyper.charm.land/v1', apiKey, options?.headers),
                 'hyper'
             )
-        case 'iflowcn':
-            return withProviderId(
-                openaiProvider('https://apis.iflow.cn/v1', apiKey, options?.headers),
-                'iflowcn'
-            )
-        case 'impossibl':
-            return withProviderId(
-                openaiProvider('https://api.impossibl.com/v1', apiKey, options?.headers),
-                'impossibl'
-            )
         case 'inception':
             return withProviderId(
                 openaiProvider('https://api.inceptionlabs.ai/v1/', apiKey, options?.headers),
                 'inception'
             )
-        case 'inceptron':
-            return withProviderId(
-                openaiProvider('https://api.inceptron.io/v1', apiKey, options?.headers),
-                'inceptron'
-            )
         case 'inco':
             return withProviderId(
                 openaiProvider('https://api.inco.ai/v1', apiKey, options?.headers),
                 'inco'
-            )
-        case 'infer':
-            return withProviderId(
-                openaiProvider('https://infer.flow7.org/v1', apiKey, options?.headers),
-                'infer'
-            )
-        case 'inference':
-            return withProviderId(
-                openaiProvider('https://inference.net/v1', apiKey, options?.headers),
-                'inference'
-            )
-        case 'inferx':
-            return withProviderId(
-                openaiProvider('https://model.inferx.net/endpoints/v1', apiKey, options?.headers),
-                'inferx'
             )
         case 'io-net':
             return withProviderId(
@@ -753,21 +618,6 @@ export function instantiateProvider(
             return withProviderId(
                 openaiProvider('https://api.iteracompute.com/v1', apiKey, options?.headers),
                 'iteracompute'
-            )
-        case 'jalapeno':
-            return withProviderId(
-                openaiProvider('https://api.jalapeno-cloud.ai/v1', apiKey, options?.headers),
-                'jalapeno'
-            )
-        case 'jiekou':
-            return withProviderId(
-                openaiProvider('https://api.jiekou.ai/openai', apiKey, options?.headers),
-                'jiekou'
-            )
-        case 'kenari':
-            return withProviderId(
-                openaiProvider('https://kenari.id/v1', apiKey, options?.headers),
-                'kenari'
             )
         case 'kilo':
             return withProviderId(
@@ -784,84 +634,20 @@ export function instantiateProvider(
                 openaiProvider('https://api.kimi.ai/coding/v1', apiKey, options?.headers),
                 'kimi-code-plan-global'
             )
-        case 'klokintegration':
-            return withProviderId(
-                openaiProvider(
-                    'https://api-gw.klok.ipaas.se/proxy/kloker-key/v1',
-                    apiKey,
-                    options?.headers
-                ),
-                'klokintegration'
-            )
         case 'kosmik':
             return withProviderId(
                 openaiProvider('https://api.koscompute.com/v1', apiKey, options?.headers),
                 'kosmik'
-            )
-        case 'lilac':
-            return withProviderId(
-                openaiProvider('https://api.getlilac.com/v1', apiKey, options?.headers),
-                'lilac'
-            )
-        case 'llama':
-            return withProviderId(
-                openaiProvider('https://api.llama.com/compat/v1/', apiKey, options?.headers),
-                'llama'
             )
         case 'llmgateway':
             return withProviderId(
                 openaiProvider('https://api.llmgateway.io/v1', apiKey, options?.headers),
                 'llmgateway'
             )
-        case 'llmgateway-providers':
-            return withProviderId(
-                openaiProvider('https://api.llmgateway.io/v1', apiKey, options?.headers),
-                'llmgateway-providers'
-            )
-        case 'llmtech':
-            return withProviderId(
-                openaiProvider('https://api.llmtech.eu/v1', apiKey, options?.headers),
-                'llmtech'
-            )
-        case 'llmtr':
-            return withProviderId(
-                openaiProvider('https://llmtr.com/v1', apiKey, options?.headers),
-                'llmtr'
-            )
-        case 'longcat':
-            return withProviderId(
-                openaiProvider('https://api.longcat.chat/openai', apiKey, options?.headers),
-                'longcat'
-            )
-        case 'lucidquery':
-            return withProviderId(
-                openaiProvider('https://api.lucidquery.com/v1', apiKey, options?.headers),
-                'lucidquery'
-            )
-        case 'meganova':
-            return withProviderId(
-                openaiProvider('https://api.meganova.ai/v1', apiKey, options?.headers),
-                'meganova'
-            )
-        case 'melious':
-            return withProviderId(
-                openaiProvider('https://api.melious.ai/v1', apiKey, options?.headers),
-                'melious'
-            )
         case 'merge-gateway':
             return withProviderId(
                 openaiProvider('https://api-gateway.merge.dev/v1/ai-sdk', apiKey, options?.headers),
                 'merge-gateway'
-            )
-        case 'mixlayer':
-            return withProviderId(
-                openaiProvider('https://models.mixlayer.ai/v1', apiKey, options?.headers),
-                'mixlayer'
-            )
-        case 'moark':
-            return withProviderId(
-                openaiProvider('https://moark.com/v1', apiKey, options?.headers),
-                'moark'
             )
         case 'modal':
             return withProviderId(
@@ -872,16 +658,6 @@ export function instantiateProvider(
                 ),
                 'modal'
             )
-        case 'model-oracle-ai':
-            return withProviderId(
-                openaiProvider('https://api.modeloracle.com/api/v1', apiKey, options?.headers),
-                'model-oracle-ai'
-            )
-        case 'modelis':
-            return withProviderId(
-                openaiProvider('https://modelishub.com/v1', apiKey, options?.headers),
-                'modelis'
-            )
         case 'modelscope':
             return withProviderId(
                 openaiProvider('https://api-inference.modelscope.cn/v1', apiKey, options?.headers),
@@ -891,11 +667,6 @@ export function instantiateProvider(
             return withProviderId(
                 openaiProvider('https://api.morphllm.com/v1', apiKey, options?.headers),
                 'morph'
-            )
-        case 'nan':
-            return withProviderId(
-                openaiProvider('https://api.nan.builders/v1', apiKey, options?.headers),
-                'nan'
             )
         case 'nano-gpt':
             return withProviderId(
@@ -912,35 +683,10 @@ export function instantiateProvider(
                 openaiProvider('https://api.tokenfactory.nebius.com/v1', apiKey, options?.headers),
                 'nebius'
             )
-        case 'neosmith':
-            return withProviderId(
-                openaiProvider('https://router.neosmith.ai/v1', apiKey, options?.headers),
-                'neosmith'
-            )
-        case 'neuralwatt':
-            return withProviderId(
-                openaiProvider('https://api.neuralwatt.com/v1', apiKey, options?.headers),
-                'neuralwatt'
-            )
-        case 'nova':
-            return withProviderId(
-                openaiProvider('https://api.nova.amazon.com/v1', apiKey, options?.headers),
-                'nova'
-            )
         case 'novita-ai':
             return withProviderId(
                 openaiProvider('https://api.novita.ai/openai', apiKey, options?.headers),
                 'novita-ai'
-            )
-        case 'ofox':
-            return withProviderId(
-                openaiProvider('https://api.ofox.ai/v1', apiKey, options?.headers),
-                'ofox'
-            )
-        case 'ollama-cloud':
-            return withProviderId(
-                openaiProvider('https://ollama.com/v1', apiKey, options?.headers),
-                'ollama-cloud'
             )
         case 'opencode':
             return withProviderId(
@@ -986,30 +732,15 @@ export function instantiateProvider(
                 openaiProvider('https://api.perplexity.ai/v1', apiKey, options?.headers),
                 'perplexity-agent'
             )
-        case 'pioneer':
-            return withProviderId(
-                openaiProvider('https://api.pioneer.ai/v1', apiKey, options?.headers),
-                'pioneer'
-            )
         case 'poe':
             return withProviderId(
                 openaiProvider('https://api.poe.com/v1', apiKey, options?.headers),
                 'poe'
             )
-        case 'qihang-ai':
-            return withProviderId(
-                openaiProvider('https://api.qhaigc.net/v1', apiKey, options?.headers),
-                'qihang-ai'
-            )
         case 'qiniu-ai':
             return withProviderId(
                 openaiProvider('https://api.qnaigc.com/v1', apiKey, options?.headers),
                 'qiniu-ai'
-            )
-        case 'qvac':
-            return withProviderId(
-                openaiProvider('https://api.qvac.ai/v1', apiKey, options?.headers),
-                'qvac'
             )
         case 'regolo-ai':
             return withProviderId(
@@ -1020,11 +751,6 @@ export function instantiateProvider(
             return withProviderId(
                 openaiProvider('https://router.requesty.ai/v1', apiKey, options?.headers),
                 'requesty'
-            )
-        case 'routing-run':
-            return withProviderId(
-                openaiProvider('https://api.routing.run/v1', apiKey, options?.headers),
-                'routing-run'
             )
         case 'runinfra':
             return withProviderId(
@@ -1040,16 +766,6 @@ export function instantiateProvider(
             return withProviderId(
                 openaiProvider('https://api.scaleway.ai/v1', apiKey, options?.headers),
                 'scaleway'
-            )
-        case 'scx-ai':
-            return withProviderId(
-                openaiProvider('https://api.scx.ai/v1', apiKey, options?.headers),
-                'scx-ai'
-            )
-        case 'sensenova':
-            return withProviderId(
-                openaiProvider('https://token.sensenova.cn/v1', apiKey, options?.headers),
-                'sensenova'
             )
         case 'stackit':
             return withProviderId(
@@ -1070,30 +786,15 @@ export function instantiateProvider(
                 anthropicProvider('https://api.subconscious.dev/v1', apiKey, options?.headers),
                 'subconscious'
             )
-        case 'submodel':
-            return withProviderId(
-                openaiProvider('https://llm.submodel.ai/v1', apiKey, options?.headers),
-                'submodel'
-            )
         case 'synthetic':
             return withProviderId(
                 openaiProvider('https://api.synthetic.new/openai/v1', apiKey, options?.headers),
                 'synthetic'
             )
-        case 'tempr':
-            return withProviderId(
-                openaiProvider('https://api.temprhq.io/v1', apiKey, options?.headers),
-                'tempr'
-            )
         case 'tencent-tokenhub':
             return withProviderId(
                 openaiProvider('https://tokenhub.tencentmaas.com/v1', apiKey, options?.headers),
                 'tencent-tokenhub'
-            )
-        case 'tensorx':
-            return withProviderId(
-                openaiProvider('https://api.tensorx.ai/v1', apiKey, options?.headers),
-                'tensorx'
             )
         case 'the-grid-ai':
             return withProviderId(
@@ -1105,41 +806,6 @@ export function instantiateProvider(
                 openaiProvider('https://inference.tinfoil.sh/v1', apiKey, options?.headers),
                 'tinfoil'
             )
-        case 'tokengo':
-            return withProviderId(
-                openaiProvider('https://api.tokengo.com/v1', apiKey, options?.headers),
-                'tokengo'
-            )
-        case 'tokenrouter':
-            return withProviderId(
-                openaiProvider('https://api.tokenrouter.com/v1', apiKey, options?.headers),
-                'tokenrouter'
-            )
-        case 'trustedrouter':
-            return withProviderId(
-                openaiProvider('https://api.trustedrouter.com/v1', apiKey, options?.headers),
-                'trustedrouter'
-            )
-        case 'umans-ai':
-            return withProviderId(
-                openaiProvider('https://api.code.umans.ai/v1', apiKey, options?.headers),
-                'umans-ai'
-            )
-        case 'unorouter':
-            return withProviderId(
-                openaiProvider('https://api.unorouter.com/v1', apiKey, options?.headers),
-                'unorouter'
-            )
-        case 'v0':
-            return withProviderId(
-                openaiProvider('https://api.v0.dev/v1', apiKey, options?.headers),
-                'v0'
-            )
-        case 'vancine':
-            return withProviderId(
-                openaiProvider('https://vancine.com/v1', apiKey, options?.headers),
-                'vancine'
-            )
         case 'venice':
             return withProviderId(
                 openaiProvider('https://api.venice.ai/api/v1', apiKey, options?.headers),
@@ -1147,13 +813,8 @@ export function instantiateProvider(
             )
         case 'vercel':
             return withProviderId(
-                openaiProvider('https://ai.gateway.vercel.dev/v1', apiKey, options?.headers),
+                openaiProvider('https://ai-gateway.vercel.sh/v1', apiKey, options?.headers),
                 'vercel'
-            )
-        case 'vispark':
-            return withProviderId(
-                openaiProvider('https://api.lab.vispark.in/v1', apiKey, options?.headers),
-                'vispark'
             )
         case 'vivgrid':
             return withProviderId(
@@ -1179,40 +840,10 @@ export function instantiateProvider(
                 openaiProvider('https://pass.wafer.ai/v1', apiKey, options?.headers),
                 'wafer.ai'
             )
-        case 'wallaby':
-            return withProviderId(
-                openaiProvider('https://api.wallabytoken.com/v1', apiKey, options?.headers),
-                'wallaby'
-            )
-        case 'wandb':
-            return withProviderId(
-                openaiProvider('https://api.inference.wandb.ai/v1', apiKey, options?.headers),
-                'wandb'
-            )
         case 'watsonx':
             return withProviderId(
                 openaiProvider('https://us-south.ml.cloud.ibm.com/v1', apiKey, options?.headers),
                 'watsonx'
-            )
-        case 'xpersona':
-            return withProviderId(
-                openaiProvider('https://www.xpersona.co/v1', apiKey, options?.headers),
-                'xpersona'
-            )
-        case 'zeldoc':
-            return withProviderId(
-                openaiProvider('https://api.zeldoc.ai/v1', apiKey, options?.headers),
-                'zeldoc'
-            )
-        case 'zenifra':
-            return withProviderId(
-                openaiProvider('https://ai.zenifra.com/v1', apiKey, options?.headers),
-                'zenifra'
-            )
-        case 'zenmux':
-            return withProviderId(
-                openaiProvider('https://zenmux.ai/api/v1', apiKey, options?.headers),
-                'zenmux'
             )
         case 'thinkingmachines':
         case 'tinker':
@@ -1247,30 +878,6 @@ export function instantiateProvider(
                 ),
                 'dashscope'
             )
-        case 'lmstudio': {
-            let endpoint = 'http://localhost:1234/v1'
-            if (apiKey && (apiKey.startsWith('http://') || apiKey.startsWith('https://'))) {
-                endpoint = apiKey.endsWith('/v1') ? apiKey : `${apiKey.replace(/\/+$/, '')}/v1`
-            }
-            return openaiProvider(endpoint, apiKey || 'lm-studio')
-        }
-        case 'llamacpp': {
-            let endpoint = 'http://localhost:8080/v1'
-            if (apiKey && (apiKey.startsWith('http://') || apiKey.startsWith('https://'))) {
-                endpoint = apiKey.endsWith('/v1') ? apiKey : `${apiKey.replace(/\/+$/, '')}/v1`
-            }
-            return openaiProvider(endpoint, apiKey || 'llama.cpp')
-        }
-        case 'ollama': {
-            let endpoint = 'http://localhost:11434/v1'
-            if (apiKey && (apiKey.startsWith('http://') || apiKey.startsWith('https://'))) {
-                endpoint = apiKey.endsWith('/v1') ? apiKey : `${apiKey.replace(/\/+$/, '')}/v1`
-            } else if (process.env.OLLAMA_HOST) {
-                const host = process.env.OLLAMA_HOST
-                endpoint = host.endsWith('/v1') ? host : `${host.replace(/\/+$/, '')}/v1`
-            }
-            return ollamaProvider(endpoint, 'ollama')
-        }
         default: {
             const serverUrl =
                 process.env.SERVER_URL ||

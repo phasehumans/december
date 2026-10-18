@@ -101,6 +101,7 @@ export function useAgentSession({
         currentEmail,
         setCurrentEmail,
         authMode,
+        previousAuthMode,
         setAuthMode,
         logoutItems,
         setLogoutItems,
@@ -2093,7 +2094,8 @@ ${decStatus}
             }
 
             if (text.trim() === '/feedback') {
-                const url = 'https://github.com/phasehumans/december/issues'
+                const url = 'https://github.com/phasehumans/december/issues/new/choose'
+                addToast('Opening feedback in your browser...', 'info')
                 setActiveMessages((prev) => [
                     ...prev,
                     {
@@ -2102,16 +2104,18 @@ ${decStatus}
                         blocks: [
                             {
                                 type: 'text',
-                                content: `\nIf it doesn't open automatically, please click here:\n[${url}](${url})\n\n*Have feedback, found a bug, or have a feature request? Let us know!*`,
+                                content: `Have feedback, found a bug, or have a feature request? Let us know:\n\n• **GitHub:** [phasehumans/december/issues](${url})\n• **Email:** [team@trydecember.com](mailto:team@trydecember.com)`,
                             },
                         ],
                     },
                 ])
-                import('../utils/open')
-                    .then((openUtils) => {
-                        openUtils.openUrl(url)
-                    })
-                    .catch(console.error)
+                try {
+                    const { openUrl } = await import('../utils/open')
+                    await openUrl(url)
+                    addToast('Opened feedback in browser.', 'success')
+                } catch {
+                    // Intentionally swallowed: fallback URL displayed in message
+                }
                 return
             }
 
@@ -2704,6 +2708,7 @@ ${decStatus}
         currentEmail,
         setCurrentEmail,
         authMode,
+        previousAuthMode,
         setAuthMode,
         logoutItems,
         setLogoutItems,

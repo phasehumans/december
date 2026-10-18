@@ -253,13 +253,36 @@ export const Header = React.memo(function Header({
                     </Text>
                     {')'}
                 </Text>
-                {latestVersion && (
-                    <Text color={THEME.colors.muted}>
-                        Run /update to install December CLI {latestVersion}
-                    </Text>
-                )}
             </Box>
-            {announcement && (
+            {latestVersion ? (
+                <Box flexDirection="column" marginTop={1}>
+                    <Box>
+                        <Text color={THEME.colors.brand}>▎ </Text>
+                        <Text bold color={THEME.colors.text}>
+                            A new version is available:{' '}
+                            <Text color={THEME.colors.brand}>
+                                v{cliVersion.replace(/^v/, '')} → v{latestVersion.replace(/^v/, '')}
+                            </Text>
+                        </Text>
+                    </Box>
+                    <Box>
+                        <Text color={THEME.colors.brand}>▎ </Text>
+                        <Text color={THEME.colors.muted}>
+                            Run{' '}
+                            <Text bold color={THEME.colors.text}>
+                                /update
+                            </Text>{' '}
+                            to upgrade · Changelog:{' '}
+                            <Text color={THEME.colors.brand}>
+                                {terminalLink(
+                                    'trydecember.com/docs/changelog',
+                                    'https://trydecember.com/docs/changelog'
+                                )}
+                            </Text>
+                        </Text>
+                    </Box>
+                </Box>
+            ) : announcement ? (
                 <Box flexDirection="column" marginTop={1}>
                     <Box>
                         <Text color={THEME.colors.brand}>▎ </Text>
@@ -283,7 +306,7 @@ export const Header = React.memo(function Header({
                         </Box>
                     )}
                 </Box>
-            )}
+            ) : null}
         </Box>
     )
 })

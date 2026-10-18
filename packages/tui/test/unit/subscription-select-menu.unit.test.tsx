@@ -30,7 +30,7 @@ describe('SubscriptionSelectMenu Component (Unit)', () => {
         expect(frame).toContain('Anthropic (Claude)')
         expect(frame).not.toContain('[detected locally]')
         expect(frame).toContain('GitHub (Copilot)')
-        expect(frame).toContain('Google (Gemini / Antigravity)')
+        expect(frame).toContain('Google (Antigravity)')
         expect(frame).toContain('OpenAI (ChatGPT)')
         expect(frame).not.toContain('Requires Claude Pro or Max')
         expect(frame).not.toContain('Requires active Copilot plan')

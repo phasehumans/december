@@ -4,12 +4,15 @@ import { loginViaDeviceCode } from '../src/auth/device'
 import * as openUtils from '../src/utils/open'
 
 describe('loginViaDeviceCode', () => {
+    const originalFetch = global.fetch
+
     beforeEach(() => {
         vi.clearAllMocks()
         vi.useFakeTimers()
     })
 
     afterEach(() => {
+        global.fetch = originalFetch
         vi.restoreAllMocks()
         vi.useRealTimers()
     })

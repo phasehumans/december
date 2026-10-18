@@ -9,7 +9,6 @@ import {
     ZhipuAIProvider,
     AbliterationProvider,
     AgnesProvider,
-    AIRouterProvider,
     AIAndProvider,
     AKIProvider,
     AmbientProvider,
@@ -84,11 +83,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(provider.id).toBe('agnes')
         })
 
-        it('instantiates AIRouterProvider with proper OpenAI endpoint and credentials', () => {
-            const provider = new AIRouterProvider('test-airouter-key')
-            expect(provider.id).toBe('airouter')
-        })
-
         it('instantiates AIAndProvider with proper OpenAI endpoint and credentials', () => {
             const provider = new AIAndProvider('test-aiand-key')
             expect(provider.id).toBe('aiand')
@@ -148,7 +142,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getModelContextWindow('agnes-2.5-flash')).toBe(512000)
             expect(getModelContextWindow('agnes-2.5-pro-beta')).toBe(1000000)
             expect(getModelContextWindow('gpt-5.6-luna')).toBe(1050000)
-            expect(getModelContextWindow('airouter/gpt-5.6-luna')).toBe(1050000)
             expect(getModelContextWindow('deepseek-ai/deepseek-v4-flash')).toBe(1050000)
             expect(getModelContextWindow('aiand/deepseek-ai/deepseek-v4-flash')).toBe(1050000)
             expect(getModelContextWindow('deepseek-v4-flash-0731-284b')).toBe(1050000)
@@ -223,16 +216,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             ])
             expect(getProviderModels('agnesai')).toEqual(agnesModels)
             expect(getProviderModels('agnes-ai')).toEqual(agnesModels)
-
-            const airouterModels = getProviderModels('airouter')
-            expect(airouterModels.map((m) => m.value)).toEqual([
-                'gpt-5.6-luna',
-                'gpt-5.6-terra',
-                'gpt-5.6-sol',
-                'gpt-5.4',
-                'gpt-5.5',
-            ])
-            expect(getProviderModels('ai-router')).toEqual(airouterModels)
 
             const aiandModels = getProviderModels('aiand')
             expect(aiandModels.map((m) => m.value)).toEqual([
@@ -336,8 +319,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getDefaultModelForProvider('agnes')).toBe('agnes-3.0-flash')
             expect(getDefaultModelForProvider('agnesai')).toBe('agnes-3.0-flash')
             expect(getDefaultModelForProvider('agnes-ai')).toBe('agnes-3.0-flash')
-            expect(getDefaultModelForProvider('airouter')).toBe('gpt-5.6-luna')
-            expect(getDefaultModelForProvider('ai-router')).toBe('gpt-5.6-luna')
             expect(getDefaultModelForProvider('aiand')).toBe('deepseek-ai/deepseek-v4-flash')
             expect(getDefaultModelForProvider('aki')).toBe('deepseek-v4-flash-0731-284b')
             expect(getDefaultModelForProvider('aki-io')).toBe('deepseek-v4-flash-0731-284b')
@@ -366,8 +347,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(isValidModelForProvider('abliterationai', 'abliterated-model')).toBe(true)
             expect(isValidModelForProvider('agnes', 'agnes-3.0-flash')).toBe(true)
             expect(isValidModelForProvider('agnesai', 'agnes-2.5-pro')).toBe(true)
-            expect(isValidModelForProvider('airouter', 'gpt-5.6-luna')).toBe(true)
-            expect(isValidModelForProvider('ai-router', 'gpt-5.6-terra')).toBe(true)
             expect(isValidModelForProvider('aiand', 'deepseek-ai/deepseek-v4-flash')).toBe(true)
             expect(isValidModelForProvider('aki', 'deepseek-v4-flash-0731-284b')).toBe(true)
             expect(isValidModelForProvider('aki-io', 'glm5.3-754b')).toBe(true)
@@ -391,7 +370,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 'abliterated-model-large-v2'
             )
             expect(ensureValidModelForProvider('agnes', 'agnes-3.0-flash')).toBe('agnes-3.0-flash')
-            expect(ensureValidModelForProvider('airouter', 'gpt-5.6-luna')).toBe('gpt-5.6-luna')
             expect(ensureValidModelForProvider('aiand', 'deepseek-ai/deepseek-v4-flash')).toBe(
                 'deepseek-ai/deepseek-v4-flash'
             )
@@ -430,8 +408,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(formatProviderName('agnes')).toBe('Agnes AI')
             expect(formatProviderName('agnesai')).toBe('Agnes AI')
             expect(formatProviderName('agnes-ai')).toBe('Agnes AI')
-            expect(formatProviderName('airouter')).toBe('AI Router')
-            expect(formatProviderName('ai-router')).toBe('AI Router')
             expect(formatProviderName('aiand')).toBe('AI&')
             expect(formatProviderName('aki')).toBe('AKI.IO')
             expect(formatProviderName('aki-io')).toBe('AKI.IO')
@@ -496,14 +472,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             // 1M * 0.45 = $0.45, 1M * 0.90 = $0.90 => total $1.35
             expect(agnesCost.totalCost).toBeCloseTo(1.35, 2)
 
-            const airouterCost = calculateUsageCost({
-                model: 'airouter/gpt-5.6-luna',
-                promptTokens: 1_000_000,
-                completionTokens: 500_000,
-            })
-            // 1M * 1.0 = $1.00, 500k * 6.0 = $3.00 => total $4.00
-            expect(airouterCost.totalCost).toBeCloseTo(4.0, 2)
-
             const aiandCost = calculateUsageCost({
                 model: 'deepseek-ai/deepseek-v4-flash',
                 promptTokens: 1_000_000,
@@ -556,8 +524,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(inferProviderFromModel('abliteration/abliterated-model')).toBe('abliteration')
             expect(inferProviderFromModel('agnes-3.0-flash')).toBe('agnes')
             expect(inferProviderFromModel('agnes/agnes-2.5-pro')).toBe('agnes')
-            expect(inferProviderFromModel('gpt-5.6-luna')).toBe('airouter')
-            expect(inferProviderFromModel('airouter/gpt-5.6-terra')).toBe('airouter')
             expect(inferProviderFromModel('aiand/deepseek-ai/deepseek-v4-flash')).toBe('aiand')
             expect(inferProviderFromModel('aki/glm5.3-754b')).toBe('aki')
             expect(inferProviderFromModel('ambient/large')).toBe('ambient')
@@ -616,14 +582,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             })
             expect(agnesCard).toContain('https://platform.agnes-ai.com/settings/apiKeys')
 
-            const airouterCard = formatUsageCard({
-                model: 'gpt-5.6-luna',
-                authMethod: 'byok',
-                provider: 'airouter',
-                isAuthenticated: true,
-            })
-            expect(airouterCard).toContain('https://ai-router.dev/keys')
-
             const aiandCard = formatUsageCard({
                 model: 'deepseek-ai/deepseek-v4-flash',
                 authMethod: 'byok',
@@ -679,7 +637,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                     thinkingmachines: 'sk-tinker-live',
                     abliteration: 'sk-abliteration-live',
                     agnes: 'sk-agnes-live',
-                    airouter: 'sk-airouter-live',
                     aiand: 'sk-aiand-live',
                     aki: 'sk-aki-live',
                     ambient: 'sk-ambient-live',
@@ -695,7 +652,6 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(configured.some((p) => p.value === 'provider:thinkingmachines')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:abliteration')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:agnes')).toBe(true)
-            expect(configured.some((p) => p.value === 'provider:airouter')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:aiand')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:aki')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:ambient')).toBe(true)
@@ -737,54 +693,47 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(switched5.config.activeProvider).toBe('agnes')
             expect(switched5.config.activeModel).toBe('agnes-3.0-flash')
 
-            // Switch: agnes -> airouter via alias ai-router
-            const targetAIRouter = resolveSwitchTarget(switched5.config, 'ai-router')
-            expect(targetAIRouter).toBeDefined()
-            const switched6 = applyProviderSwitch(switched5.config, targetAIRouter!)
-            expect(switched6.config.activeProvider).toBe('airouter')
-            expect(switched6.config.activeModel).toBe('gpt-5.6-luna')
-
-            // Switch: airouter -> aiand
-            const targetAIAnd = resolveSwitchTarget(switched6.config, 'aiand')
+            // Switch: agnes -> aiand
+            const targetAIAnd = resolveSwitchTarget(switched5.config, 'aiand')
             expect(targetAIAnd).toBeDefined()
-            const switched7 = applyProviderSwitch(switched6.config, targetAIAnd!)
-            expect(switched7.config.activeProvider).toBe('aiand')
-            expect(switched7.config.activeModel).toBe('deepseek-ai/deepseek-v4-flash')
+            const switched6 = applyProviderSwitch(switched5.config, targetAIAnd!)
+            expect(switched6.config.activeProvider).toBe('aiand')
+            expect(switched6.config.activeModel).toBe('deepseek-ai/deepseek-v4-flash')
 
             // Switch: aiand -> aki via alias aki-io
-            const targetAKI = resolveSwitchTarget(switched7.config, 'aki-io')
+            const targetAKI = resolveSwitchTarget(switched6.config, 'aki-io')
             expect(targetAKI).toBeDefined()
-            const switched8 = applyProviderSwitch(switched7.config, targetAKI!)
-            expect(switched8.config.activeProvider).toBe('aki')
-            expect(switched8.config.activeModel).toBe('deepseek-v4-flash-0731-284b')
+            const switched7 = applyProviderSwitch(switched6.config, targetAKI!)
+            expect(switched7.config.activeProvider).toBe('aki')
+            expect(switched7.config.activeModel).toBe('deepseek-v4-flash-0731-284b')
 
             // Switch: aki -> ambient
-            const targetAmbient = resolveSwitchTarget(switched8.config, 'ambient')
+            const targetAmbient = resolveSwitchTarget(switched7.config, 'ambient')
             expect(targetAmbient).toBeDefined()
-            const switched9 = applyProviderSwitch(switched8.config, targetAmbient!)
-            expect(switched9.config.activeProvider).toBe('ambient')
-            expect(switched9.config.activeModel).toBe('ambient/large')
+            const switched8 = applyProviderSwitch(switched7.config, targetAmbient!)
+            expect(switched8.config.activeProvider).toBe('ambient')
+            expect(switched8.config.activeModel).toBe('ambient/large')
 
             // Switch: ambient -> auriko via alias auriko-ai
-            const targetAuriko = resolveSwitchTarget(switched9.config, 'auriko-ai')
+            const targetAuriko = resolveSwitchTarget(switched8.config, 'auriko-ai')
             expect(targetAuriko).toBeDefined()
-            const switched10 = applyProviderSwitch(switched9.config, targetAuriko!)
-            expect(switched10.config.activeProvider).toBe('auriko')
-            expect(switched10.config.activeModel).toBe('deepseek-v4-flash')
+            const switched9 = applyProviderSwitch(switched8.config, targetAuriko!)
+            expect(switched9.config.activeProvider).toBe('auriko')
+            expect(switched9.config.activeModel).toBe('deepseek-v4-flash')
 
             // Switch: auriko -> baseten via alias baseten-co
-            const targetBaseten = resolveSwitchTarget(switched10.config, 'baseten-co')
+            const targetBaseten = resolveSwitchTarget(switched9.config, 'baseten-co')
             expect(targetBaseten).toBeDefined()
-            const switched11 = applyProviderSwitch(switched10.config, targetBaseten!)
-            expect(switched11.config.activeProvider).toBe('baseten')
-            expect(switched11.config.activeModel).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
+            const switched10 = applyProviderSwitch(switched9.config, targetBaseten!)
+            expect(switched10.config.activeProvider).toBe('baseten')
+            expect(switched10.config.activeModel).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
 
             // Switch: baseten -> sarvam
-            const targetSarvam = resolveSwitchTarget(switched11.config, 'sarvam')
+            const targetSarvam = resolveSwitchTarget(switched10.config, 'sarvam')
             expect(targetSarvam).toBeDefined()
-            const switched12 = applyProviderSwitch(switched11.config, targetSarvam!)
-            expect(switched12.config.activeProvider).toBe('sarvam')
-            expect(switched12.config.activeModel).toBe('sarvam-105b')
+            const switched11 = applyProviderSwitch(switched10.config, targetSarvam!)
+            expect(switched11.config.activeProvider).toBe('sarvam')
+            expect(switched11.config.activeModel).toBe('sarvam-105b')
         })
     })
 })

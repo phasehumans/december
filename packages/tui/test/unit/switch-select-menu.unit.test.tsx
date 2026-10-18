@@ -128,4 +128,51 @@ describe('SwitchSelectMenu Component (Unit)', () => {
         await new Promise((resolve) => setTimeout(resolve, 20))
         expect(deletedValue).toBe('provider:openai')
     })
+
+    it('navigates to none on escape when previousAuthMode is not provided', async () => {
+        let authMode = 'switch_select'
+        const handleSelect = () => {}
+        const items = [{ label: 'Claude', value: 'subscription:claude' }]
+
+        const { stdin } = render(
+            <KeyboardLayerProvider>
+                <SwitchSelectMenu
+                    handleSwitchSelect={handleSelect}
+                    switchItems={items}
+                    setAuthMode={(mode) => {
+                        authMode = mode
+                    }}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        stdin.write('\u001B')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(authMode).toBe('none')
+    })
+
+    it('navigates to previousAuthMode on escape and displays Back in footer', async () => {
+        let authMode = 'switch_select'
+        const handleSelect = () => {}
+        const items = [{ label: 'Claude', value: 'subscription:claude' }]
+
+        const { stdin, lastFrame } = render(
+            <KeyboardLayerProvider>
+                <SwitchSelectMenu
+                    handleSwitchSelect={handleSelect}
+                    switchItems={items}
+                    previousAuthMode="settings_main"
+                    setAuthMode={(mode) => {
+                        authMode = mode
+                    }}
+                />
+            </KeyboardLayerProvider>
+        )
+
+        expect(lastFrame()).toContain('Back')
+
+        stdin.write('\u001B')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(authMode).toBe('settings_main')
+    })
 })

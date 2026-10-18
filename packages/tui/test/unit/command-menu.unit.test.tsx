@@ -120,4 +120,41 @@ describe('CommandMenu Component (Unit)', () => {
         await new Promise((resolve) => setTimeout(resolve, 20))
         expect(lastFrame()).toContain('❭ /ask')
     })
+
+    it('renders clean compact layout without status indicator for single match', () => {
+        const { lastFrame } = render(
+            <CommandMenu
+                query="log"
+                selectedIndex={0}
+                windowStart={0}
+                totalFiltered={1}
+                onSelect={() => {}}
+                onExecute={() => {}}
+            />
+        )
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('/login')
+        expect(frame).not.toContain('more')
+        // Ensure no empty padded lines
+        const lines = frame.split('\n').filter((l) => l.trim().length > 0)
+        expect(lines.length).toBe(1)
+    })
+
+    it('renders bottom status pagination line when commands overflow WINDOW_SIZE', () => {
+        const { lastFrame } = render(
+            <CommandMenu
+                query=""
+                selectedIndex={0}
+                windowStart={0}
+                totalFiltered={0}
+                onSelect={() => {}}
+                onExecute={() => {}}
+            />
+        )
+
+        const frame = lastFrame() || ''
+        expect(frame).toContain('↓ 94 more')
+        expect(frame).not.toContain('↑')
+    })
 })
