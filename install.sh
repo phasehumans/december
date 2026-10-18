@@ -29,8 +29,8 @@ fi
 log_step()    { echo -e "${BLUE}✱${RESET}  ${WHITE}$1${RESET}"; }
 log_tree()    { echo -e "${TRUNK}│${RESET}  ${GREY}$1${RESET}"; }
 log_item()    { echo -e "${TRUNK}│${RESET}  ${WHITE}$1:${RESET} ${GREY}$2${RESET}"; }
-log_success() { echo -e "${TRUNK}│${RESET}  ${GREEN}✔${RESET}  ${WHITE}$1${RESET}"; }
-log_warn()    { echo -e "${TRUNK}│${RESET}  ${YELLOW}⚠${RESET}  ${WHITE}$1${RESET}"; }
+log_success() { echo -e "${TRUNK}│${RESET}  ${WHITE}$1${RESET}"; }
+log_warn()    { echo -e "${TRUNK}│${RESET}  ${YELLOW}$1${RESET}"; }
 log_space()   { echo -e "${TRUNK}│${RESET}"; }
 log_error()   { echo -e "${BLUE}✱${RESET}  ${RED}$1${RESET}"; }
 
@@ -125,17 +125,15 @@ CURL_TIMEOUT_OPTS=(--connect-timeout 15 --retry 2 --retry-delay 2 --speed-limit 
 log_tree "downloading pre-compiled release binary..."
 DOWNLOAD_SUCCESS=0
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
-    if curl -fL "${CURL_TIMEOUT_OPTS[@]}" --progress-bar "$PRIMARY_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>/dev/null; then
+    if curl -fL "${CURL_TIMEOUT_OPTS[@]}" --progress-bar "$PRIMARY_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
         DOWNLOAD_SUCCESS=1
-        printf "\033[1A\033[2K"
     elif curl -fL "${CURL_TIMEOUT_OPTS[@]}" --progress-bar "$FALLBACK_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
         DOWNLOAD_SUCCESS=1
-        printf "\033[1A\033[2K"
     fi
 else
     if curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$PRIMARY_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>/dev/null; then
         DOWNLOAD_SUCCESS=1
-    elif curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$FALLBACK_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
+    elif curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$FALLBACK_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>/dev/null; then
         DOWNLOAD_SUCCESS=1
     fi
 fi

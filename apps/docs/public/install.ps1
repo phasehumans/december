@@ -21,21 +21,20 @@ $Reset = "$ESC[0m"
 
 $CharAsterisk = [char]0x2731
 $CharPipe     = [char]0x2502
-$CharCheck    = [char]0x2714
-$CharWarn     = [char]0x26A0
 
 function Log-Step($msg)    { Write-Host "$Blue$CharAsterisk$Reset  ${White}$msg$Reset" }
 function Log-Tree($msg)    { Write-Host "$Trunk$CharPipe$Reset  ${Grey}$msg$Reset" }
 function Log-Item($k, $v)  { Write-Host "$Trunk$CharPipe$Reset  ${White}${k}:$Reset ${Grey}${v}$Reset" }
-function Log-Success($msg) { Write-Host "$Trunk$CharPipe$Reset  $Green$CharCheck$Reset  ${White}$msg$Reset" }
-function Log-Warn($msg)    { Write-Host "$Trunk$CharPipe$Reset  $Yellow$CharWarn$Reset  ${White}$msg$Reset" }
+function Log-Success($msg) { Write-Host "$Trunk$CharPipe$Reset  ${White}$msg$Reset" }
+function Log-Warn($msg)    { Write-Host "$Trunk$CharPipe$Reset  ${Yellow}$msg$Reset" }
 function Log-Space         { Write-Host "$Trunk$CharPipe$Reset" }
 function Log-Error($msg)   { Write-Host "$Blue$CharAsterisk$Reset  ${Red}$msg$Reset" }
 
-function Download-WithRetry($url, $dest, $retries = 3) {
+function Download-WithRetry($url, $dest, $retries = 3, [switch]$ShowProgress) {
     if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
+        $curlProgress = if ($ShowProgress) { "--progress-bar" } else { "-s" }
         for ($attempt = 1; $attempt -le $retries; $attempt++) {
-            & curl.exe -fsSL --connect-timeout 15 --retry 2 -o $dest $url
+            & curl.exe -fL $curlProgress --connect-timeout 15 --retry 2 -o $dest $url
             if ($LASTEXITCODE -eq 0 -and (Test-Path $dest)) {
                 return $true
             }
@@ -96,9 +95,9 @@ New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
 try {
     Log-Tree "downloading pre-compiled release binary..."
     $ZipPath = Join-Path $TempDir $Archive
-    $Downloaded = Download-WithRetry $PrimaryUrl $ZipPath 2
+    $Downloaded = Download-WithRetry $PrimaryUrl $ZipPath 2 -ShowProgress
     if (-not $Downloaded) {
-        $Downloaded = Download-WithRetry $FallbackUrl $ZipPath 2
+        $Downloaded = Download-WithRetry $FallbackUrl $ZipPath 2 -ShowProgress
     }
     if (-not $Downloaded) {
         Log-Space

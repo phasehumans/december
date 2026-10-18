@@ -108,44 +108,20 @@ export function ChatApp({
     useEffect(() => {
         if (!process.stdout?.isTTY) return
 
-        const originalWrite = process.stdout.write.bind(process.stdout)
         try {
-            // Enter alternate screen buffer and enable SGR mouse tracking
-            originalWrite('\x1b[?1049h\x1b[?1000h\x1b[?1006h\x1b[?1007h')
+            // Enable SGR mouse tracking, button-event tracking (mode 1002 enables mouse wheel on ConPTY/Windows and xterm),
+            // and alternate scroll mode (mode 1007 converts wheel to arrows when mouse tracking is unhandled).
+            // Note: Alternate screen buffer (mode 1049) and DEC Mode 2026 sync updates are already natively managed by Ink.
+            process.stdout.write('\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h')
         } catch {
             // Intentionally swallowed: ignore stdout write errors on mount
         }
 
-        // Hook process.stdout.write to atomically bracket frame renders with DEC Mode 2026
-        const synchronizedWrite = (chunk: any, ...rest: any[]) => {
-            if (
-                typeof chunk === 'string' &&
-                chunk.length > 0 &&
-                !chunk.startsWith('\x1b]52;') &&
-                !chunk.includes('\x1b[?2026h')
-            ) {
-                return originalWrite(`\x1b[?2026h${chunk}\x1b[?2026l`, ...rest)
-            }
-            return (originalWrite as any)(chunk, ...rest)
-        }
-        process.stdout.write = synchronizedWrite as any
-
-        const handleResize = () => {
-            try {
-                originalWrite('\x1b[?2026h\x1b[2J\x1b[H\x1b[?2026l')
-            } catch {
-                // Intentionally swallowed: ignore stdout write errors on resize
-            }
-        }
-
-        process.stdout.on('resize', handleResize)
         return () => {
-            process.stdout.off('resize', handleResize)
-            process.stdout.write = originalWrite
             try {
-                originalWrite('\x1b[?2026l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l')
+                process.stdout.write('\x1b[?1007l\x1b[?1006l\x1b[?1002l\x1b[?1000l')
             } catch {
-                // Intentionally swallowed: cleanup on unmount
+                // Intentionally swallowed: cleanup terminal mouse modes on unmount
             }
         }
     }, [])
