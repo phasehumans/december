@@ -2,6 +2,21 @@
 
 ### Features
 
+- _(tui,providers)_ Clean up providers, update menu navigation status, and refine update banner
+- Sync model catalog, add builtin skills, and streamline provider menus
+
+### Bug Fixes
+
+- _(tui)_ Fix wsl blank screen, windows scroll, and installer progress
+
+### Documentation
+
+- Simplify tagline to a (so much) better coding agent
+
+## [0.4.12] - 2026-10-17
+
+### Features
+
 - _(tui)_ Add /diff command to view git and workspace changes
 
 ### Bug Fixes
@@ -16,6 +31,10 @@
 
 - _(tui)_ Remove redundant /tui command
 - _(tui)_ Simplify diff viewer, remove tabs and comments, and polish navigation
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.12
 
 ## [0.4.11] - 2026-10-17
 
