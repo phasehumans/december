@@ -2,6 +2,18 @@
 
 ### Features
 
+- _(agent)_ Dynamic subagent spawning with isolated context and workspace delegation (#565)
+- _(tools,agent)_ Native model context protocol (mcp) client integration (#566)
+- _(agent)_ Recursive subagent delegation up to depth 5, model routing, and batch spawning (#531)
+- _(tools)_ Isolated shadow git snapshots and /rewind time-travel command
+- _(tui)_ Inline subagent breadcrumb ticker without emojis
+- _(cli)_ Ephemeral side questions via /btw with prompt cache prefix reuse
+- _(cli,tui,agent)_ Reasoning controls, session artifacts viewer, and interactive menus
+
+## [0.4.13] - 2026-10-18
+
+### Features
+
 - _(tui,providers)_ Clean up providers, update menu navigation status, and refine update banner
 - Sync model catalog, add builtin skills, and streamline provider menus
 
@@ -12,6 +24,10 @@
 ### Documentation
 
 - Simplify tagline to a (so much) better coding agent
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.13
 
 ## [0.4.12] - 2026-10-17
 

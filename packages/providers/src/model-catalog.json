@@ -562,8 +562,8 @@
                 },
                 {
                     "id": "deepseek/deepseek-r1",
-                    "label": "DeepSeek: R1",
-                    "contextWindow": 64000,
+                    "label": "DeepSeek: R1 0528",
+                    "contextWindow": 163840,
                     "thinking": false
                 },
                 {
@@ -4373,7 +4373,7 @@
                 {
                     "id": "morph-v3-fast",
                     "label": "Morph V3 Fast",
-                    "contextWindow": 81920,
+                    "contextWindow": 262144,
                     "thinking": false
                 }
             ]
