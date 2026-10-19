@@ -419,4 +419,19 @@ describe('InputBar Component (Unit)', () => {
         expect(dividerLines.length).toBeGreaterThanOrEqual(2)
         expect(frame).toContain('Not connected (run /login)')
     })
+
+    it('renders connected MCP server count in status row', () => {
+        const { lastFrame } = render(
+            <RootLayout>
+                <InputBar
+                    onSubmit={mock(() => {})}
+                    isAuthenticated={true}
+                    activeModel="gemini-3.7-flash"
+                    mcpServersCount={3}
+                />
+            </RootLayout>
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('· 3 MCP')
+    })
 })

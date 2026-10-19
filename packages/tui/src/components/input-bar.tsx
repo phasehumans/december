@@ -45,6 +45,7 @@ type Props = {
     showExitConfirm?: boolean
     toasts?: { id: string; message: string; variant?: string }[]
     queuedPrompts?: string[]
+    mcpServersCount?: number
     onScrollUp?: (delta?: number) => void
     onScrollDown?: (delta?: number) => void
     onStartVoice?: (callbacks: {
@@ -95,6 +96,7 @@ export const InputBar = React.memo(function InputBar({
     toasts,
     queuedPrompts,
     tasks,
+    mcpServersCount,
     onScrollUp,
     onScrollDown,
     onStartVoice,
@@ -279,6 +281,8 @@ export const InputBar = React.memo(function InputBar({
 
     const runningTasksCount = tasks ? tasks.filter((t) => t.status === 'running').length : 0
     const totalTasksCount = tasks ? tasks.length : 0
+    const connectedMcpServers = agent?.mcpClientManager?.getConnectedServers?.() || []
+    const mcpCount = mcpServersCount ?? connectedMcpServers.length
 
     const stateRef = useRef({
         showFileMenu,
@@ -796,6 +800,11 @@ export const InputBar = React.memo(function InputBar({
                                                 ? `${runningTasksCount} running`
                                                 : `${totalTasksCount} tasks`}{' '}
                                             (Ctrl+T)
+                                        </Text>
+                                    )}
+                                    {mcpCount > 0 && (
+                                        <Text wrap="truncate" color={THEME.colors.muted}>
+                                            · {mcpCount} MCP
                                         </Text>
                                     )}
                                     {activeToast && (

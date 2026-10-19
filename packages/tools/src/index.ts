@@ -36,6 +36,7 @@ export * from './fuzzy_patch'
 export * from './deferred-registry'
 export * from './search_tools'
 export * from './code_intelligence'
+export * from './mcp'
 export { Type, type Static } from '@sinclair/typebox'
 
 export const CORE_TOOLS = [

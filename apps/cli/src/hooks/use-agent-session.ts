@@ -1362,6 +1362,70 @@ ${decStatus}
                 return
             }
 
+            if (text.trim() === '/mcp' || text.trim().startsWith('/mcp ')) {
+                const manager = agent?.mcpClientManager
+                const servers = manager ? manager.getAllServers() : []
+                if (!manager || servers.length === 0) {
+                    const { loadMcpConfig } = await import('@december/tools')
+                    const cfg = await loadMcpConfig({ workspaceDir: process.cwd() })
+                    const count = Object.keys(cfg).length
+                    if (count === 0) {
+                        const notice = `### Model Context Protocol (MCP)\n\nNo MCP servers configured.\n\nTo configure an MCP server, add an \`mcpServers\` entry to \`~/.december/config.json\` or project \`.december/mcp.json\`.\n\n\`\`\`json\n{\n  "mcpServers": {\n    "postgres": {\n      "command": "npx",\n      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/db"]\n    }\n  }\n}\n\`\`\``
+                        setActiveMessages((prev) => [
+                            ...prev,
+                            {
+                                id: getNextMsgId(),
+                                role: 'assistant',
+                                blocks: [{ type: 'text', content: notice }],
+                            },
+                        ])
+                        return
+                    }
+                }
+
+                let content = `### Model Context Protocol (MCP) Servers\n\n`
+                if (servers.length === 0) {
+                    content += `No active MCP servers connected.`
+                } else {
+                    for (const s of servers) {
+                        const typeStr =
+                            s.config && 'command' in s.config && s.config.command ? 'stdio' : 'sse'
+                        const statusTag =
+                            s.status === 'connected'
+                                ? '🟢 Connected'
+                                : s.status === 'error'
+                                  ? '🔴 Error'
+                                  : '⚪ Disconnected'
+                        content += `#### **${s.name}** (${typeStr}) - ${statusTag}\n`
+                        if (s.error) {
+                            content += `*Error: ${s.error}*\n`
+                        }
+                        if (s.tools && s.tools.length > 0) {
+                            content += `**Tools (${s.tools.length}):**\n`
+                            for (const tool of s.tools) {
+                                const desc = tool.description
+                                    ? `: ${tool.description.split('\n')[0]}`
+                                    : ''
+                                content += `- \`${tool.name}\`${desc}\n`
+                            }
+                        } else if (s.status === 'connected') {
+                            content += `*No tools exported by this server*\n`
+                        }
+                        content += `\n`
+                    }
+                }
+
+                setActiveMessages((prev) => [
+                    ...prev,
+                    {
+                        id: getNextMsgId(),
+                        role: 'assistant',
+                        blocks: [{ type: 'text', content: content.trim() }],
+                    },
+                ])
+                return
+            }
+
             if (text.trim().startsWith('/login ')) {
                 const targetProvider = text.trim().slice('/login '.length).trim().toLowerCase()
                 if (targetProvider) {

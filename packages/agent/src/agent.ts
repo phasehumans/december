@@ -1,4 +1,9 @@
-import { DeferredToolRegistry, type DeferredToolMetadata } from '@december/tools'
+import {
+    DeferredToolRegistry,
+    type DeferredToolMetadata,
+    type McpClientManager,
+    type McpServerConfig,
+} from '@december/tools'
 
 import { ConversationManager } from './conversation-manager'
 import { createAgentTracer } from './telemetry/tracer.factory'
@@ -18,6 +23,7 @@ export interface AgentConfig {
     tools: Tool[]
     deferredTools?: Tool[]
     deferredRegistry?: DeferredToolRegistry
+    mcpClientManager?: McpClientManager
     llm: LLMProvider
     operations: PlatformAdapter
     modelOptions?: Record<string, any>
@@ -83,6 +89,7 @@ export class Agent {
     public disableLogging: boolean
     public tracer: AgentTracer
     public deferredRegistry: DeferredToolRegistry
+    public mcpClientManager?: McpClientManager
 
     constructor(config: AgentConfig) {
         this.llm = config.llm
@@ -108,6 +115,10 @@ export class Agent {
         this.logsDir = config.logsDir
         this.disableLogging = config.disableLogging || false
         this.deferredRegistry = config.deferredRegistry || new DeferredToolRegistry()
+        this.mcpClientManager = config.mcpClientManager
+        if (this.mcpClientManager) {
+            this.mcpClientManager.setRegistry(this.deferredRegistry)
+        }
         this.tracer =
             config.tracer ||
             createAgentTracer({
@@ -257,5 +268,19 @@ export class Agent {
         this.sessionId = newSessionId || `session-${Date.now()}`
         await this.saveContext()
         return this.sessionId
+    }
+
+    public async initMcpServers(configs?: Record<string, McpServerConfig>): Promise<void> {
+        const { loadMcpConfig, McpClientManager } = await import('@december/tools')
+        const finalConfigs = configs || (await loadMcpConfig({ workspaceDir: this.workspaceDir }))
+        if (Object.keys(finalConfigs).length === 0) return
+
+        if (!this.mcpClientManager) {
+            this.mcpClientManager = new McpClientManager({
+                registry: this.deferredRegistry,
+                workspaceDir: this.workspaceDir,
+            })
+        }
+        await this.mcpClientManager.connectAll(finalConfigs)
     }
 }

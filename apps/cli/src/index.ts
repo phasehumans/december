@@ -22,6 +22,7 @@ export {
     handleAuthCommand,
     handleUpdateCommand,
     handleDoctorCommand,
+    handleMcpCommand,
 } from './commands'
 export { runHeadlessTask, suppressConsole, restoreConsole } from './headless-runner'
 export type { HeadlessTaskOptions, HeadlessTaskResult } from './headless-runner'
@@ -58,7 +59,9 @@ async function main() {
 
     // Fast-path 1: Help flag (< 5ms)
     if (parsedArgs.isHelp) {
-        console.log(getHelpText(pkg.version))
+        const { loadMcpConfigSync } = await import('@december/tools')
+        const mcpServers = loadMcpConfigSync({ workspaceDir: parsedArgs.cwd || process.cwd() })
+        console.log(getHelpText(pkg.version, { mcpServers }))
         process.exit(0)
     }
 
@@ -89,6 +92,13 @@ async function main() {
         const action = parsedArgs.positionals[1] || 'status'
         const { handleAuthCommand } = await import('./commands')
         await handleAuthCommand({ action })
+        process.exit(0)
+    }
+
+    if (parsedArgs.command === 'mcp') {
+        const action = parsedArgs.positionals[1] || 'status'
+        const { handleMcpCommand } = await import('./commands')
+        await handleMcpCommand({ action })
         process.exit(0)
     }
 
@@ -262,11 +272,22 @@ async function main() {
             : toolsModule.CORE_TOOLS
 
         const deferredTools = isAskMode ? [] : toolsModule.DEFERRED_TOOLS
+        const workspaceDir = parsedArgs.scope
+            ? path.resolve(process.cwd(), parsedArgs.scope)
+            : process.cwd()
+        const mcpClientManager = new toolsModule.McpClientManager({ workspaceDir })
+        const mcpConfigs = await toolsModule.loadMcpConfig({ workspaceDir })
+        if (Object.keys(mcpConfigs).length > 0) {
+            await mcpClientManager.connectAll(mcpConfigs).catch(() => {
+                // Intentionally swallowed: MCP connection error fallback
+            })
+        }
 
         const harness = new AgentHarness({
             llm: llm,
             tools: effectiveTools,
             deferredTools,
+            mcpClientManager,
             operations: localOperations,
             modelOptions: {
                 model: initialModel,
@@ -275,9 +296,7 @@ async function main() {
             sessionRepository,
             sessionId,
             runtime: 'cli',
-            workspaceDir: parsedArgs.scope
-                ? path.resolve(process.cwd(), parsedArgs.scope)
-                : process.cwd(),
+            workspaceDir,
             thinkingLevel: config.thinkingLevel || 'auto',
             steeringMode: config.steeringMode || 'all',
             followUpMode: config.followUpMode || 'all',
@@ -301,6 +320,9 @@ async function main() {
             nonInteractive: parsedArgs.yes,
             json: parsedArgs.json,
             readOnly: isAskMode,
+        })
+        await mcpClientManager.disconnectAll().catch(() => {
+            // Intentionally swallowed: ignore disconnect errors on headless exit
         })
         process.exit(result.success ? 0 : 1)
     }
@@ -408,10 +430,22 @@ async function main() {
         }
     }
 
+    const targetWorkspaceDir = parsedArgs.scope
+        ? path.resolve(process.cwd(), parsedArgs.scope)
+        : process.cwd()
+    const mcpClientManager = new toolsModule.McpClientManager({ workspaceDir: targetWorkspaceDir })
+    const mcpConfigs = await toolsModule.loadMcpConfig({ workspaceDir: targetWorkspaceDir })
+    if (Object.keys(mcpConfigs).length > 0) {
+        await mcpClientManager.connectAll(mcpConfigs).catch(() => {
+            // Intentionally swallowed: ignore MCP connection errors on startup
+        })
+    }
+
     const harness = new AgentHarness({
         llm: llm,
         tools: toolsModule.CORE_TOOLS,
         deferredTools: toolsModule.DEFERRED_TOOLS,
+        mcpClientManager,
         operations: localOperations,
         modelOptions: {
             model: initialModel,
@@ -420,9 +454,7 @@ async function main() {
         sessionRepository,
         sessionId,
         runtime: 'cli',
-        workspaceDir: parsedArgs.scope
-            ? path.resolve(process.cwd(), parsedArgs.scope)
-            : process.cwd(),
+        workspaceDir: targetWorkspaceDir,
         thinkingLevel: config.thinkingLevel || 'auto',
         steeringMode: config.steeringMode || 'all',
         followUpMode: config.followUpMode || 'all',
@@ -503,6 +535,9 @@ async function main() {
     let inkInstance: any = null
 
     const handleExit = () => {
+        mcpClientManager.disconnectAll().catch(() => {
+            // Intentionally swallowed: ignore disconnect errors on exit
+        })
         if (inkInstance) {
             try {
                 inkInstance.clear()

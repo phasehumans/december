@@ -77,6 +77,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'ask',
             'skill',
             'skills',
+            'mcp',
         ]
         let command: string | undefined
         let prompt: string | undefined
@@ -128,7 +129,24 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
     }
 }
 
-export function getHelpText(version: string = '0.0.0'): string {
+export function getHelpText(
+    version: string = '0.0.0',
+    options?: { mcpServers?: Record<string, any> }
+): string {
+    let mcpSection = ''
+    const mcpServers = options?.mcpServers
+    if (mcpServers && Object.keys(mcpServers).length > 0) {
+        const lines = Object.entries(mcpServers).map(([name, cfg]) => {
+            const type = cfg.command ? 'stdio' : 'sse'
+            const target = cfg.command
+                ? `${cfg.command}${cfg.args ? ' ' + cfg.args.join(' ') : ''}`
+                : cfg.url || cfg.endpoint || cfg.sse || ''
+            const disabledStr = cfg.disabled ? ' (disabled)' : ''
+            return `  • ${name} (${type})${disabledStr}: ${target}`
+        })
+        mcpSection = `\nConfigured MCP Servers:\n${lines.join('\n')}\n`
+    }
+
     return `December CLI v${version}
 a coding agent that lives in your terminal.
 
@@ -143,11 +161,12 @@ Usage:
   december login [provider]         Log in to December Cloud or subscription
   december logout [provider]        Remove saved authentication credentials
   december switch [provider]        Switch active provider and restore remembered model
+  december mcp [status|list]        Inspect configured and connected MCP servers and tools
   december update                   Update December CLI to the latest version
   december doctor [--fix]           Inspect installations, health, and resolve PATH collisions
   december changelog                Open changelog in your browser
   december docs [section]           Open documentation in your browser
-
+${mcpSection}
 Options:
   -h, --help                        Show CLI help and exit
   -v, --version                     Show CLI version and exit

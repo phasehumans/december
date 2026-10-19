@@ -273,6 +273,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'mcp',
+        description: 'Inspect connected MCP servers and tools',
+        value: '/mcp',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'new',
         description: 'Start a new conversation',
         value: '/new',

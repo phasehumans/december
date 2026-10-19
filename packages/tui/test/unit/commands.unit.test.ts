@@ -164,4 +164,11 @@ describe('/changelog and /docs commands', () => {
         expect(diffCmd?.value).toBe('/diff')
         expect(diffCmd?.description).toContain('View git diff and workspace changes')
     })
+
+    test('should define /mcp command forwarded to chat screen', () => {
+        const mcpCmd = COMMANDS.find((c) => c.name === 'mcp')
+        expect(mcpCmd).toBeDefined()
+        expect(mcpCmd?.value).toBe('/mcp')
+        expect(mcpCmd?.description).toContain('MCP')
+    })
 })

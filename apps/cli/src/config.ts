@@ -201,6 +201,7 @@ export interface DecemberConfig {
     lastSeenVersion?: string
     showChangelogBanner?: boolean
     browserVisible?: boolean
+    mcpServers?: Record<string, any>
 }
 
 export function getLegacyConfigDir(): string {
