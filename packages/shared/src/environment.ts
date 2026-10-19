@@ -66,12 +66,16 @@ export interface Environment {
     env: {
         cwd: () => string
         get: (key: string) => string | undefined
+        setCwd?: (dir: string) => void
     }
     ui: {
         askQuestion: (
             questions: Array<{ question: string; options: string[]; is_multi_select?: boolean }>
         ) => Promise<string>
         requestPermission?: (toolCall: any) => Promise<{ block: boolean; reason?: string }>
+        reviewArtifact?: (
+            artifact: any
+        ) => Promise<{ action: 'proceed' | 'refine' | 'reject'; feedback?: string }>
     }
     browser?: BrowserOperations
     diagnostics?: DiagnosticsOperations

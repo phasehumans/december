@@ -11,7 +11,7 @@ December는 (so much) better 코딩 에이전트입니다. 코드 작성, 버그
 **웹에서도 사용 가능: <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/585e6ff5-0403-45f5-89c3-c2d3d168962c" alt="December" width="80%"/>
+  <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
 </p>
 
 - **코드 작성 및 명령어 실행:** 기능 개발, 버그 수정, 테스트 실행을 요청해 보세요. 에이전트가 알아서 수행합니다.

@@ -1,10 +1,13 @@
 import { Box, Static } from 'ink'
 import React from 'react'
 
+import { useTerminalColumns } from '../hooks/use-terminal-columns'
+
 import { Header } from './header'
 import { BotMessage } from './messages/bot-message'
 import { ErrorMessage } from './messages/error-message'
 import { UserMessage } from './messages/user-message'
+import { useScrollViewport } from './scroll-viewport'
 
 import type { ReleaseAnnouncement } from '../constants/announcements'
 import type { Message } from '../types'
@@ -23,11 +26,57 @@ export interface MessageItemProps {
     authMethod?: string
     selectedProvider?: string
     isAuthenticated?: boolean
+    onHeightMeasured?: (key: string, height: number) => void
+}
+
+function estimateMessageHeight(msg: Message, columns: number): number {
+    if (msg.role === 'header') {
+        return 7
+    }
+    if (msg.role === 'user') {
+        const text = msg.displayText || msg.text || ''
+        const lines = text.split(/\r?\n/)
+        let total = 0
+        const cols = Math.max(20, columns - 10)
+        for (const line of lines) {
+            total += Math.max(1, Math.ceil(line.length / cols))
+        }
+        return Math.max(2, total + 1)
+    }
+    if (msg.role === 'error') {
+        let rows = 2
+        if (msg.cause) rows += 1
+        if (msg.hint) rows += 1
+        return rows
+    }
+    if (msg.blocks && msg.blocks.length > 0) {
+        let total = 0
+        const cols = Math.max(20, columns - 10)
+        for (const b of msg.blocks) {
+            if (b.type === 'text') {
+                const lines = (b.content || '').split(/\r?\n/)
+                for (const line of lines) {
+                    total += Math.max(1, Math.ceil(line.length / cols))
+                }
+            } else if (b.type === 'command') {
+                total += 2
+            } else if (b.type === 'tool_use') {
+                total += 4
+            } else if (b.type === 'diff') {
+                total += 6
+            } else {
+                total += 2
+            }
+        }
+        return Math.max(3, total + 1)
+    }
+    return 3
 }
 
 export const MessageItem = React.memo(
     function MessageItem({
         msg,
+        index,
         prevRole,
         cliVersion,
         latestVersion,
@@ -39,9 +88,25 @@ export const MessageItem = React.memo(
         authMethod,
         selectedProvider,
         isAuthenticated,
+        onHeightMeasured,
     }: MessageItemProps) {
+        const itemKey = msg.id != null ? `${msg.id}` : `msg-idx-${index}`
+
+        const onRef = React.useCallback(
+            (node: any) => {
+                if (node?.yogaNode && onHeightMeasured) {
+                    const h = node.yogaNode.getComputedHeight()
+                    if (h > 0) {
+                        onHeightMeasured(itemKey, h)
+                    }
+                }
+            },
+            [itemKey, onHeightMeasured]
+        )
+
+        let content: React.ReactNode
         if (msg.role === 'header') {
-            return (
+            content = (
                 <Header
                     cliVersion={cliVersion}
                     latestVersion={latestVersion}
@@ -54,13 +119,11 @@ export const MessageItem = React.memo(
                     isAuthenticated={isAuthenticated}
                 />
             )
-        }
-        if (msg.role === 'user') {
-            return <UserMessage message={msg.displayText || msg.text || ''} />
-        }
-        if (msg.role === 'error') {
+        } else if (msg.role === 'user') {
+            content = <UserMessage message={msg.displayText || msg.text || ''} />
+        } else if (msg.role === 'error') {
             const hasTopMargin = prevRole !== 'user'
-            return (
+            content = (
                 <ErrorMessage
                     message={msg.text ?? ''}
                     cause={msg.cause}
@@ -68,15 +131,22 @@ export const MessageItem = React.memo(
                     hasTopMargin={hasTopMargin}
                 />
             )
+        } else {
+            const hasTopMargin = prevRole === 'header'
+            content = (
+                <BotMessage
+                    blocks={msg.blocks ?? []}
+                    usage={msg.usage}
+                    expandCommands={expandCommands}
+                    hasTopMargin={hasTopMargin}
+                />
+            )
         }
-        const hasTopMargin = prevRole === 'header'
+
         return (
-            <BotMessage
-                blocks={msg.blocks ?? []}
-                usage={msg.usage}
-                expandCommands={expandCommands}
-                hasTopMargin={hasTopMargin}
-            />
+            <Box ref={onRef} flexDirection="column" width="100%">
+                {content}
+            </Box>
         )
     },
     (prev, next) => {
@@ -96,7 +166,7 @@ export const MessageItem = React.memo(
     }
 )
 
-const MAX_WINDOW_MESSAGES = 20
+const OVERSCAN_ROWS = 25
 
 export const MessageList = React.memo(function MessageList({
     staticKey,
@@ -131,15 +201,89 @@ export const MessageList = React.memo(function MessageList({
     authMethod?: string
     selectedProvider?: string
 }) {
+    const columns = useTerminalColumns()
+    const scrollViewport = useScrollViewport()
+    const heightCacheRef = React.useRef<Map<string, number>>(new Map())
+
+    const handleHeightMeasured = React.useCallback((key: string, measuredHeight: number) => {
+        if (measuredHeight > 0) {
+            const prev = heightCacheRef.current.get(key)
+            if (prev !== measuredHeight) {
+                heightCacheRef.current.set(key, measuredHeight)
+            }
+        }
+    }, [])
+
     if (fullscreen) {
         const allMessages = [...staticMessages, ...activeMessages]
-        const shouldWindow = !isReadingMode && allMessages.length > MAX_WINDOW_MESSAGES
-        const visibleMessages = shouldWindow ? allMessages.slice(-MAX_WINDOW_MESSAGES) : allMessages
-        const hiddenCount = shouldWindow ? allMessages.length - MAX_WINDOW_MESSAGES : 0
+        const terminalRows =
+            typeof process !== 'undefined' && process.stdout?.rows
+                ? Math.max(1, process.stdout.rows - 6)
+                : 24
+
+        const viewportHeight = scrollViewport?.viewportHeight || terminalRows
+        const scrollTop = scrollViewport?.scrollTop ?? 0
+        const effectiveReadingMode = isReadingMode || Boolean(scrollViewport?.isReadingMode)
+
+        const shouldWindow = allMessages.length > 5
+
+        let startIndex = 0
+        let endIndex = allMessages.length
+        let topSpacer = 0
+        let bottomSpacer = 0
+
+        if (shouldWindow) {
+            const heights = allMessages.map((msg, i) => {
+                const key = msg.id != null ? `${msg.id}` : `msg-idx-${i}`
+                const cached = heightCacheRef.current.get(key)
+                if (cached !== undefined && cached > 0) return cached
+                return estimateMessageHeight(msg, columns)
+            })
+
+            const offsets = new Array(allMessages.length + 1)
+            offsets[0] = 0
+            for (let i = 0; i < allMessages.length; i++) {
+                offsets[i + 1] = offsets[i] + (heights[i] || 4)
+            }
+            const totalHeight = offsets[allMessages.length]
+
+            let windowTop: number
+            let windowBottom: number
+
+            if (effectiveReadingMode) {
+                if (scrollViewport) {
+                    windowTop = Math.max(0, scrollTop - OVERSCAN_ROWS)
+                    windowBottom = scrollTop + viewportHeight + OVERSCAN_ROWS
+                } else {
+                    windowTop = 0
+                    windowBottom = totalHeight
+                }
+            } else {
+                windowBottom = totalHeight
+                windowTop = Math.max(0, totalHeight - viewportHeight - OVERSCAN_ROWS)
+            }
+
+            startIndex = 0
+            while (startIndex < allMessages.length - 1 && offsets[startIndex + 1] <= windowTop) {
+                startIndex++
+            }
+
+            endIndex = startIndex
+            while (endIndex < allMessages.length && offsets[endIndex] < windowBottom) {
+                endIndex++
+            }
+            endIndex = Math.min(allMessages.length, Math.max(endIndex, startIndex + 1))
+
+            topSpacer = offsets[startIndex]
+            bottomSpacer = Math.max(0, totalHeight - offsets[endIndex])
+        }
+
+        const visibleMessages = allMessages.slice(startIndex, endIndex)
+        const isWindowed = startIndex > 0
 
         return (
             <Box flexDirection="column" width="100%">
-                {hiddenCount > 0 && (
+                {isWindowed && (
                     <Header
                         cliVersion={cliVersion}
                         latestVersion={latestVersion}
@@ -152,8 +296,9 @@ export const MessageList = React.memo(function MessageList({
                         isAuthenticated={isAuthenticated}
                     />
                 )}
+                {topSpacer > 0 && <Box height={topSpacer} flexShrink={0} />}
                 {visibleMessages.map((msg, index) => {
-                    const actualIndex = shouldWindow ? hiddenCount + index : index
+                    const actualIndex = startIndex + index
                     const prevRole = actualIndex > 0 ? allMessages[actualIndex - 1]?.role : null
                     const key = msg.id != null ? `${msg.id}` : `msg-idx-${actualIndex}`
                     return (
@@ -172,9 +317,11 @@ export const MessageList = React.memo(function MessageList({
                             authMethod={authMethod}
                             selectedProvider={selectedProvider}
                             isAuthenticated={isAuthenticated}
+                            onHeightMeasured={handleHeightMeasured}
                         />
                     )
                 })}
+                {bottomSpacer > 0 && <Box height={bottomSpacer} flexShrink={0} />}
             </Box>
         )
     }

@@ -68,6 +68,26 @@ describe('Ticket #389 & #390: Tool Summaries, Streaming Verbs, Compaction, and I
                 getToolSummary('search_web', JSON.stringify({ query: 'bun test documentation' }))
             ).toBe('WebSearch(bun test documentation)')
         })
+
+        it('formats manage_subagent and subagent tools', () => {
+            expect(getToolSummary('manage_subagent', JSON.stringify({ action: 'list' }))).toBe(
+                'ManageSubagent(list)'
+            )
+            expect(
+                getToolSummary(
+                    'manage_subagent',
+                    JSON.stringify({ action: 'status', subagentId: 'sub-42' })
+                )
+            ).toBe('ManageSubagent(status:sub-42)')
+            expect(getToolSummary('invoke_subagent', JSON.stringify({ role: 'researcher' }))).toBe(
+                'SubAgent(researcher)'
+            )
+        })
+
+        it('formats unknown tools with automatic PascalCase', () => {
+            expect(getToolSummary('custom_mcp_tool', JSON.stringify({}))).toBe('CustomMcpTool()')
+            expect(getToolSummary('unknown_tool', JSON.stringify({}))).toBe('UnknownTool()')
+        })
     })
 
     describe('Dynamic Tool Action Labels', () => {
@@ -79,6 +99,8 @@ describe('Ticket #389 & #390: Tool Summaries, Streaming Verbs, Compaction, and I
             expect(getToolActionLabel('grep_search')).toBe('Searching codebase...')
             expect(getToolActionLabel('search_web')).toBe('Searching web...')
             expect(getToolActionLabel('list_dir')).toBe('Listing directory...')
+            expect(getToolActionLabel('manage_subagent')).toBe('Managing subagents...')
+            expect(getToolActionLabel('write_artifact')).toBe('Writing artifact...')
             expect(getToolActionLabel('unknown_tool')).toBe('Working...')
         })
     })

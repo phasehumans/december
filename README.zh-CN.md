@@ -11,7 +11,7 @@ December 是一个 (so much) better 编程智能体。它通过编写代码、�
 **也可在网页端使用：<a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/585e6ff5-0403-45f5-89c3-c2d3d168962c" alt="December" width="80%"/>
+  <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
 </p>
 
 - **编写代码与运行命令：** 让它构建新功能、修复 Bug 或运行测试，它会替你完成这些工作。

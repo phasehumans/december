@@ -289,19 +289,6 @@ export async function performCliUpdate(options?: PerformUpdateOptions): Promise<
         }
     }
 
-    if (method === 'curl') {
-        const msg = `Standalone installation detected. To update, re-run the installer:\n  ${manualCmd}`
-        options?.onProgress?.(msg)
-        return {
-            success: true,
-            method: 'curl',
-            command,
-            manualCmd,
-            verified: true,
-            output: msg,
-        }
-    }
-
     if (method === 'npx') {
         const msg =
             'Running December CLI via npx/bunx. Each invocation automatically uses the latest version.'

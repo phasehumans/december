@@ -1,10 +1,21 @@
+import { execSync } from 'node:child_process'
+import fs from 'node:fs'
+import fsPromises from 'node:fs/promises'
+
 import { Agent, runAgentLoop } from '@december/agent'
 import {
     getCleanProviderDisplayName,
     PROVIDER_BILLING_LINKS,
     SkillDiscoveryEngine,
 } from '@december/shared'
-import { type Message, openPlanInPager } from '@december/tui'
+import {
+    type Message,
+    type HandoffSummary,
+    type CodeSearchResultItem,
+    openPlanInPager,
+    createWorkspaceArchive,
+    scanWorkspaceForHandoff,
+} from '@december/tui'
 import { useEffect, useCallback, useState, useRef } from 'react'
 
 import {
@@ -35,6 +46,7 @@ import { startDirectCommand } from '../utils/direct-shell'
 import { parseErrorMessage, parseError } from '../utils/error-parser'
 import { extractJsonArray } from '../utils/json-parser'
 import { getProviderModels } from '../utils/models'
+import { openUrl } from '../utils/open'
 import { fetchOpenRouterModels } from '../utils/openrouter-models'
 import { getProjectContext } from '../utils/project-context'
 import { fetchProviderBalance } from '../utils/provider-balance'
@@ -103,6 +115,8 @@ export function useAgentSession({
         authMode,
         previousAuthMode,
         setAuthMode,
+        helpInitialTab,
+        setHelpInitialTab,
         logoutItems,
         setLogoutItems,
         switchItems,
@@ -159,9 +173,13 @@ export function useAgentSession({
         setPendingQuestions,
         pendingToolCall,
         setPendingToolCall,
+        pendingArtifactReview,
+        setPendingArtifactReview,
         toasts,
         addToast,
         setShouldExit,
+        handoffSummary,
+        setHandoffSummary,
         tasksData,
         setTasksData,
         taskSelectedIndex,
@@ -211,6 +229,14 @@ export function useAgentSession({
         setBtwState,
         rewindItems,
         setRewindItems,
+        codeSearchQuery,
+        setCodeSearchQuery,
+        codeSearchResults,
+        setCodeSearchResults,
+        prefillPrompt,
+        setPrefillPrompt,
+        fileViewTarget,
+        setFileViewTarget,
     } = state
 
     const [expandCommands, setExpandCommands] = useState(false)
@@ -276,9 +302,10 @@ export function useAgentSession({
                 setAuthMode,
                 setPendingQuestions,
                 setPendingToolCall,
+                setPendingArtifactReview,
             })
         }
-    }, [agent, setAuthMode, setPendingQuestions, setPendingToolCall])
+    }, [agent, setAuthMode, setPendingQuestions, setPendingToolCall, setPendingArtifactReview])
 
     useEffect(() => {
         if (!agent) return
@@ -1225,8 +1252,258 @@ export function useAgentSession({
         [agent, addToast, setActiveMessages, setAuthMode]
     )
 
+    const onClearPrefillPrompt = useCallback(() => {
+        setPrefillPrompt(null)
+    }, [setPrefillPrompt])
+
+    const handleCodeSearchOpen = useCallback(
+        (item: CodeSearchResultItem) => {
+            setFileViewTarget({
+                filePath: item.file,
+                initialLine: item.line,
+                returnAuthMode: 'code_search',
+            })
+            setAuthMode('file_view')
+        },
+        [setFileViewTarget, setAuthMode]
+    )
+
+    const handleFileViewClose = useCallback(() => {
+        const returnMode = fileViewTarget?.returnAuthMode || 'none'
+        const returnQuery = fileViewTarget?.returnQuery
+        setFileViewTarget(null)
+        setAuthMode(returnMode)
+        if (returnQuery) {
+            setPrefillPrompt(returnQuery)
+        }
+    }, [fileViewTarget, setFileViewTarget, setAuthMode, setPrefillPrompt])
+
+    const handleCodeSearchInsert = useCallback(
+        (item: CodeSearchResultItem) => {
+            setAuthMode('none')
+            setPrefillPrompt(`@${item.file}:${item.line} `)
+        },
+        [setAuthMode, setPrefillPrompt]
+    )
+
+    const handleFileViewInsertContext = useCallback(
+        (file: string, line?: number) => {
+            setFileViewTarget(null)
+            setAuthMode('none')
+            setPrefillPrompt(line ? `@${file}:${line} ` : `@${file} `)
+        },
+        [setFileViewTarget, setAuthMode, setPrefillPrompt]
+    )
+
+    const executeHandoff = useCallback(
+        async (userMsg: Message, config: any, proxyUrl: string) => {
+            const archivePath = '.december-handoff.tar.gz'
+
+            // Draining active background CLI tasks prior to initiating handoff
+            const runningTasks = (useCliStore.getState().tasksData || []).filter(
+                (t: any) => t.status === 'running'
+            )
+            if (runningTasks.length > 0) {
+                addToast(`Draining ${runningTasks.length} background task(s)...`, 'info')
+                for (const t of runningTasks) {
+                    if (typeof (t as any).kill === 'function') {
+                        try {
+                            ;(t as any).kill()
+                        } catch {
+                            // Intentionally swallowed: task kill fallback
+                        }
+                    }
+                }
+            }
+
+            const cleanupArchive = () => {
+                try {
+                    if (fs.existsSync(archivePath)) {
+                        fs.unlinkSync(archivePath)
+                    }
+                } catch {
+                    // Intentionally swallowed: emergency cleanup fallback
+                }
+            }
+
+            process.once('SIGINT', cleanupArchive)
+            process.once('exit', cleanupArchive)
+
+            try {
+                addToast('Packaging workspace archive...', 'info')
+                await createWorkspaceArchive(archivePath)
+
+                addToast('Requesting upload URL...', 'info')
+                const urlRes = await fetch(`${proxyUrl}/cli/handoff/upload-url`, {
+                    headers: { Authorization: `Bearer ${config.decemberToken}` },
+                })
+
+                if (!urlRes.ok) {
+                    if (urlRes.status === 401) {
+                        addToast('You must be logged in to December to use handoff.', 'error')
+                        const noticeMsg: Message = {
+                            id: getNextMsgId(),
+                            role: 'assistant',
+                            blocks: [
+                                {
+                                    type: 'text',
+                                    content: HANDOFF_LOGIN_REQUIRED_NOTICE,
+                                },
+                            ],
+                        }
+                        setStaticMessages((prev) => [
+                            ...prev,
+                            ...useCliStore.getState().activeMessages,
+                            userMsg,
+                            noticeMsg,
+                        ])
+                        setActiveMessages([])
+                        return
+                    }
+                    if (urlRes.status === 402) {
+                        addToast('Insufficient credits in December Wallet.', 'error')
+                        const noticeMsg: Message = {
+                            id: getNextMsgId(),
+                            role: 'assistant',
+                            blocks: [
+                                {
+                                    type: 'text',
+                                    content: HANDOFF_INSUFFICIENT_CREDITS_NOTICE,
+                                },
+                            ],
+                        }
+                        setStaticMessages((prev) => [
+                            ...prev,
+                            ...useCliStore.getState().activeMessages,
+                            userMsg,
+                            noticeMsg,
+                        ])
+                        setActiveMessages([])
+                        return
+                    }
+                    const errJson = (await urlRes.json().catch(() => ({}))) as any
+                    throw new Error(
+                        errJson.message || `Failed to get upload URL (${urlRes.status})`
+                    )
+                }
+
+                const urlJson = (await urlRes.json()) as any
+                const { uploadUrl, objectKey } = urlJson.data || urlJson
+
+                addToast('Uploading to MinIO...', 'info')
+                const fileData = await fsPromises.readFile(archivePath)
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: fileData,
+                })
+                if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.statusText}`)
+
+                addToast('Registering cloud session...', 'info')
+                const rawMessages = agent ? agent.messages : []
+                const sanitizedMessages = Array.isArray(rawMessages)
+                    ? rawMessages.map((m: any, idx: number) => ({
+                          id: m.id || `msg-${idx}`,
+                          role: m.role || 'user',
+                          text:
+                              typeof m.text === 'string'
+                                  ? m.text
+                                  : typeof m.content === 'string'
+                                    ? m.content
+                                    : '',
+                          content:
+                              typeof m.content === 'string'
+                                  ? m.content
+                                  : typeof m.text === 'string'
+                                    ? m.text
+                                    : '',
+                          blocks: Array.isArray(m.blocks) ? m.blocks : undefined,
+                          sequence: typeof m.sequence === 'number' ? m.sequence : idx,
+                      }))
+                    : []
+
+                const sessionRes = await fetch(`${proxyUrl}/cli/handoff/complete`, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${config.decemberToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: 'Handoff from ' + process.cwd().split('/').pop(),
+                        messages: sanitizedMessages,
+                        objectKey,
+                    }),
+                })
+                if (!sessionRes.ok) {
+                    const errJson = (await sessionRes.json().catch(() => ({}))) as any
+                    throw new Error(errJson.message || (await sessionRes.text()))
+                }
+                const sessionJson = (await sessionRes.json()) as any
+                const sessionId = sessionJson.data?.id || 'session'
+
+                addToast('Handoff complete! Exiting in 3s.', 'success')
+                const successMsg: Message = {
+                    id: getNextMsgId(),
+                    role: 'assistant',
+                    blocks: [
+                        {
+                            type: 'text',
+                            content: HANDOFF_SUCCESS_NOTICE(sessionId),
+                        },
+                    ],
+                }
+                setStaticMessages((prev) => [
+                    ...prev,
+                    ...useCliStore.getState().activeMessages,
+                    userMsg,
+                    successMsg,
+                ])
+                setActiveMessages([])
+
+                // Clickable session link opened in default browser
+                const sessionUrl = `https://trydecember.com/s/${sessionId}`
+                try {
+                    await openUrl(sessionUrl)
+                } catch {
+                    // Intentionally swallowed: browser launch fallback
+                }
+
+                setTimeout(() => {
+                    setShouldExit(true)
+                    process.exit(0)
+                }, 3000)
+            } catch (e: any) {
+                addToast(`Handoff failed: ${e.message}`, 'error')
+            } finally {
+                process.removeListener('SIGINT', cleanupArchive)
+                process.removeListener('exit', cleanupArchive)
+                await fsPromises.unlink(archivePath).catch(() => {
+                    // Intentionally swallowed: archive unlink fallback
+                })
+            }
+        },
+        [agent, addToast, setStaticMessages, setActiveMessages, setShouldExit]
+    )
+
+    const handleHandoffConfirmSelect = useCallback(
+        async (item: { label: string; value: 'confirm' | 'cancel' }) => {
+            setAuthMode('none')
+            setHandoffSummary(null)
+            if (item.value === 'cancel') {
+                addToast('Handoff cancelled.', 'info')
+                return
+            }
+
+            const userMsg: Message = { id: getNextMsgId(), role: 'user', text: '/handoff' }
+            const config = await loadConfig()
+            const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
+            const proxyUrl = `${serverUrl}/api/v1`
+            await executeHandoff(userMsg, config, proxyUrl)
+        },
+        [setAuthMode, setHandoffSummary, addToast, executeHandoff]
+    )
+
     const handleSubmit = useCallback(
-        async (text: string) => {
+        async (text: string, options?: { returnQuery?: string }) => {
             if (text.trim() === '/exit') {
                 setShouldExit(true)
                 process.exit(0)
@@ -1845,7 +2122,115 @@ ${decStatus}
                 return
             }
 
-            if (text.trim() === '/handoff') {
+            if (
+                trimmedCmd === '/open' ||
+                trimmedCmd.startsWith('/open ') ||
+                trimmedCmd.startsWith('/open\t')
+            ) {
+                const fs = await import('node:fs')
+                const path = await import('node:path')
+                const rawArg = text.trim().slice(5).trim()
+                let targetArg = rawArg || '.'
+                let targetLine = 1
+
+                const lineMatch = targetArg.match(/^(.+?):(\d+)$/)
+                if (lineMatch && targetArg !== '.') {
+                    targetArg = lineMatch[1] ?? targetArg
+                    targetLine = parseInt(lineMatch[2] ?? '1', 10) || 1
+                }
+                const fullPath = path.resolve(process.cwd(), targetArg)
+
+                if (targetArg !== '.' && !fs.existsSync(fullPath)) {
+                    addToast(`File not found: ${rawArg}`, 'error')
+                    return
+                }
+
+                let isDirectory = false
+                try {
+                    const stat = fs.statSync(fullPath)
+                    isDirectory = stat.isDirectory()
+                } catch {
+                    // Intentionally swallowed: fallback to file view if stat fails
+                }
+
+                if (targetArg === '.' || isDirectory) {
+                    addToast('Opening workspace in editor...', 'info')
+                    try {
+                        const { openPath } = await import('../utils/open')
+                        await openPath(fullPath)
+                        addToast('Opened workspace in editor.', 'success')
+                    } catch {
+                        // Intentionally swallowed: fallback toast on open error
+                        addToast('Failed to open workspace', 'error')
+                    }
+                    return
+                }
+
+                setFileViewTarget({
+                    filePath: targetArg,
+                    initialLine: targetLine,
+                    returnQuery: options?.returnQuery,
+                })
+                setAuthMode('file_view')
+                return
+            }
+
+            if (
+                trimmedCmd === '/codesearch' ||
+                trimmedCmd.startsWith('/codesearch ') ||
+                trimmedCmd.startsWith('/codesearch\t')
+            ) {
+                const query = text.trim().slice(11).trim()
+
+                if (!query) {
+                    addToast('Usage: /codesearch <query>', 'error')
+                    return
+                }
+
+                try {
+                    addToast(`Searching for "${query}"...`, 'info')
+                    const { localOperations } = await import('../local-operations')
+                    const path = await import('node:path')
+                    const output = await localOperations.search.grep('.', query)
+                    const lines = output ? output.split('\n').filter((l) => Boolean(l.trim())) : []
+                    const items: CodeSearchResultItem[] = []
+
+                    for (const line of lines) {
+                        const firstColon = line.indexOf(':')
+                        if (firstColon === -1) continue
+                        const secondColon = line.indexOf(':', firstColon + 1)
+                        if (secondColon === -1) continue
+                        const rawFile = line.slice(0, firstColon)
+                        const lineNumStr = line.slice(firstColon + 1, secondColon)
+                        const lineNum = parseInt(lineNumStr, 10)
+                        if (isNaN(lineNum)) continue
+                        const content = line.slice(secondColon + 1).trim()
+                        const file = path.isAbsolute(rawFile)
+                            ? path.relative(process.cwd(), rawFile)
+                            : rawFile
+                        items.push({
+                            file,
+                            line: lineNum,
+                            content,
+                        })
+                    }
+
+                    setCodeSearchQuery(query)
+                    setCodeSearchResults(items.slice(0, 100))
+                    setAuthMode('code_search')
+                } catch {
+                    // Intentionally swallowed: fallback toast on code search failure
+                    addToast(`Code search failed for "${query}"`, 'error')
+                }
+                return
+            }
+
+            const isHandoffCmd =
+                trimmedCmd === '/handoff' ||
+                trimmedCmd.startsWith('/handoff ') ||
+                trimmedCmd.startsWith('/handoff\t')
+
+            if (isHandoffCmd) {
                 const userMsg: Message = { id: getNextMsgId(), role: 'user', text: '/handoff' }
                 const config = await loadConfig()
 
@@ -1876,14 +2261,15 @@ ${decStatus}
                 const proxyUrl = `${serverUrl}/api/v1`
 
                 // Check 2: Does user have credits > 0?
+                let currentBalance = 0
                 try {
                     const overviewRes = await fetch(`${proxyUrl}/billing/overview`, {
                         headers: { Authorization: `Bearer ${config.decemberToken}` },
                     })
                     if (overviewRes.ok) {
                         const overviewJson = (await overviewRes.json()) as any
-                        const balance = overviewJson.data?.creditBalance ?? 0
-                        if (balance <= 0) {
+                        currentBalance = overviewJson.data?.creditBalance ?? 0
+                        if (currentBalance <= 0) {
                             addToast('Insufficient credits in December Wallet.', 'error')
                             const noticeMsg: Message = {
                                 id: getNextMsgId(),
@@ -1909,128 +2295,47 @@ ${decStatus}
                     // Intentionally swallowed: fallback handled if billing overview request fails
                 }
 
-                const archivePath = '.december-handoff.tar.gz'
+                // Check 3: Check uncommitted git changes
+                let uncommittedCount = 0
                 try {
-                    addToast('Zipping workspace...', 'info')
-                    const { createWorkspaceArchive } = await import('@december/tui')
-                    await createWorkspaceArchive(archivePath)
-
-                    addToast('Requesting upload URL...', 'info')
-                    const urlRes = await fetch(`${proxyUrl}/cli/handoff/upload-url`, {
-                        headers: { Authorization: `Bearer ${config.decemberToken}` },
+                    const statusOut = execSync('git status --porcelain', {
+                        encoding: 'utf8',
+                        stdio: ['ignore', 'pipe', 'ignore'],
                     })
-
-                    if (!urlRes.ok) {
-                        const fs = await import('node:fs/promises')
-                        await fs.unlink(archivePath).catch(() => {})
-                        if (urlRes.status === 401) {
-                            addToast('You must be logged in to December to use handoff.', 'error')
-                            const noticeMsg: Message = {
-                                id: getNextMsgId(),
-                                role: 'assistant',
-                                blocks: [
-                                    {
-                                        type: 'text',
-                                        content: HANDOFF_LOGIN_REQUIRED_NOTICE,
-                                    },
-                                ],
-                            }
-                            setStaticMessages((prev) => [
-                                ...prev,
-                                ...useCliStore.getState().activeMessages,
-                                userMsg,
-                                noticeMsg,
-                            ])
-                            setActiveMessages([])
-                            return
-                        }
-                        if (urlRes.status === 402) {
-                            addToast('Insufficient credits in December Wallet.', 'error')
-                            const noticeMsg: Message = {
-                                id: getNextMsgId(),
-                                role: 'assistant',
-                                blocks: [
-                                    {
-                                        type: 'text',
-                                        content: HANDOFF_INSUFFICIENT_CREDITS_NOTICE,
-                                    },
-                                ],
-                            }
-                            setStaticMessages((prev) => [
-                                ...prev,
-                                ...useCliStore.getState().activeMessages,
-                                userMsg,
-                                noticeMsg,
-                            ])
-                            setActiveMessages([])
-                            return
-                        }
-                        const errJson = (await urlRes.json().catch(() => ({}))) as any
-                        throw new Error(
-                            errJson.message || `Failed to get upload URL (${urlRes.status})`
-                        )
-                    }
-
-                    const urlJson = (await urlRes.json()) as any
-                    const { uploadUrl, objectKey } = urlJson.data || urlJson
-
-                    addToast('Uploading to MinIO...', 'info')
-                    const fs = await import('node:fs/promises')
-                    const fileData = await fs.readFile(archivePath)
-                    const uploadRes = await fetch(uploadUrl, {
-                        method: 'PUT',
-                        body: fileData,
-                    })
-                    if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.statusText}`)
-
-                    addToast('Completing handoff...', 'info')
-                    const sessionRes = await fetch(`${proxyUrl}/cli/handoff/complete`, {
-                        method: 'POST',
-                        headers: {
-                            Authorization: `Bearer ${config.decemberToken}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            title: 'Handoff from ' + process.cwd().split('/').pop(),
-                            messages: agent ? agent.messages : [],
-                            objectKey,
-                        }),
-                    })
-                    if (!sessionRes.ok) {
-                        const errJson = (await sessionRes.json().catch(() => ({}))) as any
-                        throw new Error(errJson.message || (await sessionRes.text()))
-                    }
-                    const sessionJson = (await sessionRes.json()) as any
-                    const sessionId = sessionJson.data?.id || 'session'
-
-                    await fs.unlink(archivePath).catch(() => {})
-                    addToast('Handoff complete! Exiting in 3s.', 'success')
-                    const successMsg: Message = {
-                        id: getNextMsgId(),
-                        role: 'assistant',
-                        blocks: [
-                            {
-                                type: 'text',
-                                content: HANDOFF_SUCCESS_NOTICE(sessionId),
-                            },
-                        ],
-                    }
-                    setStaticMessages((prev) => [
-                        ...prev,
-                        ...useCliStore.getState().activeMessages,
-                        userMsg,
-                        successMsg,
-                    ])
-                    setActiveMessages([])
-                    setTimeout(() => {
-                        setShouldExit(true)
-                        process.exit(0)
-                    }, 3000)
-                } catch (e: any) {
-                    const fs = await import('node:fs/promises')
-                    await fs.unlink(archivePath).catch(() => {})
-                    addToast(`Handoff failed: ${e.message}`, 'error')
+                    uncommittedCount = statusOut.trim() ? statusOut.trim().split('\n').length : 0
+                } catch {
+                    // Intentionally swallowed: git status fallback
                 }
+
+                // Check 4: Pre-scan workspace and enforce limits
+                let scanResult
+                try {
+                    addToast('Calculating files and scanning workspace...', 'info')
+                    scanResult = scanWorkspaceForHandoff(process.cwd())
+                } catch (scanErr: any) {
+                    addToast(`Cannot initiate handoff: ${scanErr.message}`, 'error')
+                    return
+                }
+
+                const summary: HandoffSummary = {
+                    fileCount: scanResult.fileCount,
+                    uncompressedSize:
+                        (scanResult.uncompressedSizeBytes / (1024 * 1024)).toFixed(1) + ' MB',
+                    uncommittedChanges: uncommittedCount,
+                    destinationUrl: 'https://trydecember.com',
+                    walletBalance:
+                        currentBalance > 0 ? `Active (${currentBalance} credits)` : 'Active',
+                    detectedSecrets: scanResult.detectedSecrets,
+                }
+
+                const hasBypass = text.includes('--yes') || text.includes('-y')
+                if (!hasBypass) {
+                    setHandoffSummary(summary)
+                    setAuthMode('handoff_confirm')
+                    return
+                }
+
+                await executeHandoff(userMsg, config, proxyUrl)
                 return
             }
 
@@ -2222,6 +2527,81 @@ ${decStatus}
                 return
             }
 
+            const isReasoningCmd =
+                trimmedCmd === '/reasoning' ||
+                trimmedCmd.startsWith('/reasoning ') ||
+                trimmedCmd === '/effort' ||
+                trimmedCmd.startsWith('/effort ')
+            if (isReasoningCmd) {
+                const parts = text.trim().split(/\s+/)
+                const rawArg = parts[1]?.toLowerCase()
+
+                const currentModel = activeModel || agent?.modelOptions?.model || 'december-auto'
+                const { supportsModelThinking } = await import('@december/providers')
+                const isSupported = supportsModelThinking(currentModel)
+
+                if (!isSupported) {
+                    addToast(
+                        `Reasoning is not supported by ${currentModel}. Use /model to switch engines.`,
+                        'warning'
+                    )
+                    return
+                }
+
+                const validLevels = ['auto', 'off', 'low', 'medium', 'high'] as const
+                type ValidLevel = (typeof validLevels)[number]
+
+                if (rawArg) {
+                    if (validLevels.includes(rawArg as ValidLevel)) {
+                        const targetLevel = rawArg as ValidLevel
+                        const config = await loadConfig()
+                        config.thinkingLevel = targetLevel
+                        setSettingsThinkingLevel(targetLevel)
+                        if (agent) {
+                            agent.thinkingLevel = targetLevel
+                            agent.modelOptions = {
+                                ...agent.modelOptions,
+                                thinkingLevel: targetLevel,
+                            }
+                        }
+                        await saveConfig(config)
+                        const displayLevel =
+                            targetLevel.charAt(0).toUpperCase() + targetLevel.slice(1)
+                        addToast(`Reasoning set to ${displayLevel}.`, 'success')
+                    } else {
+                        addToast(
+                            `Invalid reasoning level "${rawArg}". Valid options: auto, off, low, medium, high`,
+                            'error'
+                        )
+                    }
+                    return
+                }
+
+                const config = await loadConfig()
+                setSettingsThinkingLevel(config.thinkingLevel ?? 'auto')
+                setAuthMode('reasoning_select')
+                return
+            }
+
+            if (text.trim() === '/help' || text.trim().startsWith('/help ')) {
+                const rawArg = text.trim().slice(5).trim().toLowerCase()
+                if (rawArg === 'commands' || rawArg === 'command') {
+                    setHelpInitialTab('commands')
+                } else if (rawArg === 'shortcuts' || rawArg === 'shortcut' || rawArg === 'keys') {
+                    setHelpInitialTab('shortcuts')
+                } else {
+                    setHelpInitialTab('general')
+                }
+                setAuthMode('help')
+                return
+            }
+
+            if (text.trim() === '/shortcuts') {
+                setHelpInitialTab('shortcuts')
+                setAuthMode('help')
+                return
+            }
+
             if (text.trim() === '/tasks') {
                 setAuthMode('tasks_mode')
                 return
@@ -2229,6 +2609,11 @@ ${decStatus}
 
             if (text.trim() === '/diff' || text.trim().startsWith('/diff ')) {
                 setAuthMode('diff_view')
+                return
+            }
+
+            if (text.trim() === '/artifacts' || text.trim().startsWith('/artifacts ')) {
+                setAuthMode('artifact_view')
                 return
             }
 
@@ -2406,6 +2791,7 @@ ${decStatus}
                         'ask',
                         'changelog',
                         'clear',
+                        'codesearch',
                         'context',
                         'copy',
                         'diff',
@@ -2418,6 +2804,7 @@ ${decStatus}
                         'login',
                         'model',
                         'new',
+                        'open',
                         'resume',
                         'rewind',
                         'settings',
@@ -2584,10 +2971,12 @@ ${decStatus}
             setSettingsAuthPriority,
             setSwitchItems,
             handleSideQuestion,
+            executeHandoff,
+            setHandoffSummary,
         ]
     )
 
-    const { handleSettingsMainSelect } = useSettingsHandlers()
+    const { handleSettingsMainSelect, handleReasoningSelect } = useSettingsHandlers()
 
     const {
         handleAuthMenuSelect,
@@ -2912,6 +3301,8 @@ ${decStatus}
         authMode,
         previousAuthMode,
         setAuthMode,
+        helpInitialTab,
+        setHelpInitialTab,
         logoutItems,
         setLogoutItems,
         switchItems,
@@ -2953,10 +3344,13 @@ ${decStatus}
         handleSubmit,
         sessionRepository,
         handleSettingsMainSelect,
+        handleReasoningSelect,
         handleAuthMenuSelect,
         handleModelSelect,
         handleSessionSelect,
         handlePlanApprovalSelect,
+        handleHandoffConfirmSelect,
+        handoffSummary,
         handleProviderSelect,
         handleByokSelect,
         handleSubscriptionSelect,
@@ -3006,5 +3400,18 @@ ${decStatus}
         setRewindItems,
         onSelectTurn: handleRewindSelect,
         handleRewindSelect,
+        codeSearchQuery,
+        codeSearchResults,
+        onOpenCodeSearchResult: handleCodeSearchOpen,
+        onInsertCodeSearchResult: handleCodeSearchInsert,
+        prefillPrompt,
+        onClearPrefillPrompt,
+        fileViewTarget,
+        filePath: fileViewTarget?.filePath,
+        initialLine: fileViewTarget?.initialLine,
+        onCloseFileView: handleFileViewClose,
+        onInsertContext: handleFileViewInsertContext,
+        pendingArtifactReview,
+        setPendingArtifactReview,
     }
 }

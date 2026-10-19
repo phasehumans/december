@@ -55,15 +55,15 @@ describe('InputBar Component (Unit)', () => {
 
         stdin.write('/')
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /ask')
+        expect(lastFrame()).toContain('❭ /artifacts')
 
         stdin.write('\u001B[B') // Down
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /btw')
+        expect(lastFrame()).toContain('❭ /ask')
 
         stdin.write('\u001B[A') // Up
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /ask')
+        expect(lastFrame()).toContain('❭ /artifacts')
     })
 
     it('suppresses prompt separators and prompt glyph when authUI is provided', () => {
@@ -331,9 +331,9 @@ describe('InputBar Component (Unit)', () => {
         stdin.write('/')
         await new Promise((resolve) => setTimeout(resolve, 30))
         const frame = lastFrame() || ''
-        expect(frame).toContain('❭ /ask')
+        expect(frame).toContain('❭ /artifacts')
         expect(frame).toContain('❭ /')
-        const cmdIndex = frame.indexOf('❭ /ask')
+        const cmdIndex = frame.indexOf('❭ /artifacts')
         const promptIndex = frame.lastIndexOf('❭ /')
         // Command menu must appear above the prompt text
         expect(cmdIndex).toBeLessThan(promptIndex)
@@ -433,5 +433,100 @@ describe('InputBar Component (Unit)', () => {
         )
         const frame = lastFrame() || ''
         expect(frame).toContain('· 3 MCP')
+    })
+
+    it('autofills file mention on return without submitting prompt, and submits on second return', async () => {
+        const handleSubmit = mock(() => {})
+        const { stdin, lastFrame } = render(
+            <RootLayout>
+                <InputBar onSubmit={handleSubmit} />
+            </RootLayout>
+        )
+
+        stdin.write('@AGEN')
+        for (let i = 0; i < 30; i++) {
+            if (lastFrame()?.includes('AGENTS.md')) break
+            await new Promise((resolve) => setTimeout(resolve, 20))
+        }
+
+        expect(lastFrame()).toContain('AGENTS.md')
+
+        // First Enter: selects and autocompletes '@AGENTS.md ' into input bar, does NOT submit
+        stdin.write('\r')
+        for (let i = 0; i < 30; i++) {
+            if (lastFrame()?.includes('@AGENTS.md')) break
+            await new Promise((resolve) => setTimeout(resolve, 20))
+        }
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(lastFrame()).toContain('@AGENTS.md')
+
+        // Second Enter: submits '@AGENTS.md'
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+
+        expect(handleSubmit).toHaveBeenCalledWith(expect.stringContaining('@AGENTS.md'))
+    })
+
+    it('navigates file mention menu with up and down arrows in InputBar', async () => {
+        const handleSubmit = mock(() => {})
+        const { stdin, lastFrame } = render(
+            <RootLayout>
+                <InputBar onSubmit={handleSubmit} />
+            </RootLayout>
+        )
+
+        stdin.write('@')
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        const initialFrame = lastFrame() || ''
+        expect(initialFrame).toContain('❭')
+
+        stdin.write('\u001B[B') // Down arrow
+        await new Promise((resolve) => setTimeout(resolve, 50))
+
+        stdin.write('\u001B[A') // Up arrow
+        await new Promise((resolve) => setTimeout(resolve, 50))
+    })
+
+    it('renders file suggestions when typing /open and opens selected file on enter', async () => {
+        const handleSubmit = mock(() => {})
+        const { stdin, lastFrame } = render(
+            <RootLayout>
+                <InputBar onSubmit={handleSubmit} />
+            </RootLayout>
+        )
+
+        stdin.write('/open AGEN')
+        for (let i = 0; i < 30; i++) {
+            if (lastFrame()?.includes('AGENTS.md')) break
+            await new Promise((resolve) => setTimeout(resolve, 20))
+        }
+
+        expect(lastFrame()).toContain('AGENTS.md')
+
+        // Enter: directly submits /open AGENTS.md with returnQuery options
+        stdin.write('\r')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+
+        expect(handleSubmit).toHaveBeenCalledWith(expect.stringContaining('/open AGENTS.md'), {
+            returnQuery: '/open AGEN',
+        })
+    })
+
+    it('clears active input prompt on Escape when dropdown menus are closed', async () => {
+        const { stdin, lastFrame } = render(
+            <RootLayout>
+                <InputBar onSubmit={mock(() => {})} />
+            </RootLayout>
+        )
+
+        stdin.write('some draft text')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(lastFrame()).toContain('some draft text')
+
+        stdin.write('\u001B') // Escape
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(lastFrame()).not.toContain('some draft text')
     })
 })

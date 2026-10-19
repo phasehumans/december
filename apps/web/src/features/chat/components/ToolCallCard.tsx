@@ -2,7 +2,11 @@ import React from 'react'
 
 import { CliSpinner } from './CliSpinner'
 
-import { getToolSummary, getToolActionLabel } from '@/features/chat/utils/toolFormatter'
+import {
+    getToolSummary,
+    getToolActionLabel,
+    toPascalCase,
+} from '@/features/chat/utils/toolFormatter'
 
 export interface ToolCallCardProps {
     toolCallId?: string
@@ -20,6 +24,8 @@ function renderFormattedToolSummary(toolSummary: string, isError = false) {
         if (args.length > 80) {
             args = args.substring(0, 80) + '...'
         }
+        const rawToolName = match[1]
+        const toolName = toPascalCase(rawToolName) || rawToolName
         return (
             <span className="flex items-center gap-1 font-mono text-[12.5px] truncate">
                 <span
@@ -27,7 +33,7 @@ function renderFormattedToolSummary(toolSummary: string, isError = false) {
                         isError ? 'text-[#f87171] font-normal' : 'text-[#fef08a] font-normal'
                     }
                 >
-                    ● {match[1]}
+                    ● {toolName}
                 </span>
                 <span className="text-[#cbd5e1]">({args})</span>
             </span>

@@ -1,4 +1,14 @@
+export function toPascalCase(str: string): string {
+    if (!str) return ''
+    return str
+        .replace(/^[_\s\-.:]+|[_\s\-.:]+$/g, '')
+        .split(/[_\-\s.:]+/)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('')
+}
+
 export function getToolSummary(name: string, inputStrOrObj: any): string {
+    const fallbackName = toPascalCase(name) || name
     let args: any = {}
     if (typeof inputStrOrObj === 'string') {
         try {
@@ -44,7 +54,43 @@ export function getToolSummary(name: string, inputStrOrObj: any): string {
         case 'ask_question':
             return `AskQuestion()`
         case 'manage_task':
-            return `ManageTask(${args.Action || ''})`.trim()
+            return `ManageTask(${args.Action || args.action || ''})`.trim()
+        case 'manage_subagent': {
+            const action = args.action || args.Action || ''
+            const target = args.subagentId ? `:${args.subagentId}` : ''
+            return `ManageSubagent(${action}${target})`.trim()
+        }
+        case 'invoke_subagent':
+        case 'spawn_subagent': {
+            const role = args.role || (args.subagents ? `batch:${args.subagents.length}` : '')
+            return `SubAgent(${role})`.trim()
+        }
+        case 'write_artifact': {
+            const rawPath = args.filePath || args.path || args.title || ''
+            return `Artifact(${rawPath})`.trim()
+        }
+        case 'browser':
+        case 'browser_action': {
+            const action = args.action || args.actionType || args.url || ''
+            return `Browser(${action})`.trim()
+        }
+        case 'manage_memory': {
+            const action = args.action || args.Action || ''
+            return `ManageMemory(${action})`.trim()
+        }
+        case 'code_intelligence': {
+            const query = args.symbol || args.query || args.path || ''
+            return `CodeIntel(${query})`.trim()
+        }
+        case 'run_skill': {
+            const skill = args.name || args.skill || ''
+            return `Skill(${skill})`.trim()
+        }
+        case 'enter_worktree':
+        case 'exit_worktree': {
+            const target = args.branch || args.name || ''
+            return `Worktree(${target})`.trim()
+        }
         case 'generate_image':
             return `GenerateImage(${args.ImageName || ''})`.trim()
         case 'send_message':
@@ -52,7 +98,7 @@ export function getToolSummary(name: string, inputStrOrObj: any): string {
         case 'schedule':
             return `Schedule(${args.Prompt || ''})`.trim()
         default:
-            return `${name}()`
+            return `${fallbackName}()`
     }
 }
 
@@ -83,6 +129,19 @@ export function getToolActionLabel(name: string): string {
             return 'Asking question...'
         case 'manage_task':
             return 'Managing tasks...'
+        case 'manage_subagent':
+            return 'Managing subagents...'
+        case 'write_artifact':
+            return 'Writing artifact...'
+        case 'browser':
+        case 'browser_action':
+            return 'Browsing...'
+        case 'manage_memory':
+            return 'Managing memory...'
+        case 'code_intelligence':
+            return 'Analyzing code...'
+        case 'run_skill':
+            return 'Running skill...'
         case 'generate_image':
             return 'Generating image...'
         case 'send_message':

@@ -262,10 +262,20 @@ export const localOperations: PlatformAdapter = {
     env: {
         cwd: () => getScopedCwd(),
         get: (key) => process.env[key],
+        setCwd: (dir: string) => {
+            if (dir === process.cwd()) {
+                setActiveScopeDir(undefined)
+            } else {
+                setActiveScopeDir(dir)
+            }
+        },
     },
     ui: {
         askQuestion: async () => {
             throw new Error('Not implemented here')
+        },
+        reviewArtifact: async () => {
+            return { action: 'proceed' }
         },
         // will be monkey-patched by use-agent-session.tsx
         requestPermission: async () => {

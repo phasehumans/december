@@ -100,6 +100,14 @@ export const DEFAULT_TOOL_PROMPTS: Record<string, { snippet: string; guidelines:
             "Use 'manage_subagent' to monitor running subagents, send steering instructions, view reports, or terminate executions.",
         ],
     },
+    write_artifact: {
+        snippet:
+            'Create persistent markdown plans, specs, and walkthroughs with interactive user approval',
+        guidelines: [
+            "Use 'write_artifact' to record structured plans, architectural blueprints, migration specs, and walkthroughs into ~/.december/artifacts/<session-id>/.",
+            "For complex features or refactors, write an implementation plan artifact with 'requestFeedback: true' before modifying files, allowing the user to review and approve the strategy.",
+        ],
+    },
 }
 
 export function buildDynamicToolGuidelines(

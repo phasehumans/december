@@ -901,4 +901,30 @@ describe('BotMessage Component (Unit)', () => {
         const webLines = frame.split('\n').filter((l) => l.includes('WebSearch'))
         expect(webLines.length).toBe(1)
     })
+
+    it('ensures tool calls never start with lowercase and formats unmapped/MCP tools in PascalCase', () => {
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'command',
+                        toolName: 'manage_subagent',
+                        command: 'manage_subagent(action="list")',
+                        status: 'success',
+                    },
+                    {
+                        type: 'command',
+                        toolName: 'custom_mcp_tool',
+                        command: 'custom_mcp_tool(id="test")',
+                        status: 'success',
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('● ManageSubagent')
+        expect(frame).toContain('● CustomMcpTool')
+        expect(frame).not.toContain('● manage_subagent')
+        expect(frame).not.toContain('● custom_mcp_tool')
+    })
 })

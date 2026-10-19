@@ -32,15 +32,15 @@
             "cache": false
         },
         "build": {
-            "dependsOn": ["^build", "db:generate"],
+            "dependsOn": ["^build", "@december/database#db:generate"],
             "outputs": ["dist/**", "build/**", "target/**"]
         },
         "typecheck": {
-            "dependsOn": ["db:generate"],
+            "dependsOn": ["@december/database#db:generate"],
             "cache": true
         },
         "test": {
-            "dependsOn": ["db:generate"],
+            "dependsOn": ["@december/database#db:generate"],
             "cache": false
         },
         "test:unit": {
@@ -50,12 +50,12 @@
             "cache": false
         },
         "dev": {
-            "dependsOn": ["db:generate"],
+            "dependsOn": ["@december/database#db:generate"],
             "cache": false,
             "persistent": true
         },
         "start": {
-            "dependsOn": ["db:generate"],
+            "dependsOn": ["@december/database#db:generate"],
             "cache": false,
             "persistent": true
         },

@@ -264,7 +264,7 @@ export function SingleSubagentRow({
             <Box flexDirection="row" alignItems="center" gap={1} marginY={0}>
                 <Spinner spinnerColor={THEME.colors.warning} />
                 <Text>
-                    <Text color={THEME.colors.brand} bold>
+                    <Text color={THEME.colors.warning} bold>
                         SubAgent
                     </Text>
                     <Text color={THEME.colors.dim}> [</Text>
@@ -293,7 +293,7 @@ export function SingleSubagentRow({
             <Box flexDirection="row" alignItems="center" gap={1} marginY={0}>
                 <Text color={THEME.colors.error}>{THEME.glyphs.status}</Text>
                 <Text>
-                    <Text color={THEME.colors.brand} bold>
+                    <Text color={THEME.colors.warning} bold>
                         SubAgent
                     </Text>
                     <Text color={THEME.colors.dim}> [</Text>
@@ -320,9 +320,9 @@ export function SingleSubagentRow({
     return (
         <Box flexDirection="column" marginY={0}>
             <Box flexDirection="row" alignItems="center" gap={1}>
-                <Text color={THEME.colors.success}>{THEME.glyphs.status}</Text>
+                <Text color={THEME.colors.warning}>{THEME.glyphs.status}</Text>
                 <Text>
-                    <Text color={THEME.colors.brand} bold>
+                    <Text color={THEME.colors.warning} bold>
                         SubAgent
                     </Text>
                     <Text color={THEME.colors.dim}> [</Text>
@@ -385,7 +385,7 @@ export function SubagentTickerView({
         // If batch completed, show clean consolidated summary
         if (!isRunning) {
             const isError = status === 'error' || Boolean(rollup?.error)
-            const bulletColor = isError ? THEME.colors.error : THEME.colors.success
+            const bulletColor = isError ? THEME.colors.error : THEME.colors.warning
             const statusLabel = isError
                 ? `failed: ${rollup?.error || 'Batch execution failure'}`
                 : `done in ${durationStr} (${subagents.length} tasks completed)`
@@ -394,7 +394,7 @@ export function SubagentTickerView({
                 <Box flexDirection="row" alignItems="center" gap={1} marginY={0}>
                     <Text color={bulletColor}>{THEME.glyphs.status}</Text>
                     <Text>
-                        <Text color={THEME.colors.brand} bold>
+                        <Text color={THEME.colors.warning} bold>
                             SubAgent
                         </Text>
                         <Text color={THEME.colors.dim}> batch (</Text>

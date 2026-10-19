@@ -5,7 +5,10 @@ import { PrismaPg } from '@prisma/adapter-pg'
 
 import { PrismaClient } from './generated/client/index.js'
 
-let connectionString = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL
+const isTestEnv = process.env.NODE_ENV === 'test'
+let connectionString = isTestEnv
+    ? process.env.TEST_DATABASE_URL || process.env.DATABASE_URL
+    : process.env.DATABASE_URL || process.env.TEST_DATABASE_URL
 
 if (!connectionString) {
     throw Error('Database URL is not set (neither DATABASE_URL nor TEST_DATABASE_URL)')

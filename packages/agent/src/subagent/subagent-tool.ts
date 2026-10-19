@@ -32,6 +32,12 @@ const subagentSpecSchema = Type.Object({
                 'Workspace isolation mode: "inherit" (default) uses parent workspace, "worktree" creates an isolated git worktree branch for safe modifications.',
         })
     ),
+    worktreeLifecycle: Type.Optional(
+        Type.Union([Type.Literal('keep'), Type.Literal('cleanup'), Type.Literal('merge')], {
+            description:
+                'Lifecycle action for the worktree upon task completion: "keep" preserves branch, "cleanup" discards without trace, "merge" merges back into base branch.',
+        })
+    ),
     maxTurns: Type.Optional(
         Type.Number({
             description:
@@ -74,6 +80,12 @@ const invokeSubagentSchema = Type.Object({
         Type.Union([Type.Literal('inherit'), Type.Literal('worktree'), Type.Literal('branch')], {
             description:
                 'Workspace isolation mode: "inherit" (default) uses parent workspace, "worktree" creates an isolated git worktree branch for safe modifications.',
+        })
+    ),
+    worktreeLifecycle: Type.Optional(
+        Type.Union([Type.Literal('keep'), Type.Literal('cleanup'), Type.Literal('merge')], {
+            description:
+                'Lifecycle action for the worktree upon task completion: "keep" preserves branch, "cleanup" discards without trace, "merge" merges back into base branch.',
         })
     ),
     maxTurns: Type.Optional(

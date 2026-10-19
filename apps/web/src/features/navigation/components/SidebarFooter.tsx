@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Inbox, Copy, Check } from 'lucide-react'
 import React, { useState, useRef } from 'react'
 
-import sidebarPng from '../../../../assets/sidebar.png'
+import sidebarWebp from '../../../../assets/sidebar.webp'
 
 import { NotificationsPopover } from './NotificationsPopover'
 
@@ -26,7 +26,7 @@ export const SidebarFooter: React.FC<
 
     React.useEffect(() => {
         const img = new Image()
-        img.src = sidebarPng
+        img.src = sidebarWebp
     }, [])
 
     React.useEffect(() => {
@@ -154,7 +154,7 @@ export const SidebarFooter: React.FC<
                                 className="w-full h-full relative overflow-hidden rounded-lg border border-[#2A2928] block cursor-pointer"
                             >
                                 <img
-                                    src={sidebarPng}
+                                    src={sidebarWebp}
                                     alt="December CLI preview"
                                     decoding="async"
                                     className="w-full h-full object-cover object-center absolute inset-0"

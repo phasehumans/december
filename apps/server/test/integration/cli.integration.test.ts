@@ -1,9 +1,11 @@
+import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { prisma } from '@december/database'
 import { describe, it, expect, beforeAll, afterAll, spyOn } from 'bun:test'
 import jwt from 'jsonwebtoken'
 import request from 'supertest'
 
 import app from '../../src/app'
+import { s3 } from '../../src/config/s3'
 import { env } from '../../src/env'
 import { cliDispatcher } from '../../src/modules/cli/cli.dispatcher'
 
@@ -77,6 +79,29 @@ describe('CLI Handoff API Endpoints', () => {
             where: { id: testUserId },
             data: { creditBalance: 100 },
         })
+    })
+
+    it('GET /cli/handoff/upload-url returns 409 when user has an active cloud session running', async () => {
+        const activeSession = await prisma.session.create({
+            data: {
+                userId: testUserId,
+                title: 'Active Test Session',
+                vmStatus: 'RUNNING',
+            },
+        })
+
+        try {
+            const res = await request(app)
+                .get('/api/v1/cli/handoff/upload-url')
+                .set('Authorization', `Bearer ${authToken}`)
+
+            expect(res.status).toBe(409)
+            expect(res.body.message).toContain(
+                'Conflict: You already have an active cloud session running'
+            )
+        } finally {
+            await prisma.session.delete({ where: { id: activeSession.id } })
+        }
     })
 
     it('POST /cli/chat/completions rejects request with invalid body schema', async () => {
@@ -183,8 +208,72 @@ describe('CLI Handoff API Endpoints', () => {
         })
     })
 
-    it('POST /cli/handoff/complete stores objectKey as minioPrefix on session creation', async () => {
+    it('POST /cli/handoff/complete returns 409 when user has an active cloud session running', async () => {
+        const activeSession = await prisma.session.create({
+            data: {
+                userId: testUserId,
+                title: 'Active Session 2',
+                vmStatus: 'RUNNING',
+            },
+        })
+
+        try {
+            const res = await request(app)
+                .post('/api/v1/cli/handoff/complete')
+                .set('Authorization', `Bearer ${authToken}`)
+                .send({
+                    title: 'Conflict Session',
+                    objectKey: `handoffs/${testUserId}/${Date.now()}-conflict.tar.gz`,
+                })
+
+            expect(res.status).toBe(409)
+            expect(res.body.message).toContain(
+                'Conflict: You already have an active cloud session running'
+            )
+        } finally {
+            await prisma.session.delete({ where: { id: activeSession.id } })
+        }
+    })
+
+    it('POST /cli/handoff/complete rejects invalid payload when objectKey is missing (HTTP 400)', async () => {
+        const res = await request(app)
+            .post('/api/v1/cli/handoff/complete')
+            .set('Authorization', `Bearer ${authToken}`)
+            .send({
+                title: 'Missing Key Session',
+            })
+
+        expect(res.status).toBe(400)
+    })
+
+    it('POST /cli/handoff/complete rejects with HTTP 400 when objectKey does not exist in storage', async () => {
+        const nonExistentKey = `handoffs/${testUserId}/non-existent-${Date.now()}.tar.gz`
+
+        const res = await request(app)
+            .post('/api/v1/cli/handoff/complete')
+            .set('Authorization', `Bearer ${authToken}`)
+            .send({
+                title: 'Handoff Non Existent',
+                messages: [{ role: 'user', content: 'Testing storage existence' }],
+                objectKey: nonExistentKey,
+            })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toContain('Uploaded archive not found in storage')
+    })
+
+    it('POST /cli/handoff/complete stores objectKey as minioPrefix on session creation when archive exists in storage', async () => {
         const testObjectKey = `handoffs/${testUserId}/${Date.now()}-handoff.tar.gz`
+
+        // Put dummy object into S3/MinIO
+        await s3.send(
+            new PutObjectCommand({
+                Bucket: env.S3_BUCKET,
+                Key: testObjectKey,
+                Body: Buffer.from('mock-tarball-content'),
+            })
+        )
+
         const res = await request(app)
             .post('/api/v1/cli/handoff/complete')
             .set('Authorization', `Bearer ${authToken}`)

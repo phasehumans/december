@@ -2,6 +2,7 @@ import type { Agent } from '../agent'
 import type { AgentEvent } from '@december/shared'
 
 export type SubagentWorkspaceMode = 'inherit' | 'worktree' | 'branch'
+export type SubagentWorktreeLifecycle = 'cleanup' | 'keep' | 'merge'
 export type SubagentStatus = 'idle' | 'running' | 'completed' | 'failed' | 'killed'
 
 export interface SubagentSpecification {
@@ -10,6 +11,7 @@ export interface SubagentSpecification {
     model?: string
     tools?: string[]
     workspace?: SubagentWorkspaceMode
+    worktreeLifecycle?: SubagentWorktreeLifecycle
     maxTurns?: number
     timeoutMs?: number
 }
@@ -20,6 +22,7 @@ export interface SpawnSubagentOptions {
     model?: string
     tools?: string[]
     workspace?: SubagentWorkspaceMode
+    worktreeLifecycle?: SubagentWorktreeLifecycle
     background?: boolean
     maxTurns?: number
     timeoutMs?: number
@@ -45,6 +48,7 @@ export interface SubagentRollupSummary {
     summary: string
     workspaceDir?: string
     worktreeBranch?: string
+    worktreeLifecycle?: SubagentWorktreeLifecycle
     modifiedFiles?: string[]
     diff?: string
     error?: string

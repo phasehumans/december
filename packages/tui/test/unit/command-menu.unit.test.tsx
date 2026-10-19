@@ -3,7 +3,6 @@ import { render } from 'ink-testing-library'
 import React from 'react'
 
 import { CommandMenu } from '../../src/components/command-menu'
-import { COMMANDS } from '../../src/components/command-menu/commands'
 import {
     getFilteredCommands,
     getAllAvailableCommands,
@@ -50,10 +49,23 @@ function TestTrigger({ onTrigger }: { onTrigger: () => void }) {
 }
 
 describe('CommandMenu Component (Unit)', () => {
-    it('registers /plan slash command', () => {
-        const planCmd = COMMANDS.find((c) => c.name === 'plan')
-        expect(planCmd).toBeDefined()
-        expect(planCmd?.value).toBe('/plan')
+    it('registers /skill:plan skill command and places skills after core commands', () => {
+        const all = getAllAvailableCommands()
+        const planSkill = all.find((c) => c.name === 'skill:plan')
+        expect(planSkill).toBeDefined()
+        expect(planSkill?.value).toBe('/skill:plan')
+
+        // bare /plan is not in command menu
+        const barePlan = all.find((c) => c.name === 'plan')
+        expect(barePlan).toBeUndefined()
+
+        // Skills appear after core commands
+        const firstSkillIndex = all.findIndex((c) => c.name.startsWith('skill:'))
+        expect(firstSkillIndex).toBeGreaterThan(0)
+        const coreAfterSkill = all
+            .slice(firstSkillIndex)
+            .filter((c) => !c.name.startsWith('skill:'))
+        expect(coreAfterSkill).toHaveLength(0)
     })
 
     it('autocompletes highlighted command on Tab keypress', () => {
@@ -65,15 +77,15 @@ describe('CommandMenu Component (Unit)', () => {
         )
 
         stdin.write('\t')
-        expect(onAutocomplete).toHaveBeenCalledWith('/plan ')
+        expect(onAutocomplete).toHaveBeenCalledWith('/skill:plan ')
     })
 
     it('filters commands including dynamically loaded custom commands', () => {
         const all = getAllAvailableCommands()
-        expect(all.some((c: any) => c.name === 'plan')).toBe(true)
+        expect(all.some((c: any) => c.name === 'skill:plan')).toBe(true)
 
         const filtered = getFilteredCommands('pl')
-        expect(filtered.some((c: any) => c.name === 'plan')).toBe(true)
+        expect(filtered.some((c: any) => c.name === 'skill:plan')).toBe(true)
     })
 
     it('navigates commands with up and down arrow keys', async () => {
@@ -110,15 +122,15 @@ describe('CommandMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('❭ /ask')
+        expect(lastFrame()).toContain('❭ /artifacts')
 
         stdin.write('\u001B[B') // Down
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /changelog')
+        expect(lastFrame()).toContain('❭ /ask')
 
         stdin.write('\u001B[A') // Up
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /ask')
+        expect(lastFrame()).toContain('❭ /artifacts')
     })
 
     it('renders clean compact layout without status indicator for single match', () => {

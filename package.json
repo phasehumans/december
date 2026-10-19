@@ -51,7 +51,7 @@
         "release": "bun scripts/release.ts",
         "models:check": "bun scripts/sync-models.ts",
         "models:sync": "bun scripts/sync-models.ts --sync",
-        "dev:cli": "bun run --watch apps/cli/src/index.ts",
+        "dev:cli": "NODE_ENV=development bun run --watch apps/cli/src/index.ts",
         "verify": "bash scripts/verify.sh",
         "reset": "bash scripts/reset.sh",
         "logs": "bash scripts/logs.sh",

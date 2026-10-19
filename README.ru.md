@@ -11,7 +11,7 @@ December - это (so much) better агент для написания кода
 **Также доступно в веб-версии на <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/585e6ff5-0403-45f5-89c3-c2d3d168962c" alt="December" width="80%"/>
+  <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
 </p>
 
 - **Написание кода и запуск команд:** поручайте создание новых функций, исправление ошибок или запуск тестов - агент выполнит работу за вас.

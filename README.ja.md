@@ -11,7 +11,7 @@ December は (so much) better なコーディングエージェントです。�
 **ウェブ版も利用可能: <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/585e6ff5-0403-45f5-89c3-c2d3d168962c" alt="December" width="80%"/>
+  <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
 </p>
 
 - **コード作成とコマンド実行:** 新機能の実装、バグ修正、テストの実行を指示すれば、自動で作業を行います。

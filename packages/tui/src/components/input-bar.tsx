@@ -7,13 +7,16 @@ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useTerminalColumns } from '../hooks/use-terminal-columns'
 import { useToast } from '../providers/toast'
 import { THEME } from '../theme'
+import { fetchGitStatusFiles } from '../utils/diff'
 import { expandPastes } from '../utils/paste-manager'
 import { defaultPromptHistory } from '../utils/prompt-history'
 
 import { CommandMenu } from './command-menu'
 import { useCommandMenu } from './command-menu/use-command-menu'
+import { FileMenu } from './file-menu'
+import { useFileMenu } from './file-menu/use-file-menu'
 import { BtwOverlay } from './menus/btw-overlay'
-import { ShortcutsMenu } from './menus/shortcuts-menu'
+import { HelpMenu } from './menus/help-menu'
 import { TextArea } from './text-area'
 
 import type { BtwState } from '../types'
@@ -21,7 +24,7 @@ import type { Command } from './command-menu/types'
 import type { TaskItem } from './menus/tasks-mode-menu'
 
 type Props = {
-    onSubmit: (text: string) => void
+    onSubmit: (text: string, options?: { returnQuery?: string }) => void
     disabled?: boolean
     placeholder?: string
     activeModel?: string
@@ -57,9 +60,12 @@ type Props = {
     onExit?: () => void
     btwState?: BtwState | null
     onDismissBtw?: () => void
+    cliVersion?: string
+    userEmail?: string
+    selectedProvider?: string
+    prefillPrompt?: string | null
+    onClearPrefillPrompt?: () => void
 }
-
-const MAX_FILE_SUGGESTIONS = 5
 
 function formatTokenCount(n: number): string {
     if (n >= 1_000_000) {
@@ -107,6 +113,11 @@ export const InputBar = React.memo(function InputBar({
     onExit,
     btwState,
     onDismissBtw,
+    cliVersion,
+    userEmail,
+    selectedProvider,
+    prefillPrompt,
+    onClearPrefillPrompt,
 }: Props) {
     const [value, setValue] = useState('')
     const [isVoiceActive, setIsVoiceActive] = useState(false)
@@ -118,8 +129,18 @@ export const InputBar = React.memo(function InputBar({
     const toast = useToast()
     const columns = useTerminalColumns()
 
-    const [selectedFileIndex, setSelectedFileIndex] = useState(0)
+    const [recentFiles, setRecentFiles] = useState<Set<string>>(() => new Set())
     const [allWorkspaceFiles, setAllWorkspaceFiles] = useState<string[]>([])
+
+    useEffect(() => {
+        if (prefillPrompt) {
+            setValue(prefillPrompt)
+            handleContentChangeRef.current(prefillPrompt)
+            if (onClearPrefillPrompt) {
+                onClearPrefillPrompt()
+            }
+        }
+    }, [prefillPrompt, onClearPrefillPrompt])
 
     const activeToast =
         toasts && toasts.length > 0
@@ -211,28 +232,46 @@ export const InputBar = React.memo(function InputBar({
         handleContentChangeRef.current(completedText)
     }, [])
 
+    const handleAutocompleteFile = useCallback((completedText: string) => {
+        setValue(completedText)
+        handleContentChangeRef.current(completedText)
+    }, [])
+
     const {
         showCommandMenu,
         commandQuery,
         selectedIndex,
         windowStart,
-        handleContentChange,
+        handleContentChange: handleCommandContentChange,
         resolveCommand,
         setSelectedIndex,
     } = useCommandMenu({ onAutocomplete: handleAutocompleteCommand })
 
-    handleContentChangeRef.current = handleContentChange
-
     const [showShortcutsMenu, setShowShortcutsMenu] = useState(false)
 
-    // Check for @filename mention query
-    const fileMatch = value.match(/@(\S*)$/)
-    const showFileMenu = Boolean(fileMatch) && !showCommandMenu && !showShortcutsMenu
-    const fileQuery = fileMatch ? fileMatch[1]?.toLowerCase() || '' : ''
+    const fileMenu = useFileMenu({
+        workspaceFiles: allWorkspaceFiles,
+        recentFiles,
+        onAutocomplete: handleAutocompleteFile,
+        disabled: disabled || showCommandMenu || showShortcutsMenu,
+    })
 
-    // Load workspace files lazily and asynchronously ONLY when user types @
+    const handleContentChange = useCallback(
+        (text: string) => {
+            handleCommandContentChange(text)
+            fileMenu.handleContentChange(text)
+        },
+        [handleCommandContentChange, fileMenu.handleContentChange]
+    )
+
+    handleContentChangeRef.current = handleContentChange
+
+    // Check for @filename mention query or /open file query
+    const hasFileTrigger = Boolean(value.match(/@(\S*)$/) || value.match(/^\/open\s+(\S*)$/))
+
+    // Load workspace files and git status lazily and asynchronously ONLY when user types @ or /open
     useEffect(() => {
-        if (!fileMatch || allWorkspaceFiles.length > 0) return
+        if (!hasFileTrigger || allWorkspaceFiles.length > 0) return
 
         let isMounted = true
         try {
@@ -254,6 +293,16 @@ export const InputBar = React.memo(function InputBar({
                         setAllWorkspaceFiles([])
                     }
                 })
+
+            fetchGitStatusFiles()
+                .then((diffEntries) => {
+                    if (isMounted && diffEntries.length > 0) {
+                        setRecentFiles(new Set(diffEntries.map((e) => e.path)))
+                    }
+                })
+                .catch(() => {
+                    // Intentionally swallowed: fallback to empty recent files on error
+                })
         } catch {
             // Intentionally swallowed: ignore file listing errors
             setAllWorkspaceFiles([])
@@ -262,14 +311,7 @@ export const InputBar = React.memo(function InputBar({
         return () => {
             isMounted = false
         }
-    }, [fileMatch, allWorkspaceFiles.length])
-
-    const matchingFiles = useMemo(() => {
-        if (!showFileMenu) return []
-        return allWorkspaceFiles
-            .filter((f) => f.toLowerCase().includes(fileQuery))
-            .slice(0, MAX_FILE_SUGGESTIONS)
-    }, [showFileMenu, allWorkspaceFiles, fileQuery])
+    }, [hasFileTrigger, allWorkspaceFiles.length])
 
     const maxTokens = useMemo(
         () => getModelContextWindow(activeModel || 'gemini-3.7-flash') || 1_000_000,
@@ -291,9 +333,6 @@ export const InputBar = React.memo(function InputBar({
     const mcpCount = mcpServersCount ?? connectedMcpServers.length
 
     const stateRef = useRef({
-        showFileMenu,
-        matchingFiles,
-        selectedFileIndex,
         value,
         handleContentChange,
         grillMode,
@@ -304,9 +343,6 @@ export const InputBar = React.memo(function InputBar({
         handleStopVoice,
     })
     stateRef.current = {
-        showFileMenu,
-        matchingFiles,
-        selectedFileIndex,
         value,
         handleContentChange,
         grillMode,
@@ -332,33 +368,13 @@ export const InputBar = React.memo(function InputBar({
                     state.handleStopVoice(false)
                     return
                 }
-                if (state.showFileMenu && state.matchingFiles.length > 0) {
-                    const nextVal = state.value.replace(/@\S*$/, '')
-                    setValue(nextVal)
-                    state.handleContentChange(nextVal)
+                if (fileMenu.showFileMenu) {
+                    fileMenu.close()
                     return
                 }
-            }
-
-            if (state.showFileMenu && state.matchingFiles.length > 0) {
-                if (key.upArrow) {
-                    setSelectedFileIndex((prev) => Math.max(0, prev - 1))
-                    return
-                }
-                if (key.downArrow) {
-                    setSelectedFileIndex((prev) =>
-                        Math.min(state.matchingFiles.length - 1, prev + 1)
-                    )
-                    return
-                }
-                if (key.tab || key.return) {
-                    const selectedFile = state.matchingFiles[state.selectedFileIndex]
-                    if (selectedFile) {
-                        const nextVal = state.value.replace(/@\S*$/, `@${selectedFile} `)
-                        setValue(nextVal)
-                        state.handleContentChange(nextVal)
-                        setSelectedFileIndex(0)
-                    }
+                if (state.value.length > 0) {
+                    setValue('')
+                    state.handleContentChange('')
                     return
                 }
             }
@@ -399,7 +415,6 @@ export const InputBar = React.memo(function InputBar({
             }
             setValue(newValue)
             handleContentChange(newValue)
-            setSelectedFileIndex(0)
         },
         [disabled, handleContentChange, showShortcutsMenu]
     )
@@ -469,9 +484,15 @@ export const InputBar = React.memo(function InputBar({
                 '/fork',
                 '/copy',
                 '/handoff',
+                '/help',
+                '/shortcuts',
                 '/docs',
                 '/changelog',
                 '/diff',
+                '/open',
+                '/codesearch',
+                '/reasoning',
+                '/effort',
             ]
 
             if (command.value === '/voice') {
@@ -534,6 +555,22 @@ export const InputBar = React.memo(function InputBar({
             if (showShortcutsMenu) {
                 return
             }
+            if (fileMenu.showFileMenu && fileMenu.filteredFiles.length > 0) {
+                const isOpenCommand = /^\/open\s+/.test(value)
+                const completedText = fileMenu.autocompleteSelected(value)
+                if (completedText) {
+                    if (isOpenCommand) {
+                        const previousQuery = value
+                        setValue('')
+                        handleContentChange('')
+                        onSubmit(completedText.trim(), { returnQuery: previousQuery })
+                        return
+                    }
+                    setValue(completedText)
+                    handleContentChange(completedText)
+                }
+                return
+            }
             const rawTrimmed = text.trim()
             if (rawTrimmed.length === 0) return
 
@@ -570,6 +607,8 @@ export const InputBar = React.memo(function InputBar({
             disabled,
             showCommandMenu,
             showShortcutsMenu,
+            fileMenu,
+            value,
             resolveCommand,
             selectedIndex,
             handleCommand,
@@ -619,29 +658,14 @@ export const InputBar = React.memo(function InputBar({
                 </Box>
             )}
 
-            {/* file mention popup with stable minHeight to prevent prompt jitter while typing */}
-            {showFileMenu && matchingFiles.length > 0 && (
-                <Box
-                    flexDirection="column"
-                    marginBottom={0}
-                    minHeight={Math.min(
-                        MAX_FILE_SUGGESTIONS,
-                        Math.max(1, allWorkspaceFiles.length)
-                    )}
-                >
-                    {matchingFiles.map((file, idx) => {
-                        const isSelected = idx === selectedFileIndex
-                        return (
-                            <Box key={file} flexDirection="row">
-                                <Text color={isSelected ? THEME.colors.brand : THEME.colors.muted}>
-                                    {isSelected ? `${THEME.glyphs.selector} ` : '  '}
-                                </Text>
-                                <Text color={isSelected ? THEME.colors.brand : THEME.colors.text}>
-                                    {file}
-                                </Text>
-                            </Box>
-                        )
-                    })}
+            {/* file mention dropdown */}
+            {fileMenu.showFileMenu && (
+                <Box marginBottom={0}>
+                    <FileMenu
+                        files={fileMenu.filteredFiles}
+                        selectedIndex={fileMenu.selectedIndex}
+                        windowStart={fileMenu.windowStart}
+                    />
                 </Box>
             )}
 
@@ -668,11 +692,24 @@ export const InputBar = React.memo(function InputBar({
             {/* shortcuts dropdown */}
             {showShortcutsMenu && (
                 <Box>
-                    <ShortcutsMenu
+                    <HelpMenu
+                        initialTab="shortcuts"
                         onClose={() => {
                             setShowShortcutsMenu(false)
                             setValue('')
                         }}
+                        onSelectCommand={(cmd) => {
+                            setShowShortcutsMenu(false)
+                            setValue('')
+                            handleSubmit(cmd)
+                        }}
+                        cliVersion={cliVersion}
+                        userEmail={userEmail}
+                        activeModel={activeModel}
+                        modelLabel={modelLabel}
+                        authMethod={authMethod}
+                        selectedProvider={selectedProvider}
+                        agent={agent}
                     />
                 </Box>
             )}
@@ -750,7 +787,7 @@ export const InputBar = React.memo(function InputBar({
                                 focus={!disabled}
                                 disableHistoryNav={
                                     showCommandMenu ||
-                                    showFileMenu ||
+                                    fileMenu.showFileMenu ||
                                     showShortcutsMenu ||
                                     Boolean(btwState)
                                 }

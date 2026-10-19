@@ -11,7 +11,7 @@ December हा एक (so much) better कोडिंग एजंट आह�
 **वेबवर देखील उपलब्ध: <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/585e6ff5-0403-45f5-89c3-c2d3d168962c" alt="December" width="80%"/>
+  <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
 </p>
 
 - **कोड लिहितो आणि कमांड्स चालवतो:** नवीन फीचर्स तयार करणे, बग्स फिक्स करणे किंवा टेस्ट्स चालवण्यास सांगा. तो हे काम तुमच्यासाठी करतो.

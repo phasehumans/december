@@ -1,4 +1,4 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 import { s3 } from '../../config/s3'
@@ -246,6 +246,29 @@ const completeHandoff = async (data: CompleteHandoff) => {
             'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue using December Cloud.',
             402
         )
+    }
+
+    const activeSession = await cliRepository.findActiveSessionByUser(userId)
+    if (activeSession) {
+        throw new AppError(
+            'Conflict: You already have an active cloud session running. Please stop it before handing off.',
+            409
+        )
+    }
+
+    if (!objectKey) {
+        throw new AppError('objectKey is required to complete handoff.', 400)
+    }
+
+    try {
+        await s3.send(
+            new HeadObjectCommand({
+                Bucket: env.S3_BUCKET,
+                Key: objectKey,
+            })
+        )
+    } catch {
+        throw new AppError('Uploaded archive not found in storage. Please re-upload.', 400)
     }
 
     const session = await cliRepository.createSession({

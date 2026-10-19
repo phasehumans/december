@@ -84,6 +84,13 @@ export function setupAgentInterceptors(agent: Agent, storeState: any) {
         })
     }
 
+    agent.operations.ui.reviewArtifact = (artifact) => {
+        return new Promise((resolve) => {
+            storeState.setAuthMode('artifact_view')
+            storeState.setPendingArtifactReview({ artifact, resolve })
+        })
+    }
+
     agent.operations.ui.requestPermission = async (toolCall: any) => {
         const config = await loadConfig()
 

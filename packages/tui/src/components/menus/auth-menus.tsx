@@ -1,13 +1,19 @@
 import React from 'react'
 
+import { ArtifactViewMenu } from './artifact-view-menu'
 import { ByokKeyMenu } from './byok-key-menu'
 import { ByokProviderMenu } from './byok-provider-menu'
+import { CodeSearchMenu } from './code-search-menu'
 import { ContextSelectMenu } from './context-select-menu'
 import { DiffViewMenu } from './diff-view-menu'
+import { FileViewMenu } from './file-view-menu'
 import { GrillQuestionMenu } from './grill-question-menu'
+import { HandoffConfirmMenu } from './handoff-confirm-menu'
+import { HelpMenu } from './help-menu'
 import { MenuMenu } from './menu-menu'
 import { ModelSelectMenu } from './model-select-menu'
 import { PlanApproveMenu } from './plan-approve-menu'
+import { ReasoningMenu } from './reasoning-menu'
 import { RewindSelectMenu } from './rewind-select-menu'
 import { SessionSelectMenu } from './session-select-menu'
 import { SettingsMainMenu } from './settings-main-menu'
@@ -49,6 +55,18 @@ export function AuthMenus(props: any) {
             return <DiffViewMenu {...props} />
         case 'rewind_select':
             return <RewindSelectMenu {...props} />
+        case 'help':
+            return <HelpMenu {...props} />
+        case 'reasoning_select':
+            return <ReasoningMenu {...props} />
+        case 'handoff_confirm':
+            return <HandoffConfirmMenu {...props} />
+        case 'code_search':
+            return <CodeSearchMenu {...props} />
+        case 'file_view':
+            return <FileViewMenu {...props} onClose={props.onCloseFileView || props.onClose} />
+        case 'artifact_view':
+            return <ArtifactViewMenu {...props} />
 
         default:
             return null

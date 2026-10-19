@@ -217,7 +217,25 @@ export function useSettingsHandlers() {
         }
     }
 
+    const handleReasoningSelect = async (level: 'auto' | 'off' | 'low' | 'medium' | 'high') => {
+        const config = await loadConfig()
+        config.thinkingLevel = level
+        setSettingsThinkingLevel(level)
+        if (agent) {
+            agent.thinkingLevel = level
+            agent.modelOptions = {
+                ...agent.modelOptions,
+                thinkingLevel: level,
+            }
+        }
+        await saveConfig(config)
+        setAuthMode('none')
+        const displayLevel = level.charAt(0).toUpperCase() + level.slice(1)
+        addToast(`Reasoning set to ${displayLevel}.`, 'success')
+    }
+
     return {
         handleSettingsMainSelect,
+        handleReasoningSelect,
     }
 }

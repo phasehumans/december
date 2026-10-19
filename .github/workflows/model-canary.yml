@@ -26,6 +26,9 @@ jobs:
             - name: Install dependencies
               run: bun install --frozen-lockfile
 
+            - name: Generate Prisma Client
+              run: bun db:generate
+
             - name: Sync model catalog
               run: bun run models:sync
               env:
@@ -42,6 +45,8 @@ jobs:
             - name: Create Pull Request if models updated
               if: steps.git-diff.outputs.changed == 'true'
               uses: peter-evans/create-pull-request@v6
+              env:
+                  HUSKY: '0'
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
                   commit-message: 'chore(models): auto-sync provider models and context windows'

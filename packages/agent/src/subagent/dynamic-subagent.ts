@@ -1,7 +1,18 @@
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+
 import { Agent } from '../agent'
 import { runAgentLoop } from '../agent-loop'
 
-import { createGitWorktree, getWorktreeChanges, type WorktreeInfo } from './workspace-worktree'
+import {
+    createGitWorktree,
+    getWorktreeChanges,
+    cleanupGitWorktree,
+    mergeGitWorktree,
+    type WorktreeInfo,
+} from './workspace-worktree'
+
+const execFileAsync = promisify(execFile)
 
 import type { SpawnSubagentOptions, SubagentRollupSummary, SubagentStatus } from './subagent-types'
 import type { Tool } from '@december/shared'
@@ -9,7 +20,9 @@ import type { Tool } from '@december/shared'
 const READ_ONLY_TOOLS = new Set([
     'read_file',
     'ls',
+    'list_dir',
     'grep',
+    'grep_search',
     'find_files',
     'code_intelligence',
     'search_tools',
@@ -18,7 +31,17 @@ const READ_ONLY_TOOLS = new Set([
     'diff_preview',
 ])
 
-const TEST_TOOLS = new Set(['bash', 'read_file', 'ls', 'grep', 'find_files', 'search_tools'])
+const TEST_TOOLS = new Set([
+    'bash',
+    'read_file',
+    'ls',
+    'list_dir',
+    'grep',
+    'grep_search',
+    'find_files',
+    'code_intelligence',
+    'search_tools',
+])
 
 const SUBAGENT_RECURSIVE_TOOLS = new Set(['invoke_subagent', 'spawn_subagent', 'run_skill'])
 
@@ -55,7 +78,12 @@ export function resolveScopedTools(
                 return true
             return false
         })
-    } else if (roleLower.includes('test')) {
+    } else if (
+        roleLower.includes('test') ||
+        roleLower.includes('verify') ||
+        roleLower.includes('verifier') ||
+        roleLower.includes('adversar')
+    ) {
         candidateTools = candidateTools.filter((t) => {
             if (TEST_TOOLS.has(t.name)) return true
             if (
@@ -364,6 +392,40 @@ export async function executeDynamicSubagent(
         const changes = await getWorktreeChanges(worktreeInfo.worktreePath)
         modifiedFiles = changes.modifiedFiles
         diff = changes.diff
+
+        const lifecycle = options.worktreeLifecycle
+        const baseDir = parentAgent.workspaceDir || process.cwd()
+
+        if (lifecycle === 'cleanup' || (status !== 'completed' && !lifecycle)) {
+            await cleanupGitWorktree(baseDir, worktreeInfo.worktreePath, {
+                deleteBranch: true,
+                branchName: worktreeInfo.branchName,
+            })
+        } else if (lifecycle === 'merge' && status === 'completed') {
+            if (modifiedFiles.length > 0) {
+                try {
+                    await execFileAsync('git', ['add', '-A'], { cwd: worktreeInfo.worktreePath })
+                    await execFileAsync(
+                        'git',
+                        ['commit', '-m', `worktree changes from subagent ${role}`],
+                        {
+                            cwd: worktreeInfo.worktreePath,
+                        }
+                    )
+                } catch {
+                    // Intentionally swallowed: commit fallback
+                }
+            }
+            await mergeGitWorktree(baseDir, worktreeInfo.branchName)
+            await cleanupGitWorktree(baseDir, worktreeInfo.worktreePath, {
+                deleteBranch: true,
+                branchName: worktreeInfo.branchName,
+            })
+        } else if (lifecycle === 'keep') {
+            await cleanupGitWorktree(baseDir, worktreeInfo.worktreePath, {
+                deleteBranch: false,
+            })
+        }
     }
 
     const assistantMsgs = childAgent.messages.filter(
@@ -389,6 +451,7 @@ export async function executeDynamicSubagent(
         summary,
         workspaceDir: effectiveWorkspaceDir,
         worktreeBranch: worktreeInfo?.branchName,
+        worktreeLifecycle: options.worktreeLifecycle,
         modifiedFiles,
         diff,
         error,

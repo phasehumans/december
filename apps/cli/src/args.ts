@@ -84,6 +84,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'skill',
             'skills',
             'mcp',
+            'open',
+            'codesearch',
             'rewind',
             'undo',
         ]

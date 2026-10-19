@@ -52,6 +52,22 @@ describe('DynamicSubagent (Unit)', () => {
             expect(names).not.toContain('bash')
         })
 
+        it('should scope verifier and adversarial roles to read and test tools without write tools', () => {
+            const scopedVerifier = resolveScopedTools(allTools, 'verifier')
+            const verifierNames = scopedVerifier.map((t) => t.name)
+            expect(verifierNames).toContain('read_file')
+            expect(verifierNames).toContain('grep')
+            expect(verifierNames).toContain('bash')
+            expect(verifierNames).not.toContain('write_file')
+
+            const scopedAdversarial = resolveScopedTools(allTools, 'adversarial-tester')
+            const adversarialNames = scopedAdversarial.map((t) => t.name)
+            expect(adversarialNames).toContain('read_file')
+            expect(adversarialNames).toContain('grep')
+            expect(adversarialNames).toContain('bash')
+            expect(adversarialNames).not.toContain('write_file')
+        })
+
         it('should exclude recursive subagent tools at maxDepth', () => {
             const recursiveTool: Tool = {
                 name: 'invoke_subagent',

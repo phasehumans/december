@@ -40,10 +40,14 @@ export interface PlatformAdapter {
             questions: Array<{ question: string; options: string[]; is_multi_select?: boolean }>
         ) => Promise<string>
         requestPermission?: (toolCall: any) => Promise<{ block: boolean; reason?: string }>
+        reviewArtifact?: (
+            artifact: any
+        ) => Promise<{ action: 'proceed' | 'refine' | 'reject'; feedback?: string }>
     }
     env: {
         cwd: () => string
         get: (key: string) => string | undefined
+        setCwd?: (dir: string) => void
     }
     browser?: BrowserOperations
     diagnostics?: DiagnosticsOperations

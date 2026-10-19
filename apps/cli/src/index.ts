@@ -55,6 +55,12 @@ async function main() {
     process.title = 'december'
     process.stdout.write('\x1b]0;december\x07')
 
+    // If the terminal inherited NODE_ENV=test from prior test scripts, reset to development
+    // so the live CLI doesn't accidentally redirect configuration to /tmp/december-test-config
+    if (process.env.NODE_ENV === 'test' && !process.env.DECEMBER_CONFIG_DIR) {
+        process.env.NODE_ENV = 'development'
+    }
+
     const parsedArgs = parseCliArgs(process.argv.slice(2))
 
     // Fast-path 1: Help flag (< 5ms)
@@ -168,6 +174,20 @@ async function main() {
         const { handleDocsCommand } = await import('./commands')
         await handleDocsCommand({ section })
         process.exit(0)
+    }
+
+    if (parsedArgs.command === 'open') {
+        const targetPath = parsedArgs.positionals[1]
+        const { handleOpenCommand } = await import('./commands')
+        await handleOpenCommand({ path: targetPath })
+        process.exit(process.exitCode || 0)
+    }
+
+    if (parsedArgs.command === 'codesearch') {
+        const query = parsedArgs.positionals.slice(1).join(' ')
+        const { handleCodeSearchCommand } = await import('./commands')
+        await handleCodeSearchCommand({ query })
+        process.exit(process.exitCode || 0)
     }
 
     if (parsedArgs.command === 'rewind' || parsedArgs.command === 'undo') {

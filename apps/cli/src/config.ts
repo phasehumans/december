@@ -352,11 +352,25 @@ export async function loadConfig(): Promise<DecemberConfig> {
 }
 
 export async function saveConfig(config: DecemberConfig): Promise<void> {
-    const configDir = getConfigDir()
-    const configFile = getConfigFile()
+    const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST
+    let configDir = getConfigDir()
+    let configFile = getConfigFile()
+
+    // Safety guard: Never mutate host machine configuration during test runs
+    const realHome = os.homedir()
+    const isRealHomeConfig =
+        configFile === path.join(realHome, '.december', 'config.json') ||
+        configFile === path.join(realHome, '.config', 'december', 'config.json')
+    if (isTestEnv && isRealHomeConfig) {
+        configDir = path.join(os.tmpdir(), 'december-test-config', '.december')
+        configFile = path.join(configDir, 'config.json')
+    }
+
     await fs.mkdir(configDir, { recursive: true })
     await fs.writeFile(configFile, JSON.stringify(config, null, 2), 'utf-8')
-    await fs.chmod(configFile, 0o600).catch(() => {})
+    await fs.chmod(configFile, 0o600).catch(() => {
+        // Intentionally swallowed: chmod failure on non-POSIX systems
+    })
 
     try {
         const workspacePath = path.join(process.cwd(), '.december', 'settings.json')

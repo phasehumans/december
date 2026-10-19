@@ -14,7 +14,14 @@ import { ManageTaskTool } from './manage_task'
 import { ReadFileTool } from './read'
 import { SearchToolsTool } from './search_tools'
 import { WebSearchTool } from './web_search'
+import { EnterWorktreeTool, ExitWorktreeTool } from './worktree'
 import { WriteFileTool } from './write'
+import { WriteArtifactTool } from './write_artifact'
+
+export * from './worktree'
+export * from './artifacts/artifact-types'
+export * from './artifacts/artifact-manager'
+export * from './write_artifact'
 
 export * from './bash'
 export * from './bash-operations'
@@ -54,6 +61,9 @@ export const CORE_TOOLS = [
     SearchToolsTool,
     CodeIntelligenceTool,
     ManageMemoryTool,
+    EnterWorktreeTool,
+    ExitWorktreeTool,
+    WriteArtifactTool,
 ]
 
 export const DEFERRED_TOOLS = [ManageTaskTool, BrowserTool, BrowserActionTool, WebSearchTool]
@@ -89,4 +99,21 @@ defaultDeferredRegistry.register(ManageTaskTool, {
 defaultDeferredRegistry.register(ManageMemoryTool, {
     category: 'memory',
     keywords: ['memory', 'rules', 'conventions', 'quirks', 'manage_memory', 'remember', 'forget'],
+})
+defaultDeferredRegistry.register(EnterWorktreeTool, {
+    category: 'git',
+    keywords: [
+        'worktree',
+        'enter_worktree',
+        'isolated',
+        'sandbox',
+        'branch',
+        'safe',
+        'speculative',
+        'refactor',
+    ],
+})
+defaultDeferredRegistry.register(ExitWorktreeTool, {
+    category: 'git',
+    keywords: ['worktree', 'exit_worktree', 'cleanup', 'keep', 'merge', 'discard', 'restore'],
 })

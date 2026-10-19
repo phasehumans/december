@@ -42,3 +42,49 @@ export function openUrl(
         }
     })
 }
+
+export function openPath(
+    targetPath: string,
+    execFn: (command: string, callback?: (error: any) => void) => void = cp.exec,
+    osPlatform = () => os.platform(),
+    osRelease = () => os.release()
+): Promise<void> {
+    if (
+        execFn === cp.exec &&
+        (process.env.NODE_ENV === 'test' || !!process.env.BUN_TEST || !!process.env.VITEST)
+    ) {
+        return Promise.resolve()
+    }
+
+    return new Promise((resolve, reject) => {
+        try {
+            const platform = osPlatform()
+            let command = ''
+
+            const isWsl =
+                platform === 'linux' &&
+                (!!process.env.WSL_DISTRO_NAME || osRelease().toLowerCase().includes('microsoft'))
+
+            const customEditor = process.env.DECEMBER_EDITOR || process.env.VISUAL
+
+            if (customEditor) {
+                command = `${customEditor} "${targetPath}"`
+            } else if (platform === 'darwin') {
+                command = `open "${targetPath}"`
+            } else if (platform === 'win32') {
+                command = `start "" "${targetPath}"`
+            } else if (isWsl) {
+                command = `powershell.exe -NoProfile -Command "Start-Process '${targetPath}'"`
+            } else {
+                command = `xdg-open "${targetPath}"`
+            }
+
+            execFn(command, (error: any) => {
+                if (error) reject(error)
+                else resolve()
+            })
+        } catch (e) {
+            reject(e)
+        }
+    })
+}

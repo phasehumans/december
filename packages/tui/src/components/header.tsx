@@ -51,7 +51,7 @@ export function getGitBranch(workspaceRoot: string = process.cwd()): string | nu
     return null
 }
 
-function getCwd(): string {
+export function getCwd(): string {
     try {
         const cwd = process.cwd()
         const home = homedir()

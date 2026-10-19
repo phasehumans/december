@@ -70,3 +70,58 @@ describe('openUrl', () => {
         )
     })
 })
+
+describe('openPath', () => {
+    let originalEnv: NodeJS.ProcessEnv
+    let mockExec: any
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        originalEnv = { ...process.env }
+        mockExec = vi.fn((_cmd, cb) => {
+            if (cb) cb(null)
+        })
+    })
+
+    afterEach(() => {
+        process.env = originalEnv
+        vi.restoreAllMocks()
+    })
+
+    it('uses custom editor if DECEMBER_EDITOR is set', async () => {
+        process.env.DECEMBER_EDITOR = 'code'
+        const { openPath } = await import('../src/utils/open')
+        await openPath('/path/to/file.ts', mockExec, () => 'darwin')
+        expect(mockExec).toHaveBeenCalledWith('code "/path/to/file.ts"', expect.any(Function))
+    })
+
+    it('uses "open" command on macOS', async () => {
+        delete process.env.DECEMBER_EDITOR
+        delete process.env.VISUAL
+        const { openPath } = await import('../src/utils/open')
+        await openPath('/path/to/file.ts', mockExec, () => 'darwin')
+        expect(mockExec).toHaveBeenCalledWith('open "/path/to/file.ts"', expect.any(Function))
+    })
+
+    it('uses "start" command on Windows', async () => {
+        delete process.env.DECEMBER_EDITOR
+        delete process.env.VISUAL
+        const { openPath } = await import('../src/utils/open')
+        await openPath('C:\\path\\file.ts', mockExec, () => 'win32')
+        expect(mockExec).toHaveBeenCalledWith('start "" "C:\\path\\file.ts"', expect.any(Function))
+    })
+
+    it('uses xdg-open on standard Linux', async () => {
+        delete process.env.DECEMBER_EDITOR
+        delete process.env.VISUAL
+        delete process.env.WSL_DISTRO_NAME
+        const { openPath } = await import('../src/utils/open')
+        await openPath(
+            '/path/to/file.ts',
+            mockExec,
+            () => 'linux',
+            () => '5.15.0'
+        )
+        expect(mockExec).toHaveBeenCalledWith('xdg-open "/path/to/file.ts"', expect.any(Function))
+    })
+})

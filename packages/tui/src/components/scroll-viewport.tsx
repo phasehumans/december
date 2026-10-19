@@ -10,6 +10,16 @@ export interface ScrollState {
     viewportHeight: number
 }
 
+export interface ScrollViewportContextValue {
+    scrollTop: number
+    viewportHeight: number
+    contentHeight: number
+    isReadingMode: boolean
+}
+
+export const ScrollViewportContext = React.createContext<ScrollViewportContextValue | null>(null)
+export const useScrollViewport = () => React.useContext(ScrollViewportContext)
+
 export interface ScrollViewportHandle {
     scrollUp: (delta?: number) => void
     scrollDown: (delta?: number) => void
@@ -425,23 +435,35 @@ export const ScrollViewport = React.memo(
             { isActive }
         )
 
+        const viewportContextValue = React.useMemo<ScrollViewportContextValue>(
+            () => ({
+                scrollTop,
+                viewportHeight,
+                contentHeight,
+                isReadingMode,
+            }),
+            [scrollTop, viewportHeight, contentHeight, isReadingMode]
+        )
+
         return (
-            <Box
-                ref={viewportRef}
-                height={explicitHeight}
-                flexGrow={1}
-                flexShrink={1}
-                minHeight={0}
-                overflowY="hidden"
-                flexDirection="column"
-                width="100%"
-            >
-                <Box flexShrink={0} marginTop={-scrollTop} flexDirection="column" width="100%">
-                    <Box ref={contentRef} flexShrink={0} flexDirection="column" width="100%">
-                        {children}
+            <ScrollViewportContext.Provider value={viewportContextValue}>
+                <Box
+                    ref={viewportRef}
+                    height={explicitHeight}
+                    flexGrow={1}
+                    flexShrink={1}
+                    minHeight={0}
+                    overflowY="hidden"
+                    flexDirection="column"
+                    width="100%"
+                >
+                    <Box flexShrink={0} marginTop={-scrollTop} flexDirection="column" width="100%">
+                        <Box ref={contentRef} flexShrink={0} flexDirection="column" width="100%">
+                            {children}
+                        </Box>
                     </Box>
                 </Box>
-            </Box>
+            </ScrollViewportContext.Provider>
         )
     })
 )

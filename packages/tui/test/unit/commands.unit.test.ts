@@ -118,19 +118,14 @@ describe('/switch command', () => {
     })
 })
 
-describe('/grill and /plan commands', () => {
-    test('should define /grill-me command and ensure /grill alias is removed', () => {
+describe('/grill-me and /plan skills', () => {
+    test('should not register /grill-me and /plan in static COMMANDS because they are builtin skills', () => {
         const grillMeCmd = COMMANDS.find((c) => c.name === 'grill-me')
-        const grillCmd = COMMANDS.find((c) => c.name === 'grill')
-        expect(grillMeCmd).toBeDefined()
-        expect(grillMeCmd?.value).toBe('/grill-me')
-        expect(grillCmd).toBeUndefined()
-    })
-
-    test('should define /plan command', () => {
         const planCmd = COMMANDS.find((c) => c.name === 'plan')
-        expect(planCmd).toBeDefined()
-        expect(planCmd?.value).toBe('/plan')
+        const grillCmd = COMMANDS.find((c) => c.name === 'grill')
+        expect(grillMeCmd).toBeUndefined()
+        expect(planCmd).toBeUndefined()
+        expect(grillCmd).toBeUndefined()
     })
 })
 
@@ -170,5 +165,41 @@ describe('/changelog and /docs commands', () => {
         expect(mcpCmd).toBeDefined()
         expect(mcpCmd?.value).toBe('/mcp')
         expect(mcpCmd?.description).toContain('MCP')
+    })
+
+    test('should define /help command with description', () => {
+        const helpCmd = COMMANDS.find((c) => c.name === 'help')
+        expect(helpCmd).toBeDefined()
+        expect(helpCmd?.value).toBe('/help')
+        expect(helpCmd?.description).toContain('commands, keybindings, and CLI info')
+    })
+
+    test('should define /reasoning command and /effort alias forwarded to chat screen', () => {
+        const reasoningCmd = COMMANDS.find((c) => c.name === 'reasoning')
+        expect(reasoningCmd).toBeDefined()
+        expect(reasoningCmd?.value).toBe('/reasoning')
+        expect(reasoningCmd?.description).toContain('reasoning depth')
+
+        const effortCmd = COMMANDS.find((c) => c.name === 'effort')
+        expect(effortCmd).toBeDefined()
+        expect(effortCmd?.value).toBe('/effort')
+        expect(effortCmd?.description).toContain('reasoning depth')
+    })
+
+    test('should define /open command forwarded to chat screen', () => {
+        const openCmd = COMMANDS.find((c) => c.name === 'open')
+        expect(openCmd).toBeDefined()
+        expect(openCmd?.value).toBe('/open')
+        expect(openCmd?.description).toContain('default editor')
+    })
+
+    test('should define /codesearch command forwarded to chat screen', () => {
+        const csCmd = COMMANDS.find((c) => c.name === 'codesearch')
+        expect(csCmd).toBeDefined()
+        expect(csCmd?.value).toBe('/codesearch')
+        expect(csCmd?.description).toContain('Search code')
+
+        const csAlias = COMMANDS.find((c) => c.name === 'cs')
+        expect(csAlias).toBeUndefined()
     })
 })

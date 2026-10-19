@@ -108,18 +108,29 @@ export function ChatApp({
     useEffect(() => {
         if (!process.stdout?.isTTY) return
 
+        const isWindows = process.platform === 'win32'
+
         try {
-            // Enable SGR mouse tracking, button-event tracking (mode 1002 enables mouse wheel on ConPTY/Windows and xterm),
-            // and alternate scroll mode (mode 1007 converts wheel to arrows when mouse tracking is unhandled).
-            // Note: Alternate screen buffer (mode 1049) and DEC Mode 2026 sync updates are already natively managed by Ink.
-            process.stdout.write('\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h')
+            if (isWindows) {
+                // On Windows: Do not capture mouse clicks/motion (modes 1000/1002/1006).
+                // This preserves native Windows Terminal click-and-drag selection and copying without holding Shift.
+                // Enable Alternate Scroll Mode (mode 1007), which converts mouse wheel scrolls into arrow keys.
+                process.stdout.write('\x1b[?1007h')
+            } else {
+                // On macOS and Linux: Enable SGR mouse tracking, button-event tracking, and alternate scroll mode.
+                process.stdout.write('\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?1007h')
+            }
         } catch {
             // Intentionally swallowed: ignore stdout write errors on mount
         }
 
         return () => {
             try {
-                process.stdout.write('\x1b[?1007l\x1b[?1006l\x1b[?1002l\x1b[?1000l')
+                if (isWindows) {
+                    process.stdout.write('\x1b[?1007l')
+                } else {
+                    process.stdout.write('\x1b[?1007l\x1b[?1006l\x1b[?1002l\x1b[?1000l')
+                }
             } catch {
                 // Intentionally swallowed: cleanup terminal mouse modes on unmount
             }
@@ -196,6 +207,7 @@ export function ChatApp({
                     {...session}
                     agent={agent}
                     getProviderModels={session.getProviderModels}
+                    cliVersion={cliVersion}
                 />
             )
         ) : null
@@ -203,8 +215,8 @@ export function ChatApp({
     const [isReadingMode, setIsReadingMode] = useState(false)
 
     const handleFormSubmit = useCallback(
-        (text: string) => {
-            handleSubmit(text)
+        (text: string, options?: { returnQuery?: string }) => {
+            handleSubmit(text, options)
         },
         [handleSubmit]
     )
@@ -309,6 +321,11 @@ export function ChatApp({
             onExit={onExit}
             btwState={session.btwState}
             onDismissBtw={session.handleDismissBtw}
+            cliVersion={cliVersion}
+            userEmail={currentEmail || userEmail}
+            selectedProvider={effectiveProvider}
+            prefillPrompt={session.prefillPrompt}
+            onClearPrefillPrompt={session.onClearPrefillPrompt}
         />
     )
 

@@ -120,19 +120,35 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
     })
 
     describe('performCliUpdate', () => {
-        test('handles curl mode without executing child process', async () => {
-            let progressMsg = ''
+        test('executes curl installer update command', async () => {
+            let executedCommand = ''
+            const mockExec: any = (cmd: string, opts: any, callback: any) => {
+                executedCommand = cmd
+                callback(null, 'Installed successfully', '')
+            }
+
+            let progressCalled = false
+            let successCalled = false
+
             const result = await performCliUpdate({
                 configInstallMethod: 'curl',
-                onProgress: (msg) => {
-                    progressMsg = msg
+                force: true,
+                fetchLatestFn: async () => '1.0.0',
+                execFn: mockExec,
+                skipVerification: true,
+                onProgress: () => {
+                    progressCalled = true
+                },
+                onSuccess: () => {
+                    successCalled = true
                 },
             })
 
             expect(result.success).toBe(true)
             expect(result.method).toBe('curl')
-            expect(result.command).toContain('trydecember.com')
-            expect(progressMsg).toContain('re-run the installer')
+            expect(executedCommand).toContain('trydecember.com')
+            expect(progressCalled).toBe(true)
+            expect(successCalled).toBe(true)
         })
 
         test('handles source development mode without executing child process', async () => {

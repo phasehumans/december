@@ -9,6 +9,14 @@ import type { Command } from './types'
 
 export const COMMANDS: Command[] = [
     {
+        name: 'artifacts',
+        description: 'View and review session artifacts, plans, and architectural specs',
+        value: '/artifacts',
+        action: (ctx) => {
+            // forwarded to chat screen / session handler
+        },
+    },
+    {
         name: 'ask',
         description: 'Ask a question about the codebase (read-only Q&A mode)',
         value: '/ask',
@@ -42,6 +50,14 @@ export const COMMANDS: Command[] = [
                 ctx.resetChat?.()
                 ctx.toast.show({ variant: 'success', message: 'Cleared conversation history.' })
             }
+        },
+    },
+    {
+        name: 'codesearch',
+        description: 'Search code in workspace (usage: /codesearch <query>)',
+        value: '/codesearch',
+        action: (ctx) => {
+            // forwarded to chat screen
         },
     },
     {
@@ -101,6 +117,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'effort',
+        description: 'Set model reasoning depth (alias for /reasoning)',
+        value: '/effort',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'exit',
         description: 'Exit the CLI',
         value: '/exit',
@@ -125,14 +149,6 @@ export const COMMANDS: Command[] = [
                 const newId = await ctx.agent.forkContext()
                 ctx.toast.show({ variant: 'success', message: `Forked to new session: ${newId}` })
             }
-        },
-    },
-    {
-        name: 'grill-me',
-        description: 'Interview me to align on a plan',
-        value: '/grill-me',
-        action: (ctx) => {
-            // forwarded to chat screen
         },
     },
     {
@@ -265,7 +281,14 @@ export const COMMANDS: Command[] = [
             }
         },
     },
-
+    {
+        name: 'help',
+        description: 'Show available commands, keybindings, and CLI info',
+        value: '/help',
+        action: (ctx) => {
+            // forwarded to chat screen / session handler
+        },
+    },
     {
         name: 'login',
         description: 'Configure API keys or Connect via December Cloud',
@@ -301,9 +324,17 @@ export const COMMANDS: Command[] = [
         },
     },
     {
-        name: 'plan',
-        description: 'Generate a step-by-step implementation plan',
-        value: '/plan',
+        name: 'open',
+        description: 'Open a file or workspace in your default editor',
+        value: '/open',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
+        name: 'reasoning',
+        description: 'Set model reasoning depth (auto, off, low, medium, high)',
+        value: '/reasoning',
         action: (ctx) => {
             // forwarded to chat screen
         },

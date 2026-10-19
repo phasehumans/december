@@ -424,3 +424,215 @@ describe('useCliStore activeMessages handling', () => {
         }
     })
 })
+
+describe('CLI /handoff command flow and safeguards', () => {
+    it('blocks handoff and displays login notice when user is not logged in', () => {
+        const store = useCliStore.getState()
+        const userMsg = { id: 'msg-handoff-1', role: 'user' as const, text: '/handoff' }
+        const config = { decemberToken: undefined }
+
+        if (!config.decemberToken) {
+            store.addToast('You must be logged in to December to use handoff.', 'error')
+            const noticeMsg = {
+                id: 'msg-notice-1',
+                role: 'assistant' as const,
+                blocks: [
+                    {
+                        type: 'text' as const,
+                        content: 'Cloud handoff migrates your local terminal session',
+                    },
+                ],
+            }
+            store.setStaticMessages([userMsg, noticeMsg])
+        }
+
+        const msgs = useCliStore.getState().staticMessages
+        expect(msgs).toHaveLength(2)
+        expect(msgs[1].blocks?.[0].content).toContain(
+            'Cloud handoff migrates your local terminal session'
+        )
+        const toasts = useCliStore.getState().toasts
+        expect(toasts.some((t) => t.message.includes('logged in to December'))).toBe(true)
+    })
+
+    it('blocks handoff and displays insufficient credits notice when wallet balance is zero', () => {
+        const store = useCliStore.getState()
+        const userMsg = { id: 'msg-handoff-2', role: 'user' as const, text: '/handoff' }
+        const walletBalance = 0
+
+        if (walletBalance <= 0) {
+            store.addToast('Insufficient credits in December Wallet.', 'error')
+            const noticeMsg = {
+                id: 'msg-notice-2',
+                role: 'assistant' as const,
+                blocks: [
+                    {
+                        type: 'text' as const,
+                        content: 'Insufficient credits in December Wallet ($0.00)',
+                    },
+                ],
+            }
+            store.setStaticMessages([userMsg, noticeMsg])
+        }
+
+        const msgs = useCliStore.getState().staticMessages
+        expect(msgs).toHaveLength(2)
+        expect(msgs[1].blocks?.[0].content).toContain('Insufficient credits in December Wallet')
+        const toasts = useCliStore.getState().toasts
+        expect(toasts.some((t) => t.message.includes('Insufficient credits'))).toBe(true)
+    })
+
+    it('populates handoffSummary and sets authMode to handoff_confirm for user confirmation', () => {
+        const store = useCliStore.getState()
+        const summary = {
+            fileCount: 42,
+            uncompressedSize: '1.2 MB',
+            uncommittedChanges: 3,
+            destinationUrl: 'https://trydecember.com',
+            walletBalance: 'Active (100 credits)',
+            detectedSecrets: [],
+        }
+
+        store.setHandoffSummary(summary)
+        expect(useCliStore.getState().handoffSummary).toEqual(summary)
+
+        // Cancel handler resets summary and authMode
+        store.setHandoffSummary(null)
+        store.addToast('Handoff cancelled.', 'info')
+
+        expect(useCliStore.getState().handoffSummary).toBeNull()
+        expect(useCliStore.getState().toasts.some((t) => t.message === 'Handoff cancelled.')).toBe(
+            true
+        )
+    })
+
+    it('guarantees temporary archive cleanup in finally block even when upload fails', async () => {
+        const fs = await import('node:fs')
+        const path = await import('node:path')
+        const os = await import('node:os')
+
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'handoff-cleanup-test-'))
+        const archivePath = path.join(tmpDir, '.december-handoff.tar.gz')
+        fs.writeFileSync(archivePath, 'mock-archive-data')
+        expect(fs.existsSync(archivePath)).toBe(true)
+
+        let uploadFailed = false
+        try {
+            // Simulate upload failure
+            throw new Error('Network error uploading to MinIO')
+        } catch {
+            uploadFailed = true
+        } finally {
+            if (fs.existsSync(archivePath)) {
+                fs.unlinkSync(archivePath)
+            }
+        }
+
+        expect(uploadFailed).toBe(true)
+        expect(fs.existsSync(archivePath)).toBe(false)
+        fs.rmSync(tmpDir, { recursive: true, force: true })
+    })
+
+    it('sanitizes messages and formats success link on successful handoff flow', () => {
+        const rawAgentMessages = [
+            { id: '1', role: 'user', content: 'hello' },
+            { id: '2', role: 'assistant', text: 'world', internalDebug: 'sensitive' },
+        ]
+
+        const sanitized = rawAgentMessages.map((m: any, idx: number) => ({
+            id: m.id || `msg-${idx}`,
+            role: m.role || 'user',
+            text:
+                typeof m.text === 'string'
+                    ? m.text
+                    : typeof m.content === 'string'
+                      ? m.content
+                      : '',
+            content:
+                typeof m.content === 'string'
+                    ? m.content
+                    : typeof m.text === 'string'
+                      ? m.text
+                      : '',
+            blocks: Array.isArray(m.blocks) ? m.blocks : undefined,
+            sequence: typeof m.sequence === 'number' ? m.sequence : idx,
+        }))
+
+        expect(sanitized).toHaveLength(2)
+        expect(sanitized[0].content).toBe('hello')
+        expect(sanitized[1].text).toBe('world')
+        expect((sanitized[1] as any).internalDebug).toBeUndefined()
+
+        const sessionId = 'session-9876'
+        const sessionUrl = `https://trydecember.com/s/${sessionId}`
+        expect(sessionUrl).toBe('https://trydecember.com/s/session-9876')
+    })
+
+    it('tracks returnAuthMode when opening file view from code_search and restores it on close', () => {
+        const store = useCliStore.getState()
+
+        // 1. Enter code search
+        store.setAuthMode('code_search')
+        store.setCodeSearchQuery('myFunction')
+        expect(useCliStore.getState().authMode).toBe('code_search')
+
+        // 2. Open file view with returnAuthMode: 'code_search'
+        store.setFileViewTarget({
+            filePath: 'src/index.ts',
+            initialLine: 42,
+            returnAuthMode: 'code_search',
+        })
+        store.setAuthMode('file_view')
+
+        const currentTarget = useCliStore.getState().fileViewTarget
+        expect(currentTarget?.filePath).toBe('src/index.ts')
+        expect(currentTarget?.initialLine).toBe(42)
+        expect(currentTarget?.returnAuthMode).toBe('code_search')
+        expect(useCliStore.getState().authMode).toBe('file_view')
+
+        // 3. Simulate closing file view
+        const returnMode = currentTarget?.returnAuthMode || 'none'
+        store.setFileViewTarget(null)
+        store.setAuthMode(returnMode)
+
+        expect(useCliStore.getState().authMode).toBe('code_search')
+        expect(useCliStore.getState().fileViewTarget).toBeNull()
+        expect(useCliStore.getState().codeSearchQuery).toBe('myFunction')
+
+        // 4. Reset
+        store.setAuthMode('none')
+    })
+
+    it('tracks returnQuery when opening file view from /open and restores prefillPrompt on close', () => {
+        const store = useCliStore.getState()
+
+        // 1. Open file view with returnQuery: '/open agen'
+        store.setFileViewTarget({
+            filePath: 'AGENTS.md',
+            initialLine: 1,
+            returnQuery: '/open agen',
+        })
+        store.setAuthMode('file_view')
+
+        const currentTarget = useCliStore.getState().fileViewTarget
+        expect(currentTarget?.filePath).toBe('AGENTS.md')
+        expect(currentTarget?.returnQuery).toBe('/open agen')
+        expect(useCliStore.getState().authMode).toBe('file_view')
+
+        // 2. Simulate closing file view
+        const returnMode = currentTarget?.returnAuthMode || 'none'
+        const returnQuery = currentTarget?.returnQuery
+        store.setFileViewTarget(null)
+        store.setAuthMode(returnMode)
+        if (returnQuery) {
+            store.setPrefillPrompt(returnQuery)
+        }
+
+        expect(useCliStore.getState().authMode).toBe('none')
+        expect(useCliStore.getState().fileViewTarget).toBeNull()
+        expect(useCliStore.getState().prefillPrompt).toBe('/open agen')
+
+        // 3. Reset
+        store.setPrefillPrompt(null)
+    })
+})

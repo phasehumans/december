@@ -810,6 +810,75 @@ export async function handleDocsCommand(options?: { section?: string }): Promise
     }
 }
 
+export async function handleOpenCommand(options?: { path?: string }): Promise<void> {
+    const rawPath = options?.path?.trim()
+    const targetPath = rawPath || '.'
+    const fullPath = path.resolve(process.cwd(), targetPath)
+
+    if (targetPath !== '.' && !fs.existsSync(fullPath)) {
+        console.error(`\x1b[38;2;252;165;165mError:\x1b[0m File not found: ${rawPath}`)
+        process.exitCode = 1
+        return
+    }
+
+    const label = targetPath === '.' ? 'workspace' : targetPath
+    console.log(`Opening ${label} in your default editor...`)
+
+    try {
+        const { openPath } = await import('./utils/open')
+        await openPath(fullPath)
+    } catch (e: any) {
+        // Intentionally swallowed: user-facing error message printed
+        console.error(
+            `\x1b[38;2;252;165;165mFailed to open ${label}:\x1b[0m ${e?.message || 'Unknown error'}`
+        )
+    }
+}
+
+export async function handleCodeSearchCommand(options?: { query?: string }): Promise<void> {
+    const query = options?.query?.trim()
+    if (!query) {
+        console.error(
+            '\x1b[38;2;252;165;165mError:\x1b[0m Please provide a search query. (e.g. december codesearch <query>)'
+        )
+        process.exitCode = 1
+        return
+    }
+
+    try {
+        const { localOperations } = await import('./local-operations')
+        const output = await localOperations.search.grep('.', query)
+        if (!output || !output.trim()) {
+            console.log(`No matches found for "${query}".`)
+            return
+        }
+
+        const lines = output.split('\n').filter((l) => Boolean(l.trim()))
+        console.log(`\n\x1b[1mCode Search Results (${lines.length}):\x1b[0m\n`)
+        for (const line of lines.slice(0, 50)) {
+            const firstColon = line.indexOf(':')
+            const secondColon = line.indexOf(':', firstColon + 1)
+            if (firstColon !== -1 && secondColon !== -1) {
+                const file = line.slice(0, firstColon)
+                const lineNum = line.slice(firstColon + 1, secondColon)
+                const content = line.slice(secondColon + 1).trim()
+                console.log(`  \x1b[38;2;135;178;244m${file}:${lineNum}\x1b[0m ${content}`)
+            } else {
+                console.log(`  ${line}`)
+            }
+        }
+        if (lines.length > 50) {
+            console.log(`\n  ... and ${lines.length - 50} more matches.`)
+        }
+        console.log('')
+    } catch (e: any) {
+        // Intentionally swallowed: user-facing error message printed
+        console.error(
+            `\x1b[38;2;252;165;165mCode search failed:\x1b[0m ${e?.message || 'Unknown error'}`
+        )
+    }
+}
+
 export async function handleSkillCommand(options?: {
     action?: string
     target?: string

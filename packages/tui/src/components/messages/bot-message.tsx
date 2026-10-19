@@ -205,6 +205,15 @@ export function isDiscoveryTool(toolName?: string, command?: string): boolean {
     return false
 }
 
+export function toPascalCase(str: string): string {
+    if (!str) return ''
+    return str
+        .replace(/^[_\s\-.:]+|[_\s\-.:]+$/g, '')
+        .split(/[_\-\s.:]+/)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('')
+}
+
 function StyledCommand({ command, truncate = true }: { command: string; truncate?: boolean }) {
     const columns = useTerminalColumns()
     const maxArgLength = Math.max(40, columns - 38)
@@ -212,14 +221,16 @@ function StyledCommand({ command, truncate = true }: { command: string; truncate
     const match = command.match(/^([A-Za-z_]+)\(([\s\S]*)\)$/)
     if (match) {
         const args = (match[2] || '').replace(/\r?\n/g, ' ')
-        const toolName = match[1]
+        const rawToolName = match[1]
+        const toolName = toPascalCase(rawToolName) || rawToolName
         let displayArgs = args
         if (
-            (toolName === 'read_file' ||
-                toolName === 'view_file' ||
-                toolName === 'Read' ||
-                toolName === 'list_dir' ||
-                toolName === 'ListDir') &&
+            (toolName === 'Read' ||
+                toolName === 'ReadFile' ||
+                toolName === 'ViewFile' ||
+                toolName === 'ListDir' ||
+                toolName === 'Create' ||
+                toolName === 'Edit') &&
             args &&
             !args.includes(' ')
         ) {
@@ -238,7 +249,7 @@ function StyledCommand({ command, truncate = true }: { command: string; truncate
             <Text>
                 <Text color={cmdColor}>{`${THEME.glyphs.status} `}</Text>
                 <Text color={cmdColor} bold>
-                    {match[1]}
+                    {toolName}
                 </Text>
                 <Text color={THEME.colors.muted}>({displayArgs})</Text>
             </Text>
@@ -264,14 +275,16 @@ function StyledRunningCommand({
     const match = command.match(/^([A-Za-z_]+)\(([\s\S]*)\)$/)
     if (match) {
         const args = (match[2] || '').replace(/\r?\n/g, ' ')
-        const toolName = match[1]
+        const rawToolName = match[1]
+        const toolName = toPascalCase(rawToolName) || rawToolName
         let displayArgs = args
         if (
-            (toolName === 'read_file' ||
-                toolName === 'view_file' ||
-                toolName === 'Read' ||
-                toolName === 'list_dir' ||
-                toolName === 'ListDir') &&
+            (toolName === 'Read' ||
+                toolName === 'ReadFile' ||
+                toolName === 'ViewFile' ||
+                toolName === 'ListDir' ||
+                toolName === 'Create' ||
+                toolName === 'Edit') &&
             args &&
             !args.includes(' ')
         ) {
@@ -289,7 +302,7 @@ function StyledRunningCommand({
         return (
             <Text>
                 <Text color={cmdColor} bold>
-                    {match[1]}
+                    {toolName}
                 </Text>
                 {displayArgs ? <Text color={THEME.colors.muted}>({displayArgs})</Text> : null}
             </Text>
@@ -939,7 +952,8 @@ export const BotMessage = React.memo(function BotMessage({
                             block.toolName === 'invoke_subagent' ||
                             block.toolName === 'spawn_subagent' ||
                             block.command?.startsWith('invoke_subagent(') ||
-                            block.command?.startsWith('spawn_subagent(')
+                            block.command?.startsWith('spawn_subagent(') ||
+                            block.command?.startsWith('SubAgent(')
 
                         if (isSubagent) {
                             return (
@@ -1118,6 +1132,20 @@ export const BotMessage = React.memo(function BotMessage({
                         else if (block.toolName === 'ask_question')
                             statusLabel = 'Asking question...'
                         else if (block.toolName === 'manage_task') statusLabel = 'Managing tasks...'
+                        else if (block.toolName === 'manage_subagent')
+                            statusLabel = 'Managing subagents...'
+                        else if (block.toolName === 'write_artifact')
+                            statusLabel = 'Writing artifact...'
+                        else if (
+                            block.toolName === 'browser' ||
+                            block.toolName === 'browser_action'
+                        )
+                            statusLabel = 'Browsing...'
+                        else if (block.toolName === 'manage_memory')
+                            statusLabel = 'Managing memory...'
+                        else if (block.toolName === 'code_intelligence')
+                            statusLabel = 'Analyzing code...'
+                        else if (block.toolName === 'run_skill') statusLabel = 'Running skill...'
                         else if (
                             block.toolName === 'list_permissions' ||
                             block.toolName === 'ask_permission'

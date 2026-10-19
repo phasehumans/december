@@ -4,6 +4,8 @@ import React from 'react'
 
 import { THEME } from '../theme'
 
+import { OffscreenFreeze } from './offscreen-freeze'
+
 export function Spinner({
     label,
     color,
@@ -15,9 +17,11 @@ export function Spinner({
 }) {
     return (
         <Box gap={1} alignItems="center">
-            <Text color={spinnerColor || color || THEME.colors.brand}>
-                <InkSpinner type="dots" />
-            </Text>
+            <OffscreenFreeze>
+                <Text color={spinnerColor || color || THEME.colors.brand}>
+                    <InkSpinner type="dots" />
+                </Text>
+            </OffscreenFreeze>
             {label && <Text color={color || THEME.colors.muted}>{label}</Text>}
         </Box>
     )

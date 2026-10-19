@@ -20,6 +20,18 @@ const runSkillSchema = Type.Object({
                 'Specific focus, instruction, or task description for the subagent to accomplish.',
         })
     ),
+    isolation: Type.Optional(
+        Type.Union([Type.Literal('inherit'), Type.Literal('worktree')], {
+            description:
+                'Workspace isolation mode: "inherit" (default) uses parent workspace, "worktree" creates an isolated git worktree branch for safe modifications.',
+        })
+    ),
+    worktreeLifecycle: Type.Optional(
+        Type.Union([Type.Literal('keep'), Type.Literal('cleanup'), Type.Literal('merge')], {
+            description:
+                'Lifecycle action upon task completion: "keep" preserves branch, "cleanup" discards without trace, "merge" merges back into base branch.',
+        })
+    ),
 })
 
 export type RunSkillInput = Static<typeof runSkillSchema>
@@ -30,7 +42,10 @@ export function createRunSkillTool(skillResolver?: () => DiscoveredSkill[]): Too
         description:
             'Delegate a procedural or specialized task to an isolated child subagent that executes the skill procedures in a fresh context, returning only the final summary to prevent context bloat.',
         inputSchema: runSkillSchema,
-        execute: async ({ skillName, args = [], task }, context: ToolExecuteContext) => {
+        execute: async (
+            { skillName, args = [], task, isolation = 'inherit', worktreeLifecycle },
+            context: ToolExecuteContext
+        ) => {
             const parentAgent = context.agent
             if (!parentAgent) {
                 return 'Error: Cannot invoke skill subagent without active agent context.'
@@ -56,6 +71,8 @@ export function createRunSkillTool(skillResolver?: () => DiscoveredSkill[]): Too
                 args,
                 task,
                 parentAgent,
+                isolation,
+                worktreeLifecycle,
                 signal: context.signal,
                 onEvent: (event) => {
                     if (event.type === 'ThinkingChunk') {
@@ -74,7 +91,14 @@ export function createRunSkillTool(skillResolver?: () => DiscoveredSkill[]): Too
                 return `Subagent execution of skill '${skillName}' failed: ${result.error || result.summary}`
             }
 
-            return `[Subagent: ${matchedSkill.name} completed]\n\n${result.summary}`
+            let output = `[Subagent: ${matchedSkill.name} completed]\n\n${result.summary}`
+            if (result.worktreeBranch) {
+                output += `\n\n- Workspace Branch: \`${result.worktreeBranch}\` (isolated git worktree)`
+            }
+            if (result.modifiedFiles && result.modifiedFiles.length > 0) {
+                output += `\n- Modified Files: ${result.modifiedFiles.join(', ')}`
+            }
+            return output
         },
     }
 }

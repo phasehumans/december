@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'bun:test'
 
-import { getToolSummary } from '../src/utils/formatters'
+import { getToolSummary, toPascalCase } from '../src/utils/formatters'
 
 describe('formatters', () => {
     describe('getToolSummary', () => {
@@ -67,15 +67,54 @@ describe('formatters', () => {
             ).toBe('WebSearch(https://example.com)')
         })
 
-        test('handles unknown tools', () => {
-            expect(getToolSummary('unknown_tool', JSON.stringify({ foo: 'bar' }))).toBe(
-                'unknown_tool()'
+        test('formats manage_subagent and subagent tools', () => {
+            expect(getToolSummary('manage_subagent', JSON.stringify({ action: 'list' }))).toBe(
+                'ManageSubagent(list)'
+            )
+            expect(
+                getToolSummary(
+                    'manage_subagent',
+                    JSON.stringify({ action: 'status', subagentId: 'agent-123' })
+                )
+            ).toBe('ManageSubagent(status:agent-123)')
+            expect(getToolSummary('invoke_subagent', JSON.stringify({ role: 'researcher' }))).toBe(
+                'SubAgent(researcher)'
             )
         })
 
-        test('handles malformed JSON input', () => {
-            expect(getToolSummary('read_file', 'malformed {')).toBe('read_file()')
+        test('formats write_artifact and specialized tools', () => {
+            expect(
+                getToolSummary('write_artifact', JSON.stringify({ filePath: 'report.md' }))
+            ).toBe('Artifact(report.md)')
+            expect(getToolSummary('browser', JSON.stringify({ action: 'launch' }))).toBe(
+                'Browser(launch)'
+            )
+            expect(getToolSummary('manage_memory', JSON.stringify({ action: 'recall' }))).toBe(
+                'ManageMemory(recall)'
+            )
+        })
+
+        test('handles unknown tools with automatic PascalCase', () => {
+            expect(getToolSummary('unknown_tool', JSON.stringify({ foo: 'bar' }))).toBe(
+                'UnknownTool()'
+            )
+            expect(getToolSummary('custom_mcp_tool', JSON.stringify({}))).toBe('CustomMcpTool()')
+        })
+
+        test('handles malformed JSON input with PascalCase', () => {
+            expect(getToolSummary('read_file', 'malformed {')).toBe('ReadFile()')
             expect(getToolSummary('bash', undefined as unknown as string)).toBe('Bash()')
+        })
+    })
+
+    describe('toPascalCase', () => {
+        test('converts snake_case, kebab-case, and dot notation to PascalCase', () => {
+            expect(toPascalCase('manage_subagent')).toBe('ManageSubagent')
+            expect(toPascalCase('read_file')).toBe('ReadFile')
+            expect(toPascalCase('custom-tool-name')).toBe('CustomToolName')
+            expect(toPascalCase('mcp.tools:run')).toBe('McpToolsRun')
+            expect(toPascalCase('SubAgent')).toBe('SubAgent')
+            expect(toPascalCase('')).toBe('')
         })
     })
 })

@@ -5,7 +5,7 @@ December is a (so much) better coding agent. It understands your codebase and he
 **Also available on the web at <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/585e6ff5-0403-45f5-89c3-c2d3d168962c" alt="December"/>
+  <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
 </p>
 
 - **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
