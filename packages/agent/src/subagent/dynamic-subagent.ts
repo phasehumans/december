@@ -25,7 +25,9 @@ const SUBAGENT_RECURSIVE_TOOLS = new Set(['invoke_subagent', 'spawn_subagent', '
 export function resolveScopedTools(
     allTools: Tool[],
     role: string,
-    explicitTools?: string[]
+    explicitTools?: string[],
+    currentDepth: number = 1,
+    maxDepth: number = 5
 ): Tool[] {
     const roleLower = role.toLowerCase()
 
@@ -42,13 +44,37 @@ export function resolveScopedTools(
         roleLower.includes('audit') ||
         roleLower.includes('explore')
     ) {
-        candidateTools = candidateTools.filter((t) => READ_ONLY_TOOLS.has(t.name))
+        candidateTools = candidateTools.filter((t) => {
+            if (READ_ONLY_TOOLS.has(t.name)) return true
+            if (
+                currentDepth < maxDepth &&
+                (t.name === 'invoke_subagent' ||
+                    t.name === 'spawn_subagent' ||
+                    t.name === 'manage_subagent')
+            )
+                return true
+            return false
+        })
     } else if (roleLower.includes('test')) {
-        candidateTools = candidateTools.filter((t) => TEST_TOOLS.has(t.name))
+        candidateTools = candidateTools.filter((t) => {
+            if (TEST_TOOLS.has(t.name)) return true
+            if (
+                currentDepth < maxDepth &&
+                (t.name === 'invoke_subagent' ||
+                    t.name === 'spawn_subagent' ||
+                    t.name === 'manage_subagent')
+            )
+                return true
+            return false
+        })
     }
 
-    // Automatically exclude recursive subagent spawning tools to prevent recursion loops
-    return candidateTools.filter((t) => !SUBAGENT_RECURSIVE_TOOLS.has(t.name))
+    // Exclude recursive spawning tools only when currentDepth reaches or exceeds maxDepth
+    if (currentDepth >= maxDepth) {
+        return candidateTools.filter((t) => !SUBAGENT_RECURSIVE_TOOLS.has(t.name))
+    }
+
+    return candidateTools
 }
 
 export function formatRollupReport(
@@ -65,8 +91,13 @@ export function formatRollupReport(
     const lines: string[] = [
         `### [Subagent: ${summary.role} (${summary.subagentId})] - ${statusHeader}`,
         `- **Task**: ${summary.task}`,
+        `- **Depth**: ${summary.depth}`,
         `- **Status**: ${summary.status} (${summary.totalTurns} turns, ${summary.toolCallsCount} tool calls, ${durationSeconds}s)`,
     ]
+
+    if (summary.model) {
+        lines.push(`- **Model**: \`${summary.model}\``)
+    }
 
     if (summary.worktreeBranch) {
         lines.push(`- **Workspace Branch**: \`${summary.worktreeBranch}\` (isolated worktree)`)
@@ -99,8 +130,11 @@ export async function executeDynamicSubagent(
     const {
         role,
         task,
+        model,
         tools,
         workspace = 'inherit',
+        maxTurns,
+        timeoutMs,
         parentAgent,
         signal,
         onEvent,
@@ -109,6 +143,33 @@ export async function executeDynamicSubagent(
     } = options
 
     const startTime = Date.now()
+    const parentDepth = parentAgent.depth ?? 0
+    const maxDepth = options.maxDepth ?? parentAgent.maxDepth ?? 5
+    const childDepth = options.depth ?? parentDepth + 1
+    const effectiveModel = model || (parentAgent.modelOptions as any)?.model
+
+    // Recursion safety check: Reject spawning beyond maxDepth
+    if (childDepth > maxDepth || parentDepth >= maxDepth) {
+        const errMsg = `Maximum delegation depth (${maxDepth}) reached; must execute directly using available tools.`
+        const failResult: Omit<SubagentRollupSummary, 'formattedReport'> = {
+            subagentId,
+            role,
+            task,
+            depth: childDepth,
+            model: effectiveModel,
+            status: 'failed',
+            totalTurns: 0,
+            toolCallsCount: 0,
+            durationMs: 0,
+            summary: errMsg,
+            error: errMsg,
+        }
+        return {
+            ...failResult,
+            formattedReport: formatRollupReport(failResult),
+        }
+    }
+
     let worktreeInfo: WorktreeInfo | null = null
     let effectiveWorkspaceDir = parentAgent.workspaceDir
 
@@ -120,10 +181,21 @@ export async function executeDynamicSubagent(
         }
     }
 
-    const scopedTools = resolveScopedTools(Array.from(parentAgent.tools.values()), role, tools)
+    const scopedTools = resolveScopedTools(
+        Array.from(parentAgent.tools.values()),
+        role,
+        tools,
+        childDepth,
+        maxDepth
+    )
+
+    const childModelOptions = model
+        ? { ...(parentAgent.modelOptions || {}), model }
+        : parentAgent.modelOptions
 
     const childSystemPrompt = [
         `You are an autonomous, specialized subagent executing the role: '${role}'.`,
+        `Delegation depth: ${childDepth} of ${maxDepth}.`,
         `Your primary objective is to execute the designated task with precision and rigor.`,
         '',
         '### Assigned Task',
@@ -133,8 +205,11 @@ export async function executeDynamicSubagent(
         '1. Inspect, analyze, and verify all required operations empirically using your available tools.',
         '2. Keep your conversation focused strictly on the mission without extraneous conversational pleasantries.',
         '3. Conclude your final turn with a comprehensive, structured rollup summary of your findings, actions taken, and results.',
+        childDepth < maxDepth
+            ? '4. If a subtask requires deep exploratory isolation, you may delegate to a child subagent using invoke_subagent.'
+            : '4. You are at maximum delegation depth. Execute all tasks directly with your available tools without spawning further subagents.',
         effectiveWorkspaceDir
-            ? `4. Working directory: ${effectiveWorkspaceDir}${worktreeInfo ? ` (isolated git worktree branch: ${worktreeInfo.branchName})` : ''}`
+            ? `5. Working directory: ${effectiveWorkspaceDir}${worktreeInfo ? ` (isolated git worktree branch: ${worktreeInfo.branchName})` : ''}`
             : '',
     ]
         .filter(Boolean)
@@ -148,9 +223,11 @@ export async function executeDynamicSubagent(
         llm: parentAgent.llm,
         operations: parentAgent.operations,
         workspaceDir: effectiveWorkspaceDir,
-        modelOptions: parentAgent.modelOptions,
+        modelOptions: childModelOptions,
         thinkingLevel: parentAgent.thinkingLevel,
         disableLogging: parentAgent.disableLogging,
+        depth: childDepth,
+        maxDepth,
     })
 
     // Attach child agent reference so manager or steering can access it
@@ -160,16 +237,30 @@ export async function executeDynamicSubagent(
     let toolCallsCount = 0
     let status: SubagentStatus = 'completed'
     let error: string | undefined
+    let isTimeout = false
+
+    const abortController = new AbortController()
+
+    let timeoutTimer: NodeJS.Timeout | undefined
+    if (timeoutMs && timeoutMs > 0) {
+        timeoutTimer = setTimeout(() => {
+            isTimeout = true
+            abortController.abort()
+            childAgent.abort()
+        }, timeoutMs)
+    }
 
     try {
         if (signal) {
             if (signal.aborted) {
+                abortController.abort()
                 childAgent.abort()
                 status = 'killed'
             } else {
                 signal.addEventListener(
                     'abort',
                     () => {
+                        abortController.abort()
                         childAgent.abort()
                     },
                     { once: true }
@@ -177,22 +268,34 @@ export async function executeDynamicSubagent(
             }
         }
 
-        onStream?.(`[Subagent: ${role}] Starting task: ${task}\n`)
+        abortController.signal.addEventListener('abort', () => childAgent.abort(), { once: true })
+
+        onStream?.(`[Subagent: depth ${childDepth} - ${role}] Starting task: ${task}\n`)
+
+        const effectiveMaxTurns = maxTurns && maxTurns > 0 ? maxTurns : undefined
 
         for await (const event of runAgentLoop(childAgent, task)) {
             onEvent?.(event)
 
             if (event.type === 'TurnEnd') {
                 totalTurns++
+                if (effectiveMaxTurns && totalTurns >= effectiveMaxTurns) {
+                    childAgent.abort()
+                    break
+                }
             } else if (event.type === 'ToolCallStart') {
                 toolCallsCount++
-                onStream?.(`[Subagent: ${role}] Tool: ${event.toolCall.name}\n`)
+                onStream?.(
+                    `[Subagent: depth ${childDepth} - ${role}] Tool: ${event.toolCall.name}\n`
+                )
             } else if (event.type === 'ThinkingChunk') {
-                onStream?.(`[Subagent: ${role}] ${event.content.slice(0, 80)}...\n`)
+                onStream?.(
+                    `[Subagent: depth ${childDepth} - ${role}] ${event.content.slice(0, 80)}...\n`
+                )
             } else if (event.type === 'StreamChunk') {
                 onStream?.(event.content)
             } else if (event.type === 'AgentStatus') {
-                onStream?.(`[Subagent: ${role}] ${event.message}\n`)
+                onStream?.(`[Subagent: depth ${childDepth} - ${role}] ${event.message}\n`)
             } else if (event.type === 'AgentInterrupt') {
                 status = 'killed'
             } else if (event.type === 'AgentError') {
@@ -201,16 +304,24 @@ export async function executeDynamicSubagent(
             }
         }
 
-        if (signal?.aborted) {
+        if (signal?.aborted || isTimeout) {
             status = 'killed'
+            if (isTimeout) {
+                error = `Subagent execution timed out after ${timeoutMs}ms`
+            }
         }
     } catch (err: any) {
         const isAbort =
             signal?.aborted ||
+            isTimeout ||
             err.name === 'AbortError' ||
             err.message?.toLowerCase().includes('aborted')
         status = isAbort ? 'killed' : 'failed'
-        error = err.message
+        error = isTimeout ? `Subagent execution timed out after ${timeoutMs}ms` : err.message
+    } finally {
+        if (timeoutTimer) {
+            clearTimeout(timeoutTimer)
+        }
     }
 
     let modifiedFiles: string[] = []
@@ -235,6 +346,8 @@ export async function executeDynamicSubagent(
         subagentId,
         role,
         task,
+        depth: childDepth,
+        model: effectiveModel,
         status,
         totalTurns,
         toolCallsCount,

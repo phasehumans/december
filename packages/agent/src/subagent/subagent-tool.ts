@@ -5,7 +5,7 @@ import { defaultSubagentManager, SubagentManager } from './subagent-manager'
 import type { SubagentWorkspaceMode } from './subagent-types'
 import type { Tool, ToolExecuteContext } from '@december/shared'
 
-const invokeSubagentSchema = Type.Object({
+const subagentSpecSchema = Type.Object({
     role: Type.String({
         description:
             'The specialized role for the subagent (e.g. "researcher", "test runner", "code reviewer", "debugger", "security auditor").',
@@ -14,6 +14,56 @@ const invokeSubagentSchema = Type.Object({
         description:
             'Actionable, detailed prompt description of the task for the subagent to accomplish.',
     }),
+    model: Type.Optional(
+        Type.String({
+            description:
+                'Optional model override for this subagent (e.g. "gemini-3.6-flash", "claude-haiku"). Defaults to parent model.',
+        })
+    ),
+    tools: Type.Optional(
+        Type.Array(Type.String(), {
+            description:
+                'Optional tool whitelist for the subagent. If omitted, defaults to role-based scoped tools.',
+        })
+    ),
+    workspace: Type.Optional(
+        Type.Union([Type.Literal('inherit'), Type.Literal('worktree'), Type.Literal('branch')], {
+            description:
+                'Workspace isolation mode: "inherit" (default) uses parent workspace, "worktree" creates an isolated git worktree branch for safe modifications.',
+        })
+    ),
+    maxTurns: Type.Optional(
+        Type.Number({
+            description:
+                'Optional turn limit for the subagent to prevent infinite loops (default 15).',
+        })
+    ),
+    timeoutMs: Type.Optional(
+        Type.Number({
+            description: 'Optional execution timeout in milliseconds for this subagent.',
+        })
+    ),
+})
+
+const invokeSubagentSchema = Type.Object({
+    role: Type.Optional(
+        Type.String({
+            description:
+                'The specialized role for the subagent (e.g. "researcher", "test runner", "code reviewer", "debugger", "security auditor"). Required if "subagents" batch is not provided.',
+        })
+    ),
+    task: Type.Optional(
+        Type.String({
+            description:
+                'Actionable, detailed prompt description of the task for the subagent to accomplish. Required if "subagents" batch is not provided.',
+        })
+    ),
+    model: Type.Optional(
+        Type.String({
+            description:
+                'Optional model override for the subagent (e.g. "gemini-3.6-flash", "claude-haiku"). Defaults to parent model.',
+        })
+    ),
     tools: Type.Optional(
         Type.Array(Type.String(), {
             description:
@@ -26,10 +76,26 @@ const invokeSubagentSchema = Type.Object({
                 'Workspace isolation mode: "inherit" (default) uses parent workspace, "worktree" creates an isolated git worktree branch for safe modifications.',
         })
     ),
+    maxTurns: Type.Optional(
+        Type.Number({
+            description: 'Optional turn limit for the subagent (default 15).',
+        })
+    ),
+    timeoutMs: Type.Optional(
+        Type.Number({
+            description: 'Optional execution timeout in milliseconds.',
+        })
+    ),
     background: Type.Optional(
         Type.Boolean({
             description:
-                'Whether to execute the subagent in the background without blocking. If true, returns the subagent ID immediately.',
+                'Whether to execute the subagent(s) in the background without blocking. If true, returns subagent ID(s) immediately.',
+        })
+    ),
+    subagents: Type.Optional(
+        Type.Array(subagentSpecSchema, {
+            description:
+                'Optional batch array of subagents to spawn concurrently in parallel. If provided, overrides top-level role/task.',
         })
     ),
 })
@@ -42,7 +108,7 @@ export function createInvokeSubagentTool(manager?: SubagentManager): Tool<Invoke
     return {
         name: 'invoke_subagent',
         description:
-            'Delegate a complex exploratory, research, test debugging, or specialized task to an isolated dynamic subagent with its own fresh context, custom role, scoped tool access, and optional workspace branching (git worktree). Returns an executive rollup summary to keep the parent context clean.',
+            'Delegate a complex exploratory, research, test debugging, or specialized task to an isolated dynamic subagent (or batch of parallel subagents) with fresh context, custom role, scoped tool access, optional model override, and optional workspace branching (git worktree). Returns an executive rollup summary to keep the parent context clean.',
         inputSchema: invokeSubagentSchema,
         execute: async (input, context: ToolExecuteContext) => {
             const parentAgent = context.agent
@@ -56,14 +122,83 @@ export function createInvokeSubagentTool(manager?: SubagentManager): Tool<Invoke
                 subagentManager.setTracker(tracker)
             }
 
-            const { role, task, tools, workspace = 'inherit', background = false } = input
+            const {
+                role,
+                task,
+                model,
+                tools,
+                workspace = 'inherit',
+                maxTurns,
+                timeoutMs,
+                background = false,
+                subagents,
+            } = input
+
+            // Batch execution path
+            if (subagents && subagents.length > 0) {
+                if (background) {
+                    const handles = subagents.map((spec) =>
+                        subagentManager.spawnBackground({
+                            role: spec.role,
+                            task: spec.task,
+                            model: spec.model,
+                            tools: spec.tools,
+                            workspace: (spec.workspace || 'inherit') as SubagentWorkspaceMode,
+                            maxTurns: spec.maxTurns,
+                            timeoutMs: spec.timeoutMs,
+                            parentAgent,
+                            signal: context.signal,
+                            onStream: (chunk) => context.onStream?.(chunk),
+                        })
+                    )
+
+                    const rows = handles.map(
+                        (h) => `- [${h.id}] Role: ${h.role} | Task: ${h.task.slice(0, 50)}`
+                    )
+                    return [
+                        `Batch subagents spawned in background (${handles.length} tasks):`,
+                        ...rows,
+                        '',
+                        "Use 'manage_subagent' with action 'list' or 'status' to monitor progress.",
+                    ].join('\n')
+                }
+
+                // Blocking parallel execution
+                const results = await Promise.all(
+                    subagents.map((spec) =>
+                        subagentManager.spawn({
+                            role: spec.role,
+                            task: spec.task,
+                            model: spec.model,
+                            tools: spec.tools,
+                            workspace: (spec.workspace || 'inherit') as SubagentWorkspaceMode,
+                            maxTurns: spec.maxTurns,
+                            timeoutMs: spec.timeoutMs,
+                            parentAgent,
+                            signal: context.signal,
+                            onStream: (chunk) => context.onStream?.(chunk),
+                        })
+                    )
+                )
+
+                const reports = results.map((r) => r.formattedReport).join('\n\n---\n\n')
+                return `### Batch Subagents Execution (${results.length} tasks)\n\n${reports}`
+            }
+
+            // Single subagent execution path
+            if (!role || !task) {
+                return 'Error: Either provide "role" and "task", or provide a "subagents" batch array.'
+            }
 
             if (background) {
                 const handle = subagentManager.spawnBackground({
                     role,
                     task,
+                    model,
                     tools,
                     workspace: workspace as SubagentWorkspaceMode,
+                    maxTurns,
+                    timeoutMs,
                     parentAgent,
                     signal: context.signal,
                     onStream: (chunk) => context.onStream?.(chunk),
@@ -73,18 +208,25 @@ export function createInvokeSubagentTool(manager?: SubagentManager): Tool<Invoke
                     `Subagent spawned in background: [${handle.id}]`,
                     `- Role: ${role}`,
                     `- Task: ${task}`,
+                    `- Depth: ${handle.depth}`,
+                    model ? `- Model: ${model}` : '',
                     `- Workspace: ${workspace}`,
                     `- Status: running`,
                     '',
                     `Use 'manage_subagent' with subagentId '${handle.id}' to inspect status, steer with instructions, or kill.`,
-                ].join('\n')
+                ]
+                    .filter(Boolean)
+                    .join('\n')
             }
 
             const result = await subagentManager.spawn({
                 role,
                 task,
+                model,
                 tools,
                 workspace: workspace as SubagentWorkspaceMode,
+                maxTurns,
+                timeoutMs,
                 parentAgent,
                 signal: context.signal,
                 onStream: (chunk) => context.onStream?.(chunk),
@@ -149,7 +291,8 @@ export function createManageSubagentTool(manager?: SubagentManager): Tool<Manage
 
                     const rows = list.map((s) => {
                         const durationSec = (s.durationMs / 1000).toFixed(1)
-                        return `- [${s.id}] Role: ${s.role} | Status: ${s.status} (${durationSec}s) | Task: ${s.task.slice(0, 60)}`
+                        const modelStr = s.model ? ` | Model: ${s.model}` : ''
+                        return `- [${s.id}] Role: ${s.role} | Depth: ${s.depth}${modelStr} | Status: ${s.status} (${durationSec}s) | Task: ${s.task.slice(0, 50)}`
                     })
                     return `### Active & Completed Subagents (${list.length})\n${rows.join('\n')}`
                 }
@@ -180,11 +323,15 @@ export function createManageSubagentTool(manager?: SubagentManager): Tool<Manage
                         `### Subagent [${handle.id}] - ${handle.status.toUpperCase()}`,
                         `- Role: ${handle.role}`,
                         `- Task: ${handle.task}`,
+                        `- Depth: ${handle.depth}`,
+                        handle.model ? `- Model: ${handle.model}` : '',
                         `- Duration: ${durationSec}s`,
                         '',
                         '#### Recent Stream Output:',
                         output ? output.slice(-2000) : '(No output recorded yet)',
-                    ].join('\n')
+                    ]
+                        .filter(Boolean)
+                        .join('\n')
                 }
 
                 case 'message': {

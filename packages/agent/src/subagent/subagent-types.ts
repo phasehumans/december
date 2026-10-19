@@ -4,12 +4,27 @@ import type { AgentEvent } from '@december/shared'
 export type SubagentWorkspaceMode = 'inherit' | 'worktree' | 'branch'
 export type SubagentStatus = 'idle' | 'running' | 'completed' | 'failed' | 'killed'
 
+export interface SubagentSpecification {
+    role: string
+    task: string
+    model?: string
+    tools?: string[]
+    workspace?: SubagentWorkspaceMode
+    maxTurns?: number
+    timeoutMs?: number
+}
+
 export interface SpawnSubagentOptions {
     role: string
     task: string
+    model?: string
     tools?: string[]
     workspace?: SubagentWorkspaceMode
     background?: boolean
+    maxTurns?: number
+    timeoutMs?: number
+    depth?: number
+    maxDepth?: number
     parentAgent: Agent
     signal?: AbortSignal
     onEvent?: (event: AgentEvent) => void
@@ -22,6 +37,8 @@ export interface SubagentRollupSummary {
     role: string
     task: string
     status: SubagentStatus
+    depth: number
+    model?: string
     totalTurns: number
     toolCallsCount: number
     durationMs: number
@@ -38,6 +55,8 @@ export interface SubagentHandle {
     id: string
     role: string
     task: string
+    depth: number
+    model?: string
     status: SubagentStatus
     startedAt: Date
     completedAt?: Date
@@ -52,6 +71,8 @@ export interface SubagentStatusInfo {
     id: string
     role: string
     task: string
+    depth: number
+    model?: string
     status: SubagentStatus
     startedAt: Date
     completedAt?: Date

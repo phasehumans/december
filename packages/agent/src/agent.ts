@@ -37,6 +37,8 @@ export interface AgentConfig {
     logsDir?: string
     disableLogging?: boolean
     tracer?: AgentTracer
+    depth?: number
+    maxDepth?: number
 }
 
 class PendingMessageQueue {
@@ -90,8 +92,12 @@ export class Agent {
     public tracer: AgentTracer
     public deferredRegistry: DeferredToolRegistry
     public mcpClientManager?: McpClientManager
+    public depth: number
+    public maxDepth: number
 
     constructor(config: AgentConfig) {
+        this.depth = config.depth ?? 0
+        this.maxDepth = config.maxDepth ?? 5
         this.llm = config.llm
         this.systemPrompt = config.systemPrompt || 'You are a helpful coding agent.'
         this.sessionId = config.sessionId || 'default'
@@ -210,10 +216,42 @@ export class Agent {
         this.deferredRegistry.register(tool, metadata)
     }
 
+    private onToolActivated?: (tool: Tool) => void
+
+    public setOnToolActivated(cb: (tool: Tool) => void): void {
+        this.onToolActivated = cb
+    }
+
+    public getTools(): Tool[] {
+        return Array.from(this.tools.values())
+    }
+
+    public setSystemPrompt(prompt: string): void {
+        this.systemPrompt = prompt
+        if (
+            this.conversation.messages.length > 0 &&
+            this.conversation.messages[0]?.role === 'system'
+        ) {
+            this.conversation.messages[0].content = prompt
+        }
+    }
+
+    public updateModel(model: string, thinkingLevel?: string): void {
+        this.modelOptions = {
+            ...this.modelOptions,
+            model,
+            ...(thinkingLevel !== undefined ? { thinkingLevel } : {}),
+        }
+        if (thinkingLevel !== undefined) {
+            this.thinkingLevel = thinkingLevel as any
+        }
+    }
+
     public activateDeferredTool(toolName: string): boolean {
         const tool = this.deferredRegistry.get(toolName)
         if (tool) {
             this.tools.set(tool.name, tool)
+            this.onToolActivated?.(tool)
             return true
         }
         return false

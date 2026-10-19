@@ -52,14 +52,20 @@ describe('DynamicSubagent (Unit)', () => {
             expect(names).not.toContain('bash')
         })
 
-        it('should exclude recursive subagent tools automatically', () => {
+        it('should exclude recursive subagent tools at maxDepth', () => {
             const recursiveTool: Tool = {
                 name: 'invoke_subagent',
                 description: 'Spawn subagent',
                 inputSchema: {},
                 execute: async () => '',
             }
-            const scoped = resolveScopedTools([...allTools, recursiveTool], 'general')
+            const scoped = resolveScopedTools(
+                [...allTools, recursiveTool],
+                'general',
+                undefined,
+                5,
+                5
+            )
             expect(scoped.map((t) => t.name)).not.toContain('invoke_subagent')
         })
     })

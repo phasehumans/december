@@ -41,6 +41,9 @@ export class SubagentManager extends EventEmitter {
             options.signal.addEventListener('abort', () => abortController.abort(), { once: true })
         }
 
+        const childDepth = options.depth ?? (options.parentAgent.depth ?? 0) + 1
+        const effectiveModel = options.model || (options.parentAgent.modelOptions as any)?.model
+
         let childAgentRef: any = null
         let accumulatedOutput = ''
 
@@ -59,6 +62,8 @@ export class SubagentManager extends EventEmitter {
             id,
             role: options.role,
             task: options.task,
+            depth: childDepth,
+            model: effectiveModel,
             status: 'running',
             startedAt: new Date(),
             abort: () => {
@@ -92,6 +97,7 @@ export class SubagentManager extends EventEmitter {
                     const result = await executeDynamicSubagent({
                         ...options,
                         subagentId: id,
+                        depth: childDepth,
                         signal: abortController.signal,
                         onStream,
                     })
@@ -114,13 +120,15 @@ export class SubagentManager extends EventEmitter {
                         subagentId: id,
                         role: options.role,
                         task: options.task,
+                        depth: childDepth,
+                        model: effectiveModel,
                         status: 'failed',
                         totalTurns: 0,
                         toolCallsCount: 0,
                         durationMs: Date.now() - handle.startedAt.getTime(),
                         summary: `Subagent failed with error: ${err.message}`,
                         error: err.message,
-                        formattedReport: `### [Subagent: ${options.role} (${id})] - FAILED\n**Error**: ${err.message}`,
+                        formattedReport: `### [Subagent: ${options.role} (${id})] - FAILED\n- **Depth**: ${childDepth}\n**Error**: ${err.message}`,
                     }
 
                     handle.status = 'failed'
@@ -145,7 +153,7 @@ export class SubagentManager extends EventEmitter {
         if (this.tracker) {
             this.tracker.registerSubagentTask({
                 id,
-                role: options.role,
+                role: `depth ${childDepth} - ${options.role}`,
                 task: options.task,
                 abortController,
                 onKill: () => handle.abort(),
@@ -179,6 +187,8 @@ export class SubagentManager extends EventEmitter {
             id: h.id,
             role: h.role,
             task: h.task,
+            depth: h.depth,
+            model: h.model,
             status: h.status,
             startedAt: h.startedAt,
             completedAt: h.completedAt,
