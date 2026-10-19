@@ -76,6 +76,21 @@ export interface Environment {
     browser?: BrowserOperations
     diagnostics?: DiagnosticsOperations
     lsp?: LspOperations
+    subagentTracker?: SubagentTaskTracker
+}
+
+export interface SubagentTaskTracker {
+    registerSubagentTask: (options: {
+        id?: string
+        role: string
+        task: string
+        abortController?: AbortController
+        onKill?: () => void
+    }) => { id: string }
+    appendOutput: (id: string, chunk: string) => void
+    markCompleted: (id: string, exitCode: number) => void
+    getTask?: (id: string) => any
+    killTask?: (id: string) => boolean
 }
 
 export interface BrowserNavigateResult {

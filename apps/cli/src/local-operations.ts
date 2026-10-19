@@ -313,6 +313,13 @@ export const localOperations: PlatformAdapter = {
             }
         },
     },
+    subagentTracker: {
+        registerSubagentTask: (opts) => taskManager.addSubagentTask(opts),
+        appendOutput: (id, chunk) => taskManager.appendOutput(id, chunk),
+        markCompleted: (id, code) => taskManager.markCompleted(id, code),
+        getTask: (id) => taskManager.getTask(id),
+        killTask: (id) => taskManager.killTask(id),
+    },
 }
 
 let activeLspClient: LspClient | null = null

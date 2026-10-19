@@ -7,6 +7,7 @@ import { SkillDiscoveryEngine, formatSkillsCatalog } from '@december/shared'
 
 import { Agent } from '../agent'
 import { createRunSkillTool } from '../skills/run-skill-tool'
+import { InvokeSubagentTool, ManageSubagentTool } from '../subagent/subagent-tool'
 
 import type { AgentConfig } from '../agent'
 import type { Tool, DiscoveredSkill } from '@december/shared'
@@ -91,6 +92,24 @@ export const DEFAULT_TOOL_PROMPTS: Record<string, { snippet: string; guidelines:
         snippet: 'Record, read, or prune persistent workspace rules and memories',
         guidelines: [
             "Use 'manage_memory' to record learned conventions, build/test commands, architecture notes, and quirks into persistent workspace memory.",
+        ],
+    },
+    invoke_subagent: {
+        snippet: 'Spawn a dynamic subagent with isolated context and workspace delegation',
+        guidelines: [
+            "Use 'invoke_subagent' to delegate deep exploratory tasks, research, test debugging, or reviews to an isolated subagent with its own fresh context to prevent polluting the primary conversation.",
+        ],
+    },
+    spawn_subagent: {
+        snippet: 'Spawn a dynamic subagent with isolated context and workspace delegation',
+        guidelines: [
+            "Use 'spawn_subagent' to delegate deep exploratory tasks, research, test debugging, or reviews to an isolated subagent.",
+        ],
+    },
+    manage_subagent: {
+        snippet: 'Inspect, steer, list, or cancel dynamic subagents',
+        guidelines: [
+            "Use 'manage_subagent' to monitor running subagents, send steering instructions, view reports, or terminate executions.",
         ],
     },
 }
@@ -363,10 +382,16 @@ export class AgentHarness {
         // 2. discover project rules climbing from workspace directory to root
         const rules = discoverProjectRules(config.workspaceDir, config.rootBoundary)
 
-        const effectiveTools =
-            this.skills.length > 0 && !config.tools.some((t) => t.name === 'run_skill')
-                ? [...config.tools, createRunSkillTool(() => this.skills)]
-                : config.tools
+        const effectiveTools = [...config.tools]
+        if (this.skills.length > 0 && !effectiveTools.some((t) => t.name === 'run_skill')) {
+            effectiveTools.push(createRunSkillTool(() => this.skills))
+        }
+        if (!effectiveTools.some((t) => t.name === 'invoke_subagent')) {
+            effectiveTools.push(InvokeSubagentTool)
+        }
+        if (!effectiveTools.some((t) => t.name === 'manage_subagent')) {
+            effectiveTools.push(ManageSubagentTool)
+        }
 
         // 3. assemble final system prompt with model-specific dispatch and dynamic tool guidelines
         const finalPrompt = assembleSystemPrompt({

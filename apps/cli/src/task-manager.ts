@@ -11,6 +11,10 @@ export interface BackgroundTask {
     pid?: number
     output: string
     childProcess?: ChildProcess
+    abortController?: AbortController
+    onKill?: () => void
+    type?: 'process' | 'subagent'
+    role?: string
     createdAt: Date
     completedAt?: Date
     exitCode?: number | null
@@ -30,6 +34,31 @@ export class TaskManager extends EventEmitter {
             pid: childProcess.pid,
             output: '',
             childProcess,
+            createdAt: new Date(),
+        }
+        this.tasks.push(task)
+        this.emit('task:added', task)
+        this.emit('change')
+        return task
+    }
+
+    addSubagentTask(options: {
+        id?: string
+        role: string
+        task: string
+        abortController?: AbortController
+        onKill?: () => void
+    }): BackgroundTask {
+        const id = options.id || `task-subagent-${this.nextId++}`
+        const task: BackgroundTask = {
+            id,
+            command: `[subagent: ${options.role}] ${options.task}`,
+            status: 'running',
+            output: '',
+            type: 'subagent',
+            role: options.role,
+            abortController: options.abortController,
+            onKill: options.onKill,
             createdAt: new Date(),
         }
         this.tasks.push(task)
@@ -65,6 +94,8 @@ export class TaskManager extends EventEmitter {
             task.exitCode = exitCode
             task.completedAt = new Date()
             delete task.childProcess
+            delete task.abortController
+            delete task.onKill
             this.cleanupHistory()
             this.emit('task:completed', task)
             this.emit('change')
@@ -84,10 +115,26 @@ export class TaskManager extends EventEmitter {
                     // Intentionally swallowed: fallback when childProcess kill fails
                 }
             }
+            if (task.abortController) {
+                try {
+                    task.abortController.abort()
+                } catch {
+                    // Intentionally swallowed: abort controller error handling
+                }
+            }
+            if (task.onKill) {
+                try {
+                    task.onKill()
+                } catch {
+                    // Intentionally swallowed: onKill callback error handling
+                }
+            }
             task.status = 'killed'
             task.exitCode = 130
             task.completedAt = new Date()
             delete task.childProcess
+            delete task.abortController
+            delete task.onKill
             this.cleanupHistory()
             this.emit('task:killed', task)
             this.emit('change')

@@ -192,4 +192,33 @@ describe('taskManager', () => {
         expect(changeCount).toBe(3)
         taskManager.off('change', changeListener)
     })
+
+    test('adds subagent task and aborts via killTask', () => {
+        let aborted = false
+        let onKillCalled = false
+        const abortController = new AbortController()
+        abortController.signal.addEventListener('abort', () => {
+            aborted = true
+        })
+
+        const task = taskManager.addSubagentTask({
+            role: 'researcher',
+            task: 'Analyze module architecture',
+            abortController,
+            onKill: () => {
+                onKillCalled = true
+            },
+        })
+
+        expect(task.command).toBe('[subagent: researcher] Analyze module architecture')
+        expect(task.status).toBe('running')
+        expect(task.type).toBe('subagent')
+        expect(task.role).toBe('researcher')
+
+        const killed = taskManager.killTask(task.id)
+        expect(killed).toBe(true)
+        expect(aborted).toBe(true)
+        expect(onKillCalled).toBe(true)
+        expect(taskManager.getTask(task.id)?.status).toBe('killed')
+    })
 })

@@ -1,4 +1,9 @@
-import type { BrowserOperations, DiagnosticsOperations, LspOperations } from '@december/shared'
+import type {
+    BrowserOperations,
+    DiagnosticsOperations,
+    LspOperations,
+    SubagentTaskTracker,
+} from '@december/shared'
 
 export interface BashExecOptions {
     onData?: (chunk: string | Buffer) => void
@@ -43,4 +48,5 @@ export interface PlatformAdapter {
     browser?: BrowserOperations
     diagnostics?: DiagnosticsOperations
     lsp?: LspOperations
+    subagentTracker?: SubagentTaskTracker
 }

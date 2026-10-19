@@ -404,4 +404,21 @@ description: |
             '- $DATABASE_URL (referenced in prompts as @secret:DATABASE_URL or $DATABASE_URL)'
         )
     })
+
+    test('automatically injects invoke_subagent and manage_subagent tools and guidelines', () => {
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+        })
+
+        const agent = harness.getAgent()
+        expect(agent.tools.has('invoke_subagent')).toBe(true)
+        expect(agent.tools.has('manage_subagent')).toBe(true)
+        expect(agent.systemPrompt).toContain(
+            "Use 'invoke_subagent' to delegate deep exploratory tasks"
+        )
+        expect(agent.systemPrompt).toContain("Use 'manage_subagent' to monitor running subagents")
+    })
 })
