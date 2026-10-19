@@ -33,6 +33,7 @@ export type AuthMode =
     | 'tasks_mode'
     | 'usage'
     | 'diff_view'
+    | 'rewind_select'
 
 export interface GrillQuestion {
     question: string
@@ -59,3 +60,10 @@ export type PlanWorkflowState =
     | { phase: 'executing'; prompt: string; planText: string; currentStepIndex?: number }
 
 export type PlanWorkflowPhase = PlanWorkflowState['phase']
+
+export interface BtwState {
+    question: string
+    answer: string
+    status: 'loading' | 'streaming' | 'complete' | 'error'
+    error?: string
+}

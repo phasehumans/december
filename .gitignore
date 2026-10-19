@@ -83,6 +83,8 @@ pnpm-debug.log*
 bun.report-*
 .december/logs/
 **/.december/logs/
+.december/snapshots/
+**/.december/snapshots/
 
 # Local infrastructure & runtimes
 docker-compose.override.yml

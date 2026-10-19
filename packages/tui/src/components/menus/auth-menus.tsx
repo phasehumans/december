@@ -8,6 +8,7 @@ import { GrillQuestionMenu } from './grill-question-menu'
 import { MenuMenu } from './menu-menu'
 import { ModelSelectMenu } from './model-select-menu'
 import { PlanApproveMenu } from './plan-approve-menu'
+import { RewindSelectMenu } from './rewind-select-menu'
 import { SessionSelectMenu } from './session-select-menu'
 import { SettingsMainMenu } from './settings-main-menu'
 import { SubscriptionSelectMenu } from './subscription-select-menu'
@@ -46,6 +47,8 @@ export function AuthMenus(props: any) {
             return <UsageSelectMenu {...props} />
         case 'diff_view':
             return <DiffViewMenu {...props} />
+        case 'rewind_select':
+            return <RewindSelectMenu {...props} />
 
         default:
             return null

@@ -19,6 +19,8 @@ export interface ParsedCliArgs {
     sessionId?: string
     scope?: string
     cwd?: string
+    turn?: number
+    list?: boolean
     positionals: string[]
 }
 
@@ -41,6 +43,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 'session-id': { type: 'string' },
                 scope: { type: 'string' },
                 cwd: { type: 'string' },
+                turn: { type: 'string', short: 't' },
+                list: { type: 'boolean' },
             },
             allowPositionals: true,
             strict: false,
@@ -61,6 +65,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const sessionId = values['session-id'] as string | undefined
         const scope = values.scope as string | undefined
         const cwd = values.cwd as string | undefined
+        const turn = values.turn ? parseInt(values.turn as string, 10) : undefined
+        const list = Boolean(values.list)
 
         const knownCommands = [
             'login',
@@ -78,6 +84,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'skill',
             'skills',
             'mcp',
+            'rewind',
+            'undo',
         ]
         let command: string | undefined
         let prompt: string | undefined
@@ -109,6 +117,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             sessionId,
             scope,
             cwd,
+            turn,
+            list,
             positionals,
         }
     } catch {
@@ -124,6 +134,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             isLocal: false,
             resume: false,
             isInline: false,
+            turn: undefined,
+            list: false,
             positionals: [],
         }
     }

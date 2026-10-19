@@ -1,5 +1,5 @@
 import { Agent } from '@december/agent'
-import { Message, AuthMode, PlanWorkflowState } from '@december/tui'
+import { Message, AuthMode, PlanWorkflowState, BtwState } from '@december/tui'
 import { create } from 'zustand'
 
 import { DecemberConfig } from '../config'
@@ -110,6 +110,16 @@ export interface CliState {
     sessionNewName: string
     setSessionNewName: (name: string) => void
 
+    // rewind
+    rewindItems: {
+        turnIndex: number
+        commitHash: string
+        prompt?: string
+        timestamp: number
+        touchedFiles?: string[]
+    }[]
+    setRewindItems: (items: any[]) => void
+
     // settings feature
     settingsPathGuard: boolean
     setSettingsPathGuard: (val: boolean) => void
@@ -163,6 +173,10 @@ export interface CliState {
     removeToast: (id: string) => void
     shouldExit: boolean
     setShouldExit: (shouldExit: boolean) => void
+
+    // btw side question
+    btwState: BtwState | null
+    setBtwState: (state: BtwState | null | ((prev: BtwState | null) => BtwState | null)) => void
 }
 
 export const useCliStore = create<CliState>((set) => ({
@@ -310,6 +324,10 @@ export const useCliStore = create<CliState>((set) => ({
     sessionNewName: '',
     setSessionNewName: (sessionNewName) => set({ sessionNewName }),
 
+    // rewind
+    rewindItems: [],
+    setRewindItems: (rewindItems) => set({ rewindItems }),
+
     // settings feature
     settingsPathGuard: true,
     setSettingsPathGuard: (settingsPathGuard) => set({ settingsPathGuard }),
@@ -374,4 +392,11 @@ export const useCliStore = create<CliState>((set) => ({
     removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t: any) => t.id !== id) })),
     shouldExit: false,
     setShouldExit: (shouldExit) => set({ shouldExit }),
+
+    // btw side question
+    btwState: null,
+    setBtwState: (updater) =>
+        set((state) => ({
+            btwState: typeof updater === 'function' ? updater(state.btwState) : updater,
+        })),
 }))

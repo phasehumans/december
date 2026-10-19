@@ -36,6 +36,8 @@ export * from './components/menus/settings-main-menu'
 export * from './components/menus/tool-permission-menu'
 export * from './components/menus/usage-select-menu'
 export * from './components/menus/diff-view-menu'
+export * from './components/menus/rewind-select-menu'
+export * from './components/menus/btw-overlay'
 export * from './utils/diff'
 
 export * from './app'

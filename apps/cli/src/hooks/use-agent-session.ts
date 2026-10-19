@@ -207,6 +207,10 @@ export function useAgentSession({
         setSettingsFollowUpMode,
         settingsBrowserVisible,
         setSettingsBrowserVisible,
+        btwState,
+        setBtwState,
+        rewindItems,
+        setRewindItems,
     } = state
 
     const [expandCommands, setExpandCommands] = useState(false)
@@ -301,6 +305,7 @@ export function useAgentSession({
     }, [agent, setStaticMessages, setStaticKey])
 
     const activeShellAbortRef = useRef<(() => void) | null>(null)
+    const btwAbortRef = useRef<AbortController | null>(null)
 
     // hooks state
 
@@ -1126,11 +1131,115 @@ export function useAgentSession({
         }
     }, [])
 
+    const handleDismissBtw = useCallback(() => {
+        if (btwAbortRef.current) {
+            btwAbortRef.current.abort()
+            btwAbortRef.current = null
+        }
+        setBtwState(null)
+    }, [setBtwState])
+
+    const handleSideQuestion = useCallback(
+        async (question: string) => {
+            if (!agent) {
+                addToast('No active agent session.', 'error')
+                return
+            }
+
+            if (btwAbortRef.current) {
+                btwAbortRef.current.abort()
+            }
+            const controller = new AbortController()
+            btwAbortRef.current = controller
+
+            setBtwState({
+                question,
+                answer: '',
+                status: 'loading',
+            })
+
+            try {
+                const { runSideQuestion } = await import('@december/agent')
+                await runSideQuestion(agent, question, {
+                    signal: controller.signal,
+                    onChunk: (chunk) => {
+                        setBtwState((prev) => {
+                            if (!prev) return null
+                            return {
+                                ...prev,
+                                status: 'streaming',
+                                answer: prev.answer + chunk,
+                            }
+                        })
+                    },
+                })
+                setBtwState((prev) => (prev ? { ...prev, status: 'complete' } : null))
+            } catch (err: any) {
+                if (controller.signal.aborted) {
+                    return
+                }
+                setBtwState((prev) =>
+                    prev ? { ...prev, status: 'error', error: err?.message || String(err) } : null
+                )
+            } finally {
+                if (btwAbortRef.current === controller) {
+                    btwAbortRef.current = null
+                }
+            }
+        },
+        [agent, addToast, setBtwState]
+    )
+
+    const handleRewindSelect = useCallback(
+        async (targetTurn: number) => {
+            if (!agent) return
+            try {
+                addToast(`Rewinding workspace to Turn ${targetTurn}...`, 'info')
+                const result = await agent.rollbackToTurn(targetTurn)
+
+                setActiveMessages((prev) => {
+                    let userCount = 0
+                    let cutIdx = -1
+                    for (let i = 0; i < prev.length; i++) {
+                        if (prev[i]?.role === 'user') {
+                            userCount++
+                            if (userCount === targetTurn) {
+                                cutIdx = i
+                                break
+                            }
+                        }
+                    }
+                    return cutIdx !== -1 ? prev.slice(0, cutIdx) : prev
+                })
+
+                const count = result.restoredFiles.length + result.deletedFiles.length
+                addToast(
+                    `Rewound to Turn ${targetTurn}. (${count} file${count === 1 ? '' : 's'} affected)`,
+                    'success'
+                )
+                setAuthMode('none')
+            } catch (e: any) {
+                addToast(`Failed to rewind: ${e.message}`, 'error')
+            }
+        },
+        [agent, addToast, setActiveMessages, setAuthMode]
+    )
+
     const handleSubmit = useCallback(
         async (text: string) => {
             if (text.trim() === '/exit') {
                 setShouldExit(true)
                 process.exit(0)
+                return
+            }
+
+            if (text.trim() === '/btw' || text.trim().startsWith('/btw ')) {
+                const question = text.trim().slice(4).trim()
+                if (!question) {
+                    addToast('Usage: /btw <question> (e.g. /btw what port does redis use?)', 'info')
+                    return
+                }
+                handleSideQuestion(question)
                 return
             }
 
@@ -2123,6 +2232,59 @@ ${decStatus}
                 return
             }
 
+            if (text.trim() === '/undo') {
+                if (!agent) {
+                    addToast('No active agent session.', 'error')
+                    return
+                }
+                try {
+                    addToast('Reverting last agent turn...', 'info')
+                    const result = await agent.rollbackLastTurn()
+
+                    setActiveMessages((prev) => {
+                        let lastUserIdx = -1
+                        for (let i = prev.length - 1; i >= 0; i--) {
+                            if (prev[i]?.role === 'user') {
+                                lastUserIdx = i
+                                break
+                            }
+                        }
+                        return lastUserIdx !== -1 ? prev.slice(0, lastUserIdx) : []
+                    })
+
+                    const count = result.restoredFiles.length + result.deletedFiles.length
+                    addToast(
+                        `Undid Turn ${result.targetTurn}. (${count} file${count === 1 ? '' : 's'} affected)`,
+                        'success'
+                    )
+                } catch (e: any) {
+                    addToast(`Failed to undo: ${e.message}`, 'error')
+                }
+                return
+            }
+
+            if (text.trim() === '/rewind' || text.trim().startsWith('/rewind ')) {
+                if (!agent) {
+                    addToast('No active agent session.', 'error')
+                    return
+                }
+                try {
+                    const { getSnapshotManager } = await import('@december/tools')
+                    const manager = getSnapshotManager(agent.workspaceDir || process.cwd())
+                    await manager.init()
+                    const snapshots = manager.getSnapshots()
+                    if (snapshots.length === 0) {
+                        addToast('No turn snapshots recorded in this session.', 'info')
+                        return
+                    }
+                    setRewindItems(snapshots)
+                    setAuthMode('rewind_select')
+                } catch (e: any) {
+                    addToast(`Failed to open rewind menu: ${e.message}`, 'error')
+                }
+                return
+            }
+
             if (text.trim() === '/usage') {
                 await fetchUsageData()
                 setAuthMode('usage')
@@ -2257,10 +2419,12 @@ ${decStatus}
                         'model',
                         'new',
                         'resume',
+                        'rewind',
                         'settings',
                         'skill',
                         'skills',
                         'tasks',
+                        'undo',
                         'update',
                         'usage',
                     ])
@@ -2419,6 +2583,7 @@ ${decStatus}
             setIsAuthenticated,
             setSettingsAuthPriority,
             setSwitchItems,
+            handleSideQuestion,
         ]
     )
 
@@ -2834,5 +2999,12 @@ ${decStatus}
         handleAbortAuth,
         pendingDeviceAuthUrl: useCliStore((state) => state.pendingDeviceAuthUrl),
         setPendingDeviceAuthUrl: useCliStore((state) => state.setPendingDeviceAuthUrl),
+        btwState,
+        handleDismissBtw,
+        handleSideQuestion,
+        rewindItems,
+        setRewindItems,
+        onSelectTurn: handleRewindSelect,
+        handleRewindSelect,
     }
 }

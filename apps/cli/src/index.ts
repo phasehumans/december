@@ -170,6 +170,16 @@ async function main() {
         process.exit(0)
     }
 
+    if (parsedArgs.command === 'rewind' || parsedArgs.command === 'undo') {
+        const turnArg = parsedArgs.positionals[1]
+        const turn =
+            turnArg && !isNaN(parseInt(turnArg, 10)) ? parseInt(turnArg, 10) : parsedArgs.turn
+        const list = parsedArgs.positionals[1] === 'list' || parsedArgs.list
+        const { handleRewindCommand } = await import('./commands')
+        await handleRewindCommand({ turn, list })
+        process.exit(0)
+    }
+
     if (parsedArgs.command === 'skill' || parsedArgs.command === 'skills') {
         const { handleSkillCommand } = await import('./commands')
         await handleSkillCommand({

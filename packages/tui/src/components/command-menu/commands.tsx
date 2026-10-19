@@ -17,6 +17,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'btw',
+        description: 'Ask an ephemeral side question without polluting history or breaking cache',
+        value: '/btw',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'changelog',
         description: 'Open December changelog in your browser',
         value: '/changelog',
@@ -309,6 +317,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'rewind',
+        description: 'Rollback files and conversation history to any previous turn',
+        value: '/rewind',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'settings',
         description: 'Open settings',
         value: '/settings',
@@ -336,6 +352,14 @@ export const COMMANDS: Command[] = [
         name: 'update',
         description: 'Update to the latest version',
         value: '/update',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
+        name: 'undo',
+        description: 'Revert file changes and conversation from the last agent turn',
+        value: '/undo',
         action: (ctx) => {
             // forwarded to chat screen
         },

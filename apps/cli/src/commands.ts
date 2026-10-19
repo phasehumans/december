@@ -1076,3 +1076,78 @@ export async function handleMcpCommand(options?: { action?: string }): Promise<v
         // Intentionally swallowed: cleanup error
     })
 }
+
+export async function handleRewindCommand(options?: {
+    turn?: number
+    list?: boolean
+}): Promise<void> {
+    const BLUE = '\x1b[38;2;135;178;244m'
+    const GREEN = '\x1b[38;2;110;231;183m'
+    const YELLOW = '\x1b[38;2;253;224;71m'
+    const RED = '\x1b[38;2;252;165;165m'
+    const WHITE = '\x1b[38;2;244;244;245m'
+    const GRAY = '\x1b[38;2;161;161;170m'
+    const RESET = '\x1b[0m'
+    const BOLD = '\x1b[1m'
+
+    const { getSnapshotManager } = await import('@december/tools')
+    const manager = getSnapshotManager(process.cwd())
+    await manager.init()
+
+    const snapshots = manager.getSnapshots()
+
+    if (options?.list) {
+        if (snapshots.length === 0) {
+            console.log(`\n${GRAY}No snapshots recorded in this workspace.${RESET}\n`)
+            return
+        }
+
+        console.log(`\n${BOLD}Available Turn Snapshots (${snapshots.length}):${RESET}\n`)
+        for (const snap of snapshots) {
+            const dateStr = new Date(snap.timestamp).toLocaleTimeString()
+            const promptPreview = snap.prompt ? `"${snap.prompt.slice(0, 50)}"` : '(no prompt)'
+            console.log(
+                `  ${BLUE}Turn ${snap.turnIndex}${RESET} [${GRAY}${dateStr}${RESET}] - ${WHITE}${promptPreview}${RESET}`
+            )
+            console.log(`    Commit: ${GRAY}${snap.commitHash.slice(0, 8)}${RESET}`)
+        }
+        console.log(
+            `\nRun ${WHITE}december rewind --turn <number>${RESET} to restore to a specific turn.\n`
+        )
+        return
+    }
+
+    if (snapshots.length === 0) {
+        console.log(`\n${YELLOW}Warning:${RESET} No snapshots available to rewind.\n`)
+        return
+    }
+
+    const targetTurn =
+        options?.turn !== undefined ? options.turn : snapshots[snapshots.length - 1]?.turnIndex
+    if (targetTurn === undefined) {
+        console.log(`\n${RED}Error:${RESET} Invalid target turn.\n`)
+        return
+    }
+
+    try {
+        const result = await manager.rollbackToTurn(targetTurn)
+        console.log(
+            `\n${GREEN}✓ Successfully rewound workspace to Turn ${result.targetTurn}.${RESET}`
+        )
+        if (result.restoredFiles.length > 0) {
+            console.log(`  Restored ${result.restoredFiles.length} file(s):`)
+            for (const f of result.restoredFiles) {
+                console.log(`    • ${BLUE}${f}${RESET}`)
+            }
+        }
+        if (result.deletedFiles.length > 0) {
+            console.log(`  Deleted ${result.deletedFiles.length} newly added file(s):`)
+            for (const f of result.deletedFiles) {
+                console.log(`    • ${RED}${f}${RESET}`)
+            }
+        }
+        console.log('')
+    } catch (e: any) {
+        console.error(`\n${RED}Failed to rewind:${RESET} ${e.message}\n`)
+    }
+}

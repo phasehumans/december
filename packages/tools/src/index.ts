@@ -37,6 +37,8 @@ export * from './deferred-registry'
 export * from './search_tools'
 export * from './code_intelligence'
 export * from './mcp'
+export * from './snapshot'
+export * from './file-mutation-queue'
 export { Type, type Static } from '@sinclair/typebox'
 
 export const CORE_TOOLS = [

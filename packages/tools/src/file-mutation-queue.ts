@@ -1,5 +1,7 @@
 import path from 'node:path'
 
+import { getSnapshotManager } from './snapshot'
+
 const fileMutationQueues = new Map<string, Promise<void>>()
 let registrationQueue = Promise.resolve()
 
@@ -32,6 +34,12 @@ export async function withFileMutationQueue<T>(filePath: string, fn: () => Promi
     await currentQueue
 
     try {
+        const snapshotManager = getSnapshotManager()
+        if (snapshotManager?.isTracking()) {
+            await snapshotManager.onBeforeFileMutation(key).catch(() => {
+                // Intentionally swallowed: snapshot failure should not block mutations
+            })
+        }
         return await fn()
     } finally {
         releaseNext()

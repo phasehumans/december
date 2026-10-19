@@ -244,6 +244,21 @@ export async function* runAgentLoop(
             })
         }
         await agent.saveContext()
+
+        if (!isReadOnly && agent.workspaceDir) {
+            try {
+                const { getSnapshotManager } = await import('@december/tools')
+                const snapshotManager = getSnapshotManager(agent.workspaceDir)
+                const turnIndex = agent.messages.filter((m) => m.role === 'user' && !m.isUI).length
+                const promptText = typeof userInput === 'string' ? userInput : userInput.content
+                await snapshotManager.createSnapshot({
+                    turnIndex,
+                    prompt: promptText,
+                })
+            } catch {
+                // Intentionally swallowed: snapshot failure should not disrupt agent loop
+            }
+        }
     }
     ;(async () => {
         try {
@@ -521,17 +536,26 @@ async function streamAssistantResponse(
 
                 const providerMessages = agent.convertToLlm(agent.messages) as any
 
+                // Strip redundant root system message from dialogue history when agent.systemPrompt is passed explicitly
+                const dialogueMessages =
+                    agent.systemPrompt &&
+                    Array.isArray(providerMessages) &&
+                    providerMessages[0]?.role === 'system' &&
+                    providerMessages[0]?.content === agent.systemPrompt
+                        ? providerMessages.slice(1)
+                        : providerMessages
+
                 // Breakpoint 3: Last user message in conversation history marked for caching
-                if (Array.isArray(providerMessages)) {
+                if (Array.isArray(dialogueMessages)) {
                     let lastUserIdx = -1
-                    for (let i = providerMessages.length - 1; i >= 0; i--) {
-                        if (providerMessages[i]?.role === 'user') {
+                    for (let i = dialogueMessages.length - 1; i >= 0; i--) {
+                        if (dialogueMessages[i]?.role === 'user') {
                             lastUserIdx = i
                             break
                         }
                     }
-                    if (lastUserIdx !== -1 && providerMessages[lastUserIdx]) {
-                        ;(providerMessages[lastUserIdx] as any).cache_control = {
+                    if (lastUserIdx !== -1 && dialogueMessages[lastUserIdx]) {
+                        ;(dialogueMessages[lastUserIdx] as any).cache_control = {
                             type: 'ephemeral',
                         }
                     }
@@ -550,7 +574,7 @@ async function streamAssistantResponse(
                 }
 
                 loggedTools = activeTools
-                loggedMessages = providerMessages
+                loggedMessages = dialogueMessages
                 loggedModel = (providerModelOptions as any).model || agent.modelOptions?.model
 
                 const initialStatus =
@@ -558,7 +582,7 @@ async function streamAssistantResponse(
                 eventQueue.push({ type: 'AgentStatus', message: initialStatus })
 
                 const generator = agent.llm.stream(
-                    providerMessages,
+                    dialogueMessages,
                     toolsArray,
                     agent.systemPrompt,
                     providerModelOptions,

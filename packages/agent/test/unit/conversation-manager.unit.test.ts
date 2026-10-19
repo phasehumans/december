@@ -48,6 +48,38 @@ describe('ConversationManager (Unit)', () => {
         expect(firstMsg.parentId).toBe('parent-0')
     })
 
+    test('truncateToTurn removes conversation messages from target turn onwards', () => {
+        const manager = new ConversationManager()
+        manager.addMessage({ role: 'system', content: 'system prompt' })
+        manager.addMessage({ role: 'user', content: 'turn 1 prompt' })
+        manager.addMessage({ role: 'assistant', content: 'turn 1 answer' })
+        manager.addMessage({ role: 'user', content: 'turn 2 prompt' })
+        manager.addMessage({ role: 'assistant', content: 'turn 2 answer' })
+        manager.addMessage({ role: 'user', content: 'turn 3 prompt' })
+        manager.addMessage({ role: 'assistant', content: 'turn 3 answer' })
+
+        expect(manager.messages.length).toBe(7)
+
+        // Truncate to turn 2 (removes turn 2 and turn 3)
+        manager.truncateToTurn(2)
+
+        expect(manager.messages.length).toBe(3)
+        expect(manager.messages[0]!.role).toBe('system')
+        expect(manager.messages[1]!.content).toBe('turn 1 prompt')
+        expect(manager.messages[2]!.content).toBe('turn 1 answer')
+    })
+
+    test('truncateToTurn to turn 1 leaves only system prompt', () => {
+        const manager = new ConversationManager()
+        manager.addMessage({ role: 'system', content: 'system prompt' })
+        manager.addMessage({ role: 'user', content: 'turn 1 prompt' })
+        manager.addMessage({ role: 'assistant', content: 'turn 1 answer' })
+
+        manager.truncateToTurn(1)
+        expect(manager.messages.length).toBe(1)
+        expect(manager.messages[0]!.role).toBe('system')
+    })
+
     test('compactIfNeeded delegates to compaction utility and returns summary', async () => {
         const manager = new ConversationManager()
         manager.addMessage({ role: 'system', content: 'system' })

@@ -182,6 +182,26 @@ export class ConversationManager {
         this._messages.push(msg)
     }
 
+    public truncateToTurn(targetTurn: number): void {
+        let userMessageCount = 0
+        let cutIndex = -1
+
+        for (let i = 0; i < this._messages.length; i++) {
+            const msg = this._messages[i]
+            if (msg && msg.role === 'user' && !msg.isUI) {
+                userMessageCount++
+                if (userMessageCount === targetTurn) {
+                    cutIndex = i
+                    break
+                }
+            }
+        }
+
+        if (cutIndex !== -1) {
+            this._messages = this._messages.slice(0, cutIndex)
+        }
+    }
+
     async compactIfNeeded(
         llm: LLMProvider,
         maxTokens?: number,

@@ -321,4 +321,30 @@ export class Agent {
         }
         await this.mcpClientManager.connectAll(finalConfigs)
     }
+
+    public truncateToTurn(targetTurn: number): void {
+        this.conversation.truncateToTurn(targetTurn)
+    }
+
+    public async rollbackToTurn(targetTurn: number) {
+        const { getSnapshotManager } = await import('@december/tools')
+        const snapshotManager = getSnapshotManager(this.workspaceDir)
+        const result = await snapshotManager.rollbackToTurn(targetTurn)
+        this.truncateToTurn(targetTurn)
+        await this.saveContext().catch(() => {
+            // Intentionally swallowed: save context error
+        })
+        return result
+    }
+
+    public async rollbackLastTurn() {
+        const { getSnapshotManager } = await import('@december/tools')
+        const snapshotManager = getSnapshotManager(this.workspaceDir)
+        const result = await snapshotManager.rollbackLastTurn()
+        this.truncateToTurn(result.targetTurn)
+        await this.saveContext().catch(() => {
+            // Intentionally swallowed: save context error
+        })
+        return result
+    }
 }
