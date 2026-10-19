@@ -9,6 +9,7 @@ import { Spinner } from '../spinner'
 
 import { parseTuiError, FormattedErrorText } from './error-message'
 import { SmoothMarkdown } from './smooth-markdown'
+import { SubagentTickerView } from './subagent-ticker'
 
 export type MessageBlock =
     | { type: 'text'; content: string; color?: string }
@@ -934,6 +935,27 @@ export const BotMessage = React.memo(function BotMessage({
                         )
                     }
                     case 'command': {
+                        const isSubagent =
+                            block.toolName === 'invoke_subagent' ||
+                            block.toolName === 'spawn_subagent' ||
+                            block.command?.startsWith('invoke_subagent(') ||
+                            block.command?.startsWith('spawn_subagent(')
+
+                        if (isSubagent) {
+                            return (
+                                <SubagentTickerView
+                                    key={idx}
+                                    toolName={block.toolName}
+                                    command={block.command}
+                                    toolInput={block.toolInput}
+                                    output={block.output}
+                                    status={block.status}
+                                    isLastBlock={idx === blocks.length - 1}
+                                    forceExpanded={expandCommands}
+                                />
+                            )
+                        }
+
                         const isRunning = block.status === 'running'
 
                         let parsedInput: any = {}

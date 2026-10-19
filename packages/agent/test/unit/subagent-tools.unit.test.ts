@@ -57,7 +57,7 @@ describe('Subagent Tools (Unit)', () => {
             context
         )
 
-        expect(result).toContain('Subagent: security-reviewer')
+        expect(result).toContain('SubAgent: security-reviewer')
         expect(result).toContain('No vulnerabilities found')
     })
 

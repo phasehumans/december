@@ -128,7 +128,7 @@ export class SubagentManager extends EventEmitter {
                         durationMs: Date.now() - handle.startedAt.getTime(),
                         summary: `Subagent failed with error: ${err.message}`,
                         error: err.message,
-                        formattedReport: `### [Subagent: ${options.role} (${id})] - FAILED\n- **Depth**: ${childDepth}\n**Error**: ${err.message}`,
+                        formattedReport: `### [SubAgent: ${options.role} (${id})] - FAILED\n- **Depth**: ${childDepth}\n- **Subagent**: ${options.role}\n**Error**: ${err.message}`,
                     }
 
                     handle.status = 'failed'

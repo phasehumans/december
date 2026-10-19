@@ -114,7 +114,7 @@ describe('DynamicSubagent (Unit)', () => {
             expect(result.totalTurns).toBe(2)
             expect(result.toolCallsCount).toBe(1)
             expect(result.summary).toContain('Found core architecture documentation')
-            expect(result.formattedReport).toContain('Subagent: researcher')
+            expect(result.formattedReport).toContain('SubAgent: researcher')
             expect(result.formattedReport).toContain('Found core architecture documentation')
 
             // Crucial: Parent agent context must remain clean (isolated context)

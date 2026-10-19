@@ -89,9 +89,15 @@ export function formatRollupReport(
               : 'FAILED'
 
     const lines: string[] = [
-        `### [Subagent: ${summary.role} (${summary.subagentId})] - ${statusHeader}`,
+        `### [SubAgent: ${summary.role} (${summary.subagentId})] - ${statusHeader}`,
+        `- **Role**: ${summary.role}`,
+        `- **Subagent**: ${summary.role}`,
+        `- **SubAgent**: ${summary.role}`,
         `- **Task**: ${summary.task}`,
         `- **Depth**: ${summary.depth}`,
+        `- **Total Turns**: ${summary.totalTurns}`,
+        `- **Tool Calls**: ${summary.toolCallsCount}`,
+        `- **Duration**: ${durationSeconds}s`,
         `- **Status**: ${summary.status} (${summary.totalTurns} turns, ${summary.toolCallsCount} tool calls, ${durationSeconds}s)`,
     ]
 
@@ -270,7 +276,7 @@ export async function executeDynamicSubagent(
 
         abortController.signal.addEventListener('abort', () => childAgent.abort(), { once: true })
 
-        onStream?.(`[Subagent: depth ${childDepth} - ${role}] Starting task: ${task}\n`)
+        onStream?.(`[SubAgent:d${childDepth}:${role}] starting: ${task.slice(0, 60)}\n`)
 
         const effectiveMaxTurns = maxTurns && maxTurns > 0 ? maxTurns : undefined
 
@@ -285,17 +291,45 @@ export async function executeDynamicSubagent(
                 }
             } else if (event.type === 'ToolCallStart') {
                 toolCallsCount++
+                let argStr = ''
+                if (event.toolCall.input) {
+                    try {
+                        const parsed =
+                            typeof event.toolCall.input === 'string'
+                                ? JSON.parse(event.toolCall.input)
+                                : event.toolCall.input
+                        const primaryArg =
+                            parsed.path ||
+                            parsed.filePath ||
+                            parsed.TargetFile ||
+                            parsed.targetFile ||
+                            parsed.pattern ||
+                            parsed.query ||
+                            parsed.command ||
+                            ''
+                        if (primaryArg) {
+                            const cleanArg = String(primaryArg).replace(/\r?\n/g, ' ').trim()
+                            argStr = `(${cleanArg.length > 35 ? cleanArg.slice(0, 32) + '...' : cleanArg})`
+                        }
+                    } catch {
+                        // Intentionally swallowed: input not json
+                    }
+                }
                 onStream?.(
-                    `[Subagent: depth ${childDepth} - ${role}] Tool: ${event.toolCall.name}\n`
+                    `[SubAgent:d${childDepth}:${role}] tool: ${event.toolCall.name}${argStr} (turn ${totalTurns + 1})\n`
                 )
             } else if (event.type === 'ThinkingChunk') {
-                onStream?.(
-                    `[Subagent: depth ${childDepth} - ${role}] ${event.content.slice(0, 80)}...\n`
-                )
+                const raw = event.content.replace(/^[#*•\s-]+/, '').trim()
+                const firstLine = raw.split(/\r?\n/)[0] || ''
+                if (firstLine.length > 5) {
+                    onStream?.(
+                        `[SubAgent:d${childDepth}:${role}] thinking: ${firstLine.slice(0, 50)}\n`
+                    )
+                }
             } else if (event.type === 'StreamChunk') {
                 onStream?.(event.content)
             } else if (event.type === 'AgentStatus') {
-                onStream?.(`[Subagent: depth ${childDepth} - ${role}] ${event.message}\n`)
+                onStream?.(`[SubAgent:d${childDepth}:${role}] status: ${event.message}\n`)
             } else if (event.type === 'AgentInterrupt') {
                 status = 'killed'
             } else if (event.type === 'AgentError') {

@@ -224,8 +224,8 @@ describe('Subagent Recursion, Model Override & Batch (Unit)', () => {
             )
 
             expect(result).toContain('Batch Subagents Execution (2 tasks)')
-            expect(result).toContain('Subagent: researcher')
-            expect(result).toContain('Subagent: tester')
+            expect(result).toContain('SubAgent: researcher')
+            expect(result).toContain('SubAgent: tester')
         })
     })
 
