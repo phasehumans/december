@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai'
 
-import { createProvider } from '../models.ts'
+import { createProvider, supportsModelThinking } from '../models.ts'
 
 import type { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
@@ -161,9 +161,13 @@ export function openaiProvider(
             signal?: AbortSignal
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
             const oaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = []
+            const resolvedModel = resolveOpenAIModel(modelOptions?.model)
+            const isReasoning = supportsModelThinking(resolvedModel)
+            const effectiveSystemPrompt =
+                systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
 
-            if (systemPrompt) {
-                oaiMessages.push({ role: 'system', content: systemPrompt })
+            if (effectiveSystemPrompt) {
+                oaiMessages.push({ role: 'system', content: effectiveSystemPrompt })
             }
 
             for (const msg of messages) {
@@ -192,9 +196,19 @@ export function openaiProvider(
                         }))
                     }
                     oaiMessages.push(asstMsg)
+                } else if (msg.role === 'system') {
+                    if (msg.content === effectiveSystemPrompt) {
+                        continue // Omit duplicate root system prompt
+                    }
+                    if (msg.content.includes('[COMPACTED HISTORY SUMMARY]')) {
+                        oaiMessages.push({
+                            role: 'user',
+                            content: msg.content,
+                        })
+                    }
                 } else {
                     oaiMessages.push({
-                        role: msg.role as 'user' | 'system',
+                        role: 'user',
                         content: msg.content,
                     })
                 }
@@ -224,7 +238,6 @@ export function openaiProvider(
                 }
             }
 
-            const resolvedModel = resolveOpenAIModel(modelOptions?.model)
             const shouldSendReasoningEffort =
                 reasoningEffort && supportsReasoningEffort(modelOptions?.model, baseURL)
 

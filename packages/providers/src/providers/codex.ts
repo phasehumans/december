@@ -87,6 +87,8 @@ export function codexResponsesProvider(
             signal?: AbortSignal
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
             const resolvedModel = resolveCodexModel(modelOptions?.model)
+            const resolvedSystemPrompt =
+                systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
 
             const input: any[] = []
             for (const msg of messages) {
@@ -114,6 +116,17 @@ export function codexResponsesProvider(
                             content: [{ type: 'output_text', text: msg.content }],
                         })
                     }
+                } else if (msg.role === 'system') {
+                    if (msg.content === resolvedSystemPrompt) {
+                        continue // Omit duplicate root system prompt
+                    }
+                    if (msg.content.includes('[COMPACTED HISTORY SUMMARY]')) {
+                        input.push({
+                            type: 'message',
+                            role: 'user',
+                            content: [{ type: 'input_text', text: msg.content }],
+                        })
+                    }
                 } else {
                     input.push({
                         type: 'message',
@@ -127,7 +140,7 @@ export function codexResponsesProvider(
                 model: resolvedModel,
                 store: false,
                 stream: true,
-                instructions: systemPrompt || 'You are a helpful assistant.',
+                instructions: resolvedSystemPrompt || 'You are a helpful assistant.',
                 input,
             }
 

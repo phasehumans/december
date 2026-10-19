@@ -63,6 +63,15 @@ export function GlobalShortcuts(session: any) {
             return
         }
 
+        if (session.btwState) {
+            if (key.escape || input === '\u001B') {
+                if (session.handleDismissBtw) {
+                    session.handleDismissBtw()
+                }
+            }
+            return
+        }
+
         if (session.pendingDeviceAuthUrl) {
             if (input === 'o' || input === 'O') {
                 if (session.handleOpenDeviceAuthUrl) {

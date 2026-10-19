@@ -307,6 +307,8 @@ export function ChatApp({
             showExitConfirm={exitConfirm}
             tasks={session.tasks}
             onExit={onExit}
+            btwState={session.btwState}
+            onDismissBtw={session.handleDismissBtw}
         />
     )
 

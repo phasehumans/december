@@ -79,6 +79,8 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
             signal?: AbortSignal
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
             const geminiMessages: Content[] = []
+            const resolvedSystemPrompt =
+                systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
 
             for (const msg of messages) {
                 if (msg.role === 'tool') {
@@ -160,6 +162,16 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
                     if (parts.length > 0) {
                         geminiMessages.push({ role: 'model', parts })
                     }
+                } else if (msg.role === 'system') {
+                    if (msg.content === resolvedSystemPrompt) {
+                        continue // Omit duplicate root system prompt
+                    }
+                    if (msg.content.includes('[COMPACTED HISTORY SUMMARY]')) {
+                        geminiMessages.push({
+                            role: 'user',
+                            parts: [{ text: msg.content }],
+                        })
+                    }
                 } else {
                     geminiMessages.push({
                         role: 'user',
@@ -217,8 +229,8 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
                 model: resolvedModel,
                 contents: geminiMessages,
                 config: {
-                    systemInstruction: systemPrompt
-                        ? { parts: [{ text: systemPrompt }] }
+                    systemInstruction: resolvedSystemPrompt
+                        ? { parts: [{ text: resolvedSystemPrompt }] }
                         : undefined,
                     tools: geminiTools,
                     temperature: modelOptions?.temperature,

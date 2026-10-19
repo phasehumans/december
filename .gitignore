@@ -110,6 +110,7 @@ infra/postgres/data/
 !.cursor/rules/
 .claude/
 .windsurf/
+.letta/
 *.swp
 *.swo
 *~

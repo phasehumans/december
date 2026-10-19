@@ -104,6 +104,8 @@ export function anthropicProvider(
             modelOptions?: Record<string, any>,
             signal?: AbortSignal
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
+            const resolvedSystemPrompt =
+                systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
             const antMessages: Anthropic.MessageParam[] = []
 
             for (const msg of messages) {
@@ -141,6 +143,16 @@ export function anthropicProvider(
                     }
                     if (content.length > 0) {
                         antMessages.push({ role: 'assistant', content })
+                    }
+                } else if (msg.role === 'system') {
+                    if (msg.content === resolvedSystemPrompt) {
+                        continue // Omit duplicate root system prompt
+                    }
+                    if (msg.content.includes('[COMPACTED HISTORY SUMMARY]')) {
+                        antMessages.push({
+                            role: 'user',
+                            content: [{ type: 'text', text: msg.content }],
+                        })
                     }
                 } else {
                     const prev = antMessages[antMessages.length - 1]
@@ -221,11 +233,11 @@ export function anthropicProvider(
                     : undefined
 
             // Tier 1 Prompt Caching: Mark system prompt
-            const formattedSystem: Anthropic.TextBlockParam[] | undefined = systemPrompt
+            const formattedSystem: Anthropic.TextBlockParam[] | undefined = resolvedSystemPrompt
                 ? [
                       {
                           type: 'text',
-                          text: systemPrompt,
+                          text: resolvedSystemPrompt,
                           cache_control: { type: 'ephemeral' },
                       },
                   ]

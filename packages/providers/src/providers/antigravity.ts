@@ -71,6 +71,8 @@ export function antigravityProvider(
             signal?: AbortSignal
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
             const antigravityMessages: any[] = []
+            const resolvedSystemPrompt =
+                systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
 
             for (const msg of messages) {
                 if (msg.role === 'tool') {
@@ -152,6 +154,16 @@ export function antigravityProvider(
                     if (parts.length > 0) {
                         antigravityMessages.push({ role: 'model', parts })
                     }
+                } else if (msg.role === 'system') {
+                    if (msg.content === resolvedSystemPrompt) {
+                        continue // Omit duplicate root system prompt
+                    }
+                    if (msg.content.includes('[COMPACTED HISTORY SUMMARY]')) {
+                        antigravityMessages.push({
+                            role: 'user',
+                            parts: [{ text: msg.content }],
+                        })
+                    }
                 } else {
                     antigravityMessages.push({
                         role: 'user',
@@ -202,7 +214,9 @@ export function antigravityProvider(
 
             const innerRequest: Record<string, any> = {
                 contents: antigravityMessages,
-                ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
+                ...(resolvedSystemPrompt
+                    ? { systemInstruction: { parts: [{ text: resolvedSystemPrompt }] } }
+                    : {}),
                 ...(antigravityTools ? { tools: antigravityTools } : {}),
                 generationConfig: {
                     temperature: modelOptions?.temperature,

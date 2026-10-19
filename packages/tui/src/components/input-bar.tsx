@@ -12,9 +12,11 @@ import { defaultPromptHistory } from '../utils/prompt-history'
 
 import { CommandMenu } from './command-menu'
 import { useCommandMenu } from './command-menu/use-command-menu'
+import { BtwOverlay } from './menus/btw-overlay'
 import { ShortcutsMenu } from './menus/shortcuts-menu'
 import { TextArea } from './text-area'
 
+import type { BtwState } from '../types'
 import type { Command } from './command-menu/types'
 import type { TaskItem } from './menus/tasks-mode-menu'
 
@@ -53,6 +55,8 @@ type Props = {
         onError: (err: Error) => void
     }) => Promise<{ stop: () => Promise<string>; cancel: () => void } | null>
     onExit?: () => void
+    btwState?: BtwState | null
+    onDismissBtw?: () => void
 }
 
 const MAX_FILE_SUGGESTIONS = 5
@@ -101,6 +105,8 @@ export const InputBar = React.memo(function InputBar({
     onScrollDown,
     onStartVoice,
     onExit,
+    btwState,
+    onDismissBtw,
 }: Props) {
     const [value, setValue] = useState('')
     const [isVoiceActive, setIsVoiceActive] = useState(false)
@@ -318,6 +324,10 @@ export const InputBar = React.memo(function InputBar({
 
             const state = stateRef.current
             if (key.escape) {
+                if (btwState && onDismissBtw) {
+                    onDismissBtw()
+                    return
+                }
                 if (state.isVoiceActive || state.isTranscribing || voiceSessionRef.current) {
                     state.handleStopVoice(false)
                     return
@@ -667,6 +677,22 @@ export const InputBar = React.memo(function InputBar({
                 </Box>
             )}
 
+            {/* btw overlay */}
+            {btwState && (
+                <Box marginBottom={1}>
+                    <BtwOverlay
+                        {...btwState}
+                        onClose={onDismissBtw || (() => {})}
+                        onCopy={() => {
+                            toast.show({
+                                variant: 'success',
+                                message: 'Copied answer to clipboard.',
+                            })
+                        }}
+                    />
+                </Box>
+            )}
+
             {!isOverlayActive && (
                 <>
                     {/* top separator */}
@@ -723,7 +749,10 @@ export const InputBar = React.memo(function InputBar({
                                 placeholderColor={isVoiceActive ? THEME.colors.brand : undefined}
                                 focus={!disabled}
                                 disableHistoryNav={
-                                    showCommandMenu || showFileMenu || showShortcutsMenu
+                                    showCommandMenu ||
+                                    showFileMenu ||
+                                    showShortcutsMenu ||
+                                    Boolean(btwState)
                                 }
                             />
                         </Box>
