@@ -53,3 +53,13 @@ Reference gold standard modules: `auth`, `notification`, `session`.
 ## Git & Pull Request Guidelines
 
 - **Lowercase Only for Git & PRs**: Always write commit messages, PR reviews/review comments, and PR titles/descriptions/messages strictly in lowercase only.
+
+## Outreach & Cold Email Standards
+
+- **Template & Targets**: Draft in `scripts/email.txt`, targets in `scripts/target.txt` (or `--csv`). Lowercase only for names and text (e.g. `hi pratyush,`).
+- **Engine**: Run `python3 scripts/outreach.py` (`--dry-run` or `--send`, 35s pacing, auto-logged history).
+
+## Announcement & Product Marketing Standards
+
+- **Template & Users**: Draft in `scripts/announcement.html` / `.txt`, users in `scripts/users.txt`.
+- **Engine**: Run `python3 scripts/announce.py` (`--test <email>` or `--send`, 20s pacing, auto-logged history).

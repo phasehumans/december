@@ -1,0 +1,20 @@
+subject: december update: new features and improvements
+
+hey {name},
+
+we just shipped a new update to december (https://trydecember.com).
+
+here is what's new:
+- faster terminal execution and better diff reliability
+- improved subagent orchestration and context management
+- new provider integrations and bug fixes
+
+to update to the latest version:
+$ npm install -g @trydecember/cli@latest
+
+try it out on your project and let us know what you think. you can reply directly to this email with any feedback or bugs you run into.
+
+thanks,
+chetan
+https://trydecember.com
+https://github.com/phasehumans/december

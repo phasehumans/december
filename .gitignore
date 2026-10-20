@@ -128,3 +128,19 @@ opencode/
 users.txt
 /docs/
 ai.md
+
+# Outreach scripts and logs
+scripts/*outreach*
+target.txt
+scripts/target.txt
+email.txt
+scripts/email.txt
+
+# Announcement & marketing
+scripts/users.txt
+scripts/*announcement_history*
+
+
+
+
+
