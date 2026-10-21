@@ -15,10 +15,18 @@ const resolveWorkspacePath = (rawPath: string): string => {
     return `/workspace/${stripped}`
 }
 
+export interface RemotePlatformAdapterOptions {
+    handsDaemonPath?: string
+}
+
 export class RemotePlatformAdapter implements PlatformAdapter {
     private modifiedFiles: Record<string, string> = {}
+    private activeOpIds = new Set<string>()
 
-    constructor(private vmId: string) {}
+    constructor(
+        private vmId: string,
+        private options?: RemotePlatformAdapterOptions
+    ) {}
 
     getModifiedFiles(): Record<string, string> {
         return { ...this.modifiedFiles }
@@ -28,21 +36,102 @@ export class RemotePlatformAdapter implements PlatformAdapter {
         this.modifiedFiles = {}
     }
 
-    bash = {
-        exec: async (command: string, onData?: (chunk: string) => void) => {
-            console.log(`[AGENT REMOTE TOOL] VM '${this.vmId}' executing command: ${command}`)
-            let output = ''
-            const exitCode = await executeCommand(this.vmId, command, (chunk) => {
-                output += chunk
-                if (onData) onData(chunk)
+    getActiveOpIds(): string[] {
+        return Array.from(this.activeOpIds)
+    }
+
+    async detach(opId: string): Promise<boolean> {
+        this.activeOpIds.delete(opId)
+        console.log(`[AGENT REMOTE TOOL] VM '${this.vmId}' detaching from opId '${opId}'`)
+        return true
+    }
+
+    async detachAll(): Promise<string[]> {
+        const detached = Array.from(this.activeOpIds)
+        this.activeOpIds.clear()
+        console.log(`[AGENT REMOTE TOOL] VM '${this.vmId}' detached all active ops:`, detached)
+        return detached
+    }
+
+    async getOpStatus(opId: string): Promise<{
+        status: 'done' | 'running' | 'terminated' | 'unknown'
+        exitCode?: number
+        output?: string
+    }> {
+        const statusCmd = `node /tmp/hands-daemon.mjs status ${escapeShellArg(opId)}`
+        let statusOutput = ''
+        try {
+            const exitCode = await executeCommand(this.vmId, statusCmd, (chunk) => {
+                statusOutput += chunk
             })
-            return { exitCode, output }
+            if (exitCode === 0 && statusOutput.trim()) {
+                const parsed = JSON.parse(statusOutput.trim())
+                if (parsed.status === 'done') {
+                    const readCmd = `node /tmp/hands-daemon.mjs read ${escapeShellArg(opId)} 0`
+                    let logOutput = ''
+                    await executeCommand(this.vmId, readCmd, (chunk) => {
+                        logOutput += chunk
+                    })
+                    try {
+                        const readParsed = JSON.parse(logOutput.trim())
+                        return {
+                            status: 'done',
+                            exitCode: parsed.exitCode,
+                            output: readParsed.data,
+                        }
+                    } catch {
+                        // Intentionally swallowed: fallback to empty output
+                        return { status: 'done', exitCode: parsed.exitCode, output: '' }
+                    }
+                }
+                return parsed
+            }
+        } catch {
+            // Intentionally swallowed: fallback to local in-memory status
+        }
+
+        const isRunning = this.activeOpIds.has(opId)
+        return { status: isRunning ? 'running' : 'unknown' }
+    }
+
+    bash = {
+        exec: async (
+            command: string,
+            cwdOrOnData?: string | ((chunk: string) => void),
+            options?: any
+        ) => {
+            const onData = typeof cwdOrOnData === 'function' ? cwdOrOnData : options?.onData
+            const opId =
+                options?.opId ||
+                options?.taskId ||
+                `op_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+
+            this.activeOpIds.add(opId)
+            console.log(`[AGENT REMOTE TOOL] VM '${this.vmId}' executing op '${opId}': ${command}`)
+
+            let output = ''
+            try {
+                const exitCode = await executeCommand(this.vmId, command, (chunk) => {
+                    output += chunk
+                    if (onData) onData(chunk)
+                })
+                return { exitCode, output, taskId: opId, opId }
+            } finally {
+                this.activeOpIds.delete(opId)
+            }
         },
-        getTaskStatus: async () => ({
-            status: 'completed',
-            output: 'Task status managed via sandbox process',
-        }),
-        killTask: async () => false,
+        getTaskStatus: async (taskId: string) => {
+            const status = this.activeOpIds.has(taskId) ? 'running' : 'completed'
+            return {
+                status,
+                output: `Task ${taskId} status: ${status}`,
+            }
+        },
+        killTask: async (taskId: string) => {
+            console.log(`[AGENT REMOTE TOOL] VM '${this.vmId}' terminating task: ${taskId}`)
+            this.activeOpIds.delete(taskId)
+            return true
+        },
     }
 
     fs = {

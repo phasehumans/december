@@ -95,6 +95,26 @@ describe('compactContextIfNeeded (Unit)', () => {
         expect(result.length).toBe(21)
     })
 
+    test('compacts when user turns exceed maxTurns option even if token count is low', async () => {
+        const messages: Message[] = [{ role: 'system', content: 'You are an agent' }]
+        for (let i = 1; i <= 16; i++) {
+            messages.push({ role: 'user', content: `q${i}` })
+            messages.push({ role: 'assistant', content: `a${i}` })
+        }
+
+        const llm = new MockLLM()
+        llm.pushResponse('Structured Checkpoint')
+
+        // 32 short messages = ~50 tokens, limit is 100,000 tokens
+        const result = await compactContextIfNeeded(messages, llm, 100000, undefined, undefined, {
+            maxTurns: 15,
+        })
+
+        expect(result.length).toBeLessThan(33)
+        expect(result[1]!.content).toContain('[COMPACTED HISTORY SUMMARY]')
+        expect(result[1]!.content).toContain('Structured Checkpoint')
+    })
+
     test('throws abort error if signal is aborted during compaction', async () => {
         const messages: Message[] = [{ role: 'system', content: 'You are an agent' }]
         for (let i = 0; i < 25; i++) {

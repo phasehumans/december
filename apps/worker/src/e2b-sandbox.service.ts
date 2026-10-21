@@ -67,6 +67,9 @@ const getRedisPub = (): Redis => {
 // Active sandboxes cache in worker memory
 const activeSandboxes = new Map<string, any>()
 
+// Active platform adapters tracking for graceful detach
+const activeAdapters = new Set<RemotePlatformAdapter>()
+
 // LRU user session tracking map (userId -> Map<sessionId, { sandboxId: string, lastActiveAt: number }>)
 const userActiveSessions = new Map<
     string,
@@ -84,6 +87,7 @@ const resetMockClient = () => {
     mockClientOverride = null
     activeSandboxes.clear()
     userActiveSessions.clear()
+    activeAdapters.clear()
 }
 
 const emitSessionEvent = async (data: EmitSessionEventInput): Promise<void> => {
@@ -647,6 +651,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
 
     const effectiveSandboxId = sandboxId || sessionId
     const adapter = new RemotePlatformAdapter(effectiveSandboxId)
+    activeAdapters.add(adapter)
     const llm = getLlmProvider()
 
     const tools = [
@@ -793,6 +798,8 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
                 }),
             }
             yield { data: JSON.stringify({ type: 'AgentEnd' }) }
+        } finally {
+            activeAdapters.delete(adapter)
         }
     })()
 
@@ -876,6 +883,18 @@ const getActiveSandbox = (sessionId: string) => {
     return activeSandboxes.get(sessionId) || activeSandboxes.get(sessionId.replace(/^session-/, ''))
 }
 
+const detachAllActiveAdapters = async (): Promise<void> => {
+    console.log(`[SANDBOX SERVICE] Detaching ${activeAdapters.size} active platform adapter(s)...`)
+    for (const adapter of activeAdapters) {
+        try {
+            await adapter.detachAll()
+        } catch (e: any) {
+            console.error('[SANDBOX SERVICE] Error detaching adapter:', e?.message || e)
+        }
+    }
+    activeAdapters.clear()
+}
+
 export const E2BSandboxService = {
     setMockClient,
     resetMockClient,
@@ -890,4 +909,5 @@ export const E2BSandboxService = {
     getActiveSandbox,
     runAgentSession,
     runEphemeralTask,
+    detachAllActiveAdapters,
 }

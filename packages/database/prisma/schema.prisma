@@ -61,6 +61,7 @@ model User {
   githubInstallations GithubAppInstallation[]
   secrets            Secret[]
   feedbacks          Feedback[]
+  projects           Project[]
 }
 
 model Notification {
@@ -118,6 +119,7 @@ model Session {
   vercelLastDeployedAt DateTime?
   vercelProjectId      String?
   vercelProjectName    String?
+  projectId            String?
   epoch                Int                   @default(1)
   leaseExpiresAt       DateTime?
   leaseOwner           String?
@@ -127,6 +129,7 @@ model Session {
   deletedAt            DateTime?
 
   user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project         Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
   messages        Message[]
   settings        SessionSettings?
   imports         SessionImport[]
@@ -135,6 +138,29 @@ model Session {
   collaborators      SessionCollaborator[]
   usageEvents        UsageEvent[]
   durableSteps       DurableStep[]
+  mailboxMessages    MailboxMessage[]
+  wakeUpTriggers     WakeUpTrigger[]
+
+  @@index([userId])
+  @@index([projectId])
+}
+
+model Project {
+  id            String    @id @default(uuid())
+  name          String
+  description   String?
+  userId        String
+  repoOwner     String?
+  repoName      String?
+  repoUrl       String?
+  defaultBranch String?   @default("main")
+  pinnedRules   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions      Session[]
 
   @@index([userId])
 }
@@ -166,6 +192,38 @@ model DurableStep {
   @@unique([sessionId, stepIndex])
   @@index([sessionId])
   @@index([sessionId, opId])
+}
+
+model MailboxMessage {
+  id          String    @id @default(uuid())
+  sessionId   String
+  sender      String    // USER | SYSTEM | WEBHOOK | CRON
+  content     String
+  status      String    @default("QUEUED") // QUEUED, PLACED, COMPLETED, FAILED
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, status])
+  @@index([status, createdAt])
+}
+
+model WakeUpTrigger {
+  id          String    @id @default(uuid())
+  sessionId   String
+  triggerAt   DateTime
+  reason      String?   // scheduled_wake, cron_check, pr_review, etc.
+  status      String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, CANCELLED
+  payload     Json?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([triggerAt, status])
+  @@index([sessionId])
 }
 
 enum SessionType {

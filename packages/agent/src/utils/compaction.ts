@@ -4,6 +4,7 @@ import type { LLMProvider } from '@december/providers'
 import type { Message, AgentMessage } from '@december/shared'
 
 export const DEFAULT_MAX_TOKENS = 32000 // safe limit
+export const DEFAULT_MAX_TURNS_THRESHOLD = 15
 export const PRUNE_PROTECT_TOKENS = 40_000
 export const PRUNE_MINIMUM_SAVINGS = 15_000
 export const PRUNE_PROTECT_STEPS = 3
@@ -285,12 +286,17 @@ export function findSafeCompactionBoundary(
     return targetIndex
 }
 
+export interface CompactionOptions {
+    maxTurns?: number
+}
+
 export async function compactContextIfNeeded(
     messages: Message[],
     llm: LLMProvider,
     maxTokens?: number,
     modelOptions?: Record<string, any>,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    options?: CompactionOptions
 ): Promise<Message[]> {
     let limit = maxTokens
     if (!limit) {
@@ -303,16 +309,26 @@ export async function compactContextIfNeeded(
     }
 
     const currentTokens = estimateTokens(messages)
+    const userTurnCount = messages.filter((m) => m.role === 'user' && !(m as any).isUI).length
+    const maxTurns = options?.maxTurns
+    const exceedsTurnThreshold = typeof maxTurns === 'number' && userTurnCount > maxTurns
+    const exceedsTokenThreshold = currentTokens >= limit * 0.75
 
-    // trigger at 75% capacity
-    if (currentTokens < limit * 0.75) {
+    // trigger at 75% capacity or when exceeding maxTurns threshold
+    if (!exceedsTokenThreshold && !exceedsTurnThreshold) {
         return messages
     }
 
     // always protect system prompt (index 0) and the last 20 messages (approx 10 turns)
     const PROTECTED_TAIL = 20
+    const protectedCount =
+        messages.length > PROTECTED_TAIL + 1
+            ? PROTECTED_TAIL
+            : exceedsTurnThreshold
+              ? Math.max(2, Math.floor(messages.length / 2))
+              : PROTECTED_TAIL
 
-    if (messages.length <= PROTECTED_TAIL + 1) {
+    if (messages.length <= protectedCount + 1) {
         return messages // not enough messages to compact
     }
 
@@ -320,7 +336,7 @@ export async function compactContextIfNeeded(
     const systemPrompt = hasSystemPrompt ? messages[0]! : undefined
     const historyStartIndex = hasSystemPrompt ? 1 : 0
 
-    const targetIndex = messages.length - PROTECTED_TAIL
+    const targetIndex = messages.length - protectedCount
     const safeSplitIndex = findSafeCompactionBoundary(messages, targetIndex, historyStartIndex)
 
     if (safeSplitIndex <= historyStartIndex || safeSplitIndex >= messages.length) {
@@ -330,15 +346,16 @@ export async function compactContextIfNeeded(
     const middleHistory = messages.slice(historyStartIndex, safeSplitIndex)
     const recentHistory = messages.slice(safeSplitIndex)
 
+    const firstMiddle = middleHistory[0]
     const hasPreviousSummary =
-        middleHistory.length > 0 &&
-        (middleHistory[0].role === 'system' || middleHistory[0].role === 'user') &&
-        middleHistory[0].content.includes('[COMPACTED HISTORY SUMMARY]')
+        Boolean(firstMiddle) &&
+        (firstMiddle!.role === 'system' || firstMiddle!.role === 'user') &&
+        firstMiddle!.content.includes('[COMPACTED HISTORY SUMMARY]')
     let previousSummaryText = ''
     let messagesToSummarize = middleHistory
 
-    if (hasPreviousSummary) {
-        previousSummaryText = middleHistory[0].content.replace('[COMPACTED HISTORY SUMMARY]\n', '')
+    if (hasPreviousSummary && firstMiddle) {
+        previousSummaryText = firstMiddle.content.replace('[COMPACTED HISTORY SUMMARY]\n', '')
         messagesToSummarize = middleHistory.slice(1)
     }
 

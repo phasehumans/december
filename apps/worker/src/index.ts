@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken'
 
 import { E2BSandboxService } from './e2b-sandbox.service'
 import { processGrpcStream } from './listener'
+import { WakeUpSweeper } from './wake-up-sweeper'
 
 if (process.env.NODE_ENV === 'production' && !process.env.REDIS_URL) {
     throw new Error('REDIS_URL must be configured in production for Worker.')
@@ -231,9 +232,16 @@ worker.on('failed', (job: any, err: any) => {
     console.error(`Job ${job?.id} failed with ${err.message}`)
 })
 
+export const wakeUpSweeper = new WakeUpSweeper()
+if (process.env.NODE_ENV !== 'test') {
+    wakeUpSweeper.start()
+}
+
 const shutdownGracefully = async () => {
     console.log('Shutting down worker process gracefully...')
     try {
+        wakeUpSweeper.stop()
+        await E2BSandboxService.detachAllActiveAdapters()
         await worker.close()
         await redisConnection.quit()
     } catch {

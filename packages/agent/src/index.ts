@@ -1,5 +1,6 @@
 export * from './agent'
 export * from './agent-loop'
+export * from './conversation-manager'
 
 export * from './utils/compaction'
 export * from './utils/evaporation'

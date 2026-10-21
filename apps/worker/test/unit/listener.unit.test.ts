@@ -25,7 +25,12 @@ describe('Worker Listener Unit Tests', () => {
 
         expect(updateMock).toHaveBeenCalledWith({
             where: { id: 'sess-listener-success' },
-            data: { vmStatus: 'STOPPED' },
+            data: {
+                vmStatus: 'STOPPED',
+                status: 'PARKED',
+                leaseOwner: null,
+                leaseExpiresAt: null,
+            },
         })
     })
 
@@ -49,7 +54,12 @@ describe('Worker Listener Unit Tests', () => {
 
         expect(updateMock).toHaveBeenCalledWith({
             where: { id: 'sess-listener-fail' },
-            data: { vmStatus: 'FAILED' },
+            data: {
+                vmStatus: 'FAILED',
+                status: 'FAILED',
+                leaseOwner: null,
+                leaseExpiresAt: null,
+            },
         })
     })
 

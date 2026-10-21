@@ -12,6 +12,8 @@ export interface BashExecOptions {
     serverReadyDelayMs?: number
     signal?: AbortSignal
     env?: NodeJS.ProcessEnv
+    opId?: string
+    taskId?: string
 }
 
 export interface PlatformAdapter {

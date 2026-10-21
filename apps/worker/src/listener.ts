@@ -1,3 +1,4 @@
+import { DurableStepKernel, PrismaDurableStepStorage, StaleEpochError } from '@december/agent'
 import { prisma } from '@december/database'
 import { calculateGenerationCost, startOfUtcMonth, startOfNextUtcMonth } from '@december/shared'
 import Redis from 'ioredis'
@@ -47,7 +48,12 @@ interface AccumulatedTurn {
     errorMessage?: string
 }
 
-export async function processGrpcStream(sessionId: string, stream: any, sandbox?: any) {
+export async function processGrpcStream(
+    sessionId: string,
+    stream: any,
+    sandbox?: any,
+    options?: { kernel?: DurableStepKernel }
+) {
     let hasError = false
     let currentTurn: AccumulatedTurn = {
         thoughts: '',
@@ -55,6 +61,22 @@ export async function processGrpcStream(sessionId: string, stream: any, sandbox?
         blocks: [],
         modifiedFiles: new Set(),
         hasError: false,
+    }
+
+    const storage = new PrismaDurableStepStorage(prisma)
+    const kernel =
+        options?.kernel ||
+        new DurableStepKernel({
+            storage,
+            workerId: `worker-${process.pid}`,
+        })
+
+    if (!kernel.getCurrentEpoch(sessionId)) {
+        try {
+            await kernel.acquireLease(sessionId, 30000)
+        } catch {
+            // Intentionally swallowed: lease acquire fallback when running outside PostgreSQL
+        }
     }
 
     const persistTurnMessage = async () => {
@@ -101,6 +123,28 @@ export async function processGrpcStream(sessionId: string, stream: any, sandbox?
             console.log(
                 `[WORKER LISTENER] Successfully persisted assistant message (sequence: ${nextSequence}) for session '${sessionId}'`
             )
+
+            // Atomically commit completed MODEL_INFERENCE step to DurableStep in PostgreSQL
+            if (kernel.getCurrentEpoch(sessionId)) {
+                try {
+                    await kernel.commitStep({
+                        sessionId,
+                        stepType: 'MODEL_INFERENCE',
+                        output: {
+                            content: finalContent,
+                            blocks: currentTurn.blocks,
+                        },
+                    })
+                } catch (stepErr: any) {
+                    if (stepErr instanceof StaleEpochError) {
+                        console.warn(
+                            `[WORKER LISTENER] Fencing detected for session '${sessionId}': StaleEpochError on MODEL_INFERENCE commit`
+                        )
+                        hasError = true
+                        throw stepErr
+                    }
+                }
+            }
 
             // S3 Workspace Sync on Turn Completion
             if (currentTurn.modifiedFiles.size > 0) {
@@ -209,6 +253,30 @@ export async function processGrpcStream(sessionId: string, stream: any, sandbox?
                     block.status = result.error ? 'error' : 'success'
                     block.output = result.output || result.content || result.error || block.output
                 }
+
+                // Atomically commit completed TOOL_EXECUTION step to DurableStep in PostgreSQL
+                if (kernel.getCurrentEpoch(sessionId)) {
+                    try {
+                        await kernel.commitStep({
+                            sessionId,
+                            stepType: 'TOOL_EXECUTION',
+                            opId: toolCallId,
+                            input: block?.toolInput,
+                            output: {
+                                exitCode: result.exitCode ?? (result.error ? 1 : 0),
+                                output: result.output || result.content || result.error || '',
+                            },
+                        })
+                    } catch (stepErr: any) {
+                        if (stepErr instanceof StaleEpochError) {
+                            console.warn(
+                                `[WORKER LISTENER] Fencing detected for session '${sessionId}': StaleEpochError on TOOL_EXECUTION commit`
+                            )
+                            hasError = true
+                            throw stepErr
+                        }
+                    }
+                }
             } else if (eventType === 'TurnEnd') {
                 await persistTurnMessage()
             } else if (eventType === 'AgentEnd') {
@@ -236,12 +304,17 @@ export async function processGrpcStream(sessionId: string, stream: any, sandbox?
     } finally {
         await persistTurnMessage()
         console.log(
-            `[WORKER LISTENER] Stream finished for session '${sessionId}'. Setting Prisma session status -> ${hasError ? 'FAILED' : 'STOPPED'}`
+            `[WORKER LISTENER] Stream finished for session '${sessionId}'. Setting Prisma session status -> ${hasError ? 'FAILED' : 'PARKED'}`
         )
         await prisma.session
             .update({
                 where: { id: sessionId },
-                data: { vmStatus: hasError ? 'FAILED' : 'STOPPED' },
+                data: {
+                    vmStatus: hasError ? 'FAILED' : 'STOPPED',
+                    status: hasError ? 'FAILED' : 'PARKED',
+                    leaseOwner: null,
+                    leaseExpiresAt: null,
+                },
             })
             .catch(() => {
                 // Intentionally swallowed: DB fallback during stream cleanup

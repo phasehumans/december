@@ -262,5 +262,84 @@ describe('ConversationManager (Unit)', () => {
             expect(manager.messages[0]!.content).toContain('<project_memory>')
             expect(manager.messages[0]!.content).toContain('always use bun')
         })
+
+        test('enforces strict 2KB ceiling on injected workspace memory exceeding 2048 bytes', () => {
+            const decDir = path.join(tmpDir, '.december')
+            fs.mkdirSync(decDir, { recursive: true })
+            const oversizedMemory = 'x'.repeat(5000)
+            fs.writeFileSync(path.join(decDir, 'memory.md'), oversizedMemory)
+
+            const manager = new ConversationManager([], {
+                workspaceRoot: tmpDir,
+                systemPrompt: 'Base prompt',
+            })
+
+            const prompt = manager.messages[0]!.content
+            expect(prompt).toContain('<project_memory>')
+            expect(prompt).toContain('[truncated to 2KB budget]')
+
+            const memoryMatch = prompt.match(/<project_memory>([\s\S]*?)<\/project_memory>/)
+            expect(memoryMatch).toBeDefined()
+            const injectedMemory = memoryMatch![1]!.trim()
+            expect(Buffer.byteLength(injectedMemory, 'utf8')).toBeLessThanOrEqual(2048)
+        })
+
+        test('safely truncates multi-byte UTF-8 characters without split or replacement characters', () => {
+            const decDir = path.join(tmpDir, '.december')
+            fs.mkdirSync(decDir, { recursive: true })
+            const repeatedEmojis = '🚀'.repeat(1000)
+            fs.writeFileSync(path.join(decDir, 'memory.md'), repeatedEmojis)
+
+            const manager = new ConversationManager([], {
+                workspaceRoot: tmpDir,
+                systemPrompt: 'Base prompt',
+            })
+
+            const prompt = manager.messages[0]!.content
+            expect(prompt).toContain('<project_memory>')
+            expect(prompt).toContain('[truncated to 2KB budget]')
+            expect(prompt).not.toContain('\uFFFD')
+
+            const memoryMatch = prompt.match(/<project_memory>([\s\S]*?)<\/project_memory>/)
+            expect(memoryMatch).toBeDefined()
+            const injectedMemory = memoryMatch![1]!.trim()
+            expect(Buffer.byteLength(injectedMemory, 'utf8')).toBeLessThanOrEqual(2048)
+        })
+
+        test('inherits pinnedRules from Project and injects into memory block', () => {
+            const manager = new ConversationManager([], {
+                systemPrompt: 'Base prompt',
+                pinnedRules:
+                    'pinned: strictly lowercase commit messages and adhere to project standards',
+            })
+
+            expect(manager.messages.length).toBe(1)
+            const prompt = manager.messages[0]!.content
+            expect(prompt).toContain('<project_memory>')
+            expect(prompt).toContain('strictly lowercase commit messages')
+        })
+
+        test('compactIfNeeded triggers when multi-turn session exceeds 15 user turns without exceeding token budget', async () => {
+            const manager = new ConversationManager()
+            manager.addMessage({ role: 'system', content: 'You are an agent' })
+            // Add 16 user-assistant turns with short messages (far below token limit)
+            for (let i = 1; i <= 16; i++) {
+                manager.addMessage({ role: 'user', content: `Turn ${i} question` })
+                manager.addMessage({ role: 'assistant', content: `Turn ${i} answer` })
+            }
+
+            expect(manager.messages.length).toBe(33) // 1 system + 32 messages (16 turns)
+
+            const llm = new MockLLM()
+            llm.pushResponse('Structured Checkpoint: Completed turns 1 to 8')
+
+            const result = await manager.compactIfNeeded(llm)
+
+            expect(result.compacted).toBe(true)
+            expect(result.summary).toContain('Structured Checkpoint')
+            expect(manager.messages[1]!.content).toContain('[COMPACTED HISTORY SUMMARY]')
+            expect(manager.messages[1]!.content).toContain('Completed turns 1 to 8')
+            expect(manager.messages.length).toBeLessThan(33)
+        })
     })
 })
