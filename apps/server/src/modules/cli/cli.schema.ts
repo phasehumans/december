@@ -11,11 +11,3 @@ export const ChatCompletionsSchema = z
     .passthrough()
 
 export type ChatCompletionsDto = z.infer<typeof ChatCompletionsSchema>
-
-export const CompleteHandoffSchema = z.object({
-    title: z.string().optional(),
-    messages: z.array(z.any()).optional(),
-    objectKey: z.string().min(1, 'objectKey is required to complete handoff'),
-})
-
-export type CompleteHandoffDto = z.infer<typeof CompleteHandoffSchema>

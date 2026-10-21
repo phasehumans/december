@@ -76,14 +76,16 @@ describe('Platform Module Integration Tests', () => {
         expect(res.status).toBe(401)
     })
 
-    it('2. GET /api/v1/platform/:sessionId/download - downloads session as zip (200)', async () => {
+    it('2. GET /api/v1/platform/:sessionId/download - redirects to github native zip url when linked (302)', async () => {
         const res = await request(app)
             .get(`/api/v1/platform/${testSessionId}/download`)
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', `Bearer ${accessToken}`)
 
-        expect(res.status).toBe(200)
-        expect(res.headers['content-type']).toContain('application/zip')
+        expect(res.status).toBe(302)
+        expect(res.headers.location).toContain(
+            'https://github.com/test-owner/test-repo/archive/refs/heads/main.zip'
+        )
     })
 
     it('3. POST /api/v1/platform/:sessionId/env/sync - returns message when no env vars to sync (200)', async () => {
@@ -110,7 +112,17 @@ describe('Platform Module Integration Tests', () => {
         expect(dbSession?.githubRepoName).toBeNull()
     })
 
-    it('5. POST /api/v1/platform/:sessionId/vercel/unlink - unlinks vercel project (200)', async () => {
+    it('5. GET /api/v1/platform/:sessionId/download - downloads session as zip from sandbox when unlinked (200)', async () => {
+        const res = await request(app)
+            .get(`/api/v1/platform/${testSessionId}/download`)
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(res.status).toBe(200)
+        expect(res.headers['content-type']).toContain('application/zip')
+    })
+
+    it('6. POST /api/v1/platform/:sessionId/vercel/unlink - unlinks vercel project (200)', async () => {
         const res = await request(app)
             .post(`/api/v1/platform/${testSessionId}/vercel/unlink`)
             .set('x-forwarded-for', getRandomIP())

@@ -28,9 +28,13 @@ const downloadProject = asyncHandler(async (req: Request, res: Response) => {
         sessionId,
     })
 
+    if (result.downloadUrl) {
+        return res.redirect(result.downloadUrl)
+    }
+
     res.setHeader('Content-Type', 'application/zip')
     res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`)
-    return res.status(200).send(Buffer.from(result.zip))
+    return res.status(200).send(Buffer.from(result.zip || ''))
 })
 
 const deployVercelProject = asyncHandler(async (req: Request, res: Response) => {

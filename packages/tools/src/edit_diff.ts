@@ -21,10 +21,13 @@ export const editDiffToolSystemPromptContribution = {
     ],
 } as const
 
+/**
+ * @deprecated Prefer EditFileTool for surgical search-and-replace modifications.
+ */
 export const EditDiffTool: Tool<EditDiffInput> = {
     name: 'edit_diff',
     description:
-        'Edits an existing file by applying a unified diff patch. Use standard unified diff format. This is the preferred way to refactor files.',
+        'Edits an existing file by applying a unified diff patch. (Deprecated: prefer edit_file for surgical edits).',
     inputSchema: diffSchema,
     execute: async ({ path, diff }, context: ToolExecuteContext) => {
         return withFileMutationQueue(path, async () => {

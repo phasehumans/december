@@ -1,8 +1,7 @@
 import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
-import { sendSuccess } from '../../shared/response'
 
-import { ChatCompletionsSchema, CompleteHandoffSchema } from './cli.schema'
+import { ChatCompletionsSchema } from './cli.schema'
 import { cliService } from './cli.service'
 
 import type { Request, Response } from 'express'
@@ -26,34 +25,6 @@ const chatCompletions = asyncHandler(async (req: Request, res: Response) => {
     await cliService.proxyChatCompletions({ userId, body, res })
 })
 
-const getHandoffUploadUrl = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-    if (!userId) {
-        throw new AppError('Unauthorized', 401)
-    }
-
-    const data = await cliService.generateHandoffUrl({ userId })
-    return sendSuccess(res, 'handoff upload url generated', data)
-})
-
-const completeHandoff = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-    if (!userId) {
-        throw new AppError('Unauthorized', 401)
-    }
-
-    const parsed = CompleteHandoffSchema.parse(req.body)
-    const session = await cliService.completeHandoff({
-        userId,
-        title: parsed.title,
-        messages: parsed.messages,
-        objectKey: parsed.objectKey,
-    })
-    return sendSuccess(res, 'handoff completed successfully', session, 201)
-})
-
 export const cliController = {
     chatCompletions,
-    getHandoffUploadUrl,
-    completeHandoff,
 }

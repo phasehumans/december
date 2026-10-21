@@ -1,59 +1,14 @@
-import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-
-import { s3 } from '../../config/s3'
-import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { usageService } from '../usage/usage.service'
 
 import { cliDispatcher } from './cli.dispatcher'
-import { cliRepository } from './cli.repository'
 import { parseOpenAiChatRequest } from './cli.utils'
 
-import type {
-    VerifyWalletBalance,
-    GenerateHandoffUrl,
-    ProxyChatCompletions,
-    CompleteHandoff,
-} from './cli.types'
+import type { VerifyWalletBalance, ProxyChatCompletions } from './cli.types'
 
 const verifyWalletBalance = async (data: VerifyWalletBalance) => {
     const { userId } = data
     return usageService.hasMinimumBalance({ userId })
-}
-
-const generateHandoffUrl = async (data: GenerateHandoffUrl) => {
-    const { userId } = data
-    const hasBalance = await usageService.hasMinimumBalance({ userId })
-    if (!hasBalance) {
-        throw new AppError(
-            'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue using December Cloud.',
-            402
-        )
-    }
-
-    const activeSession = await cliRepository.findActiveSessionByUser(userId)
-
-    if (activeSession) {
-        throw new AppError(
-            'Conflict: You already have an active cloud session running. Please stop it before handing off.',
-            409
-        )
-    }
-
-    const objectKey = `handoffs/${userId}/${Date.now()}-handoff.tar.gz`
-
-    const putCommand = new PutObjectCommand({
-        Bucket: env.S3_BUCKET,
-        Key: objectKey,
-    })
-
-    const uploadUrl = await getSignedUrl(s3 as any, putCommand as any, { expiresIn: 3600 })
-
-    return {
-        uploadUrl,
-        objectKey,
-    }
 }
 
 const proxyChatCompletions = async (data: ProxyChatCompletions) => {
@@ -238,52 +193,7 @@ const proxyChatCompletions = async (data: ProxyChatCompletions) => {
     }
 }
 
-const completeHandoff = async (data: CompleteHandoff) => {
-    const { userId, title, messages, objectKey } = data
-    const hasBalance = await usageService.hasMinimumBalance({ userId })
-    if (!hasBalance) {
-        throw new AppError(
-            'Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing to continue using December Cloud.',
-            402
-        )
-    }
-
-    const activeSession = await cliRepository.findActiveSessionByUser(userId)
-    if (activeSession) {
-        throw new AppError(
-            'Conflict: You already have an active cloud session running. Please stop it before handing off.',
-            409
-        )
-    }
-
-    if (!objectKey) {
-        throw new AppError('objectKey is required to complete handoff.', 400)
-    }
-
-    try {
-        await s3.send(
-            new HeadObjectCommand({
-                Bucket: env.S3_BUCKET,
-                Key: objectKey,
-            })
-        )
-    } catch {
-        throw new AppError('Uploaded archive not found in storage. Please re-upload.', 400)
-    }
-
-    const session = await cliRepository.createSession({
-        userId,
-        title: title || 'Handoff Session',
-        messages: messages || [],
-        minioPrefix: objectKey,
-    })
-
-    return session
-}
-
 export const cliService = {
     verifyWalletBalance,
-    generateHandoffUrl,
     proxyChatCompletions,
-    completeHandoff,
 }

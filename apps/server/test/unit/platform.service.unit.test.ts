@@ -1,12 +1,16 @@
-import { describe, it, expect, spyOn } from 'bun:test'
+import { describe, it, expect, afterEach } from 'bun:test'
 
 import { platformRepository } from '../../src/modules/platform/platform.repository'
 import { platformService } from '../../src/modules/platform/platform.service'
+import { setMockSandboxRunner } from '../../src/modules/platform/platform.utils'
 import { vercelService } from '../../src/modules/platform/vercel.service'
 import { AppError } from '../../src/shared/appError'
-import * as projectStorage from '../../src/shared/project-storage'
 
 describe('Platform Service - Unit Tests', () => {
+    afterEach(() => {
+        setMockSandboxRunner(null)
+    })
+
     describe('downloadSession', () => {
         it('should throw AppError 404 if session not found', async () => {
             const originalFind = platformRepository.findSessionByIdAndUser
@@ -24,19 +28,13 @@ describe('Platform Service - Unit Tests', () => {
             }
         })
 
-        it('should list files from storage and return built zip', async () => {
+        it('should return github archive download url when session is linked to github', async () => {
             const originalFind = platformRepository.findSessionByIdAndUser
-            const listSpy = spyOn(projectStorage, 'listPrefix').mockResolvedValue([
-                { Key: 'sessions/s1/workspace/package.json' } as any,
-                { Key: 'sessions/s1/workspace/src/App.tsx' } as any,
-            ])
-            const getTextSpy = spyOn(projectStorage, 'getTextFile').mockResolvedValue(
-                'export default function App() {}'
-            )
-
             platformRepository.findSessionByIdAndUser = (async () => ({
                 id: 's1',
                 title: 'My Cool App',
+                githubRepoOwner: 'phasehumans',
+                githubRepoName: 'cool-app',
             })) as any
 
             try {
@@ -46,11 +44,197 @@ describe('Platform Service - Unit Tests', () => {
                 })
 
                 expect(res.fileName).toBe('My-Cool-App.zip')
-                expect(res.zip).toBeInstanceOf(Uint8Array)
+                expect(res.downloadUrl).toBe(
+                    'https://github.com/phasehumans/cool-app/archive/refs/heads/main.zip'
+                )
+                expect(res.zip).toBeUndefined()
             } finally {
                 platformRepository.findSessionByIdAndUser = originalFind
-                listSpy.mockRestore()
-                getTextSpy.mockRestore()
+            }
+        })
+
+        it('should return git archive zip from sandbox when session is not linked to github', async () => {
+            const originalFind = platformRepository.findSessionByIdAndUser
+            platformRepository.findSessionByIdAndUser = (async () => ({
+                id: 's1',
+                title: 'Unlinked App',
+                githubRepoOwner: null,
+                githubRepoName: null,
+                vmId: 'sb-12345',
+            })) as any
+
+            try {
+                const res = await platformService.downloadSession({
+                    userId: 'u1',
+                    sessionId: 's1',
+                })
+
+                expect(res.fileName).toBe('Unlinked-App.zip')
+                expect(res.zip).toBeDefined()
+                expect(res.downloadUrl).toBeUndefined()
+            } finally {
+                platformRepository.findSessionByIdAndUser = originalFind
+            }
+        })
+    })
+
+    describe('updateRepo', () => {
+        it('should throw AppError 400 if session is not linked to github', async () => {
+            const originalFind = platformRepository.findSessionByIdAndUser
+            platformRepository.findSessionByIdAndUser = (async () => ({
+                id: 's1',
+                githubRepoOwner: null,
+                githubRepoName: null,
+            })) as any
+
+            try {
+                await expect(
+                    platformService.updateRepo({
+                        userId: 'u1',
+                        sessionId: 's1',
+                    })
+                ).rejects.toThrow(
+                    new AppError('Session is not linked to any GitHub repository', 400)
+                )
+            } finally {
+                platformRepository.findSessionByIdAndUser = originalFind
+            }
+        })
+
+        it('should execute native git commands in sandbox and update session synced', async () => {
+            const originalFind = platformRepository.findSessionByIdAndUser
+            const originalFindGithub = platformRepository.findUserGithubConnection
+            const originalUpdateSynced = platformRepository.updateSessionSynced
+
+            platformRepository.findSessionByIdAndUser = (async () => ({
+                id: 's1',
+                githubRepoOwner: 'owner1',
+                githubRepoName: 'repo1',
+                vmId: 'sb-git-vm',
+            })) as any
+
+            platformRepository.findUserGithubConnection = (async () => ({
+                githubToken: 'gh-token-abc',
+                githubConnected: true,
+            })) as any
+
+            let sessionSyncedId = ''
+            platformRepository.updateSessionSynced = (async (id: string) => {
+                sessionSyncedId = id
+                return { id, githubLastSyncedAt: new Date() } as any
+            }) as any
+
+            const executedCommands: string[] = []
+            setMockSandboxRunner(async (opts) => {
+                executedCommands.push(opts.command)
+                return {
+                    exitCode: 0,
+                    stdout: 'commit-sha-789xyz\n',
+                    stderr: '',
+                }
+            })
+
+            try {
+                const res = await platformService.updateRepo({
+                    userId: 'u1',
+                    sessionId: 's1',
+                    commitMessage: 'feat: add native git sync',
+                })
+
+                expect(sessionSyncedId).toBe('s1')
+                expect(res.commitSha).toBe('commit-sha-789xyz')
+                expect(executedCommands.some((c) => c.includes('git add -A'))).toBe(true)
+                expect(executedCommands.some((c) => c.includes('git push origin'))).toBe(true)
+                expect(
+                    executedCommands.some((c) =>
+                        c.includes("git commit -m 'feat: add native git sync'")
+                    )
+                ).toBe(true)
+            } finally {
+                platformRepository.findSessionByIdAndUser = originalFind
+                platformRepository.findUserGithubConnection = originalFindGithub
+                platformRepository.updateSessionSynced = originalUpdateSynced
+            }
+        })
+    })
+
+    describe('deployVercelDirect', () => {
+        it('should throw AppError 400 if vercel credentials are not connected', async () => {
+            const originalFind = platformRepository.findSessionByIdAndUser
+            const originalCreds = platformRepository.getVercelCredentials
+
+            platformRepository.findSessionByIdAndUser = (async () => ({ id: 's1' })) as any
+            platformRepository.getVercelCredentials = (async () => ({
+                vercelConnected: false,
+                vercelAccessToken: null,
+            })) as any
+
+            try {
+                await expect(
+                    platformService.deployVercelDirect({
+                        userId: 'u1',
+                        sessionId: 's1',
+                        vercelProjectId: 'v-prj',
+                        vercelProjectName: 'v-name',
+                    })
+                ).rejects.toThrow(new AppError('vercel account not connected', 400))
+            } finally {
+                platformRepository.findSessionByIdAndUser = originalFind
+                platformRepository.getVercelCredentials = originalCreds
+            }
+        })
+
+        it('should invoke vercel CLI in sandbox and record deployment url', async () => {
+            const originalFind = platformRepository.findSessionByIdAndUser
+            const originalCreds = platformRepository.getVercelCredentials
+            const originalUpdateDeploy = platformRepository.updateSessionVercelDeployment
+
+            platformRepository.findSessionByIdAndUser = (async () => ({
+                id: 's1',
+                vmId: 'sb-vercel-vm',
+            })) as any
+
+            platformRepository.getVercelCredentials = (async () => ({
+                vercelConnected: true,
+                vercelAccessToken: 'v-token-secret',
+                vercelTeamId: 'team_xyz',
+            })) as any
+
+            let updatedDeployment: any = null
+            platformRepository.updateSessionVercelDeployment = (async (data: any) => {
+                updatedDeployment = data
+                return {} as any
+            }) as any
+
+            const commandsRun: string[] = []
+            setMockSandboxRunner(async (opts) => {
+                commandsRun.push(opts.command)
+                return {
+                    exitCode: 0,
+                    stdout: 'Vercel CLI 34.0.0\nDeploying...\nhttps://my-app.vercel.app\n',
+                    stderr: '',
+                }
+            })
+
+            try {
+                const res = await platformService.deployVercelDirect({
+                    userId: 'u1',
+                    sessionId: 's1',
+                    vercelProjectId: 'v-prj',
+                    vercelProjectName: 'v-name',
+                })
+
+                expect(
+                    commandsRun.some((cmd) => cmd.includes('vercel deploy --token v-token-secret'))
+                ).toBe(true)
+                expect(commandsRun.some((cmd) => cmd.includes('--scope team_xyz'))).toBe(true)
+                expect(updatedDeployment?.url).toBe('https://my-app.vercel.app')
+                expect(res.url).toBe('https://my-app.vercel.app')
+                expect(res.readyState).toBe('READY')
+            } finally {
+                platformRepository.findSessionByIdAndUser = originalFind
+                platformRepository.getVercelCredentials = originalCreds
+                platformRepository.updateSessionVercelDeployment = originalUpdateDeploy
             }
         })
     })

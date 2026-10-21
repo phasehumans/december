@@ -2,7 +2,6 @@ import { prisma } from '@december/database'
 import { describe, it, expect, beforeEach, mock } from 'bun:test'
 
 import { E2BSandboxService } from '../src/e2b-sandbox.service'
-import { restoreWorkspaceState } from '../src/workspace'
 
 describe('E2BSandboxService (Unit & Integration)', () => {
     let updateMock: ReturnType<typeof mock>
@@ -381,14 +380,14 @@ describe('E2BSandboxService (Unit & Integration)', () => {
         expect(taskTypeExecuted).toBe('security_audit')
     })
 
-    it('should query minioPrefix in provisionSandbox and pass objectKey to restoreWorkspaceState', async () => {
-        let restoredObjectKey: string | undefined
+    it('should initialize workspace strictly around git clone when githubRepoUrl is present', async () => {
+        let executedGitClone = false
         const mockSandbox = {
-            sandboxId: 'sb-handoff-prefix',
+            sandboxId: 'sb-git-clone',
             commands: {
                 run: async (cmd: string) => {
-                    if (cmd.includes('curl')) {
-                        return { exitCode: 0, stdout: '', stderr: '' }
+                    if (cmd.includes('git clone')) {
+                        executedGitClone = true
                     }
                     return { exitCode: 0, stdout: '', stderr: '' }
                 },
@@ -399,11 +398,10 @@ describe('E2BSandboxService (Unit & Integration)', () => {
 
         const origFindUnique = prisma.session.findUnique
         prisma.session.findUnique = (async ({ where }: any) => {
-            if (where.id === 'sess-handoff-custom-prefix') {
+            if (where.id === 'sess-git-clone') {
                 return {
-                    id: 'sess-handoff-custom-prefix',
-                    minioPrefix: 'handoffs/user-999/custom-tarball.tar.gz',
-                    githubRepoUrl: null,
+                    id: 'sess-git-clone',
+                    githubRepoUrl: 'https://github.com/phasehumans/december',
                 }
             }
             return null
@@ -411,63 +409,15 @@ describe('E2BSandboxService (Unit & Integration)', () => {
 
         try {
             const res = await E2BSandboxService.provisionSandbox({
-                sessionId: 'sess-handoff-custom-prefix',
+                sessionId: 'sess-git-clone',
                 backoffDelays: [1, 1, 1],
             })
 
-            expect(res.sandboxId).toBe('sb-handoff-prefix')
+            expect(res.sandboxId).toBe('sb-git-clone')
+            expect(executedGitClone).toBe(true)
         } finally {
             prisma.session.findUnique = origFindUnique
         }
-    })
-
-    it('should handle corrupted archives and decompression errors gracefully during restoreWorkspaceState and provisioning', async () => {
-        const mockSandbox = {
-            sandboxId: 'sb-handoff-corrupted',
-            commands: {
-                run: async (cmd: string) => {
-                    if (cmd.includes('tar -xzf')) {
-                        throw new Error('tar: Error opening archive: Unrecognized archive format')
-                    }
-                    return { exitCode: 0, stdout: '', stderr: '' }
-                },
-            },
-        }
-
-        E2BSandboxService.setMockClient({ create: async () => mockSandbox })
-
-        const origFindUnique = prisma.session.findUnique
-        prisma.session.findUnique = (async ({ where }: any) => {
-            if (where.id === 'sess-handoff-corrupted') {
-                return {
-                    id: 'sess-handoff-corrupted',
-                    minioPrefix: 'handoffs/user-999/corrupted.tar.gz',
-                    githubRepoUrl: null,
-                }
-            }
-            return null
-        }) as any
-
-        try {
-            const res = await E2BSandboxService.provisionSandbox({
-                sessionId: 'sess-handoff-corrupted',
-                backoffDelays: [1, 1, 1],
-            })
-
-            expect(res.sandboxId).toBe('sb-handoff-corrupted')
-        } finally {
-            prisma.session.findUnique = origFindUnique
-        }
-    })
-
-    it('should return false when restoreWorkspaceState encounters non-existent or corrupted tarballs', async () => {
-        const result = await restoreWorkspaceState({
-            sessionId: 'non-existent-session-12345',
-            workspaceDir: '/workspace',
-            objectKey: 'handoffs/non-existent-key.tar.gz',
-        })
-
-        expect(result).toBe(false)
     })
 
     it('should rehydrate past conversational history and tool calls on cloud agent session boot', async () => {

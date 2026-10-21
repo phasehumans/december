@@ -72,7 +72,7 @@ describe('Prompts & Model Specialization (Unit)', () => {
             expect(result.roleGuidelines).toContain('Autonomous Reasoning & Verification')
             expect(result.roleGuidelines).toContain('Diff-First Protocol ("Diff Model")')
             expect(result.roleGuidelines).toContain('plan surgical patches in your thinking trace')
-            expect(result.roleGuidelines).toContain("exclusively via 'edit_file' or 'edit_diff'")
+            expect(result.roleGuidelines).toContain("exclusively via 'edit_file'")
             expect(result.roleGuidelines).toContain('Concise Chat Output')
             expect(result.suppressThoughtTags).toBe(true)
         })

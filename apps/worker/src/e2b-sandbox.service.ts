@@ -10,7 +10,6 @@ import {
     AskQuestionTool,
     BashTool,
     BrowserTool,
-    EditDiffTool,
     EditFileTool,
     FindFilesTool,
     GrepSearchTool,
@@ -25,7 +24,7 @@ import { Sandbox } from 'e2b'
 import Redis from 'ioredis'
 
 import { RemotePlatformAdapter } from './remote-operations'
-import { archiveWorkspaceState, restoreWorkspaceState } from './workspace'
+import { archiveWorkspaceState } from './workspace'
 
 import type {
     ProvisionSandboxInput,
@@ -193,6 +192,31 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         // Intentionally swallowed: DB fallback in test environment
                     })
 
+                const sessionRecord = await prisma.session
+                    .findUnique({
+                        where: { id: sessionId },
+                        select: { githubRepoUrl: true },
+                    })
+                    .catch(() => null)
+
+                if (sessionRecord?.githubRepoUrl && mockSandbox?.commands?.run) {
+                    let cloneUrl = sessionRecord.githubRepoUrl
+                    const effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
+                    if (effectiveToken && cloneUrl.startsWith('https://')) {
+                        cloneUrl = cloneUrl.replace(
+                            'https://',
+                            `https://x-access-token:${effectiveToken}@`
+                        )
+                    }
+                    await mockSandbox.commands
+                        .run(`git clone ${cloneUrl} /workspace`, {
+                            cwd: '/workspace',
+                        })
+                        .catch(() => {
+                            // Intentionally swallowed: Git clone mock fallback
+                        })
+                }
+
                 await emitSessionEvent({
                     sessionId,
                     event: {
@@ -210,7 +234,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
             const sessionRecord = await prisma.session
                 .findUnique({
                     where: { id: sessionId },
-                    select: { minioPrefix: true, githubRepoUrl: true },
+                    select: { githubRepoUrl: true },
                 })
                 .catch(() => null)
 
@@ -220,13 +244,6 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                 const mockId = `mock-sandbox-${sessionId}`
                 activeSandboxes.set(sessionId, { sandboxId: mockId, isMock: true })
                 activeSandboxes.set(mockId, { sandboxId: mockId, isMock: true })
-
-                await restoreWorkspaceState({
-                    sessionId,
-                    workspaceDir: '/workspace',
-                    objectKey: sessionRecord?.minioPrefix || undefined,
-                    sandbox: { sandboxId: mockId, isMock: true },
-                }).catch(() => {})
 
                 await prisma.session
                     .update({
@@ -289,42 +306,33 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                     .set(sessionId, { sandboxId, lastActiveAt: Date.now() })
             }
 
-            // Restore workspace state from MinIO archive or clone GitHub repository
-            const restored = await restoreWorkspaceState({
-                sessionId,
-                workspaceDir: '/workspace',
-                objectKey: sessionRecord?.minioPrefix || undefined,
-                sandbox,
-            }).catch(() => false)
-
-            if (!restored) {
-                try {
-                    if (sessionRecord?.githubRepoUrl && sandbox?.commands?.run) {
-                        let cloneUrl = sessionRecord.githubRepoUrl
-                        const effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
-                        if (effectiveToken && cloneUrl.startsWith('https://')) {
-                            cloneUrl = cloneUrl.replace(
-                                'https://',
-                                `https://x-access-token:${effectiveToken}@`
-                            )
-                        }
-                        console.log(
-                            `[E2BSandboxService] Initializing sandbox workspace from GitHub repo: ${sessionRecord.githubRepoUrl}`
+            // Initialize sandbox workspace strictly via GitHub repository clone
+            try {
+                if (sessionRecord?.githubRepoUrl && sandbox?.commands?.run) {
+                    let cloneUrl = sessionRecord.githubRepoUrl
+                    const effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
+                    if (effectiveToken && cloneUrl.startsWith('https://')) {
+                        cloneUrl = cloneUrl.replace(
+                            'https://',
+                            `https://x-access-token:${effectiveToken}@`
                         )
-                        await sandbox.commands
-                            .run(`git clone ${cloneUrl} /workspace`, {
-                                cwd: '/workspace',
-                            })
-                            .catch((e: any) => {
-                                console.warn(
-                                    `[E2BSandboxService] Git clone fallback warning for session ${sessionId}:`,
-                                    e
-                                )
-                            })
                     }
-                } catch {
-                    // Intentionally swallowed: optional repo initialization fallback
+                    console.log(
+                        `[E2BSandboxService] Initializing sandbox workspace from GitHub repo: ${sessionRecord.githubRepoUrl}`
+                    )
+                    await sandbox.commands
+                        .run(`git clone ${cloneUrl} /workspace`, {
+                            cwd: '/workspace',
+                        })
+                        .catch((e: any) => {
+                            console.warn(
+                                `[E2BSandboxService] Git clone fallback warning for session ${sessionId}:`,
+                                e
+                            )
+                        })
                 }
+            } catch {
+                // Intentionally swallowed: optional repo initialization fallback
             }
 
             await prisma.session
@@ -437,12 +445,6 @@ const resumeSandbox = async (data: ResumeSandboxInput): Promise<ProvisionSandbox
             activeSandboxes.set(sessionId, mockSandbox)
             activeSandboxes.set(sId, mockSandbox)
 
-            await restoreWorkspaceState({
-                sessionId,
-                workspaceDir: `/workspace`,
-                sandbox: mockSandbox,
-            }).catch(() => {})
-
             await prisma.session
                 .update({
                     where: { id: sessionId },
@@ -460,12 +462,6 @@ const resumeSandbox = async (data: ResumeSandboxInput): Promise<ProvisionSandbox
                     : await Sandbox.connect(snapshotId, { apiKey: process.env.E2B_API_KEY })
             activeSandboxes.set(sessionId, sandbox)
             activeSandboxes.set(sandbox.sandboxId, sandbox)
-
-            await restoreWorkspaceState({
-                sessionId,
-                workspaceDir: `/workspace`,
-                sandbox,
-            }).catch(() => {})
 
             await prisma.session
                 .update({
@@ -660,7 +656,6 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         WriteFileTool,
         LsTool,
         EditFileTool,
-        EditDiffTool,
         FindFilesTool,
         GrepSearchTool,
         AskQuestionTool,

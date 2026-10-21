@@ -1,15 +1,13 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { prisma } from '@december/database'
 import { describe, it, expect, beforeAll, afterAll, spyOn } from 'bun:test'
 import jwt from 'jsonwebtoken'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { s3 } from '../../src/config/s3'
 import { env } from '../../src/env'
 import { cliDispatcher } from '../../src/modules/cli/cli.dispatcher'
 
-describe('CLI Handoff API Endpoints', () => {
+describe('CLI API Endpoints', () => {
     let testUserId: string
     let testAuthSessionId: string
     let authToken: string
@@ -17,7 +15,7 @@ describe('CLI Handoff API Endpoints', () => {
     beforeAll(async () => {
         const user = await prisma.user.create({
             data: {
-                name: 'CLI Handoff Test User',
+                name: 'CLI Test User',
                 email: `cli-test-${Date.now()}@example.com`,
                 username: `clitest${Date.now()}`,
                 creditBalance: 100,
@@ -48,60 +46,24 @@ describe('CLI Handoff API Endpoints', () => {
         await prisma.user.delete({ where: { id: testUserId } })
     })
 
-    it('GET /cli/handoff/upload-url returns presigned uploadUrl and objectKey inside data', async () => {
+    it('GET /cli/handoff/upload-url returns 404 as handoff has been deprecated and removed', async () => {
         const res = await request(app)
             .get('/api/v1/cli/handoff/upload-url')
             .set('Authorization', `Bearer ${authToken}`)
 
-        expect(res.status).toBe(200)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.uploadUrl).toBeDefined()
-        expect(res.body.data.objectKey).toBeDefined()
-        expect(res.body.data.objectKey).toContain(`handoffs/${testUserId}/`)
+        expect(res.status).toBe(404)
     })
 
-    it('GET /cli/handoff/upload-url returns 402 when user has insufficient wallet credits', async () => {
-        await prisma.user.update({
-            where: { id: testUserId },
-            data: { creditBalance: 0 },
-        })
-
+    it('POST /cli/handoff/complete returns 404 as handoff has been deprecated and removed', async () => {
         const res = await request(app)
-            .get('/api/v1/cli/handoff/upload-url')
+            .post('/api/v1/cli/handoff/complete')
             .set('Authorization', `Bearer ${authToken}`)
+            .send({
+                title: 'Handoff Test Session',
+                objectKey: `handoffs/${testUserId}/test.tar.gz`,
+            })
 
-        expect(res.status).toBe(402)
-        expect(res.body.message).toContain('Insufficient credits in December Wallet')
-        expect(res.body.message).toContain('https://app.trydecember.com/settings/billing')
-
-        // Restore credits for subsequent tests
-        await prisma.user.update({
-            where: { id: testUserId },
-            data: { creditBalance: 100 },
-        })
-    })
-
-    it('GET /cli/handoff/upload-url returns 409 when user has an active cloud session running', async () => {
-        const activeSession = await prisma.session.create({
-            data: {
-                userId: testUserId,
-                title: 'Active Test Session',
-                vmStatus: 'RUNNING',
-            },
-        })
-
-        try {
-            const res = await request(app)
-                .get('/api/v1/cli/handoff/upload-url')
-                .set('Authorization', `Bearer ${authToken}`)
-
-            expect(res.status).toBe(409)
-            expect(res.body.message).toContain(
-                'Conflict: You already have an active cloud session running'
-            )
-        } finally {
-            await prisma.session.delete({ where: { id: activeSession.id } })
-        }
+        expect(res.status).toBe(404)
     })
 
     it('POST /cli/chat/completions rejects request with invalid body schema', async () => {
@@ -180,118 +142,5 @@ describe('CLI Handoff API Endpoints', () => {
         expect(res.text).toContain('data: [DONE]')
 
         resolveSpy.mockRestore()
-    })
-
-    it('POST /cli/handoff/complete returns 402 when user has insufficient wallet credits', async () => {
-        await prisma.user.update({
-            where: { id: testUserId },
-            data: { creditBalance: 0 },
-        })
-
-        const res = await request(app)
-            .post('/api/v1/cli/handoff/complete')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                title: 'Handoff Test Session',
-                messages: [{ role: 'user', content: 'Hello world' }],
-                objectKey: `handoffs/${testUserId}/${Date.now()}-handoff.tar.gz`,
-            })
-
-        expect(res.status).toBe(402)
-        expect(res.body.message).toContain('Insufficient credits in December Wallet')
-        expect(res.body.message).toContain('https://app.trydecember.com/settings/billing')
-
-        // Restore credits for subsequent tests
-        await prisma.user.update({
-            where: { id: testUserId },
-            data: { creditBalance: 100 },
-        })
-    })
-
-    it('POST /cli/handoff/complete returns 409 when user has an active cloud session running', async () => {
-        const activeSession = await prisma.session.create({
-            data: {
-                userId: testUserId,
-                title: 'Active Session 2',
-                vmStatus: 'RUNNING',
-            },
-        })
-
-        try {
-            const res = await request(app)
-                .post('/api/v1/cli/handoff/complete')
-                .set('Authorization', `Bearer ${authToken}`)
-                .send({
-                    title: 'Conflict Session',
-                    objectKey: `handoffs/${testUserId}/${Date.now()}-conflict.tar.gz`,
-                })
-
-            expect(res.status).toBe(409)
-            expect(res.body.message).toContain(
-                'Conflict: You already have an active cloud session running'
-            )
-        } finally {
-            await prisma.session.delete({ where: { id: activeSession.id } })
-        }
-    })
-
-    it('POST /cli/handoff/complete rejects invalid payload when objectKey is missing (HTTP 400)', async () => {
-        const res = await request(app)
-            .post('/api/v1/cli/handoff/complete')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                title: 'Missing Key Session',
-            })
-
-        expect(res.status).toBe(400)
-    })
-
-    it('POST /cli/handoff/complete rejects with HTTP 400 when objectKey does not exist in storage', async () => {
-        const nonExistentKey = `handoffs/${testUserId}/non-existent-${Date.now()}.tar.gz`
-
-        const res = await request(app)
-            .post('/api/v1/cli/handoff/complete')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                title: 'Handoff Non Existent',
-                messages: [{ role: 'user', content: 'Testing storage existence' }],
-                objectKey: nonExistentKey,
-            })
-
-        expect(res.status).toBe(400)
-        expect(res.body.message).toContain('Uploaded archive not found in storage')
-    })
-
-    it('POST /cli/handoff/complete stores objectKey as minioPrefix on session creation when archive exists in storage', async () => {
-        const testObjectKey = `handoffs/${testUserId}/${Date.now()}-handoff.tar.gz`
-
-        // Put dummy object into S3/MinIO
-        await s3.send(
-            new PutObjectCommand({
-                Bucket: env.S3_BUCKET,
-                Key: testObjectKey,
-                Body: Buffer.from('mock-tarball-content'),
-            })
-        )
-
-        const res = await request(app)
-            .post('/api/v1/cli/handoff/complete')
-            .set('Authorization', `Bearer ${authToken}`)
-            .send({
-                title: 'Handoff Test Session',
-                messages: [{ role: 'user', content: 'Hello world' }],
-                objectKey: testObjectKey,
-            })
-
-        expect(res.status).toBe(201)
-        expect(res.body.success).toBe(true)
-        expect(res.body.data.id).toBeDefined()
-        expect(res.body.data.minioPrefix).toBe(testObjectKey)
-
-        const createdSession = await prisma.session.findUnique({
-            where: { id: res.body.data.id },
-        })
-        expect(createdSession).not.toBeNull()
-        expect(createdSession?.minioPrefix).toBe(testObjectKey)
     })
 })

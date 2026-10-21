@@ -3,7 +3,7 @@ import { ApiError, apiFetch, apiRequest } from '@/shared/api/client'
 export type BackendSession = {
     id: string
     title: string | null
-    type: 'WEB' | 'CLI' | 'SEARCH'
+    type: 'WEB' | 'SEARCH'
     createdAt: string
     updatedAt: string
     projectId?: string | null
@@ -58,7 +58,7 @@ export type BackendSessionDetail = {
 }
 
 export type SessionFilters = {
-    type?: 'WEB' | 'CLI' | 'SEARCH'
+    type?: 'WEB' | 'SEARCH'
     isArchived?: boolean
     isPinned?: boolean
     tags?: string[]
@@ -143,7 +143,7 @@ export const sessionAPI = {
     createSession: async (data: {
         title?: string
         projectId?: string
-        type?: 'WEB' | 'CLI' | 'SEARCH'
+        type?: 'WEB' | 'SEARCH'
         prompt?: string
     }): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>('/session', {

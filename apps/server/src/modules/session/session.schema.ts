@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const getSessionsSchema = z.object({
-    type: z.enum(['WEB', 'CLI', 'SEARCH']).optional(),
+    type: z.enum(['WEB', 'SEARCH']).optional(),
     isArchived: z
         .preprocess(
             (val) => (val === 'true' ? true : val === 'false' ? false : undefined),
@@ -24,7 +24,7 @@ export const getSessionsSchema = z.object({
 
 export const createSessionSchema = z.object({
     title: z.string().max(100).optional(),
-    type: z.enum(['WEB', 'CLI', 'SEARCH']).optional(),
+    type: z.enum(['WEB', 'SEARCH']).optional(),
     prompt: z.string().min(1, 'prompt is required').optional(),
     projectId: z.string().uuid().optional(),
 })

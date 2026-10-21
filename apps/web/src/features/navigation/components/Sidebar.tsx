@@ -73,7 +73,7 @@ const Sidebar: React.FC<
     )
     const [sortBy, setSortBy] = React.useState<'created' | 'updated'>('updated')
     const [filterArchived, setFilterArchived] = React.useState(false)
-    const [sessionType, setSessionType] = React.useState<'all' | 'web' | 'handoff'>('all')
+    const [sessionType, setSessionType] = React.useState<'all' | 'web'>('all')
     const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
     const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
     const [isLogoAnimating, setIsLogoAnimating] = React.useState(false)
@@ -324,9 +324,6 @@ const Sidebar: React.FC<
                     return false
                 }
                 if (sessionType === 'web' && item.type !== 'WEB') {
-                    return false
-                }
-                if (sessionType === 'handoff' && item.type !== 'CLI') {
                     return false
                 }
                 return true
@@ -610,15 +607,6 @@ const Sidebar: React.FC<
                                             >
                                                 <span>Web</span>
                                                 {sessionType === 'web' && (
-                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => setSessionType('handoff')}
-                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
-                                            >
-                                                <span>Handoff</span>
-                                                {sessionType === 'handoff' && (
                                                     <Icons.Check className="w-3.5 h-3.5 text-white" />
                                                 )}
                                             </button>

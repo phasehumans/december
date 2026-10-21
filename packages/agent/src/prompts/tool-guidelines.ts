@@ -16,7 +16,7 @@ export const DEFAULT_TOOL_PROMPTS: Record<string, { snippet: string; guidelines:
     edit_file: {
         snippet: 'Precise search-and-replace edits including multiple disjoint replacements',
         guidelines: [
-            "ALWAYS use 'edit_file' or 'edit_diff' when changing existing files to preserve untouched code and avoid token limits.",
+            "ALWAYS use 'edit_file' when changing existing files to preserve untouched code and avoid token limits.",
             "When changing multiple separate locations in one file, use one 'edit_file' call with multiple entries in edits[] instead of multiple sequential calls.",
         ],
     },

@@ -50,7 +50,6 @@ model User {
   feedbackCardDone       Boolean         @default(false)
 
   notifications      Notification[]
-  imports            SessionImport[]
   authSessions       AuthSession[]
   sessions           Session[]
   walletTransactions WalletTransaction[]
@@ -110,7 +109,6 @@ model Session {
   vmStatus             VmStatus    @default(STOPPED)
   isArchived           Boolean     @default(false)
   tags                 String[]
-  minioPrefix          String?
   githubLastSyncedAt   DateTime?
   githubRepoName       String?
   githubRepoOwner      String?
@@ -132,7 +130,6 @@ model Session {
   project         Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
   messages        Message[]
   settings        SessionSettings?
-  imports         SessionImport[]
   memories        SessionMemory[]
   sessionMemories AgentSessionMemory[]
   collaborators      SessionCollaborator[]
@@ -228,7 +225,6 @@ model WakeUpTrigger {
 
 enum SessionType {
   WEB
-  CLI
   SEARCH
 }
 
@@ -278,32 +274,6 @@ model Message {
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, sequence])
-}
-
-model SessionImport {
-  id             String              @id @default(uuid())
-  userId         String
-  sessionId      String?
-  sourceType     ProjectImportSource
-  sourceUrl      String?
-  sourceFileName String?
-  bucket         String?
-  objectPrefix   String?
-  status         ProjectImportStatus @default(PENDING)
-  framework      String?
-  previewUrl     String?
-  errorMessage   String?
-  errorsJson     Json?
-  attempts       Int                 @default(0)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-
-  session Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, createdAt])
-  @@index([userId, status])
-  @@index([sessionId])
 }
 
 model SessionCollaborator {
@@ -387,20 +357,6 @@ enum MessageRole {
   USER
   ASSISTANT
   SYSTEM
-}
-
-enum ProjectImportSource {
-  GITHUB
-  ZIP
-}
-
-enum ProjectImportStatus {
-  PENDING
-  VALIDATING
-  UPLOADING
-  STARTING_RUNTIME
-  READY
-  FAILED
 }
 
 model DeviceCode {

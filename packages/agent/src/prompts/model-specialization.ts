@@ -85,7 +85,7 @@ export function getModelFamilyPrompt(options: ModelFamilyPromptOptions): ModelFa
 - Persistent Problem Solving: Keep going until the user's task or bug is completely resolved and empirically verified before ending your turn.
 - Comprehensive Verification: Failing to test your code sufficiently rigorously is the primary failure mode. NEVER end your turn without having truly and completely solved the problem, run test/build commands, and verified edge cases.
 - Independent Execution: Solve blockers and diagnose root causes autonomously rather than stopping to ask premature questions.
-- Diff-First Protocol ("Diff Model"): When editing existing files, plan surgical patches in your thinking trace and execute them exclusively via 'edit_file' or 'edit_diff'. Never rewrite whole files. Preserve all untouched code and surrounding formatting.
+- Diff-First Protocol ("Diff Model"): When editing existing files, plan surgical patches in your thinking trace and execute them exclusively via 'edit_file'. Never rewrite whole files. Preserve all untouched code and surrounding formatting.
 - Concise Chat Output: In visible chat messages, output only concise execution updates, diff summaries, and verification commands. Do not repeat internal thinking traces in user chat text.`)
     } else if (compact) {
         sections.push(`### Model Specialization (Compact Model Execution & Grounding)

@@ -46,7 +46,7 @@ export const renderWelcomeEmail = ({
           </p>
           <ul class='text-secondary' style='margin: 0 0 16px 0; padding-left: 20px; font-size: 14px; line-height: 22px; color: #57534e;'>
             <li style='margin-bottom: 8px;'><strong>Writes code &amp; runs commands:</strong> Ask it to build features, fix bugs, or run tests directly in your terminal or web dashboard.</li>
-            <li style='margin-bottom: 8px;'><strong>Cloud Handoff:</strong> Use <code style='font-family: Menlo, Monaco, Consolas, monospace; font-size: 13px;'>/handoff</code> in your terminal to continue your session seamlessly on <a class='link' href='${appUrl}' target='_blank' style='color: #1c1917; text-decoration: underline;'>trydecember.com</a>.</li>
+            <li style='margin-bottom: 8px;'><strong>Cloud Sandboxes:</strong> Run isolated cloud sandboxes with full terminal access and GitHub integration on <a class='link' href='${appUrl}' target='_blank' style='color: #1c1917; text-decoration: underline;'>trydecember.com</a>.</li>
             <li style='margin-bottom: 8px;'><strong>Bring your own AI:</strong> Plug in API keys for OpenAI, Anthropic, Gemini, and 100+ others, or use December credits.</li>
           </ul>
           <p class='text-secondary' style='margin: 0 0 16px 0; font-size: 14px; line-height: 22px; color: #57534e;'>
@@ -96,7 +96,7 @@ December is a coding agent that lives in your terminal. It understands your code
 
 Here is what you can do:
 - Writes code & runs commands: Ask it to build features, fix bugs, or run tests directly in your terminal or web dashboard.
-- Cloud Handoff: Use /handoff in your terminal to continue your session seamlessly on trydecember.com.
+- Cloud Sandboxes: Run isolated cloud sandboxes with full terminal access and GitHub integration on trydecember.com.
 - Bring your own AI: Plug in API keys for OpenAI, Anthropic, Gemini, and 100+ others, or use December credits.
 
 Run "npm install -g @trydecember/cli" to get started locally, or launch a session in your browser.

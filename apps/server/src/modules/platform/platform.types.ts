@@ -10,6 +10,12 @@ export type DownloadSession = {
     userId: string
 }
 
+export type DownloadSessionResult = {
+    fileName: string
+    downloadUrl?: string
+    zip?: Uint8Array | Buffer
+}
+
 export type DeployVercelDirect = {
     userId: string
     sessionId: string

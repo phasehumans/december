@@ -6,7 +6,7 @@ export type StoredSessionFile = {
 }
 
 export type SessionFilters = {
-    type?: 'WEB' | 'CLI' | 'SEARCH'
+    type?: 'WEB' | 'SEARCH'
     isArchived?: boolean
     tags?: string[]
     sortBy?: 'updatedAt' | 'createdAt'
@@ -24,7 +24,7 @@ export type GetUserSessions = {
 export type CreateSession = {
     userId: string
     title?: string
-    type?: 'WEB' | 'CLI' | 'SEARCH'
+    type?: 'WEB' | 'SEARCH'
     prompt?: string
     projectId?: string
 }

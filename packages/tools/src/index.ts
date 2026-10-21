@@ -54,7 +54,6 @@ export const CORE_TOOLS = [
     WriteFileTool,
     LsTool,
     EditFileTool,
-    EditDiffTool,
     FindFilesTool,
     GrepSearchTool,
     AskQuestionTool,
@@ -66,7 +65,13 @@ export const CORE_TOOLS = [
     WriteArtifactTool,
 ]
 
-export const DEFERRED_TOOLS = [ManageTaskTool, BrowserTool, BrowserActionTool, WebSearchTool]
+export const DEFERRED_TOOLS = [
+    ManageTaskTool,
+    BrowserTool,
+    BrowserActionTool,
+    WebSearchTool,
+    EditDiffTool,
+]
 
 // Pre-register standard deferred tools in defaultDeferredRegistry
 defaultDeferredRegistry.register(BrowserTool, {
@@ -116,4 +121,8 @@ defaultDeferredRegistry.register(EnterWorktreeTool, {
 defaultDeferredRegistry.register(ExitWorktreeTool, {
     category: 'git',
     keywords: ['worktree', 'exit_worktree', 'cleanup', 'keep', 'merge', 'discard', 'restore'],
+})
+defaultDeferredRegistry.register(EditDiffTool, {
+    category: 'editor',
+    keywords: ['edit_diff', 'diff', 'patch', 'unified_diff'],
 })
