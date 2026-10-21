@@ -36,7 +36,6 @@ export type AuthMode =
     | 'diff_view'
     | 'rewind_select'
     | 'reasoning_select'
-    | 'handoff_confirm'
     | 'code_search'
     | 'file_view'
     | 'artifact_view'
@@ -45,15 +44,6 @@ export interface CodeSearchResultItem {
     file: string
     line: number
     content: string
-}
-
-export interface HandoffSummary {
-    fileCount: number
-    uncompressedSize: string
-    uncommittedChanges: number
-    destinationUrl: string
-    walletBalance: string
-    detectedSecrets?: string[]
 }
 
 export interface GrillQuestion {

@@ -9,7 +9,7 @@ describe('Header Component (Unit)', () => {
         const { lastFrame } = render(<Header />)
         const frame = lastFrame()
         expect(frame).toContain('December v0.1.0')
-        expect(frame).toContain('Use /handoff to continue in cloud')
+        expect(frame).toContain('Press / for commands')
         expect(frame).toContain('trydecember.com')
         expect(frame).toContain('https://trydecember.com')
     })

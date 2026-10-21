@@ -483,7 +483,6 @@ export const InputBar = React.memo(function InputBar({
                 '/clear',
                 '/fork',
                 '/copy',
-                '/handoff',
                 '/help',
                 '/shortcuts',
                 '/docs',

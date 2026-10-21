@@ -5,7 +5,6 @@ December is a (so much) better coding agent. It helps you build faster by writin
 **Also available on the web at [trydecember.com](https://trydecember.com)**
 
 - **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
-- **Cloud Handoff:** Use _/handoff_ to continue your session on **[trydecember.com](https://trydecember.com)**
 - **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 100+ others, or log in via December to use December credits.
 
 - Website: https://trydecember.com
@@ -32,7 +31,7 @@ pnpm add -g @trydecember/cli
 
 ### Setup
 ```bash
-# Log in to December Cloud (optional, enables cloud handoff and previews)
+# Log in to December Cloud (optional, enables cloud wallet and cloud sandboxes)
 december login
 
 # Pick your model provider and add API keys
@@ -61,7 +60,6 @@ december
 
 Use these commands inside an interactive `december` session:
 
-- `/handoff`: Move current task, diffs, and chat history to a cloud sandbox.
 - `/checkpoint [message]`: Save a git commit on the shadow branch.
 - `/undo`: Revert the last file edits made by the agent.
 - `/diff`: Show uncommitted changes.
@@ -139,10 +137,7 @@ December was built by software engineer **Chaitanya Sonawane** (also known as Ch
 December is a (so much) better coding agent that lives in your terminal. It helps you build faster by writing code, fixing bugs, and running commands directly in your terminal or alongside your favorite IDE.
 
 ### How does December compare to Cursor or Devin?
-Unlike Cursor (which is a VS Code fork), December runs directly in your existing terminal and works with any editor (Neovim, VS Code, JetBrains). Unlike Devin, December can run 100% locally with zero latency, handing off to the cloud only when you want background runs or shareable previews.
-
-### How does terminal-to-cloud handoff work?
-Run `/handoff` in your terminal. December sends your uncommitted diffs and session history to a cloud microVM. You get a URL to continue the task in your browser.
+Unlike Cursor (which is a VS Code fork), December runs directly in your existing terminal and works with any editor (Neovim, VS Code, JetBrains). Unlike Devin, December runs directly in your local terminal with zero latency, alongside cloud workspaces on trydecember.com.
 
 ---
 

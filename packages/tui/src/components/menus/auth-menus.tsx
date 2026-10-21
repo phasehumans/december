@@ -8,7 +8,6 @@ import { ContextSelectMenu } from './context-select-menu'
 import { DiffViewMenu } from './diff-view-menu'
 import { FileViewMenu } from './file-view-menu'
 import { GrillQuestionMenu } from './grill-question-menu'
-import { HandoffConfirmMenu } from './handoff-confirm-menu'
 import { HelpMenu } from './help-menu'
 import { MenuMenu } from './menu-menu'
 import { ModelSelectMenu } from './model-select-menu'
@@ -59,8 +58,6 @@ export function AuthMenus(props: any) {
             return <HelpMenu {...props} />
         case 'reasoning_select':
             return <ReasoningMenu {...props} />
-        case 'handoff_confirm':
-            return <HandoffConfirmMenu {...props} />
         case 'code_search':
             return <CodeSearchMenu {...props} />
         case 'file_view':

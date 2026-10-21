@@ -15,7 +15,6 @@ December is a (so much) better coding agent. It helps you build faster by writin
 </p>
 
 - **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
-- **Cloud Handoff:** Use _/handoff_ to continue your session on **<a href="https://trydecember.com" target="_blank">trydecember.com</a>**
 - **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 100+ others, or log in via December to use December credits.
 
 ### Get Started

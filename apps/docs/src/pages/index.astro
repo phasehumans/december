@@ -6,7 +6,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
 <BaseLayout
   title="December | A (So Much) Better Coding Agent"
-  description="December is a (so much) better coding agent. It writes code, fixes bugs, and runs commands with seamless terminal-to-cloud handoff."
+  description="December is a (so much) better coding agent. It writes code, fixes bugs, and runs commands directly in your terminal and cloud."
   canonicalUrl="https://trydecember.com"
   hideHeader={false}
   hideFooter={false}
@@ -415,7 +415,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             Bring the tools and subscriptions you already have: December connects seamlessly to your existing plans, including Claude Code, Codex plan, Antigravity plan, and Copilot plan. It also supports 100+ model providers via BYOK.
           </p>
           <p>
-            Need cloud compute or live browser previews? Simply type <code class="font-mono text-[#090a0f]">/handoff</code> to move any local terminal session into an isolated cloud sandbox for instant collaboration and visual verification.
+            Need cloud compute or live browser previews? Spin up isolated cloud sandboxes on December Cloud for instant collaboration and visual verification.
           </p>
         </div>
       </div>
@@ -458,7 +458,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           </div>
         </a>
 
-        <!-- 02 Cloud Handoff -->
+        <!-- 02 Cloud Sandboxes -->
         <a
           href="/docs/architecture"
           class="group block p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col justify-between"
@@ -467,13 +467,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
               <span class="text-[#87b2f4] font-semibold">02</span>
               <span class="text-[#cbd5e1]">/</span>
-              <span>Handoff</span>
+              <span>Sandboxes</span>
             </div>
             <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">
-              Cloud Handoff
+              Cloud Sandboxes
             </h4>
             <p class="text-sm text-[#64748b] leading-relaxed">
-              Use /handoff to continue your session in the cloud on trydecember.com.
+              Spin up remote environments and full-stack previews on trydecember.com.
             </p>
           </div>
 
@@ -485,7 +485,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
             <img
               src="/illustrations/cloud-handoff.webp"
-              alt="Cloud Handoff"
+              alt="Cloud Sandboxes"
               width="240"
               height="240"
               class="w-20 h-20 sm:w-22 sm:h-22 object-contain group-hover:scale-105 transition-transform duration-300"
@@ -867,7 +867,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           Frequently Asked Questions
         </h3>
         <p class="mt-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
-          Everything you need to know about using December in your terminal, bringing your own models, data privacy, and cloud handoff.
+          Everything you need to know about using December in your terminal, bringing your own models, data privacy, and cloud sandboxes.
         </p>
       </div>
 
@@ -988,7 +988,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               December operates locally on your machine. Your codebase, git history, and local environment files never leave your system. When you use BYOK mode, requests travel directly from your machine to your configured LLM endpoint.
             </p>
             <p class="mt-2">
-              Code is only synchronized to an isolated cloud micro-VM when you explicitly execute the <code class="font-mono text-[#090a0f]">/handoff</code> command.
+              Code remains on your machine and is never synchronized to cloud servers without your explicit action.
             </p>
           </div>
         </div>

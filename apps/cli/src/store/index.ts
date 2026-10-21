@@ -1,12 +1,5 @@
 import { Agent } from '@december/agent'
-import {
-    Message,
-    AuthMode,
-    PlanWorkflowState,
-    BtwState,
-    HandoffSummary,
-    CodeSearchResultItem,
-} from '@december/tui'
+import { Message, AuthMode, PlanWorkflowState, BtwState, CodeSearchResultItem } from '@december/tui'
 import { create } from 'zustand'
 
 import { DecemberConfig } from '../config'
@@ -186,10 +179,6 @@ export interface CliState {
     // btw side question
     btwState: BtwState | null
     setBtwState: (state: BtwState | null | ((prev: BtwState | null) => BtwState | null)) => void
-
-    // handoff confirmation
-    handoffSummary: HandoffSummary | null
-    setHandoffSummary: (handoffSummary: HandoffSummary | null) => void
 
     // code search feature
     codeSearchQuery: string
@@ -445,10 +434,6 @@ export const useCliStore = create<CliState>((set) => ({
         set((state) => ({
             btwState: typeof updater === 'function' ? updater(state.btwState) : updater,
         })),
-
-    // handoff confirmation
-    handoffSummary: null,
-    setHandoffSummary: (handoffSummary) => set({ handoffSummary }),
 
     // code search feature
     codeSearchQuery: '',

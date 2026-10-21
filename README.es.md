@@ -15,7 +15,6 @@ December es un (so much) better agente de programación. Te ayuda a desarrollar 
 </p>
 
 - **Escribe código y ejecuta comandos:** Pídele que cree funciones, corrija errores o ejecute pruebas. Él hace el trabajo por ti.
-- **Traspaso a la nube:** Usa _/handoff_ para continuar tu sesión en **<a href="https://trydecember.com" target="_blank">trydecember.com</a>**.
 - **Trae tu propia IA:** Usa claves de API para OpenAI, Anthropic, Gemini y más de 100 proveedores, o inicia sesión a través de December para usar créditos de December.
 
 ### Primeros pasos

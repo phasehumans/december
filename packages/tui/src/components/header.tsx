@@ -245,11 +245,10 @@ export const Header = React.memo(function Header({
             </Box>
             <Box flexDirection="column" marginTop={1}>
                 <Text color={THEME.colors.muted}>
-                    {'Press / for commands  ·  Use /handoff to continue in cloud ('}
+                    {'Press / for commands  ·  '}
                     <Text color={THEME.colors.brand}>
                         {terminalLink('trydecember.com', 'https://trydecember.com')}
                     </Text>
-                    {')'}
                 </Text>
             </Box>
             {latestVersion ? (

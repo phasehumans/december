@@ -5,7 +5,6 @@
 **Also available on the web at [trydecember.com](https://trydecember.com)**
 
 - **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
-- **Cloud Handoff:** Use _/handoff_ to continue your session on **[trydecember.com](https://trydecember.com)**
 - **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 100+ others, or log in via December to use December credits.
 
 ## Get Started
@@ -24,7 +23,6 @@ npm install -g @trydecember/cli
 - `december login`: Log in to December Cloud.
 - `december logout`: Remove local credentials.
 - `december config`: Change model and provider settings.
-- `/handoff`: Move current terminal task to a cloud microVM sandbox.
 - `/checkpoint`: Save a git checkpoint commit.
 - `/undo`: Revert the last file edits made by the agent.
 - `/diff`: Show uncommitted changes.
