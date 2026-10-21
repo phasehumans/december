@@ -118,8 +118,12 @@ model Session {
   vercelLastDeployedAt DateTime?
   vercelProjectId      String?
   vercelProjectName    String?
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
+  epoch                Int                   @default(1)
+  leaseExpiresAt       DateTime?
+  leaseOwner           String?
+  status               String                @default("IDLE")
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
   deletedAt            DateTime?
 
   user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -130,6 +134,7 @@ model Session {
   sessionMemories AgentSessionMemory[]
   collaborators      SessionCollaborator[]
   usageEvents        UsageEvent[]
+  durableSteps       DurableStep[]
 
   @@index([userId])
 }
@@ -142,6 +147,25 @@ model SessionSettings {
   updatedAt DateTime @updatedAt
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model DurableStep {
+  id          String   @id @default(uuid())
+  sessionId   String
+  stepIndex   Int
+  stepType    String
+  opId        String?
+  input       Json?
+  output      Json?
+  outputRef   String?
+  durationMs  Int?
+  createdAt   DateTime @default(now())
+
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, stepIndex])
+  @@index([sessionId])
+  @@index([sessionId, opId])
 }
 
 enum SessionType {
