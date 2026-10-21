@@ -138,9 +138,13 @@ async function main() {
     }
 
     if (parsedArgs.command === 'login') {
-        const targetProvider = parsedArgs.positionals[1]
+        const rawArg = parsedArgs.positionals[1]
+        const isTokenArg = rawArg && (rawArg.startsWith('ey') || rawArg.length > 50)
+        const targetProvider = isTokenArg ? undefined : rawArg
+        const targetToken = parsedArgs.token || (isTokenArg ? rawArg : undefined)
+
         const { handleLoginCommand } = await import('./commands')
-        await handleLoginCommand({ provider: targetProvider })
+        await handleLoginCommand({ provider: targetProvider, token: targetToken })
         process.exit(0)
     }
 

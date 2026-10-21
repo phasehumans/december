@@ -21,6 +21,7 @@ export interface ParsedCliArgs {
     cwd?: string
     turn?: number
     list?: boolean
+    token?: string
     positionals: string[]
 }
 
@@ -45,6 +46,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 cwd: { type: 'string' },
                 turn: { type: 'string', short: 't' },
                 list: { type: 'boolean' },
+                token: { type: 'string' },
             },
             allowPositionals: true,
             strict: false,
@@ -67,6 +69,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const cwd = values.cwd as string | undefined
         const turn = values.turn ? parseInt(values.turn as string, 10) : undefined
         const list = Boolean(values.list)
+        const token = values.token as string | undefined
 
         const knownCommands = [
             'login',
@@ -121,6 +124,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             cwd,
             turn,
             list,
+            token,
             positionals,
         }
     } catch {

@@ -17,6 +17,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'artifact',
+        description: 'Inspect, approve, refine, or reject waiting session artifacts',
+        value: '/artifact',
+        action: (ctx) => {
+            // forwarded to chat screen / session handler
+        },
+    },
+    {
         name: 'ask',
         description: 'Ask a question about the codebase (read-only Q&A mode)',
         value: '/ask',

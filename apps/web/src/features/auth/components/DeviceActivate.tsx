@@ -17,22 +17,13 @@ const formatCode = (raw: string) => {
 }
 
 const persistDeviceActivation = (code?: string) => {
-    if (typeof window === 'undefined') return
-    if (code) {
-        window.localStorage.setItem(`december_device_code_${code}`, 'true')
-    }
-    window.localStorage.setItem('december_device_activated', 'true')
+    if (typeof window === 'undefined' || !code) return
+    window.localStorage.setItem(`december_device_code_${code}`, 'true')
 }
 
 const isDeviceActivatedInStorage = (code?: string): boolean => {
-    if (typeof window === 'undefined') return false
-    if (code && window.localStorage.getItem(`december_device_code_${code}`) === 'true') {
-        return true
-    }
-    if (!code && window.localStorage.getItem('december_device_activated') === 'true') {
-        return true
-    }
-    return false
+    if (typeof window === 'undefined' || !code) return false
+    return window.localStorage.getItem(`december_device_code_${code}`) === 'true'
 }
 
 export const DeviceActivate: React.FC = () => {
@@ -68,14 +59,17 @@ export const DeviceActivate: React.FC = () => {
         queryKey: ['device-status', initialUserCode],
         queryFn: () =>
             apiRequest<{ activated: boolean; status: string }>(
-                `/auth/device/status${initialUserCode ? `?code=${encodeURIComponent(initialUserCode)}` : ''}`
+                `/auth/device/status?code=${encodeURIComponent(initialUserCode)}`
             ),
-        enabled: Boolean(profile),
+        enabled: Boolean(profile) && Boolean(initialUserCode),
         retry: false,
     })
 
     useEffect(() => {
-        if (deviceStatus?.activated || deviceStatus?.status === 'already_activated') {
+        if (
+            initialUserCode &&
+            (deviceStatus?.activated || deviceStatus?.status === 'already_activated')
+        ) {
             setStatus('already_activated')
             persistDeviceActivation(initialUserCode)
         }

@@ -326,9 +326,41 @@ export async function handleKeyCommand(options?: {
     }
 }
 
-export async function handleLoginCommand(options?: { provider?: string }): Promise<void> {
-    const targetProvider = (options?.provider || 'december').toLowerCase().trim()
+export async function handleLoginCommand(options?: {
+    provider?: string
+    token?: string
+}): Promise<void> {
     const { loadConfig, saveConfig } = await import('./config')
+
+    if (options?.token) {
+        const token = options.token.trim()
+        console.log('\nValidating December session token...')
+        const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
+        try {
+            const overviewRes = await fetch(`${serverUrl}/api/v1/billing/overview`, {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: AbortSignal.timeout(5000),
+            })
+            if (!overviewRes.ok && overviewRes.status === 401) {
+                console.error(
+                    '\x1b[31mError: Provided session token is invalid or expired.\x1b[0m\n'
+                )
+                return
+            }
+        } catch {
+            // Intentionally swallowed: allow network error fallback during token save
+        }
+
+        const configToSave = await loadConfig()
+        configToSave.decemberToken = token
+        configToSave.authPriority = 'december'
+        configToSave.activeModel = 'december-auto'
+        await saveConfig(configToSave)
+        console.log('\x1b[32mSuccessfully logged in via December session token!\x1b[0m\n')
+        return
+    }
+
+    const targetProvider = (options?.provider || 'december').toLowerCase().trim()
 
     if (
         targetProvider === 'copilot' ||
@@ -429,9 +461,7 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
                 ? `${uri}&code=${encodeURIComponent(code)}`
                 : `${uri}?code=${encodeURIComponent(code)}`
 
-            console.log(
-                `\nConfirm code: ${code}\nOpen URL: ${fullUrl}\n\nPress [o] to open in browser · Esc to cancel\nWaiting for approval...`
-            )
+            console.log(`\nConfirm code: ${code}\nOpen URL: ${fullUrl}\n\nWaiting for approval...`)
 
             if (process.stdin.isTTY) {
                 try {
@@ -443,7 +473,7 @@ export async function handleLoginCommand(options?: { provider?: string }): Promi
                             openUrl(fullUrl).catch(() => {
                                 // Intentionally swallowed: browser launch error handled
                             })
-                        } else if (char === '\u0003' || char === '\u001b') {
+                        } else if (char === '\u0003') {
                             cleanupKeypress()
                             process.exit(0)
                         }

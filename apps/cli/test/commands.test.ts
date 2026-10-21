@@ -174,4 +174,14 @@ describe('CLI Standalone Commands', () => {
             console.log = originalLog
         }
     })
+
+    it('handleLoginCommand saves decemberToken directly when token option is provided', async () => {
+        const { handleLoginCommand } = await import('../src/commands')
+        await handleLoginCommand({ token: 'dcb_session_test_token_123' })
+
+        const config = await loadConfig()
+        expect(config.decemberToken).toBe('dcb_session_test_token_123')
+        expect(config.authPriority).toBe('december')
+        expect(config.activeModel).toBe('december-auto')
+    })
 })

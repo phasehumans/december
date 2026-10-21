@@ -86,8 +86,28 @@ export function setupAgentInterceptors(agent: Agent, storeState: any) {
 
     agent.operations.ui.reviewArtifact = (artifact) => {
         return new Promise((resolve) => {
-            storeState.setAuthMode('artifact_view')
             storeState.setPendingArtifactReview({ artifact, resolve })
+            if (storeState.addToast) {
+                storeState.addToast(
+                    `Artifact "${artifact.title || artifact.filename}" is ready. Type /artifacts to review, approve, refine, or reject.`,
+                    'info'
+                )
+            }
+            if (storeState.setActiveMessages) {
+                storeState.setActiveMessages((prev: any[]) => [
+                    ...prev,
+                    {
+                        id: `artifact-ready-${Date.now()}`,
+                        role: 'assistant',
+                        blocks: [
+                            {
+                                type: 'text',
+                                content: `Artifact **${artifact.title || artifact.filename}** is ready.\n\nType \`/artifacts\` to inspect the artifact, where you can **Approve**, **Refine**, or **Reject** before continuing.`,
+                            },
+                        ],
+                    },
+                ])
+            }
         })
     }
 

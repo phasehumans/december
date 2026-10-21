@@ -580,13 +580,22 @@ export function useAgentSession({
 
                 if (isAuthErr) {
                     setActiveMessages([])
+                    const isSessionExpired =
+                        cleanError.toLowerCase().includes('expired') ||
+                        cleanError.toLowerCase().includes('token expired') ||
+                        cleanError.toLowerCase().includes('session expired')
+
+                    const noticeContent = isSessionExpired
+                        ? 'Your December session token has expired after 30 days.\n\nPlease run `/login` to reconnect your terminal.'
+                        : AUTH_REQUIRED_NOTICE
+
                     const noticeMsg: Message = {
                         id: getNextMsgId(),
                         role: 'assistant',
                         blocks: [
                             {
                                 type: 'text',
-                                content: AUTH_REQUIRED_NOTICE,
+                                content: noticeContent,
                             },
                         ],
                     }
@@ -2612,7 +2621,12 @@ ${decStatus}
                 return
             }
 
-            if (text.trim() === '/artifacts' || text.trim().startsWith('/artifacts ')) {
+            if (
+                text.trim() === '/artifacts' ||
+                text.trim() === '/artifact' ||
+                text.trim().startsWith('/artifacts ') ||
+                text.trim().startsWith('/artifact ')
+            ) {
                 setAuthMode('artifact_view')
                 return
             }
@@ -3000,6 +3014,13 @@ ${decStatus}
         }
         if (handleAbortAuth) {
             handleAbortAuth()
+        }
+        if (useCliStore.getState().pendingArtifactReview) {
+            useCliStore.getState().pendingArtifactReview.resolve?.({
+                action: 'reject',
+                feedback: 'Cancelled by user',
+            })
+            useCliStore.getState().setPendingArtifactReview(null)
         }
         if (isStreaming && agent) {
             agent.abort()

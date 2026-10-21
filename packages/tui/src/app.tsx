@@ -295,8 +295,10 @@ export function ChatApp({
             onCopy={handleCopy}
             placeholder={
                 isDeviceAuthPending
-                    ? 'Waiting for approval... Press [o] to open in browser'
-                    : 'Ask December to build features, fix bugs, or work on your code...'
+                    ? 'Waiting for approval...'
+                    : session.pendingArtifactReview
+                      ? 'Artifact ready for review. Type /artifacts to review · Esc to cancel'
+                      : 'Ask December to build features, fix bugs, or work on your code...'
             }
             activeModel={effectiveModel}
             modelLabel={effectiveModelLabel}

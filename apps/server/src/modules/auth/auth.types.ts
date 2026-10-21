@@ -93,6 +93,7 @@ export type DeviceActivationStatus =
     | 'expired'
     | 'pending'
     | 'idle'
+    | 'invalid'
 
 export type VerifyUserCodeResult = {
     status: 'approved' | 'already_activated'

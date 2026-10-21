@@ -78,12 +78,11 @@ describe('First-Launch Device Auth & Wallet Transition (Unit)', () => {
 
         expect(fullUrl).toBe('https://app.trydecember.com/device/activate?code=ABCD-EFGH')
 
-        const message = `\nConfirm code: \`${code}\`\nOpen URL: [${fullUrl}](${fullUrl})\n\nPress [o] to open in browser · Esc to cancel\nWaiting for approval...`
+        const message = `\nConfirm code: \`${code}\`\nOpen URL: [${fullUrl}](${fullUrl})\n\nWaiting for approval...`
         expect(message).toContain('Confirm code: `ABCD-EFGH`')
         expect(message).toContain(
             'Open URL: [https://app.trydecember.com/device/activate?code=ABCD-EFGH](https://app.trydecember.com/device/activate?code=ABCD-EFGH)'
         )
-        expect(message).toContain('Press [o] to open in browser · Esc to cancel')
         expect(message).toContain('Waiting for approval...')
     })
 

@@ -801,6 +801,7 @@ const pollDeviceToken = async (data: PollDeviceToken) => {
             },
         })
 
+        consumedCodesFallback.set(codeRecord.userCode, Date.now() + 3600_000)
         if (redisClient && redisClient.status === 'ready') {
             redisClient.set(`device:consumed:${codeRecord.userCode}`, '1', 'EX', 3600).catch(() => {
                 // Intentionally swallowed: fallback handled if redis is unavailable
@@ -818,7 +819,16 @@ const pollDeviceToken = async (data: PollDeviceToken) => {
     throw new AppError('authorization_pending', 400)
 }
 
+const consumedCodesFallback = new Map<string, number>()
+
 const isDeviceCodeConsumed = async (userCode: string): Promise<boolean> => {
+    const memExpiry = consumedCodesFallback.get(userCode)
+    if (memExpiry) {
+        if (memExpiry > Date.now()) {
+            return true
+        }
+        consumedCodesFallback.delete(userCode)
+    }
     if (redisClient && redisClient.status === 'ready') {
         try {
             const consumed = await redisClient.get(`device:consumed:${userCode}`)
@@ -873,7 +883,7 @@ const getDeviceStatus = async (data: GetDeviceStatus): Promise<GetDeviceStatusRe
             if (await isDeviceCodeConsumed(userCode)) {
                 return { activated: true, status: 'already_activated' }
             }
-            return { activated: true, status: 'already_activated' }
+            return { activated: false, status: 'invalid' }
         }
 
         if (codeRecord.status === 'APPROVED') {
