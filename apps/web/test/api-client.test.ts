@@ -6,7 +6,6 @@ import {
     getGithubClientId,
     getGithubAppName,
     getGoogleClientId,
-    getVercelIntegrationSlug,
 } from '../src/shared/config/env'
 
 describe('API Client Base URL and Environment Configuration', () => {
@@ -57,7 +56,6 @@ describe('API Client Base URL and Environment Configuration', () => {
         ;(globalThis as any).window = {
             __ENV__: {
                 GITHUB_CLIENT_ID: 'custom-gh-client-id',
-                VERCEL_INTEGRATION_SLUG: 'custom-slug',
             },
             location: {
                 hostname: 'localhost',
@@ -67,7 +65,6 @@ describe('API Client Base URL and Environment Configuration', () => {
 
         expect(getClientEnv('GITHUB_CLIENT_ID')).toBe('custom-gh-client-id')
         expect(getGithubClientId()).toBe('custom-gh-client-id')
-        expect(getVercelIntegrationSlug()).toBe('custom-slug')
     })
 
     test('falls back to default integration values when env is unset', () => {
@@ -83,7 +80,6 @@ describe('API Client Base URL and Environment Configuration', () => {
         expect(getGoogleClientId()).toBe(
             '762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com'
         )
-        expect(getVercelIntegrationSlug()).toBe('december')
     })
 
     test('refreshAuthSession retries on 502/network downtime and succeeds when available', async () => {

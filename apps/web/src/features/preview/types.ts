@@ -1,7 +1,6 @@
 import type { BackendProjectVersionSummary } from '@/features/sessions/api/session'
 import type { RefObject } from 'react'
 
-export type PreviewDevice = 'desktop' | 'mobile' | 'tablet'
 export type PreviewTab = 'preview' | 'code' | 'terminal'
 export type GeneratedFileStatus = 'queued' | 'building' | 'done' | 'error'
 export type OutputOperation = 'build' | 'edit' | 'fix'
@@ -75,8 +74,6 @@ export type OutputScreenProps = WorkspaceScreenProps
 export interface WorkspaceHeaderProps {
     activeTab: PreviewTab
     setActiveTab: (tab: PreviewTab) => void
-    device: PreviewDevice
-    setDevice: (device: PreviewDevice) => void
     isSidebarCollapsed: boolean
     onToggleSidebar: () => void
     isPreviewCollapsed?: boolean
@@ -97,9 +94,7 @@ export interface WorkspaceHeaderProps {
 export type OutputHeaderProps = WorkspaceHeaderProps
 
 export interface PreviewAreaProps {
-    html: string
     isGenerating: boolean
-    device: PreviewDevice
     onMessage: (event: MessageEvent) => void
     iframeRef: RefObject<HTMLIFrameElement>
     fullscreen?: boolean

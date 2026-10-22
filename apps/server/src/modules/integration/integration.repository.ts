@@ -12,24 +12,6 @@ async function findUserFirst(id: string) {
     })
 }
 
-async function updateUserVercel(data: {
-    id: string
-    vercelAccessToken: string
-    vercelTeamId: string | null
-    vercelConfigurationId: string | null
-}) {
-    const { id, vercelAccessToken, vercelTeamId, vercelConfigurationId } = data
-    return prisma.user.update({
-        where: { id },
-        data: {
-            vercelConnected: true,
-            vercelAccessToken,
-            vercelTeamId,
-            vercelConfigurationId,
-        },
-    })
-}
-
 async function updateUserGithub(data: { id: string; username: string; accessToken: string }) {
     const { id, username, accessToken } = data
     return prisma.user.update({
@@ -52,6 +34,5 @@ async function updateUserGithub(data: { id: string; username: string; accessToke
 export const integrationRepository = {
     findUserById,
     findUserFirst,
-    updateUserVercel,
     updateUserGithub,
 }

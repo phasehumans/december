@@ -179,11 +179,6 @@ const result = await Bun.build({
                 process.env.GOOGLE_CLIENT_ID ||
                 '762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com'
         ),
-        'process.env.VERCEL_INTEGRATION_SLUG': JSON.stringify(
-            process.env.PUBLIC_VERCEL_INTEGRATION_SLUG ||
-                process.env.VERCEL_INTEGRATION_SLUG ||
-                'december'
-        ),
         'process.env.SUPABASE_CLIENT_ID': JSON.stringify(
             process.env.PUBLIC_SUPABASE_CLIENT_ID ||
                 process.env.SUPABASE_CLIENT_ID ||

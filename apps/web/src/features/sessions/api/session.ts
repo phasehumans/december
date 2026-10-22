@@ -227,24 +227,6 @@ export const sessionAPI = {
         }
     },
 
-    deployToVercel: (sessionId: string) => {
-        return apiRequest<{
-            deploymentId: string
-            url: string
-            readyState: string
-        }>(`/platform/sessions/${sessionId}/vercel/deploy`, {
-            method: 'POST',
-        })
-    },
-
-    getVercelDeploymentStatus: (deploymentId: string) => {
-        return apiRequest<{
-            id: string
-            url: string
-            readyState: string
-        }>(`/platform/deployments/${deploymentId}/status`)
-    },
-
     renameSession: async (id: string, title: string): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/rename`, {
             method: 'PATCH',

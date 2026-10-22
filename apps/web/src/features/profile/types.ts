@@ -11,9 +11,6 @@ export interface Profile {
     googleId: string | null
     githubConnected: boolean
     githubUsername?: string
-    vercelConnected?: boolean
-    vercelTeamId?: string | null
-    vercelConfigurationId?: string | null
     hasPassword?: boolean
 }
 

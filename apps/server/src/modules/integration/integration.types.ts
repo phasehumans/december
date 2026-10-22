@@ -1,10 +1,3 @@
-export type ConnectVercel = {
-    code: string
-    userId: string
-    teamId?: string
-    configurationId?: string
-}
-
 export type ConnectGithub = {
     userId: string
     accessToken: string

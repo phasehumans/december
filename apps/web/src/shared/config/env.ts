@@ -172,11 +172,3 @@ export const getGoogleClientId = (): string => {
         '762203307362-qg77ln4ci9eldv3i0q1smv804epsbhk0.apps.googleusercontent.com'
     )
 }
-
-export const getVercelIntegrationSlug = (): string => {
-    return (
-        getClientEnv('VERCEL_INTEGRATION_SLUG') ??
-        getClientEnv('PUBLIC_VERCEL_INTEGRATION_SLUG') ??
-        'december'
-    )
-}

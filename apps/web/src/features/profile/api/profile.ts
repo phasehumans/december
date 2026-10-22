@@ -1,5 +1,5 @@
 import { apiRequest } from '@/shared/api/client'
-import { getGithubAppName, getVercelIntegrationSlug } from '@/shared/config/env'
+import { getGithubAppName } from '@/shared/config/env'
 
 export type Profile = {
     id: string
@@ -13,9 +13,6 @@ export type Profile = {
     githubConnected: boolean
     githubAppInstall?: boolean
     githubUsername?: string
-    vercelConnected?: boolean
-    vercelTeamId?: string | null
-    vercelConfigurationId?: string | null
     notifyProjectActivity?: boolean
     notifyProductUpdates?: boolean
     notifySecurityAlerts?: boolean
@@ -194,17 +191,6 @@ const getGithubConnectUrl = (userId: string) => {
     return `https://github.com/apps/${appName}/installations/new?state=${encodeURIComponent(stateVal)}`
 }
 
-const getVercelConnectUrl = (userId: string) => {
-    const redirectPath =
-        typeof window !== 'undefined'
-            ? window.location.pathname + window.location.search
-            : '/settings/connections'
-    const stateVal = `${userId}:${redirectPath}`
-    return buildUrl(`https://vercel.com/integrations/${getVercelIntegrationSlug()}/new`, {
-        state: stateVal,
-    })
-}
-
 const completeOnboarding = () => {
     return apiRequest<BackendProfile>('/setting/onboarding', {
         method: 'PATCH',
@@ -257,7 +243,6 @@ export const profileAPI = {
     deleteMemories,
     getGithubRepos,
     getGithubConnectUrl,
-    getVercelConnectUrl,
     completeOnboarding,
     dismissOnboardingCard,
     submitFeedback,

@@ -2,15 +2,12 @@ import React from 'react'
 
 import type { PreviewAreaProps } from '@/features/preview/types'
 
-import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 import { usePreviewAreaController } from '@/features/preview/hooks/usePreviewAreaController'
-import { injectPreviewBridge, RUNTIME_CHECKLISTS } from '@/features/preview/utils/previewUtils'
+import { RUNTIME_CHECKLISTS } from '@/features/preview/utils/previewUtils'
 import { cn } from '@/shared/lib/utils'
 
 export const PreviewArea: React.FC<PreviewAreaProps> = ({
-    html,
     isGenerating,
-    device,
     onMessage,
     iframeRef,
     fullscreen = false,
@@ -22,18 +19,14 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     projectType = 'generated',
     projectId,
 }) => {
-    const { isCopied, isImportStreaming, hasLoadedOnce, isMounted, copyErrorToClipboard } =
-        usePreviewAreaController({
-            projectId,
-            previewState,
-            previewUrl,
-            onMessage,
-        })
+    const { isMounted } = usePreviewAreaController({
+        projectId,
+        previewState,
+        previewUrl,
+        onMessage,
+    })
 
-    const srcDoc = React.useMemo(() => injectPreviewBridge(html), [html])
-    const isVanillaHtml =
-        html !== PREVIEW_HTML && !html.includes('type="module"') && !html.includes("type='module'")
-    const isLivePreview = Boolean(previewUrl) && previewState === 'Healthy' && !isVanillaHtml
+    const isLivePreview = Boolean(previewUrl) && previewState === 'Healthy'
     const showStructurePlaceholder = showStructureOnly && !isGenerating && !isLivePreview
 
     const showFailedState = Boolean(
@@ -48,9 +41,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
 
     // determine loading state
     const showFullscreenLoader =
-        !showFailedState &&
-        !hasLoadedOnce &&
-        (isStartupState || (!isLivePreview && isGenerating) || isImportStreaming)
+        !showFailedState && (isStartupState || (!isLivePreview && isGenerating))
 
     const showFullscreenFailed = showFailedState && !isLivePreview
 
@@ -59,8 +50,6 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     const stateKeys = ['WaitingForRunnableVersion', 'Bootstrapping', 'Installing', 'Starting']
     const activeIndex = previewState ? stateKeys.indexOf(previewState) : 0
     const allCompleted = previewState === 'Healthy'
-
-    const statusLabel = previewError?.message || previewSessionError || 'Compiling...'
 
     return (
         <div
@@ -73,13 +62,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                 className={cn(
                     'relative bg-[#141414] overflow-hidden group w-full h-full flex-1',
                     isMounted && 'transition-all duration-500',
-                    fullscreen
-                        ? 'rounded-none border-0'
-                        : device === 'mobile'
-                          ? 'w-[375px] h-[812px] rounded-[3rem] border-[8px] border-[#1a1a1a] mx-auto my-auto shadow-2xl'
-                          : device === 'tablet'
-                            ? 'w-[768px] h-[1024px] rounded-[2rem] border-[8px] border-[#1a1a1a] mx-auto my-auto shadow-2xl'
-                            : 'rounded-none border-0 shadow-none'
+                    'rounded-none border-0 shadow-none'
                 )}
             >
                 {/* 1. dynamic checklist logs loader screen */}
@@ -155,12 +138,12 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                         </div>
                     </div>
                 ) : (
-                    /* 3. main iframe browser viewport (kept visible even on errors unless explicitly failed during startup) */
+                    /* 3. main iframe browser viewport */
                     <iframe
                         ref={iframeRef}
                         className="w-full h-full border-0 transition-opacity bg-white [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]/80 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
                         title="Preview"
-                        {...(isLivePreview ? { src: previewUrl } : { srcDoc })}
+                        src={previewUrl || undefined}
                     />
                 )}
 

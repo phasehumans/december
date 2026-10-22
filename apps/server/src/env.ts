@@ -49,13 +49,6 @@ const envSchema = z
         GOOGLE_CLIENT_SECRET: emptyAsUndefined,
         GITHUB_CLIENT_ID: emptyAsUndefined,
         GITHUB_CLIENT_SECRET: emptyAsUndefined,
-        VERCEL_CLIENT_ID: emptyAsUndefined,
-        VERCEL_CLIENT_SECRET: emptyAsUndefined,
-        VERCEL_REDIRECT_URI: z.preprocess(
-            (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
-            z.string().url().optional()
-        ),
-        VERCEL_WEBHOOK_SECRET: emptyAsUndefined,
         SUPABASE_CLIENT_ID: emptyAsUndefined,
         SUPABASE_CLIENT_SECRET: emptyAsUndefined,
         SUPABASE_REDIRECT_URI: z.preprocess(

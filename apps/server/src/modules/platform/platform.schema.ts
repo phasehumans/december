@@ -1,9 +1,5 @@
 import { z } from 'zod'
 
-export const syncEnvVarsSchema = z.object({
-    keys: z.array(z.string()).optional(),
-})
-
 export const createGithubRepoSchema = z.object({
     name: z
         .string({ message: 'repository name is required' })
@@ -26,8 +22,4 @@ export const syncGithubRepoSchema = z.object({
 
 export const sessionIdParamSchema = z.object({
     sessionId: z.string().min(1, 'session id is required'),
-})
-
-export const deploymentIdParamSchema = z.object({
-    deploymentId: z.string().min(1, 'deployment id is required'),
 })

@@ -4,70 +4,7 @@ import { notificationService } from '../notification/notification.service'
 
 import { integrationRepository } from './integration.repository'
 
-import type { ConnectVercel, ConnectGithub, HandleGitHubOAuth } from './integration.types'
-
-const connectVercel = async (data: ConnectVercel) => {
-    const { code, userId, teamId, configurationId } = data
-
-    const existingUser = await integrationRepository.findUserFirst(userId)
-
-    if (!existingUser || existingUser.isDeleted == true) {
-        throw new AppError('user not found', 404)
-    }
-
-    const redirectUri =
-        env.VERCEL_REDIRECT_URI ||
-        process.env.VERCEL_REDIRECT_URI ||
-        `${env.SERVER_URL}/api/v1/integrations/vercel/connect`
-
-    const tokenResponse = await fetch('https://api.vercel.com/v2/oauth/access_token', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-
-        body: new URLSearchParams({
-            client_id: process.env.VERCEL_CLIENT_ID!,
-            client_secret: process.env.VERCEL_CLIENT_SECRET!,
-            code,
-            redirect_uri: redirectUri,
-        }).toString(),
-    })
-
-    const rawResponse = await tokenResponse.text()
-
-    if (!tokenResponse.ok) {
-        throw new AppError(rawResponse, 400)
-    }
-
-    const tokenData = JSON.parse(rawResponse) as { access_token?: string }
-
-    const accessToken = tokenData.access_token
-
-    if (!accessToken) {
-        throw new AppError('vercel access token missing', 400)
-    }
-
-    const updatedUser = await integrationRepository.updateUserVercel({
-        id: userId,
-        vercelAccessToken: accessToken,
-        vercelTeamId: teamId ?? null,
-        vercelConfigurationId: configurationId ?? null,
-    })
-
-    try {
-        await notificationService.sendNotificationToUser({
-            userId,
-            title: 'Vercel Connected',
-            message: 'Successfully connected with Vercel integration!',
-            type: 'SUCCESS',
-        })
-    } catch (error) {
-        console.error('Failed to send vercel connection notification:', error)
-    }
-
-    return updatedUser
-}
+import type { ConnectGithub, HandleGitHubOAuth } from './integration.types'
 
 const connectGithub = async (data: ConnectGithub) => {
     const { username, accessToken, userId } = data
@@ -161,7 +98,6 @@ const handleGitHubOAuth = async (data: HandleGitHubOAuth) => {
 }
 
 export const integrationsService = {
-    connectVercel,
     connectGithub,
     handleGitHubOAuth,
 }

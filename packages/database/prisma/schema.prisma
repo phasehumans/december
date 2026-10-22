@@ -28,10 +28,6 @@ model User {
   notifySecurityAlerts   Boolean         @default(true)
   deletedAt              DateTime?
   isDeleted              Boolean         @default(false)
-  vercelAccessToken      String?
-  vercelConnected        Boolean         @default(false)
-  vercelTeamId           String?
-  vercelConfigurationId  String?
   creditBalance          Float           @default(0)
   hasCompletedOnboarding Boolean         @default(false)
   welcomeCardDone        Boolean         @default(false)
@@ -101,10 +97,6 @@ model Session {
   githubRepoName       String?
   githubRepoOwner      String?
   githubRepoUrl        String?
-  vercelDeploymentUrl  String?
-  vercelLastDeployedAt DateTime?
-  vercelProjectId      String?
-  vercelProjectName    String?
   projectId            String?
   epoch                Int                   @default(1)
   leaseExpiresAt       DateTime?

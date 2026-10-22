@@ -3,7 +3,6 @@ import { githubAppService } from '../githubapp/githubapp.service'
 
 import { platformRepository } from './platform.repository'
 import { executeSandboxCommand, runSandboxGitArchive } from './platform.utils'
-import { vercelService } from './vercel.service'
 
 import type {
     ListGithubRepos,
@@ -12,8 +11,6 @@ import type {
     UpdateRepo,
     DownloadSession,
     DownloadSessionResult,
-    DeployVercelDirect,
-    DeployVercelProject,
 } from './platform.types'
 
 const resolveUserGithubToken = async (userId: string, owner?: string): Promise<string> => {
@@ -281,192 +278,10 @@ const unlinkGithubRepo = async (data: { sessionId: string; userId: string }) => 
     return { message: 'GitHub repository unlinked successfully' }
 }
 
-const unlinkVercelProject = async (data: { sessionId: string; userId: string }) => {
-    const { sessionId, userId } = data
-    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
-    if (!session) throw new AppError('Session not found', 404)
-
-    await platformRepository.unlinkSessionVercel(sessionId)
-    return { message: 'Vercel project unlinked successfully' }
-}
-
-const syncEnvironmentVariables = async (data: {
-    sessionId: string
-    userId: string
-    keys?: string[]
-}) => {
-    const { sessionId, userId, keys } = data
-    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
-    if (!session) throw new AppError('Session not found', 404)
-
-    if (!session.vercelProjectId) {
-        throw new AppError('Session is not linked to a Vercel project', 400)
-    }
-
-    const memories = await platformRepository.getSessionMemories(sessionId)
-
-    const memoriesToSync = keys ? memories.filter((m) => keys.includes(m.key)) : memories
-
-    if (memoriesToSync.length === 0) {
-        return { message: 'No environment variables to sync' }
-    }
-
-    const envVars = memoriesToSync.map((m) => ({
-        key: m.key,
-        value: m.value,
-        type: 'encrypted',
-        target: ['production', 'preview', 'development'],
-    }))
-
-    await vercelService.addEnvVars({
-        userId,
-        vercelProjectId: session.vercelProjectId,
-        envVars,
-    })
-
-    return { message: 'Environment variables synced successfully' }
-}
-
-const deployVercelDirect = async (data: DeployVercelDirect) => {
-    const { userId, sessionId } = data
-
-    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
-    if (!session) throw new AppError('Session not found', 404)
-
-    const user = await platformRepository.getVercelCredentials({ userId })
-    if (!user || !user.vercelConnected || !user.vercelAccessToken) {
-        throw new AppError('vercel account not connected', 400)
-    }
-
-    const token = user.vercelAccessToken
-    const scopeFlag = user.vercelTeamId ? `--scope ${user.vercelTeamId}` : ''
-    const deployCmd = `npx --yes vercel deploy --token ${token} ${scopeFlag} --yes`
-
-    const execResult = await executeSandboxCommand({
-        sandboxId: session.vmId,
-        sessionId,
-        command: deployCmd,
-    })
-
-    if (execResult.exitCode !== 0 && process.env.NODE_ENV !== 'test') {
-        throw new AppError(
-            `Vercel CLI deployment failed in sandbox: ${execResult.stderr || execResult.stdout}`,
-            500
-        )
-    }
-
-    const outputLines = execResult.stdout
-        .trim()
-        .split('\n')
-        .map((l) => l.trim())
-        .filter(Boolean)
-    const urlMatch = outputLines
-        .slice()
-        .reverse()
-        .find((line) => line.startsWith('https://') && line.includes('vercel.app'))
-    const deploymentUrl =
-        urlMatch ||
-        (process.env.NODE_ENV === 'test'
-            ? 'https://direct-deploy.vercel.app'
-            : outputLines[outputLines.length - 1] || '')
-
-    await platformRepository.updateSessionVercelDeployment({
-        sessionId,
-        url: deploymentUrl,
-    })
-
-    return {
-        id: deploymentUrl,
-        url: deploymentUrl,
-        readyState: 'READY',
-    }
-}
-
-const deployVercelProject = async (data: DeployVercelProject) => {
-    const { userId, sessionId } = data
-    const session = await platformRepository.findSessionByIdAndUser({ sessionId, userId })
-
-    if (!session || session.userId !== userId) {
-        throw new AppError('session not found', 404)
-    }
-
-    let vercelProjectId = session.vercelProjectId
-    let vercelProjectName = session.vercelProjectName
-
-    const isGithubLinked = !!(session.githubRepoOwner && session.githubRepoName)
-
-    if (!vercelProjectId) {
-        const sanitizedName = (session.title || 'session')
-            .toLowerCase()
-            .replace(/[^a-z0-9-]/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-|-$/g, '')
-
-        const vercelProject = await vercelService.createProject({
-            userId,
-            name: sanitizedName,
-            repoOwner: session.githubRepoOwner || undefined,
-            repoName: session.githubRepoName || undefined,
-        })
-        vercelProjectId = vercelProject.id
-        vercelProjectName = vercelProject.name
-
-        await platformRepository.updateSessionVercelLink({
-            sessionId,
-            vercelProjectId: vercelProject.id,
-            vercelProjectName: vercelProject.name,
-        })
-    }
-
-    if (isGithubLinked) {
-        const { commitSha } = await updateRepo({
-            userId,
-            sessionId,
-            commitMessage: 'Auto-deploy triggered from December settings',
-        })
-
-        const deployment = await vercelService.getDeploymentByCommit({
-            userId,
-            vercelProjectId: vercelProjectId!,
-            commitSha,
-        })
-
-        await platformRepository.updateSessionVercelDeployment({
-            sessionId,
-            url: deployment.url,
-        })
-
-        return {
-            message: 'auto-deployment triggered on vercel successfully',
-            deploymentId: deployment.id,
-            url: deployment.url,
-            readyState: deployment.readyState,
-        }
-    } else {
-        const deployment = await deployVercelDirect({
-            userId,
-            sessionId,
-            vercelProjectId: vercelProjectId!,
-            vercelProjectName: vercelProjectName!,
-        })
-
-        return {
-            message: 'direct deployment triggered on vercel successfully',
-            deploymentId: deployment.id,
-            url: deployment.url,
-            readyState: deployment.readyState,
-        }
-    }
-}
-
 export const platformService = {
     downloadSession,
     getUserGithubRepos,
     createRepo,
     updateRepo,
     unlinkGithubRepo,
-    unlinkVercelProject,
-    syncEnvironmentVariables,
-    deployVercelDirect,
-    deployVercelProject,
 }

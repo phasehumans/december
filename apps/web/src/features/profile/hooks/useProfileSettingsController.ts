@@ -40,7 +40,6 @@ export const useProfileSettingsController = () => {
     })
 
     const isGithubConnected = Boolean(profile?.githubAppInstall || profile?.githubConnected)
-    const isVercelConnected = profile?.vercelConnected ?? false
     const emailNotifications = profile?.notifyProjectActivity ?? true
     const productUpdates = profile?.notifyProductUpdates ?? true
     const securityAlerts = profile?.notifySecurityAlerts ?? true
@@ -106,10 +105,6 @@ export const useProfileSettingsController = () => {
         redirectToIntegration(profileAPI.getGithubConnectUrl)
     }
 
-    const connectVercel = () => {
-        redirectToIntegration(profileAPI.getVercelConnectUrl)
-    }
-
     return {
         profile,
         isProfileLoading,
@@ -137,7 +132,6 @@ export const useProfileSettingsController = () => {
         updatePasswordMutation,
         updateNotificationMutation,
         isGithubConnected,
-        isVercelConnected,
         emailNotifications,
         productUpdates,
         securityAlerts,
@@ -148,6 +142,5 @@ export const useProfileSettingsController = () => {
         handleUpdatePassword,
         handleNotificationToggle,
         connectGithub,
-        connectVercel,
     }
 }

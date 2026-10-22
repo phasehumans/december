@@ -1,10 +1,10 @@
-import { Code, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import React from 'react'
 
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { cn } from '@/shared/lib/utils'
 
-export type WorkspaceTabId = 'changes' | 'desktop' | 'editor' | 'shell' | 'pull_requests'
+export type WorkspaceTabId = 'changes' | 'desktop' | 'shell' | 'pull_requests'
 
 export interface WorkspaceTabDef {
     id: WorkspaceTabId
@@ -79,7 +79,6 @@ export const BASE_TAB_DEFS: WorkspaceTabDef[] = [
     { id: 'changes', label: 'Changes', icon: <ChangesIcon /> },
     { id: 'desktop', label: 'Desktop', icon: <DesktopIcon /> },
     { id: 'shell', label: 'Shell', icon: <ShellIcon /> },
-    { id: 'editor', label: 'Editor', icon: <Code className="w-3.5 h-3.5" /> },
 ]
 
 export const AVAILABLE_PRS: WorkspaceTabDef[] = []

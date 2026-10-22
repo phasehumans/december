@@ -3,13 +3,10 @@ import React from 'react'
 import type {
     GeneratedProjectFile,
     OutputOperation,
-    PreviewDevice,
     PreviewRuntimeError,
     PreviewSessionStatus,
     PreviewTab,
 } from '@/features/preview/types'
-
-import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 
 interface UseWorkspaceScreenControllerArgs {
     isGenerating: boolean
@@ -22,58 +19,14 @@ interface UseWorkspaceScreenControllerArgs {
     previewSession?: PreviewSessionStatus | null
 }
 
-const getPreviewHtmlFromFiles = (generatedFiles?: Record<string, GeneratedProjectFile>) => {
-    if (!generatedFiles) {
-        return ''
-    }
-
-    let html =
-        generatedFiles['index.html']?.content ||
-        generatedFiles['public/index.html']?.content ||
-        generatedFiles['web/index.html']?.content ||
-        generatedFiles['src/index.html']?.content
-
-    if (!html) {
-        // fallback: find any index.html
-        const anyIndexHtml = Object.values(generatedFiles).find((f) =>
-            f.path.endsWith('index.html')
-        )
-        if (anyIndexHtml) {
-            html = anyIndexHtml.content
-        } else {
-            // fallback: find any .html file
-            const anyHtml = Object.values(generatedFiles).find((f) => f.path.endsWith('.html'))
-            html = anyHtml?.content || ''
-        }
-    }
-
-    const cssContents = Object.values(generatedFiles)
-        .filter((file) => file.path.endsWith('.css') && file.content)
-        .map((file) => file.content)
-
-    if (cssContents.length > 0 && html) {
-        const styleTag = `\n<style>\n${cssContents.join('\n')}\n</style>\n`
-        if (/<\/head>/i.test(html)) {
-            html = html.replace(/<\/head>/i, () => `${styleTag}</head>`)
-        } else {
-            html += styleTag
-        }
-    }
-
-    return html
-}
-
 export const useWorkspaceScreenController = ({
     isGenerating,
-    generatedFiles,
     activeOperation,
     onPromptSubmit,
     onRuntimeError,
     previewSession,
 }: UseWorkspaceScreenControllerArgs) => {
     const [activeTab, setActiveTab] = React.useState<PreviewTab>('preview')
-    const [device, setDevice] = React.useState<PreviewDevice>('desktop')
-    const [previewHtml, setPreviewHtml] = React.useState(PREVIEW_HTML)
     const [editPrompt, setEditPrompt] = React.useState('')
     const [isApplyingEdit, setIsApplyingEdit] = React.useState(false)
     const [isChatSidebarCollapsed, setIsChatSidebarCollapsed] = React.useState(false)
@@ -85,7 +38,6 @@ export const useWorkspaceScreenController = ({
         const checkMobile = () => {
             if (window.innerWidth < 768) {
                 setIsChatSidebarCollapsed(true)
-                setDevice('mobile')
             }
         }
 
@@ -118,17 +70,6 @@ export const useWorkspaceScreenController = ({
             setActiveTab('preview')
         }
     }, [isGenerating, previewSession?.backendStatus])
-
-    React.useEffect(() => {
-        const generatedPreviewHtml = getPreviewHtmlFromFiles(generatedFiles)
-
-        if (generatedPreviewHtml.trim()) {
-            setPreviewHtml(generatedPreviewHtml)
-            return
-        }
-
-        setPreviewHtml(PREVIEW_HTML)
-    }, [generatedFiles])
 
     const handleIframeMessage = React.useCallback(
         (event: MessageEvent) => {
@@ -167,14 +108,6 @@ export const useWorkspaceScreenController = ({
     const handleOpenInNewTab = () => {
         if (previewSession?.previewUrl) {
             window.open(previewSession.previewUrl, '_blank', 'noopener,noreferrer')
-            return
-        }
-
-        const newWindow = window.open('', '_blank')
-
-        if (newWindow) {
-            newWindow.document.write(previewHtml)
-            newWindow.document.close()
         }
     }
 
@@ -185,15 +118,11 @@ export const useWorkspaceScreenController = ({
                 if (iframeRef.current.contentWindow) {
                     iframeRef.current.contentWindow.location.reload()
                 }
-            } catch (e) {
+            } catch {
                 if (iframeRef.current.src) {
                     const src = iframeRef.current.src
                     iframeRef.current.src = ''
                     iframeRef.current.src = src
-                } else if (iframeRef.current.srcdoc) {
-                    const srcdoc = iframeRef.current.srcdoc
-                    iframeRef.current.srcdoc = ''
-                    iframeRef.current.srcdoc = srcdoc
                 }
             }
         }
@@ -202,10 +131,6 @@ export const useWorkspaceScreenController = ({
     return {
         activeTab,
         setActiveTab,
-        device,
-        setDevice,
-        previewHtml,
-        setPreviewHtml,
         editPrompt,
         setEditPrompt,
         isApplyingEdit,

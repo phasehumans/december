@@ -92,18 +92,7 @@ describe('Google OAuth Verification, Privacy & Terms', () => {
         const { ProfileConnectionsSettings } =
             await import('../src/features/profile/components/ProfileConnectionsSettings')
 
-        render(
-            <ProfileConnectionsSettings
-                isGithubConnected={true}
-                isVercelConnected={false}
-                isSupabaseConnected={false}
-                isNotionConnected={false}
-                onConnectGithub={() => {}}
-                onConnectVercel={() => {}}
-                onConnectSupabase={() => {}}
-                onConnectNotion={() => {}}
-            />
-        )
+        render(<ProfileConnectionsSettings isGithubConnected={true} onConnectGithub={() => {}} />)
 
         // Section heading
         expect(screen.getByRole('heading', { name: 'Connections' })).toBeDefined()
@@ -111,10 +100,8 @@ describe('Google OAuth Verification, Privacy & Terms', () => {
 
         // Core connections
         expect(screen.getAllByText('GitHub').length).toBeGreaterThan(0)
-        expect(screen.getByText('Vercel')).toBeDefined()
-        expect(screen.getByText('Supabase')).toBeDefined()
-        expect(screen.getAllByText('Notion').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Figma').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('Linear').length).toBeGreaterThan(0)
 
         // GitHub connected status
         expect(screen.getByText('Connected')).toBeDefined()

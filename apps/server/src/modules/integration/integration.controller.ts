@@ -1,34 +1,13 @@
 import { env } from '../../env'
 import { asyncHandler } from '../../shared/asyncHandler'
 
-import { connectVercelQuerySchema, connectOAuthQuerySchema } from './integration.schema'
+import { connectOAuthQuerySchema } from './integration.schema'
 import { integrationsService } from './integration.service'
 
 import type { Request, Response } from 'express'
 
 const appBaseUrl = env.APP_URL.replace(/\/+$/, '')
 const formatRedirect = (path: string) => `${appBaseUrl}${path.startsWith('/') ? path : `/${path}`}`
-
-const connectVercel = asyncHandler(async (req: Request, res: Response) => {
-    const { code, state, teamId, configurationId } = connectVercelQuerySchema.parse(req.query)
-
-    let userId = state
-    let redirectPath = '/profile/integrations'
-    if (state.includes(':')) {
-        const parts = state.split(':')
-        userId = parts[0] as string
-        redirectPath = parts.slice(1).join(':')
-    }
-
-    await integrationsService.connectVercel({
-        code,
-        userId,
-        teamId,
-        configurationId,
-    })
-
-    return res.redirect(formatRedirect(redirectPath))
-})
 
 const connectGithub = asyncHandler(async (req: Request, res: Response) => {
     const { code, state } = connectOAuthQuerySchema.parse(req.query)
@@ -57,6 +36,5 @@ const connectGithub = asyncHandler(async (req: Request, res: Response) => {
 })
 
 export const integrationsController = {
-    connectVercel,
     connectGithub,
 }

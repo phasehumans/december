@@ -75,7 +75,7 @@ describe('Profile Settings Notifications Tab Placement', () => {
 
         // Account rows (password should not be present)
         expect(screen.getByText('Full Name')).toBeDefined()
-        expect(screen.getByText('Username')).toBeDefined()
+        expect(screen.queryByText('Username')).toBeNull()
         expect(screen.getByText('Email')).toBeDefined()
         expect(screen.queryByText('Password')).toBeNull()
 

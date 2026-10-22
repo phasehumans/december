@@ -197,7 +197,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         updatePasswordMutation,
         updateNotificationMutation,
         isGithubConnected,
-        isVercelConnected,
         emailNotifications,
         productUpdates,
         securityAlerts,
@@ -208,7 +207,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         handleUpdatePassword,
         handleNotificationToggle,
         connectGithub,
-        connectVercel,
     } = useProfileSettingsController()
 
     const profileErrorMessage =
@@ -273,9 +271,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 return (
                     <ProfileConnectionsSettings
                         isGithubConnected={isGithubConnected}
-                        isVercelConnected={isVercelConnected}
                         onConnectGithub={connectGithub}
-                        onConnectVercel={connectVercel}
                     />
                 )
             case 'Billing':

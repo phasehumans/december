@@ -49,7 +49,6 @@ describe('Platform Module Integration Tests', () => {
                 vmStatus: 'STOPPED',
                 githubRepoName: 'test-repo',
                 githubRepoOwner: 'test-owner',
-                vercelProjectId: 'test-vercel-proj',
             },
         })
         testSessionId = session.id
@@ -87,18 +86,7 @@ describe('Platform Module Integration Tests', () => {
         )
     })
 
-    it('3. POST /api/v1/platform/:sessionId/env/sync - returns message when no env vars to sync (200)', async () => {
-        const res = await request(app)
-            .post(`/api/v1/platform/${testSessionId}/env/sync`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${accessToken}`)
-            .send({})
-
-        expect(res.status).toBe(200)
-        expect(res.body.data.message).toBe('No environment variables to sync')
-    })
-
-    it('4. POST /api/v1/platform/sessions/:sessionId/github/unlink - unlinks github repo (200)', async () => {
+    it('3. POST /api/v1/platform/sessions/:sessionId/github/unlink - unlinks github repo (200)', async () => {
         const res = await request(app)
             .post(`/api/v1/platform/sessions/${testSessionId}/github/unlink`)
             .set('x-forwarded-for', getRandomIP())
@@ -111,7 +99,7 @@ describe('Platform Module Integration Tests', () => {
         expect(dbSession?.githubRepoName).toBeNull()
     })
 
-    it('5. GET /api/v1/platform/:sessionId/download - downloads session as zip from sandbox when unlinked (200)', async () => {
+    it('4. GET /api/v1/platform/:sessionId/download - downloads session as zip from sandbox when unlinked (200)', async () => {
         const res = await request(app)
             .get(`/api/v1/platform/${testSessionId}/download`)
             .set('x-forwarded-for', getRandomIP())
@@ -119,18 +107,5 @@ describe('Platform Module Integration Tests', () => {
 
         expect(res.status).toBe(200)
         expect(res.headers['content-type']).toContain('application/zip')
-    })
-
-    it('6. POST /api/v1/platform/:sessionId/vercel/unlink - unlinks vercel project (200)', async () => {
-        const res = await request(app)
-            .post(`/api/v1/platform/${testSessionId}/vercel/unlink`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${accessToken}`)
-
-        expect(res.status).toBe(200)
-        expect(res.body.data.message).toBe('Vercel project unlinked successfully')
-
-        const dbSession = await prisma.session.findUnique({ where: { id: testSessionId } })
-        expect(dbSession?.vercelProjectId).toBeNull()
     })
 })

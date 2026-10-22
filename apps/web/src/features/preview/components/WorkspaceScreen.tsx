@@ -193,10 +193,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
     const {
         activeTab,
         setActiveTab,
-        device,
-        setDevice,
-        previewHtml,
-        setPreviewHtml,
         editPrompt,
         setEditPrompt,
         isApplyingEdit,
@@ -262,7 +258,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
 
     const handleOpenFileWrapper = React.useCallback(
         (path: string) => {
-            setActiveTab('editor')
+            setActiveTab('changes')
             setMobileActiveTab('changes')
             if (onOpenFile) {
                 onOpenFile(path)
@@ -713,9 +709,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
 
                         <div className="flex-1 min-h-0 relative">
                             <PreviewArea
-                                html={previewHtml}
                                 isGenerating={isGenerating}
-                                device="desktop"
                                 onMessage={handleIframeMessage}
                                 iframeRef={iframeRef}
                                 fullscreen
@@ -832,8 +826,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                         <WorkspaceScreenMainContent
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
-                            device={device}
-                            setDevice={setDevice}
                             isChatSidebarCollapsed={isChatSidebarCollapsed}
                             onToggleSidebar={() =>
                                 setIsChatSidebarCollapsed(!isChatSidebarCollapsed)
@@ -844,8 +836,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                             }
                             onOpenInNewTab={handleOpenInNewTab}
                             onBack={handleTriggerExit}
-                            previewHtml={previewHtml}
-                            setPreviewHtml={setPreviewHtml}
                             generatedFiles={activeFilesToDisplay}
                             activeGeneratedFilePath={activeGeneratedFilePath}
                             isGenerating={isGenerating}

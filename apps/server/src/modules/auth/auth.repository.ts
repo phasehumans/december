@@ -124,10 +124,6 @@ async function deleteAccount(userId: string) {
                 githubToken: null,
                 githubConnected: false,
                 githubUsername: null,
-                vercelAccessToken: null,
-                vercelConnected: false,
-                vercelTeamId: null,
-                vercelConfigurationId: null,
             },
             select: {
                 id: true,
