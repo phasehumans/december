@@ -197,9 +197,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
         setDevice,
         previewHtml,
         setPreviewHtml,
-        isVisualMode,
-        setIsVisualMode,
-        selectedElement,
         editPrompt,
         setEditPrompt,
         isApplyingEdit,
@@ -209,7 +206,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
         iframeRef,
         handleIframeMessage,
         handleApplyEdit,
-        handleClearSelection,
         handleOpenInNewTab,
         handleRefreshPreview,
     } = useWorkspaceScreenController({
@@ -662,10 +658,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                             handleApplyEdit={() => {
                                 void handleApplyEdit()
                             }}
-                            isVisualMode={isVisualMode}
-                            setIsVisualMode={setIsVisualMode}
-                            selectedElement={selectedElement}
-                            handleClearSelection={handleClearSelection}
                             isApplyingEdit={isApplyingEdit}
                             isCollapsed={false}
                             onClose={() => {}}
@@ -724,7 +716,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                                 html={previewHtml}
                                 isGenerating={isGenerating}
                                 device="desktop"
-                                isVisualMode={isVisualMode}
                                 onMessage={handleIframeMessage}
                                 iframeRef={iframeRef}
                                 fullscreen
@@ -806,10 +797,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                         handleApplyEdit={() => {
                             void handleApplyEdit()
                         }}
-                        isVisualMode={isVisualMode}
-                        setIsVisualMode={setIsVisualMode}
-                        selectedElement={selectedElement}
-                        handleClearSelection={handleClearSelection}
                         isApplyingEdit={isApplyingEdit}
                         isCollapsed={isChatSidebarCollapsed}
                         onClose={() => setIsChatSidebarCollapsed(true)}
@@ -862,7 +849,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                             generatedFiles={activeFilesToDisplay}
                             activeGeneratedFilePath={activeGeneratedFilePath}
                             isGenerating={isGenerating}
-                            isVisualMode={isVisualMode}
                             iframeRef={iframeRef}
                             onIframeMessage={handleIframeMessage}
                             showStructureOnly={showStructureOnly}

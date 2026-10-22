@@ -31,7 +31,6 @@ describe('Billing Integration Tests', () => {
         const user = await prisma.user.create({
             data: {
                 name: 'Billing Test User',
-                username: `billinguser_${Date.now()}`,
                 email: testEmail,
                 password: hashedPassword,
                 emailVerified: true,
@@ -43,7 +42,6 @@ describe('Billing Integration Tests', () => {
         const userB = await prisma.user.create({
             data: {
                 name: 'Billing Test User B',
-                username: `billinguser_b_${Date.now()}`,
                 email: testEmailB,
                 password: hashedPassword,
                 emailVerified: true,

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'bun:test'
 
 import {
     updateNameSchema,
-    updateUsernameSchema,
     changePasswordSchema,
     updateNotificationSchema,
     dismissOnboardingCardSchema,
@@ -21,21 +20,6 @@ describe('Setting Schema - Unit Tests', () => {
             expect(updateNameSchema.safeParse({ name: 'A'.repeat(21) }).success).toBe(false)
             expect(updateNameSchema.safeParse({ name: 123 }).success).toBe(false)
             expect(updateNameSchema.safeParse({}).success).toBe(false)
-        })
-    })
-
-    describe('updateUsernameSchema', () => {
-        it('should pass with valid lowercase username containing only letters and underscores', () => {
-            expect(updateUsernameSchema.safeParse({ username: 'alice_smith' }).success).toBe(true)
-            expect(updateUsernameSchema.safeParse({ username: 'john_doe_99' }).success).toBe(false) // contains numbers -> regex is /^[a-z_]+$/
-            expect(updateUsernameSchema.safeParse({ username: 'johndoe' }).success).toBe(true)
-        })
-
-        it('should fail with uppercase, spaces, numbers, or invalid length (<6 or >20)', () => {
-            expect(updateUsernameSchema.safeParse({ username: 'Alice' }).success).toBe(false)
-            expect(updateUsernameSchema.safeParse({ username: 'john doe' }).success).toBe(false)
-            expect(updateUsernameSchema.safeParse({ username: 'user' }).success).toBe(false) // < 6 chars
-            expect(updateUsernameSchema.safeParse({ username: 'a'.repeat(21) }).success).toBe(false)
         })
     })
 

@@ -15,7 +15,6 @@ interface ProfileSettingsContentProps {
     securityAlerts: boolean
     isNotificationPending: boolean
     onOpenNameModal: () => void
-    onOpenUsernameModal: () => void
     onOpenPasswordModal?: () => void
     onNotificationToggle: (
         field: 'notifyProjectActivity' | 'notifyProductUpdates' | 'notifySecurityAlerts',
@@ -37,7 +36,6 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
         securityAlerts,
         isNotificationPending,
         onOpenNameModal,
-        onOpenUsernameModal,
         onNotificationToggle,
         onConnectGithub,
         onSignOut,
@@ -67,8 +65,6 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
     })
 
     const userName = profile?.name || resolvedName || 'User'
-    const userUsername = profile?.username || ''
-    const displayUsername = userUsername || userName.toLowerCase().replace(/\s+/g, '_')
 
     const handleChangeAvatar = () => {
         const randomSeed = Math.random().toString(36).substring(2, 8)
@@ -107,22 +103,6 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                             className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
                         >
                             Change full name
-                        </button>
-                    </div>
-
-                    {/* username row */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Username</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                {profile?.username || 'username'}
-                            </span>
-                        </div>
-                        <button
-                            onClick={onOpenUsernameModal}
-                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                        >
-                            Change username
                         </button>
                     </div>
 
@@ -202,7 +182,7 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                 <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <span className="text-[14px] text-[#D6D5C9]">
-                            You are signed in as {profile?.username || profile?.name || 'User'}
+                            You are signed in as {profile?.name || resolvedName || 'User'}
                         </span>
                         <button
                             onClick={onSignOut}

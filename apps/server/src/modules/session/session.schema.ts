@@ -55,28 +55,8 @@ export const updateSessionTagsBodySchema = z.object({
     tags: z.array(z.string().max(30)).max(1, 'Only one tag is allowed per session'),
 })
 
-export const getSessionInsightsParamsSchema = z.object({
-    id: z.string().uuid('Invalid session ID'),
-})
-
 export const deleteSessionParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
-})
-
-export const getCollaboratorsParamsSchema = z.object({
-    id: z.string().uuid('Invalid session ID'),
-})
-
-export const addCollaboratorParamsSchema = z.object({
-    id: z.string().uuid('Invalid session ID'),
-})
-export const addCollaboratorBodySchema = z.object({
-    email: z.string({ message: 'email is required' }).email('please enter a valid email address'),
-})
-
-export const removeCollaboratorParamsSchema = z.object({
-    id: z.string().uuid('Invalid session ID'),
-    email: z.string().email('please enter a valid email address'),
 })
 
 export const disconnectSessionParamsSchema = z.object({
@@ -89,7 +69,12 @@ export const rehydrateSessionParamsSchema = z.object({
 
 export const proxyPreviewParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
-    port: z.preprocess((val) => Number(val), z.number().int().min(1).max(65535)),
+    port: z
+        .preprocess(
+            (val) => (val !== undefined && val !== null ? Number(val) : 3000),
+            z.number().int().min(1).max(65535)
+        )
+        .default(3000),
 })
 
 export const streamSearchResponseParamsSchema = z.object({

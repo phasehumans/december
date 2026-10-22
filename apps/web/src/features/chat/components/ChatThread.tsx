@@ -16,10 +16,6 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
     editPrompt,
     setEditPrompt,
     handleApplyEdit,
-    isVisualMode,
-    setIsVisualMode,
-    selectedElement,
-    handleClearSelection,
     isApplyingEdit,
     isCollapsed,
     onClose,
@@ -113,11 +109,6 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             return
         }
 
-        if (selectedElement || isVisualMode) {
-            handleApplyEdit()
-            return
-        }
-
         onPromptSubmit(nextPrompt)
         setEditPrompt('')
     }
@@ -161,10 +152,6 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
             value={editPrompt}
             onChange={setEditPrompt}
             onSubmit={handleSubmit}
-            isVisualMode={isVisualMode}
-            onToggleVisualMode={() => setIsVisualMode(!isVisualMode)}
-            selectedElement={selectedElement}
-            onClearSelection={handleClearSelection}
             isApplyingEdit={isApplyingEdit}
             isAuthenticated={isAuthenticated}
             onOpenAuth={onOpenAuth}

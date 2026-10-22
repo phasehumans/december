@@ -50,7 +50,6 @@ async function createProject(data: CreateVercelProject) {
 
     const payload: any = {
         name,
-        framework: 'vite',
     }
 
     if (repoOwner && repoName) {
@@ -298,9 +297,6 @@ async function createDirectDeployment(data: {
             url,
             {
                 name,
-                projectSettings: {
-                    framework: 'vite',
-                },
                 files,
             },
             {

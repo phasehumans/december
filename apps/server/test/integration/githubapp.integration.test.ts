@@ -24,7 +24,6 @@ describe('GitHubApp Module Integration Tests', () => {
         const user = await prisma.user.create({
             data: {
                 name: 'GitHub App Test User',
-                username: `ghapp_${timestamp}`,
                 email: testEmail,
                 password: hashedPassword,
                 emailVerified: true,

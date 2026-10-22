@@ -27,7 +27,6 @@ describe('Auth Device CLI Flow Integration Tests', () => {
             data: {
                 email: testEmail,
                 name: 'Device Test User',
-                username: `deviceuser-${Date.now()}`,
                 password: passHash,
                 emailVerified: true,
             },

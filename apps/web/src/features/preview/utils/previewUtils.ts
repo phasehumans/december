@@ -2,21 +2,6 @@ import { PREVIEW_HTML } from '@/features/preview/constants/preview'
 
 export const previewBridgeStyle = `
 <style>
-    html[data-december-visual="true"] body {
-        cursor: crosshair;
-    }
-
-    .december-hover-highlight {
-        outline: 2px solid rgba(255, 255, 255, 0.22) !important;
-        outline-offset: 2px !important;
-    }
-
-    .december-selected-highlight {
-        outline: 2px solid #ffffff !important;
-        outline-offset: 2px !important;
-        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12) !important;
-    }
-
     /* custom scrollbar styling to match code workspace/scrollbar */
     ::-webkit-scrollbar {
         width: 4px;
@@ -42,52 +27,6 @@ export const previewBridgeScript = `
     }
 
     window.__DECEMBER_PREVIEW__ = true;
-
-    let isVisualMode = false;
-    let hoveredElement = null;
-    let selectedElement = null;
-
-    const clearHover = () => {
-        if (hoveredElement) {
-            hoveredElement.classList.remove('december-hover-highlight');
-            hoveredElement = null;
-        }
-    };
-
-    const clearSelection = (notifyParent = true) => {
-        if (selectedElement) {
-            selectedElement.classList.remove('december-selected-highlight');
-            selectedElement = null;
-        }
-
-        if (notifyParent) {
-            window.parent.postMessage({ type: 'selection-cleared' }, '*');
-        }
-    };
-
-    const isSelectableTarget = (target) => {
-        return target instanceof HTMLElement;
-    };
-
-    window.addEventListener('message', (event) => {
-        if (event.data?.type === 'toggle-visual-mode') {
-            isVisualMode = Boolean(event.data.isActive);
-            document.documentElement.setAttribute(
-                'data-december-visual',
-                isVisualMode ? 'true' : 'false'
-            );
-
-            if (!isVisualMode) {
-                clearHover();
-                clearSelection();
-            }
-        }
-
-        if (event.data?.type === 'selection-cleared') {
-            clearHover();
-            clearSelection(false);
-        }
-    });
 
     window.addEventListener('error', (event) => {
         window.parent.postMessage(
@@ -118,64 +57,6 @@ export const previewBridgeScript = `
             '*'
         );
     });
-
-    document.addEventListener(
-        'mouseover',
-        (event) => {
-            if (!isVisualMode || !isSelectableTarget(event.target)) {
-                return;
-            }
-
-            if (hoveredElement === event.target) {
-                return;
-            }
-
-            clearHover();
-            hoveredElement = event.target;
-            hoveredElement.classList.add('december-hover-highlight');
-        },
-        true
-    );
-
-    document.addEventListener(
-        'mouseout',
-        (event) => {
-            if (!isVisualMode || hoveredElement !== event.target) {
-                return;
-            }
-
-            clearHover();
-        },
-        true
-    );
-
-    document.addEventListener(
-        'click',
-        (event) => {
-            if (!isVisualMode || !isSelectableTarget(event.target)) {
-                return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            clearSelection(false);
-            selectedElement = event.target;
-            selectedElement.classList.add('december-selected-highlight');
-
-            window.parent.postMessage(
-                {
-                    type: 'element-selected',
-                    tagName: selectedElement.tagName.toLowerCase(),
-                    textContent: (selectedElement.innerText || selectedElement.textContent || '')
-                        .trim()
-                        .slice(0, 160),
-                },
-                '*'
-            );
-        },
-        true
-    );
 })();
 </script>`
 

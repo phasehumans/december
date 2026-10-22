@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 
+import { env } from '../../src/env'
 import { resolveServerProvider } from '../../src/modules/cli/cli.dispatcher'
 
 describe('CLI Multi-Provider Dispatcher - Unit Tests', () => {
@@ -19,10 +20,20 @@ describe('CLI Multi-Provider Dispatcher - Unit Tests', () => {
         })
 
         it('resolves openrouterProvider fallback for claude models when OPENROUTER_API_KEY is configured', () => {
-            const resolution = resolveServerProvider('claude-3-7-sonnet-latest')
-            expect(resolution.providerName).toBe('openrouter')
-            expect(resolution.provider.id).toBe('openrouter')
-            expect(resolution.model).toBe('anthropic/claude-3.7-sonnet')
+            const originalAnthropicKey = env.ANTHROPIC_API_KEY
+            const originalOpenRouterKey = env.OPENROUTER_API_KEY
+            ;(env as any).ANTHROPIC_API_KEY = undefined
+            ;(env as any).OPENROUTER_API_KEY = 'test-openrouter-key'
+
+            try {
+                const resolution = resolveServerProvider('claude-3-7-sonnet-latest')
+                expect(resolution.providerName).toBe('openrouter')
+                expect(resolution.provider.id).toBe('openrouter')
+                expect(resolution.model).toBe('anthropic/claude-3.7-sonnet')
+            } finally {
+                ;(env as any).ANTHROPIC_API_KEY = originalAnthropicKey
+                ;(env as any).OPENROUTER_API_KEY = originalOpenRouterKey
+            }
         })
 
         it('routes december-auto to gemini-3.8-flash under the hood', () => {

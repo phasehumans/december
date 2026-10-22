@@ -248,7 +248,10 @@ export const useAppController = () => {
             const url = window.URL.createObjectURL(result.blob)
             const anchor = document.createElement('a')
             anchor.href = url
-            const username = (profile?.username || 'user').toLowerCase().replace(/[^a-z0-9_-]/g, '')
+            const username = (profile?.name || 'user')
+                .toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^a-z0-9_-]/g, '')
             const projectName = (activeProjectName || 'project')
                 .toLowerCase()
                 .replace(/\s+/g, '-')
@@ -263,7 +266,7 @@ export const useAppController = () => {
                 error instanceof Error ? error.message : 'Failed to download project'
             )
         }
-    }, [activeProjectId, profile?.username, activeProjectName, setProjectLoadError])
+    }, [activeProjectId, profile?.name, activeProjectName, setProjectLoadError])
 
     // deep-link resolution
     React.useEffect(() => {

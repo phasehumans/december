@@ -11,11 +11,6 @@ export type UpdateName = {
     name: string
 }
 
-export type UpdateUsername = {
-    userId: string
-    username: string
-}
-
 export type ChangePassword = {
     userId: string
     currentPassword?: string

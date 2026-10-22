@@ -56,11 +56,6 @@ export type UpdateSessionTags = {
     tags: string[]
 }
 
-export type GetSessionInsights = {
-    userId: string
-    sessionId: string
-}
-
 export type GetSessionMessages = {
     userId: string
     sessionId: string
@@ -71,23 +66,6 @@ export type GetSessionMessages = {
 export type DeleteSession = {
     userId: string
     sessionId: string
-}
-
-export type GetCollaborators = {
-    userId: string
-    sessionId: string
-}
-
-export type AddCollaborator = {
-    userId: string
-    sessionId: string
-    email: string
-}
-
-export type RemoveCollaborator = {
-    userId: string
-    sessionId: string
-    email: string
 }
 
 export type DisconnectSession = {

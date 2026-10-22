@@ -10,10 +10,7 @@ export const runtimeRepository = {
         return prisma.session.findFirst({
             where: {
                 id: sessionId,
-                OR: [
-                    { userId },
-                    { collaborators: { some: { userId } } },
-                ],
+                userId,
             },
             select: {
                 id: true,
@@ -33,10 +30,7 @@ export const runtimeRepository = {
         return prisma.session.findFirst({
             where: {
                 id: previewId,
-                OR: [
-                    { userId },
-                    { collaborators: { some: { userId } } },
-                ],
+                userId,
             },
             select: {
                 id: true,
@@ -51,10 +45,7 @@ export const runtimeRepository = {
         return prisma.session.findFirst({
             where: {
                 id: previewId,
-                OR: [
-                    { userId },
-                    { collaborators: { some: { userId } } },
-                ],
+                userId,
             },
             select: {
                 id: true,

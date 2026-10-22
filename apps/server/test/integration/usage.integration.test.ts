@@ -34,7 +34,6 @@ describe('Usage Module Integration Tests', () => {
         const user = await prisma.user.create({
             data: {
                 name: 'Usage Test User',
-                username: `usage_${timestamp}`,
                 email: testEmail,
                 password: hashedPassword,
                 emailVerified: true,
@@ -46,7 +45,6 @@ describe('Usage Module Integration Tests', () => {
         const userB = await prisma.user.create({
             data: {
                 name: 'Usage Test User B',
-                username: `usage_b_${timestamp}`,
                 email: testEmailB,
                 password: hashedPassword,
                 emailVerified: true,

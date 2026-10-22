@@ -180,35 +180,3 @@ export const getVercelIntegrationSlug = (): string => {
         'december'
     )
 }
-
-export const getSupabaseClientId = (): string => {
-    return (
-        getClientEnv('SUPABASE_CLIENT_ID') ??
-        getClientEnv('PUBLIC_SUPABASE_CLIENT_ID') ??
-        '4a0473bb-3c69-4d28-8896-d1d8b6e18347'
-    )
-}
-
-export const getSupabaseRedirectUri = (apiBaseUrl: string = getApiBaseUrl()): string => {
-    return (
-        getClientEnv('SUPABASE_REDIRECT_URI') ??
-        getClientEnv('PUBLIC_SUPABASE_REDIRECT_URI') ??
-        `${apiBaseUrl}/integrations/supabase/connect`
-    )
-}
-
-export const getNotionClientId = (): string => {
-    return (
-        getClientEnv('NOTION_CLIENT_ID') ??
-        getClientEnv('PUBLIC_NOTION_CLIENT_ID') ??
-        '36ad872b-594c-8101-9e7c-00378ba2e5f6'
-    )
-}
-
-export const getNotionRedirectUri = (apiBaseUrl: string = getApiBaseUrl()): string => {
-    return (
-        getClientEnv('NOTION_REDIRECT_URI') ??
-        getClientEnv('PUBLIC_NOTION_REDIRECT_URI') ??
-        `${apiBaseUrl}/integrations/notion/connect`
-    )
-}

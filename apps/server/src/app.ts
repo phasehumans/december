@@ -11,7 +11,6 @@ import { cliRateLimiter, globalRateLimiter, runtimeRateLimiter } from './middlew
 import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
 import cliRouter from './modules/cli/cli.routes'
-import coreRouter from './modules/core/core.routes'
 import githubAppRouter from './modules/githubapp/githubapp.routes'
 import integrationsRouter from './modules/integration/integration.routes'
 import notificationRouter from './modules/notification/notification.routes'
@@ -114,7 +113,6 @@ app.use('/api/v1/sessions', sessionRouter)
 app.use('/api/v1/secrets', secretsRouter)
 app.use('/api/v1/githubapp', githubAppRouter)
 
-app.use('/api/v1/core', coreRouter)
 app.use(errorHandler)
 
 export default app

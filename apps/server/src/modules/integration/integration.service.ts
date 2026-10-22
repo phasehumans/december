@@ -1,18 +1,10 @@
-import axios from 'axios'
-
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { notificationService } from '../notification/notification.service'
 
 import { integrationRepository } from './integration.repository'
 
-import type {
-    ConnectVercel,
-    ConnectSupabase,
-    ConnectNotion,
-    ConnectGithub,
-    HandleGitHubOAuth,
-} from './integration.types'
+import type { ConnectVercel, ConnectGithub, HandleGitHubOAuth } from './integration.types'
 
 const connectVercel = async (data: ConnectVercel) => {
     const { code, userId, teamId, configurationId } = data
@@ -72,129 +64,6 @@ const connectVercel = async (data: ConnectVercel) => {
         })
     } catch (error) {
         console.error('Failed to send vercel connection notification:', error)
-    }
-
-    return updatedUser
-}
-
-const connectSupabase = async (data: ConnectSupabase) => {
-    const { userId, code } = data
-
-    const existingUser = await integrationRepository.findUserFirst(userId)
-
-    if (!existingUser || existingUser.isDeleted == true) {
-        throw new AppError('user not found', 404)
-    }
-
-    const redirectUri =
-        env.SUPABASE_REDIRECT_URI ||
-        process.env.SUPABASE_REDIRECT_URI ||
-        `${env.SERVER_URL}/api/v1/integrations/supabase/connect`
-    const clientId =
-        env.SUPABASE_CLIENT_ID ||
-        process.env.SUPABASE_CLIENT_ID ||
-        '4a0473bb-3c69-4d28-8896-d1d8b6e18347'
-    const clientSecret = env.SUPABASE_CLIENT_SECRET || process.env.SUPABASE_CLIENT_SECRET
-
-    const params = new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: redirectUri,
-        client_id: clientId,
-        client_secret: clientSecret || '',
-    })
-
-    let response
-    try {
-        response = await axios.post('https://api.supabase.com/v1/oauth/token', params, {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-        })
-    } catch (error: any) {
-        const errorMsg =
-            error?.response?.data?.error_description ||
-            error?.response?.data?.message ||
-            error?.message ||
-            'failed to exchange supabase authorization code'
-        throw new AppError(errorMsg.toLowerCase(), 400)
-    }
-
-    const tokenData = response.data
-
-    const expiresAt = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000)
-
-    const updatedUser = await integrationRepository.updateUserSupabase({
-        id: userId,
-        supabaseAccessToken: tokenData.access_token,
-        supabaseRefreshToken: tokenData.refresh_token,
-        supabaseTokenExpiresAt: expiresAt,
-        supabaseTokenScope: tokenData.scope || null,
-    })
-
-    try {
-        await notificationService.sendNotificationToUser({
-            userId,
-            title: 'Supabase Connected',
-            message: 'Successfully connected with Supabase integration!',
-            type: 'SUCCESS',
-        })
-    } catch (error) {
-        console.error('Failed to send supabase connection notification:', error)
-    }
-
-    return updatedUser
-}
-
-const connectNotion = async (data: ConnectNotion) => {
-    const { userId, code } = data
-
-    const existingUser = await integrationRepository.findUserFirst(userId)
-
-    if (!existingUser || existingUser.isDeleted == true) {
-        throw new AppError('user not found', 404)
-    }
-
-    const redirectUri =
-        env.NOTION_REDIRECT_URI ||
-        process.env.NOTION_REDIRECT_URI ||
-        `${env.SERVER_URL}/api/v1/integrations/notion/connect`
-
-    const response = await axios.post(
-        'https://api.notion.com/v1/oauth/token',
-        {
-            grant_type: 'authorization_code',
-            code,
-            redirect_uri: redirectUri,
-        },
-        {
-            headers: {
-                Authorization: `Basic ${Buffer.from(
-                    `${process.env.NOTION_CLIENT_ID}:${process.env.NOTION_CLIENT_SECRET}`
-                ).toString('base64')}`,
-                'Content-Type': 'application/json',
-            },
-        }
-    )
-
-    const notionData = response.data
-
-    const updatedUser = await integrationRepository.updateUserNotion({
-        id: userId,
-        notionAccessToken: notionData.access_token,
-        notionWorkspaceId: notionData.workspace_id,
-        notionWorkspaceName: notionData.workspace_name,
-    })
-
-    try {
-        await notificationService.sendNotificationToUser({
-            userId,
-            title: 'Notion Connected',
-            message: `Successfully connected with Notion integration (${notionData.workspace_name})!`,
-            type: 'SUCCESS',
-        })
-    } catch (error) {
-        console.error('Failed to send notion connection notification:', error)
     }
 
     return updatedUser
@@ -293,8 +162,6 @@ const handleGitHubOAuth = async (data: HandleGitHubOAuth) => {
 
 export const integrationsService = {
     connectVercel,
-    connectSupabase,
-    connectNotion,
     connectGithub,
     handleGitHubOAuth,
 }

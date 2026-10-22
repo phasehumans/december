@@ -23,7 +23,6 @@ describe('Platform Module Integration Tests', () => {
         const user = await prisma.user.create({
             data: {
                 name: 'Platform Test User',
-                username: `platform_${timestamp}`,
                 email: testEmail,
                 password: hashedPassword,
                 emailVerified: true,

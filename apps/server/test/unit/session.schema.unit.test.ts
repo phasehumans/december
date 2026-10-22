@@ -10,12 +10,7 @@ import {
     unarchiveSessionParamsSchema,
     updateSessionTagsParamsSchema,
     updateSessionTagsBodySchema,
-    getSessionInsightsParamsSchema,
     deleteSessionParamsSchema,
-    getCollaboratorsParamsSchema,
-    addCollaboratorParamsSchema,
-    addCollaboratorBodySchema,
-    removeCollaboratorParamsSchema,
     disconnectSessionParamsSchema,
     rehydrateSessionParamsSchema,
     proxyPreviewParamsSchema,
@@ -105,10 +100,7 @@ describe('Session Schemas - Unit Tests', () => {
             { name: 'archiveSessionParamsSchema', schema: archiveSessionParamsSchema },
             { name: 'unarchiveSessionParamsSchema', schema: unarchiveSessionParamsSchema },
             { name: 'updateSessionTagsParamsSchema', schema: updateSessionTagsParamsSchema },
-            { name: 'getSessionInsightsParamsSchema', schema: getSessionInsightsParamsSchema },
             { name: 'deleteSessionParamsSchema', schema: deleteSessionParamsSchema },
-            { name: 'getCollaboratorsParamsSchema', schema: getCollaboratorsParamsSchema },
-            { name: 'addCollaboratorParamsSchema', schema: addCollaboratorParamsSchema },
             { name: 'disconnectSessionParamsSchema', schema: disconnectSessionParamsSchema },
             { name: 'rehydrateSessionParamsSchema', schema: rehydrateSessionParamsSchema },
         ]
@@ -156,38 +148,6 @@ describe('Session Schemas - Unit Tests', () => {
 
         it('should fail if tag exceeds 30 characters', () => {
             expect(() => updateSessionTagsBodySchema.parse({ tags: ['a'.repeat(31)] })).toThrow()
-        })
-    })
-
-    describe('addCollaboratorBodySchema & removeCollaboratorParamsSchema', () => {
-        it('addCollaboratorBodySchema passes with valid email', () => {
-            const result = addCollaboratorBodySchema.parse({ email: 'user@example.com' })
-            expect(result.email).toBe('user@example.com')
-        })
-
-        it('addCollaboratorBodySchema fails with invalid email', () => {
-            expect(() => addCollaboratorBodySchema.parse({ email: 'not-an-email' })).toThrow()
-        })
-
-        it('removeCollaboratorParamsSchema passes with valid ID and email', () => {
-            const result = removeCollaboratorParamsSchema.parse({
-                id: validUuid,
-                email: 'user@example.com',
-            })
-            expect(result.id).toBe(validUuid)
-            expect(result.email).toBe('user@example.com')
-        })
-
-        it('removeCollaboratorParamsSchema fails with invalid email or UUID', () => {
-            expect(() =>
-                removeCollaboratorParamsSchema.parse({ id: validUuid, email: 'bad-email' })
-            ).toThrow()
-            expect(() =>
-                removeCollaboratorParamsSchema.parse({
-                    id: 'bad-uuid',
-                    email: 'user@example.com',
-                })
-            ).toThrow()
         })
     })
 

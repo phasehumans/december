@@ -167,8 +167,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
             navigate(`/settings/${getSlugForProfileTab('Billing')}`, { replace: true })
         }
     }, [navigate])
-    const [usernameModalOpen, setUsernameModalOpen] = React.useState(false)
-    const [tempUsername, setTempUsername] = React.useState('')
     const [deleteAccountModalOpen, setDeleteAccountModalOpen] = React.useState(false)
     const [signOutAllSessionsModalOpen, setSignOutAllSessionsModalOpen] = React.useState(false)
 
@@ -196,13 +194,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         setNewPassword,
         setConfirmPassword,
         updateNameMutation,
-        updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
         isGithubConnected,
         isVercelConnected,
-        isSupabaseConnected,
-        isNotionConnected,
         emailNotifications,
         productUpdates,
         securityAlerts,
@@ -214,8 +209,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         handleNotificationToggle,
         connectGithub,
         connectVercel,
-        connectSupabase,
-        connectNotion,
     } = useProfileSettingsController()
 
     const profileErrorMessage =
@@ -267,10 +260,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         securityAlerts={securityAlerts}
                         isNotificationPending={updateNotificationMutation.isPending}
                         onOpenNameModal={openNameModal}
-                        onOpenUsernameModal={() => {
-                            setTempUsername(profile?.username || '')
-                            setUsernameModalOpen(true)
-                        }}
                         onOpenPasswordModal={openPasswordModal}
                         onNotificationToggle={handleNotificationToggle}
                         onConnectGithub={connectGithub}
@@ -285,12 +274,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                     <ProfileConnectionsSettings
                         isGithubConnected={isGithubConnected}
                         isVercelConnected={isVercelConnected}
-                        isSupabaseConnected={isSupabaseConnected}
-                        isNotionConnected={isNotionConnected}
                         onConnectGithub={connectGithub}
                         onConnectVercel={connectVercel}
-                        onConnectSupabase={connectSupabase}
-                        onConnectNotion={connectNotion}
                     />
                 )
             case 'Billing':
@@ -714,32 +699,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 }}
                 onChange={setTempName}
                 onSave={handleSaveName}
-            />
-
-            <ProfileNameModal
-                isOpen={usernameModalOpen}
-                value={tempUsername}
-                isPending={updateUsernameMutation.isPending}
-                title="Change Username"
-                label="Username"
-                errorMessage={usernameModalOpen ? profileActionError : null}
-                onClose={() => {
-                    setUsernameModalOpen(false)
-                    setProfileActionError(null)
-                }}
-                onChange={setTempUsername}
-                onSave={() => {
-                    if (tempUsername.trim()) {
-                        updateUsernameMutation.mutate(
-                            { username: tempUsername.trim() },
-                            {
-                                onSuccess: () => {
-                                    setUsernameModalOpen(false)
-                                },
-                            }
-                        )
-                    }
-                }}
             />
 
             <ProfilePasswordModal

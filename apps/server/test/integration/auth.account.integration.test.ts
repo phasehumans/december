@@ -26,7 +26,6 @@ describe('Auth Account Management & Signout All Integration Tests', () => {
             data: {
                 email: testEmail,
                 name: 'Account Test User',
-                username: `accountuser-${Date.now()}`,
                 password: passHash,
                 emailVerified: true,
             },

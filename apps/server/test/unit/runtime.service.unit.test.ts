@@ -45,6 +45,31 @@ describe('Runtime Service - Unit Tests', () => {
                 runtimeRepository.findSessionForStart = originalFind
             }
         })
+
+        it('should dynamically set preview port and resolve previewUrl', async () => {
+            const originalFind = runtimeRepository.findSessionForStart
+            const sessionId = '123e4567-e89b-12d3-a456-426614174000'
+
+            runtimeRepository.findSessionForStart = (async () => ({
+                id: sessionId,
+                vmStatus: 'RUNNING',
+                updatedAt: new Date(),
+            })) as any
+
+            try {
+                const res = await runtimeService.startPreview({
+                    userId: 'u1',
+                    projectId: sessionId,
+                    port: 3000,
+                })
+
+                expect(res.previewId).toBe(sessionId)
+                expect(res.previewUrl).toBe(`/api/v1/sessions/${sessionId}/preview/3000`)
+                expect(runtimeService.getSessionListeningPort({ sessionId })).toBe(3000)
+            } finally {
+                runtimeRepository.findSessionForStart = originalFind
+            }
+        })
     })
 
     describe('getPreviewStatus', () => {

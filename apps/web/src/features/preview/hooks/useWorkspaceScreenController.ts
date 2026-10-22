@@ -5,7 +5,6 @@ import type {
     OutputOperation,
     PreviewDevice,
     PreviewRuntimeError,
-    PreviewSelectedElement,
     PreviewSessionStatus,
     PreviewTab,
 } from '@/features/preview/types'
@@ -18,10 +17,7 @@ interface UseWorkspaceScreenControllerArgs {
     activeGeneratedFilePath?: string | null
     generationPhase?: 'thinking' | 'building' | 'done' | null
     activeOperation?: OutputOperation | null
-    onPromptSubmit: (
-        prompt: string,
-        options?: { selectedElement?: PreviewSelectedElement }
-    ) => Promise<void> | void
+    onPromptSubmit: (prompt: string) => Promise<void> | void
     onRuntimeError?: (error: PreviewRuntimeError) => Promise<void> | void
     previewSession?: PreviewSessionStatus | null
 }
@@ -78,10 +74,6 @@ export const useWorkspaceScreenController = ({
     const [activeTab, setActiveTab] = React.useState<PreviewTab>('preview')
     const [device, setDevice] = React.useState<PreviewDevice>('desktop')
     const [previewHtml, setPreviewHtml] = React.useState(PREVIEW_HTML)
-    const [isVisualMode, setIsVisualMode] = React.useState(false)
-    const [selectedElement, setSelectedElement] = React.useState<PreviewSelectedElement | null>(
-        null
-    )
     const [editPrompt, setEditPrompt] = React.useState('')
     const [isApplyingEdit, setIsApplyingEdit] = React.useState(false)
     const [isChatSidebarCollapsed, setIsChatSidebarCollapsed] = React.useState(false)
@@ -128,22 +120,6 @@ export const useWorkspaceScreenController = ({
     }, [isGenerating, previewSession?.backendStatus])
 
     React.useEffect(() => {
-        if (iframeRef.current?.contentWindow) {
-            iframeRef.current.contentWindow.postMessage(
-                {
-                    type: 'toggle-visual-mode',
-                    isActive: isVisualMode,
-                },
-                '*'
-            )
-
-            if (!isVisualMode) {
-                setSelectedElement(null)
-            }
-        }
-    }, [isVisualMode])
-
-    React.useEffect(() => {
         const generatedPreviewHtml = getPreviewHtmlFromFiles(generatedFiles)
 
         if (generatedPreviewHtml.trim()) {
@@ -156,16 +132,6 @@ export const useWorkspaceScreenController = ({
 
     const handleIframeMessage = React.useCallback(
         (event: MessageEvent) => {
-            if (event.data?.type === 'element-selected') {
-                setSelectedElement(event.data)
-                return
-            }
-
-            if (event.data?.type === 'selection-cleared') {
-                setSelectedElement(null)
-                return
-            }
-
             if (event.data?.type === 'runtime-error' && onRuntimeError) {
                 void onRuntimeError({
                     message: event.data.message,
@@ -187,33 +153,16 @@ export const useWorkspaceScreenController = ({
         let didApply = false
 
         try {
-            await Promise.resolve(
-                onPromptSubmit(nextPrompt, {
-                    ...(selectedElement ? { selectedElement } : {}),
-                })
-            )
+            await Promise.resolve(onPromptSubmit(nextPrompt))
             didApply = true
         } finally {
             setIsApplyingEdit(false)
 
             if (didApply) {
                 setEditPrompt('')
-                setSelectedElement(null)
-
-                if (iframeRef.current?.contentWindow) {
-                    iframeRef.current.contentWindow.postMessage({ type: 'selection-cleared' }, '*')
-                }
             }
         }
-    }, [editPrompt, onPromptSubmit, selectedElement])
-
-    const handleClearSelection = () => {
-        setSelectedElement(null)
-
-        if (iframeRef.current?.contentWindow) {
-            iframeRef.current.contentWindow.postMessage({ type: 'selection-cleared' }, '*')
-        }
-    }
+    }, [editPrompt, onPromptSubmit])
 
     const handleOpenInNewTab = () => {
         if (previewSession?.previewUrl) {
@@ -257,9 +206,6 @@ export const useWorkspaceScreenController = ({
         setDevice,
         previewHtml,
         setPreviewHtml,
-        isVisualMode,
-        setIsVisualMode,
-        selectedElement,
         editPrompt,
         setEditPrompt,
         isApplyingEdit,
@@ -269,7 +215,6 @@ export const useWorkspaceScreenController = ({
         iframeRef,
         handleIframeMessage,
         handleApplyEdit,
-        handleClearSelection,
         handleOpenInNewTab,
         handleRefreshPreview,
     }

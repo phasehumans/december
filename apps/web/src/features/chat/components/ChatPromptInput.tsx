@@ -1,5 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, KeyRound } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 import React, { useRef, useEffect } from 'react'
 
 import type { ChatPromptInputProps } from '@/features/chat/types'
@@ -16,7 +15,7 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         [props.onChange, props.setEditPrompt]
     )
     const onSubmit = props.onSubmit ?? props.handleApplyEdit ?? (() => {})
-    const { selectedElement, onClearSelection, isApplyingEdit, isAuthenticated, onOpenAuth } = props
+    const { isApplyingEdit, isAuthenticated, onOpenAuth } = props
 
     const isGenerating = props.isGenerating ?? props.isApplyingEdit ?? false
     const prevGeneratingRef = useRef(isGenerating)
@@ -53,12 +52,12 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         mode: props.mode || 'chat',
     })
 
-    // Auto-focus on mount and when mode or selected element changes
+    // Auto-focus on mount and when mode changes
     useEffect(() => {
         if (props.autoFocus !== false) {
             textareaRef.current?.focus()
         }
-    }, [props.autoFocus, props.mode, selectedElement, textareaRef])
+    }, [props.autoFocus, props.mode, textareaRef])
 
     // Auto-focus when streaming/generation completes for follow-up prompts
     useEffect(() => {
@@ -78,8 +77,7 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         }
     }
 
-    const placeholderText =
-        props.placeholder || (selectedElement ? 'Describe changes...' : 'Ask December...')
+    const placeholderText = props.placeholder || 'Ask December...'
 
     return (
         <div className="w-full bg-[#141414] shrink-0 z-30">
@@ -87,33 +85,6 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
                 onClick={handleContainerClick}
                 className="relative group rounded-[17px] bg-[#1F1F1F] border border-[#313131] focus-within:border-white/10 transition-all duration-300 ease-out flex flex-col cursor-text"
             >
-                {/* integrated selected element display */}
-                <AnimatePresence>
-                    {selectedElement && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden border-b border-[#27272A] bg-white/[0.02]"
-                        >
-                            <div className="flex items-center gap-2 px-3 py-2">
-                                <span className="font-mono text-[9px] font-medium bg-white/10 text-white border border-white/10 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                    {selectedElement.tagName}
-                                </span>
-                                <span className="text-xs text-neutral-300 truncate max-w-[200px] font-medium">
-                                    {selectedElement.textContent}
-                                </span>
-                                <button
-                                    onClick={onClearSelection}
-                                    className="ml-auto rounded-full hover:bg-white/10 p-1 text-neutral-400 hover:text-white"
-                                >
-                                    <X size={12} />
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
                 <div className="pt-[12px] pl-5 pr-5 pb-1 min-h-[64px] relative">
                     <textarea
                         ref={textareaRef}

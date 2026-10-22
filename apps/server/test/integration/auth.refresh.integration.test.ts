@@ -26,7 +26,6 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
             data: {
                 email: testEmail,
                 name: 'Refresh Test User',
-                username: `refreshuser-${Date.now()}`,
                 password: passHash,
                 emailVerified: true,
             },

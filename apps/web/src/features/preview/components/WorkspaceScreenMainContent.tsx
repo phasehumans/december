@@ -31,7 +31,6 @@ interface WorkspaceScreenMainContentProps {
     generatedFiles?: Record<string, GeneratedProjectFile>
     activeGeneratedFilePath?: string | null
     isGenerating: boolean
-    isVisualMode: boolean
     iframeRef: React.RefObject<HTMLIFrameElement>
     onIframeMessage: (event: MessageEvent) => void
     showStructureOnly: boolean
@@ -58,7 +57,6 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
     generatedFiles,
     activeGeneratedFilePath,
     isGenerating,
-    isVisualMode,
     iframeRef,
     onIframeMessage,
     showStructureOnly,
@@ -154,7 +152,6 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
                     html={previewHtml}
                     isGenerating={isGenerating}
                     device={device}
-                    isVisualMode={isVisualMode}
                     onMessage={onIframeMessage}
                     iframeRef={iframeRef}
                     showStructureOnly={showStructureOnly}

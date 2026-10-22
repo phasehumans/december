@@ -3,7 +3,7 @@ import React from 'react'
 
 import type { ViewState } from '@/app/types'
 import type { Message } from '@/features/chat/types'
-import type { PreviewRuntimeError, PreviewSelectedElement } from '@/features/preview/types'
+import type { PreviewRuntimeError } from '@/features/preview/types'
 
 import { useAppStore } from '@/app/store'
 import { billingAPI, type BillingOverview } from '@/features/billing/api/billing'
@@ -97,15 +97,13 @@ export const useChatController = (
     }, [generationAbortControllerRef])
 
     const triggerCompletionSound = React.useCallback(() => {
-        const profile = queryClient.getQueryData<any>(['profile'])
-        const soundPreference = profile?.generationSound ?? 'FIRST_GENERATION'
         const assistantCount = useAppStore
             .getState()
             .messages.filter((m) => m.role === 'assistant').length
-        playGenerationSoundNotification(soundPreference, {
+        playGenerationSoundNotification('FIRST_GENERATION', {
             isFirstGeneration: assistantCount <= 1,
         })
-    }, [queryClient])
+    }, [])
 
     const hydrateAppliedProjectChange = React.useCallback(
         (result: AppliedProjectChangeResult) => {
@@ -545,6 +543,7 @@ export const useChatController = (
             appendThinkingChunk,
             appendStreamChunk,
             addCompactionBlock,
+            addFileChangeBlock,
             addInterruptBlock,
             addToolCallBlock,
             appendToolCallOutput,
@@ -570,6 +569,7 @@ export const useChatController = (
             setGenerationPhase,
             setIsGenerating,
             setProjectLoadError,
+            setProjectVersions,
             setProjectType,
             startGeneratedFile,
             setShowOutOfCreditsModal,
@@ -641,14 +641,12 @@ export const useChatController = (
         ({
             kind,
             prompt,
-            selectedElement,
             errorMessage,
             stack,
             visibleUserMessage,
         }: {
             kind: 'edit' | 'fix'
             prompt?: string
-            selectedElement?: PreviewSelectedElement
             errorMessage?: string
             stack?: string | null
             visibleUserMessage: string
@@ -996,7 +994,6 @@ export const useChatController = (
                                   projectId: activeProjectId,
                                   versionId: activeProjectVersionId,
                                   prompt: prompt ?? '',
-                                  ...(selectedElement ? { selectedElement } : {}),
                                   signal: abortController.signal,
                                   onEvent: handleStreamEvent,
                               })
@@ -1044,12 +1041,14 @@ export const useChatController = (
         },
         [
             abortGenerationRequest,
+            activeAssistantMessageIdRef,
             activeProjectId,
             activeProjectVersionId,
             generationAbortControllerRef,
             hydrateAppliedProjectChange,
             queryClient,
             replaceGeneratedOutput,
+            setAssistantAppliedFiles,
             setAssistantError,
             setAssistantStatus,
             setAssistantStatusMessage,
@@ -1058,6 +1057,7 @@ export const useChatController = (
             setIsGenerating,
             setMessages,
             setProjectLoadError,
+            setProjectVersions,
             setProjectType,
             setCurrentGenerationFilePaths,
             appendAssistantChunk,
@@ -1078,7 +1078,7 @@ export const useChatController = (
     )
 
     const handleOutputPromptSubmit = React.useCallback(
-        (promptText: string, selectedElement?: PreviewSelectedElement) => {
+        (promptText: string) => {
             requireAuthOr(() => {
                 const normalizedPrompt = promptText.trim()
                 if (!normalizedPrompt) {
@@ -1094,7 +1094,6 @@ export const useChatController = (
                 applyProjectChange({
                     kind: 'edit',
                     prompt: normalizedPrompt,
-                    selectedElement,
                     visibleUserMessage: normalizedPrompt,
                 })
             })

@@ -23,7 +23,6 @@ describe('Runtime Module Integration Tests', () => {
         const user = await prisma.user.create({
             data: {
                 name: 'Runtime Test User',
-                username: `runtime_${timestamp}`,
                 email: testEmail,
                 password: hashedPassword,
                 emailVerified: true,

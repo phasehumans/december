@@ -59,44 +59,4 @@ describe('Integrations Module Integration Tests', () => {
             integrationsService.handleGitHubOAuth = originalHandle
         }
     })
-
-    it('5. GET /api/v1/integrations/supabase/connect - fails validation with missing params (400)', async () => {
-        const res = await request(app)
-            .get('/api/v1/integrations/supabase/connect')
-            .set('x-forwarded-for', getRandomIP())
-
-        expect(res.status).toBe(400)
-    })
-
-    it('6. GET /api/v1/integrations/supabase/connect - connects supabase and redirects (302)', async () => {
-        const originalConnect = integrationsService.connectSupabase
-        integrationsService.connectSupabase = async () => ({}) as any
-
-        try {
-            const res = await request(app)
-                .get('/api/v1/integrations/supabase/connect?code=sbcode123&state=user123')
-                .set('x-forwarded-for', getRandomIP())
-
-            expect(res.status).toBe(302)
-            expect(res.headers.location).toBe(`${env.APP_URL}/settings/connections`)
-        } finally {
-            integrationsService.connectSupabase = originalConnect
-        }
-    })
-
-    it('7. GET /api/v1/integrations/notion/connect - connects notion and redirects (302)', async () => {
-        const originalConnect = integrationsService.connectNotion
-        integrationsService.connectNotion = async () => ({}) as any
-
-        try {
-            const res = await request(app)
-                .get('/api/v1/integrations/notion/connect?code=notioncode123&state=user123')
-                .set('x-forwarded-for', getRandomIP())
-
-            expect(res.status).toBe(302)
-            expect(res.headers.location).toBe(`${env.APP_URL}/settings/connections`)
-        } finally {
-            integrationsService.connectNotion = originalConnect
-        }
-    })
 })

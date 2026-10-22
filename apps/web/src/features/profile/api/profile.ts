@@ -1,17 +1,9 @@
 import { apiRequest } from '@/shared/api/client'
-import {
-    getGithubAppName,
-    getVercelIntegrationSlug,
-    getSupabaseClientId,
-    getSupabaseRedirectUri,
-    getNotionClientId,
-    getNotionRedirectUri,
-} from '@/shared/config/env'
+import { getGithubAppName, getVercelIntegrationSlug } from '@/shared/config/env'
 
 export type Profile = {
     id: string
     name: string
-    username: string
     email: string
     createdAt: string
     updatedAt: string
@@ -24,15 +16,9 @@ export type Profile = {
     vercelConnected?: boolean
     vercelTeamId?: string | null
     vercelConfigurationId?: string | null
-    supabaseConnected?: boolean
-    supabaseUserId?: string | null
-    supabaseConnectedAt?: string | null
-    notionWorkspaceId?: string | null
-    notionWorkspaceName?: string | null
     notifyProjectActivity?: boolean
     notifyProductUpdates?: boolean
     notifySecurityAlerts?: boolean
-    generationSound?: 'FIRST_GENERATION' | 'ALWAYS' | 'NEVER'
     memories?: string | null
     rules?: string | null
     avatarUrl?: string | null
@@ -60,10 +46,6 @@ type BackendQuickInfo = {
 
 type UpdateNameInput = {
     name: string
-}
-
-type UpdateUsernameInput = {
-    username: string
 }
 
 type UpdateAvatarUrlInput = {
@@ -97,13 +79,6 @@ const getProfile = () => {
 
 const updateName = (data: UpdateNameInput) => {
     return apiRequest<BackendProfile>('/setting/name', {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-    })
-}
-
-const updateUsername = (data: UpdateUsernameInput) => {
-    return apiRequest<BackendProfile>('/setting/username', {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
@@ -230,25 +205,6 @@ const getVercelConnectUrl = (userId: string) => {
     })
 }
 
-const getSupabaseConnectUrl = (userId: string) => {
-    return buildUrl('https://api.supabase.com/v1/oauth/authorize', {
-        client_id: getSupabaseClientId(),
-        redirect_uri: getSupabaseRedirectUri(),
-        response_type: 'code',
-        state: userId,
-    })
-}
-
-const getNotionConnectUrl = (userId: string) => {
-    return buildUrl('https://api.notion.com/v1/oauth/authorize', {
-        client_id: getNotionClientId(),
-        redirect_uri: getNotionRedirectUri(),
-        response_type: 'code',
-        owner: 'user',
-        state: userId,
-    })
-}
-
 const completeOnboarding = () => {
     return apiRequest<BackendProfile>('/setting/onboarding', {
         method: 'PATCH',
@@ -289,7 +245,6 @@ const syncGithubRepo = (projectId: string, data: { commitMessage?: string }) => 
 export const profileAPI = {
     getProfile,
     updateName,
-    updateUsername,
     updateAvatarUrl,
     changePassword,
     updateNotifications,
@@ -303,8 +258,6 @@ export const profileAPI = {
     getGithubRepos,
     getGithubConnectUrl,
     getVercelConnectUrl,
-    getSupabaseConnectUrl,
-    getNotionConnectUrl,
     completeOnboarding,
     dismissOnboardingCard,
     submitFeedback,

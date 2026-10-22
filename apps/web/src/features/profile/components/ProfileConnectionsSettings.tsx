@@ -3,12 +3,8 @@ import React from 'react'
 export interface ProfileConnectionsSettingsProps {
     isGithubConnected: boolean
     isVercelConnected: boolean
-    isSupabaseConnected: boolean
-    isNotionConnected: boolean
     onConnectGithub: () => void
     onConnectVercel: () => void
-    onConnectSupabase: () => void
-    onConnectNotion: () => void
 }
 
 // Icons
@@ -21,18 +17,6 @@ const GithubIcon = () => (
 const VercelIcon = () => (
     <svg viewBox="0 0 76 65" fill="white" className="w-5 h-5">
         <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-    </svg>
-)
-
-const NotionIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path d="M4.46 4.21c.75.6 1.03.56 2.43.46L20.1 3.88c.28 0 .05-.28-.04-.33L17.86 1.97c-.42-.33-.98-.7-2.05-.61L3.01 2.3c-.47.04-.56.28-.37.47zm.79 3.08v13.9c0 .75.37 1.03 1.21.98l14.53-.84c.84-.04.93-.56.93-1.17V6.35c0-.6-.23-.93-.75-.89l-15.17.89c-.56.04-.75.33-.75.93zm14.34.74c.09.42 0 .84-.42.89l-.7.14v10.26c-.61.33-1.17.52-1.64.52-.75 0-.93-.23-1.5-.93l-4.57-7.19v6.95l1.45-.19s0 .84-1.17.84l-3.22.19c-.09-.19 0-.66.33-.75l.84-.23V9.85l-1.45-.1c-.09-.42.14-1.03.79-1.07l3.46-.23 4.76 7.28v-6.44l-1.21-.14c-.1-.51.27-.89.74-.93zM1.94 1.04l13.3-.98c1.64-.14 2.06-.05 3.08.7l4.25 2.99c.7.51.94.65.94 1.21v16.38c0 1.03-.37 1.63-1.68 1.73l-15.46.93c-.98.05-1.45-.09-1.96-.75L1.28 17.5c-.56-.75-.79-1.3-.79-1.96V2.67c0-.84.37-1.54 1.45-1.63z" />
-    </svg>
-)
-
-const SupabaseIcon = () => (
-    <svg viewBox="0 0 24 24" fill="#3ECF8E" className="w-5 h-5">
-        <path d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.653c1.093-1.375.113-3.403-1.645-3.403h-9.642z" />
     </svg>
 )
 
@@ -134,11 +118,7 @@ export const ProfileConnectionsSettings: React.FC<ProfileConnectionsSettingsProp
     isGithubConnected,
     onConnectGithub,
     isVercelConnected,
-    isSupabaseConnected,
-    isNotionConnected,
     onConnectVercel,
-    onConnectSupabase,
-    onConnectNotion,
 }) => {
     const connectionsList = [
         {
@@ -159,25 +139,6 @@ export const ProfileConnectionsSettings: React.FC<ProfileConnectionsSettingsProp
             iconColor: '#D6D5C9',
             isConnected: isVercelConnected,
             onConnect: onConnectVercel,
-        },
-        {
-            id: 'supabase' as const,
-            name: 'Supabase',
-            description:
-                'Connect your Supabase project to introspect schemas, inspect RLS policies, and generate migrations.',
-            Icon: SupabaseIcon,
-            iconColor: '#D6D5C9',
-            isConnected: isSupabaseConnected,
-            onConnect: onConnectSupabase,
-        },
-        {
-            id: 'notion' as const,
-            name: 'Notion',
-            description: 'Pull in pages and databases from Notion as project context.',
-            Icon: NotionIcon,
-            iconColor: '#D6D5C9',
-            isConnected: isNotionConnected,
-            onConnect: onConnectNotion,
         },
         {
             id: 'linear' as const,

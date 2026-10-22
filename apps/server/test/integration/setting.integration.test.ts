@@ -10,12 +10,10 @@ describe('Setting Module Integration Tests', () => {
     let testEmail: string
     const testPassword = 'Password123!'
     let accessToken: string
-    let username: string
 
     beforeAll(async () => {
         const timestamp = Date.now()
         testEmail = `settingtest-${timestamp}@example.com`
-        username = `setuser_${timestamp}`
 
         const bcrypt = await import('bcrypt')
         const { env } = await import('../../src/env')
@@ -24,7 +22,6 @@ describe('Setting Module Integration Tests', () => {
         const user = await prisma.user.create({
             data: {
                 name: 'Setting Test User',
-                username,
                 email: testEmail,
                 password: hashedPassword,
                 emailVerified: true,
@@ -97,22 +94,6 @@ describe('Setting Module Integration Tests', () => {
 
         const dbUser = await prisma.user.findUnique({ where: { id: testUserId } })
         expect(dbUser?.name).toBe('Updated Name')
-    })
-
-    it('5. PATCH /api/v1/setting/username - updates username', async () => {
-        const alphabet = 'abcdefghijklmnopqrstuvwxyz'
-        const randomLetters = Array.from({ length: 6 }, () =>
-            alphabet.charAt(Math.floor(Math.random() * alphabet.length))
-        ).join('')
-        const newUsername = `new_usr_${randomLetters}`
-        const res = await request(app)
-            .patch('/api/v1/setting/username')
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${accessToken}`)
-            .send({ username: newUsername })
-
-        expect(res.status).toBe(200)
-        expect(res.body.data.username).toBe(newUsername)
     })
 
     it('6. PATCH /api/v1/setting/notifications - updates notification preferences', async () => {

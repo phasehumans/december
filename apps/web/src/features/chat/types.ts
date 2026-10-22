@@ -38,11 +38,6 @@ export interface Message {
     appliedFiles?: string[]
 }
 
-export interface SelectedElement {
-    tagName: string
-    textContent: string
-}
-
 export interface ChatMessageProps {
     role: 'user' | 'assistant'
     content: string
@@ -70,10 +65,6 @@ export interface ChatPromptInputProps {
     value: string
     onChange: (value: string) => void
     onSubmit: () => void
-    isVisualMode: boolean
-    onToggleVisualMode: () => void
-    selectedElement: SelectedElement | null
-    onClearSelection: () => void
     isApplyingEdit: boolean
     isAuthenticated?: boolean
     onOpenAuth?: () => void
@@ -90,10 +81,6 @@ export interface ChatSidebarProps {
     editPrompt: string
     setEditPrompt: (value: string) => void
     handleApplyEdit: () => void
-    isVisualMode: boolean
-    setIsVisualMode: (value: boolean) => void
-    selectedElement: SelectedElement | null
-    handleClearSelection: () => void
     isApplyingEdit: boolean
     isCollapsed: boolean
     onClose?: () => void

@@ -27,11 +27,6 @@ export interface GeneratedCode {
     js: string
 }
 
-export interface PreviewSelectedElement {
-    tagName: string
-    textContent: string
-}
-
 export interface PreviewRuntimeError {
     message: string
     stack?: string | null
@@ -67,10 +62,7 @@ export interface GeneratedProjectFile {
 
 export interface WorkspaceScreenProps {
     onBack?: () => void
-    onPromptSubmit: (
-        prompt: string,
-        options?: { selectedElement?: PreviewSelectedElement }
-    ) => Promise<void> | void
+    onPromptSubmit: (prompt: string) => Promise<void> | void
     onRuntimeError?: (error: PreviewRuntimeError) => Promise<void> | void
     showStructureOnly?: boolean
     onSelectVersion?: (versionId: string) => void
@@ -108,7 +100,6 @@ export interface PreviewAreaProps {
     html: string
     isGenerating: boolean
     device: PreviewDevice
-    isVisualMode: boolean
     onMessage: (event: MessageEvent) => void
     iframeRef: RefObject<HTMLIFrameElement>
     fullscreen?: boolean
@@ -126,7 +117,4 @@ export interface PreviewWindowProps {
     status: 'thinking' | 'done' | 'error'
     isSidebarCollapsed: boolean
     onToggleSidebar: () => void
-    isVisualMode: boolean
-    onElementSelected: (element: PreviewSelectedElement) => void
-    onClearSelection: () => void
 }

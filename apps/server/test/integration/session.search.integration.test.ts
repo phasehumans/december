@@ -60,7 +60,6 @@ describe('Search Mode Integration Tests (#454, #455, #457)', () => {
             data: {
                 email: userEmail,
                 name: 'Search Test User',
-                username: `searchuser_${timestamp}`,
                 password: passHash,
                 emailVerified: true,
                 creditBalance: 500, // 500 cents ($5.00)
@@ -73,7 +72,6 @@ describe('Search Mode Integration Tests (#454, #455, #457)', () => {
             data: {
                 email: brokeUserEmail,
                 name: 'Broke Search User',
-                username: `searchbroke_${timestamp}`,
                 password: passHash,
                 emailVerified: true,
                 creditBalance: 0,

@@ -31,41 +31,12 @@ async function findUserByIdForExistCheck(id: string) {
     })
 }
 
-async function findUserByIdForUsernameCheck(id: string) {
-    return prisma.user.findUnique({
-        where: { id },
-        select: {
-            id: true,
-            username: true,
-        },
-    })
-}
-
-async function findUserByUsername(username: string) {
-    return prisma.user.findUnique({
-        where: { username },
-        select: {
-            id: true,
-        },
-    })
-}
-
 async function updateUserName(id: string, name: string) {
     return prisma.user.update({
         where: { id },
         data: { name },
         select: {
             name: true,
-        },
-    })
-}
-
-async function updateUsername(id: string, username: string) {
-    return prisma.user.update({
-        where: { id },
-        data: { username },
-        select: {
-            username: true,
         },
     })
 }
@@ -170,10 +141,7 @@ export const settingRepository = {
     findUserByIdForInfo,
     findUserByIdForProfile,
     findUserByIdForExistCheck,
-    findUserByIdForUsernameCheck,
-    findUserByUsername,
     updateUserName,
-    updateUsername,
 
     findUserPasswordById,
     updatePassword,

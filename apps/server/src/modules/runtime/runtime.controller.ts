@@ -23,6 +23,7 @@ const startPreview = asyncHandler(async (req: Request, res: Response) => {
         userId,
         projectId: parseData.projectId,
         versionId: parseData.versionId,
+        port: parseData.port,
     })
 
     return sendSuccess(res, 'preview started', result)

@@ -1,4 +1,3 @@
-import { QueryClient } from '@tanstack/react-query'
 import { describe, it, expect, beforeEach } from 'bun:test'
 
 import { useAppStore } from '../src/app/store'
@@ -28,17 +27,12 @@ describe('Chat Controller Completion Sound Integration', () => {
             ],
         })
 
-        const queryClient = new QueryClient()
-        queryClient.setQueryData(['profile'], { generationSound: 'FIRST_GENERATION' })
-
         // invoke sound logic directly mimicking triggerCompletionSound
-        const profile = queryClient.getQueryData<any>(['profile'])
-        const soundPreference = profile?.generationSound ?? 'FIRST_GENERATION'
         const assistantCount = useAppStore
             .getState()
             .messages.filter((m) => m.role === 'assistant').length
 
-        soundModule.playGenerationSoundNotification(soundPreference, {
+        soundModule.playGenerationSoundNotification('FIRST_GENERATION', {
             isFirstGeneration: assistantCount <= 1,
             playFn: mockPlay,
         })
@@ -62,16 +56,11 @@ describe('Chat Controller Completion Sound Integration', () => {
             ],
         })
 
-        const queryClient = new QueryClient()
-        queryClient.setQueryData(['profile'], { generationSound: 'FIRST_GENERATION' })
-
-        const profile = queryClient.getQueryData<any>(['profile'])
-        const soundPreference = profile?.generationSound ?? 'FIRST_GENERATION'
         const assistantCount = useAppStore
             .getState()
             .messages.filter((m) => m.role === 'assistant').length
 
-        soundModule.playGenerationSoundNotification(soundPreference, {
+        soundModule.playGenerationSoundNotification('FIRST_GENERATION', {
             isFirstGeneration: assistantCount <= 1,
             playFn: mockPlay,
         })

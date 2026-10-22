@@ -20,11 +20,6 @@ export interface PlannedBuildFile {
     generator: string
 }
 
-export interface PreviewSelectedElementPayload {
-    tagName: string
-    textContent: string
-}
-
 export interface AppliedProjectChangeResult {
     project: BackendProject
     version: Pick<BackendProjectVersionSummary, 'id' | 'versionNumber' | 'label' | 'status'>
@@ -47,7 +42,7 @@ export type GenerationStreamEvent =
           type: 'project-created'
           data: {
               project: BackendProject
-              version: Pick<BackendProjectVersionSummary, 'id' | 'versionNumber' | 'label'>
+              version: { id: string }
           }
       }
     | {
@@ -449,7 +444,6 @@ type ApplyProjectEditInput = {
     projectId?: string
     versionId?: string | null
     prompt: string
-    selectedElement?: PreviewSelectedElementPayload | null
     model?: string
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
@@ -621,6 +615,9 @@ const runOverSocket = async (
     })
 }
 
+/**
+ * @deprecated Legacy generation wrapper. Use standard session socket communication instead.
+ */
 const generateProjectStream = async ({
     prompt,
     sessionId,
@@ -645,8 +642,6 @@ const generateProjectStream = async ({
                 project: newSession as unknown as BackendProject,
                 version: {
                     id: newSession.id,
-                    versionNumber: 1,
-                    label: 'Initial',
                 },
             },
         })
@@ -655,22 +650,28 @@ const generateProjectStream = async ({
     return await runOverSocket(targetSessionId, prompt, onEvent, signal)
 }
 
+/**
+ * @deprecated Legacy generation wrapper. Use standard session socket communication instead.
+ */
 const applyProjectEdit = async (data: ApplyProjectEditInput) => {
     const targetSessionId = data.sessionId || data.projectId
     if (!targetSessionId) throw new Error('sessionId is required for edit')
-    // treat edit as a regular prompt in the session
-    const prompt = `[EDIT] ${data.prompt}${data.selectedElement ? ` (Element: ${data.selectedElement.tagName})` : ''}`
-    return await runOverSocket(targetSessionId, prompt, data.onEvent, data.signal)
+    return await runOverSocket(targetSessionId, data.prompt, data.onEvent, data.signal)
 }
 
+/**
+ * @deprecated Legacy generation wrapper. Use standard session socket communication instead.
+ */
 const applyProjectFix = async (data: ApplyProjectFixInput) => {
     const targetSessionId = data.sessionId || data.projectId
     if (!targetSessionId) throw new Error('sessionId is required for fix')
-    // treat fix as a regular prompt in the session
-    const prompt = `[FIX ERROR] ${data.errorMessage}\n\nStack:\n${data.stack || ''}`
+    const prompt = `Fix error: ${data.errorMessage}\n\nStack:\n${data.stack || ''}`
     return await runOverSocket(targetSessionId, prompt, data.onEvent, data.signal)
 }
 
+/**
+ * @deprecated Legacy generation wrappers. Use standard session socket communication instead.
+ */
 export const generationAPI = {
     generateProjectStream,
     applyProjectEdit,

@@ -1,8 +1,9 @@
-﻿import { z } from 'zod'
+import { z } from 'zod'
 
 export const startPreviewSchema = z.object({
     projectId: z.string().uuid(),
     versionId: z.string().uuid().optional(),
+    port: z.number().int().min(1).max(65535).optional(),
 })
 
 export const previewIdParamSchema = z.object({

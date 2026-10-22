@@ -15,7 +15,6 @@ interface ProfileBillingSettingsProps {
     profile?: {
         name: string
         email: string
-        username: string
     }
 }
 

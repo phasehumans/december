@@ -4,7 +4,6 @@ export interface Profile {
     id: string
     name: string
     email: string
-    username: string
     createdAt: string
     updatedAt: string
     emailVerified: boolean
@@ -15,11 +14,6 @@ export interface Profile {
     vercelConnected?: boolean
     vercelTeamId?: string | null
     vercelConfigurationId?: string | null
-    supabaseConnected?: boolean
-    supabaseUserId?: string | null
-    supabaseConnectedAt?: string | null
-    notionWorkspaceId?: string | null
-    notionWorkspaceName?: string | null
     hasPassword?: boolean
 }
 

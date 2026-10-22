@@ -21,10 +21,6 @@ describe('Session Service - Unit Tests', () => {
     const originalUpdateSession = sessionRepository.updateSession
     const originalFindManySessions = sessionRepository.findManySessions
     const originalFindSessionOwner = sessionRepository.findSessionOwner
-    const originalFindSessionCollaborator = sessionRepository.findSessionCollaborator
-    const originalAddCollaborator = sessionRepository.addCollaborator
-    const originalRemoveCollaborator = sessionRepository.removeCollaborator
-    const originalFindSessionInsights = sessionRepository.findSessionInsights
     const originalCountPrismaSession = prisma.session.count
     const originalCreatePrismaMessage = prisma.message.create
     const originalBalance = usageService.hasMinimumBalance
@@ -35,10 +31,6 @@ describe('Session Service - Unit Tests', () => {
         sessionRepository.updateSession = originalUpdateSession
         sessionRepository.findManySessions = originalFindManySessions
         sessionRepository.findSessionOwner = originalFindSessionOwner
-        sessionRepository.findSessionCollaborator = originalFindSessionCollaborator
-        sessionRepository.addCollaborator = originalAddCollaborator
-        sessionRepository.removeCollaborator = originalRemoveCollaborator
-        sessionRepository.findSessionInsights = originalFindSessionInsights
         prisma.session.count = originalCountPrismaSession
         prisma.message.create = originalCreatePrismaMessage
         usageService.hasMinimumBalance = originalBalance
@@ -172,7 +164,7 @@ describe('Session Service - Unit Tests', () => {
                         project: { id: testProjectId, name: 'Project 1' },
                         messages: [{ content: 'Hello AI' }],
                         user: {
-                            username: 'testuser',
+                            githubUsername: 'testuser',
                             email: 'test@example.com',
                             name: 'Test User',
                         },
@@ -203,7 +195,7 @@ describe('Session Service - Unit Tests', () => {
                                     'First message text that is quite long and needs truncation',
                             },
                         ],
-                        user: { username: null, email: 'fallback@example.com', name: null },
+                        user: { githubUsername: null, email: 'fallback@example.com', name: null },
                         reviews: [],
                     },
                 ],
@@ -429,224 +421,6 @@ describe('Session Service - Unit Tests', () => {
         })
     })
 
-    describe('Collaborators', () => {
-        it('getCollaborators throws 404 if session not found', async () => {
-            const originalFind = sessionRepository.findSessionById
-            sessionRepository.findSessionById = mock(async () => null) as any
-
-            try {
-                await expect(
-                    sessionService.getCollaborators({
-                        userId: testUserId,
-                        sessionId: testSessionId,
-                    })
-                ).rejects.toThrow(new AppError('Session not found', 404))
-            } finally {
-                sessionRepository.findSessionById = originalFind
-            }
-        })
-
-        it('addCollaborator throws 403 if caller is not the session creator', async () => {
-            const originalFind = sessionRepository.findSessionById
-            sessionRepository.findSessionById = mock(async () => ({
-                id: testSessionId,
-                userId: otherUserId, // owner is different
-            })) as any
-
-            try {
-                await expect(
-                    sessionService.addCollaborator({
-                        userId: testUserId,
-                        sessionId: testSessionId,
-                        email: 'collab@example.com',
-                    })
-                ).rejects.toThrow(
-                    new AppError('Only the session creator can add collaborators', 403)
-                )
-            } finally {
-                sessionRepository.findSessionById = originalFind
-            }
-        })
-
-        it('addCollaborator throws 404 if target user is not found', async () => {
-            const originalFind = sessionRepository.findSessionById
-            const originalFindUser = sessionRepository.findUserByEmailOrUsername
-            sessionRepository.findSessionById = mock(async () => ({
-                id: testSessionId,
-                userId: testUserId,
-            })) as any
-            sessionRepository.findUserByEmailOrUsername = mock(async () => null) as any
-
-            try {
-                await expect(
-                    sessionService.addCollaborator({
-                        userId: testUserId,
-                        sessionId: testSessionId,
-                        email: 'unknown@example.com',
-                    })
-                ).rejects.toThrow(new AppError('User not found with provided email', 404))
-            } finally {
-                sessionRepository.findSessionById = originalFind
-                sessionRepository.findUserByEmailOrUsername = originalFindUser
-            }
-        })
-
-        it('addCollaborator throws 400 if adding self or session owner', async () => {
-            const originalFind = sessionRepository.findSessionById
-            const originalFindUser = sessionRepository.findUserByEmailOrUsername
-            sessionRepository.findSessionById = mock(async () => ({
-                id: testSessionId,
-                userId: testUserId,
-            })) as any
-            sessionRepository.findUserByEmailOrUsername = mock(async () => ({
-                id: testUserId,
-                email: 'owner@example.com',
-            })) as any
-
-            try {
-                await expect(
-                    sessionService.addCollaborator({
-                        userId: testUserId,
-                        sessionId: testSessionId,
-                        email: 'owner@example.com',
-                    })
-                ).rejects.toThrow(
-                    new AppError('Cannot add yourself or session owner as collaborator', 400)
-                )
-            } finally {
-                sessionRepository.findSessionById = originalFind
-                sessionRepository.findUserByEmailOrUsername = originalFindUser
-            }
-        })
-
-        it('addCollaborator throws 400 if user is already a collaborator', async () => {
-            const originalFind = sessionRepository.findSessionById
-            const originalFindUser = sessionRepository.findUserByEmailOrUsername
-            const originalFindCollab = sessionRepository.findCollaborator
-            sessionRepository.findSessionById = mock(async () => ({
-                id: testSessionId,
-                userId: testUserId,
-            })) as any
-            sessionRepository.findUserByEmailOrUsername = mock(async () => ({
-                id: otherUserId,
-                email: 'other@example.com',
-            })) as any
-            sessionRepository.findCollaborator = mock(async () => ({
-                id: 'collab-1',
-                userId: otherUserId,
-            })) as any
-
-            try {
-                await expect(
-                    sessionService.addCollaborator({
-                        userId: testUserId,
-                        sessionId: testSessionId,
-                        email: 'other@example.com',
-                    })
-                ).rejects.toThrow(new AppError('User is already a collaborator', 400))
-            } finally {
-                sessionRepository.findSessionById = originalFind
-                sessionRepository.findUserByEmailOrUsername = originalFindUser
-                sessionRepository.findCollaborator = originalFindCollab
-            }
-        })
-
-        it('removeCollaborator throws 403 if non-creator tries to remove another collaborator', async () => {
-            const originalFind = sessionRepository.findSessionById
-            const originalFindCollab = sessionRepository.findCollaborator
-            sessionRepository.findSessionById = mock(async () => ({
-                id: testSessionId,
-                userId: 'owner-id',
-            })) as any
-            sessionRepository.findCollaborator = mock(async () => ({
-                id: 'collab-1',
-                userId: otherUserId,
-                email: 'other@example.com',
-            })) as any
-
-            try {
-                await expect(
-                    sessionService.removeCollaborator({
-                        userId: testUserId, // neither owner nor otherUserId
-                        sessionId: testSessionId,
-                        email: 'other@example.com',
-                    })
-                ).rejects.toThrow(
-                    new AppError('Only the session creator can remove other collaborators', 403)
-                )
-            } finally {
-                sessionRepository.findSessionById = originalFind
-                sessionRepository.findCollaborator = originalFindCollab
-            }
-        })
-
-        it('removeCollaborator succeeds when owner removes collaborator or collaborator removes themselves', async () => {
-            const originalFind = sessionRepository.findSessionById
-            const originalFindCollab = sessionRepository.findCollaborator
-            const originalRemove = sessionRepository.removeCollaborator
-            sessionRepository.findSessionById = mock(async () => ({
-                id: testSessionId,
-                userId: testUserId,
-            })) as any
-            sessionRepository.findCollaborator = mock(async () => ({
-                id: 'collab-1',
-                userId: otherUserId,
-                email: 'other@example.com',
-            })) as any
-            sessionRepository.removeCollaborator = mock(async () => ({ id: 'collab-1' })) as any
-
-            try {
-                const result = await sessionService.removeCollaborator({
-                    userId: testUserId,
-                    sessionId: testSessionId,
-                    email: 'other@example.com',
-                })
-                expect(result.message).toBe('collaborator removed successfully')
-            } finally {
-                sessionRepository.findSessionById = originalFind
-                sessionRepository.findCollaborator = originalFindCollab
-                sessionRepository.removeCollaborator = originalRemove
-            }
-        })
-    })
-
-    describe('getSessionInsights', () => {
-        it('calculates token estimation and activity metrics', async () => {
-            const originalFind = sessionRepository.findSessionById
-            const now = new Date()
-            const fiveMinsAgo = new Date(now.getTime() - 5 * 60 * 1000)
-
-            sessionRepository.findSessionById = mock(async () => ({
-                id: testSessionId,
-                userId: testUserId,
-                createdAt: fiveMinsAgo,
-                updatedAt: now,
-                vmStatus: 'STOPPED',
-                type: 'WEB',
-                messages: [
-                    { role: 'USER', content: '12345678' }, // 8 chars
-                    { role: 'ASSISTANT', content: '12345678' }, // 8 chars
-                ],
-            })) as any
-
-            try {
-                const result = await sessionService.getSessionInsights({
-                    userId: testUserId,
-                    sessionId: testSessionId,
-                })
-
-                expect(result.telemetry.totalMessages).toBe(2)
-                expect(result.telemetry.userMessages).toBe(1)
-                expect(result.telemetry.assistantMessages).toBe(1)
-                expect(result.telemetry.estimatedTokens).toBe(4) // 16 chars / 4 = 4 tokens
-                expect(result.telemetry.durationMinutes).toBe(5)
-                expect(result.insights).toHaveLength(3)
-            } finally {
-                sessionRepository.findSessionById = originalFind
-            }
-        })
-    })
-
     describe('caching behavior', () => {
         it('should cache getUserSessions and invalidate on renameSession', async () => {
             let repositoryCallCount = 0
@@ -667,7 +441,7 @@ describe('Session Service - Unit Tests', () => {
                             createdAt: new Date(),
                             updatedAt: new Date(),
                             messages: [],
-                            user: { username: 'testuser' },
+                            user: { githubUsername: 'testuser' },
                         },
                     ],
                     pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },

@@ -72,7 +72,7 @@ async function findSessionByIdAndUser(data: { sessionId: string; userId: string 
     return prisma.session.findFirst({
         where: {
             id: sessionId,
-            OR: [{ userId }, { collaborators: { some: { userId } } }],
+            userId,
         },
     })
 }

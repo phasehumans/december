@@ -5,7 +5,6 @@ import bcrypt from 'bcrypt'
 import { redisClient } from '../../config/redis'
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
-import { getUsername } from '../../shared/username'
 import { notificationService } from '../notification/notification.service'
 
 import { sessionCache } from './auth.cache'
@@ -73,12 +72,7 @@ const signup = async (data: Signup) => {
         return { message: 'otp sent successfully' }
     }
 
-    let name = email.split('@')[0]?.replace(/\d+/g, '')
-    const username = getUsername()
-
-    if (!name) {
-        name = username
-    }
+    const name = email.split('@')[0]?.replace(/\d+/g, '') || 'User'
 
     const hashPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS)
     const otp = crypto.randomInt(100000, 1000000).toString()
@@ -87,7 +81,6 @@ const signup = async (data: Signup) => {
     const newUser = await authRepository.createUser({
         name: name,
         email: email,
-        username: username,
         password: hashPassword,
         emailVerified: false,
         otpHash: otpHash,
@@ -347,10 +340,8 @@ const google = async (data: Google) => {
     let user = await authRepository.findUserByEmail(normalizedEmail)
 
     if (!user) {
-        const username = getUsername()
         user = await authRepository.createUser({
             email: normalizedEmail,
-            username: username,
             emailVerified: true,
             googleId: sub,
             name: name,
@@ -429,10 +420,8 @@ const github = async (data: Github) => {
     let user = await authRepository.findUserByEmail(normalizedEmail)
 
     if (!user) {
-        const username = getUsername()
         user = await authRepository.createUser({
             email: normalizedEmail,
-            username: username,
             emailVerified: true,
             githubId: sub,
             name: name,

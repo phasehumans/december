@@ -23,7 +23,6 @@ describe('Notification Integration Tests', () => {
             data: {
                 email: testEmail,
                 name: 'Notif Test User',
-                username: `notifuser-${Date.now()}`,
                 password: passHash,
                 emailVerified: true,
             },

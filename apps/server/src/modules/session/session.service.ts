@@ -26,12 +26,8 @@ import type {
     ArchiveSession,
     UnarchiveSession,
     UpdateSessionTags,
-    GetSessionInsights,
     GetSessionMessages,
     DeleteSession,
-    GetCollaborators,
-    AddCollaborator,
-    RemoveCollaborator,
     DisconnectSession,
     RehydrateSession,
     ProxyPreview,
@@ -131,13 +127,16 @@ const getUserSessions = async (data: GetUserSessions) => {
                 createdAt: session.createdAt,
                 updatedAt: session.updatedAt,
                 lastMessage: session.messages?.[0]?.content || null,
-                createdBy: session.user?.username
-                    ? `@${session.user.username.toLowerCase()}`
+                createdBy: session.user?.githubUsername
+                    ? `@${session.user.githubUsername.toLowerCase()}`
                     : session.user?.email
                       ? `@${session.user.email.split('@')[0].toLowerCase()}`
                       : '@user',
                 createdByName:
-                    session.user?.name || session.user?.username || session.user?.email || 'User',
+                    session.user?.name ||
+                    session.user?.githubUsername ||
+                    session.user?.email ||
+                    'User',
                 prNumber,
                 prState: prNumber ? 'open' : null,
                 prTitle,
@@ -291,65 +290,6 @@ const updateSessionTags = async (data: UpdateSessionTags) => {
     return updated
 }
 
-const getSessionInsights = async (data: GetSessionInsights) => {
-    const { userId, sessionId } = data
-    const session = await sessionRepository.findSessionById(sessionId, userId)
-    if (!session) {
-        throw new AppError('Session not found', 404)
-    }
-
-    const files = await loadSessionFiles({ sessionId })
-    const fileCount = Object.keys(files).length
-
-    const totalMessages = session.messages.length
-    const userMessages = session.messages.filter((m) => m.role === 'USER').length
-    const assistantMessages = session.messages.filter((m) => m.role === 'ASSISTANT').length
-
-    let totalChars = 0
-    for (const msg of session.messages) {
-        totalChars += msg.content ? msg.content.length : 0
-    }
-    const estimatedTokens = Math.ceil(totalChars / 4)
-
-    const createdTime = new Date(session.createdAt).getTime()
-    const updatedTime = new Date(session.updatedAt).getTime()
-    const durationMinutes = Math.max(1, Math.round((updatedTime - createdTime) / (1000 * 60)))
-
-    const insightsList = [
-        {
-            type: 'METRIC',
-            title: 'Message Activity',
-            message: `Total ${totalMessages} messages (${userMessages} user prompts, ${assistantMessages} assistant responses).`,
-        },
-        {
-            type: 'METRIC',
-            title: 'Workspace Files',
-            message: `Generated and tracked ${fileCount} workspace files in session storage.`,
-        },
-        {
-            type: 'TELEMETRY',
-            title: 'Estimated Consumption',
-            message: `Approximately ${estimatedTokens.toLocaleString()} tokens exchanged across ${durationMinutes} mins active duration.`,
-        },
-    ]
-
-    return {
-        telemetry: {
-            totalMessages,
-            userMessages,
-            assistantMessages,
-            fileCount,
-            estimatedTokens,
-            durationMinutes,
-            vmStatus: session.vmStatus,
-            type: session.type,
-            createdAt: session.createdAt,
-            updatedAt: session.updatedAt,
-        },
-        insights: insightsList,
-    }
-}
-
 const deleteSession = async (data: DeleteSession) => {
     const { userId, sessionId } = data
 
@@ -406,73 +346,6 @@ const deleteSession = async (data: DeleteSession) => {
     await invalidateUserRecentSessions(userId)
 
     return { message: 'session deleted successfully' }
-}
-
-const getCollaborators = async (data: GetCollaborators) => {
-    const { userId, sessionId } = data
-    const session = await sessionRepository.findSessionById(sessionId, userId)
-    if (!session) {
-        throw new AppError('Session not found', 404)
-    }
-
-    const collaborators = await sessionRepository.findCollaboratorsBySessionId(sessionId)
-    return { collaborators }
-}
-
-const addCollaborator = async (data: AddCollaborator) => {
-    const { userId, sessionId, email } = data
-    const session = await sessionRepository.findSessionById(sessionId, userId)
-    if (!session) {
-        throw new AppError('Session not found', 404)
-    }
-
-    if (session.userId !== userId) {
-        throw new AppError('Only the session creator can add collaborators', 403)
-    }
-
-    const collaboratorUser = await sessionRepository.findUserByEmailOrUsername(email)
-    if (!collaboratorUser) {
-        throw new AppError('User not found with provided email', 404)
-    }
-
-    if (collaboratorUser.id === userId || collaboratorUser.id === session.userId) {
-        throw new AppError('Cannot add yourself or session owner as collaborator', 400)
-    }
-
-    const existingCollaborator = await sessionRepository.findCollaborator(
-        sessionId,
-        collaboratorUser.email
-    )
-    if (existingCollaborator) {
-        throw new AppError('User is already a collaborator', 400)
-    }
-
-    const collaborator = await sessionRepository.addCollaborator(
-        sessionId,
-        collaboratorUser.id,
-        collaboratorUser.email
-    )
-    return { collaborator }
-}
-
-const removeCollaborator = async (data: RemoveCollaborator) => {
-    const { userId, sessionId, email } = data
-    const session = await sessionRepository.findSessionById(sessionId, userId)
-    if (!session) {
-        throw new AppError('Session not found', 404)
-    }
-
-    const existingCollaborator = await sessionRepository.findCollaborator(sessionId, email)
-    if (!existingCollaborator) {
-        throw new AppError('Collaborator not found', 404)
-    }
-
-    if (session.userId !== userId && existingCollaborator.userId !== userId) {
-        throw new AppError('Only the session creator can remove other collaborators', 403)
-    }
-
-    await sessionRepository.removeCollaborator(sessionId, email)
-    return { message: 'collaborator removed successfully' }
 }
 
 const rehydrateSession = async (data: RehydrateSession) => {
@@ -800,11 +673,7 @@ export const sessionService = {
     archiveSession,
     unarchiveSession,
     updateSessionTags,
-    getSessionInsights,
     deleteSession,
-    getCollaborators,
-    addCollaborator,
-    removeCollaborator,
     rehydrateSession,
     disconnectSession,
     proxyPreview,

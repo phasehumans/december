@@ -30,50 +30,6 @@ async function updateUserVercel(data: {
     })
 }
 
-async function updateUserSupabase(data: {
-    id: string
-    supabaseAccessToken: string
-    supabaseRefreshToken: string
-    supabaseTokenExpiresAt: Date
-    supabaseTokenScope: string | null
-}) {
-    const {
-        id,
-        supabaseAccessToken,
-        supabaseRefreshToken,
-        supabaseTokenExpiresAt,
-        supabaseTokenScope,
-    } = data
-    return prisma.user.update({
-        where: { id },
-        data: {
-            supabaseConnected: true,
-            supabaseAccessToken,
-            supabaseRefreshToken,
-            supabaseTokenExpiresAt,
-            supabaseTokenScope,
-            supabaseConnectedAt: new Date(),
-        },
-    })
-}
-
-async function updateUserNotion(data: {
-    id: string
-    notionAccessToken: string
-    notionWorkspaceId: string
-    notionWorkspaceName: string
-}) {
-    const { id, notionAccessToken, notionWorkspaceId, notionWorkspaceName } = data
-    return prisma.user.update({
-        where: { id },
-        data: {
-            notionAccessToken,
-            notionWorkspaceId,
-            notionWorkspaceName,
-        },
-    })
-}
-
 async function updateUserGithub(data: { id: string; username: string; accessToken: string }) {
     const { id, username, accessToken } = data
     return prisma.user.update({
@@ -97,7 +53,5 @@ export const integrationRepository = {
     findUserById,
     findUserFirst,
     updateUserVercel,
-    updateUserSupabase,
-    updateUserNotion,
     updateUserGithub,
 }

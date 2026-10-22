@@ -30,56 +30,6 @@ const connectVercel = asyncHandler(async (req: Request, res: Response) => {
     return res.redirect(formatRedirect(redirectPath))
 })
 
-const connectSupabase = asyncHandler(async (req: Request, res: Response) => {
-    const { code, state } = connectOAuthQuerySchema.parse(req.query)
-
-    let userId = state
-    let redirectPath = '/settings/connections'
-    if (state.includes(':')) {
-        const parts = state.split(':')
-        userId = parts[0] as string
-        redirectPath = parts.slice(1).join(':') || '/settings/connections'
-    }
-
-    if (!userId && (req as any).user?.userId) {
-        userId = (req as any).user.userId
-    }
-
-    if (userId) {
-        await integrationsService.connectSupabase({
-            userId,
-            code,
-        })
-    }
-
-    return res.redirect(formatRedirect(redirectPath))
-})
-
-const connectNotion = asyncHandler(async (req: Request, res: Response) => {
-    const { code, state } = connectOAuthQuerySchema.parse(req.query)
-
-    let userId = state
-    let redirectPath = '/settings/connections'
-    if (state.includes(':')) {
-        const parts = state.split(':')
-        userId = parts[0] as string
-        redirectPath = parts.slice(1).join(':') || '/settings/connections'
-    }
-
-    if (!userId && (req as any).user?.userId) {
-        userId = (req as any).user.userId
-    }
-
-    if (userId) {
-        await integrationsService.connectNotion({
-            userId,
-            code,
-        })
-    }
-
-    return res.redirect(formatRedirect(redirectPath))
-})
-
 const connectGithub = asyncHandler(async (req: Request, res: Response) => {
     const { code, state } = connectOAuthQuerySchema.parse(req.query)
 
@@ -108,7 +58,5 @@ const connectGithub = asyncHandler(async (req: Request, res: Response) => {
 
 export const integrationsController = {
     connectVercel,
-    connectSupabase,
-    connectNotion,
     connectGithub,
 }

@@ -6,7 +6,6 @@ import {
     changePasswordSchema,
     updateNameSchema,
     updateNotificationSchema,
-    updateUsernameSchema,
     dismissOnboardingCardSchema,
     submitFeedbackSchema,
 } from './setting.schema'
@@ -48,20 +47,6 @@ const updateName = asyncHandler(async (req: Request, res: Response) => {
 
     const result = await settingService.updateName({ userId, name })
     return sendSuccess(res, 'name updated successfully', result)
-})
-
-const updateUsername = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parseData = updateUsernameSchema.parse(req.body)
-    const { username } = parseData
-
-    const result = await settingService.updateUsername({ userId, username })
-    return sendSuccess(res, 'username updated successfully', result)
 })
 
 const changePassword = asyncHandler(async (req: Request, res: Response) => {
@@ -144,7 +129,6 @@ export const settingController = {
     getMe,
     getProfile,
     updateName,
-    updateUsername,
     changePassword,
     updateNotifications,
     completeOnboarding,

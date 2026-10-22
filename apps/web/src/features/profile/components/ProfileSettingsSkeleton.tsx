@@ -359,15 +359,6 @@ export const ProfileAccountSkeleton: React.FC = () => (
                     <Skeleton className="w-full sm:w-[138px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
                 </div>
 
-                {/* username row */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                    <div className="flex flex-col gap-0.5">
-                        <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-3.5 w-24 bg-white/[0.025] rounded" />
-                    </div>
-                    <Skeleton className="w-full sm:w-[136px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
-                </div>
-
                 {/* email row */}
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-0.5">

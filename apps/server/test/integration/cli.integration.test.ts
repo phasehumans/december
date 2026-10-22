@@ -17,7 +17,6 @@ describe('CLI API Endpoints', () => {
             data: {
                 name: 'CLI Test User',
                 email: `cli-test-${Date.now()}@example.com`,
-                username: `clitest${Date.now()}`,
                 creditBalance: 100,
             },
         })

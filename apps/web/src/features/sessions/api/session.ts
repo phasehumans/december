@@ -245,41 +245,6 @@ export const sessionAPI = {
         }>(`/platform/deployments/${deploymentId}/status`)
     },
 
-    getCollaborators: (sessionId: string) => {
-        return apiRequest<
-            {
-                id: string
-                projectId: string
-                userId: string
-                email: string
-                createdAt: string
-                user?: { username: string; name?: string | null }
-            }[]
-        >(`/session/${sessionId}/collaborators`)
-    },
-
-    addCollaborator: (sessionId: string, email: string) => {
-        return apiRequest<{
-            id: string
-            projectId: string
-            userId: string
-            email: string
-            createdAt: string
-        }>(`/session/${sessionId}/collaborators`, {
-            method: 'POST',
-            body: JSON.stringify({ email }),
-        })
-    },
-
-    removeCollaborator: (sessionId: string, email: string) => {
-        return apiRequest<{ message: string }>(
-            `/session/${sessionId}/collaborators/${encodeURIComponent(email)}`,
-            {
-                method: 'DELETE',
-            }
-        )
-    },
-
     renameSession: async (id: string, title: string): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/rename`, {
             method: 'PATCH',
@@ -314,10 +279,6 @@ export const sessionAPI = {
         await apiRequest<void>(`/session/${id}`, {
             method: 'DELETE',
         })
-    },
-
-    getSessionInsights: async (id: string): Promise<{ insights: any[] }> => {
-        return apiRequest<{ insights: any[] }>(`/session/${id}/insights`)
     },
 
     streamSearch: async (

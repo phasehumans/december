@@ -17,14 +17,6 @@ function normalizePath(filePath: string) {
     return normalized.replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
-export function currentKey(projectId: string, path: string) {
-    return `projects/${projectId}/current-version/${normalizePath(path)}`
-}
-
-export function currentPrefix(projectId: string) {
-    return `projects/${projectId}/current-version/`
-}
-
 export function sessionWorkspaceKey(sessionId: string, path: string) {
     return `sessions/${sessionId}/workspace/${normalizePath(path)}`
 }
@@ -35,14 +27,6 @@ export function sessionWorkspacePrefix(sessionId: string) {
 
 export function sessionPrefix(sessionId: string) {
     return `sessions/${sessionId}/`
-}
-
-export function versionKey(projectId: string, versionId: string, path: string) {
-    return `projects/${projectId}/previous-version/${versionId}/${normalizePath(path)}`
-}
-
-export function versionPrefix(projectId: string, versionId: string) {
-    return `projects/${projectId}/previous-version/${versionId}/`
 }
 
 export function projectPrefix(projectId: string) {

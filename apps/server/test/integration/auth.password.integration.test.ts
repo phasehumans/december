@@ -26,7 +26,6 @@ describe('Auth Password Reset Integration Tests', () => {
             data: {
                 email: testEmail,
                 name: 'Password Test User',
-                username: `passuser-${Date.now()}`,
                 password: passHash,
                 emailVerified: true,
             },

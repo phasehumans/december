@@ -8,7 +8,6 @@ import { settingRepository } from './setting.repository'
 export const settingSelect = {
     id: true,
     name: true,
-    username: true,
     email: true,
     createdAt: true,
     updatedAt: true,
@@ -20,11 +19,6 @@ export const settingSelect = {
     vercelConnected: true,
     vercelTeamId: true,
     vercelConfigurationId: true,
-    supabaseConnected: true,
-    supabaseUserId: true,
-    supabaseConnectedAt: true,
-    notionWorkspaceId: true,
-    notionWorkspaceName: true,
     notifyProjectActivity: true,
     notifyProductUpdates: true,
     notifySecurityAlerts: true,
@@ -41,7 +35,6 @@ import type {
     GetMe,
     GetProfile,
     UpdateName,
-    UpdateUsername,
     ChangePassword,
     UpdateNotifications,
     CompleteOnboarding,
@@ -102,40 +95,6 @@ const updateName = async (data: UpdateName) => {
     await invalidateUserSettingCache(userId)
 
     return updatedUser
-}
-
-const updateUsername = async (data: UpdateUsername) => {
-    const { userId, username } = data
-
-    const existingUser = await settingRepository.findUserByIdForUsernameCheck(userId)
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    if (username === existingUser.username) {
-        throw new AppError('new username must be different from the current one', 400)
-    }
-
-    const existingUsername = await settingRepository.findUserByUsername(username)
-
-    if (existingUsername) {
-        throw new AppError(`${username} is already taken, try another one`, 409)
-    }
-
-    try {
-        const updatedUser = await settingRepository.updateUsername(userId, username)
-        await invalidateUserSettingCache(userId)
-
-        return updatedUser
-    } catch (error: any) {
-        // race condition safety
-        if (error.code === 'P2002') {
-            throw new AppError(`${username} is already taken, try another one`, 409)
-        }
-
-        throw error
-    }
 }
 
 const changePassword = async (data: ChangePassword) => {
@@ -276,7 +235,6 @@ export const settingService = {
     getMe,
     getProfile,
     updateName,
-    updateUsername,
     changePassword,
     updateNotifications,
     completeOnboarding,

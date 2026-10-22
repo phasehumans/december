@@ -11,7 +11,6 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     html,
     isGenerating,
     device,
-    isVisualMode,
     onMessage,
     iframeRef,
     fullscreen = false,
@@ -159,10 +158,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                     /* 3. main iframe browser viewport (kept visible even on errors unless explicitly failed during startup) */
                     <iframe
                         ref={iframeRef}
-                        className={cn(
-                            'w-full h-full border-0 transition-opacity bg-white [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]/80 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
-                            isVisualMode ? 'cursor-crosshair' : ''
-                        )}
+                        className="w-full h-full border-0 transition-opacity bg-white [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]/80 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
                         title="Preview"
                         {...(isLivePreview ? { src: previewUrl } : { srcDoc })}
                     />

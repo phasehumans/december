@@ -139,8 +139,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     'connectors',
                     'github',
                     'vercel',
-                    'supabase',
-                    'notion',
                     'figma',
                     'linear',
                     'sentry',

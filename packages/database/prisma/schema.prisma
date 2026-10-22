@@ -23,7 +23,6 @@ model User {
   githubUsername         String?
   githubConnected        Boolean         @default(false)
   githubAppInstall       Boolean         @default(false)
-  username               String          @unique
   notifyProductUpdates   Boolean         @default(true)
   notifyProjectActivity  Boolean         @default(true)
   notifySecurityAlerts   Boolean         @default(true)
@@ -33,16 +32,6 @@ model User {
   vercelConnected        Boolean         @default(false)
   vercelTeamId           String?
   vercelConfigurationId  String?
-  notionAccessToken      String?
-  notionWorkspaceId      String?
-  notionWorkspaceName    String?
-  supabaseAccessToken    String?
-  supabaseConnected      Boolean         @default(false)
-  supabaseConnectedAt    DateTime?
-  supabaseRefreshToken   String?
-  supabaseTokenExpiresAt DateTime?
-  supabaseTokenScope     String?
-  supabaseUserId         String?
   creditBalance          Float           @default(0)
   hasCompletedOnboarding Boolean         @default(false)
   welcomeCardDone        Boolean         @default(false)
@@ -54,7 +43,6 @@ model User {
   sessions           Session[]
   walletTransactions WalletTransaction[]
   usageEvents        UsageEvent[]
-  collaborations     SessionCollaborator[]
   deviceCodes        DeviceCode[]
   redeemClaims       RedeemCodeClaim[]
   githubInstallations GithubAppInstallation[]
@@ -131,8 +119,6 @@ model Session {
   messages        Message[]
   settings        SessionSettings?
   memories        SessionMemory[]
-  sessionMemories AgentSessionMemory[]
-  collaborators      SessionCollaborator[]
   usageEvents        UsageEvent[]
   durableSteps       DurableStep[]
   mailboxMessages    MailboxMessage[]
@@ -249,17 +235,6 @@ model SessionMemory {
   @@index([sessionId])
 }
 
-model AgentSessionMemory {
-  id             String   @id @default(uuid())
-  sessionId      String
-  errorSignature String
-  createdAt      DateTime @default(now())
-
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-}
-
 model Message {
   id        String      @id @default(uuid())
   role      MessageRole
@@ -274,24 +249,6 @@ model Message {
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, sequence])
-}
-
-model SessionCollaborator {
-  id        String   @id @default(uuid())
-  sessionId String
-  userId    String
-  email     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([sessionId, userId])
-  @@unique([sessionId, email])
-  @@index([sessionId])
-  @@index([userId])
-  @@index([email])
 }
 
 model WalletTransaction {

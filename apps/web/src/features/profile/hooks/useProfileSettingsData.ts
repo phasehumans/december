@@ -10,7 +10,6 @@ type UseProfileSettingsDataOptions = {
     setProfileActionError: (message: string | null) => void
     onNameMutate: () => void
     onNameSuccess: () => void
-    onUsernameMutate: () => void
     onPasswordSuccess: () => void
 }
 
@@ -51,7 +50,6 @@ export const useProfileSettingsData = ({
     setProfileActionError,
     onNameMutate,
     onNameSuccess,
-    onUsernameMutate,
     onPasswordSuccess,
 }: UseProfileSettingsDataOptions) => {
     const queryClient = useQueryClient()
@@ -90,37 +88,6 @@ export const useProfileSettingsData = ({
         onSuccess: () => {
             setProfileActionError(null)
             onNameSuccess()
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: profileQueryKey })
-        },
-    })
-
-    const updateUsernameMutation = useMutation({
-        mutationFn: profileAPI.updateUsername,
-        onMutate: async ({ username }) => {
-            setProfileActionError(null)
-            await queryClient.cancelQueries({ queryKey: profileQueryKey })
-
-            const previousProfile = queryClient.getQueryData<Profile>(profileQueryKey)
-
-            queryClient.setQueryData<Profile>(profileQueryKey, (currentProfile) =>
-                currentProfile ? { ...currentProfile, username } : currentProfile
-            )
-
-            onUsernameMutate()
-
-            return { previousProfile }
-        },
-        onError: (error, _variables, context) => {
-            if (context?.previousProfile) {
-                queryClient.setQueryData(profileQueryKey, context.previousProfile)
-            }
-
-            setProfileActionError(getErrorMessage(error, 'Failed to update username'))
-        },
-        onSuccess: () => {
-            setProfileActionError(null)
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: profileQueryKey })
@@ -198,7 +165,6 @@ export const useProfileSettingsData = ({
         profile,
         profileQuery,
         updateNameMutation,
-        updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
         completeOnboardingMutation,

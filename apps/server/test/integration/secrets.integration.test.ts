@@ -20,7 +20,6 @@ describe('Secrets Module API Endpoints', () => {
         const user = await prisma.user.create({
             data: {
                 name: 'Secrets Test User',
-                username: `secretstest_${Date.now()}`,
                 email: testEmail,
                 password: hashedPassword,
                 emailVerified: true,

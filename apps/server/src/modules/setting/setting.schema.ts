@@ -7,14 +7,6 @@ export const updateNameSchema = z.object({
         .max(20, 'name must be at most 20 characters'),
 })
 
-export const updateUsernameSchema = z.object({
-    username: z
-        .string({ message: 'username is required' })
-        .min(6, 'username must be at least 6 characters')
-        .max(20, 'username must be at most 20 characters')
-        .regex(/^[a-z_]+$/, 'username can only contain lowercase letters and underscores'),
-})
-
 export const changePasswordSchema = z.object({
     currentPassword: z
         .string()

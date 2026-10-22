@@ -5,16 +5,6 @@ export type ConnectVercel = {
     configurationId?: string
 }
 
-export type ConnectSupabase = {
-    userId: string
-    code: string
-}
-
-export type ConnectNotion = {
-    userId: string
-    code: string
-}
-
 export type ConnectGithub = {
     userId: string
     accessToken: string

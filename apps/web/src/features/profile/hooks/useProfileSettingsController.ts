@@ -23,7 +23,6 @@ export const useProfileSettingsController = () => {
             error: profileError,
         },
         updateNameMutation,
-        updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
     } = useProfileSettingsData({
@@ -32,7 +31,6 @@ export const useProfileSettingsController = () => {
         onNameSuccess: () => {
             setNameModalOpen(false)
         },
-        onUsernameMutate: () => {},
         onPasswordSuccess: () => {
             setPasswordModalOpen(false)
             setCurrentPassword('')
@@ -43,8 +41,6 @@ export const useProfileSettingsController = () => {
 
     const isGithubConnected = Boolean(profile?.githubAppInstall || profile?.githubConnected)
     const isVercelConnected = profile?.vercelConnected ?? false
-    const isSupabaseConnected = profile?.supabaseConnected ?? false
-    const isNotionConnected = Boolean(profile?.notionWorkspaceId)
     const emailNotifications = profile?.notifyProjectActivity ?? true
     const productUpdates = profile?.notifyProductUpdates ?? true
     const securityAlerts = profile?.notifySecurityAlerts ?? true
@@ -114,14 +110,6 @@ export const useProfileSettingsController = () => {
         redirectToIntegration(profileAPI.getVercelConnectUrl)
     }
 
-    const connectSupabase = () => {
-        redirectToIntegration(profileAPI.getSupabaseConnectUrl)
-    }
-
-    const connectNotion = () => {
-        redirectToIntegration(profileAPI.getNotionConnectUrl)
-    }
-
     return {
         profile,
         isProfileLoading,
@@ -146,13 +134,10 @@ export const useProfileSettingsController = () => {
         setNewPassword,
         setConfirmPassword,
         updateNameMutation,
-        updateUsernameMutation,
         updatePasswordMutation,
         updateNotificationMutation,
         isGithubConnected,
         isVercelConnected,
-        isSupabaseConnected,
-        isNotionConnected,
         emailNotifications,
         productUpdates,
         securityAlerts,
@@ -164,7 +149,5 @@ export const useProfileSettingsController = () => {
         handleNotificationToggle,
         connectGithub,
         connectVercel,
-        connectSupabase,
-        connectNotion,
     }
 }

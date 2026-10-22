@@ -27,7 +27,6 @@ describe('Session Integration Tests', () => {
             data: {
                 email: user1Email,
                 name: 'Session Test User 1',
-                username: `sessuserone_${timestamp}`,
                 password: passHash,
                 emailVerified: true,
                 creditBalance: 5000,
@@ -40,7 +39,6 @@ describe('Session Integration Tests', () => {
             data: {
                 email: user2Email,
                 name: 'Session Test User 2',
-                username: `sessusertwo_${timestamp}`,
                 password: passHash,
                 emailVerified: true,
                 creditBalance: 5000,
@@ -178,18 +176,6 @@ describe('Session Integration Tests', () => {
         expect(unarchRes.body.data.session.isArchived).toBe(false)
     })
 
-    it('8. GET /api/v1/session/:id/insights - returns session telemetry and insights', async () => {
-        const res = await request(app)
-            .get(`/api/v1/session/${createdSessionId}/insights`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${user1Token}`)
-
-        expect(res.status).toBe(200)
-        expect(res.body.data.telemetry).toBeDefined()
-        expect(res.body.data.telemetry.totalMessages).toBe(1)
-        expect(res.body.data.insights).toBeArray()
-    })
-
     it('9. GET /api/v1/session/:id/rehydrate - rehydrates session state', async () => {
         const res = await request(app)
             .get(`/api/v1/session/${createdSessionId}/rehydrate`)
@@ -221,55 +207,6 @@ describe('Session Integration Tests', () => {
         expect(res.status).toBe(200)
         expect(res.body.data.port).toBe(3000)
         expect(res.body.data.targetHost).toContain('3000')
-    })
-
-    it('12. Collaborator Management - add, list, permission check, and remove', async () => {
-        // User 2 tries to access User 1's session before being added -> 404 (or access denied)
-        const unauthGet = await request(app)
-            .get(`/api/v1/session/${createdSessionId}`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${user2Token}`)
-        expect(unauthGet.status).toBe(404)
-
-        // User 1 adds User 2 as collaborator
-        const addRes = await request(app)
-            .post(`/api/v1/session/${createdSessionId}/collaborators`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${user1Token}`)
-            .send({ email: user2Email })
-
-        expect(addRes.status).toBe(200)
-        expect(addRes.body.data.collaborator.userId).toBe(user2Id)
-
-        // User 2 can now access the session
-        const authGet = await request(app)
-            .get(`/api/v1/session/${createdSessionId}`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${user2Token}`)
-        expect(authGet.status).toBe(200)
-
-        // User 2 cannot add another collaborator (403)
-        const invalidAdd = await request(app)
-            .post(`/api/v1/session/${createdSessionId}/collaborators`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${user2Token}`)
-            .send({ email: 'someother@example.com' })
-        expect(invalidAdd.status).toBe(403)
-
-        // User 1 removes User 2 from collaborators
-        const removeRes = await request(app)
-            .delete(`/api/v1/session/${createdSessionId}/collaborators/${user2Email}`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${user1Token}`)
-
-        expect(removeRes.status).toBe(200)
-
-        // User 2 can no longer access the session
-        const revokedGet = await request(app)
-            .get(`/api/v1/session/${createdSessionId}`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${user2Token}`)
-        expect(revokedGet.status).toBe(404)
     })
 
     it('13. DELETE /api/v1/session/:id - non-creator cannot delete (403)', async () => {

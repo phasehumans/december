@@ -1,7 +1,5 @@
 import { prisma } from '@december/database'
 
-import type { PreviewManifestRef } from '../../shared/preview-manifest.types'
-
 export type SessionRecord = NonNullable<
     Awaited<ReturnType<typeof prisma.session.findFirst>>
 >
@@ -70,6 +68,7 @@ export type StartPreview = {
     userId: string
     projectId: string
     versionId?: string
+    port?: number
 }
 
 export type PreviewIdentifier = {
@@ -79,7 +78,22 @@ export type PreviewIdentifier = {
 
 export type NotifyManifestPublished = {
     sessionId: string
-    manifest: PreviewManifestRef
+    manifest?: Record<string, any> | null
+    port?: number
+}
+
+export type SetListeningPort = {
+    sessionId: string
+    port: number
+}
+
+export type SetSessionListeningPort = {
+    sessionId: string
+    port: number
+}
+
+export type GetSessionListeningPort = {
+    sessionId: string
 }
 
 export type RecordRuntimeStatus = {

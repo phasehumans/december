@@ -12,12 +12,7 @@ import {
     unarchiveSessionParamsSchema,
     updateSessionTagsParamsSchema,
     updateSessionTagsBodySchema,
-    getSessionInsightsParamsSchema,
     deleteSessionParamsSchema,
-    getCollaboratorsParamsSchema,
-    addCollaboratorParamsSchema,
-    addCollaboratorBodySchema,
-    removeCollaboratorParamsSchema,
     disconnectSessionParamsSchema,
     rehydrateSessionParamsSchema,
     proxyPreviewParamsSchema,
@@ -131,18 +126,6 @@ export const updateSessionTags = asyncHandler(async (req: Request, res: Response
     return sendSuccess(res, 'session tags updated successfully', { session })
 })
 
-export const getSessionInsights = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-    if (!userId) throw new AppError('unauthorized', 401)
-    const { id } = getSessionInsightsParamsSchema.parse(req.params)
-
-    const result = await sessionService.getSessionInsights({
-        userId,
-        sessionId: id,
-    })
-    return sendSuccess(res, 'session insights fetched successfully', result)
-})
-
 export const deleteSession = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
     if (!userId) throw new AppError('unauthorized', 401)
@@ -151,45 +134,6 @@ export const deleteSession = asyncHandler(async (req: Request, res: Response) =>
     const result = await sessionService.deleteSession({
         userId,
         sessionId: id,
-    })
-    return sendSuccess(res, result.message, result)
-})
-
-export const getCollaborators = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-    if (!userId) throw new AppError('unauthorized', 401)
-    const { id } = getCollaboratorsParamsSchema.parse(req.params)
-
-    const collaborators = await sessionService.getCollaborators({
-        userId,
-        sessionId: id,
-    })
-    return sendSuccess(res, 'collaborators fetched successfully', collaborators)
-})
-
-export const addCollaborator = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-    if (!userId) throw new AppError('unauthorized', 401)
-    const { id } = addCollaboratorParamsSchema.parse(req.params)
-    const { email } = addCollaboratorBodySchema.parse(req.body)
-
-    const collaborator = await sessionService.addCollaborator({
-        userId,
-        sessionId: id,
-        email,
-    })
-    return sendSuccess(res, 'collaborator added successfully', collaborator)
-})
-
-export const removeCollaborator = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-    if (!userId) throw new AppError('unauthorized', 401)
-    const { id, email } = removeCollaboratorParamsSchema.parse(req.params)
-
-    const result = await sessionService.removeCollaborator({
-        userId,
-        sessionId: id,
-        email,
     })
     return sendSuccess(res, result.message, result)
 })
@@ -315,11 +259,7 @@ export const sessionController = {
     archiveSession,
     unarchiveSession,
     updateSessionTags,
-    getSessionInsights,
     deleteSession,
-    getCollaborators,
-    addCollaborator,
-    removeCollaborator,
     rehydrateSession,
     disconnectSession,
     proxyPreview,
