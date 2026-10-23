@@ -145,3 +145,7 @@ export const submitQuestionAnswerBodySchema = z.object({
 export const getPendingQuestionParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
+
+export const getSessionDesktopViewportParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})

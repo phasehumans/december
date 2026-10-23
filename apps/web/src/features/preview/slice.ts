@@ -5,6 +5,7 @@ import {
     PreviewSessionStatus,
     SessionPlan,
     SessionTestReport,
+    BrowserViewportData,
 } from '@/features/preview/types'
 import { mapStoredFilesToGeneratedFiles } from '@/features/preview/utils'
 
@@ -18,6 +19,7 @@ export interface PreviewSlice {
     pullRequest: any | null
     sessionPlan: SessionPlan | null
     testReport: SessionTestReport | null
+    desktopViewport: BrowserViewportData | null
     setGeneratedFiles: (files: Record<string, GeneratedProjectFile>) => void
     setActiveGeneratedFilePath: (path: string | null) => void
     setPreviewSession: (session: PreviewSessionStatus | null) => void
@@ -27,6 +29,7 @@ export interface PreviewSlice {
     setPullRequest: (pullRequest: any | null) => void
     setSessionPlan: (sessionPlan: SessionPlan | null) => void
     setTestReport: (testReport: SessionTestReport | null) => void
+    setDesktopViewport: (desktopViewport: BrowserViewportData | null) => void
     replaceGeneratedOutput: (files: Record<string, string>, preferredPath?: string | null) => void
     resetGeneratedOutput: () => void
     startGeneratedFile: (data: { path: string; purpose: string; generator: string }) => void
@@ -45,6 +48,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
     pullRequest: null,
     sessionPlan: null,
     testReport: null,
+    desktopViewport: null,
     setGeneratedFiles: (generatedFiles) => set({ generatedFiles }),
     setActiveGeneratedFilePath: (activeGeneratedFilePath) => set({ activeGeneratedFilePath }),
     setPreviewSession: (previewSession) => set({ previewSession }),
@@ -54,6 +58,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
     setPullRequest: (pullRequest) => set({ pullRequest }),
     setSessionPlan: (sessionPlan) => set({ sessionPlan }),
     setTestReport: (testReport) => set({ testReport }),
+    setDesktopViewport: (desktopViewport) => set({ desktopViewport }),
     replaceGeneratedOutput: (files, preferredPath) => {
         const paths = Object.keys(files)
         const nextActivePath =
@@ -72,6 +77,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
         get().setPullRequest(null)
         get().setSessionPlan(null)
         get().setTestReport(null)
+        get().setDesktopViewport(null)
     },
     startGeneratedFile: (data) => {
         get().setGeneratedFiles({

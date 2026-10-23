@@ -13,7 +13,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { ChangesWorkspace } from './ChangesWorkspace'
-import { PreviewArea } from './PreviewArea'
+import { DesktopWorkspace } from './DesktopWorkspace'
 import { TerminalWorkspace } from './TerminalWorkspace'
 import { WorkspaceHeader } from './WorkspaceHeader'
 import { WorkspaceScreenMainContent } from './WorkspaceScreenMainContent'
@@ -708,12 +708,10 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                         </div>
 
                         <div className="flex-1 min-h-0 relative">
-                            <PreviewArea
+                            <DesktopWorkspace
+                                sessionId={previewSession?.previewId || projectId || undefined}
                                 isGenerating={isGenerating}
-                                onMessage={handleIframeMessage}
                                 iframeRef={iframeRef}
-                                fullscreen
-                                showStructureOnly={showStructureOnly}
                                 previewUrl={previewSession?.previewUrl}
                                 previewState={previewSession?.state ?? null}
                                 previewError={previewSession?.lastError ?? null}

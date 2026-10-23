@@ -2,8 +2,8 @@ import { Maximize2, Minimize2 } from 'lucide-react'
 import React from 'react'
 
 import { ChangesWorkspace } from './ChangesWorkspace'
+import { DesktopWorkspace } from './DesktopWorkspace'
 import { PlanChecklistPanel } from './PlanChecklistPanel'
-import { PreviewArea } from './PreviewArea'
 import { PullRequestsWorkspace } from './PullRequestsWorkspace'
 import { TerminalWorkspace } from './TerminalWorkspace'
 import { TestVerificationPanel } from './TestVerificationPanel'
@@ -164,11 +164,10 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
                         : 'hidden'
                 }
             >
-                <PreviewArea
+                <DesktopWorkspace
+                    sessionId={previewSession?.previewId || projectId || undefined}
                     isGenerating={isGenerating}
-                    onMessage={onIframeMessage}
                     iframeRef={iframeRef}
-                    showStructureOnly={showStructureOnly}
                     previewUrl={previewSession?.previewUrl}
                     previewState={previewSession?.state ?? null}
                     previewError={previewSession?.lastError ?? null}

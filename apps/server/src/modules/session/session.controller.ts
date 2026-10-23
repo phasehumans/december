@@ -29,6 +29,7 @@ import {
     submitQuestionAnswerParamsSchema,
     submitQuestionAnswerBodySchema,
     getPendingQuestionParamsSchema,
+    getSessionDesktopViewportParamsSchema,
 } from './session.schema'
 import { sessionService } from './session.service'
 
@@ -358,6 +359,15 @@ export const getPendingQuestion = asyncHandler(async (req: Request, res: Respons
     return sendSuccess(res, 'pending question fetched successfully', result)
 })
 
+export const getSessionDesktopViewport = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = getSessionDesktopViewportParamsSchema.parse(req.params)
+
+    const result = await sessionService.getSessionDesktopViewport({ userId, sessionId: id })
+    return sendSuccess(res, 'session desktop viewport fetched successfully', result)
+})
+
 export const sessionController = {
     getSessions,
     createSession,
@@ -381,4 +391,5 @@ export const sessionController = {
     getSessionPreviewPort,
     submitQuestionAnswer,
     getPendingQuestion,
+    getSessionDesktopViewport,
 }

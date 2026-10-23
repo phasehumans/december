@@ -196,6 +196,15 @@ export const sessionAPI = {
         return data || { port: null, ports: [], previewUrl: null }
     },
 
+    getSessionDesktopViewport: async (
+        sessionId: string
+    ): Promise<import('@/features/preview/types').BrowserViewportData | null> => {
+        const data = await apiRequest<{
+            viewport: import('@/features/preview/types').BrowserViewportData | null
+        } | null>(`/session/${sessionId}/desktop-viewport`)
+        return data?.viewport ?? null
+    },
+
     submitQuestionAnswer: async (data: {
         sessionId: string
         questionId?: string

@@ -45,6 +45,8 @@ import type {
     SessionPreviewPortResult,
     SubmitQuestionAnswer,
     GetPendingQuestion,
+    GetSessionDesktopViewport,
+    SessionDesktopViewportResult,
 } from './session.types'
 
 let sessionRedis: Redis | null = null
@@ -991,6 +993,31 @@ const getPendingQuestion = async (data: GetPendingQuestion) => {
     return null
 }
 
+const getSessionDesktopViewport = async (
+    data: GetSessionDesktopViewport
+): Promise<SessionDesktopViewportResult> => {
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    let viewport: SessionDesktopViewportResult['viewport'] = null
+    const redis = getSessionRedis()
+    if (redis) {
+        try {
+            const cached = await redis.get(`session_desktop_viewport:${sessionId}`)
+            if (cached) {
+                viewport = JSON.parse(cached)
+            }
+        } catch {
+            // Intentionally swallowed: Redis offline fallback handled
+        }
+    }
+
+    return { viewport }
+}
+
 export const sessionService = {
     loadSessionFiles,
     getUserSessions,
@@ -1015,4 +1042,5 @@ export const sessionService = {
     getSessionPreviewPort,
     submitQuestionAnswer,
     getPendingQuestion,
+    getSessionDesktopViewport,
 }

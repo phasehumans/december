@@ -25,6 +25,7 @@ import {
     submitQuestionAnswerParamsSchema,
     submitQuestionAnswerBodySchema,
     getPendingQuestionParamsSchema,
+    getSessionDesktopViewportParamsSchema,
 } from '../../src/modules/session/session.schema'
 
 describe('Session Schemas - Unit Tests', () => {
@@ -141,6 +142,10 @@ describe('Session Schemas - Unit Tests', () => {
             {
                 name: 'getSessionPlanParamsSchema',
                 schema: getSessionPlanParamsSchema,
+            },
+            {
+                name: 'getSessionDesktopViewportParamsSchema',
+                schema: getSessionDesktopViewportParamsSchema,
             },
         ]
 

@@ -179,3 +179,21 @@ export interface GetPendingQuestion {
     userId: string
     sessionId: string
 }
+
+export interface GetSessionDesktopViewport {
+    userId: string
+    sessionId: string
+}
+
+export interface SessionDesktopViewportResult {
+    viewport: {
+        url?: string
+        title?: string
+        action?: string
+        screenshot?: string
+        screenshotPath?: string
+        consoleErrors?: string[]
+        networkErrors?: string[]
+        timestamp?: number
+    } | null
+}

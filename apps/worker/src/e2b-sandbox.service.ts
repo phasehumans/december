@@ -9,6 +9,7 @@ import {
 import {
     AskQuestionTool,
     BashTool,
+    BrowserActionTool,
     BrowserTool,
     EditFileTool,
     FindFilesTool,
@@ -779,6 +780,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         AskQuestionTool,
         ManageTaskTool,
         BrowserTool,
+        BrowserActionTool,
         WebSearchTool,
         ManageMemoryTool,
     ]

@@ -135,6 +135,14 @@ export type GenerationStreamEvent =
           }
       }
     | {
+          type: 'BrowserViewportUpdate'
+          data: import('@/features/preview/types').BrowserViewportData
+      }
+    | {
+          type: 'DesktopViewportUpdate'
+          data: import('@/features/preview/types').BrowserViewportData
+      }
+    | {
           type: 'AskQuestionPrompt'
           data: {
               questionId?: string
@@ -473,6 +481,17 @@ export function normalizeAgentStreamEvent(raw: any): GenerationStreamEvent {
                 data: { questionId, sessionId: payload.sessionId, questions },
             }
         }
+        case 'BrowserViewportUpdate':
+        case 'DesktopViewportUpdate': {
+            const viewportData =
+                typeof innerData === 'object' && innerData?.screenshot !== undefined
+                    ? innerData
+                    : payload
+            return {
+                type: 'BrowserViewportUpdate',
+                data: viewportData,
+            }
+        }
         case 'AgentStatus': {
             const message =
                 (typeof innerData === 'object' &&
@@ -690,6 +709,15 @@ const runOverSocket = async (
                             state: 'Healthy',
                         })
                     }
+                }
+            }
+
+            if (
+                streamEvent.type === 'BrowserViewportUpdate' ||
+                streamEvent.type === 'DesktopViewportUpdate'
+            ) {
+                if (streamEvent.data) {
+                    useAppStore.getState().setDesktopViewport(streamEvent.data)
                 }
             }
 

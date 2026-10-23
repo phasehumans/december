@@ -161,3 +161,14 @@ export interface SessionTestReport {
     rawOutput: string
     executedAt: string
 }
+
+export interface BrowserViewportData {
+    url?: string
+    title?: string
+    action?: string
+    screenshot?: string
+    screenshotPath?: string
+    consoleErrors?: string[]
+    networkErrors?: string[]
+    timestamp?: number
+}

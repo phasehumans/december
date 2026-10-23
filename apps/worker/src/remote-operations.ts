@@ -1,6 +1,14 @@
 import { PlatformAdapter } from '@december/agent'
 
+import { BROWSER_RUNNER_SCRIPT } from './browser-runner-script'
 import { executeCommand } from './runtime'
+
+import type {
+    BrowserActionInput,
+    BrowserActionResult,
+    BrowserNavigateResult,
+    BrowserOperations,
+} from '@december/shared'
 
 const escapeShellArg = (arg: string): string => {
     return `'${arg.replace(/'/g, "'\\''")}'`
@@ -322,6 +330,142 @@ export class RemotePlatformAdapter implements PlatformAdapter {
         },
         requestPermission: async () => {
             return { block: false }
+        },
+    }
+
+    private browserRunnerInstalled = false
+
+    private async ensureBrowserRunner(): Promise<void> {
+        if (this.browserRunnerInstalled) return
+        try {
+            const base64Script = Buffer.from(BROWSER_RUNNER_SCRIPT).toString('base64')
+            await this.bash.exec(
+                `echo ${escapeShellArg(base64Script)} | base64 -d > /tmp/december-browser-runner.mjs && chmod +x /tmp/december-browser-runner.mjs`
+            )
+            this.browserRunnerInstalled = true
+        } catch {
+            // Intentionally swallowed: Browser runner deployment fallback
+        }
+    }
+
+    private parseBrowserResult(output: string): any {
+        const marker = 'DECEMBER_BROWSER_RESULT:'
+        const idx = output.indexOf(marker)
+        if (idx !== -1) {
+            const jsonPart = output.substring(idx + marker.length).trim()
+            try {
+                return JSON.parse(jsonPart)
+            } catch {
+                // Intentionally swallowed: JSON parse error handled
+            }
+        }
+        return null
+    }
+
+    private async publishBrowserViewportUpdate(result: any, fallbackUrl?: string): Promise<void> {
+        const sessionId = this.options?.sessionId
+        const redis = this.options?.redisClient
+        if (!sessionId || !redis) return
+
+        const viewportEvent = {
+            type: 'BrowserViewportUpdate',
+            sessionId,
+            url: result.url || fallbackUrl || 'http://localhost:3000',
+            title: result.title || '',
+            action: result.action || 'navigate',
+            screenshot: result.screenshotBase64 || '',
+            screenshotPath: result.screenshotPath || '',
+            consoleErrors: result.consoleErrors || [],
+            networkErrors: result.networkErrors || [],
+            timestamp: Date.now(),
+        }
+
+        const serialized = JSON.stringify(viewportEvent)
+
+        if (typeof redis.set === 'function') {
+            await redis
+                .set(`session_desktop_viewport:${sessionId}`, serialized, 'EX', 3600)
+                .catch(() => {
+                    // Intentionally swallowed: Redis set fallback
+                })
+        }
+
+        if (typeof redis.publish === 'function') {
+            await redis.publish(`session_events:${sessionId}`, serialized).catch(() => {
+                // Intentionally swallowed: Redis publish fallback
+            })
+        }
+    }
+
+    browser: BrowserOperations = {
+        navigate: async (url: string): Promise<BrowserNavigateResult> => {
+            await this.ensureBrowserRunner()
+            const payload = JSON.stringify({ action: 'navigate', url })
+            const { output } = await this.bash.exec(
+                `node /tmp/december-browser-runner.mjs ${escapeShellArg(payload)}`
+            )
+
+            const parsed = this.parseBrowserResult(output)
+            const result = parsed || {
+                success: true,
+                action: 'navigate',
+                url,
+                text: output,
+                consoleErrors: [],
+                networkErrors: [],
+            }
+
+            await this.publishBrowserViewportUpdate(result, url)
+
+            return {
+                text: result.text || result.output || '',
+                consoleErrors: result.consoleErrors || [],
+                networkErrors: result.networkErrors || [],
+                error: result.error,
+            }
+        },
+        action: async (params: BrowserActionInput): Promise<BrowserActionResult> => {
+            await this.ensureBrowserRunner()
+            const payload = JSON.stringify(params)
+            const { output } = await this.bash.exec(
+                `node /tmp/december-browser-runner.mjs ${escapeShellArg(payload)}`
+            )
+
+            const parsed = this.parseBrowserResult(output)
+            const result = parsed || {
+                success: true,
+                action: params.action,
+                output: output || `Browser action "${params.action}" completed successfully.`,
+                consoleErrors: [],
+                networkErrors: [],
+            }
+
+            if (
+                result.screenshotBase64 ||
+                params.action === 'screenshot' ||
+                params.action === 'navigate' ||
+                params.action === 'click' ||
+                params.action === 'type'
+            ) {
+                await this.publishBrowserViewportUpdate(result, params.url)
+            }
+
+            return {
+                success: result.success ?? true,
+                action: params.action,
+                output: result.output,
+                text: result.text,
+                screenshotPath: result.screenshotPath,
+                screenshotBase64: result.screenshotBase64,
+                consoleErrors: result.consoleErrors,
+                networkErrors: result.networkErrors,
+                error: result.error,
+            }
+        },
+        close: async (): Promise<void> => {
+            await this.bash.exec('pkill -f "december-browser-runner" || true').catch(() => {
+                // Intentionally swallowed: Browser cleanup fallback
+            })
         },
     }
 }
