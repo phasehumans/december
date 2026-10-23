@@ -529,8 +529,10 @@ export class RemotePlatformAdapter implements PlatformAdapter {
 
                 if (!word) return null
 
-                // Search for definitions across /workspace
-                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E "(export\\s+)?(default\\s+)?(async\\s+)?(function|class|interface|type|const|let|var)\\s+${word}\\b|${word}\\s*[:=]\\s*(function|\\([^)]*\\)\\s*=>)|${word}\\s*\\([^)]*\\)\\s*\\{" /workspace || true`
+                // Search for definitions across /workspace with regex character and shell escaping
+                const safeWordRegex = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                const defPattern = `(export\\s+)?(default\\s+)?(async\\s+)?(function|class|interface|type|const|let|var)\\s+${safeWordRegex}\\b|${safeWordRegex}\\s*[:=]\\s*(function|\\([^)]*\\)\\s*=>)|${safeWordRegex}\\s*\\([^)]*\\)\\s*\\{`
+                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E ${escapeShellArg(defPattern)} /workspace || true`
                 const { output } = await this.bash.exec(queryCmd)
                 const matches: LocationItem[] = []
 
@@ -558,8 +560,9 @@ export class RemotePlatformAdapter implements PlatformAdapter {
                     return matches
                 }
 
-                // Fallback to broader identifier search
-                const fallbackCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december "\\b${word}\\b" /workspace || true`
+                // Fallback to broader identifier search with escaped pattern
+                const fallbackPattern = `\\b${safeWordRegex}\\b`
+                const fallbackCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E ${escapeShellArg(fallbackPattern)} /workspace || true`
                 const fallbackRes = await this.bash.exec(fallbackCmd)
                 if (fallbackRes.output.trim()) {
                     const fbLines = fallbackRes.output.split('\n').filter(Boolean)
@@ -611,7 +614,9 @@ export class RemotePlatformAdapter implements PlatformAdapter {
 
                 if (!word) return []
 
-                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december "\\b${word}\\b" /workspace || true`
+                const safeWordRegex = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                const refPattern = `\\b${safeWordRegex}\\b`
+                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E ${escapeShellArg(refPattern)} /workspace || true`
                 const { output } = await this.bash.exec(queryCmd)
                 const refs: LocationItem[] = []
 

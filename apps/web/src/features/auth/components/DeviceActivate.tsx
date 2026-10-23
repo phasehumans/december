@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { AuthModal } from '@/features/auth/components/AuthModal'
@@ -107,7 +107,7 @@ export const DeviceActivate: React.FC = () => {
         verifyCode()
     }
 
-    const verifyCode = async () => {
+    const verifyCode = useCallback(async () => {
         setStatus('verifying')
         try {
             const res = await apiRequest<{ status?: string }>('/auth/device/verify', {
@@ -157,7 +157,7 @@ export const DeviceActivate: React.FC = () => {
                 err.message || 'Verification failed. The code may be invalid or expired.'
             )
         }
-    }
+    }, [userCode, hasUrlCode, queryClient])
 
     const handleAuthSuccess = async () => {
         setShowAuthModal(false)
@@ -177,7 +177,7 @@ export const DeviceActivate: React.FC = () => {
         if (hasUrlCode && profile && userCode.length === 9 && status === 'idle' && !isLoading) {
             verifyCode()
         }
-    }, [hasUrlCode, profile, userCode, status, isLoading])
+    }, [hasUrlCode, profile, userCode, status, isLoading, verifyCode])
 
     const isReady = userCode.length === 9
     const isSuccess = status === 'success' || status === 'already_activated'
