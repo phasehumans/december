@@ -1,5 +1,7 @@
 import React from 'react'
 
+import { TestVerificationPanel } from './TestVerificationPanel'
+
 import type { PreviewAreaProps } from '@/features/preview/types'
 
 import { usePreviewAreaController } from '@/features/preview/hooks/usePreviewAreaController'
@@ -137,13 +139,16 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
                             <div className="mt-auto h-10 rounded-md bg-white/[0.04]" />
                         </div>
                     </div>
+                ) : !previewUrl ? (
+                    /* 3. test verification panel fallback for non-web projects */
+                    <TestVerificationPanel sessionId={projectId || undefined} />
                 ) : (
                     /* 3. main iframe browser viewport */
                     <iframe
                         ref={iframeRef}
                         className="w-full h-full border-0 transition-opacity bg-white [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#383736]/60 hover:[&::-webkit-scrollbar-thumb]:bg-[#4A4948]/80 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
                         title="Preview"
-                        src={previewUrl || undefined}
+                        src={previewUrl}
                     />
                 )}
 

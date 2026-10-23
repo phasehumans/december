@@ -20,6 +20,8 @@ import {
     getSessionFileContentQuerySchema,
     getSessionPullRequestsParamsSchema,
     getSessionPlanParamsSchema,
+    getSessionTestsParamsSchema,
+    getSessionPreviewPortParamsSchema,
 } from '../../src/modules/session/session.schema'
 
 describe('Session Schemas - Unit Tests', () => {
@@ -206,6 +208,18 @@ describe('Session Schemas - Unit Tests', () => {
         it('should fail if port is out of range', () => {
             expect(() => proxyPreviewParamsSchema.parse({ id: validUuid, port: '0' })).toThrow()
             expect(() => proxyPreviewParamsSchema.parse({ id: validUuid, port: '65536' })).toThrow()
+        })
+    })
+
+    describe('getSessionTestsParamsSchema & getSessionPreviewPortParamsSchema', () => {
+        it('should validate valid UUID session id', () => {
+            expect(getSessionTestsParamsSchema.parse({ id: validUuid }).id).toBe(validUuid)
+            expect(getSessionPreviewPortParamsSchema.parse({ id: validUuid }).id).toBe(validUuid)
+        })
+
+        it('should fail if session id is invalid', () => {
+            expect(() => getSessionTestsParamsSchema.parse({ id: 'invalid-id' })).toThrow()
+            expect(() => getSessionPreviewPortParamsSchema.parse({ id: 'invalid-id' })).toThrow()
         })
     })
 })

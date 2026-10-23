@@ -134,3 +134,30 @@ export interface SessionPlan {
     milestones: PlanMilestone[]
     updatedAt: number
 }
+
+export interface TestCaseResult {
+    id: string
+    name: string
+    suite?: string
+    status: 'passed' | 'failed' | 'skipped'
+    durationMs?: number
+    failureMessage?: string
+    stackTrace?: string
+}
+
+export interface TestSuiteSummary {
+    total: number
+    passed: number
+    failed: number
+    skipped: number
+    durationMs?: number
+}
+
+export interface SessionTestReport {
+    command: string
+    status: 'passed' | 'failed' | 'error' | 'running'
+    summary: TestSuiteSummary
+    tests: TestCaseResult[]
+    rawOutput: string
+    executedAt: string
+}

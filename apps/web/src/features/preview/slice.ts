@@ -1,6 +1,11 @@
 import { StateCreator } from 'zustand'
 
-import { GeneratedProjectFile, PreviewSessionStatus, SessionPlan } from '@/features/preview/types'
+import {
+    GeneratedProjectFile,
+    PreviewSessionStatus,
+    SessionPlan,
+    SessionTestReport,
+} from '@/features/preview/types'
 import { mapStoredFilesToGeneratedFiles } from '@/features/preview/utils'
 
 export interface PreviewSlice {
@@ -12,6 +17,7 @@ export interface PreviewSlice {
     gitStatus: string | null
     pullRequest: any | null
     sessionPlan: SessionPlan | null
+    testReport: SessionTestReport | null
     setGeneratedFiles: (files: Record<string, GeneratedProjectFile>) => void
     setActiveGeneratedFilePath: (path: string | null) => void
     setPreviewSession: (session: PreviewSessionStatus | null) => void
@@ -20,6 +26,7 @@ export interface PreviewSlice {
     setGitStatus: (gitStatus: string | null) => void
     setPullRequest: (pullRequest: any | null) => void
     setSessionPlan: (sessionPlan: SessionPlan | null) => void
+    setTestReport: (testReport: SessionTestReport | null) => void
     replaceGeneratedOutput: (files: Record<string, string>, preferredPath?: string | null) => void
     resetGeneratedOutput: () => void
     startGeneratedFile: (data: { path: string; purpose: string; generator: string }) => void
@@ -37,6 +44,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
     gitStatus: null,
     pullRequest: null,
     sessionPlan: null,
+    testReport: null,
     setGeneratedFiles: (generatedFiles) => set({ generatedFiles }),
     setActiveGeneratedFilePath: (activeGeneratedFilePath) => set({ activeGeneratedFilePath }),
     setPreviewSession: (previewSession) => set({ previewSession }),
@@ -45,6 +53,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
     setGitStatus: (gitStatus) => set({ gitStatus }),
     setPullRequest: (pullRequest) => set({ pullRequest }),
     setSessionPlan: (sessionPlan) => set({ sessionPlan }),
+    setTestReport: (testReport) => set({ testReport }),
     replaceGeneratedOutput: (files, preferredPath) => {
         const paths = Object.keys(files)
         const nextActivePath =
@@ -62,6 +71,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
         get().setGitStatus(null)
         get().setPullRequest(null)
         get().setSessionPlan(null)
+        get().setTestReport(null)
     },
     startGeneratedFile: (data) => {
         get().setGeneratedFiles({

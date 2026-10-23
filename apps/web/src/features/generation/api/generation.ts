@@ -121,6 +121,20 @@ export type GenerationStreamEvent =
           }
       }
     | {
+          type: 'TestExecutionUpdate'
+          data: {
+              report?: any
+          }
+      }
+    | {
+          type: 'PreviewPortDetected'
+          data: {
+              port?: number
+              ports?: number[]
+              previewUrl?: string
+          }
+      }
+    | {
           type: 'ContextCompacted'
           data: {
               summary: string
@@ -421,6 +435,26 @@ export function normalizeAgentStreamEvent(raw: any): GenerationStreamEvent {
                 data: { plan },
             }
         }
+        case 'TestExecutionUpdate': {
+            const report =
+                (typeof innerData === 'object' && innerData?.report) || payload.report || null
+            return {
+                type: 'TestExecutionUpdate',
+                data: { report },
+            }
+        }
+        case 'PreviewPortDetected': {
+            const port = (typeof innerData === 'object' && innerData?.port) || payload.port || null
+            const ports = (typeof innerData === 'object' && innerData?.ports) || payload.ports || []
+            const previewUrl =
+                (typeof innerData === 'object' && innerData?.previewUrl) ||
+                payload.previewUrl ||
+                null
+            return {
+                type: 'PreviewPortDetected',
+                data: { port, ports, previewUrl },
+            }
+        }
         case 'AgentStatus': {
             const message =
                 (typeof innerData === 'object' &&
@@ -619,6 +653,25 @@ const runOverSocket = async (
             if (streamEvent.type === 'PlanMilestoneUpdate') {
                 if (streamEvent.data?.plan !== undefined) {
                     useAppStore.getState().setSessionPlan(streamEvent.data.plan)
+                }
+            }
+
+            if (streamEvent.type === 'TestExecutionUpdate') {
+                if (streamEvent.data?.report !== undefined) {
+                    useAppStore.getState().setTestReport(streamEvent.data.report)
+                }
+            }
+
+            if (streamEvent.type === 'PreviewPortDetected') {
+                if (streamEvent.data?.previewUrl) {
+                    const currentSession = useAppStore.getState().previewSession
+                    if (currentSession) {
+                        useAppStore.getState().setPreviewSession({
+                            ...currentSession,
+                            previewUrl: streamEvent.data.previewUrl,
+                            state: 'Healthy',
+                        })
+                    }
                 }
             }
 

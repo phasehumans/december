@@ -6,6 +6,7 @@ import { PlanChecklistPanel } from './PlanChecklistPanel'
 import { PreviewArea } from './PreviewArea'
 import { PullRequestsWorkspace } from './PullRequestsWorkspace'
 import { TerminalWorkspace } from './TerminalWorkspace'
+import { TestVerificationPanel } from './TestVerificationPanel'
 import { ALL_TAB_DEFS, WorkspaceHeaderViewTabs } from './WorkspaceHeaderViewTabs'
 
 import type { WorkspaceTabId } from './WorkspaceHeaderViewTabs'
@@ -59,6 +60,7 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
     const [openTabs, setOpenTabs] = React.useState<WorkspaceTabId[]>([
         'plan',
         'changes',
+        'tests',
         'desktop',
         'shell',
     ])
@@ -201,11 +203,18 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
                 />
             )}
 
+            {activeTab === 'tests' && (
+                <TestVerificationPanel
+                    sessionId={previewSession?.previewId || projectId || undefined}
+                />
+            )}
+
             {activeTab !== 'desktop' &&
                 activeTab !== 'changes' &&
                 activeTab !== 'shell' &&
                 activeTab !== 'pull_requests' &&
-                activeTab !== 'plan' && (
+                activeTab !== 'plan' &&
+                activeTab !== 'tests' && (
                     <div className="flex-1 flex flex-col items-center justify-center bg-[#141414] text-[#8E8D8C] select-none p-6 font-sans w-full h-full">
                         <div className="flex flex-col items-center gap-3 max-w-sm text-center">
                             <div className="w-10 h-10 rounded-xl bg-[#1E1E20] border border-[#2A2A2D] flex items-center justify-center text-[#A1A1AA]">

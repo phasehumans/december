@@ -4,7 +4,7 @@ import React from 'react'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { cn } from '@/shared/lib/utils'
 
-export type WorkspaceTabId = 'plan' | 'changes' | 'desktop' | 'shell' | 'pull_requests'
+export type WorkspaceTabId = 'plan' | 'changes' | 'desktop' | 'shell' | 'pull_requests' | 'tests'
 
 export interface WorkspaceTabDef {
     id: WorkspaceTabId
@@ -92,9 +92,24 @@ const PullRequestsIcon: React.FC<{ className?: string }> = ({ className = 'w-3.5
     </svg>
 )
 
+const TestsIcon: React.FC<{ className?: string }> = ({ className = 'w-3.5 h-3.5' }) => (
+    <svg
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        className={className}
+    >
+        <path d="M6 2v4l-3 6.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5L10 6V2" />
+        <path d="M5 2h6" strokeLinecap="round" />
+        <path d="M5 10.5h6" strokeLinecap="round" />
+    </svg>
+)
+
 export const BASE_TAB_DEFS: WorkspaceTabDef[] = [
     { id: 'plan', label: 'Plan', icon: <PlanIcon /> },
     { id: 'changes', label: 'Changes', icon: <ChangesIcon /> },
+    { id: 'tests', label: 'Tests', icon: <TestsIcon /> },
     { id: 'desktop', label: 'Desktop', icon: <DesktopIcon /> },
     { id: 'shell', label: 'Shell', icon: <ShellIcon /> },
 ]

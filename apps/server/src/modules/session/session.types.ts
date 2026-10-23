@@ -150,3 +150,20 @@ export type SessionPullRequest = {
     createdAt?: string
     updatedAt?: string
 }
+
+export interface GetSessionTests {
+    userId: string
+    sessionId: string
+}
+
+export interface GetSessionPreviewPort {
+    userId: string
+    sessionId: string
+}
+
+export interface SessionPreviewPortResult {
+    sessionId: string
+    port: number | null
+    ports: number[]
+    previewUrl: string | null
+}

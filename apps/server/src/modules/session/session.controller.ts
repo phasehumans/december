@@ -24,6 +24,8 @@ import {
     getSessionFileContentQuerySchema,
     getSessionPullRequestsParamsSchema,
     getSessionPlanParamsSchema,
+    getSessionTestsParamsSchema,
+    getSessionPreviewPortParamsSchema,
 } from './session.schema'
 import { sessionService } from './session.service'
 
@@ -311,6 +313,24 @@ export const getSessionPlan = asyncHandler(async (req: Request, res: Response) =
     return sendSuccess(res, 'session plan fetched successfully', result)
 })
 
+export const getSessionTests = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = getSessionTestsParamsSchema.parse(req.params)
+
+    const result = await sessionService.getSessionTests({ userId, sessionId: id })
+    return sendSuccess(res, 'session tests fetched successfully', result)
+})
+
+export const getSessionPreviewPort = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = getSessionPreviewPortParamsSchema.parse(req.params)
+
+    const result = await sessionService.getSessionPreviewPort({ userId, sessionId: id })
+    return sendSuccess(res, 'session preview port fetched successfully', result)
+})
+
 export const sessionController = {
     getSessions,
     createSession,
@@ -330,4 +350,6 @@ export const sessionController = {
     getSessionFileContent,
     getSessionPullRequests,
     getSessionPlan,
+    getSessionTests,
+    getSessionPreviewPort,
 }

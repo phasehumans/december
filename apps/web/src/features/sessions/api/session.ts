@@ -176,6 +176,26 @@ export const sessionAPI = {
         return data || { plan: null }
     },
 
+    getSessionTests: async (
+        sessionId: string
+    ): Promise<import('@/features/preview/types').SessionTestReport | null> => {
+        const data = await apiRequest<import('@/features/preview/types').SessionTestReport | null>(
+            `/session/${sessionId}/tests`
+        )
+        return data || null
+    },
+
+    getSessionPreviewPort: async (
+        sessionId: string
+    ): Promise<{ port: number | null; ports: number[]; previewUrl: string | null }> => {
+        const data = await apiRequest<{
+            port: number | null
+            ports: number[]
+            previewUrl: string | null
+        }>(`/session/${sessionId}/preview-port`)
+        return data || { port: null, ports: [], previewUrl: null }
+    },
+
     createSession: async (data: {
         title?: string
         projectId?: string

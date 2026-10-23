@@ -14,6 +14,7 @@ import {
 } from '../../shared/project-storage'
 import { getIO } from '../../socket'
 import { cliDispatcher } from '../cli/cli.dispatcher'
+import { runtimeService } from '../runtime/runtime.service'
 import { usageService } from '../usage/usage.service'
 
 import { sessionRepository } from './session.repository'
@@ -39,6 +40,9 @@ import type {
     GetSessionPullRequests,
     SessionPullRequest,
     GetSessionPlan,
+    GetSessionTests,
+    GetSessionPreviewPort,
+    SessionPreviewPortResult,
 } from './session.types'
 
 let sessionRedis: Redis | null = null
@@ -862,6 +866,76 @@ const getSessionPlan = async (data: GetSessionPlan) => {
     }
 }
 
+const getSessionTests = async (data: GetSessionTests) => {
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    const redis = getSessionRedis()
+    if (redis) {
+        try {
+            const cached = await redis.get(`session_test_results:${sessionId}`)
+            if (cached) {
+                return JSON.parse(cached)
+            }
+        } catch {
+            // Intentionally swallowed: Redis offline fallback handled
+        }
+    }
+
+    return null
+}
+
+const getSessionPreviewPort = async (
+    data: GetSessionPreviewPort
+): Promise<SessionPreviewPortResult> => {
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    let port: number | null = null
+    let ports: number[] = []
+    let previewUrl: string | null = null
+
+    const redis = getSessionRedis()
+    if (redis) {
+        try {
+            const cached = await redis.get(`session_preview_port:${sessionId}`)
+            if (cached) {
+                const parsed = JSON.parse(cached)
+                port = parsed.port ?? null
+                ports = parsed.ports ?? []
+                previewUrl = parsed.previewUrl ?? null
+            }
+        } catch {
+            // Intentionally swallowed: Redis offline fallback handled
+        }
+    }
+
+    if (!port) {
+        port = runtimeService.getSessionListeningPort({ sessionId })
+    }
+
+    if (port && !previewUrl) {
+        let targetHost = `session-${sessionId}-${port}.preview.trydecember.com`
+        if (session.vmId && !session.vmId.startsWith('mock-')) {
+            targetHost = `${port}-${session.vmId}.e2b.dev`
+        }
+        previewUrl = `https://${targetHost}/`
+    }
+
+    return {
+        sessionId,
+        port,
+        ports,
+        previewUrl,
+    }
+}
+
 export const sessionService = {
     loadSessionFiles,
     getUserSessions,
@@ -882,4 +956,6 @@ export const sessionService = {
     getSessionFileContent,
     getSessionPullRequests,
     getSessionPlan,
+    getSessionTests,
+    getSessionPreviewPort,
 }

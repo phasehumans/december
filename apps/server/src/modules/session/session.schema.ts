@@ -124,3 +124,11 @@ export const getSessionPullRequestsParamsSchema = z.object({
 export const getSessionPlanParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
+
+export const getSessionTestsParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})
+
+export const getSessionPreviewPortParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})

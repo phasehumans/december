@@ -3,6 +3,7 @@ import { prisma } from '@december/database'
 import { calculateGenerationCost, startOfUtcMonth, startOfNextUtcMonth } from '@december/shared'
 import Redis from 'ioredis'
 
+import { detectSandboxListeningPorts, pickWebPreviewPort } from './dynamic-port-detector'
 import { E2BSandboxService } from './e2b-sandbox.service'
 import {
     createDefaultSessionPlan,
@@ -10,6 +11,11 @@ import {
     advancePlanPhase,
     type SessionPlan,
 } from './plan-milestones'
+import {
+    isTestExecutionCommand,
+    parseTestOutput,
+    type SessionTestReport,
+} from './test-runner-parser'
 
 export const MUTATING_TOOL_NAMES = new Set([
     'write_file',
@@ -390,6 +396,71 @@ export async function updateSessionPlan(options: {
     }
 }
 
+export async function updateSessionTestResults(data: {
+    sessionId: string
+    report: SessionTestReport
+}): Promise<void> {
+    const { sessionId, report } = data
+    const payload = JSON.stringify({
+        type: 'TestExecutionUpdate',
+        sessionId,
+        report,
+        updatedAt: Date.now(),
+    })
+
+    if (redisPub && redisPub.status === 'ready') {
+        await redisPub
+            .set(`session_test_results:${sessionId}`, JSON.stringify(report))
+            .catch(() => {
+                // Intentionally swallowed: Redis cache set fallback in test environment
+            })
+        await redisPub.publish(`session_events:${sessionId}`, payload).catch(() => {
+            // Intentionally swallowed: Redis publish fallback in test environment
+        })
+    }
+}
+
+export async function updateSandboxListeningPort(
+    sessionId: string,
+    sandbox: any
+): Promise<number | null> {
+    try {
+        const ports = await detectSandboxListeningPorts(sandbox)
+        const pickedPort = pickWebPreviewPort(ports)
+        if (pickedPort) {
+            const previewUrl = await E2BSandboxService.getPreviewUrl({
+                sessionId,
+                port: pickedPort,
+            })
+            const portPayload = JSON.stringify({
+                type: 'PreviewPortDetected',
+                sessionId,
+                port: pickedPort,
+                ports,
+                previewUrl,
+            })
+            if (redisPub && redisPub.status === 'ready') {
+                await redisPub
+                    .set(
+                        `session_preview_port:${sessionId}`,
+                        JSON.stringify({ port: pickedPort, ports, previewUrl })
+                    )
+                    .catch(() => {
+                        // Intentionally swallowed: Redis port set fallback in test environment
+                    })
+                await redisPub.publish(`session_events:${sessionId}`, portPayload).catch(() => {
+                    // Intentionally swallowed: Redis publish fallback in test environment
+                })
+            }
+            return pickedPort
+        }
+        return null
+    } catch {
+        // Intentionally swallowed: Port detection fallback
+        return null
+    }
+}
+
 const redisPub = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
     lazyConnect: true,
     maxRetriesPerRequest: 1,
@@ -661,6 +732,26 @@ export async function processGrpcStream(
                     const activeSandbox = sandbox || E2BSandboxService.getActiveSandbox(sessionId)
                     if (activeSandbox) {
                         void updateSandboxGitDiff(sessionId, activeSandbox)
+                        void updateSandboxListeningPort(sessionId, activeSandbox)
+                    }
+
+                    // Parse test execution output and publish structured test verification report
+                    const rawCommand =
+                        block?.toolInput?.CommandLine ||
+                        block?.toolInput?.command ||
+                        block?.toolInput?.cmd ||
+                        ''
+                    if (rawCommand && isTestExecutionCommand(rawCommand)) {
+                        const exitCode = result.exitCode ?? (result.error ? 1 : 0)
+                        const testReport = parseTestOutput(rawCommand, block.output || '', exitCode)
+                        void updateSessionTestResults({ sessionId, report: testReport })
+
+                        sessionPlan = advancePlanPhase({
+                            plan: sessionPlan,
+                            targetPhaseId: 'test',
+                            log: `Executed tests: ${testReport.summary.passed} passed, ${testReport.summary.failed} failed`,
+                        })
+                        void updateSessionPlan({ sessionId, plan: sessionPlan })
                     }
                 }
 
