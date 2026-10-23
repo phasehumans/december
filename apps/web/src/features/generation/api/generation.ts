@@ -109,6 +109,12 @@ export type GenerationStreamEvent =
           }
       }
     | {
+          type: 'PullRequestUpdate'
+          data: {
+              pullRequest?: any
+          }
+      }
+    | {
           type: 'ContextCompacted'
           data: {
               summary: string
@@ -392,6 +398,16 @@ export function normalizeAgentStreamEvent(raw: any): GenerationStreamEvent {
                 data: { gitDiff: String(gitDiff), gitStatus: String(gitStatus) },
             }
         }
+        case 'PullRequestUpdate': {
+            const pullRequest =
+                (typeof innerData === 'object' && innerData?.pullRequest) ||
+                payload.pullRequest ||
+                null
+            return {
+                type: 'PullRequestUpdate',
+                data: { pullRequest },
+            }
+        }
         case 'AgentStatus': {
             const message =
                 (typeof innerData === 'object' &&
@@ -578,6 +594,12 @@ const runOverSocket = async (
                 }
                 if (streamEvent.data?.gitStatus !== undefined) {
                     useAppStore.getState().setGitStatus(streamEvent.data.gitStatus)
+                }
+            }
+
+            if (streamEvent.type === 'PullRequestUpdate') {
+                if (streamEvent.data?.pullRequest !== undefined) {
+                    useAppStore.getState().setPullRequest(streamEvent.data.pullRequest)
                 }
             }
 

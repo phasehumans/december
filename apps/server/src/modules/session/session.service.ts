@@ -36,6 +36,8 @@ import type {
     GetSessionDiff,
     GetSessionFileTree,
     GetSessionFileContent,
+    GetSessionPullRequests,
+    SessionPullRequest,
 } from './session.types'
 
 let sessionRedis: Redis | null = null
@@ -761,6 +763,31 @@ const getSessionFileContent = async (data: GetSessionFileContent) => {
     }
 }
 
+const getSessionPullRequests = async (
+    data: GetSessionPullRequests
+): Promise<{ pullRequest: SessionPullRequest | null }> => {
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    try {
+        const redis = getSessionRedis()
+        if (redis) {
+            const cached = await redis.get(`session_pull_requests:${sessionId}`)
+            if (cached) {
+                const parsed = JSON.parse(cached)
+                return { pullRequest: parsed.pullRequest ?? parsed }
+            }
+        }
+    } catch {
+        // Intentionally swallowed: Redis retrieval fallback for pull request
+    }
+
+    return { pullRequest: null }
+}
+
 export const sessionService = {
     loadSessionFiles,
     getUserSessions,
@@ -779,4 +806,5 @@ export const sessionService = {
     getSessionDiff,
     getSessionFileTree,
     getSessionFileContent,
+    getSessionPullRequests,
 }

@@ -227,21 +227,26 @@ const updateRepo = async (data: UpdateRepo) => {
     const safeCommitMsg = commitMessage.replace(/'/g, "'\\''")
     const remoteUrl = `https://x-access-token:${githubToken}@github.com/${repoOwner}/${repoName}.git`
 
-    // Determine current default branch or fallback to main
+    // Determine current default branch or fallback to task branch (avoiding pushing directly to main)
     const branchRes = await executeSandboxCommand({
         sandboxId: session.vmId,
         sessionId,
         command: 'git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main"',
     })
-    const branch = branchRes.stdout.trim() || 'main'
+    const currentBranch = branchRes.stdout.trim() || 'main'
+    const branch =
+        currentBranch === 'main' || currentBranch === 'master'
+            ? `december/${sessionId}`
+            : currentBranch
 
     const gitCommands = [
-        'git config user.name "December"',
-        'git config user.email "bot@december.ai"',
+        'git config user.name "December Agent"',
+        'git config user.email "agent@trydecember.com"',
+        `git checkout -B '${branch}' 2>/dev/null || true`,
         `git remote set-url origin '${remoteUrl}' 2>/dev/null || git remote add origin '${remoteUrl}'`,
         'git add -A',
         `git diff-index --quiet HEAD 2>/dev/null || git commit -m '${safeCommitMsg}'`,
-        `git push origin ${branch}`,
+        `git push origin '${branch}'`,
         'git rev-parse HEAD',
     ].join(' && ')
 

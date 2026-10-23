@@ -3,6 +3,7 @@ import React from 'react'
 
 import { ChangesWorkspace } from './ChangesWorkspace'
 import { PreviewArea } from './PreviewArea'
+import { PullRequestsWorkspace } from './PullRequestsWorkspace'
 import { TerminalWorkspace } from './TerminalWorkspace'
 import { ALL_TAB_DEFS, WorkspaceHeaderViewTabs } from './WorkspaceHeaderViewTabs'
 
@@ -10,6 +11,7 @@ import type { WorkspaceTabId } from './WorkspaceHeaderViewTabs'
 import type { GeneratedProjectFile, PreviewSessionStatus } from '@/features/preview/types'
 import type { BackendProjectVersionSummary } from '@/features/sessions/api/session'
 
+import { useAppStore } from '@/app/store'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 
 interface WorkspaceScreenMainContentProps {
@@ -61,6 +63,35 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
     const [activeTab, setActiveTab] = React.useState<WorkspaceTabId>('changes')
     const initialMountRef = React.useRef(true)
     const prevFilePathRef = React.useRef<string | null>(activeGeneratedFilePath || null)
+    const pullRequest = useAppStore((state) => state.pullRequest)
+
+    const availablePrs = React.useMemo(() => {
+        if (!pullRequest) return []
+        return [
+            {
+                id: 'pull_requests' as const,
+                label: pullRequest.prNumber ? `PR #${pullRequest.prNumber}` : 'Pull requests',
+                icon: (
+                    <svg
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.3"
+                        className="w-3.5 h-3.5 text-[#8E8D8C]"
+                    >
+                        <circle cx="5" cy="4" r="1.5" />
+                        <circle cx="5" cy="12" r="1.5" />
+                        <circle cx="11" cy="6" r="1.5" />
+                        <path
+                            d="M5 5.5v5M11 7.5v1.5a3 3 0 0 1-3 3H6.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                    </svg>
+                ),
+            },
+        ]
+    }, [pullRequest])
 
     React.useEffect(() => {
         if (initialMountRef.current) {
@@ -104,6 +135,7 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
                     onAddTab={handleAddTab}
                     onReorderTabs={setOpenTabs}
                     onBack={onBack}
+                    availablePrs={availablePrs}
                 />
 
                 <Tooltip
@@ -155,24 +187,33 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
                 />
             </div>
 
-            {activeTab !== 'desktop' && activeTab !== 'changes' && activeTab !== 'shell' && (
-                <div className="flex-1 flex flex-col items-center justify-center bg-[#141414] text-[#8E8D8C] select-none p-6 font-sans w-full h-full">
-                    <div className="flex flex-col items-center gap-3 max-w-sm text-center">
-                        <div className="w-10 h-10 rounded-xl bg-[#1E1E20] border border-[#2A2A2D] flex items-center justify-center text-[#A1A1AA]">
-                            {activeDef?.icon}
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[14px] font-semibold text-[#EDEDEF]">
-                                {activeDef?.label} View
-                            </span>
-                            <span className="text-[12px] text-[#8E8D8C]">
-                                Workspace options and details for {activeDef?.label.toLowerCase()}{' '}
-                                will appear here.
-                            </span>
+            {activeTab === 'pull_requests' && (
+                <PullRequestsWorkspace
+                    sessionId={previewSession?.previewId || projectId || undefined}
+                />
+            )}
+
+            {activeTab !== 'desktop' &&
+                activeTab !== 'changes' &&
+                activeTab !== 'shell' &&
+                activeTab !== 'pull_requests' && (
+                    <div className="flex-1 flex flex-col items-center justify-center bg-[#141414] text-[#8E8D8C] select-none p-6 font-sans w-full h-full">
+                        <div className="flex flex-col items-center gap-3 max-w-sm text-center">
+                            <div className="w-10 h-10 rounded-xl bg-[#1E1E20] border border-[#2A2A2D] flex items-center justify-center text-[#A1A1AA]">
+                                {activeDef?.icon}
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[14px] font-semibold text-[#EDEDEF]">
+                                    {activeDef?.label} View
+                                </span>
+                                <span className="text-[12px] text-[#8E8D8C]">
+                                    Workspace options and details for{' '}
+                                    {activeDef?.label.toLowerCase()} will appear here.
+                                </span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
         </div>
     )
 }

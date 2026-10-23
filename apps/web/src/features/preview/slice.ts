@@ -10,12 +10,14 @@ export interface PreviewSlice {
     previewSessionError: string | null
     gitDiff: string | null
     gitStatus: string | null
+    pullRequest: any | null
     setGeneratedFiles: (files: Record<string, GeneratedProjectFile>) => void
     setActiveGeneratedFilePath: (path: string | null) => void
     setPreviewSession: (session: PreviewSessionStatus | null) => void
     setPreviewSessionError: (error: string | null) => void
     setGitDiff: (gitDiff: string | null) => void
     setGitStatus: (gitStatus: string | null) => void
+    setPullRequest: (pullRequest: any | null) => void
     replaceGeneratedOutput: (files: Record<string, string>, preferredPath?: string | null) => void
     resetGeneratedOutput: () => void
     startGeneratedFile: (data: { path: string; purpose: string; generator: string }) => void
@@ -31,12 +33,14 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
     previewSessionError: null,
     gitDiff: null,
     gitStatus: null,
+    pullRequest: null,
     setGeneratedFiles: (generatedFiles) => set({ generatedFiles }),
     setActiveGeneratedFilePath: (activeGeneratedFilePath) => set({ activeGeneratedFilePath }),
     setPreviewSession: (previewSession) => set({ previewSession }),
     setPreviewSessionError: (previewSessionError) => set({ previewSessionError }),
     setGitDiff: (gitDiff) => set({ gitDiff }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
+    setPullRequest: (pullRequest) => set({ pullRequest }),
     replaceGeneratedOutput: (files, preferredPath) => {
         const paths = Object.keys(files)
         const nextActivePath =
@@ -52,6 +56,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
         get().setActiveGeneratedFilePath(null)
         get().setGitDiff(null)
         get().setGitStatus(null)
+        get().setPullRequest(null)
     },
     startGeneratedFile: (data) => {
         get().setGeneratedFiles({

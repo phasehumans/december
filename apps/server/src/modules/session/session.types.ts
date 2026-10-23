@@ -123,3 +123,25 @@ export type GetSessionFileContent = {
     sessionId: string
     path: string
 }
+
+export type GetSessionPullRequests = {
+    userId: string
+    sessionId: string
+}
+
+export type SessionPullRequest = {
+    prNumber?: number
+    url?: string
+    title: string
+    state: string
+    headRef: string
+    baseRef: string
+    diffSummary: {
+        additions: number
+        deletions: number
+        changedFiles: number
+    }
+    ciStatus: 'passing' | 'pending' | 'failed'
+    createdAt?: string
+    updatedAt?: string
+}

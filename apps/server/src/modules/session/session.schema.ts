@@ -116,3 +116,7 @@ export const getSessionFileContentParamsSchema = z.object({
 export const getSessionFileContentQuerySchema = z.object({
     path: z.string().min(1, 'path is required'),
 })
+
+export const getSessionPullRequestsParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})

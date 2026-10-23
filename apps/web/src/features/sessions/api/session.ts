@@ -164,6 +164,13 @@ export const sessionAPI = {
         return data || { gitStatus: '', gitDiff: '' }
     },
 
+    getSessionPullRequests: async (sessionId: string): Promise<{ pullRequest: any | null }> => {
+        const data = await apiRequest<{ pullRequest: any | null }>(
+            `/session/${sessionId}/pull-requests`
+        )
+        return data || { pullRequest: null }
+    },
+
     createSession: async (data: {
         title?: string
         projectId?: string

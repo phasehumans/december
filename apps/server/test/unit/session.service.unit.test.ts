@@ -672,4 +672,29 @@ describe('Session Service - Unit Tests', () => {
             })
         })
     })
+
+    describe('getSessionPullRequests', () => {
+        it('should throw AppError 404 if session is not found', async () => {
+            sessionRepository.findSessionById = mock(async () => null) as any
+            await expect(
+                (sessionService as any).getSessionPullRequests({
+                    userId: testUserId,
+                    sessionId: testSessionId,
+                })
+            ).rejects.toThrow('Session not found')
+        })
+
+        it('should return null pullRequest when no PR is cached in Redis', async () => {
+            sessionRepository.findSessionById = mock(async () => ({
+                id: testSessionId,
+                userId: testUserId,
+            })) as any
+
+            const res = await (sessionService as any).getSessionPullRequests({
+                userId: testUserId,
+                sessionId: testSessionId,
+            })
+            expect(res).toEqual({ pullRequest: null })
+        })
+    })
 })
