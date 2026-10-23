@@ -172,7 +172,7 @@ const getUserSessions = async (data: GetUserSessions) => {
 }
 
 const createSession = async (data: CreateSession) => {
-    const { userId, title, type, prompt } = data
+    const { userId, title, type, prompt, projectId, repoUrl, branch, gitRef, issueNumber } = data
 
     const minBalance =
         type === 'SEARCH' ? 1 : parseInt(process.env.MIN_SESSION_START_BALANCE_IN_CENTS || '50', 10)
@@ -201,11 +201,36 @@ const createSession = async (data: CreateSession) => {
         }
     }
 
+    let githubRepoOwner: string | undefined
+    let githubRepoName: string | undefined
+    let githubRepoUrl: string | undefined
+
+    if (repoUrl) {
+        githubRepoUrl = repoUrl
+        const match = repoUrl.match(/github\.com[/:]([\w.-]+)\/([\w.-]+?)(\.git)?$/i)
+        if (match) {
+            githubRepoOwner = match[1]
+            githubRepoName = match[2]
+        }
+    }
+
+    const defaultTitle = githubRepoName
+        ? `${githubRepoName}${issueNumber ? ` #${issueNumber}` : ''}`
+        : 'New Session'
+
     const session = await sessionRepository.createSession({
         userId,
-        title: title || 'New Session',
+        title: title || defaultTitle,
         type: type || 'WEB',
         vmStatus: 'STOPPED',
+        projectId,
+        repoUrl,
+        branch,
+        gitRef,
+        issueNumber,
+        githubRepoOwner,
+        githubRepoName,
+        githubRepoUrl,
     })
 
     if (prompt) {

@@ -195,26 +195,80 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                 const sessionRecord = await prisma.session
                     .findUnique({
                         where: { id: sessionId },
-                        select: { githubRepoUrl: true },
+                        select: {
+                            repoUrl: true,
+                            githubRepoUrl: true,
+                            branch: true,
+                            gitRef: true,
+                            userId: true,
+                        },
                     })
                     .catch(() => null)
 
-                if (sessionRecord?.githubRepoUrl && mockSandbox?.commands?.run) {
-                    let cloneUrl = sessionRecord.githubRepoUrl
-                    const effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
-                    if (effectiveToken && cloneUrl.startsWith('https://')) {
-                        cloneUrl = cloneUrl.replace(
-                            'https://',
-                            `https://x-access-token:${effectiveToken}@`
-                        )
+                const targetRepo = sessionRecord?.repoUrl || sessionRecord?.githubRepoUrl
+                const targetBranch = sessionRecord?.branch || sessionRecord?.gitRef
+                const effectiveUserId = userId || sessionRecord?.userId
+
+                let effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
+                if (!effectiveToken && effectiveUserId) {
+                    const userRecord = await prisma.user
+                        .findUnique({
+                            where: { id: effectiveUserId },
+                            select: { githubToken: true },
+                        })
+                        .catch(() => null)
+                    if (userRecord?.githubToken) {
+                        effectiveToken = userRecord.githubToken
                     }
+                }
+
+                const taskBranch = `december/${sessionId}`
+
+                if (mockSandbox?.commands?.run) {
                     await mockSandbox.commands
-                        .run(`git clone ${cloneUrl} /workspace`, {
-                            cwd: '/workspace',
-                        })
+                        .run(
+                            'git config --global user.name "December Agent" && git config --global user.email "agent@trydecember.com"',
+                            { cwd: '/workspace' }
+                        )
                         .catch(() => {
-                            // Intentionally swallowed: Git clone mock fallback
+                            // Intentionally swallowed: Git config mock fallback
                         })
+
+                    if (targetRepo) {
+                        let cloneUrl = targetRepo
+                        if (effectiveToken && cloneUrl.startsWith('https://')) {
+                            cloneUrl = cloneUrl.replace(
+                                'https://',
+                                `https://x-access-token:${effectiveToken}@`
+                            )
+                        }
+                        const branchFlag = targetBranch ? ` -b ${targetBranch}` : ''
+                        await mockSandbox.commands
+                            .run(`git clone${branchFlag} ${cloneUrl} /workspace`, {
+                                cwd: '/workspace',
+                            })
+                            .catch(() => {
+                                // Intentionally swallowed: Git clone mock fallback
+                            })
+
+                        await mockSandbox.commands
+                            .run(
+                                `git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
+                                { cwd: '/workspace' }
+                            )
+                            .catch(() => {
+                                // Intentionally swallowed: Git task branch checkout mock fallback
+                            })
+                    } else {
+                        await mockSandbox.commands
+                            .run(
+                                `git init && git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
+                                { cwd: '/workspace' }
+                            )
+                            .catch(() => {
+                                // Intentionally swallowed: Git greenfield checkout mock fallback
+                            })
+                    }
                 }
 
                 await emitSessionEvent({
@@ -234,7 +288,13 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
             const sessionRecord = await prisma.session
                 .findUnique({
                     where: { id: sessionId },
-                    select: { githubRepoUrl: true },
+                    select: {
+                        repoUrl: true,
+                        githubRepoUrl: true,
+                        branch: true,
+                        gitRef: true,
+                        userId: true,
+                    },
                 })
                 .catch(() => null)
 
@@ -306,30 +366,95 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                     .set(sessionId, { sandboxId, lastActiveAt: Date.now() })
             }
 
-            // Initialize sandbox workspace strictly via GitHub repository clone
+            // Initialize sandbox workspace strictly via repository clone and task branch
             try {
-                if (sessionRecord?.githubRepoUrl && sandbox?.commands?.run) {
-                    let cloneUrl = sessionRecord.githubRepoUrl
-                    const effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
-                    if (effectiveToken && cloneUrl.startsWith('https://')) {
-                        cloneUrl = cloneUrl.replace(
-                            'https://',
-                            `https://x-access-token:${effectiveToken}@`
-                        )
+                const targetRepo = sessionRecord?.repoUrl || sessionRecord?.githubRepoUrl
+                const targetBranch = sessionRecord?.branch || sessionRecord?.gitRef
+                const effectiveUserId = userId || sessionRecord?.userId
+
+                let effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
+                if (!effectiveToken && effectiveUserId) {
+                    const userRecord = await prisma.user
+                        .findUnique({
+                            where: { id: effectiveUserId },
+                            select: { githubToken: true },
+                        })
+                        .catch(() => null)
+                    if (userRecord?.githubToken) {
+                        effectiveToken = userRecord.githubToken
                     }
-                    console.log(
-                        `[E2BSandboxService] Initializing sandbox workspace from GitHub repo: ${sessionRecord.githubRepoUrl}`
-                    )
+                }
+
+                const taskBranch = `december/${sessionId}`
+
+                if (sandbox?.commands && typeof sandbox.commands.run === 'function') {
                     await sandbox.commands
-                        .run(`git clone ${cloneUrl} /workspace`, {
-                            cwd: '/workspace',
+                        .run(
+                            'git config --global user.name "December Agent" && git config --global user.email "agent@trydecember.com"',
+                            { cwd: '/workspace' }
+                        )
+                        .catch(() => {
+                            // Intentionally swallowed: Global git config fallback
                         })
-                        .catch((e: any) => {
-                            console.warn(
-                                `[E2BSandboxService] Git clone fallback warning for session ${sessionId}:`,
-                                e
+
+                    if (targetRepo) {
+                        let cloneUrl = targetRepo
+                        if (effectiveToken && cloneUrl.startsWith('https://')) {
+                            cloneUrl = cloneUrl.replace(
+                                'https://',
+                                `https://x-access-token:${effectiveToken}@`
                             )
-                        })
+                        }
+                        console.log(
+                            `[E2BSandboxService] Initializing sandbox workspace from repository: ${targetRepo}`
+                        )
+                        const branchFlag = targetBranch ? ` -b ${targetBranch}` : ''
+                        let cloneSuccess = false
+                        try {
+                            const cloneRes = await sandbox.commands.run(
+                                `git clone${branchFlag} ${cloneUrl} /workspace`,
+                                { cwd: '/workspace' }
+                            )
+                            if (cloneRes.exitCode === 0) {
+                                cloneSuccess = true
+                            }
+                        } catch {
+                            // Intentionally swallowed: clone with branch fallback
+                        }
+
+                        if (!cloneSuccess && targetBranch) {
+                            await sandbox.commands
+                                .run(`git clone ${cloneUrl} /workspace`, { cwd: '/workspace' })
+                                .catch((e: any) => {
+                                    console.warn(
+                                        `[E2BSandboxService] Git clone fallback warning for session ${sessionId}:`,
+                                        e
+                                    )
+                                })
+                        }
+
+                        await sandbox.commands
+                            .run(
+                                `git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
+                                { cwd: '/workspace' }
+                            )
+                            .catch((e: any) => {
+                                console.warn(
+                                    `[E2BSandboxService] Task branch checkout warning for session ${sessionId}:`,
+                                    e
+                                )
+                            })
+                    } else {
+                        // Greenfield workspace: initialize local repo and checkout task branch
+                        await sandbox.commands
+                            .run(
+                                `git init && git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
+                                { cwd: '/workspace' }
+                            )
+                            .catch(() => {
+                                // Intentionally swallowed: Greenfield git init fallback
+                            })
+                    }
                 }
             } catch {
                 // Intentionally swallowed: optional repo initialization fallback

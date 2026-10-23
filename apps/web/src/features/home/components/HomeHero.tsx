@@ -242,7 +242,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     <PromptInput
                         value={prompt}
                         onChange={setPrompt}
-                        onSubmit={(submittedPrompt) => {
+                        onSubmit={(submittedPrompt, options) => {
                             if (
                                 isAuthenticated &&
                                 overview !== undefined &&
@@ -251,7 +251,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 setShowOutOfCreditsModal(true)
                                 return
                             }
-                            onPromptSubmit(submittedPrompt)
+                            onPromptSubmit(submittedPrompt, options)
                         }}
                         isLoading={isGenerating}
                         onUpload={() => {}}

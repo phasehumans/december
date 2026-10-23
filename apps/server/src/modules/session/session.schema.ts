@@ -27,6 +27,10 @@ export const createSessionSchema = z.object({
     type: z.enum(['WEB', 'SEARCH']).optional(),
     prompt: z.string().min(1, 'prompt is required').optional(),
     projectId: z.string().uuid().optional(),
+    repoUrl: z.string().url().optional(),
+    branch: z.string().max(100).optional(),
+    gitRef: z.string().max(100).optional(),
+    issueNumber: z.number().int().positive().optional(),
 })
 
 export const getSessionByIdSchema = z.object({

@@ -136,7 +136,17 @@ export const useChatController = (
     )
 
     const startGeneration = React.useCallback(
-        (prompt: string, assistantMessageId: string, projectId?: string | null) => {
+        (
+            prompt: string,
+            assistantMessageId: string,
+            projectId?: string | null,
+            options?: {
+                repoUrl?: string
+                branch?: string
+                gitRef?: string
+                issueNumber?: number
+            }
+        ) => {
             abortGenerationRequest()
             resetGeneratedOutput()
             activeAssistantMessageIdRef.current = assistantMessageId
@@ -196,6 +206,10 @@ export const useChatController = (
                     await generationAPI.generateProjectStream({
                         prompt,
                         projectId,
+                        repoUrl: options?.repoUrl,
+                        branch: options?.branch,
+                        gitRef: options?.gitRef,
+                        issueNumber: options?.issueNumber,
                         signal: abortController.signal,
                         onEvent: (event) => {
                             const activeMessageId = activeAssistantMessageIdRef.current
@@ -566,7 +580,15 @@ export const useChatController = (
     )
 
     const handlePromptSubmit = React.useCallback(
-        (prompt: string) => {
+        (
+            prompt: string,
+            options?: {
+                repoUrl?: string
+                branch?: string
+                gitRef?: string
+                issueNumber?: number
+            }
+        ) => {
             requireAuthOr(async () => {
                 const normalizedPrompt = prompt.trim()
                 if (!normalizedPrompt) {
@@ -608,7 +630,7 @@ export const useChatController = (
                 }
 
                 setMessages([userMsg, assistantMsg])
-                startGeneration(normalizedPrompt, assistantMessageId, activeProjectId)
+                startGeneration(normalizedPrompt, assistantMessageId, activeProjectId, options)
             })
         },
         [

@@ -97,6 +97,10 @@ model Session {
   githubRepoName       String?
   githubRepoOwner      String?
   githubRepoUrl        String?
+  repoUrl              String?
+  branch               String?
+  gitRef               String?
+  issueNumber          Int?
   projectId            String?
   epoch                Int                   @default(1)
   leaseExpiresAt       DateTime?

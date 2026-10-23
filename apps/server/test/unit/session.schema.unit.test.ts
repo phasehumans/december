@@ -68,11 +68,25 @@ describe('Session Schemas - Unit Tests', () => {
                 projectId: validUuid,
                 type: 'WEB',
                 prompt: 'Build a landing page',
+                repoUrl: 'https://github.com/phasehumans/december',
+                branch: 'main',
+                gitRef: 'refs/heads/main',
+                issueNumber: 583,
             })
             expect(result.title).toBe('My Project Session')
             expect(result.projectId).toBe(validUuid)
             expect(result.type).toBe('WEB')
             expect(result.prompt).toBe('Build a landing page')
+            expect(result.repoUrl).toBe('https://github.com/phasehumans/december')
+            expect(result.branch).toBe('main')
+            expect(result.gitRef).toBe('refs/heads/main')
+            expect(result.issueNumber).toBe(583)
+        })
+
+        it('should fail with invalid repoUrl or issueNumber', () => {
+            expect(() => createSessionSchema.parse({ repoUrl: 'not-a-url' })).toThrow()
+            expect(() => createSessionSchema.parse({ issueNumber: -1 })).toThrow()
+            expect(() => createSessionSchema.parse({ issueNumber: 0 })).toThrow()
         })
 
         it('should pass with empty payload', () => {

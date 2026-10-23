@@ -420,6 +420,82 @@ describe('E2BSandboxService (Unit & Integration)', () => {
         }
     })
 
+    it('should clone target repo with branch, user credentials, configure December Agent git identity and checkout task branch', async () => {
+        const executedCommands: string[] = []
+        const mockSandbox = {
+            sandboxId: 'sb-repo-onboard',
+            commands: {
+                run: async (cmd: string) => {
+                    executedCommands.push(cmd)
+                    return { exitCode: 0, stdout: '', stderr: '' }
+                },
+            },
+        }
+
+        E2BSandboxService.setMockClient({ create: async () => mockSandbox })
+
+        const origFindUnique = prisma.session.findUnique
+        const origUserFindUnique = prisma.user.findUnique
+
+        prisma.session.findUnique = (async ({ where }: any) => {
+            if (where.id === 'sess-repo-onboard-1') {
+                return {
+                    id: 'sess-repo-onboard-1',
+                    repoUrl: 'https://github.com/phasehumans/december.git',
+                    branch: 'feat/onboarding',
+                    userId: 'usr-git-token-owner',
+                }
+            }
+            return null
+        }) as any
+
+        prisma.user.findUnique = (async ({ where }: any) => {
+            if (where.id === 'usr-git-token-owner') {
+                return {
+                    id: 'usr-git-token-owner',
+                    githubToken: 'ghp_secretToken123',
+                }
+            }
+            return null
+        }) as any
+
+        try {
+            const res = await E2BSandboxService.provisionSandbox({
+                sessionId: 'sess-repo-onboard-1',
+                backoffDelays: [1, 1, 1],
+            })
+
+            expect(res.sandboxId).toBe('sb-repo-onboard')
+
+            // 1. Git global identity configured
+            const globalIdentityCmd = executedCommands.find(
+                (cmd) =>
+                    cmd.includes('git config --global user.name "December Agent"') &&
+                    cmd.includes('git config --global user.email "agent@trydecember.com"')
+            )
+            expect(globalIdentityCmd).toBeDefined()
+
+            // 2. Repo cloned with branch and injected credentials
+            const cloneCmd = executedCommands.find((cmd) => cmd.includes('git clone'))
+            expect(cloneCmd).toBeDefined()
+            expect(cloneCmd).toContain('-b feat/onboarding')
+            expect(cloneCmd).toContain(
+                'x-access-token:ghp_secretToken123@github.com/phasehumans/december.git'
+            )
+
+            // 3. Local git config and task branch checkout
+            const taskBranchCmd = executedCommands.find(
+                (cmd) =>
+                    cmd.includes('checkout -B december/sess-repo-onboard-1') &&
+                    cmd.includes('git config user.name "December Agent"')
+            )
+            expect(taskBranchCmd).toBeDefined()
+        } finally {
+            prisma.session.findUnique = origFindUnique
+            prisma.user.findUnique = origUserFindUnique
+        }
+    })
+
     it('should rehydrate past conversational history and tool calls on cloud agent session boot', async () => {
         const origFindMany = prisma.message.findMany
         prisma.message.findMany = (async ({ where }: any) => {

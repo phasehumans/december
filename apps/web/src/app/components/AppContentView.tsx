@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import React from 'react'
 
 import type { ViewState } from '@/app/types'
+import type { PromptInputSubmitOptions } from '@/features/home/types'
 import type { PreviewRuntimeError } from '@/features/preview/types'
 
 import { HomeHero } from '@/features/home/components/HomeHero'
@@ -24,7 +25,7 @@ const SessionList = React.lazy(() =>
 interface AppContentViewProps {
     view: ViewState
     isHome: boolean
-    onHomePromptSubmit: (prompt: string) => void
+    onHomePromptSubmit: (prompt: string, options?: PromptInputSubmitOptions) => void
     onOutputPromptSubmit: (prompt: string) => Promise<void> | void
     onPreviewRuntimeError: (error: PreviewRuntimeError) => Promise<void> | void
     onOpenAuth: () => void

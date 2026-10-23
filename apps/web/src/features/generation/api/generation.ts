@@ -438,6 +438,10 @@ type GenerateProjectInput = {
     model?: string
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
+    repoUrl?: string
+    branch?: string
+    gitRef?: string
+    issueNumber?: number
 }
 type ApplyProjectEditInput = {
     sessionId?: string
@@ -625,6 +629,10 @@ const generateProjectStream = async ({
     model,
     signal,
     onEvent,
+    repoUrl,
+    branch,
+    gitRef,
+    issueNumber,
 }: GenerateProjectInput) => {
     let targetSessionId = sessionId || projectId
 
@@ -633,6 +641,10 @@ const generateProjectStream = async ({
         const newSession = await sessionAPI.createSession({
             prompt,
             type: 'WEB',
+            repoUrl,
+            branch,
+            gitRef,
+            issueNumber,
         })
         targetSessionId = newSession.id
 

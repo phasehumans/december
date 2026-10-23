@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { KeyRound, Folder } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 
+import type { PromptInputSubmitOptions } from '@/features/home/types'
+
 import { profileAPI } from '@/features/profile/api/profile'
 import { secretsAPI } from '@/features/profile/api/secrets'
 import { sessionAPI } from '@/features/sessions/api/session'
@@ -43,7 +45,7 @@ export const usePromptInputController = ({
 }: {
     value?: string
     onChange?: (val: string) => void
-    onSubmit: (val: string) => void
+    onSubmit: (val: string, options?: PromptInputSubmitOptions) => void
     isAuthenticated?: boolean
     onOpenAuth?: () => void
     isLoading?: boolean
@@ -55,6 +57,7 @@ export const usePromptInputController = ({
     const [cursorPosition, setCursorPosition] = useState<number | null>(null)
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [selectedRepos, setSelectedRepos] = useState<any[]>([])
+    const [selectedBranch, setSelectedBranch] = useState('')
     const [forceClose, setForceClose] = useState(false)
     const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>('bottom')
     const voiceBaseRef = useRef('')
@@ -258,8 +261,21 @@ export const usePromptInputController = ({
         handleInputChange(newValue)
         if (!selectedRepos.some((r) => r.id === repo.id)) {
             setSelectedRepos((prev) => [...prev, repo])
+            if (!selectedBranch) {
+                setSelectedBranch(repo.defaultBranch || 'main')
+            }
         }
         textareaRef.current?.focus()
+    }
+
+    const handleRemoveRepo = (index: number) => {
+        setSelectedRepos((prev) => {
+            const next = prev.filter((_, i) => i !== index)
+            if (next.length === 0) {
+                setSelectedBranch('')
+            }
+            return next
+        })
     }
 
     const handleSelectSession = (session: any) => {
@@ -281,15 +297,46 @@ export const usePromptInputController = ({
             if ((!input?.trim() && selectedRepos.length === 0) || isLoading) return
 
             let finalPrompt = input || ''
+            let repoUrl: string | undefined
+            let branch: string | undefined
+            let issueNumber: number | undefined
+
             if (selectedRepos.length > 0) {
-                const repoUrls = selectedRepos.map((r) => r.htmlUrl).join('\n')
+                const primaryRepo = selectedRepos[0]
+                repoUrl = primaryRepo.htmlUrl || primaryRepo.cloneUrl
+                branch = selectedBranch.trim() || primaryRepo.defaultBranch || 'main'
+                const repoUrls = selectedRepos
+                    .map((r) => r.htmlUrl || r.cloneUrl || r.name)
+                    .join('\n')
                 finalPrompt = finalPrompt.trim() ? `${repoUrls}\n\n${finalPrompt}` : repoUrls
+            } else {
+                const urlMatch = input.match(/https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+)/i)
+                if (urlMatch) {
+                    repoUrl = urlMatch[0]
+                }
             }
 
-            onSubmit(finalPrompt)
+            const branchMatch = input.match(/(?:@branch:|--branch\s+|-b\s+)([\w./-]+)/i)
+            if (branchMatch) {
+                branch = branchMatch[1]
+            }
+
+            const issueMatch = input.match(/(?:#|issue\s+|issue\s+#)(\d+)/i)
+            if (issueMatch) {
+                issueNumber = parseInt(issueMatch[1], 10)
+            }
+
+            const submitOptions: PromptInputSubmitOptions = {
+                repoUrl,
+                branch,
+                issueNumber,
+            }
+
+            onSubmit(finalPrompt, submitOptions)
             if (!isControlled) setInternalInput('')
             onChange?.('')
             setSelectedRepos([])
+            setSelectedBranch('')
             if (textareaRef.current) textareaRef.current.style.height = 'auto'
         })
     }
@@ -383,10 +430,14 @@ export const usePromptInputController = ({
         setSelectedIndex,
         selectedRepos,
         setSelectedRepos,
+        selectedBranch,
+        setSelectedBranch,
+        handleRemoveRepo,
         forceClose,
         dropdownPosition,
         isAtTriggered,
         isReposTriggered,
+        repoSearchQuery,
         isSessionsTriggered,
         isSecretsTriggered,
         filteredProviders,

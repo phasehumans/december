@@ -27,6 +27,10 @@ export type CreateSession = {
     type?: 'WEB' | 'SEARCH'
     prompt?: string
     projectId?: string
+    repoUrl?: string
+    branch?: string
+    gitRef?: string
+    issueNumber?: number
 }
 
 export type GetSession = {

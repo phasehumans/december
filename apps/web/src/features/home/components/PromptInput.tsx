@@ -1,4 +1,4 @@
-import { Folder, KeyRound } from 'lucide-react'
+import { Folder, KeyRound, GitBranch } from 'lucide-react'
 import React from 'react'
 
 import type { PromptInputProps } from '@/features/home/types'
@@ -30,10 +30,14 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
         setSelectedIndex,
         selectedRepos,
         setSelectedRepos,
+        selectedBranch,
+        setSelectedBranch,
+        handleRemoveRepo,
         forceClose,
         dropdownPosition,
         isAtTriggered,
         isReposTriggered,
+        repoSearchQuery,
         isSessionsTriggered,
         isSecretsTriggered,
         filteredProviders,
@@ -88,8 +92,33 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
                             <span className="text-[12.5px] leading-relaxed">
                                 {repo.owner.login}/{repo.name}
                             </span>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleRemoveRepo(idx)
+                                }}
+                                className="text-[#8F8E8D] hover:text-white transition-colors ml-0.5"
+                                title="Remove repo"
+                            >
+                                <Icons.X className="w-3 h-3" />
+                            </button>
                         </div>
                     ))}
+
+                    {selectedRepos.length > 0 && (
+                        <div className="flex items-center gap-1.5 bg-[#2A2928] text-[#E8E8E8] font-sans text-xs font-medium mr-1.5 mb-1 px-2 py-0.5 rounded-[6px]">
+                            <GitBranch className="w-3.5 h-3.5 text-[#8F8E8D]" />
+                            <input
+                                type="text"
+                                aria-label="Target Branch"
+                                value={selectedBranch}
+                                onChange={(e) => setSelectedBranch(e.target.value)}
+                                placeholder="branch (e.g. main)"
+                                className="bg-transparent text-[12px] text-[#EDEDEF] focus:outline-none w-20 md:w-28 placeholder-[#8F8E8D]"
+                            />
+                        </div>
+                    )}
 
                     <div className="relative flex-1 min-w-[100px]">
                         <textarea
@@ -204,6 +233,37 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
                                                 </div>
                                             </button>
                                         ))
+                                    ) : repoSearchQuery ? (
+                                        <button
+                                            onClick={() =>
+                                                handleSelectRepo({
+                                                    id: repoSearchQuery,
+                                                    name: repoSearchQuery.includes('/')
+                                                        ? repoSearchQuery.split('/')[1]
+                                                        : repoSearchQuery,
+                                                    owner: {
+                                                        login: repoSearchQuery.includes('/')
+                                                            ? repoSearchQuery.split('/')[0]
+                                                            : 'github',
+                                                    },
+                                                    htmlUrl: repoSearchQuery.startsWith('http')
+                                                        ? repoSearchQuery
+                                                        : `https://github.com/${repoSearchQuery}`,
+                                                    defaultBranch: 'main',
+                                                })
+                                            }
+                                            className="flex items-start gap-3 px-3 py-1.5 rounded-xl transition-colors text-left w-full outline-none hover:bg-[#252525]"
+                                        >
+                                            <Icons.Github className="w-4 h-4 mt-[2px] text-[#EDEDEF]" />
+                                            <div className="flex flex-col min-w-0 leading-tight gap-0.5">
+                                                <span className="text-[12.5px] font-medium text-[#EDEDEF] truncate">
+                                                    {repoSearchQuery}
+                                                </span>
+                                                <span className="text-[11.5px] text-[#8F8E8D] truncate">
+                                                    Use repository
+                                                </span>
+                                            </div>
+                                        </button>
                                     ) : (
                                         <div className="px-3 py-2 text-center text-[12.5px] text-[#8F8E8D]">
                                             No repos found.

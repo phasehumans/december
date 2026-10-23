@@ -8,6 +8,10 @@ export type BackendSession = {
     updatedAt: string
     projectId?: string | null
     projectName?: string | null
+    repoUrl?: string | null
+    branch?: string | null
+    gitRef?: string | null
+    issueNumber?: number | null
     lastMessage: string | null
     isPinned?: boolean
     isArchived?: boolean
@@ -145,6 +149,10 @@ export const sessionAPI = {
         projectId?: string
         type?: 'WEB' | 'SEARCH'
         prompt?: string
+        repoUrl?: string
+        branch?: string
+        gitRef?: string
+        issueNumber?: number
     }): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>('/session', {
             method: 'POST',

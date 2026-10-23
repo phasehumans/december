@@ -6,15 +6,22 @@ export interface PromptSuggestion {
     prompt: string
 }
 
+export interface PromptInputSubmitOptions {
+    repoUrl?: string
+    branch?: string
+    gitRef?: string
+    issueNumber?: number
+}
+
 export interface HomeHeroProps {
-    onPromptSubmit: (prompt: string) => void
+    onPromptSubmit: (prompt: string, options?: PromptInputSubmitOptions) => void
     onOpenAuth: () => void
     onOpenProject?: (projectId: string) => void
     onResetImportState?: () => void
 }
 
 export interface PromptInputProps {
-    onSubmit: (prompt: string) => void
+    onSubmit: (prompt: string, options?: PromptInputSubmitOptions) => void
     isLoading: boolean
     placeholder?: string
     minimized?: boolean

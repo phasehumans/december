@@ -145,6 +145,51 @@ describe('Session Service - Unit Tests', () => {
                 prisma.message.create = originalCreateMessage
             }
         })
+
+        it('should pass repository, branch, gitRef, and issueNumber to createSession', async () => {
+            const originalBalance = usageService.hasMinimumBalance
+            const originalCount = prisma.session.count
+            const originalCreateSession = sessionRepository.createSession
+
+            usageService.hasMinimumBalance = mock(async () => true) as any
+            prisma.session.count = mock(async () => 0) as any
+            let capturedCreateData: any = null
+            sessionRepository.createSession = mock(async (data: any) => {
+                capturedCreateData = data
+                return {
+                    id: testSessionId,
+                    ...data,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }
+            }) as any
+
+            try {
+                const session = await sessionService.createSession({
+                    userId: testUserId,
+                    repoUrl: 'https://github.com/phasehumans/december.git',
+                    branch: 'feat/test',
+                    gitRef: 'refs/heads/feat/test',
+                    issueNumber: 583,
+                })
+
+                expect(session.id).toBe(testSessionId)
+                expect(capturedCreateData).not.toBeNull()
+                expect(capturedCreateData.repoUrl).toBe(
+                    'https://github.com/phasehumans/december.git'
+                )
+                expect(capturedCreateData.branch).toBe('feat/test')
+                expect(capturedCreateData.gitRef).toBe('refs/heads/feat/test')
+                expect(capturedCreateData.issueNumber).toBe(583)
+                expect(capturedCreateData.githubRepoOwner).toBe('phasehumans')
+                expect(capturedCreateData.githubRepoName).toBe('december')
+                expect(capturedCreateData.title).toBe('december #583')
+            } finally {
+                usageService.hasMinimumBalance = originalBalance
+                prisma.session.count = originalCount
+                sessionRepository.createSession = originalCreateSession
+            }
+        })
     })
 
     describe('getUserSessions', () => {
