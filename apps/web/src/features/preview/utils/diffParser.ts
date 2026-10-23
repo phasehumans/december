@@ -121,7 +121,74 @@ export function splitFilePath(fullPath: string): {
     return { directory, fileName, repoName }
 }
 
-export function extractSessionFileDiffs(messages: Message[]): ParsedFileDiff[] {
+export function parseUnifiedGitDiff(rawDiff: string): ParsedFileDiff[] {
+    if (!rawDiff || !rawDiff.trim()) return []
+
+    const normalized = rawDiff.replace(/\r\n/g, '\n')
+    // Split into per-file diff sections matching diff --git
+    const sections = normalized.split(/(?=^diff --git )/m).filter((s) => s.trim().length > 0)
+    const result: ParsedFileDiff[] = []
+
+    for (const section of sections) {
+        const firstLine = section.split('\n')[0] || ''
+        const gitMatch = firstLine.match(/^diff --git (?:a\/)?(.*?)\s+(?:b\/)?(.*)$/)
+        if (!gitMatch) continue
+
+        let filePath = gitMatch[2] || gitMatch[1]
+        if (filePath.startsWith('b/')) filePath = filePath.slice(2)
+        else if (filePath.startsWith('a/')) filePath = filePath.slice(2)
+
+        let action: 'created' | 'modified' | 'deleted' = 'modified'
+        if (section.includes('new file mode') || section.includes('--- /dev/null')) {
+            action = 'created'
+        } else if (section.includes('deleted file mode') || section.includes('+++ /dev/null')) {
+            action = 'deleted'
+            if (filePath === '/dev/null' || !filePath) {
+                let oldPath = gitMatch[1]
+                if (oldPath.startsWith('a/')) oldPath = oldPath.slice(2)
+                filePath = oldPath
+            }
+        }
+
+        // Normalize workspace path
+        const cleanPath = filePath
+            .replace(/^\/?workspace\//, '')
+            .replace(/^\.\//, '')
+            .replace(/^\/+/, '')
+
+        const { directory, fileName, repoName } = splitFilePath(cleanPath)
+
+        // Find start of diff hunks or headers
+        const lines = section.split('\n')
+        const hunkIndex = lines.findIndex((l) => l.startsWith('@@'))
+        const diffText = hunkIndex !== -1 ? lines.slice(hunkIndex).join('\n') : section
+
+        const { additions, deletions } = extractDiffStats(diffText)
+
+        result.push({
+            filePath: cleanPath,
+            directory,
+            fileName,
+            repoName,
+            action,
+            diff: diffText,
+            additions,
+            deletions,
+            lines: parseDiffLines(diffText),
+        })
+    }
+
+    return result
+}
+
+export function extractSessionFileDiffs(
+    messages: Message[],
+    rawGitDiff?: string
+): ParsedFileDiff[] {
+    if (rawGitDiff && rawGitDiff.trim().length > 0) {
+        return parseUnifiedGitDiff(rawGitDiff)
+    }
+
     const diffMap = new Map<string, ParsedFileDiff>()
 
     for (const msg of messages) {

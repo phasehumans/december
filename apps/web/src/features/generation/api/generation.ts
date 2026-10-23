@@ -102,6 +102,13 @@ export type GenerationStreamEvent =
           }
       }
     | {
+          type: 'GitDiffUpdate'
+          data: {
+              gitDiff?: string
+              gitStatus?: string
+          }
+      }
+    | {
           type: 'ContextCompacted'
           data: {
               summary: string
@@ -375,6 +382,16 @@ export function normalizeAgentStreamEvent(raw: any): GenerationStreamEvent {
                 data: { summary: String(summary) },
             }
         }
+        case 'GitDiffUpdate': {
+            const gitDiff =
+                (typeof innerData === 'object' && innerData?.gitDiff) || payload.gitDiff || ''
+            const gitStatus =
+                (typeof innerData === 'object' && innerData?.gitStatus) || payload.gitStatus || ''
+            return {
+                type: 'GitDiffUpdate',
+                data: { gitDiff: String(gitDiff), gitStatus: String(gitStatus) },
+            }
+        }
         case 'AgentStatus': {
             const message =
                 (typeof innerData === 'object' &&
@@ -553,6 +570,15 @@ const runOverSocket = async (
 
             if (streamEvent.data?.generatedFiles) {
                 useAppStore.getState().replaceGeneratedOutput(streamEvent.data.generatedFiles)
+            }
+
+            if (streamEvent.type === 'GitDiffUpdate') {
+                if (streamEvent.data?.gitDiff !== undefined) {
+                    useAppStore.getState().setGitDiff(streamEvent.data.gitDiff)
+                }
+                if (streamEvent.data?.gitStatus !== undefined) {
+                    useAppStore.getState().setGitStatus(streamEvent.data.gitStatus)
+                }
             }
 
             if (streamEvent.type === 'result' || streamEvent.type === 'AgentEnd') {

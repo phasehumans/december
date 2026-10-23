@@ -107,3 +107,19 @@ export type StreamSearchResponse = {
     res: import('express').Response
     signal?: AbortSignal
 }
+
+export type GetSessionDiff = {
+    userId: string
+    sessionId: string
+}
+
+export type GetSessionFileTree = {
+    userId: string
+    sessionId: string
+}
+
+export type GetSessionFileContent = {
+    userId: string
+    sessionId: string
+    path: string
+}

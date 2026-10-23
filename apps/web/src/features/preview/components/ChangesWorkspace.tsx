@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronRight, Copy, Check } from 'lucide-react'
-import React, { useState, useMemo, useRef } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 
 import type { ParsedFileDiff, DiffLine } from '@/features/preview/utils/diffParser'
 
 import { useAppStore } from '@/app/store'
-import { extractSessionFileDiffs } from '@/features/preview/utils/diffParser'
+import { extractSessionFileDiffs, parseUnifiedGitDiff } from '@/features/preview/utils/diffParser'
+import { sessionAPI } from '@/features/sessions/api/session'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { cn } from '@/shared/lib/utils'
 
@@ -321,7 +322,35 @@ const TreeItem: React.FC<{
 
 export const ChangesWorkspace: React.FC = () => {
     const messages = useAppStore((state) => state.messages)
-    const fileDiffs = useMemo(() => extractSessionFileDiffs(messages), [messages])
+    const gitDiff = useAppStore((state) => state.gitDiff)
+    const activeProjectId = useAppStore((state) => state.activeProjectId)
+    const setGitDiff = useAppStore((state) => state.setGitDiff)
+    const setGitStatus = useAppStore((state) => state.setGitStatus)
+
+    useEffect(() => {
+        if (!activeProjectId || gitDiff !== null) return
+        let isMounted = true
+        sessionAPI
+            .getSessionDiff(activeProjectId)
+            .then((res) => {
+                if (!isMounted) return
+                if (res?.gitDiff) setGitDiff(res.gitDiff)
+                if (res?.gitStatus) setGitStatus(res.gitStatus)
+            })
+            .catch(() => {
+                // Intentionally swallowed: Session diff fetch fallback
+            })
+        return () => {
+            isMounted = false
+        }
+    }, [activeProjectId, gitDiff, setGitDiff, setGitStatus])
+
+    const fileDiffs = useMemo(() => {
+        if (gitDiff && gitDiff.trim().length > 0) {
+            return parseUnifiedGitDiff(gitDiff)
+        }
+        return extractSessionFileDiffs(messages)
+    }, [gitDiff, messages])
     const dynamicTreeNodes = useMemo(() => buildFileTreeFromDiffs(fileDiffs), [fileDiffs])
 
     // Accordions expansion state: default collapsed or matching user selection

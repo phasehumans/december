@@ -100,3 +100,19 @@ export const streamSearchResponseBodySchema = z.object({
         )
         .optional(),
 })
+
+export const getSessionDiffParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})
+
+export const getSessionFileTreeParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})
+
+export const getSessionFileContentParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})
+
+export const getSessionFileContentQuerySchema = z.object({
+    path: z.string().min(1, 'path is required'),
+})

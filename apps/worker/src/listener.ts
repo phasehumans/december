@@ -4,7 +4,68 @@ import { calculateGenerationCost, startOfUtcMonth, startOfNextUtcMonth } from '@
 import Redis from 'ioredis'
 
 import { E2BSandboxService } from './e2b-sandbox.service'
-import { syncWorkspaceFilesToS3 } from './workspace'
+
+export const MUTATING_TOOL_NAMES = new Set([
+    'write_file',
+    'writefile',
+    'write_to_file',
+    'edit_file',
+    'editfile',
+    'edit_diff',
+    'create_file',
+    'replace_file_content',
+    'multi_replace_file_content',
+    'patch_file',
+])
+
+export async function updateSandboxGitDiff(
+    sessionId: string,
+    sandbox: any
+): Promise<{ gitStatus: string; gitDiff: string } | null> {
+    if (!sandbox?.commands?.run) return null
+    try {
+        const statusRes = await sandbox.commands.run('git status --porcelain', {
+            cwd: '/workspace',
+        })
+        const gitStatus = statusRes?.stdout || ''
+
+        // Intent-to-add so untracked new files appear in git diff
+        await sandbox.commands.run('git add -N .', { cwd: '/workspace' }).catch(() => {
+            // Intentionally swallowed: git add -N fallback
+        })
+
+        const diffRes = await sandbox.commands
+            .run('git diff HEAD', { cwd: '/workspace' })
+            .catch(async () => {
+                return await sandbox.commands
+                    .run('git diff', { cwd: '/workspace' })
+                    .catch(() => null)
+            })
+        const gitDiff = diffRes?.stdout || ''
+
+        const payload = JSON.stringify({
+            type: 'GitDiffUpdate',
+            sessionId,
+            gitStatus,
+            gitDiff,
+            updatedAt: Date.now(),
+        })
+
+        if (redisPub && redisPub.status === 'ready') {
+            await redisPub.set(`session_git_diff:${sessionId}`, payload).catch(() => {
+                // Intentionally swallowed: Redis set fallback in test environment
+            })
+            await redisPub.publish(`session_events:${sessionId}`, payload).catch(() => {
+                // Intentionally swallowed: Redis publish fallback in test environment
+            })
+        }
+
+        return { gitStatus, gitDiff }
+    } catch {
+        // Intentionally swallowed: Sandbox git diff query error fallback
+        return null
+    }
+}
 
 const redisPub = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
     lazyConnect: true,
@@ -146,17 +207,10 @@ export async function processGrpcStream(
                 }
             }
 
-            // S3 Workspace Sync on Turn Completion
-            if (currentTurn.modifiedFiles.size > 0) {
-                console.log(
-                    `[WORKER LISTENER] Syncing ${currentTurn.modifiedFiles.size} modified files to S3 workspace for session '${sessionId}'...`
-                )
-                const sandbox = E2BSandboxService.getActiveSandbox(sessionId)
-                await syncWorkspaceFilesToS3({
-                    sessionId,
-                    modifiedFiles: Array.from(currentTurn.modifiedFiles),
-                    sandbox,
-                })
+            // Real git diff & status streamed from sandbox repository (deprecating per-turn s3 file sync)
+            const activeSandbox = sandbox || E2BSandboxService.getActiveSandbox(sessionId)
+            if (activeSandbox) {
+                await updateSandboxGitDiff(sessionId, activeSandbox)
             }
         } catch (err) {
             console.error(
@@ -227,9 +281,12 @@ export async function processGrpcStream(
                     output: '',
                 })
 
-                const filePath = toolInput.filePath || toolInput.path || toolInput.file
-                if (filePath && typeof filePath === 'string') {
-                    currentTurn.modifiedFiles.add(filePath)
+                // Strictly filter modified files by mutating tools only; never flag read-only tools (read_file, grep, find)
+                if (MUTATING_TOOL_NAMES.has(toolName.toLowerCase())) {
+                    const filePath = toolInput.filePath || toolInput.path || toolInput.file
+                    if (filePath && typeof filePath === 'string') {
+                        currentTurn.modifiedFiles.add(filePath)
+                    }
                 }
             } else if (eventType === 'ToolExecutionUpdate') {
                 const toolCallId = parsedEvent.toolCallId || parsedEvent.data?.toolCallId
@@ -252,6 +309,20 @@ export async function processGrpcStream(
                 if (block) {
                     block.status = result.error ? 'error' : 'success'
                     block.output = result.output || result.content || result.error || block.output
+                }
+
+                // Query updated git status & diff when mutating tools or shell commands finish
+                const isMutatingOrCommand =
+                    block &&
+                    (MUTATING_TOOL_NAMES.has((block.toolName || '').toLowerCase()) ||
+                        ['bash', 'shell', 'command', 'terminal'].includes(
+                            (block.toolName || '').toLowerCase()
+                        ))
+                if (isMutatingOrCommand) {
+                    const activeSandbox = sandbox || E2BSandboxService.getActiveSandbox(sessionId)
+                    if (activeSandbox) {
+                        void updateSandboxGitDiff(sessionId, activeSandbox)
+                    }
                 }
 
                 // Atomically commit completed TOOL_EXECUTION step to DurableStep in PostgreSQL

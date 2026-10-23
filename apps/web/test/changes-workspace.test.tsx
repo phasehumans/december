@@ -148,4 +148,25 @@ describe('Ticket #391: Interactive Changes Workspace', () => {
             expect(diffs[0].lines[3].type).toBe('added')
         })
     })
+
+    describe('Ticket #586: Native Git Diff & Sandbox Status for Changes Workspace', () => {
+        it('prefers native git diff string when provided over message regex heuristics', () => {
+            const rawGitDiff = `diff --git a/src/server.ts b/src/server.ts
+index 100..200 100644
+--- a/src/server.ts
++++ b/src/server.ts
+@@ -1,3 +1,4 @@
+ import express from 'express'
++const app = express()
+-export default {}
++export default app`
+
+            const diffs = extractSessionFileDiffs([], rawGitDiff)
+            expect(diffs).toHaveLength(1)
+            expect(diffs[0].filePath).toBe('src/server.ts')
+            expect(diffs[0].action).toBe('modified')
+            expect(diffs[0].additions).toBe(2)
+            expect(diffs[0].deletions).toBe(1)
+        })
+    })
 })

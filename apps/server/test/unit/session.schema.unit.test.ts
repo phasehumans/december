@@ -14,6 +14,10 @@ import {
     disconnectSessionParamsSchema,
     rehydrateSessionParamsSchema,
     proxyPreviewParamsSchema,
+    getSessionDiffParamsSchema,
+    getSessionFileTreeParamsSchema,
+    getSessionFileContentParamsSchema,
+    getSessionFileContentQuerySchema,
 } from '../../src/modules/session/session.schema'
 
 describe('Session Schemas - Unit Tests', () => {
@@ -117,6 +121,12 @@ describe('Session Schemas - Unit Tests', () => {
             { name: 'deleteSessionParamsSchema', schema: deleteSessionParamsSchema },
             { name: 'disconnectSessionParamsSchema', schema: disconnectSessionParamsSchema },
             { name: 'rehydrateSessionParamsSchema', schema: rehydrateSessionParamsSchema },
+            { name: 'getSessionDiffParamsSchema', schema: getSessionDiffParamsSchema },
+            { name: 'getSessionFileTreeParamsSchema', schema: getSessionFileTreeParamsSchema },
+            {
+                name: 'getSessionFileContentParamsSchema',
+                schema: getSessionFileContentParamsSchema,
+            },
         ]
 
         for (const { name, schema } of schemas) {
@@ -129,6 +139,17 @@ describe('Session Schemas - Unit Tests', () => {
                 expect(() => schema.parse({ id: 'invalid-id' })).toThrow()
             })
         }
+    })
+
+    describe('getSessionFileContentQuerySchema', () => {
+        it('should pass with valid non-empty path', () => {
+            const result = getSessionFileContentQuerySchema.parse({ path: 'src/index.ts' })
+            expect(result.path).toBe('src/index.ts')
+        })
+
+        it('should fail with empty path', () => {
+            expect(() => getSessionFileContentQuerySchema.parse({ path: '' })).toThrow()
+        })
     })
 
     describe('renameSessionBodySchema', () => {

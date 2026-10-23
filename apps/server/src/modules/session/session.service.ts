@@ -33,53 +33,35 @@ import type {
     ProxyPreview,
     LoadSessionFiles,
     StreamSearchResponse,
+    GetSessionDiff,
+    GetSessionFileTree,
+    GetSessionFileContent,
 } from './session.types'
 
-const loadSessionFiles = async (data: LoadSessionFiles) => {
-    const { sessionId } = data
-    const prefix = sessionWorkspacePrefix(sessionId)
-    try {
-        const objects = await listPrefix(prefix)
-        const files: Record<string, string> = {}
+let sessionRedis: Redis | null = null
 
-        await Promise.all(
-            objects.map(async (obj) => {
-                const key = obj.Key
-                if (!key) return
-                const relativePath = key.substring(prefix.length)
-
-                if (!relativePath || relativePath.endsWith('/')) return
-
-                const isBinary =
-                    relativePath.endsWith('.png') ||
-                    relativePath.endsWith('.jpg') ||
-                    relativePath.endsWith('.jpeg') ||
-                    relativePath.endsWith('.webp') ||
-                    relativePath.endsWith('.gif') ||
-                    relativePath.endsWith('.ico') ||
-                    relativePath.endsWith('.zip') ||
-                    relativePath.endsWith('.pdf')
-
-                if (isBinary) {
-                    files[relativePath] = ''
-                    return
-                }
-
-                try {
-                    const content = await getTextFile(key)
-                    files[relativePath] = content ?? ''
-                } catch (err) {
-                    console.error(`Failed to load file content for ${relativePath} (${key}):`, err)
-                    files[relativePath] = ''
-                }
+const getSessionRedis = (): Redis | null => {
+    if (env.NODE_ENV === 'test') return null
+    if (!sessionRedis) {
+        const redisUrl =
+            env.REDIS_URL || (env.NODE_ENV !== 'production' ? 'redis://localhost:6379' : undefined)
+        if (redisUrl) {
+            sessionRedis = new Redis(redisUrl, {
+                lazyConnect: true,
+                maxRetriesPerRequest: 1,
+                enableOfflineQueue: false,
             })
-        )
-
-        return files
-    } catch {
-        // Intentionally swallowed: Handles offline/test environment when S3/MinIO is unreachable
-        return {}
+            sessionRedis.on('error', () => {
+                // Intentionally swallowed: Redis error fallback in session service
+            })
+        }
     }
+    return sessionRedis
+}
+
+const loadSessionFiles = async (data: LoadSessionFiles) => {
+    // Deprecated: Monolithic full-repo S3 loading deprecated in favor of on-demand fetching and git diff
+    return {}
 }
 
 const invalidateUserRecentSessions = async (userId: string) => {
@@ -283,7 +265,7 @@ const getSession = async (data: GetSession) => {
     const session = await sessionRepository.findSessionById(sessionId, userId)
     if (!session) throw new AppError('Session not found', 404)
 
-    const generatedFiles = await loadSessionFiles({ sessionId })
+    const generatedFiles = {} // Deprecated: Monolithic full-repo JSON payload deprecated
 
     return {
         session,
@@ -414,11 +396,21 @@ const rehydrateSession = async (data: RehydrateSession) => {
         orderBy: { sequence: 'asc' },
     })
 
-    let fileTree: Record<string, string> = {}
+    let gitDiff: string | null = null
+    let gitStatus: string | null = null
+
     try {
-        fileTree = await loadSessionFiles({ sessionId })
+        const redis = getSessionRedis()
+        if (redis) {
+            const cached = await redis.get(`session_git_diff:${sessionId}`)
+            if (cached) {
+                const parsed = JSON.parse(cached)
+                gitDiff = parsed.gitDiff ?? null
+                gitStatus = parsed.gitStatus ?? null
+            }
+        }
     } catch {
-        // Intentionally swallowed: storage fallback if workspace zip not yet uploaded
+        // Intentionally swallowed: Redis retrieval fallback for cached git diff
     }
 
     const chatMessages = messages.map((message) => ({
@@ -436,9 +428,11 @@ const rehydrateSession = async (data: RehydrateSession) => {
         session,
         chatMessages,
         messages,
-        fileTree,
-        generatedFiles: fileTree,
+        fileTree: {},
+        generatedFiles: {},
         terminalScrollback: [],
+        gitDiff,
+        gitStatus,
     }
 }
 
@@ -693,6 +687,80 @@ const getSessionMessages = async (data: GetSessionMessages) => {
     })
 }
 
+const getSessionDiff = async (data: GetSessionDiff) => {
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    try {
+        const redis = getSessionRedis()
+        if (redis) {
+            const cached = await redis.get(`session_git_diff:${sessionId}`)
+            if (cached) {
+                const parsed = JSON.parse(cached)
+                return {
+                    gitStatus: parsed.gitStatus ?? '',
+                    gitDiff: parsed.gitDiff ?? '',
+                }
+            }
+        }
+    } catch {
+        // Intentionally swallowed: Redis retrieval fallback for git diff
+    }
+
+    return {
+        gitStatus: '',
+        gitDiff: '',
+    }
+}
+
+const getSessionFileTree = async (data: GetSessionFileTree) => {
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    const prefix = sessionWorkspacePrefix(sessionId)
+    try {
+        const objects = await listPrefix(prefix)
+        const files: string[] = []
+        for (const obj of objects) {
+            const key = obj.Key
+            if (!key) continue
+            const relativePath = key.substring(prefix.length)
+            if (!relativePath || relativePath.endsWith('/')) continue
+            files.push(relativePath)
+        }
+        return { files }
+    } catch {
+        // Intentionally swallowed: storage fallback if S3 prefix cannot be listed
+        return { files: [] }
+    }
+}
+
+const getSessionFileContent = async (data: GetSessionFileContent) => {
+    const { userId, sessionId, path } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    const prefix = sessionWorkspacePrefix(sessionId)
+    const cleanPath = path.replace(/^\/+/, '')
+    const key = `${prefix}${cleanPath}`
+
+    try {
+        const content = await getTextFile(key)
+        return { path: cleanPath, content: content ?? '' }
+    } catch {
+        // Intentionally swallowed: storage fallback if file does not exist or S3 is unreachable
+        return { path: cleanPath, content: '' }
+    }
+}
+
 export const sessionService = {
     loadSessionFiles,
     getUserSessions,
@@ -708,4 +776,7 @@ export const sessionService = {
     disconnectSession,
     proxyPreview,
     streamSearchResponse,
+    getSessionDiff,
+    getSessionFileTree,
+    getSessionFileContent,
 }

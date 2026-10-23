@@ -588,4 +588,88 @@ describe('Session Service - Unit Tests', () => {
             }
         })
     })
+
+    describe('getSessionDiff', () => {
+        it('should throw AppError 404 if session is not found', async () => {
+            sessionRepository.findSessionById = mock(async () => null) as any
+            await expect(
+                sessionService.getSessionDiff({
+                    userId: testUserId,
+                    sessionId: testSessionId,
+                })
+            ).rejects.toThrow('Session not found')
+        })
+
+        it('should return empty gitStatus and gitDiff when session exists but no cached diff is present', async () => {
+            sessionRepository.findSessionById = mock(async () => ({
+                id: testSessionId,
+                userId: testUserId,
+            })) as any
+
+            const res = await sessionService.getSessionDiff({
+                userId: testUserId,
+                sessionId: testSessionId,
+            })
+            expect(res).toEqual({
+                gitStatus: '',
+                gitDiff: '',
+            })
+        })
+    })
+
+    describe('getSessionFileTree', () => {
+        it('should throw AppError 404 if session is not found', async () => {
+            sessionRepository.findSessionById = mock(async () => null) as any
+            await expect(
+                sessionService.getSessionFileTree({
+                    userId: testUserId,
+                    sessionId: testSessionId,
+                })
+            ).rejects.toThrow('Session not found')
+        })
+
+        it('should return files array gracefully on valid session', async () => {
+            sessionRepository.findSessionById = mock(async () => ({
+                id: testSessionId,
+                userId: testUserId,
+            })) as any
+
+            const res = await sessionService.getSessionFileTree({
+                userId: testUserId,
+                sessionId: testSessionId,
+            })
+            expect(res).toBeDefined()
+            expect(Array.isArray(res.files)).toBe(true)
+        })
+    })
+
+    describe('getSessionFileContent', () => {
+        it('should throw AppError 404 if session is not found', async () => {
+            sessionRepository.findSessionById = mock(async () => null) as any
+            await expect(
+                sessionService.getSessionFileContent({
+                    userId: testUserId,
+                    sessionId: testSessionId,
+                    path: 'src/app.ts',
+                })
+            ).rejects.toThrow('Session not found')
+        })
+
+        it('should return file path and empty content when S3 is unavailable or file missing', async () => {
+            sessionRepository.findSessionById = mock(async () => ({
+                id: testSessionId,
+                userId: testUserId,
+            })) as any
+
+            const res = await sessionService.getSessionFileContent({
+                userId: testUserId,
+                sessionId: testSessionId,
+                path: 'src/app.ts',
+            })
+            expect(res).toEqual({
+                path: 'src/app.ts',
+                content: '',
+            })
+        })
+    })
 })

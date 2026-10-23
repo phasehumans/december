@@ -152,7 +152,16 @@ export const sessionAPI = {
             chatMessages: BackendMessage[]
             generatedFiles: Record<string, string>
             terminalScrollback: string[]
+            gitDiff?: string | null
+            gitStatus?: string | null
         }>(`/session/${sessionId}/rehydrate`)
+    },
+
+    getSessionDiff: async (sessionId: string): Promise<{ gitStatus: string; gitDiff: string }> => {
+        const data = await apiRequest<{ gitStatus: string; gitDiff: string }>(
+            `/session/${sessionId}/diff`
+        )
+        return data || { gitStatus: '', gitDiff: '' }
     },
 
     createSession: async (data: {

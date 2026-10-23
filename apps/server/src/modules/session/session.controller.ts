@@ -18,6 +18,10 @@ import {
     proxyPreviewParamsSchema,
     streamSearchResponseParamsSchema,
     streamSearchResponseBodySchema,
+    getSessionDiffParamsSchema,
+    getSessionFileTreeParamsSchema,
+    getSessionFileContentParamsSchema,
+    getSessionFileContentQuerySchema,
 } from './session.schema'
 import { sessionService } from './session.service'
 
@@ -255,6 +259,38 @@ export const getSessionMessages = asyncHandler(async (req: Request, res: Respons
     return sendSuccess(res, 'messages fetched successfully', { messages })
 })
 
+export const getSessionDiff = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = getSessionDiffParamsSchema.parse(req.params)
+
+    const result = await sessionService.getSessionDiff({ userId, sessionId: id })
+    return sendSuccess(res, 'session diff fetched successfully', result)
+})
+
+export const getSessionFileTree = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = getSessionFileTreeParamsSchema.parse(req.params)
+
+    const result = await sessionService.getSessionFileTree({ userId, sessionId: id })
+    return sendSuccess(res, 'session file tree fetched successfully', result)
+})
+
+export const getSessionFileContent = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = getSessionFileContentParamsSchema.parse(req.params)
+    const { path } = getSessionFileContentQuerySchema.parse(req.query)
+
+    const result = await sessionService.getSessionFileContent({
+        userId,
+        sessionId: id,
+        path,
+    })
+    return sendSuccess(res, 'session file content fetched successfully', result)
+})
+
 export const sessionController = {
     getSessions,
     createSession,
@@ -269,4 +305,7 @@ export const sessionController = {
     disconnectSession,
     proxyPreview,
     streamSearchResponse,
+    getSessionDiff,
+    getSessionFileTree,
+    getSessionFileContent,
 }
