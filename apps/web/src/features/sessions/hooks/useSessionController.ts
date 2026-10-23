@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/app/store'
 import { toProjectSlug, type ViewState } from '@/app/types'
 import { mapBackendMessageToUIMessage } from '@/features/chat/utils'
+import { generationAPI, getSharedSocket } from '@/features/generation/api/generation'
 import { sessionAPI } from '@/features/sessions/api/session'
 
 export const useSessionController = (
@@ -41,27 +42,6 @@ export const useSessionController = (
     } = useAppStore()
 
     const lastAutoFixSignatureRef = React.useRef<string | null>(null)
-
-    React.useEffect(() => {
-        if (!activeProjectId) return
-
-        const handleBeforeUnload = () => {
-            const url = `/api/v1/sessions/${activeProjectId}/disconnect`
-            if (navigator.sendBeacon) {
-                navigator.sendBeacon(url)
-            } else {
-                fetch(url, { method: 'POST', keepalive: true }).catch(() => {
-                    // Intentionally swallowed: Disconnect beacon fallback on window unload
-                })
-            }
-        }
-
-        window.addEventListener('beforeunload', handleBeforeUnload)
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload)
-        }
-    }, [activeProjectId])
 
     const requireAuthOr = React.useCallback(
         (action: () => void) => {
@@ -145,13 +125,45 @@ export const useSessionController = (
             setProjectType(resolvedType)
 
             replaceGeneratedOutput(detail.generatedFiles || {})
-            setGenerationPhase(null)
-            setActiveOperation(null)
+            const vmStatus =
+                projectOrSession?.vmStatus ||
+                detail.session?.vmStatus ||
+                (detail.project as any)?.vmStatus
+
+            if (vmStatus === 'RUNNING' || vmStatus === 'PROVISIONING') {
+                setIsGenerating(true)
+                setGenerationPhase('building')
+                setActiveOperation('build')
+                void generationAPI
+                    .listenToSessionStream(projectId, (event) => {
+                        if (event.type === 'AgentEnd' || event.type === 'result') {
+                            setIsGenerating(false)
+                            setGenerationPhase('done')
+                            setActiveOperation(null)
+                            void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+                            void queryClient.invalidateQueries({ queryKey: ['session', projectId] })
+                        } else if (event.type === 'AgentError') {
+                            setIsGenerating(false)
+                            setGenerationPhase(null)
+                            setActiveOperation(null)
+                            void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+                        }
+                    })
+                    .catch(() => {
+                        // Intentionally swallowed: background stream listener fallback
+                    })
+            } else {
+                setGenerationPhase(null)
+                setIsGenerating(false)
+                setActiveOperation(null)
+            }
+
             lastAutoFixSignatureRef.current = null
             navigate(`/sessions/${toProjectSlug(projectName)}`, { replace: true })
         },
         [
             navigate,
+            queryClient,
             replaceGeneratedOutput,
             setActiveProjectId,
             setActiveProjectName,
@@ -161,16 +173,38 @@ export const useSessionController = (
             setMessages,
             setProjectType,
             setGenerationPhase,
+            setIsGenerating,
             setActiveOperation,
         ]
     )
+
+    React.useEffect(() => {
+        if (!activeProjectId) return
+
+        const socket = getSharedSocket()
+        const handleReconnect = async () => {
+            try {
+                const refreshedDetail = await sessionAPI.getSessionDetail(activeProjectId)
+                if (refreshedDetail) {
+                    hydrateProjectDetail(refreshedDetail)
+                }
+            } catch {
+                // Intentionally swallowed: Reconnect sync fallback
+            }
+        }
+
+        socket.io.on('reconnect', handleReconnect)
+        return () => {
+            socket.io.off('reconnect', handleReconnect)
+        }
+    }, [activeProjectId, hydrateProjectDetail])
 
     const openProject = React.useCallback(
         async ({
             projectId,
             versionId,
             originView,
-            abortActiveGeneration = true,
+            abortActiveGeneration = false,
         }: {
             projectId: string
             versionId?: string | null

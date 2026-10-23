@@ -20,6 +20,8 @@ export type BackendSession = {
     prState?: 'open' | 'closed' | 'merged' | 'draft' | null
     createdBy?: string | null
     createdByName?: string | null
+    vmStatus?: 'PROVISIONING' | 'RUNNING' | 'STOPPED' | 'PAUSED' | 'FAILED' | string | null
+    status?: string | null
 }
 
 export type BackendSessionVersionSummary = {
@@ -142,6 +144,15 @@ export const sessionAPI = {
         return apiRequest<BackendSessionDetail>(
             `/session/${sessionId}${buildVersionQuery(versionId)}`
         )
+    },
+
+    rehydrateSession: (sessionId: string) => {
+        return apiRequest<{
+            session: BackendSession
+            chatMessages: BackendMessage[]
+            generatedFiles: Record<string, string>
+            terminalScrollback: string[]
+        }>(`/session/${sessionId}/rehydrate`)
     },
 
     createSession: async (data: {

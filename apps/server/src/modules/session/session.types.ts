@@ -14,6 +14,7 @@ export type SessionFilters = {
     search?: string
     page?: number
     limit?: number
+    vmStatus?: string
 }
 
 export type GetUserSessions = {
@@ -31,6 +32,7 @@ export type CreateSession = {
     branch?: string
     gitRef?: string
     issueNumber?: number
+    maxConcurrentSessions?: number
 }
 
 export type GetSession = {

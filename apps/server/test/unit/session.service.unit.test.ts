@@ -58,11 +58,40 @@ describe('Session Service - Unit Tests', () => {
             }
         })
 
-        it('should throw AppError 409 if active session is already running', async () => {
+        it('should allow creating session when active sessions are below concurrency limit', async () => {
+            const originalBalance = usageService.hasMinimumBalance
+            const originalCount = prisma.session.count
+            const originalCreateSession = sessionRepository.createSession
+            usageService.hasMinimumBalance = mock(async () => true) as any
+            prisma.session.count = mock(async () => 1) as any // 1 active session running
+            sessionRepository.createSession = mock(async () => ({
+                id: 'sess-concurrent-1',
+                userId: testUserId,
+                title: 'Concurrent Session',
+                type: 'WEB',
+                vmStatus: 'STOPPED',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            })) as any
+
+            try {
+                const res = await sessionService.createSession({
+                    userId: testUserId,
+                    title: 'Concurrent Session',
+                })
+                expect(res.id).toBe('sess-concurrent-1')
+            } finally {
+                usageService.hasMinimumBalance = originalBalance
+                prisma.session.count = originalCount
+                sessionRepository.createSession = originalCreateSession
+            }
+        })
+
+        it('should throw AppError 409 if active sessions reach or exceed per-user concurrency limit', async () => {
             const originalBalance = usageService.hasMinimumBalance
             const originalCount = prisma.session.count
             usageService.hasMinimumBalance = mock(async () => true) as any
-            prisma.session.count = mock(async () => 1) as any
+            prisma.session.count = mock(async () => 3) as any // default limit is 3
 
             try {
                 await expect(
@@ -70,8 +99,34 @@ describe('Session Service - Unit Tests', () => {
                         userId: testUserId,
                         title: 'Test Session',
                     })
-                ).rejects.toThrow(new AppError('An active session is already running', 409))
+                ).rejects.toThrow(
+                    new AppError('Maximum concurrent active sessions limit (3) reached', 409)
+                )
             } finally {
+                usageService.hasMinimumBalance = originalBalance
+                prisma.session.count = originalCount
+            }
+        })
+
+        it('should respect custom configured concurrency limit via environment variable', async () => {
+            const originalBalance = usageService.hasMinimumBalance
+            const originalCount = prisma.session.count
+            const originalEnvLimit = process.env.MAX_CONCURRENT_SESSIONS_PER_USER
+            process.env.MAX_CONCURRENT_SESSIONS_PER_USER = '5'
+            usageService.hasMinimumBalance = mock(async () => true) as any
+            prisma.session.count = mock(async () => 5) as any
+
+            try {
+                await expect(
+                    sessionService.createSession({
+                        userId: testUserId,
+                        title: 'Test Session',
+                    })
+                ).rejects.toThrow(
+                    new AppError('Maximum concurrent active sessions limit (5) reached', 409)
+                )
+            } finally {
+                process.env.MAX_CONCURRENT_SESSIONS_PER_USER = originalEnvLimit
                 usageService.hasMinimumBalance = originalBalance
                 prisma.session.count = originalCount
             }

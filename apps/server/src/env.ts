@@ -85,6 +85,7 @@ const envSchema = z
             .default('0000000000000000000000000000000000000000000000000000000000000000'),
         REDIS_URL: emptyAsUndefined,
         AGENT_TOKEN_SECRET: emptyAsUndefined,
+        MAX_CONCURRENT_SESSIONS_PER_USER: z.coerce.number().default(3),
         GITHUB_APP_ID: emptyAsUndefined,
         GITHUB_APP_NAME: emptyAsUndefined,
         GITHUB_APP_PRIVATE_KEY: emptyAsUndefined,

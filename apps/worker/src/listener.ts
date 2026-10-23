@@ -29,10 +29,10 @@ redisSub.on('pmessage', (pattern, channel, message) => {
     try {
         const parsed = JSON.parse(message)
         if (parsed.type === 'ClientDisconnect' && parsed.sessionId) {
-            E2BSandboxService.handleDisconnect({
-                sessionId: parsed.sessionId,
-                gracePeriodMs: 120000,
-            })
+            // AFK background execution: do not pause or terminate containers on client disconnect
+            console.log(
+                `[WORKER LISTENER] Client disconnect event for session ${parsed.sessionId}. Preserving active background container execution.`
+            )
         }
     } catch {
         // Intentionally swallowed: message parse error fallback

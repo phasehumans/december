@@ -318,10 +318,13 @@ describe('E2BSandboxService (Unit & Integration)', () => {
         expect(paused).toBe(true)
     })
 
-    it('should trigger grace period timer on handleDisconnect', async () => {
+    it('should not pause container on handleDisconnect (preserving AFK background execution)', async () => {
+        let pauseCalled = false
         const mockSandbox = {
             sandboxId: 'sb-disconnect-1',
-            pause: async () => {},
+            pause: async () => {
+                pauseCalled = true
+            },
         }
 
         E2BSandboxService.setMockClient({ create: async () => mockSandbox })
@@ -337,6 +340,7 @@ describe('E2BSandboxService (Unit & Integration)', () => {
         })
 
         await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(pauseCalled).toBe(false)
     })
 
     it('should support RemotePlatformAdapter shell escaping and CWD /workspace', async () => {

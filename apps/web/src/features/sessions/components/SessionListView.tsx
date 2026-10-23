@@ -31,6 +31,10 @@ interface SessionListViewProps {
     sortOption: SortOption
     onSortChange: (option: SortOption) => void
     hasUnfilteredProjects: boolean
+    statusFilter?: 'all' | 'running'
+    onStatusFilterChange?: (filter: 'all' | 'running') => void
+    runningCount?: number
+    onStopSession?: (id: string, event: React.MouseEvent) => void
 }
 
 const EmptySessionsState: React.FC = () => {
@@ -129,6 +133,10 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
     sortOption,
     onSortChange,
     hasUnfilteredProjects: hasUnfilteredSessions,
+    statusFilter,
+    onStatusFilterChange,
+    runningCount,
+    onStopSession,
 }) => {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
     const [dropdownDirection, setDropdownDirection] = React.useState<'down' | 'up'>('down')
@@ -202,6 +210,39 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                     />
                 </div>
 
+                {onStatusFilterChange && (
+                    <div className="flex items-center gap-1 bg-[#1a1a1a] p-0.5 rounded-lg border border-[#282828]">
+                        <button
+                            type="button"
+                            onClick={() => onStatusFilterChange('all')}
+                            className={`px-2.5 py-1 text-[12px] font-medium rounded-md transition-all ${
+                                statusFilter === 'all'
+                                    ? 'bg-[#282828] text-white shadow-sm'
+                                    : 'text-[#8F8E8D] hover:text-[#D6D5C9]'
+                            }`}
+                        >
+                            All
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onStatusFilterChange('running')}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium rounded-md transition-all ${
+                                statusFilter === 'running'
+                                    ? 'bg-[#282828] text-white shadow-sm'
+                                    : 'text-[#8F8E8D] hover:text-[#D6D5C9]'
+                            }`}
+                        >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>Running</span>
+                            {runningCount !== undefined && runningCount > 0 && (
+                                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-mono">
+                                    {runningCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                )}
+
                 <div className="hidden md:flex flex-1" />
 
                 <div className="flex items-center gap-2 shrink-0">
@@ -273,6 +314,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                                     onOpenRename={onOpenRename}
                                     onOpenDelete={onOpenDelete}
                                     onOpenTags={onOpenTags}
+                                    onStopSession={onStopSession}
                                 />
                             ))}
                         </div>

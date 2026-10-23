@@ -606,28 +606,12 @@ const resumeSandbox = async (data: ResumeSandboxInput): Promise<ProvisionSandbox
 }
 
 const handleDisconnect = async (data: HandleDisconnectInput): Promise<void> => {
-    const { sessionId, gracePeriodMs } = data
-    const delay = gracePeriodMs ?? 120000 // 2 minute tab-closure grace period
-
+    const { sessionId } = data
     console.log(
-        `[E2BSandboxService] Client tab disconnect detected for session ${sessionId}. Grace period: ${delay}ms`
+        `[E2BSandboxService] Client tab disconnect detected for session ${sessionId}. Preserving active background container execution.`
     )
-
-    setTimeout(async () => {
-        try {
-            const session = await prisma.session
-                .findUnique({ where: { id: sessionId } })
-                .catch(() => null)
-            if (!session || session.vmStatus !== 'RUNNING') {
-                await pauseSandbox({ sessionId })
-            }
-        } catch (e: any) {
-            console.error(
-                `[E2BSandboxService] Error in disconnect grace timer for session ${sessionId}:`,
-                e
-            )
-        }
-    }, delay)
+    // Containers are intentionally not paused or terminated when browser tabs close
+    // to enable autonomous background task execution, tests, and git operations.
 }
 
 const destroySandbox = async (data: DestroySandboxInput): Promise<boolean> => {

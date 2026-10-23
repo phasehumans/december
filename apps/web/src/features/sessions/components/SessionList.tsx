@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -10,6 +11,7 @@ import { SessionListView } from './SessionListView'
 import type { DeleteModalState, RenameModalState } from '@/features/sessions/types'
 
 import { useAppStore } from '@/app/store'
+import { generationAPI } from '@/features/generation/api/generation'
 import { MobileBreadcrumbsHeader } from '@/features/navigation/components/MobileBreadcrumbsHeader'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
@@ -32,6 +34,8 @@ export const SessionList: React.FC<{
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [sortOption, setSortOption] = useState<SortOption>('newest')
+    const [statusFilter, setStatusFilter] = useState<'all' | 'running'>('all')
+    const queryClient = useQueryClient()
 
     const queryFilters = useMemo(() => {
         return {
@@ -89,6 +93,11 @@ export const SessionList: React.FC<{
         onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
     })
 
+    const runningCount = useMemo(() => {
+        return sessions.filter((s) => s.vmStatus === 'RUNNING' || s.vmStatus === 'PROVISIONING')
+            .length
+    }, [sessions])
+
     const filteredAndSortedSessions = useMemo(() => {
         let result = [...sessions]
 
@@ -103,6 +112,13 @@ export const SessionList: React.FC<{
             )
         }
 
+        // status filter
+        if (statusFilter === 'running') {
+            result = result.filter(
+                (session) => session.vmStatus === 'RUNNING' || session.vmStatus === 'PROVISIONING'
+            )
+        }
+
         // sort
         result.sort((a, b) => {
             const dateA = new Date(a.updatedAt || a.createdAt).getTime()
@@ -111,7 +127,13 @@ export const SessionList: React.FC<{
         })
 
         return result
-    }, [sessions, searchQuery, sortOption])
+    }, [sessions, searchQuery, sortOption, statusFilter])
+
+    const handleStopSession = (id: string, event: React.MouseEvent) => {
+        event.stopPropagation()
+        generationAPI.stopSessionStream(id)
+        void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+    }
 
     const toggleStar = (id: string, event: React.MouseEvent) => {
         event.stopPropagation()
@@ -187,15 +209,7 @@ export const SessionList: React.FC<{
     }
 
     const handleOpenProjectClick = (id: string) => {
-        const session = sessions.find((p) => p.id === id)
-        if (session && session.projectId) {
-            setOpenConfirmModal({
-                isOpen: true,
-                project: session,
-            })
-        } else {
-            onOpenProject(id)
-        }
+        onOpenProject(id)
     }
 
     const handleOpenConfirm = () => {
@@ -248,6 +262,10 @@ export const SessionList: React.FC<{
                     sortOption={sortOption}
                     onSortChange={setSortOption}
                     hasUnfilteredProjects={sessions.length > 0}
+                    statusFilter={statusFilter}
+                    onStatusFilterChange={setStatusFilter}
+                    runningCount={runningCount}
+                    onStopSession={handleStopSession}
                 />
             </div>
 

@@ -15,6 +15,13 @@ export async function findManySessions(userId: string, filters?: SessionFilters)
     if (filters?.tags && filters.tags.length > 0) {
         where.tags = { hasEvery: filters.tags }
     }
+    if (filters?.vmStatus) {
+        if (filters.vmStatus === 'active' || filters.vmStatus === 'running') {
+            where.vmStatus = { in: ['PROVISIONING', 'RUNNING'] }
+        } else {
+            where.vmStatus = filters.vmStatus as any
+        }
+    }
 
     if (filters?.search && filters.search.trim().length > 0) {
         const searchTerms = filters.search.trim()

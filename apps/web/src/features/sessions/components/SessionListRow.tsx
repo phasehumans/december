@@ -18,6 +18,7 @@ interface SessionListRowProps {
     onOpenRename: (session: any, event: React.MouseEvent) => void
     onOpenDelete: (session: any, event: React.MouseEvent) => void
     onOpenTags: (session: any, event: React.MouseEvent) => void
+    onStopSession?: (id: string, event: React.MouseEvent) => void
 }
 
 export const SessionListRow: React.FC<SessionListRowProps> = ({
@@ -33,6 +34,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
     onOpenRename,
     onOpenDelete,
     onOpenTags,
+    onStopSession,
 }) => {
     const [menuDirection, setMenuDirection] = useState<'down' | 'up'>('down')
     const session = project // alias for clarity
@@ -96,6 +98,18 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                         <span className="truncate text-[14px] font-medium text-[#D6D5C9] transition-colors hover:text-white">
                             {session.title || 'Untitled Session'}
                         </span>
+                        {session.vmStatus === 'RUNNING' && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Running
+                            </span>
+                        )}
+                        {session.vmStatus === 'PROVISIONING' && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                Provisioning
+                            </span>
+                        )}
                         {session.isArchived && (
                             <span className="flex items-center justify-center rounded bg-[#242323] p-1 shrink-0">
                                 <Icons.Archive className="h-3 w-3 text-[#7B7A79]" />
@@ -156,6 +170,16 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                                     <Icons.Archive className="h-3.5 w-3.5 text-[#7B7A79]" />{' '}
                                     {session.isArchived ? 'Unarchive' : 'Archive'}
                                 </button>
+                                {onStopSession &&
+                                    (session.vmStatus === 'RUNNING' ||
+                                        session.vmStatus === 'PROVISIONING') && (
+                                        <button
+                                            onClick={(e) => onStopSession(session.id, e)}
+                                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-amber-400 transition-colors hover:bg-[#262626] hover:text-amber-300"
+                                        >
+                                            <Icons.X className="h-3.5 w-3.5" /> Stop task
+                                        </button>
+                                    )}
                                 <div className="mx-1.5 my-1 h-[1px] bg-[#282828]" />
                                 <button
                                     onClick={(e) => onOpenDelete(session, e)}
@@ -219,6 +243,18 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                             >
                                 {session.title || 'Untitled Session'}
                             </span>
+                            {session.vmStatus === 'RUNNING' && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    Running
+                                </span>
+                            )}
+                            {session.vmStatus === 'PROVISIONING' && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                    Provisioning
+                                </span>
+                            )}
                             {session.isArchived && (
                                 <Tooltip position="top" content="This session is archived">
                                     <span className="flex items-center justify-center rounded bg-[#242323] p-1">
@@ -332,6 +368,16 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                                 <Icons.Archive className="h-3.5 w-3.5 text-[#7B7A79]" />{' '}
                                 {session.isArchived ? 'Unarchive' : 'Archive'}
                             </button>
+                            {onStopSession &&
+                                (session.vmStatus === 'RUNNING' ||
+                                    session.vmStatus === 'PROVISIONING') && (
+                                    <button
+                                        onClick={(e) => onStopSession(session.id, e)}
+                                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-amber-400 transition-colors hover:bg-[#262626] hover:text-amber-300"
+                                    >
+                                        <Icons.X className="h-3.5 w-3.5" /> Stop task
+                                    </button>
+                                )}
                             <div className="mx-1.5 my-1 h-[1px] bg-[#282828]" />
                             <button
                                 onClick={(e) => onOpenDelete(session, e)}

@@ -73,7 +73,7 @@ const Sidebar: React.FC<
     )
     const [sortBy, setSortBy] = React.useState<'created' | 'updated'>('updated')
     const [filterArchived, setFilterArchived] = React.useState(false)
-    const [sessionType, setSessionType] = React.useState<'all' | 'web'>('all')
+    const [sessionType, setSessionType] = React.useState<'all' | 'web' | 'running'>('all')
     const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
     const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
     const [isLogoAnimating, setIsLogoAnimating] = React.useState(false)
@@ -235,6 +235,12 @@ const Sidebar: React.FC<
         activeIndex = 0
     }
 
+    const hasActiveRunningSessions = React.useMemo(() => {
+        return (sessions || []).some(
+            (s) => s.vmStatus === 'RUNNING' || s.vmStatus === 'PROVISIONING'
+        )
+    }, [sessions])
+
     const navItems = [
         {
             id: 'new',
@@ -275,7 +281,14 @@ const Sidebar: React.FC<
         {
             id: 'sessions',
             label: 'Sessions',
-            icon: <Icons.Folder className="w-[17px] h-[17px]" />,
+            icon: (
+                <div className="relative flex items-center justify-center">
+                    <Icons.Folder className="w-[17px] h-[17px]" />
+                    {hasActiveRunningSessions && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse border border-[#1E1E1E]" />
+                    )}
+                </div>
+            ),
             onClick: onSessions,
         },
         {
@@ -313,6 +326,7 @@ const Sidebar: React.FC<
             isArchived: Boolean(s.isArchived),
             type: s.type || 'WEB',
             prNumber: s.prNumber,
+            vmStatus: s.vmStatus,
         }))
 
         return sourceList
@@ -324,6 +338,13 @@ const Sidebar: React.FC<
                     return false
                 }
                 if (sessionType === 'web' && item.type !== 'WEB') {
+                    return false
+                }
+                if (
+                    sessionType === 'running' &&
+                    item.vmStatus !== 'RUNNING' &&
+                    item.vmStatus !== 'PROVISIONING'
+                ) {
                     return false
                 }
                 return true
@@ -610,6 +631,18 @@ const Sidebar: React.FC<
                                                     <Icons.Check className="w-3.5 h-3.5 text-white" />
                                                 )}
                                             </button>
+                                            <button
+                                                onClick={() => setSessionType('running')}
+                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
+                                            >
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                                    <span>Running</span>
+                                                </div>
+                                                {sessionType === 'running' && (
+                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
+                                                )}
+                                            </button>
 
                                             <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
 
@@ -641,11 +674,40 @@ const Sidebar: React.FC<
                                         onClick={() => onOpenProject?.(project.id)}
                                     >
                                         <div className="flex flex-col min-w-0 pr-1.5 overflow-hidden flex-1">
-                                            <span className="font-normal text-[12.5px] transition-colors tracking-tight text-[#EDEDED] group-hover:text-white truncate leading-snug">
-                                                {project.title}
-                                            </span>
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                {(project.vmStatus === 'RUNNING' ||
+                                                    project.vmStatus === 'PROVISIONING') && (
+                                                    <span
+                                                        className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${
+                                                            project.vmStatus === 'PROVISIONING'
+                                                                ? 'bg-amber-400'
+                                                                : 'bg-emerald-400'
+                                                        }`}
+                                                        title={
+                                                            project.vmStatus === 'PROVISIONING'
+                                                                ? 'Provisioning container...'
+                                                                : 'Agent running in background'
+                                                        }
+                                                    />
+                                                )}
+                                                <span className="font-normal text-[12.5px] transition-colors tracking-tight text-[#EDEDED] group-hover:text-white truncate leading-snug">
+                                                    {project.title}
+                                                </span>
+                                            </div>
                                             <div className="flex items-center gap-1.5 text-[11px] text-[#8F8E8D] tracking-tight truncate mt-[2px]">
-                                                <span>{formatRelativeTime(project.updatedAt)}</span>
+                                                {project.vmStatus === 'RUNNING' ? (
+                                                    <span className="text-emerald-400 font-medium">
+                                                        Running
+                                                    </span>
+                                                ) : project.vmStatus === 'PROVISIONING' ? (
+                                                    <span className="text-amber-400 font-medium">
+                                                        Provisioning
+                                                    </span>
+                                                ) : (
+                                                    <span>
+                                                        {formatRelativeTime(project.updatedAt)}
+                                                    </span>
+                                                )}
                                                 {project.prNumber ? (
                                                     <>
                                                         <span className="text-[#555] select-none">

@@ -172,21 +172,7 @@ export function initSocket(httpServer: any) {
 
         socket.on('disconnect', async () => {
             console.log(`[Socket] User disconnected: ${socket.data.userId} (socket: ${socket.id})`)
-            const activeSessionId = socket.data.activeSessionId
-            if (activeSessionId) {
-                await pubClient
-                    .publish(
-                        `session_events:${activeSessionId}`,
-                        JSON.stringify({
-                            type: 'ClientDisconnect',
-                            sessionId: activeSessionId,
-                            timestamp: Date.now(),
-                        })
-                    )
-                    .catch(() => {
-                        // Intentionally swallowed: Redis disconnect event publish failure
-                    })
-            }
+            // AFK background execution: do NOT terminate or pause background tasks on client disconnect
         })
 
         // custom application-level heartbeat

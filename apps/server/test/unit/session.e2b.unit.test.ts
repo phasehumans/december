@@ -36,7 +36,7 @@ describe('Session E2B & Rehydration Service Suite', () => {
         expect(result.terminalScrollback).toBeDefined()
     })
 
-    it('disconnectSession - emits disconnect signal and starts tab closure grace period', async () => {
+    it('disconnectSession - acknowledges disconnect without terminating or pausing background containers', async () => {
         const testSessionId = 'sess-disconnect-1'
         const testUserId = 'user-disconnect-1'
 
@@ -54,7 +54,7 @@ describe('Session E2B & Rehydration Service Suite', () => {
             sessionId: testSessionId,
         })
 
-        expect(result.message).toContain('Disconnect signal received')
+        expect(result.message).toContain('Disconnect acknowledged')
     })
 
     it('proxyPreview - resolves preview URL, target host, and CORS / X-Forwarded-Host headers', async () => {

@@ -20,6 +20,7 @@ export const getSessionsSchema = z.object({
         (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
         z.number().int().min(1).max(100).optional()
     ),
+    vmStatus: z.string().optional(),
 })
 
 export const createSessionSchema = z.object({

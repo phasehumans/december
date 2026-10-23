@@ -171,8 +171,33 @@ const getUserSessions = async (data: GetUserSessions) => {
     return appCache.wrap(cacheKey, 30, fetchSessions)
 }
 
+const getMaxConcurrentSessions = (userId?: string, requestedLimit?: number): number => {
+    if (requestedLimit && requestedLimit > 0) {
+        return requestedLimit
+    }
+    const envVal = Number(
+        process.env.MAX_CONCURRENT_SESSIONS_PER_USER ??
+            (env as any)?.MAX_CONCURRENT_SESSIONS_PER_USER
+    )
+    if (!isNaN(envVal) && envVal > 0) {
+        return envVal
+    }
+    return 3
+}
+
 const createSession = async (data: CreateSession) => {
-    const { userId, title, type, prompt, projectId, repoUrl, branch, gitRef, issueNumber } = data
+    const {
+        userId,
+        title,
+        type,
+        prompt,
+        projectId,
+        repoUrl,
+        branch,
+        gitRef,
+        issueNumber,
+        maxConcurrentSessions,
+    } = data
 
     const minBalance =
         type === 'SEARCH' ? 1 : parseInt(process.env.MIN_SESSION_START_BALANCE_IN_CENTS || '50', 10)
@@ -196,8 +221,12 @@ const createSession = async (data: CreateSession) => {
             },
         })
 
-        if (activeSessions > 0) {
-            throw new AppError('An active session is already running', 409)
+        const maxConcurrency = getMaxConcurrentSessions(userId, maxConcurrentSessions)
+        if (activeSessions >= maxConcurrency) {
+            throw new AppError(
+                `Maximum concurrent active sessions limit (${maxConcurrency}) reached`,
+                409
+            )
         }
     }
 
@@ -382,7 +411,7 @@ const rehydrateSession = async (data: RehydrateSession) => {
 
     const messages = await prisma.message.findMany({
         where: { sessionId },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { sequence: 'asc' },
     })
 
     let fileTree: Record<string, string> = {}
@@ -392,10 +421,23 @@ const rehydrateSession = async (data: RehydrateSession) => {
         // Intentionally swallowed: storage fallback if workspace zip not yet uploaded
     }
 
+    const chatMessages = messages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        status: message.status,
+        sequence: message.sequence,
+        blocks: (message as any).blocks ?? undefined,
+        createdAt: message.createdAt,
+        updatedAt: message.updatedAt,
+    }))
+
     return {
         session,
+        chatMessages,
         messages,
         fileTree,
+        generatedFiles: fileTree,
         terminalScrollback: [],
     }
 }
@@ -407,46 +449,9 @@ const disconnectSession = async (data: DisconnectSession) => {
         throw new AppError('Session not found', 404)
     }
 
-    const redisUrl =
-        env.REDIS_URL || (env.NODE_ENV !== 'production' ? 'redis://localhost:6379' : undefined)
-    if (redisUrl) {
-        let redisPub: Redis | null = null
-        try {
-            redisPub = new Redis(redisUrl, {
-                lazyConnect: true,
-                maxRetriesPerRequest: 1,
-                enableOfflineQueue: false,
-            })
-            redisPub.on('error', () => {
-                // Intentionally swallowed: Suppress Redis offline error noise during tests/fallback
-            })
-            await redisPub.connect().catch(() => {
-                // Intentionally swallowed: fallback if Redis server is offline
-            })
-            if (redisPub.status === 'ready') {
-                await redisPub
-                    .publish(
-                        `session_events:${sessionId}`,
-                        JSON.stringify({
-                            type: 'ClientDisconnect',
-                            sessionId,
-                            timestamp: Date.now(),
-                        })
-                    )
-                    .catch(() => {
-                        // Intentionally swallowed: Fallback during offline Redis test runs
-                    })
-            }
-        } catch {
-            // Intentionally swallowed: Redis pub connection fallback in test environment
-        } finally {
-            if (redisPub) {
-                redisPub.disconnect()
-            }
-        }
-    }
-
-    return { message: 'Disconnect signal received and grace period started' }
+    // Client tab disconnects do not pause or terminate running containers.
+    // Preserving background execution.
+    return { message: 'Disconnect acknowledged. Background execution continues.' }
 }
 
 const proxyPreview = async (data: ProxyPreview) => {

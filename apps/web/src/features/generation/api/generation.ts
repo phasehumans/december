@@ -484,13 +484,14 @@ const runOverSocket = async (
     sessionId: string,
     prompt: string,
     onEvent: (event: GenerationStreamEvent) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    options?: { attachOnly?: boolean }
 ): Promise<any> => {
     return new Promise((resolve, reject) => {
         const socket = getSharedSocket()
 
         let hasResolved = false
-        let hasSentPrompt = false
+        let hasSentPrompt = Boolean(options?.attachOnly)
         let resultData: any = null
 
         const cleanup = () => {
@@ -508,7 +509,7 @@ const runOverSocket = async (
 
             socket.emit('join_session', sessionId)
 
-            if (!hasSentPrompt) {
+            if (!hasSentPrompt && prompt) {
                 hasSentPrompt = true
                 socket.emit('send_prompt', {
                     sessionId: sessionId,
@@ -594,7 +595,9 @@ const runOverSocket = async (
             signal.addEventListener('abort', () => {
                 if (!hasResolved) {
                     hasResolved = true
-                    socket.emit('stop_session', { sessionId })
+                    if (signal.reason === 'stop_session') {
+                        socket.emit('stop_session', { sessionId })
+                    }
                     cleanup()
                     reject(new Error('Aborted'))
                 }
@@ -681,6 +684,19 @@ const applyProjectFix = async (data: ApplyProjectFixInput) => {
     return await runOverSocket(targetSessionId, prompt, data.onEvent, data.signal)
 }
 
+const listenToSessionStream = async (
+    sessionId: string,
+    onEvent: (event: GenerationStreamEvent) => void,
+    signal?: AbortSignal
+): Promise<any> => {
+    return await runOverSocket(sessionId, '', onEvent, signal, { attachOnly: true })
+}
+
+const stopSessionStream = (sessionId: string) => {
+    const socket = getSharedSocket()
+    socket.emit('stop_session', { sessionId })
+}
+
 /**
  * @deprecated Legacy generation wrappers. Use standard session socket communication instead.
  */
@@ -688,4 +704,6 @@ export const generationAPI = {
     generateProjectStream,
     applyProjectEdit,
     applyProjectFix,
+    listenToSessionStream,
+    stopSessionStream,
 }
