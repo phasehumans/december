@@ -26,6 +26,9 @@ import {
     getSessionPlanParamsSchema,
     getSessionTestsParamsSchema,
     getSessionPreviewPortParamsSchema,
+    submitQuestionAnswerParamsSchema,
+    submitQuestionAnswerBodySchema,
+    getPendingQuestionParamsSchema,
 } from './session.schema'
 import { sessionService } from './session.service'
 
@@ -331,6 +334,30 @@ export const getSessionPreviewPort = asyncHandler(async (req: Request, res: Resp
     return sendSuccess(res, 'session preview port fetched successfully', result)
 })
 
+export const submitQuestionAnswer = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = submitQuestionAnswerParamsSchema.parse(req.params)
+    const { questionId, answer } = submitQuestionAnswerBodySchema.parse(req.body)
+
+    const result = await sessionService.submitQuestionAnswer({
+        userId,
+        sessionId: id,
+        questionId,
+        answer,
+    })
+    return sendSuccess(res, 'question answer submitted successfully', result)
+})
+
+export const getPendingQuestion = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = getPendingQuestionParamsSchema.parse(req.params)
+
+    const result = await sessionService.getPendingQuestion({ userId, sessionId: id })
+    return sendSuccess(res, 'pending question fetched successfully', result)
+})
+
 export const sessionController = {
     getSessions,
     createSession,
@@ -352,4 +379,6 @@ export const sessionController = {
     getSessionPlan,
     getSessionTests,
     getSessionPreviewPort,
+    submitQuestionAnswer,
+    getPendingQuestion,
 }

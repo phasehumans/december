@@ -1,6 +1,7 @@
 import React from 'react'
 
 import { CliSpinner } from './CliSpinner'
+import { InteractiveQuestionCard } from './InteractiveQuestionCard'
 
 import {
     getToolSummary,
@@ -15,6 +16,7 @@ export interface ToolCallCardProps {
     status: 'running' | 'success' | 'error'
     output?: string
     expandCommands?: boolean
+    sessionId?: string
 }
 
 function renderFormattedToolSummary(toolSummary: string, isError = false) {
@@ -53,11 +55,28 @@ function renderFormattedToolSummary(toolSummary: string, isError = false) {
 }
 
 export const ToolCallCard: React.FC<ToolCallCardProps> = ({
+    toolCallId,
     toolName,
     toolInput,
     status,
     output,
+    sessionId,
 }) => {
+    if (toolName === 'ask_question') {
+        const questions = toolInput?.questions || []
+        if (Array.isArray(questions) && questions.length > 0) {
+            return (
+                <InteractiveQuestionCard
+                    sessionId={sessionId || ''}
+                    questionId={toolCallId}
+                    questions={questions}
+                    initialAnswer={status === 'success' ? output : undefined}
+                    disabled={status === 'success'}
+                />
+            )
+        }
+    }
+
     const isRunning = status === 'running'
     const isError = status === 'error'
     const summaryText = getToolSummary(toolName, toolInput)

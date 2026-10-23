@@ -135,6 +135,14 @@ export type GenerationStreamEvent =
           }
       }
     | {
+          type: 'AskQuestionPrompt'
+          data: {
+              questionId?: string
+              sessionId?: string
+              questions?: any[]
+          }
+      }
+    | {
           type: 'ContextCompacted'
           data: {
               summary: string
@@ -453,6 +461,16 @@ export function normalizeAgentStreamEvent(raw: any): GenerationStreamEvent {
             return {
                 type: 'PreviewPortDetected',
                 data: { port, ports, previewUrl },
+            }
+        }
+        case 'AskQuestionPrompt': {
+            const questionId =
+                (typeof innerData === 'object' && innerData?.questionId) || payload.questionId || ''
+            const questions =
+                (typeof innerData === 'object' && innerData?.questions) || payload.questions || []
+            return {
+                type: 'AskQuestionPrompt',
+                data: { questionId, sessionId: payload.sessionId, questions },
             }
         }
         case 'AgentStatus': {

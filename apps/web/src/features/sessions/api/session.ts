@@ -196,6 +196,29 @@ export const sessionAPI = {
         return data || { port: null, ports: [], previewUrl: null }
     },
 
+    submitQuestionAnswer: async (data: {
+        sessionId: string
+        questionId?: string
+        answer: string | string[]
+    }): Promise<{ success: boolean }> => {
+        const res = await apiRequest<{ success: boolean }>(
+            `/session/${data.sessionId}/question-answer`,
+            {
+                method: 'POST',
+                body: JSON.stringify({
+                    questionId: data.questionId,
+                    answer: data.answer,
+                }),
+            }
+        )
+        return res || { success: false }
+    },
+
+    getPendingQuestion: async (sessionId: string): Promise<any | null> => {
+        const data = await apiRequest<any | null>(`/session/${sessionId}/pending-question`)
+        return data || null
+    },
+
     createSession: async (data: {
         title?: string
         projectId?: string

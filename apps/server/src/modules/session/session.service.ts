@@ -43,6 +43,8 @@ import type {
     GetSessionTests,
     GetSessionPreviewPort,
     SessionPreviewPortResult,
+    SubmitQuestionAnswer,
+    GetPendingQuestion,
 } from './session.types'
 
 let sessionRedis: Redis | null = null
@@ -936,6 +938,59 @@ const getSessionPreviewPort = async (
     }
 }
 
+const submitQuestionAnswer = async (data: SubmitQuestionAnswer) => {
+    const { userId, sessionId, questionId, answer } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    const redis = getSessionRedis()
+    if (redis) {
+        const payload = JSON.stringify({
+            sessionId,
+            questionId,
+            answer,
+            answeredAt: Date.now(),
+        })
+        await redis.publish(`session_question_answer:${sessionId}`, payload).catch(() => {
+            // Intentionally swallowed: Redis answer publish fallback
+        })
+        await redis.del(`session_pending_question:${sessionId}`).catch(() => {
+            // Intentionally swallowed: Redis pending question cleanup fallback
+        })
+    }
+
+    return {
+        success: true,
+        sessionId,
+        questionId,
+        answer,
+    }
+}
+
+const getPendingQuestion = async (data: GetPendingQuestion) => {
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    const redis = getSessionRedis()
+    if (redis) {
+        try {
+            const cached = await redis.get(`session_pending_question:${sessionId}`)
+            if (cached) {
+                return JSON.parse(cached)
+            }
+        } catch {
+            // Intentionally swallowed: Redis offline fallback handled
+        }
+    }
+
+    return null
+}
+
 export const sessionService = {
     loadSessionFiles,
     getUserSessions,
@@ -958,4 +1013,6 @@ export const sessionService = {
     getSessionPlan,
     getSessionTests,
     getSessionPreviewPort,
+    submitQuestionAnswer,
+    getPendingQuestion,
 }

@@ -761,7 +761,10 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
     }
 
     const effectiveSandboxId = sandboxId || sessionId
-    const adapter = new RemotePlatformAdapter(effectiveSandboxId)
+    const adapter = new RemotePlatformAdapter(effectiveSandboxId, {
+        sessionId,
+        redisClient: getRedisPub(),
+    })
     activeAdapters.add(adapter)
     const llm = getLlmProvider()
 

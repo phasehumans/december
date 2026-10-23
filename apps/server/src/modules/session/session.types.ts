@@ -167,3 +167,15 @@ export interface SessionPreviewPortResult {
     ports: number[]
     previewUrl: string | null
 }
+
+export interface SubmitQuestionAnswer {
+    userId: string
+    sessionId: string
+    questionId?: string
+    answer: string | string[]
+}
+
+export interface GetPendingQuestion {
+    userId: string
+    sessionId: string
+}

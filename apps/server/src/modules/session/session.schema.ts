@@ -132,3 +132,16 @@ export const getSessionTestsParamsSchema = z.object({
 export const getSessionPreviewPortParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
+
+export const submitQuestionAnswerParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})
+
+export const submitQuestionAnswerBodySchema = z.object({
+    questionId: z.string().optional(),
+    answer: z.union([z.string(), z.array(z.string())]),
+})
+
+export const getPendingQuestionParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})

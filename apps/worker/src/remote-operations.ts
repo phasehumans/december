@@ -17,6 +17,9 @@ const resolveWorkspacePath = (rawPath: string): string => {
 
 export interface RemotePlatformAdapterOptions {
     handsDaemonPath?: string
+    sessionId?: string
+    redisClient?: any
+    timeoutMs?: number
 }
 
 export class RemotePlatformAdapter implements PlatformAdapter {
@@ -211,8 +214,111 @@ export class RemotePlatformAdapter implements PlatformAdapter {
     ui = {
         askQuestion: async (
             questions: Array<{ question: string; options: string[]; is_multi_select?: boolean }>
-        ) => {
-            return 'Non-interactive mode: auto-proceeding'
+        ): Promise<string> => {
+            const fallbackOption = questions?.[0]?.options?.[0] || 'Option A'
+            const sessionId = this.options?.sessionId
+            const redis = this.options?.redisClient
+
+            if (!sessionId || !redis) {
+                return fallbackOption
+            }
+
+            const questionId = `qid-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+            const promptPayload = JSON.stringify({
+                type: 'AskQuestionPrompt',
+                sessionId,
+                questionId,
+                questions,
+                createdAt: Date.now(),
+            })
+
+            // Cache pending question state in Redis (10 min TTL)
+            if (typeof redis.set === 'function') {
+                await redis
+                    .set(`session_pending_question:${sessionId}`, promptPayload, 'EX', 600)
+                    .catch(() => {
+                        // Intentionally swallowed: Redis set fallback
+                    })
+            }
+
+            // Publish prompt event over session_events channel
+            if (typeof redis.publish === 'function') {
+                await redis.publish(`session_events:${sessionId}`, promptPayload).catch(() => {
+                    // Intentionally swallowed: Redis publish fallback
+                })
+            }
+
+            // Await answer on session_question_answer:${sessionId}
+            return new Promise<string>((resolve) => {
+                const sub = typeof redis.duplicate === 'function' ? redis.duplicate() : null
+                const timeoutMs = this.options?.timeoutMs || 300000 // default 5m
+                let settled = false
+
+                const cleanup = async () => {
+                    if (sub) {
+                        try {
+                            if (typeof sub.unsubscribe === 'function') {
+                                await sub.unsubscribe(`session_question_answer:${sessionId}`)
+                            }
+                            if (typeof sub.quit === 'function') {
+                                await sub.quit()
+                            }
+                        } catch {
+                            // Intentionally swallowed: Redis cleanup fallback
+                        }
+                    }
+                    if (typeof redis.del === 'function') {
+                        await redis.del(`session_pending_question:${sessionId}`).catch(() => {
+                            // Intentionally swallowed: Redis del fallback
+                        })
+                    }
+                }
+
+                const timer = setTimeout(async () => {
+                    if (!settled) {
+                        settled = true
+                        await cleanup()
+                        resolve(fallbackOption)
+                    }
+                }, timeoutMs)
+
+                if (!sub) {
+                    clearTimeout(timer)
+                    resolve(fallbackOption)
+                    return
+                }
+
+                if (typeof sub.on === 'function') {
+                    sub.on('message', async (channel: string, message: string) => {
+                        if (channel === `session_question_answer:${sessionId}` && !settled) {
+                            try {
+                                const parsed =
+                                    typeof message === 'string' ? JSON.parse(message) : message
+                                if (parsed.questionId && parsed.questionId !== questionId) {
+                                    return // Answer is for a different question
+                                }
+                                settled = true
+                                clearTimeout(timer)
+                                await cleanup()
+
+                                const answer = parsed.answer
+                                const formattedAnswer = Array.isArray(answer)
+                                    ? answer.join(', ')
+                                    : String(answer ?? fallbackOption)
+                                resolve(formattedAnswer)
+                            } catch {
+                                // Intentionally swallowed: Parse error ignored, waiting for valid answer
+                            }
+                        }
+                    })
+                }
+
+                if (typeof sub.subscribe === 'function') {
+                    sub.subscribe(`session_question_answer:${sessionId}`).catch(() => {
+                        // Intentionally swallowed: Subscribe error fallback
+                    })
+                }
+            })
         },
         requestPermission: async () => {
             return { block: false }

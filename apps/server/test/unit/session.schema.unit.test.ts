@@ -22,6 +22,9 @@ import {
     getSessionPlanParamsSchema,
     getSessionTestsParamsSchema,
     getSessionPreviewPortParamsSchema,
+    submitQuestionAnswerParamsSchema,
+    submitQuestionAnswerBodySchema,
+    getPendingQuestionParamsSchema,
 } from '../../src/modules/session/session.schema'
 
 describe('Session Schemas - Unit Tests', () => {
@@ -220,6 +223,28 @@ describe('Session Schemas - Unit Tests', () => {
         it('should fail if session id is invalid', () => {
             expect(() => getSessionTestsParamsSchema.parse({ id: 'invalid-id' })).toThrow()
             expect(() => getSessionPreviewPortParamsSchema.parse({ id: 'invalid-id' })).toThrow()
+        })
+    })
+
+    describe('submitQuestionAnswer & getPendingQuestion schemas', () => {
+        it('should validate submitQuestionAnswer with single or multiple answers', () => {
+            expect(submitQuestionAnswerParamsSchema.parse({ id: validUuid }).id).toBe(validUuid)
+
+            const body1 = submitQuestionAnswerBodySchema.parse({
+                questionId: 'qid-1',
+                answer: 'Option A',
+            })
+            expect(body1.answer).toBe('Option A')
+
+            const body2 = submitQuestionAnswerBodySchema.parse({
+                answer: ['Option A', 'Option B'],
+            })
+            expect(body2.answer).toEqual(['Option A', 'Option B'])
+        })
+
+        it('should validate getPendingQuestion schema', () => {
+            expect(getPendingQuestionParamsSchema.parse({ id: validUuid }).id).toBe(validUuid)
+            expect(() => getPendingQuestionParamsSchema.parse({ id: 'bad' })).toThrow()
         })
     })
 })

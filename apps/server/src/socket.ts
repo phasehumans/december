@@ -201,6 +201,27 @@ export function initSocket(httpServer: any) {
             }
         )
 
+        socket.on(
+            'QUESTION_ANSWER',
+            async (data: { sessionId: string; questionId?: string; answer: string | string[] }) => {
+                if (data?.sessionId && data?.answer !== undefined) {
+                    await pubClient
+                        .publish(
+                            `session_question_answer:${data.sessionId}`,
+                            JSON.stringify({
+                                sessionId: data.sessionId,
+                                questionId: data.questionId,
+                                answer: data.answer,
+                                answeredAt: Date.now(),
+                            })
+                        )
+                        .catch(() => {
+                            // Intentionally swallowed: Redis publish fallback
+                        })
+                }
+            }
+        )
+
         socket.on('disconnect', async () => {
             console.log(`[Socket] User disconnected: ${socket.data.userId} (socket: ${socket.id})`)
             // AFK background execution: do NOT terminate or pause background tasks on client disconnect

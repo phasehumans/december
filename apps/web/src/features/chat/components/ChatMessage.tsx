@@ -218,6 +218,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                                         toolInput={block.toolInput}
                                         status={block.status}
                                         output={block.output}
+                                        sessionId={projectId || undefined}
                                     />
                                 )
                             }
