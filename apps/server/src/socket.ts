@@ -135,26 +135,53 @@ export function initSocket(httpServer: any) {
             }
         })
 
-        socket.on('join_session_terminal', (data: { sessionId: string } | string) => {
+        socket.on('join_session_terminal', async (data: { sessionId: string } | string) => {
             const sId = typeof data === 'string' ? data : data?.sessionId
             if (sId) {
                 console.log(
                     `[Socket] User ${socket.data.userId} joined terminal room for session ${sId}`
                 )
                 socket.join(`session_terminal:${sId}`)
+                if (!socket.data.terminalSessions) {
+                    socket.data.terminalSessions = new Set<string>()
+                }
+                socket.data.terminalSessions.add(sId)
+                await pubClient
+                    .publish(
+                        `session_terminal_attach:${sId}`,
+                        JSON.stringify({ userId: socket.data.userId })
+                    )
+                    .catch(() => {
+                        // Intentionally swallowed: Redis publish fallback
+                    })
             }
         })
 
-        socket.on('leave_session_terminal', (data: { sessionId: string } | string) => {
+        socket.on('leave_session_terminal', async (data: { sessionId: string } | string) => {
             const sId = typeof data === 'string' ? data : data?.sessionId
             if (sId) {
                 socket.leave(`session_terminal:${sId}`)
+                if (socket.data.terminalSessions) {
+                    socket.data.terminalSessions.delete(sId)
+                }
+                await pubClient
+                    .publish(
+                        `session_terminal_detach:${sId}`,
+                        JSON.stringify({ userId: socket.data.userId })
+                    )
+                    .catch(() => {
+                        // Intentionally swallowed: Redis publish fallback
+                    })
             }
         })
 
         socket.on('TERMINAL_INPUT', async (data: { sessionId: string; data: string }) => {
             if (data?.sessionId && data?.data) {
-                await pubClient.publish(`session_terminal_input:${data.sessionId}`, data.data)
+                await pubClient
+                    .publish(`session_terminal_input:${data.sessionId}`, data.data)
+                    .catch(() => {
+                        // Intentionally swallowed: Redis publish fallback
+                    })
             }
         })
 
@@ -162,10 +189,14 @@ export function initSocket(httpServer: any) {
             'TERMINAL_RESIZE',
             async (data: { sessionId: string; cols: number; rows: number }) => {
                 if (data?.sessionId && data?.cols && data?.rows) {
-                    await pubClient.publish(
-                        `session_terminal_resize:${data.sessionId}`,
-                        JSON.stringify({ cols: data.cols, rows: data.rows })
-                    )
+                    await pubClient
+                        .publish(
+                            `session_terminal_resize:${data.sessionId}`,
+                            JSON.stringify({ cols: data.cols, rows: data.rows })
+                        )
+                        .catch(() => {
+                            // Intentionally swallowed: Redis publish fallback
+                        })
                 }
             }
         )
@@ -173,6 +204,19 @@ export function initSocket(httpServer: any) {
         socket.on('disconnect', async () => {
             console.log(`[Socket] User disconnected: ${socket.data.userId} (socket: ${socket.id})`)
             // AFK background execution: do NOT terminate or pause background tasks on client disconnect
+            if (socket.data.terminalSessions && socket.data.terminalSessions.size > 0) {
+                for (const sId of socket.data.terminalSessions) {
+                    await pubClient
+                        .publish(
+                            `session_terminal_detach:${sId}`,
+                            JSON.stringify({ userId: socket.data.userId })
+                        )
+                        .catch(() => {
+                            // Intentionally swallowed: Redis publish fallback on disconnect
+                        })
+                }
+                socket.data.terminalSessions.clear()
+            }
         })
 
         // custom application-level heartbeat

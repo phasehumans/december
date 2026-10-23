@@ -24,6 +24,7 @@ import { Sandbox } from 'e2b'
 import Redis from 'ioredis'
 
 import { RemotePlatformAdapter } from './remote-operations'
+import { TerminalBridgeService } from './terminal-bridge.service'
 import { archiveWorkspaceState } from './workspace'
 
 import type {
@@ -87,6 +88,7 @@ const resetMockClient = () => {
     activeSandboxes.clear()
     userActiveSessions.clear()
     activeAdapters.clear()
+    TerminalBridgeService.resetForTesting()
 }
 
 const emitSessionEvent = async (data: EmitSessionEventInput): Promise<void> => {
@@ -175,6 +177,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                 const sId = mockSandbox.sandboxId || `mock-sandbox-${sessionId}`
                 activeSandboxes.set(sessionId, mockSandbox)
                 activeSandboxes.set(sId, mockSandbox)
+                void TerminalBridgeService.onSandboxReady({ sessionId, sandbox: mockSandbox })
 
                 if (userId) {
                     if (!userActiveSessions.has(userId)) userActiveSessions.set(userId, new Map())
@@ -358,6 +361,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
             const sandboxId = sandbox.sandboxId
             activeSandboxes.set(sessionId, sandbox)
             activeSandboxes.set(sandboxId, sandbox)
+            void TerminalBridgeService.onSandboxReady({ sessionId, sandbox })
 
             if (userId) {
                 if (!userActiveSessions.has(userId)) userActiveSessions.set(userId, new Map())
@@ -536,6 +540,7 @@ const pauseSandbox = async (data: PauseSandboxInput): Promise<boolean> => {
 
         activeSandboxes.delete(targetId)
         activeSandboxes.delete(sessionId)
+        void TerminalBridgeService.destroyPtySession({ sessionId })
 
         await prisma.session
             .update({
@@ -625,6 +630,7 @@ const destroySandbox = async (data: DestroySandboxInput): Promise<boolean> => {
                 await sandbox.kill()
             }
             activeSandboxes.delete(sandboxId)
+            void TerminalBridgeService.destroyPtySession({ sessionId: sandboxId })
         }
         return true
     } catch (e: any) {
@@ -997,6 +1003,7 @@ const detachAllActiveAdapters = async (): Promise<void> => {
         }
     }
     activeAdapters.clear()
+    await TerminalBridgeService.stop()
 }
 
 export const E2BSandboxService = {

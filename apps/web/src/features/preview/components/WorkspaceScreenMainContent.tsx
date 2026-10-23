@@ -150,7 +150,7 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
                 }
             >
                 <TerminalWorkspace
-                    previewSessionId={previewSession?.previewId}
+                    previewSessionId={previewSession?.previewId || projectId}
                     generatedFiles={generatedFiles}
                 />
             </div>

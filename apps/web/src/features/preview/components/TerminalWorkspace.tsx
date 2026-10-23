@@ -96,6 +96,7 @@ export const TerminalWorkspace: React.FC<TerminalWorkspaceProps> = ({ previewSes
 
         let socket: any = null
         let isMounted = true
+        const pendingInputQueue: string[] = []
 
         import('socket.io-client')
             .then(({ io }) => {
@@ -124,6 +125,16 @@ export const TerminalWorkspace: React.FC<TerminalWorkspaceProps> = ({ previewSes
                     } catch {
                         // Intentionally swallowed: initial resize sync fallback
                     }
+
+                    if (pendingInputQueue.length > 0) {
+                        for (const item of pendingInputQueue) {
+                            socket.emit('TERMINAL_INPUT', {
+                                sessionId: previewSessionId,
+                                data: item,
+                            })
+                        }
+                        pendingInputQueue.length = 0
+                    }
                 })
 
                 socket.on('TERMINAL_DATA', (data: string) => {
@@ -150,6 +161,8 @@ export const TerminalWorkspace: React.FC<TerminalWorkspaceProps> = ({ previewSes
         const onDataDisposable = xterm.onData((data) => {
             if (socket && socket.connected) {
                 socket.emit('TERMINAL_INPUT', { sessionId: previewSessionId, data })
+            } else {
+                pendingInputQueue.push(data)
             }
         })
 

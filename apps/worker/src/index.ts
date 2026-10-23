@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken'
 
 import { E2BSandboxService } from './e2b-sandbox.service'
 import { processGrpcStream } from './listener'
+import { TerminalBridgeService } from './terminal-bridge.service'
 import { WakeUpSweeper } from './wake-up-sweeper'
 
 if (process.env.NODE_ENV === 'production' && !process.env.REDIS_URL) {
@@ -235,12 +236,16 @@ worker.on('failed', (job: any, err: any) => {
 export const wakeUpSweeper = new WakeUpSweeper()
 if (process.env.NODE_ENV !== 'test') {
     wakeUpSweeper.start()
+    TerminalBridgeService.start().catch((err) => {
+        console.error('[WORKER ENGINE] Failed to start TerminalBridgeService:', err)
+    })
 }
 
 const shutdownGracefully = async () => {
     console.log('Shutting down worker process gracefully...')
     try {
         wakeUpSweeper.stop()
+        await TerminalBridgeService.stop()
         await E2BSandboxService.detachAllActiveAdapters()
         await worker.close()
         await redisConnection.quit()

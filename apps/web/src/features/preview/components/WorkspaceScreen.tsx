@@ -737,7 +737,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                         }
                     >
                         <TerminalWorkspace
-                            previewSessionId={previewSession?.previewId}
+                            previewSessionId={previewSession?.previewId || projectId}
                             generatedFiles={activeFilesToDisplay}
                         />
                     </div>
