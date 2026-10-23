@@ -21,6 +21,9 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
     mode,
     isThinkingMode,
     onToggleThinking,
+    selectedModel: propSelectedModel,
+    selectedProvider: propSelectedProvider,
+    onModelChange,
 }) => {
     const {
         input,
@@ -59,6 +62,9 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
         handleVoiceTranscript,
         handleVoiceStateChange,
         handleAuthCheck,
+        selectedModel,
+        selectedProvider,
+        handleSelectModel,
     } = usePromptInputController({
         value,
         onChange,
@@ -67,6 +73,8 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
         onOpenAuth,
         isLoading,
         mode,
+        initialModel: propSelectedModel,
+        initialProvider: propSelectedProvider,
     })
 
     return (
@@ -398,6 +406,12 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
                     mode={mode}
                     isThinkingMode={isThinkingMode}
                     onToggleThinking={onToggleThinking}
+                    selectedModel={selectedModel}
+                    selectedProvider={selectedProvider}
+                    onSelectModel={(model, provider) => {
+                        handleSelectModel(model, provider)
+                        onModelChange?.(model, provider)
+                    }}
                 />
             </div>
         </div>

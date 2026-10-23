@@ -77,6 +77,8 @@ describe('usePromptInputController - repository and branch onboarding', () => {
             repoUrl: 'https://github.com/phasehumans/december',
             branch: 'feature/auth-v2',
             issueNumber: 583,
+            model: 'gemini-2.5-pro',
+            provider: 'gemini',
         })
     })
 

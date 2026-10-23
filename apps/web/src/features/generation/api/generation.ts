@@ -553,6 +553,7 @@ type GenerateProjectInput = {
     sessionId?: string | null
     projectId?: string | null
     model?: string
+    provider?: string
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
     repoUrl?: string
@@ -566,6 +567,7 @@ type ApplyProjectEditInput = {
     versionId?: string | null
     prompt: string
     model?: string
+    provider?: string
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
@@ -602,7 +604,7 @@ const runOverSocket = async (
     prompt: string,
     onEvent: (event: GenerationStreamEvent) => void,
     signal?: AbortSignal,
-    options?: { attachOnly?: boolean }
+    options?: { attachOnly?: boolean; model?: string; provider?: string }
 ): Promise<any> => {
     return new Promise((resolve, reject) => {
         const socket = getSharedSocket()
@@ -632,6 +634,8 @@ const runOverSocket = async (
                     sessionId: sessionId,
                     projectId: sessionId,
                     prompt: prompt,
+                    model: options?.model,
+                    provider: options?.provider,
                 })
             }
         }
@@ -796,6 +800,7 @@ const generateProjectStream = async ({
     sessionId,
     projectId,
     model,
+    provider,
     signal,
     onEvent,
     repoUrl,
@@ -828,7 +833,7 @@ const generateProjectStream = async ({
         })
     }
 
-    return await runOverSocket(targetSessionId, prompt, onEvent, signal)
+    return await runOverSocket(targetSessionId, prompt, onEvent, signal, { model, provider })
 }
 
 /**
@@ -837,7 +842,10 @@ const generateProjectStream = async ({
 const applyProjectEdit = async (data: ApplyProjectEditInput) => {
     const targetSessionId = data.sessionId || data.projectId
     if (!targetSessionId) throw new Error('sessionId is required for edit')
-    return await runOverSocket(targetSessionId, data.prompt, data.onEvent, data.signal)
+    return await runOverSocket(targetSessionId, data.prompt, data.onEvent, data.signal, {
+        model: data.model,
+        provider: data.provider,
+    })
 }
 
 /**

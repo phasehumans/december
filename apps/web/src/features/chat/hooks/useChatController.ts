@@ -3,6 +3,7 @@ import React from 'react'
 
 import type { ViewState } from '@/app/types'
 import type { Message } from '@/features/chat/types'
+import type { PromptInputSubmitOptions } from '@/features/home/types'
 import type { PreviewRuntimeError } from '@/features/preview/types'
 
 import { useAppStore } from '@/app/store'
@@ -140,12 +141,7 @@ export const useChatController = (
             prompt: string,
             assistantMessageId: string,
             projectId?: string | null,
-            options?: {
-                repoUrl?: string
-                branch?: string
-                gitRef?: string
-                issueNumber?: number
-            }
+            options?: PromptInputSubmitOptions
         ) => {
             abortGenerationRequest()
             resetGeneratedOutput()
@@ -210,6 +206,8 @@ export const useChatController = (
                         branch: options?.branch,
                         gitRef: options?.gitRef,
                         issueNumber: options?.issueNumber,
+                        model: options?.model,
+                        provider: options?.provider,
                         signal: abortController.signal,
                         onEvent: (event) => {
                             const activeMessageId = activeAssistantMessageIdRef.current
@@ -580,15 +578,7 @@ export const useChatController = (
     )
 
     const handlePromptSubmit = React.useCallback(
-        (
-            prompt: string,
-            options?: {
-                repoUrl?: string
-                branch?: string
-                gitRef?: string
-                issueNumber?: number
-            }
-        ) => {
+        (prompt: string, options?: PromptInputSubmitOptions) => {
             requireAuthOr(async () => {
                 const normalizedPrompt = prompt.trim()
                 if (!normalizedPrompt) {
@@ -654,12 +644,16 @@ export const useChatController = (
             errorMessage,
             stack,
             visibleUserMessage,
+            model,
+            provider,
         }: {
             kind: 'edit' | 'fix'
             prompt?: string
             errorMessage?: string
             stack?: string | null
             visibleUserMessage: string
+            model?: string
+            provider?: string
         }) => {
             if (!activeProjectId) {
                 return
@@ -1003,6 +997,8 @@ export const useChatController = (
                                   projectId: activeProjectId,
                                   versionId: activeProjectVersionId,
                                   prompt: prompt ?? '',
+                                  model,
+                                  provider,
                                   signal: abortController.signal,
                                   onEvent: handleStreamEvent,
                               })
@@ -1086,7 +1082,7 @@ export const useChatController = (
     )
 
     const handleOutputPromptSubmit = React.useCallback(
-        (promptText: string) => {
+        (promptText: string, options?: PromptInputSubmitOptions) => {
             requireAuthOr(() => {
                 const normalizedPrompt = promptText.trim()
                 if (!normalizedPrompt) {
@@ -1094,7 +1090,7 @@ export const useChatController = (
                 }
 
                 if (!activeProjectId) {
-                    handlePromptSubmit(normalizedPrompt)
+                    handlePromptSubmit(normalizedPrompt, options)
                     return
                 }
 
@@ -1103,6 +1099,8 @@ export const useChatController = (
                     kind: 'edit',
                     prompt: normalizedPrompt,
                     visibleUserMessage: normalizedPrompt,
+                    model: options?.model,
+                    provider: options?.provider,
                 })
             })
         },

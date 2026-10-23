@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { Icons } from './Icons'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { DEFAULT_MODEL_OPTIONS } from '@/features/home/types'
 import { useVoiceToText } from '@/shared/lib/useVoiceToText'
 import { cn } from '@/shared/lib/utils'
 
@@ -22,6 +23,9 @@ interface PromptFooterProps {
     mode?: 'agent' | 'chat'
     isThinkingMode?: boolean
     onToggleThinking?: (enabled: boolean) => void
+    selectedModel?: string
+    selectedProvider?: string
+    onSelectModel?: (model: string, provider?: string) => void
 }
 
 export const PromptFooter: React.FC<PromptFooterProps> = ({
@@ -37,14 +41,23 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     mode = 'agent',
     isThinkingMode: propThinkingMode,
     onToggleThinking,
+    selectedModel,
+    selectedProvider,
+    onSelectModel,
 }) => {
     const navigate = useNavigate()
     const queryClient = useQueryClient()
     const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false)
     const [plusMenuPosition, setPlusMenuPosition] = useState<'top' | 'bottom'>('bottom')
     const [selectedPlusIndex, setSelectedPlusIndex] = useState(0)
+    const [isModelMenuOpen, setIsModelMenuOpen] = useState(false)
+    const [modelMenuPosition, setModelMenuPosition] = useState<'top' | 'bottom'>('bottom')
     const [internalThinkingMode, setInternalThinkingMode] = useState(false)
     const isThinkingMode = propThinkingMode !== undefined ? propThinkingMode : internalThinkingMode
+
+    const currentModelOption =
+        DEFAULT_MODEL_OPTIONS.find((opt) => opt.id === (selectedModel || 'gemini-2.5-pro')) ||
+        DEFAULT_MODEL_OPTIONS[0]
 
     const handleToggleThinking = () => {
         const next = !isThinkingMode
@@ -52,6 +65,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         onToggleThinking?.(next)
     }
     const plusRef = useRef<HTMLDivElement>(null)
+    const modelMenuRef = useRef<HTMLDivElement>(null)
 
     const { isListening, isSupported, volume, toggleListening } = useVoiceToText({
         onTranscript: (text) => {
@@ -144,6 +158,9 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         const handleClickOutside = (e: MouseEvent) => {
             if (plusRef.current && !plusRef.current.contains(e.target as Node)) {
                 setIsPlusMenuOpen(false)
+            }
+            if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
+                setIsModelMenuOpen(false)
             }
         }
         document.addEventListener('mousedown', handleClickOutside)
@@ -246,6 +263,74 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             </div>
                         </div>
                     )}
+
+                    <div className="relative ml-1" ref={modelMenuRef}>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                if (!isModelMenuOpen) {
+                                    const rect = e.currentTarget.getBoundingClientRect()
+                                    const spaceBelow = window.innerHeight - rect.bottom
+                                    if (spaceBelow < 250 && rect.top > spaceBelow) {
+                                        setModelMenuPosition('top')
+                                    } else {
+                                        setModelMenuPosition('bottom')
+                                    }
+                                }
+                                setIsModelMenuOpen(!isModelMenuOpen)
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium text-[#8E8E8E] hover:text-[#EDEDEF] hover:bg-white/5 transition-all outline-none cursor-pointer touch-manipulation border border-white/5"
+                            aria-label="Select Model"
+                        >
+                            <Icons.Sparkles className="w-3 h-3 text-[#E08734]" />
+                            <span className="truncate max-w-[120px]">
+                                {currentModelOption?.name || 'Gemini 2.5 Pro'}
+                            </span>
+                            <Icons.ChevronDown className="w-3 h-3 opacity-60" />
+                        </button>
+
+                        {isModelMenuOpen && (
+                            <div
+                                className={`absolute ${modelMenuPosition === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'} left-0 w-[240px] max-w-[calc(100vw-32px)] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-lg shadow-black/40 z-50 flex flex-col animate-in fade-in zoom-in-95 duration-150`}
+                            >
+                                <div className="px-3 py-1.5 text-[10px] font-semibold text-[#8F8E8D] uppercase tracking-wider">
+                                    Model
+                                </div>
+                                {DEFAULT_MODEL_OPTIONS.map((item) => {
+                                    const isSelected =
+                                        item.id === (selectedModel || 'gemini-2.5-pro')
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setIsModelMenuOpen(false)
+                                                onSelectModel?.(item.id, item.provider)
+                                            }}
+                                            className={cn(
+                                                'flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-medium transition-colors outline-none w-full cursor-pointer',
+                                                isSelected
+                                                    ? 'bg-[#252525] text-white'
+                                                    : 'text-[#EDEDEF] hover:bg-[#252525]'
+                                            )}
+                                        >
+                                            <div className="flex flex-col">
+                                                <span>{item.name}</span>
+                                                <span className="text-[10px] text-[#8F8E8D] capitalize">
+                                                    {item.provider}
+                                                </span>
+                                            </div>
+                                            {item.badge && (
+                                                <span className="text-[9px] uppercase font-semibold px-1.5 py-0.5 rounded bg-white/10 text-[#EDEDEF]">
+                                                    {item.badge}
+                                                </span>
+                                            )}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

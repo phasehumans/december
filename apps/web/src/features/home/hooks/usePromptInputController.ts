@@ -42,6 +42,8 @@ export const usePromptInputController = ({
     onOpenAuth,
     isLoading,
     mode = 'agent',
+    initialModel = 'gemini-2.5-pro',
+    initialProvider = 'gemini',
 }: {
     value?: string
     onChange?: (val: string) => void
@@ -50,6 +52,8 @@ export const usePromptInputController = ({
     onOpenAuth?: () => void
     isLoading?: boolean
     mode?: 'agent' | 'chat'
+    initialModel?: string
+    initialProvider?: string
 }) => {
     const [internalInput, setInternalInput] = useState('')
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -58,10 +62,19 @@ export const usePromptInputController = ({
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [selectedRepos, setSelectedRepos] = useState<any[]>([])
     const [selectedBranch, setSelectedBranch] = useState('')
+    const [selectedModel, setSelectedModel] = useState<string>(initialModel)
+    const [selectedProvider, setSelectedProvider] = useState<string>(initialProvider)
     const [forceClose, setForceClose] = useState(false)
     const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>('bottom')
     const voiceBaseRef = useRef('')
     const isVoiceActiveRef = useRef(false)
+
+    const handleSelectModel = useCallback((model: string, provider?: string) => {
+        setSelectedModel(model)
+        if (provider) {
+            setSelectedProvider(provider)
+        }
+    }, [])
 
     const isControlled = value !== undefined
     const input = isControlled ? value : internalInput
@@ -330,6 +343,8 @@ export const usePromptInputController = ({
                 repoUrl,
                 branch,
                 issueNumber,
+                model: selectedModel,
+                provider: selectedProvider,
             }
 
             onSubmit(finalPrompt, submitOptions)
@@ -459,5 +474,10 @@ export const usePromptInputController = ({
         handleVoiceTranscript,
         handleVoiceStateChange,
         handleAuthCheck,
+        selectedModel,
+        setSelectedModel,
+        selectedProvider,
+        setSelectedProvider,
+        handleSelectModel,
     }
 }

@@ -247,7 +247,13 @@ export function initSocket(httpServer: any) {
 
         socket.on(
             'send_prompt',
-            async (data: { sessionId?: string; prompt: string; projectId?: string }) => {
+            async (data: {
+                sessionId?: string
+                prompt: string
+                projectId?: string
+                model?: string
+                provider?: string
+            }) => {
                 const targetSessionId = data.sessionId || data.projectId
                 if (!targetSessionId) {
                     socket.emit('error', { message: 'sessionId is required' })
@@ -304,6 +310,8 @@ export function initSocket(httpServer: any) {
                         userId: socket.data.userId,
                         prompt: data.prompt,
                         secrets: decryptedSecrets,
+                        model: data.model,
+                        provider: data.provider,
                     })
 
                     console.log(

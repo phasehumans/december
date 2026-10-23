@@ -40,6 +40,9 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         handleSubmit,
         handleKeyDown,
         handleVoiceTranscript,
+        selectedModel,
+        selectedProvider,
+        handleSelectModel,
     } = usePromptInputController({
         value,
         onChange,
@@ -50,6 +53,8 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         onOpenAuth,
         isLoading: isGenerating,
         mode: props.mode || 'chat',
+        initialModel: props.selectedModel,
+        initialProvider: props.selectedProvider,
     })
 
     // Auto-focus on mount and when mode changes
@@ -204,6 +209,12 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
                     mode={props.mode || 'chat'}
                     isThinkingMode={props.isThinkingMode}
                     onToggleThinking={props.onToggleThinking}
+                    selectedModel={selectedModel}
+                    selectedProvider={selectedProvider}
+                    onSelectModel={(model, provider) => {
+                        handleSelectModel(model, provider)
+                        props.onModelChange?.(model, provider)
+                    }}
                     onOptionSelect={(trigger) => {
                         const separator = input && !input.endsWith(' ') ? ' ' : ''
                         handleInputChange((input || '') + separator + '@' + trigger)

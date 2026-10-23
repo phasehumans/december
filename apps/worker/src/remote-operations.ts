@@ -8,10 +8,43 @@ import type {
     BrowserActionResult,
     BrowserNavigateResult,
     BrowserOperations,
+    DiagnosticItem,
+    DiagnosticsOperations,
+    LocationItem,
+    LspOperations,
+    OutlineItem,
 } from '@december/shared'
 
 const escapeShellArg = (arg: string): string => {
     return `'${arg.replace(/'/g, "'\\''")}'`
+}
+
+const extractWordAtPosition = (lineContent: string, column: number): string | null => {
+    if (!lineContent || column < 1) return null
+    const colIdx = column - 1
+    const isWordChar = (c: string) => /[a-zA-Z0-9_$]/.test(c)
+
+    let start = colIdx
+    if (start >= lineContent.length) start = lineContent.length - 1
+    if (!isWordChar(lineContent[start])) {
+        if (start > 0 && isWordChar(lineContent[start - 1])) {
+            start--
+        } else {
+            return null
+        }
+    }
+
+    while (start > 0 && isWordChar(lineContent[start - 1])) {
+        start--
+    }
+
+    let end = colIdx
+    while (end < lineContent.length && isWordChar(lineContent[end])) {
+        end++
+    }
+
+    const word = lineContent.slice(start, end).trim()
+    return word || null
 }
 
 const resolveWorkspacePath = (rawPath: string): string => {
@@ -467,5 +500,278 @@ export class RemotePlatformAdapter implements PlatformAdapter {
                 // Intentionally swallowed: Browser cleanup fallback
             })
         },
+    }
+
+    diagnostics: DiagnosticsOperations = {
+        getDiagnostics: async (filePath?: string): Promise<DiagnosticItem[] | string> => {
+            return this.lsp.getDiagnostics!(filePath)
+        },
+    }
+
+    lsp: LspOperations = {
+        getDefinition: async (
+            filePath: string,
+            line: number,
+            column: number
+        ): Promise<LocationItem[] | LocationItem | null> => {
+            try {
+                const targetPath = resolveWorkspacePath(filePath)
+                let word: string | null = null
+                try {
+                    const content = await this.fs.readFile(targetPath)
+                    const lines = content.split('\n')
+                    if (lines[line - 1] !== undefined) {
+                        word = extractWordAtPosition(lines[line - 1]!, column)
+                    }
+                } catch {
+                    // Intentionally swallowed: File read fallback
+                }
+
+                if (!word) return null
+
+                // Search for definitions across /workspace
+                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E "(export\\s+)?(default\\s+)?(async\\s+)?(function|class|interface|type|const|let|var)\\s+${word}\\b|${word}\\s*[:=]\\s*(function|\\([^)]*\\)\\s*=>)|${word}\\s*\\([^)]*\\)\\s*\\{" /workspace || true`
+                const { output } = await this.bash.exec(queryCmd)
+                const matches: LocationItem[] = []
+
+                if (output.trim()) {
+                    const lines = output.split('\n').filter(Boolean)
+                    for (const l of lines) {
+                        const parts = l.split(':')
+                        if (parts.length >= 3) {
+                            const file = parts[0]!.replace('/workspace/', '')
+                            const lineNum = parseInt(parts[1]!, 10)
+                            const preview = parts.slice(2).join(':').trim()
+                            if (!isNaN(lineNum)) {
+                                matches.push({
+                                    filePath: file,
+                                    line: lineNum,
+                                    column: 1,
+                                    preview,
+                                })
+                            }
+                        }
+                    }
+                }
+
+                if (matches.length > 0) {
+                    return matches
+                }
+
+                // Fallback to broader identifier search
+                const fallbackCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december "\\b${word}\\b" /workspace || true`
+                const fallbackRes = await this.bash.exec(fallbackCmd)
+                if (fallbackRes.output.trim()) {
+                    const fbLines = fallbackRes.output.split('\n').filter(Boolean)
+                    for (const l of fbLines) {
+                        if (/^\s*import\b/.test(l)) continue
+                        const parts = l.split(':')
+                        if (parts.length >= 3) {
+                            const file = parts[0]!.replace('/workspace/', '')
+                            const lineNum = parseInt(parts[1]!, 10)
+                            const preview = parts.slice(2).join(':').trim()
+                            if (!isNaN(lineNum)) {
+                                return [
+                                    {
+                                        filePath: file,
+                                        line: lineNum,
+                                        column: 1,
+                                        preview,
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }
+
+                return null
+            } catch {
+                // Intentionally swallowed: Definition lookup fallback
+                return null
+            }
+        },
+
+        getReferences: async (
+            filePath: string,
+            line: number,
+            column: number
+        ): Promise<LocationItem[]> => {
+            try {
+                const targetPath = resolveWorkspacePath(filePath)
+                let word: string | null = null
+                try {
+                    const content = await this.fs.readFile(targetPath)
+                    const lines = content.split('\n')
+                    if (lines[line - 1] !== undefined) {
+                        word = extractWordAtPosition(lines[line - 1]!, column)
+                    }
+                } catch {
+                    // Intentionally swallowed: File read fallback
+                }
+
+                if (!word) return []
+
+                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december "\\b${word}\\b" /workspace || true`
+                const { output } = await this.bash.exec(queryCmd)
+                const refs: LocationItem[] = []
+
+                if (output.trim()) {
+                    const lines = output.split('\n').filter(Boolean)
+                    for (const l of lines) {
+                        const parts = l.split(':')
+                        if (parts.length >= 3) {
+                            const file = parts[0]!.replace('/workspace/', '')
+                            const lineNum = parseInt(parts[1]!, 10)
+                            const preview = parts.slice(2).join(':').trim()
+                            const colIdx = preview.indexOf(word)
+                            const col = colIdx !== -1 ? colIdx + 1 : 1
+                            if (!isNaN(lineNum)) {
+                                refs.push({
+                                    filePath: file,
+                                    line: lineNum,
+                                    column: col,
+                                    preview,
+                                })
+                            }
+                        }
+                        if (refs.length >= 50) break
+                    }
+                }
+
+                return refs
+            } catch {
+                // Intentionally swallowed: References lookup fallback
+                return []
+            }
+        },
+
+        getOutline: async (filePath: string): Promise<OutlineItem[]> => {
+            try {
+                const targetPath = resolveWorkspacePath(filePath)
+                const content = await this.fs.readFile(targetPath)
+                const lines = content.split('\n')
+                const symbols: OutlineItem[] = []
+
+                for (let i = 0; i < lines.length; i++) {
+                    const lineText = lines[i]!
+                    const lineNum = i + 1
+
+                    // Match Class
+                    const classMatch = lineText.match(
+                        /(?:export\s+)?(?:default\s+)?class\s+([A-Za-z0-9_$]+)/
+                    )
+                    if (classMatch) {
+                        symbols.push({
+                            name: classMatch[1]!,
+                            kind: 'class',
+                            line: lineNum,
+                            column: classMatch.index ? classMatch.index + 1 : 1,
+                        })
+                        continue
+                    }
+
+                    // Match Interface
+                    const ifaceMatch = lineText.match(/(?:export\s+)?interface\s+([A-Za-z0-9_$]+)/)
+                    if (ifaceMatch) {
+                        symbols.push({
+                            name: ifaceMatch[1]!,
+                            kind: 'interface',
+                            line: lineNum,
+                            column: ifaceMatch.index ? ifaceMatch.index + 1 : 1,
+                        })
+                        continue
+                    }
+
+                    // Match Type
+                    const typeMatch = lineText.match(/(?:export\s+)?type\s+([A-Za-z0-9_$]+)\s*=/)
+                    if (typeMatch) {
+                        symbols.push({
+                            name: typeMatch[1]!,
+                            kind: 'type',
+                            line: lineNum,
+                            column: typeMatch.index ? typeMatch.index + 1 : 1,
+                        })
+                        continue
+                    }
+
+                    // Match Function
+                    const funcMatch = lineText.match(
+                        /(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+([A-Za-z0-9_$]+)/
+                    )
+                    if (funcMatch) {
+                        symbols.push({
+                            name: funcMatch[1]!,
+                            kind: 'function',
+                            line: lineNum,
+                            column: funcMatch.index ? funcMatch.index + 1 : 1,
+                        })
+                        continue
+                    }
+
+                    // Match Variable / Arrow Function
+                    const varMatch = lineText.match(
+                        /(?:export\s+)?(?:const|let|var)\s+([A-Za-z0-9_$]+)\s*=/
+                    )
+                    if (varMatch) {
+                        symbols.push({
+                            name: varMatch[1]!,
+                            kind: 'variable',
+                            line: lineNum,
+                            column: varMatch.index ? varMatch.index + 1 : 1,
+                        })
+                    }
+                }
+
+                return symbols
+            } catch {
+                // Intentionally swallowed: Outline extraction fallback
+                return []
+            }
+        },
+
+        getDiagnostics: async (filePath?: string): Promise<DiagnosticItem[]> => {
+            try {
+                const hasTsConfig = await this.fs.exists('/workspace/tsconfig.json')
+                const diags: DiagnosticItem[] = []
+
+                if (hasTsConfig) {
+                    const { output } = await this.bash.exec(
+                        'npx tsc --noEmit --pretty false || true'
+                    )
+                    if (output.trim()) {
+                        const lines = output.split('\n').filter(Boolean)
+                        for (const l of lines) {
+                            const match = l.match(
+                                /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.+)$/
+                            )
+                            if (match) {
+                                const relFile = match[1]!.replace('/workspace/', '').trim()
+                                if (
+                                    !filePath ||
+                                    relFile.includes(filePath) ||
+                                    filePath.includes(relFile)
+                                ) {
+                                    diags.push({
+                                        filePath: relFile,
+                                        line: parseInt(match[2]!, 10),
+                                        column: parseInt(match[3]!, 10),
+                                        severity: match[4] === 'warning' ? 'warning' : 'error',
+                                        source: match[5],
+                                        message: match[6]!,
+                                    })
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return diags
+            } catch {
+                // Intentionally swallowed: Diagnostics execution fallback
+                return []
+            }
+        },
+
+        shutdown: async (): Promise<void> => {},
     }
 }

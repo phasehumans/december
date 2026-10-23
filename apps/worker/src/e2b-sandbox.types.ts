@@ -39,6 +39,8 @@ export interface RunAgentSessionInput {
     apiHostUrl?: string
     secrets?: Array<{ key: string; value: string }>
     envs?: Record<string, string>
+    model?: string
+    provider?: string
 }
 
 export interface DestroySandboxInput {

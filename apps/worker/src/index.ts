@@ -27,7 +27,8 @@ console.log("Worker started, waiting for jobs on 'agent_jobs'...")
 export const worker = new Worker(
     'agent_jobs',
     async (job: Job) => {
-        const { sessionId, userId, taskType, prUrl, gitToken, reviewId, secrets } = job.data
+        const { sessionId, userId, taskType, prUrl, gitToken, reviewId, secrets, model, provider } =
+            job.data
         const effectiveTaskType = taskType || job.name
 
         console.log(
@@ -195,6 +196,8 @@ export const worker = new Worker(
                 token,
                 apiHostUrl,
                 secrets,
+                model,
+                provider,
             })
 
             console.log(

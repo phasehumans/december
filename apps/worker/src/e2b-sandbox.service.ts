@@ -11,6 +11,7 @@ import {
     BashTool,
     BrowserActionTool,
     BrowserTool,
+    CodeIntelligenceTool,
     EditFileTool,
     FindFilesTool,
     GrepSearchTool,
@@ -720,7 +721,17 @@ const getLlmProvider = (providerName?: string, apiKey?: string) => {
 }
 
 const runAgentSession = async (data: RunAgentSessionInput) => {
-    const { sessionId, userId, userRules, sandboxId, prompt, workspaceDir, secrets } = data
+    const {
+        sessionId,
+        userId,
+        userRules,
+        sandboxId,
+        prompt,
+        workspaceDir,
+        secrets,
+        model,
+        provider,
+    } = data
     console.log(`[E2BSandboxService] Starting in-sandbox agent runner session for ${sessionId}`)
 
     const effectiveUserRules = userRules
@@ -767,7 +778,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         redisClient: getRedisPub(),
     })
     activeAdapters.add(adapter)
-    const llm = getLlmProvider()
+    const llm = getLlmProvider(provider)
 
     const tools = [
         BashTool,
@@ -781,6 +792,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         ManageTaskTool,
         BrowserTool,
         BrowserActionTool,
+        CodeIntelligenceTool,
         WebSearchTool,
         ManageMemoryTool,
     ]
@@ -798,7 +810,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         runtime: 'cloud',
         availableSecrets: secretKeys,
         modelOptions: {
-            model: process.env.DEFAULT_MODEL || 'gemini-3.6-flash',
+            model: model || process.env.DEFAULT_MODEL || 'gemini-3.6-flash',
             thinkingLevel: 'auto',
         },
     })
