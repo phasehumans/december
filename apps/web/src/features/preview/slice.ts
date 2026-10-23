@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand'
 
-import { GeneratedProjectFile, PreviewSessionStatus } from '@/features/preview/types'
+import { GeneratedProjectFile, PreviewSessionStatus, SessionPlan } from '@/features/preview/types'
 import { mapStoredFilesToGeneratedFiles } from '@/features/preview/utils'
 
 export interface PreviewSlice {
@@ -11,6 +11,7 @@ export interface PreviewSlice {
     gitDiff: string | null
     gitStatus: string | null
     pullRequest: any | null
+    sessionPlan: SessionPlan | null
     setGeneratedFiles: (files: Record<string, GeneratedProjectFile>) => void
     setActiveGeneratedFilePath: (path: string | null) => void
     setPreviewSession: (session: PreviewSessionStatus | null) => void
@@ -18,6 +19,7 @@ export interface PreviewSlice {
     setGitDiff: (gitDiff: string | null) => void
     setGitStatus: (gitStatus: string | null) => void
     setPullRequest: (pullRequest: any | null) => void
+    setSessionPlan: (sessionPlan: SessionPlan | null) => void
     replaceGeneratedOutput: (files: Record<string, string>, preferredPath?: string | null) => void
     resetGeneratedOutput: () => void
     startGeneratedFile: (data: { path: string; purpose: string; generator: string }) => void
@@ -34,6 +36,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
     gitDiff: null,
     gitStatus: null,
     pullRequest: null,
+    sessionPlan: null,
     setGeneratedFiles: (generatedFiles) => set({ generatedFiles }),
     setActiveGeneratedFilePath: (activeGeneratedFilePath) => set({ activeGeneratedFilePath }),
     setPreviewSession: (previewSession) => set({ previewSession }),
@@ -41,6 +44,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
     setGitDiff: (gitDiff) => set({ gitDiff }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
     setPullRequest: (pullRequest) => set({ pullRequest }),
+    setSessionPlan: (sessionPlan) => set({ sessionPlan }),
     replaceGeneratedOutput: (files, preferredPath) => {
         const paths = Object.keys(files)
         const nextActivePath =
@@ -57,6 +61,7 @@ export const createPreviewSlice: StateCreator<PreviewSlice> = (set, get) => ({
         get().setGitDiff(null)
         get().setGitStatus(null)
         get().setPullRequest(null)
+        get().setSessionPlan(null)
     },
     startGeneratedFile: (data) => {
         get().setGeneratedFiles({

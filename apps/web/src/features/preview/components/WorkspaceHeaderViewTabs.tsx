@@ -4,7 +4,7 @@ import React from 'react'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { cn } from '@/shared/lib/utils'
 
-export type WorkspaceTabId = 'changes' | 'desktop' | 'shell' | 'pull_requests'
+export type WorkspaceTabId = 'plan' | 'changes' | 'desktop' | 'shell' | 'pull_requests'
 
 export interface WorkspaceTabDef {
     id: WorkspaceTabId
@@ -13,6 +13,23 @@ export interface WorkspaceTabDef {
 }
 
 // Pixel-perfect SVG icons matching the UI reference screenshot
+const PlanIcon: React.FC<{ className?: string }> = ({ className = 'w-3.5 h-3.5' }) => (
+    <svg
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        className={className}
+    >
+        <circle cx="3.5" cy="4" r="1.2" />
+        <path d="M6.5 4h6" strokeLinecap="round" />
+        <circle cx="3.5" cy="8" r="1.2" />
+        <path d="M6.5 8h6" strokeLinecap="round" />
+        <circle cx="3.5" cy="12" r="1.2" />
+        <path d="M6.5 12h6" strokeLinecap="round" />
+    </svg>
+)
+
 const ChangesIcon: React.FC<{ className?: string }> = ({ className = 'w-3.5 h-3.5' }) => (
     <svg
         viewBox="0 0 16 16"
@@ -76,6 +93,7 @@ const PullRequestsIcon: React.FC<{ className?: string }> = ({ className = 'w-3.5
 )
 
 export const BASE_TAB_DEFS: WorkspaceTabDef[] = [
+    { id: 'plan', label: 'Plan', icon: <PlanIcon /> },
     { id: 'changes', label: 'Changes', icon: <ChangesIcon /> },
     { id: 'desktop', label: 'Desktop', icon: <DesktopIcon /> },
     { id: 'shell', label: 'Shell', icon: <ShellIcon /> },

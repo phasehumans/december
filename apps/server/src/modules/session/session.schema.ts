@@ -120,3 +120,7 @@ export const getSessionFileContentQuerySchema = z.object({
 export const getSessionPullRequestsParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
+
+export const getSessionPlanParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})

@@ -113,3 +113,24 @@ export interface PreviewWindowProps {
     isSidebarCollapsed: boolean
     onToggleSidebar: () => void
 }
+
+export type PlanPhaseId = 'reproduce' | 'locate' | 'implement' | 'test' | 'pr'
+export type PlanPhaseStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
+
+export interface PlanMilestone {
+    id: PlanPhaseId
+    title: string
+    description: string
+    status: PlanPhaseStatus
+    rationale?: string
+    logs: string[]
+    startedAt?: string
+    completedAt?: string
+}
+
+export interface SessionPlan {
+    sessionId: string
+    activePhaseId: PlanPhaseId
+    milestones: PlanMilestone[]
+    updatedAt: number
+}

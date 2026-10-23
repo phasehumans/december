@@ -38,6 +38,7 @@ import type {
     GetSessionFileContent,
     GetSessionPullRequests,
     SessionPullRequest,
+    GetSessionPlan,
 } from './session.types'
 
 let sessionRedis: Redis | null = null
@@ -788,6 +789,79 @@ const getSessionPullRequests = async (
     return { pullRequest: null }
 }
 
+const getSessionPlan = async (data: GetSessionPlan) => {
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionById(sessionId, userId)
+    if (!session) {
+        throw new AppError('Session not found', 404)
+    }
+
+    try {
+        const redis = getSessionRedis()
+        if (redis) {
+            const cached = await redis.get(`session_plan:${sessionId}`)
+            if (cached) {
+                const parsed = JSON.parse(cached)
+                return { plan: parsed.plan ?? parsed }
+            }
+        }
+    } catch {
+        // Intentionally swallowed: Redis retrieval fallback for session plan
+    }
+
+    // Baseline fallback plan with 5 canonical phases
+    const now = new Date().toISOString()
+    return {
+        plan: {
+            sessionId,
+            activePhaseId: 'reproduce',
+            milestones: [
+                {
+                    id: 'reproduce',
+                    title: 'Reproduce & Understand',
+                    description:
+                        'Analyze user prompt, inspect issue context, and reproduce problem state.',
+                    status: 'in_progress',
+                    logs: [],
+                    startedAt: now,
+                },
+                {
+                    id: 'locate',
+                    title: 'Locate Relevant Code',
+                    description:
+                        'Search repository, inspect source tree, and locate files requiring changes.',
+                    status: 'pending',
+                    logs: [],
+                },
+                {
+                    id: 'implement',
+                    title: 'Implement Solution',
+                    description:
+                        'Apply targeted modifications, refactor code, and update components.',
+                    status: 'pending',
+                    logs: [],
+                },
+                {
+                    id: 'test',
+                    title: 'Run Tests & Verify',
+                    description: 'Run automated tests, verify builds, and ensure no regressions.',
+                    status: 'pending',
+                    logs: [],
+                },
+                {
+                    id: 'pr',
+                    title: 'Branch & Create PR',
+                    description:
+                        'Commit to task branch, push to origin, and generate pull request.',
+                    status: 'pending',
+                    logs: [],
+                },
+            ],
+            updatedAt: Date.now(),
+        },
+    }
+}
+
 export const sessionService = {
     loadSessionFiles,
     getUserSessions,
@@ -807,4 +881,5 @@ export const sessionService = {
     getSessionFileTree,
     getSessionFileContent,
     getSessionPullRequests,
+    getSessionPlan,
 }

@@ -23,6 +23,7 @@ import {
     getSessionFileContentParamsSchema,
     getSessionFileContentQuerySchema,
     getSessionPullRequestsParamsSchema,
+    getSessionPlanParamsSchema,
 } from './session.schema'
 import { sessionService } from './session.service'
 
@@ -301,6 +302,15 @@ export const getSessionPullRequests = asyncHandler(async (req: Request, res: Res
     return sendSuccess(res, 'session pull requests fetched successfully', result)
 })
 
+export const getSessionPlan = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = getSessionPlanParamsSchema.parse(req.params)
+
+    const result = await sessionService.getSessionPlan({ userId, sessionId: id })
+    return sendSuccess(res, 'session plan fetched successfully', result)
+})
+
 export const sessionController = {
     getSessions,
     createSession,
@@ -319,4 +329,5 @@ export const sessionController = {
     getSessionFileTree,
     getSessionFileContent,
     getSessionPullRequests,
+    getSessionPlan,
 }

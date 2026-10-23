@@ -115,6 +115,12 @@ export type GenerationStreamEvent =
           }
       }
     | {
+          type: 'PlanMilestoneUpdate'
+          data: {
+              plan?: any
+          }
+      }
+    | {
           type: 'ContextCompacted'
           data: {
               summary: string
@@ -408,6 +414,13 @@ export function normalizeAgentStreamEvent(raw: any): GenerationStreamEvent {
                 data: { pullRequest },
             }
         }
+        case 'PlanMilestoneUpdate': {
+            const plan = (typeof innerData === 'object' && innerData?.plan) || payload.plan || null
+            return {
+                type: 'PlanMilestoneUpdate',
+                data: { plan },
+            }
+        }
         case 'AgentStatus': {
             const message =
                 (typeof innerData === 'object' &&
@@ -600,6 +613,12 @@ const runOverSocket = async (
             if (streamEvent.type === 'PullRequestUpdate') {
                 if (streamEvent.data?.pullRequest !== undefined) {
                     useAppStore.getState().setPullRequest(streamEvent.data.pullRequest)
+                }
+            }
+
+            if (streamEvent.type === 'PlanMilestoneUpdate') {
+                if (streamEvent.data?.plan !== undefined) {
+                    useAppStore.getState().setSessionPlan(streamEvent.data.plan)
                 }
             }
 

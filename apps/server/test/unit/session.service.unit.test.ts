@@ -697,4 +697,38 @@ describe('Session Service - Unit Tests', () => {
             expect(res).toEqual({ pullRequest: null })
         })
     })
+
+    describe('getSessionPlan', () => {
+        it('should throw AppError 404 if session is not found', async () => {
+            sessionRepository.findSessionById = mock(async () => null) as any
+            await expect(
+                (sessionService as any).getSessionPlan({
+                    userId: testUserId,
+                    sessionId: testSessionId,
+                })
+            ).rejects.toThrow('Session not found')
+        })
+
+        it('should return baseline plan with 5 canonical phases when session exists', async () => {
+            sessionRepository.findSessionById = mock(async () => ({
+                id: testSessionId,
+                userId: testUserId,
+            })) as any
+
+            const res = await (sessionService as any).getSessionPlan({
+                userId: testUserId,
+                sessionId: testSessionId,
+            })
+            expect(res.plan).toBeDefined()
+            expect(res.plan.sessionId).toBe(testSessionId)
+            expect(res.plan.milestones).toHaveLength(5)
+            expect(res.plan.milestones.map((m: any) => m.id)).toEqual([
+                'reproduce',
+                'locate',
+                'implement',
+                'test',
+                'pr',
+            ])
+        })
+    })
 })

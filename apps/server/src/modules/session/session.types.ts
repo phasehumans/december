@@ -129,6 +129,11 @@ export type GetSessionPullRequests = {
     sessionId: string
 }
 
+export type GetSessionPlan = {
+    userId: string
+    sessionId: string
+}
+
 export type SessionPullRequest = {
     prNumber?: number
     url?: string

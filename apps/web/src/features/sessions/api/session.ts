@@ -171,6 +171,11 @@ export const sessionAPI = {
         return data || { pullRequest: null }
     },
 
+    getSessionPlan: async (sessionId: string): Promise<{ plan: any | null }> => {
+        const data = await apiRequest<{ plan: any | null }>(`/session/${sessionId}/plan`)
+        return data || { plan: null }
+    },
+
     createSession: async (data: {
         title?: string
         projectId?: string

@@ -4,6 +4,12 @@ import { calculateGenerationCost, startOfUtcMonth, startOfNextUtcMonth } from '@
 import Redis from 'ioredis'
 
 import { E2BSandboxService } from './e2b-sandbox.service'
+import {
+    createDefaultSessionPlan,
+    inferPhaseFromToolCall,
+    advancePlanPhase,
+    type SessionPlan,
+} from './plan-milestones'
 
 export const MUTATING_TOOL_NAMES = new Set([
     'write_file',
@@ -337,6 +343,21 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             })
         }
 
+        // Advance plan to completed PR milestone
+        let prPlan = createDefaultSessionPlan(sessionId)
+        prPlan = advancePlanPhase({
+            plan: prPlan,
+            targetPhaseId: 'pr',
+            rationale: `Task completed and PR #${prResult.prNumber || 'new'} generated`,
+            log: `Pushed branch ${taskBranch} to origin`,
+        })
+        prPlan.milestones = prPlan.milestones.map((m) => ({
+            ...m,
+            status: 'completed',
+            completedAt: m.completedAt || new Date().toISOString(),
+        }))
+        void updateSessionPlan({ sessionId, plan: prPlan })
+
         return prResult
     } catch (err) {
         console.error(
@@ -344,6 +365,28 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             err
         )
         return null
+    }
+}
+
+export async function updateSessionPlan(options: {
+    sessionId: string
+    plan: SessionPlan
+}): Promise<void> {
+    const { sessionId, plan } = options
+    const payload = JSON.stringify({
+        type: 'PlanMilestoneUpdate',
+        sessionId,
+        plan,
+        updatedAt: Date.now(),
+    })
+
+    if (redisPub && redisPub.status === 'ready') {
+        await redisPub.set(`session_plan:${sessionId}`, payload).catch(() => {
+            // Intentionally swallowed: Redis set fallback in test environment
+        })
+        await redisPub.publish(`session_events:${sessionId}`, payload).catch(() => {
+            // Intentionally swallowed: Redis publish fallback in test environment
+        })
     }
 }
 
@@ -403,6 +446,11 @@ export async function processGrpcStream(
         modifiedFiles: new Set(),
         hasError: false,
     }
+
+    let sessionPlan: SessionPlan = createDefaultSessionPlan(sessionId)
+    await updateSessionPlan({ sessionId, plan: sessionPlan }).catch(() => {
+        // Intentionally swallowed: Initial plan broadcast fallback
+    })
 
     const storage = new PrismaDurableStepStorage(prisma)
     const kernel =
@@ -560,6 +608,17 @@ export async function processGrpcStream(
                     status: 'running',
                     output: '',
                 })
+
+                // Infer and advance plan milestone phase based on tool execution
+                const inferredPhase = inferPhaseFromToolCall(toolName, toolInput)
+                if (inferredPhase) {
+                    sessionPlan = advancePlanPhase({
+                        plan: sessionPlan,
+                        targetPhaseId: inferredPhase,
+                        log: `Invoked tool ${toolName} (${toolInput?.filePath || toolInput?.path || toolInput?.command || ''})`.trim(),
+                    })
+                    void updateSessionPlan({ sessionId, plan: sessionPlan })
+                }
 
                 // Strictly filter modified files by mutating tools only; never flag read-only tools (read_file, grep, find)
                 if (MUTATING_TOOL_NAMES.has(toolName.toLowerCase())) {
