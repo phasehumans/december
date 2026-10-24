@@ -170,16 +170,16 @@ export function ModelSelectMenu(props: ModelSelectMenuProps) {
 
     const footerItems = isSearching
         ? [
-              { key: 'enter / ↓', label: 'Focus List' },
-              { key: 'esc', label: 'Exit Search' },
+              { key: 'enter / ↓', label: 'focus list' },
+              { key: 'esc', label: 'exit search' },
           ]
         : [
-              { key: '↑/↓', label: 'Navigate' },
-              { key: 'enter', label: 'Select' },
-              { key: '/', label: 'Search' },
+              { key: '↑/↓', label: 'navigate' },
+              { key: 'enter', label: 'select' },
+              { key: '/', label: 'search' },
               {
                   key: 'esc',
-                  label: previousAuthMode && previousAuthMode !== 'none' ? 'Back' : 'Cancel',
+                  label: previousAuthMode && previousAuthMode !== 'none' ? 'back' : 'close',
               },
           ]
 

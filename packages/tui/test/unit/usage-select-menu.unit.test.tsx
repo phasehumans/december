@@ -135,13 +135,13 @@ describe('UsageSelectMenu Component (Unit)', () => {
 
         // Footer navigation items
         expect(frame).toContain('esc')
-        expect(frame).toContain('Cancel')
+        expect(frame).toContain('close')
         expect(frame).toContain('r')
-        expect(frame).toContain('Refresh')
+        expect(frame).toContain('refresh')
         expect(frame).toContain('m')
-        expect(frame).toContain('Switch model')
+        expect(frame).toContain('switch model')
         expect(frame).toContain('b')
-        expect(frame).toContain('Billing portal')
+        expect(frame).toContain('billing portal')
     })
 
     it('renders safely when props and agent are empty or undefined', () => {
@@ -156,7 +156,7 @@ describe('UsageSelectMenu Component (Unit)', () => {
         expect(frame).toContain('0 tokens')
         expect(frame).toContain('Weekly Total:')
         expect(frame).toContain('esc')
-        expect(frame).toContain('Cancel')
+        expect(frame).toContain('close')
     })
 
     it('handles keyboard shortcuts esc, r, m, and b', async () => {

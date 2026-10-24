@@ -42,8 +42,8 @@ describe('SwitchSelectMenu Component (Unit)', () => {
         expect(frame).toContain('OpenAI')
         expect(frame).not.toContain('(API Key)')
         expect(frame).toContain('December (Cloud Wallet)')
-        expect(frame).toContain('Switch')
-        expect(frame).toContain('Cancel')
+        expect(frame).toContain('switch')
+        expect(frame).toContain('close')
     })
 
     it('navigates with arrows and selects provider', async () => {
@@ -111,7 +111,7 @@ describe('SwitchSelectMenu Component (Unit)', () => {
 
         const deleteFrame = lastFrame() || ''
         expect(deleteFrame).toContain('[Delete? (y/n)]')
-        expect(deleteFrame).toContain('Confirm')
+        expect(deleteFrame).toContain('confirm')
 
         // Press 'n' to cancel
         stdin.write('n')
@@ -169,7 +169,7 @@ describe('SwitchSelectMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('Back')
+        expect(lastFrame()).toContain('back')
 
         stdin.write('\u001B')
         await new Promise((resolve) => setTimeout(resolve, 20))

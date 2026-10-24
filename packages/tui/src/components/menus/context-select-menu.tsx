@@ -224,10 +224,10 @@ export function ContextSelectMenu(props: ContextSelectMenuProps) {
 
             <MenuFooter
                 items={[
-                    { key: 'esc', label: 'Cancel' },
-                    { key: 'c', label: 'Clear history' },
-                    { key: 'm', label: 'Model' },
-                    { key: 'n', label: 'New session' },
+                    { key: 'esc', label: 'close' },
+                    { key: 'c', label: 'clear history' },
+                    { key: 'm', label: 'model' },
+                    { key: 'n', label: 'new session' },
                 ]}
             />
         </Box>

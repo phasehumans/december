@@ -155,12 +155,12 @@ export function ToolPermissionMenu({ toolCall, questions, onComplete }: ToolPerm
             />
             <MenuFooter
                 items={[
-                    { key: 'y', label: 'Approve' },
-                    { key: 'a', label: 'Always' },
-                    { key: 'g', label: 'Git-tracked only' },
-                    { key: 'd', label: 'Deny' },
-                    { key: '↑/↓', label: 'Navigate' },
-                    { key: 'enter', label: 'Select' },
+                    { key: 'y', label: 'approve' },
+                    { key: 'a', label: 'always' },
+                    { key: 'g', label: 'git-tracked only' },
+                    { key: 'd', label: 'deny' },
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'enter', label: 'select' },
                 ]}
             />
         </Box>

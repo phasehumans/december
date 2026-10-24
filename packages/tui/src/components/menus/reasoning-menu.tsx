@@ -104,9 +104,9 @@ export function ReasoningMenu(props: ReasoningMenuProps) {
 
             <MenuFooter
                 items={[
-                    { key: '↑/↓', label: 'Navigate' },
-                    { key: 'enter', label: 'Select' },
-                    { key: 'esc', label: 'Cancel' },
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'enter', label: 'select' },
+                    { key: 'esc', label: 'close' },
                 ]}
             />
         </Box>

@@ -206,14 +206,14 @@ export function SubscriptionSelectMenu(props: SubscriptionSelectMenuProps) {
 
     const footerItems = isSearching
         ? [
-              { key: 'enter / ↓', label: 'Focus List' },
-              { key: 'esc', label: 'Exit Search' },
+              { key: 'enter / ↓', label: 'focus list' },
+              { key: 'esc', label: 'exit search' },
           ]
         : [
-              { key: '↑/↓', label: 'Navigate' },
-              { key: 'enter', label: 'Connect' },
-              { key: '/', label: 'Search' },
-              { key: 'esc', label: 'Back' },
+              { key: '↑/↓', label: 'navigate' },
+              { key: 'enter', label: 'connect' },
+              { key: '/', label: 'search' },
+              { key: 'esc', label: 'close' },
           ]
 
     if (confirmSubItem) {
@@ -238,9 +238,9 @@ export function SubscriptionSelectMenu(props: SubscriptionSelectMenuProps) {
                 </Box>
                 <MenuFooter
                     items={[
-                        { key: 'y', label: 'Yes, switch account' },
-                        { key: 'n / enter', label: 'Keep current' },
-                        { key: 'esc', label: 'Cancel' },
+                        { key: 'y', label: 'switch account' },
+                        { key: 'n / enter', label: 'keep current' },
+                        { key: 'esc', label: 'cancel' },
                     ]}
                 />
             </Box>

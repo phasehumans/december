@@ -18,7 +18,7 @@ describe('FileViewMenu Component (Unit)', () => {
         expect(frame).toContain('dismiss')
     })
 
-    it('renders file content with line numbers and header', async () => {
+    it('renders file content with line numbers and header in vim style', async () => {
         const { lastFrame } = renderWithProviders(
             <FileViewMenu filePath="package.json" initialLine={1} />
         )
@@ -27,16 +27,18 @@ describe('FileViewMenu Component (Unit)', () => {
         const frame = lastFrame()
 
         expect(frame).toContain('package.json')
+        expect(frame).not.toContain('NORMAL')
+        expect(frame).not.toContain('[RO]')
         expect(frame).toContain('lines')
-        expect(frame).toContain('line 1')
-        expect(frame).toContain('1 |')
+        expect(frame).toContain('line 1:1')
+        expect(frame).toContain('1')
         expect(frame).toContain('scroll')
         expect(frame).toContain('insert @file:line')
         expect(frame).toContain('dismiss')
         expect(frame).not.toContain('open in editor')
     })
 
-    it('triggers onInsertContext on Enter key', async () => {
+    it('triggers onInsertContext on Enter key without triggering onClose', async () => {
         const onInsertContext = mock()
         const onClose = mock()
         const { stdin } = renderWithProviders(
@@ -52,10 +54,10 @@ describe('FileViewMenu Component (Unit)', () => {
         stdin.write('\r')
         expect(onInsertContext).toHaveBeenCalledTimes(1)
         expect(onInsertContext).toHaveBeenCalledWith('package.json', 3)
-        expect(onClose).toHaveBeenCalledTimes(1)
+        expect(onClose).toHaveBeenCalledTimes(0)
     })
 
-    it('triggers onInsertContext on Tab key', async () => {
+    it('triggers onInsertContext on Tab key without triggering onClose', async () => {
         const onInsertContext = mock()
         const onClose = mock()
         const { stdin } = renderWithProviders(
@@ -71,6 +73,17 @@ describe('FileViewMenu Component (Unit)', () => {
         stdin.write('\t')
         expect(onInsertContext).toHaveBeenCalledTimes(1)
         expect(onInsertContext).toHaveBeenCalledWith('package.json', 5)
+        expect(onClose).toHaveBeenCalledTimes(0)
+    })
+
+    it('triggers onClose on Enter key when onInsertContext is omitted', async () => {
+        const onClose = mock()
+        const { stdin } = renderWithProviders(
+            <FileViewMenu filePath="package.json" initialLine={2} onClose={onClose} />
+        )
+
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        stdin.write('\r')
         expect(onClose).toHaveBeenCalledTimes(1)
     })
 
@@ -81,12 +94,36 @@ describe('FileViewMenu Component (Unit)', () => {
 
         await new Promise((resolve) => setTimeout(resolve, 50))
         let frame = lastFrame()
-        expect(frame).toContain('line 1')
+        expect(frame).toContain('line 1:1')
 
         stdin.write('j')
         await new Promise((resolve) => setTimeout(resolve, 30))
         frame = lastFrame()
-        expect(frame).toContain('line 2')
+        expect(frame).toContain('line 2:1')
+
+        // Test G (jump to bottom)
+        stdin.write('G')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        frame = lastFrame()
+        expect(frame).toContain('line 120:1')
+
+        // Test g (jump to top)
+        stdin.write('g')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        frame = lastFrame()
+        expect(frame).toContain('line 1:1')
+    })
+
+    it('renders tilde lines for empty lines past EOF on short files', async () => {
+        const { lastFrame } = renderWithProviders(
+            <FileViewMenu filePath="packages/tui/src/constants/announcements.ts" initialLine={1} />
+        )
+
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        const frame = lastFrame()
+        expect(frame).toContain('packages/tui/src/constants/announcements.ts')
+        expect(frame).toContain('~')
+        expect(frame).toContain('line 1:1')
     })
 
     it('closes on Escape or q', async () => {

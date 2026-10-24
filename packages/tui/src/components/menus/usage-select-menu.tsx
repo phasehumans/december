@@ -361,10 +361,10 @@ export function UsageSelectMenu(props: UsageSelectMenuProps) {
 
             <MenuFooter
                 items={[
-                    { key: 'esc', label: 'Cancel' },
-                    { key: 'r', label: 'Refresh' },
-                    { key: 'm', label: 'Switch model' },
-                    { key: 'b', label: 'Billing portal' },
+                    { key: 'esc', label: 'close' },
+                    { key: 'r', label: 'refresh' },
+                    { key: 'm', label: 'switch model' },
+                    { key: 'b', label: 'billing portal' },
                 ]}
             />
         </Box>

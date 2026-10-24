@@ -124,17 +124,11 @@ export function ShortcutsMenu({ onClose }: { onClose: () => void }) {
                 )}
             </Box>
 
-            <Box paddingLeft={2} paddingTop={1}>
-                <Text color={THEME.colors.muted}>
-                    [{selectedIndex + 1}-{windowEnd} of {SHORTCUTS.length} items]
-                </Text>
-            </Box>
-
             {/* footer */}
             <MenuFooter
                 items={[
-                    { key: '↑/↓', label: 'Navigate' },
-                    { key: 'esc', label: 'Close' },
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'esc', label: 'close' },
                 ]}
             />
         </Box>

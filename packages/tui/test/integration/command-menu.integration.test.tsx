@@ -18,6 +18,6 @@ describe('CommandMenu Integration', () => {
         )
 
         const frame = lastFrame()
-        expect(frame).toContain('/ask')
+        expect(frame).toContain('/btw')
     })
 })

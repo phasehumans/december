@@ -13,7 +13,7 @@ export type HelpTab = (typeof TABS)[number]
 
 const CMD_COL_WIDTH = 32
 const SHORTCUT_COL_WIDTH = 34
-const WINDOW_SIZE = 7
+const WINDOW_SIZE = 8
 
 export interface HelpMenuProps {
     onClose?: () => void
@@ -247,26 +247,22 @@ export function HelpMenu(props: HelpMenuProps) {
         <Box flexDirection="column">
             {/* Top Navigation Bar */}
             <Box flexDirection="row" gap={2} marginBottom={1}>
-                <Box gap={1}>
-                    {TABS.map((t) => {
-                        const isCurrent = t === tab
-                        return (
-                            <Text
-                                key={t}
-                                color={isCurrent ? THEME.colors.brand : THEME.colors.muted}
-                                bold={isCurrent}
-                            >
-                                {isCurrent ? `[${t}]` : ` ${t} `}
-                            </Text>
-                        )
-                    })}
-                </Box>
-
-                <Text color={THEME.colors.subtle}>(←/→ or tab to cycle)</Text>
+                {TABS.map((t) => {
+                    const isCurrent = t === tab
+                    return (
+                        <Text
+                            key={t}
+                            color={isCurrent ? THEME.colors.brand : THEME.colors.muted}
+                            bold={isCurrent}
+                        >
+                            {t}
+                        </Text>
+                    )
+                })}
             </Box>
 
-            {/* Tab Body */}
-            <Box flexDirection="column">
+            {/* Tab Body container with minHeight to prevent layout shifts across tabs */}
+            <Box flexDirection="column" minHeight={9}>
                 {tab === 'general' && (
                     <Box flexDirection="column" gap={1}>
                         <Box flexDirection="column">
@@ -292,12 +288,6 @@ export function HelpMenu(props: HelpMenuProps) {
 
                 {tab === 'commands' && (
                     <Box flexDirection="column">
-                        <Box marginBottom={0}>
-                            <Text bold color={THEME.colors.text}>
-                                Available Commands
-                            </Text>
-                        </Box>
-
                         {visibleCmds.map((cmd, relIdx) => {
                             const absIdx = cmdWindowStart + relIdx
                             const isSelected = absIdx === cmdIndex
@@ -342,12 +332,6 @@ export function HelpMenu(props: HelpMenuProps) {
 
                 {tab === 'shortcuts' && (
                     <Box flexDirection="column">
-                        <Box marginBottom={0}>
-                            <Text bold color={THEME.colors.text}>
-                                Keyboard Shortcuts
-                            </Text>
-                        </Box>
-
                         {visibleShortcuts.map((cmd, relIdx) => {
                             const absIdx = shortcutWindowStart + relIdx
                             const isSelected = absIdx === shortcutIndex
@@ -394,9 +378,9 @@ export function HelpMenu(props: HelpMenuProps) {
             {/* Footer */}
             <MenuFooter
                 items={[
-                    ...(tab === 'general' ? [] : [{ key: '↑/↓', label: 'Navigate' }]),
-                    { key: '←/→', label: 'Switch View' },
-                    { key: 'esc', label: 'Close' },
+                    ...(tab === 'general' ? [] : [{ key: '↑/↓', label: 'navigate' }]),
+                    { key: '←/→', label: 'cycle' },
+                    { key: 'esc', label: 'close' },
                 ]}
             />
         </Box>

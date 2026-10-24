@@ -34,14 +34,17 @@ Resets the conversation context while preserving file modifications. Use this wh
 
 Opens the official documentation on `trydecember.com/docs` matching the requested section (e.g. `/docs cli`).
 
-### `/reasoning [level]`
+### `/effort [level]`
 
 Inspects or configures the active model reasoning depth (`auto`, `off`, `low`, `medium`, `high`):
 
-- **`/reasoning`**: Opens the interactive reasoning depth selector.
-- **`/reasoning [level]`**: Directly sets the reasoning level (e.g. `/reasoning high`, `/reasoning off`).
-- **`/effort`**: Supported as an alias for `/reasoning`.
+- **`/effort`**: Opens the interactive reasoning depth selector.
+- **`/effort [level]`**: Directly sets the reasoning level (e.g. `/effort high`, `/effort off`).
 
 ### `/artifacts`
 
 Opens the interactive session artifacts viewer to inspect, navigate, and approve implementation plans, architecture specs, and task walkthroughs stored under `~/.december/artifacts/<session-id>/`.
+
+### `/skills`
+
+Opens the interactive skills browser to inspect, search, and view documentation for all discovered skills across workspace, global, and plugin directories. Press `Enter` on any skill to read its `SKILL.md` in the code viewer.

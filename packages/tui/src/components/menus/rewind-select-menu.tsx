@@ -80,9 +80,9 @@ export function RewindSelectMenu(props: RewindSelectMenuProps) {
     })
 
     const footerItems = [
-        { key: '↑/↓', label: 'Navigate' },
-        { key: 'Enter', label: 'Rewind to Turn' },
-        { key: 'Esc', label: 'Cancel' },
+        { key: '↑/↓', label: 'navigate' },
+        { key: 'enter', label: 'rewind to turn' },
+        { key: 'esc', label: 'close' },
     ]
 
     return (

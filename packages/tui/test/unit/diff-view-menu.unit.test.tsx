@@ -326,6 +326,32 @@ describe('DiffViewMenu Component (Unit)', () => {
         const { lastFrame } = render(<DiffViewMenu filesData={singleFile} />)
         const frame = lastFrame() || ''
         expect(frame).toContain('src/single.ts')
+        expect(frame).toContain('Workspace Changes')
+        expect(frame).toContain('1/1')
         expect(frame).not.toContain('more')
+    })
+
+    it('triggers onInsertContext on Tab in list view and on Enter in detail view', async () => {
+        const onInsertContext = mock()
+        const { lastFrame, stdin } = render(
+            <DiffViewMenu filesData={mockFiles} onInsertContext={onInsertContext} />
+        )
+
+        expect(lastFrame()).toContain('Workspace Changes')
+        expect(lastFrame()).toContain('1/4')
+
+        // Test Tab in list view
+        stdin.write('\t')
+        expect(onInsertContext).toHaveBeenCalledTimes(1)
+        expect(onInsertContext).toHaveBeenCalledWith('public/_headers', 1)
+
+        // Enter detail view
+        stdin.write('\r')
+        await new Promise((r) => setTimeout(r, 20))
+        expect(lastFrame()).toContain('public/_headers')
+
+        // Press Enter on a diff line to insert context
+        stdin.write('\r')
+        expect(onInsertContext).toHaveBeenCalledTimes(2)
     })
 })

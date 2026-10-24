@@ -466,4 +466,12 @@ describe('CLI file view and code search navigation', () => {
         // 3. Reset
         store.setPrefillPrompt(null)
     })
+
+    it('supports skills authMode for interactive skills browsing', () => {
+        const store = useCliStore.getState()
+        store.setAuthMode('skills')
+        expect(useCliStore.getState().authMode).toBe('skills')
+        store.setAuthMode('none')
+        expect(useCliStore.getState().authMode).toBe('none')
+    })
 })

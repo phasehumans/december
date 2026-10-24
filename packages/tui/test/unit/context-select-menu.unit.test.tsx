@@ -77,13 +77,13 @@ describe('ContextSelectMenu Component (Unit)', () => {
 
         // Verify footer items
         expect(frame).toContain('esc')
-        expect(frame).toContain('Cancel')
+        expect(frame).toContain('close')
         expect(frame).toContain('c')
-        expect(frame).toContain('Clear history')
+        expect(frame).toContain('clear history')
         expect(frame).toContain('m')
-        expect(frame).toContain('Model')
+        expect(frame).toContain('model')
         expect(frame).toContain('n')
-        expect(frame).toContain('New session')
+        expect(frame).toContain('new session')
     })
 
     it('renders safely when agent is empty or undefined', () => {

@@ -488,14 +488,14 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
 
     const footerItems = isSearching
         ? [
-              { key: 'enter / ↓', label: 'Focus List' },
-              { key: 'esc', label: 'Exit Search' },
+              { key: 'enter / ↓', label: 'focus list' },
+              { key: 'esc', label: 'exit search' },
           ]
         : [
-              { key: '↑/↓', label: 'Navigate' },
-              { key: 'enter', label: 'Select' },
-              { key: '/', label: 'Search' },
-              { key: 'esc', label: 'Back' },
+              { key: '↑/↓', label: 'navigate' },
+              { key: 'enter', label: 'select' },
+              { key: '/', label: 'search' },
+              { key: 'esc', label: 'close' },
           ]
 
     if (confirmSubItem) {
@@ -520,9 +520,9 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
                 </Box>
                 <MenuFooter
                     items={[
-                        { key: 'y', label: 'Yes, switch account' },
-                        { key: 'n / enter', label: 'Keep current' },
-                        { key: 'esc', label: 'Cancel' },
+                        { key: 'y', label: 'switch account' },
+                        { key: 'n / enter', label: 'keep current' },
+                        { key: 'esc', label: 'cancel' },
                     ]}
                 />
             </Box>
@@ -548,9 +548,9 @@ export function ByokProviderMenu(props: ByokProviderMenuProps) {
                 </Box>
                 <MenuFooter
                     items={[
-                        { key: 'y', label: 'Yes, enter new key' },
-                        { key: 'n / enter', label: 'Use existing key' },
-                        { key: 'esc', label: 'Cancel' },
+                        { key: 'y', label: 'enter new key' },
+                        { key: 'n / enter', label: 'use existing key' },
+                        { key: 'esc', label: 'cancel' },
                     ]}
                 />
             </Box>

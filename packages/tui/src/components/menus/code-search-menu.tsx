@@ -140,21 +140,21 @@ export function CodeSearchMenu({
     const fileColWidth = Math.min(40, Math.max(28, Math.floor(columns * 0.38)))
 
     return (
-        <Box flexDirection="column" width={columns} paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column" width="100%">
             {/* Header */}
-            <Box justifyContent="space-between" width="100%">
+            <Box justifyContent="space-between" width="100%" marginBottom={1}>
                 <Box gap={1}>
                     <Text bold color={THEME.colors.text}>
                         Code Search
                     </Text>
                     {codeSearchQuery ? (
-                        <Text color={THEME.colors.dim}>
+                        <Text color={THEME.colors.muted}>
                             · "{codeSearchQuery}" ({totalItems} match{totalItems === 1 ? '' : 'es'})
                         </Text>
                     ) : null}
                 </Box>
-                {totalItems > WINDOW_SIZE && (
-                    <Text color={THEME.colors.dim}>
+                {totalItems > 0 && (
+                    <Text color={THEME.colors.muted}>
                         {selectedIndex + 1}/{totalItems}
                     </Text>
                 )}

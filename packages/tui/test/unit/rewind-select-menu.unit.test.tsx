@@ -11,8 +11,8 @@ describe('RewindSelectMenu Component (Unit)', () => {
 
         expect(output).toContain('Rewind Workspace & Conversation Timeline')
         expect(output).toContain('No turn snapshots recorded in this session.')
-        expect(output).toContain('Navigate')
-        expect(output).toContain('Rewind to Turn')
+        expect(output).toContain('navigate')
+        expect(output).toContain('rewind to turn')
     })
 
     it('renders list of turn snapshots with turn numbers, preview, and files count', () => {

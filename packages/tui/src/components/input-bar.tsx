@@ -462,7 +462,6 @@ export const InputBar = React.memo(function InputBar({
 
             // Forward chat & session commands and custom commands to chat component
             const forwardCommands = [
-                '/ask',
                 '/grill',
                 '/grill-me',
                 '/login',
@@ -490,7 +489,6 @@ export const InputBar = React.memo(function InputBar({
                 '/diff',
                 '/open',
                 '/codesearch',
-                '/reasoning',
                 '/effort',
             ]
 

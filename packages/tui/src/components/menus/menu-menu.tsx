@@ -150,8 +150,8 @@ export function MenuMenu(props: MenuMenuProps) {
 
                 <MenuFooter
                     items={[
-                        { key: 'y', label: 'Switch Account' },
-                        { key: 'n / esc', label: 'Cancel' },
+                        { key: 'y', label: 'switch account' },
+                        { key: 'n / esc', label: 'cancel' },
                     ]}
                 />
             </Box>
@@ -187,9 +187,9 @@ export function MenuMenu(props: MenuMenuProps) {
 
             <MenuFooter
                 items={[
-                    { key: '↑/↓', label: 'Navigate' },
-                    { key: 'enter', label: 'Select' },
-                    { key: 'esc', label: 'Cancel' },
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'enter', label: 'select' },
+                    { key: 'esc', label: 'close' },
                 ]}
             />
         </Box>

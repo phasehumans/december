@@ -251,27 +251,27 @@ export function SessionSelectMenu(props: any) {
 
     const footerItems = confirmDeleteId
         ? [
-              { key: 'y', label: 'Confirm' },
-              { key: 'n / esc', label: 'Cancel' },
+              { key: 'y', label: 'confirm' },
+              { key: 'n / esc', label: 'cancel' },
           ]
         : sessionRenameMode
           ? [
-                { key: 'enter', label: 'Save Name' },
-                { key: 'esc', label: 'Cancel' },
+                { key: 'enter', label: 'save name' },
+                { key: 'esc', label: 'cancel' },
             ]
           : isSearching
             ? [
-                  { key: 'enter / ↓', label: 'Focus List' },
-                  { key: 'esc', label: 'Exit Search' },
+                  { key: 'enter / ↓', label: 'focus list' },
+                  { key: 'esc', label: 'exit search' },
               ]
             : [
-                  { key: '↑/↓', label: 'Navigate' },
-                  { key: '←/→', label: 'Page' },
-                  { key: 'enter', label: 'Select' },
-                  { key: '/', label: 'Search' },
-                  { key: 'r', label: 'Rename' },
-                  { key: 'd', label: 'Delete' },
-                  { key: 'esc', label: 'Cancel' },
+                  { key: '↑/↓', label: 'navigate' },
+                  { key: '←/→', label: 'page' },
+                  { key: 'enter', label: 'select' },
+                  { key: '/', label: 'search' },
+                  { key: 'r', label: 'rename' },
+                  { key: 'd', label: 'delete' },
+                  { key: 'esc', label: 'close' },
               ]
 
     return (

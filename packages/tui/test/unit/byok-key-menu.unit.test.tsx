@@ -40,8 +40,8 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain("Don't have an API key? Get one at")
         expect(output).toContain('https://platform.openai.com/api-keys')
         expect(output).toContain('sk-test-12345')
-        expect(output).toContain('Submit')
-        expect(output).toContain('Back')
+        expect(output).toContain('submit')
+        expect(output).toContain('close')
         expect(output).not.toContain('Verifying and saving API key')
     })
 
@@ -63,8 +63,8 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain("Don't have an API key? Get one at")
         expect(output).toContain('https://agentrouter.org/console/token')
         expect(output).toContain('sk-ar-test')
-        expect(output).toContain('Submit')
-        expect(output).toContain('Back')
+        expect(output).toContain('submit')
+        expect(output).toContain('close')
     })
 
     it('renders saving loader spinner mid-step and hides footer when isStreaming is true', () => {
@@ -83,8 +83,8 @@ describe('ByokKeyMenu Component (Unit)', () => {
 
         expect(output).toContain('Enter API Key for Anthropic:')
         expect(output).toContain('Verifying and saving API key for Anthropic...')
-        expect(output).not.toContain('Submit')
-        expect(output).not.toContain('Back')
+        expect(output).not.toContain('submit')
+        expect(output).not.toContain('close')
     })
 
     it('renders error message when authError is passed and isStreaming is false', () => {
@@ -104,8 +104,8 @@ describe('ByokKeyMenu Component (Unit)', () => {
 
         expect(output).toContain('Enter API Key for Google:')
         expect(output).toContain('Invalid API Key for google: 401 Unauthorized')
-        expect(output).toContain('Submit')
-        expect(output).toContain('Back')
+        expect(output).toContain('submit')
+        expect(output).toContain('close')
     })
 
     it('renders Deepgram provider with $200 free credit note', () => {
@@ -127,8 +127,8 @@ describe('ByokKeyMenu Component (Unit)', () => {
         expect(output).toContain('https://console.deepgram.com')
         expect(output).toContain('($200 free credit on signup)')
         expect(output).toContain('dg-test-key')
-        expect(output).toContain('Submit')
-        expect(output).toContain('Back')
+        expect(output).toContain('submit')
+        expect(output).toContain('close')
     })
 
     it('ignores mouse wheel and drag escape sequences without mutating apiKey', async () => {

@@ -148,9 +148,9 @@ export function SettingsMainMenu(props: SettingsMainMenuProps | any) {
             />
             <MenuFooter
                 items={[
-                    { key: '↑/↓', label: 'Navigate' },
-                    { key: 'enter', label: 'Select' },
-                    { key: 'esc', label: 'Back' },
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'enter', label: 'select' },
+                    { key: 'esc', label: 'close' },
                 ]}
             />
         </Box>

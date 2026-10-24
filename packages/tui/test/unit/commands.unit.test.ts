@@ -130,11 +130,20 @@ describe('/grill-me and /plan skills', () => {
 })
 
 describe('/ask command', () => {
-    test('should define /ask command forwarded to chat screen', () => {
-        const askCmd = COMMANDS.find((c) => c.name === 'ask')
-        expect(askCmd).toBeDefined()
-        expect(askCmd?.value).toBe('/ask')
-        expect(askCmd?.description).toContain('Ask a question about the codebase')
+    test('is removed and not registered in COMMANDS', () => {
+        const askCmd = COMMANDS.find((c) => c.name === 'ask' || c.value === '/ask')
+        expect(askCmd).toBeUndefined()
+    })
+})
+
+describe('/artifacts command', () => {
+    test('registers /artifacts in COMMANDS and does not register duplicate /artifact', () => {
+        const artifactsCmd = COMMANDS.find((c) => c.name === 'artifacts')
+        expect(artifactsCmd).toBeDefined()
+        expect(artifactsCmd?.value).toBe('/artifacts')
+
+        const artifactCmd = COMMANDS.find((c) => c.name === 'artifact')
+        expect(artifactCmd).toBeUndefined()
     })
 })
 
@@ -174,11 +183,11 @@ describe('/changelog and /docs commands', () => {
         expect(helpCmd?.description).toContain('commands, keybindings, and CLI info')
     })
 
-    test('should define /reasoning command and /effort alias forwarded to chat screen', () => {
-        const reasoningCmd = COMMANDS.find((c) => c.name === 'reasoning')
-        expect(reasoningCmd).toBeDefined()
-        expect(reasoningCmd?.value).toBe('/reasoning')
-        expect(reasoningCmd?.description).toContain('reasoning depth')
+    test('should define /effort command forwarded to chat screen and remove /reasoning', () => {
+        const reasoningCmd = COMMANDS.find(
+            (c) => c.name === 'reasoning' || c.value === '/reasoning'
+        )
+        expect(reasoningCmd).toBeUndefined()
 
         const effortCmd = COMMANDS.find((c) => c.name === 'effort')
         expect(effortCmd).toBeDefined()

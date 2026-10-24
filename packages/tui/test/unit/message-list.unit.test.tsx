@@ -120,7 +120,7 @@ describe('MessageList Component (Unit)', () => {
 
         const frame = lastFrame()
         expect(frame).toContain('December v0.2.24')
-        expect(frame).toContain('Press / for commands')
+        expect(frame).not.toContain('Press / for commands')
         expect(frame).toContain('git status')
         expect(frame).not.toContain('On branch main')
     })
@@ -254,7 +254,7 @@ describe('MessageList Component (Unit)', () => {
 
         const frame = lastFrame() || ''
         const rawLines = frame.split('\n')
-        const headerEndIdx = rawLines.findIndex((l) => l.includes('Press / for commands'))
+        const headerEndIdx = rawLines.findIndex((l) => l.includes('December'))
         const botIdx = rawLines.findIndex((l) => l.includes('Have feedback, found a bug'))
 
         expect(headerEndIdx).toBeGreaterThanOrEqual(0)

@@ -22,6 +22,7 @@ export interface DiffViewMenuProps {
     initialDetailView?: boolean
     setAuthMode?: (mode: string) => void
     onClose?: () => void
+    onInsertContext?: (file: string, line: number) => void
     addToast?: (msg: string, variant?: string) => void
 }
 
@@ -32,6 +33,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         initialDetailView = false,
         setAuthMode,
         onClose,
+        onInsertContext,
     } = props
 
     const terminalColumns = useTerminalColumns()
@@ -249,6 +251,12 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 return
             }
 
+            // Insert context on Tab
+            if (key.tab && onInsertContext && currentFile) {
+                onInsertContext(currentFile.path, 1)
+                return
+            }
+
             // View diff
             if (key.return || key.rightArrow) {
                 if (files.length > 0 && currentFile) {
@@ -354,12 +362,24 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 return
             }
 
-            // Toggle fold with Enter, Space, or ctrl+o when on a fold row
-            if (key.return || input === ' ' || (key.ctrl && input === 'o')) {
+            // Toggle fold or insert context with Enter / Tab
+            if (key.return || key.tab || input === ' ' || (key.ctrl && input === 'o')) {
                 const currentRow = diffRows[cursorLineIndex]
-                if (currentRow && currentRow.type === 'fold') {
-                    const fid = currentRow.data.id
-                    setExpandedFolds((prev) => ({ ...prev, [fid]: !prev[fid] }))
+                if (currentRow) {
+                    if (currentRow.type === 'fold') {
+                        const fid = currentRow.data.id
+                        setExpandedFolds((prev) => ({ ...prev, [fid]: !prev[fid] }))
+                        return
+                    }
+                    if ((key.return || key.tab) && onInsertContext && currentFile) {
+                        const line = currentRow.data
+                        const lineNum =
+                            line.type === 'delete' ? line.oldLineNumber : line.newLineNumber
+                        if (lineNum) {
+                            onInsertContext(currentFile.path, lineNum)
+                            return
+                        }
+                    }
                 }
                 return
             }
@@ -380,10 +400,12 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         { key: '←/→', label: 'switch view' },
         { key: '↑/↓', label: 'navigate' },
         { key: 'enter', label: 'view diff' },
+        { key: 'tab', label: 'insert context' },
         { key: 'esc', label: 'dismiss' },
     ]
 
     const detailFooterItems = [
+        { key: 'enter', label: 'insert @file:line' },
         { key: 'p', label: 'prev diff' },
         { key: 'n', label: 'next diff' },
         { key: '←/→', label: 'cycle file' },
@@ -404,9 +426,9 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         )
 
         return (
-            <Box flexDirection="column" width={columns} paddingX={THEME.padding.paddingX}>
+            <Box flexDirection="column" width="100%">
                 {/* Header */}
-                <Box justifyContent="space-between" width="100%">
+                <Box justifyContent="space-between" width="100%" marginBottom={1}>
                     <Box gap={1}>
                         <Text bold color={THEME.colors.text}>
                             {currentFile.path}
@@ -421,7 +443,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                         </Text>
                     </Box>
                     <Box>
-                        <Text color={THEME.colors.dim}>
+                        <Text color={THEME.colors.muted}>
                             change {currentChangeUnderCursor}/{changeBlocks.length || 0} · file{' '}
                             {safeFileIndex + 1}/{files.length}
                         </Text>
@@ -429,7 +451,7 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
                 </Box>
 
                 {/* Diff Viewport */}
-                <Box flexDirection="column" width="100%" marginTop={1}>
+                <Box flexDirection="column" width="100%">
                     {visibleRows.length === 0 ? (
                         <Text color={THEME.colors.dim}>(Empty diff)</Text>
                     ) : (
@@ -538,10 +560,29 @@ export function DiffViewMenu(props: DiffViewMenuProps) {
         }
     }
 
+    const totalAdditions = files.reduce((acc, f) => acc + (f.additions || 0), 0)
+    const totalDeletions = files.reduce((acc, f) => acc + (f.deletions || 0), 0)
+    const summaryText = `${files.length} file${files.length === 1 ? '' : 's'} (+${totalAdditions} -${totalDeletions})`
+
     return (
-        <Box flexDirection="column" width={columns} paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column" width="100%">
+            {/* Header */}
+            <Box justifyContent="space-between" width="100%" marginBottom={1}>
+                <Box gap={1}>
+                    <Text bold color={THEME.colors.text}>
+                        Workspace Changes
+                    </Text>
+                    {files.length > 0 && <Text color={THEME.colors.muted}>· {summaryText}</Text>}
+                </Box>
+                {files.length > 0 && (
+                    <Text color={THEME.colors.muted}>
+                        {safeFileIndex + 1}/{files.length}
+                    </Text>
+                )}
+            </Box>
+
             {/* Files List - Sliding window with pagination indicators */}
-            <Box flexDirection="column" width="100%" marginY={1}>
+            <Box flexDirection="column" width="100%">
                 {isLoading ? (
                     <Text color={THEME.colors.dim}>Loading diffs...</Text>
                 ) : files.length === 0 ? (

@@ -113,9 +113,9 @@ export function GrillQuestionMenu(props: any) {
                 </Box>
                 <MenuFooter
                     items={[
-                        { key: 'y', label: 'Discard & Exit' },
-                        { key: 'p', label: 'Plan with answers' },
-                        { key: 'c/esc', label: 'Continue' },
+                        { key: 'y', label: 'discard & exit' },
+                        { key: 'p', label: 'plan with answers' },
+                        { key: 'c/esc', label: 'continue' },
                     ]}
                 />
             </Box>
@@ -153,11 +153,11 @@ export function GrillQuestionMenu(props: any) {
                         />
                         <MenuFooter
                             items={[
-                                { key: 'p/s', label: 'Finish & Plan' },
-                                ...(currentGrillIndex > 0 ? [{ key: 'b/←', label: 'Back' }] : []),
-                                { key: '↑/↓', label: 'Navigate' },
-                                { key: 'enter', label: 'Select' },
-                                { key: 'esc', label: 'Cancel' },
+                                { key: 'p/s', label: 'finish & plan' },
+                                ...(currentGrillIndex > 0 ? [{ key: 'b/←', label: 'back' }] : []),
+                                { key: '↑/↓', label: 'navigate' },
+                                { key: 'enter', label: 'select' },
+                                { key: 'esc', label: 'cancel' },
                             ]}
                         />
                     </>
@@ -203,8 +203,8 @@ export function GrillQuestionMenu(props: any) {
                         </Box>
                         <MenuFooter
                             items={[
-                                { key: 'enter', label: 'Submit' },
-                                { key: 'esc', label: 'Cancel' },
+                                { key: 'enter', label: 'submit' },
+                                { key: 'esc', label: 'cancel' },
                             ]}
                         />
                     </Box>

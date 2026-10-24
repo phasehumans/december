@@ -122,14 +122,14 @@ export function SwitchSelectMenu(props: SwitchSelectMenuProps) {
 
     const footerItems = confirmDeleteValue
         ? [
-              { key: 'y', label: 'Confirm' },
-              { key: 'n / esc', label: 'Cancel' },
+              { key: 'y', label: 'confirm' },
+              { key: 'n / esc', label: 'cancel' },
           ]
         : [
-              { key: '↑/↓', label: 'Navigate' },
-              { key: 'enter', label: 'Switch' },
-              { key: 'd', label: 'Delete' },
-              { key: 'esc', label: isReturningBack ? 'Back' : 'Cancel' },
+              { key: '↑/↓', label: 'navigate' },
+              { key: 'enter', label: 'switch' },
+              { key: 'd', label: 'delete' },
+              { key: 'esc', label: isReturningBack ? 'back' : 'close' },
           ]
 
     return (

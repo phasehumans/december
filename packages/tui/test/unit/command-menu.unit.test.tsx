@@ -126,7 +126,7 @@ describe('CommandMenu Component (Unit)', () => {
 
         stdin.write('\u001B[B') // Down
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /artifact')
+        expect(lastFrame()).toContain('❭ /btw')
 
         stdin.write('\u001B[A') // Up
         await new Promise((resolve) => setTimeout(resolve, 20))

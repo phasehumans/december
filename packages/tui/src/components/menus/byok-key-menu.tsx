@@ -334,8 +334,8 @@ export function ByokKeyMenu(props: any) {
                     )}
                     <MenuFooter
                         items={[
-                            { key: 'enter', label: 'Submit' },
-                            { key: 'esc', label: 'Back' },
+                            { key: 'enter', label: 'submit' },
+                            { key: 'esc', label: 'close' },
                         ]}
                     />
                 </>

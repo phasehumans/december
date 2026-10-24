@@ -407,7 +407,7 @@ export function ArtifactViewMenu(props: ArtifactViewMenuProps) {
         }
 
         return (
-            <Box flexDirection="column" width={columns} paddingX={THEME.padding.paddingX}>
+            <Box flexDirection="column" width="100%">
                 <Box flexDirection="column" marginY={1}>
                     {/* Header */}
                     <Box justifyContent="space-between">
@@ -481,11 +481,11 @@ export function ArtifactViewMenu(props: ArtifactViewMenuProps) {
     // RENDER: LIST VIEW
     // ==========================================
     return (
-        <Box flexDirection="column" width={columns} paddingX={THEME.padding.paddingX}>
+        <Box flexDirection="column" width="100%">
             <Box flexDirection="column" marginY={1}>
                 {/* Header */}
                 <Box justifyContent="space-between" marginBottom={1}>
-                    <Text color={THEME.colors.brand} bold>
+                    <Text bold color={THEME.colors.text}>
                         Session Artifacts
                     </Text>
                     <Text color={THEME.colors.muted}>

@@ -243,14 +243,6 @@ export const Header = React.memo(function Header({
                 <Text color={THEME.colors.subtle}>{cwd}</Text>
                 {branch && <Text color={THEME.colors.subtle}>({branch})</Text>}
             </Box>
-            <Box flexDirection="column" marginTop={1}>
-                <Text color={THEME.colors.muted}>
-                    {'Press / for commands  ·  '}
-                    <Text color={THEME.colors.brand}>
-                        {terminalLink('trydecember.com', 'https://trydecember.com')}
-                    </Text>
-                </Text>
-            </Box>
             {latestVersion ? (
                 <Box flexDirection="column" marginTop={1}>
                     <Box>

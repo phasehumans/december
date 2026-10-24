@@ -34,11 +34,11 @@ describe('SessionSelectMenu Component (Unit)', () => {
         expect(output).toContain('Build auth module')
         expect(output).toContain('Fix wallet balance')
         expect(output).toContain('[/ to filter]')
-        expect(output).toContain('Navigate')
-        expect(output).toContain('Search')
-        expect(output).toContain('Rename')
-        expect(output).toContain('Delete')
-        expect(output).toContain('Cancel')
+        expect(output).toContain('navigate')
+        expect(output).toContain('search')
+        expect(output).toContain('rename')
+        expect(output).toContain('delete')
+        expect(output).toContain('close')
     })
 
     it('activates search mode on / and filters sessions live', async () => {
@@ -70,8 +70,8 @@ describe('SessionSelectMenu Component (Unit)', () => {
         const output = lastFrame() || ''
         expect(output).toContain('Fix wallet balance')
         expect(output).not.toContain('Build auth module')
-        expect(output).toContain('Focus List')
-        expect(output).toContain('Exit Search')
+        expect(output).toContain('focus list')
+        expect(output).toContain('exit search')
     })
 
     it('exits search mode on escape without closing the menu', async () => {
@@ -206,7 +206,7 @@ describe('SessionSelectMenu Component (Unit)', () => {
 
         const output = lastFrame() || ''
         expect(output).toContain('[Delete? (y/n)]')
-        expect(output).toContain('Confirm')
+        expect(output).toContain('confirm')
         expect(deleteSessionMock).not.toHaveBeenCalled()
         expect(setSessionsData).not.toHaveBeenCalled()
     })
@@ -331,8 +331,8 @@ describe('SessionSelectMenu Component (Unit)', () => {
 
         const output = lastFrame() || ''
         expect(output).toContain('Build auth module')
-        expect(output).toContain('Save Name')
-        expect(output).toContain('Cancel')
+        expect(output).toContain('save name')
+        expect(output).toContain('cancel')
     })
 
     it('navigates sessions with j and k keys in navigation mode', async () => {

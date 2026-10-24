@@ -23,8 +23,8 @@ describe('TasksModeMenu Component (Unit)', () => {
         expect(output).toContain('Tasks')
         expect(output).toContain('task-1')
         expect(output).toContain('task-2')
-        expect(output).toContain('RUNNING')
-        expect(output).toContain('COMPLETED')
+        expect(output).toContain('[running]')
+        expect(output).toContain('[completed]')
         expect(output).toContain('❭')
     })
 
@@ -54,7 +54,7 @@ describe('TasksModeMenu Component (Unit)', () => {
         expect(output).toContain('Showing lines 1-4 of 4')
     })
 
-    it('renders column headers, task counts, and duration metrics', () => {
+    it('renders task counts, timestamps, commands, and status badges in list view', () => {
         const now = new Date()
         const tenSecondsAgo = new Date(now.getTime() - 10_000)
         const tasksData = [
@@ -74,6 +74,19 @@ describe('TasksModeMenu Component (Unit)', () => {
                 completedAt: now,
                 exitCode: 1,
             },
+            {
+                id: 'task-12',
+                status: 'cancelled',
+                command: 'grep -rn "foo" .',
+                createdAt: tenSecondsAgo,
+            },
+            {
+                id: 'task-13',
+                status: 'completed',
+                command: 'git pull',
+                createdAt: tenSecondsAgo,
+                completedAt: new Date(tenSecondsAgo.getTime() + 4200),
+            },
         ]
 
         const { lastFrame } = render(
@@ -86,18 +99,15 @@ describe('TasksModeMenu Component (Unit)', () => {
         )
         const output = lastFrame() || ''
 
-        // Column headers & header count
         expect(output).toContain('Tasks')
-        expect(output).toContain('(2 tasks)')
-        expect(output).toContain('ID')
-        expect(output).toContain('STATUS')
-        expect(output).toContain('PID')
-        expect(output).toContain('DURATION')
-        expect(output).toContain('COMMAND')
-
-        // PID & Exit code
-        expect(output).toContain('41234')
-        expect(output).toContain('EXIT 1')
+        expect(output).toContain('(4 tasks)')
+        expect(output).toContain('Agent Backgrounded')
+        expect(output).toContain('npm run dev')
+        expect(output).toContain('cargo test')
+        expect(output).toContain('[running]')
+        expect(output).toContain('[failed · exit 1]')
+        expect(output).toContain('[cancelled]')
+        expect(output).toContain('[completed · 4.2s]')
     })
 
     it('renders exit code, duration, and line gutter in detail view', () => {
@@ -133,7 +143,7 @@ describe('TasksModeMenu Component (Unit)', () => {
         expect(output).toContain('1 | test passed in 5s')
     })
 
-    it('renders clean fallback when task list is empty', () => {
+    it('renders clean fallback when task list is empty with full navigation footer', () => {
         const { lastFrame } = render(
             <TasksModeMenu
                 tasksData={[]}
@@ -144,6 +154,12 @@ describe('TasksModeMenu Component (Unit)', () => {
         )
         const output = lastFrame() || ''
         expect(output).toContain('No background tasks.')
+        expect(output).toContain('navigate')
+        expect(output).toContain('view logs')
+        expect(output).toContain('kill')
+        expect(output).toContain('remove')
+        expect(output).toContain('clear finished')
+        expect(output).toContain('close')
     })
 
     it('closes menu on Escape or Ctrl+T in list mode', async () => {
@@ -188,5 +204,47 @@ describe('TasksModeMenu Component (Unit)', () => {
         stdin.write('\x14') // Ctrl+T
         await new Promise((resolve) => setTimeout(resolve, 30))
         expect(setTaskViewingId).toHaveBeenCalledWith(null)
+    })
+
+    it('triggers handleKillTask on k key in list mode', async () => {
+        const handleKillTask = mock()
+        const { stdin } = render(
+            <TasksModeMenu
+                tasksData={[{ id: 'task-1', status: 'running', command: 'sleep 10' }]}
+                handleKillTask={handleKillTask}
+            />
+        )
+
+        stdin.write('k')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        expect(handleKillTask).toHaveBeenCalledWith('task-1')
+    })
+
+    it('triggers handleRemoveTask on x key in list mode', async () => {
+        const handleRemoveTask = mock()
+        const { stdin } = render(
+            <TasksModeMenu
+                tasksData={[{ id: 'task-1', status: 'completed', command: 'git status' }]}
+                handleRemoveTask={handleRemoveTask}
+            />
+        )
+
+        stdin.write('x')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        expect(handleRemoveTask).toHaveBeenCalledWith('task-1')
+    })
+
+    it('triggers handleClearCompletedTasks on c key in list mode', async () => {
+        const handleClearCompletedTasks = mock()
+        const { stdin } = render(
+            <TasksModeMenu
+                tasksData={[{ id: 'task-1', status: 'completed', command: 'git status' }]}
+                handleClearCompletedTasks={handleClearCompletedTasks}
+            />
+        )
+
+        stdin.write('c')
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        expect(handleClearCompletedTasks).toHaveBeenCalledTimes(1)
     })
 })

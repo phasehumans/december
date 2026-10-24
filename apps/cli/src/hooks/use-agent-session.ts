@@ -2196,12 +2196,8 @@ ${decStatus}
                 return
             }
 
-            const isReasoningCmd =
-                trimmedCmd === '/reasoning' ||
-                trimmedCmd.startsWith('/reasoning ') ||
-                trimmedCmd === '/effort' ||
-                trimmedCmd.startsWith('/effort ')
-            if (isReasoningCmd) {
+            const isEffortCmd = trimmedCmd === '/effort' || trimmedCmd.startsWith('/effort ')
+            if (isEffortCmd) {
                 const parts = text.trim().split(/\s+/)
                 const rawArg = parts[1]?.toLowerCase()
 
@@ -2288,6 +2284,16 @@ ${decStatus}
                 text.trim().startsWith('/artifact ')
             ) {
                 setAuthMode('artifact_view')
+                return
+            }
+
+            if (
+                text.trim() === '/skills' ||
+                text.trim() === '/skill' ||
+                text.trim() === '/skills list' ||
+                text.trim() === '/skill list'
+            ) {
+                setAuthMode('skills')
                 return
             }
 

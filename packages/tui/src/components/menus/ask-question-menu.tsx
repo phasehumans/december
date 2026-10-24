@@ -132,15 +132,15 @@ export function AskQuestionMenu({ questions, onComplete }: AskQuestionMenuProps)
 
     const footerItems = isMulti
         ? [
-              { key: '↑/↓', label: 'Navigate' },
-              { key: 'space', label: 'Toggle' },
-              { key: 'enter', label: 'Submit' },
-              { key: 'esc', label: currentQuestionIdx > 0 ? 'Back' : 'Cancel' },
+              { key: '↑/↓', label: 'navigate' },
+              { key: 'space', label: 'toggle' },
+              { key: 'enter', label: 'submit' },
+              { key: 'esc', label: currentQuestionIdx > 0 ? 'back' : 'close' },
           ]
         : [
-              { key: '↑/↓', label: 'Navigate' },
-              { key: 'enter', label: 'Select' },
-              { key: 'esc', label: currentQuestionIdx > 0 ? 'Back' : 'Cancel' },
+              { key: '↑/↓', label: 'navigate' },
+              { key: 'enter', label: 'select' },
+              { key: 'esc', label: currentQuestionIdx > 0 ? 'back' : 'close' },
           ]
 
     return (

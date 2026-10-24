@@ -12,22 +12,6 @@ export const COMMANDS: Command[] = [
         },
     },
     {
-        name: 'artifact',
-        description: 'Inspect, approve, refine, or reject waiting session artifacts',
-        value: '/artifact',
-        action: (ctx) => {
-            // forwarded to chat screen / session handler
-        },
-    },
-    {
-        name: 'ask',
-        description: 'Ask a question about the codebase (read-only Q&A mode)',
-        value: '/ask',
-        action: (ctx) => {
-            // forwarded to chat screen
-        },
-    },
-    {
         name: 'btw',
         description: 'Ask an ephemeral side question without polluting history or breaking cache',
         value: '/btw',
@@ -121,7 +105,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'effort',
-        description: 'Set model reasoning depth (alias for /reasoning)',
+        description: 'Set model reasoning depth (auto, off, low, medium, high)',
         value: '/effort',
         action: (ctx) => {
             // forwarded to chat screen
@@ -205,14 +189,6 @@ export const COMMANDS: Command[] = [
         },
     },
     {
-        name: 'reasoning',
-        description: 'Set model reasoning depth (auto, off, low, medium, high)',
-        value: '/reasoning',
-        action: (ctx) => {
-            // forwarded to chat screen
-        },
-    },
-    {
         name: 'resume',
         description: 'Browse and resume past conversations',
         value: '/resume',
@@ -232,6 +208,14 @@ export const COMMANDS: Command[] = [
         name: 'settings',
         description: 'Open settings',
         value: '/settings',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
+        name: 'skills',
+        description: 'Browse, inspect, and view documentation for installed skills',
+        value: '/skills',
         action: (ctx) => {
             // forwarded to chat screen
         },

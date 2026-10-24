@@ -16,6 +16,7 @@ import { ReasoningMenu } from './reasoning-menu'
 import { RewindSelectMenu } from './rewind-select-menu'
 import { SessionSelectMenu } from './session-select-menu'
 import { SettingsMainMenu } from './settings-main-menu'
+import { SkillsMenu } from './skills-menu'
 import { SubscriptionSelectMenu } from './subscription-select-menu'
 import { SwitchSelectMenu } from './switch-select-menu'
 import { TasksModeMenu } from './tasks-mode-menu'
@@ -64,6 +65,9 @@ export function AuthMenus(props: any) {
             return <FileViewMenu {...props} onClose={props.onCloseFileView || props.onClose} />
         case 'artifact_view':
             return <ArtifactViewMenu {...props} />
+        case 'skills':
+        case 'skills_menu':
+            return <SkillsMenu {...props} />
 
         default:
             return null

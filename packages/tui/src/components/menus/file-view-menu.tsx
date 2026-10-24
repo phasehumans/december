@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { Box, Text, useInput } from 'ink'
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 
 import { useTerminalColumns, useTerminalRows } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
@@ -24,14 +24,14 @@ export function FileViewMenu({
     onClose,
     setAuthMode,
     onInsertContext,
-    addToast,
 }: FileViewMenuProps) {
     const terminalColumns = useTerminalColumns()
     const columns = terminalColumns > 0 ? terminalColumns : 80
     const terminalRows = useTerminalRows()
     const rows = terminalRows > 0 ? terminalRows : 24
 
-    const visibleLineCount = Math.max(6, Math.min(16, rows - 10))
+    // Bounded viewport height leaving room for header, footer, and container so footer is never clipped
+    const visibleLineCount = Math.max(5, Math.min(18, rows - 10))
 
     const [content, setContent] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -86,7 +86,7 @@ export function FileViewMenu({
         }
     }, [filePath])
 
-    const lines = content !== null ? content.split('\n') : []
+    const lines = useMemo(() => (content !== null ? content.split('\n') : []), [content])
     const totalLines = lines.length
 
     const cursorLineIndexRef = useRef(cursorLineIndex)
@@ -108,6 +108,7 @@ export function FileViewMenu({
         const isWheelDown =
             /\[<(?:65|69|73|81|85);/.test(input) || /\[Ma/.test(input) || /\[65~/.test(input)
 
+        // Line-by-line navigation
         if (key.upArrow || input === 'k' || isWheelUp) {
             const count = isWheelUp
                 ? Math.max(1, (input.match(/\[<(?:64|68|72|80|84);/g) || []).length)
@@ -134,26 +135,35 @@ export function FileViewMenu({
             return
         }
 
+        // Half page scroll (Ctrl+u / Ctrl+d) or full page (PageUp / PageDown)
         if (key.pageUp || (key.ctrl && input === 'u')) {
+            const step = key.ctrl ? Math.max(1, Math.floor(visibleLineCount / 2)) : visibleLineCount
             setCursorLineIndex((prev) => {
-                const next = Math.max(0, prev - visibleLineCount)
-                setScrollOffset((offset) => Math.max(0, offset - visibleLineCount))
+                const next = Math.max(0, prev - step)
+                setScrollOffset((offset) => Math.max(0, Math.min(next, offset - step)))
                 return next
             })
             return
         }
 
         if (key.pageDown || (key.ctrl && input === 'd')) {
+            const step = key.ctrl ? Math.max(1, Math.floor(visibleLineCount / 2)) : visibleLineCount
             setCursorLineIndex((prev) => {
-                const next = Math.min(totalLines - 1, prev + visibleLineCount)
+                const next = Math.min(totalLines - 1, prev + step)
                 setScrollOffset((offset) =>
-                    Math.min(Math.max(0, totalLines - visibleLineCount), offset + visibleLineCount)
+                    Math.min(
+                        Math.max(0, totalLines - visibleLineCount),
+                        next >= offset + visibleLineCount
+                            ? next - visibleLineCount + 1
+                            : offset + step
+                    )
                 )
                 return next
             })
             return
         }
 
+        // Top / Bottom motions: g / G
         if (input === 'g') {
             setCursorLineIndex(0)
             setScrollOffset(0)
@@ -166,32 +176,53 @@ export function FileViewMenu({
             return
         }
 
+        // Center cursor in viewport: z
+        if (input === 'z') {
+            const half = Math.floor(visibleLineCount / 2)
+            setScrollOffset(
+                Math.max(
+                    0,
+                    Math.min(
+                        Math.max(0, totalLines - visibleLineCount),
+                        cursorLineIndexRef.current - half
+                    )
+                )
+            )
+            return
+        }
+
+        // Screen positioning motions: H, M, L
+        if (input === 'H') {
+            setCursorLineIndex(scrollOffsetRef.current)
+            return
+        }
+
+        if (input === 'M') {
+            const visibleCount = Math.min(visibleLineCount, totalLines - scrollOffsetRef.current)
+            setCursorLineIndex(scrollOffsetRef.current + Math.floor(visibleCount / 2))
+            return
+        }
+
+        if (input === 'L') {
+            const visibleCount = Math.min(visibleLineCount, totalLines - scrollOffsetRef.current)
+            setCursorLineIndex(Math.max(0, scrollOffsetRef.current + visibleCount - 1))
+            return
+        }
+
+        // Enter / Tab / c: insert context directly without calling handleClose
         if (key.return || key.tab || input === 'c') {
             const lineNum = cursorLineIndexRef.current + 1
             if (onInsertContext) {
                 onInsertContext(filePath, lineNum)
+            } else {
+                handleClose()
             }
-            handleClose()
             return
         }
     })
 
     const visibleLines = lines.slice(scrollOffset, scrollOffset + visibleLineCount)
-    const linesAbove = scrollOffset
-    const linesBelow = Math.max(0, totalLines - (scrollOffset + visibleLineCount))
-    const hasOverflow = totalLines > visibleLineCount
-
-    let statusText = ''
-    if (hasOverflow) {
-        if (linesAbove > 0 && linesBelow > 0) {
-            statusText = `↑ ${linesAbove} lines above · ↓ ${linesBelow} lines below`
-        } else if (linesAbove > 0) {
-            statusText = `↑ ${linesAbove} lines above`
-        } else if (linesBelow > 0) {
-            statusText = `↓ ${linesBelow} lines below`
-        }
-    }
-
+    const remainingRows = Math.max(0, visibleLineCount - visibleLines.length)
     const gutterWidth = Math.max(3, String(totalLines).length)
 
     const footerItems = [
@@ -201,30 +232,40 @@ export function FileViewMenu({
     ]
 
     return (
-        <Box flexDirection="column" width={columns} paddingX={THEME.padding.paddingX}>
-            {/* Header */}
-            <Box justifyContent="space-between" width="100%">
+        <Box flexDirection="column" width="100%">
+            {/* Top Header: File info on left, line coordinates on right */}
+            <Box justifyContent="space-between" width="100%" marginBottom={1}>
                 <Box gap={1}>
                     <Text bold color={THEME.colors.text}>
                         {filePath || '(no file)'}
                     </Text>
                     {totalLines > 0 ? (
                         <Text color={THEME.colors.dim}>
-                            · {totalLines} line{totalLines === 1 ? '' : 's'} · line{' '}
-                            {cursorLineIndex + 1}
+                            · {totalLines} line{totalLines === 1 ? '' : 's'}
                         </Text>
                     ) : null}
                 </Box>
+                <Box>
+                    <Text color={THEME.colors.text} bold>
+                        line {cursorLineIndex + 1}:1
+                    </Text>
+                </Box>
             </Box>
 
-            {/* Viewport */}
-            <Box flexDirection="column" width="100%" marginY={1}>
+            {/* Viewport: Code with full-row highlight bar and clean white text */}
+            <Box flexDirection="column" width="100%">
                 {isLoading ? (
-                    <Text color={THEME.colors.dim}>Loading file...</Text>
+                    <Box marginY={1}>
+                        <Text color={THEME.colors.dim}>Loading file...</Text>
+                    </Box>
                 ) : error ? (
-                    <Text color={THEME.colors.error}>Error: {error}</Text>
+                    <Box marginY={1}>
+                        <Text color={THEME.colors.error}>Error: {error}</Text>
+                    </Box>
                 ) : totalLines === 0 ? (
-                    <Text color={THEME.colors.dim}>(Empty file)</Text>
+                    <Box marginY={1}>
+                        <Text color={THEME.colors.dim}>(Empty file)</Text>
+                    </Box>
                 ) : (
                     <>
                         {visibleLines.map((lineText, relIdx) => {
@@ -234,21 +275,29 @@ export function FileViewMenu({
                             const paddedLineNum = String(lineNum).padStart(gutterWidth, ' ')
 
                             return (
-                                <Box key={`line-${absIdx}`} flexDirection="row" width="100%">
-                                    <Text color={isCursor ? THEME.colors.brand : THEME.colors.dim}>
-                                        {isCursor ? `${THEME.glyphs.selector} ` : '  '}
-                                    </Text>
-                                    <Box width={gutterWidth + 3} flexShrink={0}>
+                                <Box
+                                    key={`line-${absIdx}`}
+                                    flexDirection="row"
+                                    width="100%"
+                                    backgroundColor={isCursor ? THEME.colors.codespanBg : undefined}
+                                >
+                                    <Box width={2} flexShrink={0}>
+                                        <Text color={THEME.colors.brand} bold>
+                                            {isCursor ? `${THEME.glyphs.selector} ` : '  '}
+                                        </Text>
+                                    </Box>
+                                    <Box width={gutterWidth + 1} flexShrink={0}>
                                         <Text
+                                            bold={isCursor}
                                             color={isCursor ? THEME.colors.brand : THEME.colors.dim}
                                         >
-                                            {paddedLineNum} |
+                                            {paddedLineNum}{' '}
                                         </Text>
                                     </Box>
                                     <Box flexGrow={1} flexShrink={1}>
                                         <Text
                                             bold={isCursor}
-                                            color={isCursor ? THEME.colors.text : THEME.colors.dim}
+                                            color={THEME.colors.text}
                                             wrap="truncate-end"
                                         >
                                             {lineText || ' '}
@@ -257,16 +306,22 @@ export function FileViewMenu({
                                 </Box>
                             )
                         })}
-                        {hasOverflow && statusText && (
-                            <Box paddingLeft={2} marginTop={1}>
-                                <Text color={THEME.colors.muted}>{statusText}</Text>
-                            </Box>
-                        )}
+                        {remainingRows > 0 &&
+                            Array.from({ length: remainingRows }).map((_, idx) => (
+                                <Box key={`tilde-${idx}`} flexDirection="row" width="100%">
+                                    <Box width={2} flexShrink={0}>
+                                        <Text> </Text>
+                                    </Box>
+                                    <Box width={gutterWidth + 1} flexShrink={0}>
+                                        <Text color={THEME.colors.brand}>~ </Text>
+                                    </Box>
+                                </Box>
+                            ))}
                     </>
                 )}
             </Box>
 
-            {/* Branded Footer */}
+            {/* Clean Bottom Navigation Footer */}
             <MenuFooter items={footerItems} />
         </Box>
     )

@@ -106,8 +106,8 @@ describe('ByokProviderMenu Component (Unit)', () => {
         const output = lastFrame() || ''
         expect(output).toContain('Groq')
         expect(output).not.toContain('Anthropic')
-        expect(output).toContain('Focus List')
-        expect(output).toContain('Exit Search')
+        expect(output).toContain('focus list')
+        expect(output).toContain('exit search')
     })
 
     it('activates search mode on s and filters providers live', async () => {

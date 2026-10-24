@@ -8,10 +8,10 @@ describe('Header Component (Unit)', () => {
     it('renders with default version', () => {
         const { lastFrame } = render(<Header />)
         const frame = lastFrame()
+        expect(frame).toContain('✱')
         expect(frame).toContain('December v0.1.0')
-        expect(frame).toContain('Press / for commands')
-        expect(frame).toContain('trydecember.com')
-        expect(frame).toContain('https://trydecember.com')
+        expect(frame).not.toContain('Press / for commands')
+        expect(frame).not.toContain('trydecember.com')
     })
 
     it('renders with custom version and email', () => {

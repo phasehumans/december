@@ -20,7 +20,9 @@ describe('HelpMenu Component (Unit)', () => {
         const frame = lastFrame()
 
         expect(frame).not.toContain('✱ December CLI')
-        expect(frame).toContain('[general]')
+        expect(frame).not.toContain('[general]')
+        expect(frame).not.toContain('(←/→ or tab to cycle)')
+        expect(frame).toContain('general')
         expect(frame).toContain('commands')
         expect(frame).toContain('shortcuts')
         expect(frame).toContain('v1.4.2')
@@ -28,8 +30,8 @@ describe('HelpMenu Component (Unit)', () => {
         expect(frame).toContain('Gemini 3.8 Flash')
         expect(frame).toContain('better coding agent')
         expect(frame).not.toContain('Quick Reference')
-        expect(frame).toContain('Switch View')
-        expect(frame).toContain('Close')
+        expect(frame).toContain('cycle')
+        expect(frame).toContain('close')
     })
 
     it('renders commands tab when initialTab is set to commands', () => {
@@ -39,10 +41,10 @@ describe('HelpMenu Component (Unit)', () => {
         )
         const frame = lastFrame()
 
-        expect(frame).toContain('[commands]')
-        expect(frame).toContain('Available Commands')
+        expect(frame).not.toContain('[commands]')
+        expect(frame).not.toContain('Available Commands')
         expect(frame).toContain('/clear')
-        expect(frame).toContain('Navigate')
+        expect(frame).toContain('navigate')
         expect(frame).not.toContain('Select')
     })
 
@@ -53,10 +55,12 @@ describe('HelpMenu Component (Unit)', () => {
         )
         const frame = lastFrame()
 
-        expect(frame).toContain('[shortcuts]')
-        expect(frame).toContain('Keyboard Shortcuts')
+        expect(frame).not.toContain('[shortcuts]')
+        expect(frame).not.toContain('Keyboard Shortcuts')
         expect(frame).toContain('Open slash commands')
         expect(frame).toContain('ctrl+p')
+        expect(frame).toContain('ctrl+n')
+        expect(frame).not.toContain('ctrl+a')
     })
 
     it('cycles tabs with right arrow and left arrow keys', async () => {
@@ -65,24 +69,24 @@ describe('HelpMenu Component (Unit)', () => {
             <HelpMenu onClose={handleClose} initialTab="general" />
         )
 
-        expect(lastFrame()).toContain('[general]')
+        expect(lastFrame()).toContain('better coding agent')
 
         // Press right arrow to switch to commands
         stdin.write('\u001B[C')
         await new Promise((resolve) => setTimeout(resolve, 30))
-        expect(lastFrame()).toContain('[commands]')
-        expect(lastFrame()).toContain('Available Commands')
+        expect(lastFrame()).toContain('/clear')
+        expect(lastFrame()).not.toContain('Available Commands')
 
         // Press right arrow to switch to shortcuts
         stdin.write('\u001B[C')
         await new Promise((resolve) => setTimeout(resolve, 30))
-        expect(lastFrame()).toContain('[shortcuts]')
-        expect(lastFrame()).toContain('Keyboard Shortcuts')
+        expect(lastFrame()).toContain('Open slash commands')
+        expect(lastFrame()).not.toContain('Keyboard Shortcuts')
 
         // Press left arrow to switch back to commands
         stdin.write('\u001B[D')
         await new Promise((resolve) => setTimeout(resolve, 30))
-        expect(lastFrame()).toContain('[commands]')
+        expect(lastFrame()).toContain('/clear')
     })
 
     it('cycles tabs with Tab key', async () => {
@@ -91,12 +95,13 @@ describe('HelpMenu Component (Unit)', () => {
             <HelpMenu onClose={handleClose} initialTab="general" />
         )
 
-        expect(lastFrame()).toContain('[general]')
+        expect(lastFrame()).toContain('better coding agent')
 
         // Press Tab to switch to commands
         stdin.write('\t')
         await new Promise((resolve) => setTimeout(resolve, 30))
-        expect(lastFrame()).toContain('[commands]')
+        expect(lastFrame()).toContain('/clear')
+        expect(lastFrame()).not.toContain('Available Commands')
     })
 
     it('closes on escape keypress', async () => {

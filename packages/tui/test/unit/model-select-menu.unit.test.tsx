@@ -130,8 +130,8 @@ describe('ModelSelectMenu Component (Unit)', () => {
         const output = lastFrame() || ''
         expect(output).toContain('o4-mini')
         expect(output).not.toContain('GPT-5.6 Sol')
-        expect(output).toContain('Focus List')
-        expect(output).toContain('Exit Search')
+        expect(output).toContain('focus list')
+        expect(output).toContain('exit search')
     })
 
     it('activates search mode on s and filters models live', async () => {

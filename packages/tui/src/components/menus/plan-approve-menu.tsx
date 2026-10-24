@@ -80,12 +80,12 @@ export function PlanApproveMenu({ handlePlanApprovalSelect, planSummary }: PlanA
             />
             <MenuFooter
                 items={[
-                    { key: 'y', label: 'Approve' },
-                    { key: 'r', label: 'Refine' },
-                    { key: 'v', label: 'View Full' },
-                    { key: 'n', label: 'Reject' },
-                    { key: '↑/↓', label: 'Navigate' },
-                    { key: 'enter', label: 'Select' },
+                    { key: 'y', label: 'approve' },
+                    { key: 'r', label: 'refine' },
+                    { key: 'v', label: 'view full' },
+                    { key: 'n', label: 'reject' },
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'enter', label: 'select' },
                 ]}
             />
         </Box>

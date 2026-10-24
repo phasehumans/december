@@ -1,7 +1,7 @@
 import { Box, Text, useInput } from 'ink'
 import React, { useState, useEffect, useRef } from 'react'
 
-import { useTerminalColumns, useTerminalRows } from '../../hooks/use-terminal-columns'
+import { useTerminalRows } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
 import { writeToClipboard } from '../../utils/clipboard'
 
@@ -54,6 +54,14 @@ function formatDuration(createdAt?: Date | string, completedAt?: Date | string):
     return `${hours}h ${minutes % 60}m`
 }
 
+function formatTime(createdAt?: Date | string): string | null {
+    if (!createdAt) return null
+    const d = typeof createdAt === 'string' ? new Date(createdAt) : createdAt
+    if (isNaN(d.getTime())) return null
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `[${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}]`
+}
+
 export function TasksModeMenu(props: TasksModeMenuProps) {
     const {
         tasksData = [],
@@ -71,7 +79,6 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         handleKillAllTasks,
     } = props
 
-    const columns = useTerminalColumns()
     const rows = useTerminalRows()
 
     const [viewingId, setViewingId] = useState<string | null>(propTaskViewingId)
@@ -125,39 +132,69 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
     }
 
     const getStatusColor = (status: string) => {
-        switch (status) {
+        const normalized = (status || '').toLowerCase()
+        switch (normalized) {
             case 'running':
+            case 'processing':
                 return THEME.colors.warning
             case 'completed':
                 return THEME.colors.success
             case 'failed':
             case 'killed':
+            case 'cancelled':
                 return THEME.colors.error
             default:
                 return THEME.colors.text
         }
     }
 
-    const renderStatusBadge = (status: string, exitCode?: number | null) => {
-        switch (status) {
+    const renderStatusBadge = (
+        status: string,
+        exitCode?: number | null,
+        createdAt?: Date | string,
+        completedAt?: Date | string
+    ) => {
+        const normalized = (status || '').toLowerCase()
+        const dur = formatDuration(createdAt, completedAt)
+        const durSuffix = dur && dur !== '-' ? ` · ${dur}` : ''
+
+        switch (normalized) {
             case 'running':
-                return <Text color={THEME.colors.warning}>[RUNNING]</Text>
+            case 'processing':
+                return (
+                    <Text color={THEME.colors.warning} bold>
+                        [running]
+                    </Text>
+                )
             case 'completed':
-                return <Text color={THEME.colors.success}>[COMPLETED]</Text>
+                return (
+                    <Text color={THEME.colors.success} bold>
+                        [completed{durSuffix}]
+                    </Text>
+                )
+            case 'cancelled':
+            case 'killed':
+                return (
+                    <Text color={THEME.colors.error} bold>
+                        [cancelled]
+                    </Text>
+                )
             case 'failed':
                 return (
-                    <Text color={THEME.colors.error}>
+                    <Text color={THEME.colors.error} bold>
                         [
                         {exitCode !== undefined && exitCode !== null
-                            ? `EXIT ${exitCode}`
-                            : 'FAILED'}
+                            ? `failed · exit ${exitCode}`
+                            : 'failed'}
                         ]
                     </Text>
                 )
-            case 'killed':
-                return <Text color={THEME.colors.error}>[KILLED]</Text>
             default:
-                return <Text color={THEME.colors.text}>[{status.toUpperCase()}]</Text>
+                return (
+                    <Text color={THEME.colors.muted} bold>
+                        [{normalized || 'unknown'}]
+                    </Text>
+                )
         }
     }
 
@@ -166,18 +203,6 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
     const currentPage = Math.min(page, totalPages - 1)
     const startIndex = currentPage * PAGE_SIZE
     const visibleTasks = tasksData.slice(startIndex, startIndex + PAGE_SIZE)
-
-    // Layout widths
-    const paddingWidth = THEME.padding.paddingX * 2
-    const indicatorWidth = 2
-    const idWidth = 12
-    const statusWidth = 16
-    const pidWidth = 8
-    const durWidth = 10
-    const availableCmdWidth = Math.max(
-        18,
-        columns - paddingWidth - indicatorWidth - idWidth - statusWidth - pidWidth - durWidth - 4
-    )
 
     // Output view lines
     const visibleLineCount = Math.max(6, Math.min(15, rows - 12))
@@ -306,7 +331,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
                 }
                 return
             }
-            if (input === 'x' || input === 'X') {
+            if (input === 'k' || input === 'K' || input === 'x' || input === 'X') {
                 if (currentTask && handleKillTask) {
                     handleKillTask(currentTask.id)
                 }
@@ -322,7 +347,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         }
 
         // Vertical navigation
-        if (key.upArrow || input === 'k') {
+        if (key.upArrow) {
             setPageSelectedIndex((prev) => {
                 const next = Math.max(0, prev - 1)
                 if (setTaskSelectedIndex) setTaskSelectedIndex(next)
@@ -364,7 +389,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         }
 
         // Kill selected task
-        if (input === 'x' || input === 'X') {
+        if (input === 'k' || input === 'K') {
             const selected = state.visibleTasks[state.pageSelectedIndex]
             if (selected && handleKillTask) {
                 handleKillTask(selected.id)
@@ -381,7 +406,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
         }
 
         // Dismiss single task
-        if (input === 'd' || input === 'D' || key.delete) {
+        if (input === 'x' || input === 'X' || input === 'd' || input === 'D' || key.delete) {
             const selected = state.visibleTasks[state.pageSelectedIndex]
             if (selected && handleRemoveTask) {
                 handleRemoveTask(selected.id)
@@ -407,7 +432,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
                     <Box marginBottom={1}>
                         <Text color={THEME.colors.error}>Task not found or has been removed.</Text>
                     </Box>
-                    <MenuFooter items={[{ key: 'esc', label: 'Back' }]} />
+                    <MenuFooter items={[{ key: 'esc', label: 'close' }]} />
                 </Box>
             )
         }
@@ -433,7 +458,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
                     </Box>
                     <Box flexDirection="row" gap={1}>
                         <Text color={getStatusColor(task.status)}>
-                            [{task.status.toUpperCase()}]
+                            [{task.status.toLowerCase()}]
                         </Text>
                         {task.exitCode !== undefined && task.exitCode !== null && (
                             <Text
@@ -486,7 +511,7 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
                         {statusNotice && <Text color={THEME.colors.success}>{statusNotice}</Text>}
                         {task.status === 'running' && (
                             <Text color={isFollowing ? THEME.colors.brand : THEME.colors.muted}>
-                                {isFollowing ? '[FOLLOWING]' : '[PAUSED - press f]'}
+                                {isFollowing ? '[following]' : '[paused - press f]'}
                             </Text>
                         )}
                     </Box>
@@ -494,13 +519,13 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
 
                 <MenuFooter
                     items={[
-                        { key: '↑/↓', label: 'Scroll' },
-                        { key: '←/→', label: 'Page' },
-                        { key: 'g/G', label: 'Top/End' },
-                        { key: 'f', label: isFollowing ? 'Pause' : 'Follow' },
-                        { key: 'y', label: 'Copy' },
-                        { key: 'x', label: 'Kill' },
-                        { key: 'esc', label: 'Back' },
+                        { key: '↑/↓', label: 'scroll' },
+                        { key: '←/→', label: 'page' },
+                        { key: 'g/G', label: 'top/end' },
+                        { key: 'f', label: isFollowing ? 'pause' : 'follow' },
+                        { key: 'y', label: 'copy' },
+                        { key: 'k', label: 'kill' },
+                        { key: 'esc', label: 'close' },
                     ]}
                 />
             </Box>
@@ -521,82 +546,68 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
                 </Box>
             </Box>
 
-            {/* Table Header */}
-            <Box flexDirection="row" marginBottom={1}>
-                <Box width={indicatorWidth} />
-                <Box width={idWidth}>
-                    <Text color={THEME.colors.muted}>ID</Text>
+            {tasksData.length === 0 ? (
+                <Box marginY={1}>
+                    <Text color={THEME.colors.muted}>No background tasks.</Text>
                 </Box>
-                <Box width={statusWidth}>
-                    <Text color={THEME.colors.muted}>STATUS</Text>
-                </Box>
-                <Box width={pidWidth}>
-                    <Text color={THEME.colors.muted}>PID</Text>
-                </Box>
-                <Box width={durWidth}>
-                    <Text color={THEME.colors.muted}>DURATION</Text>
-                </Box>
-                <Box width={availableCmdWidth}>
-                    <Text color={THEME.colors.muted}>COMMAND</Text>
-                </Box>
-            </Box>
-
-            {/* Rows container with fixed minHeight to prevent page layout jumps */}
-            <Box flexDirection="column" minHeight={PAGE_SIZE}>
-                {tasksData.length === 0 ? (
-                    <Box paddingLeft={2}>
-                        <Text color={THEME.colors.muted}>No background tasks.</Text>
+            ) : (
+                <Box flexDirection="column" marginY={1}>
+                    <Box marginBottom={1}>
+                        <Text color={THEME.colors.muted} bold>
+                            Agent Backgrounded
+                        </Text>
                     </Box>
-                ) : (
-                    visibleTasks.map((task, idx) => {
+                    {visibleTasks.map((task, idx) => {
                         const isSelected = idx === pageSelectedIndex
-                        const cleanCmd = (task.command || '').replace(/\r?\n+/g, ' ').trim()
-                        const truncatedCommand =
-                            cleanCmd.length > availableCmdWidth
-                                ? cleanCmd.slice(0, availableCmdWidth - 3) + '...'
-                                : cleanCmd
-                        const durationStr = formatDuration(task.createdAt, task.completedAt)
-                        const pidStr = task.pid ? String(task.pid) : '-'
+                        const cleanCmd =
+                            (task.command || '').replace(/\r?\n+/g, ' ').trim() || task.id
+                        const timeTag = formatTime(task.createdAt) || `[${task.id}]`
 
                         return (
-                            <Box key={task.id} flexDirection="row">
-                                <Box width={indicatorWidth}>
-                                    <Text
-                                        color={isSelected ? THEME.colors.brand : THEME.colors.muted}
-                                    >
-                                        {isSelected ? `${THEME.glyphs.selector} ` : '  '}
-                                    </Text>
+                            <Box
+                                key={task.id}
+                                flexDirection="row"
+                                justifyContent="space-between"
+                                width="100%"
+                            >
+                                <Box flexDirection="row" flexShrink={1}>
+                                    <Box width={2} flexShrink={0}>
+                                        <Text
+                                            color={
+                                                isSelected ? THEME.colors.brand : THEME.colors.muted
+                                            }
+                                        >
+                                            {isSelected ? `${THEME.glyphs.selector} ` : '  '}
+                                        </Text>
+                                    </Box>
+                                    <Box flexShrink={0} marginRight={1}>
+                                        <Text color={THEME.colors.dim}>{timeTag}</Text>
+                                    </Box>
+                                    <Box flexShrink={1}>
+                                        <Text
+                                            bold={isSelected}
+                                            color={
+                                                isSelected ? THEME.colors.brand : THEME.colors.text
+                                            }
+                                            wrap="truncate-end"
+                                        >
+                                            {cleanCmd}
+                                        </Text>
+                                    </Box>
                                 </Box>
-                                <Box width={idWidth}>
-                                    <Text
-                                        color={isSelected ? THEME.colors.brand : THEME.colors.text}
-                                        wrap="truncate"
-                                    >
-                                        {task.id}
-                                    </Text>
-                                </Box>
-                                <Box width={statusWidth}>
-                                    {renderStatusBadge(task.status, task.exitCode)}
-                                </Box>
-                                <Box width={pidWidth}>
-                                    <Text color={THEME.colors.muted}>{pidStr}</Text>
-                                </Box>
-                                <Box width={durWidth}>
-                                    <Text color={THEME.colors.muted}>{durationStr}</Text>
-                                </Box>
-                                <Box width={availableCmdWidth}>
-                                    <Text
-                                        color={isSelected ? THEME.colors.brand : THEME.colors.text}
-                                        wrap="truncate"
-                                    >
-                                        {truncatedCommand}
-                                    </Text>
+                                <Box flexShrink={0} paddingLeft={2}>
+                                    {renderStatusBadge(
+                                        task.status,
+                                        task.exitCode,
+                                        task.createdAt,
+                                        task.completedAt
+                                    )}
                                 </Box>
                             </Box>
                         )
-                    })
-                )}
-            </Box>
+                    })}
+                </Box>
+            )}
 
             {/* Pagination info */}
             {tasksData.length > PAGE_SIZE && (
@@ -616,12 +627,13 @@ export function TasksModeMenu(props: TasksModeMenuProps) {
             {/* Footer */}
             <MenuFooter
                 items={[
-                    { key: '↑/↓', label: 'Navigate' },
-                    { key: 'enter', label: 'View logs' },
-                    { key: 'x', label: 'Kill' },
-                    { key: 'c', label: 'Clear finished' },
-                    { key: 'd', label: 'Dismiss' },
-                    { key: 'esc', label: 'Back' },
+                    { key: '↑/↓', label: 'navigate' },
+                    ...(totalPages > 1 ? [{ key: '←/→', label: 'page' }] : []),
+                    { key: 'enter', label: 'view logs' },
+                    { key: 'k', label: 'kill' },
+                    { key: 'x', label: 'remove' },
+                    { key: 'c', label: 'clear finished' },
+                    { key: 'esc', label: 'close' },
                 ]}
             />
         </Box>
