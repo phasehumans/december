@@ -4,7 +4,14 @@ import { join } from 'node:path'
 
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
 
-import { ManageMemoryTool } from '../../src/manage_memory'
+import {
+    ManageMemoryTool,
+    getWorkspaceMemoryDetails,
+    recordMemoryDirect,
+    forgetMemoryDirect,
+    clearMemoryDirect,
+    parseMemoryContent,
+} from '../../src/manage_memory'
 import { createMockContext } from '../mock-context'
 
 describe('ManageMemoryTool (Unit)', () => {
@@ -235,5 +242,67 @@ describe('ManageMemoryTool (Unit)', () => {
 
         const forgetResult = await ManageMemoryTool.execute({ action: 'forget' }, context)
         expect(forgetResult).toContain('Error')
+    })
+
+    describe('Direct Memory Helpers', () => {
+        test('recordMemoryDirect, getWorkspaceMemoryDetails, forgetMemoryDirect, and clearMemoryDirect work end-to-end', async () => {
+            const initialDetails = await getWorkspaceMemoryDetails(testDir)
+            expect(initialDetails.exists).toBe(false)
+            expect(initialDetails.entries.length).toBe(0)
+
+            const recRes = await recordMemoryDirect(
+                testDir,
+                'use shoehorn for partial testing',
+                'conventions'
+            )
+            expect(recRes.success).toBe(true)
+
+            const recRes2 = await recordMemoryDirect(
+                testDir,
+                'run migrations before testing',
+                'build_and_test'
+            )
+            expect(recRes2.success).toBe(true)
+
+            // Skipped duplicate
+            const dupRes = await recordMemoryDirect(
+                testDir,
+                'use shoehorn for partial testing',
+                'conventions'
+            )
+            expect(dupRes.success).toBe(false)
+
+            const details = await getWorkspaceMemoryDetails(testDir)
+            expect(details.exists).toBe(true)
+            expect(details.entries.length).toBe(2)
+            expect(details.categories.length).toBe(2)
+            expect(details.totalBytes).toBeGreaterThan(0)
+            expect(details.maxBytes).toBe(2048)
+
+            // Forget entry
+            const forgetRes = await forgetMemoryDirect(testDir, 'use shoehorn for partial testing')
+            expect(forgetRes.success).toBe(true)
+
+            const detailsAfterForget = await getWorkspaceMemoryDetails(testDir)
+            expect(detailsAfterForget.entries.length).toBe(1)
+            expect(detailsAfterForget.entries[0]?.text).toBe('run migrations before testing')
+
+            // Clear all
+            const clearRes = await clearMemoryDirect(testDir)
+            expect(clearRes.success).toBe(true)
+
+            const detailsAfterClear = await getWorkspaceMemoryDetails(testDir)
+            expect(detailsAfterClear.entries.length).toBe(0)
+            expect(detailsAfterClear.totalBytes).toBe(0)
+        })
+
+        test('parseMemoryContent correctly parses headers and entries', () => {
+            const raw = `## conventions\n- lowercase commits\n- no em dashes\n\n## quirks\n- port conflict`
+            const parsed = parseMemoryContent(raw)
+            expect(parsed.entries.length).toBe(3)
+            expect(parsed.categories.length).toBe(2)
+            expect(parsed.categories[0]?.name).toBe('conventions')
+            expect(parsed.categories[0]?.entries).toEqual(['lowercase commits', 'no em dashes'])
+        })
     })
 })

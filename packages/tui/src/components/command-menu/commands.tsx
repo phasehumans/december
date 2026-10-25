@@ -169,6 +169,15 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'memory',
+        description:
+            'View and manage workspace memory (.december/memory.md) and project rules (AGENTS.md)',
+        value: '/memory',
+        action: (ctx) => {
+            // forwarded to chat screen
+        },
+    },
+    {
         name: 'new',
         description: 'Start a new conversation',
         value: '/new',

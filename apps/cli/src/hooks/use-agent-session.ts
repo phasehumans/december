@@ -100,6 +100,8 @@ export function useAgentSession({
         setAuthMode,
         helpInitialTab,
         setHelpInitialTab,
+        memoryInitialTab,
+        setMemoryInitialTab,
         logoutItems,
         setLogoutItems,
         switchItems,
@@ -2297,6 +2299,18 @@ ${decStatus}
                 return
             }
 
+            if (
+                text.trim() === '/memory' ||
+                text.trim().startsWith('/memory ') ||
+                text.trim() === '/rules' ||
+                text.trim().startsWith('/rules ')
+            ) {
+                const isRules = text.trim() === '/rules' || text.trim().startsWith('/rules ')
+                setMemoryInitialTab(isRules ? 'rules' : 'memory')
+                setAuthMode('memory_view')
+                return
+            }
+
             if (text.trim() === '/undo') {
                 if (!agent) {
                     addToast('No active agent session.', 'error')
@@ -2987,6 +3001,8 @@ ${decStatus}
         setAuthMode,
         helpInitialTab,
         setHelpInitialTab,
+        memoryInitialTab,
+        setMemoryInitialTab,
         logoutItems,
         setLogoutItems,
         switchItems,

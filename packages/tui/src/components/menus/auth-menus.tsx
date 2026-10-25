@@ -9,6 +9,7 @@ import { DiffViewMenu } from './diff-view-menu'
 import { FileViewMenu } from './file-view-menu'
 import { GrillQuestionMenu } from './grill-question-menu'
 import { HelpMenu } from './help-menu'
+import { MemoryViewMenu } from './memory-view-menu'
 import { MenuMenu } from './menu-menu'
 import { ModelSelectMenu } from './model-select-menu'
 import { PlanApproveMenu } from './plan-approve-menu'
@@ -68,6 +69,9 @@ export function AuthMenus(props: any) {
         case 'skills':
         case 'skills_menu':
             return <SkillsMenu {...props} />
+        case 'memory':
+        case 'memory_view':
+            return <MemoryViewMenu {...props} initialTab={props.memoryInitialTab || 'memory'} />
 
         default:
             return null

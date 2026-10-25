@@ -52,6 +52,269 @@ const manageMemorySchema = Type.Object({
 
 export type ManageMemoryInput = Static<typeof manageMemorySchema>
 
+export const MAX_WORKSPACE_MEMORY_BYTES = 2048
+
+export interface MemoryEntryItem {
+    category: string
+    text: string
+    sourceFile: string
+}
+
+export interface WorkspaceMemoryCategory {
+    name: string
+    entries: string[]
+}
+
+export interface WorkspaceMemoryDetails {
+    targetFile: string
+    exists: boolean
+    rawContent: string
+    totalBytes: number
+    maxBytes: number
+    entries: MemoryEntryItem[]
+    categories: WorkspaceMemoryCategory[]
+}
+
+export const DEFAULT_AGENTS_MD_TEMPLATE = `# AGENTS.md
+
+## Guidelines
+
+- Follow existing architecture and modular design conventions.
+- Maintain tests and run test suites before finalizing changes.
+- Ensure all commit messages and PR descriptions are in lowercase.
+`
+
+export function parseMemoryContent(
+    content: string,
+    sourceFile: string = '.december/memory.md'
+): { entries: MemoryEntryItem[]; categories: WorkspaceMemoryCategory[] } {
+    const lines = content.split('\n')
+    let currentCategory = 'general'
+    const entries: MemoryEntryItem[] = []
+    const catMap = new Map<string, string[]>()
+
+    for (const line of lines) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('## ')) {
+            currentCategory = trimmed.slice(3).trim().toLowerCase()
+            if (!catMap.has(currentCategory)) {
+                catMap.set(currentCategory, [])
+            }
+        } else if (
+            trimmed.startsWith('- ') ||
+            trimmed.startsWith('* ') ||
+            trimmed.startsWith('• ')
+        ) {
+            const entryText = normalizeEntry(trimmed)
+            if (entryText) {
+                entries.push({
+                    category: currentCategory,
+                    text: entryText,
+                    sourceFile,
+                })
+                if (!catMap.has(currentCategory)) {
+                    catMap.set(currentCategory, [])
+                }
+                catMap.get(currentCategory)!.push(entryText)
+            }
+        }
+    }
+
+    const categories: WorkspaceMemoryCategory[] = Array.from(catMap.entries()).map(
+        ([name, items]) => ({
+            name,
+            entries: items,
+        })
+    )
+
+    return { entries, categories }
+}
+
+export async function getWorkspaceMemoryDetails(
+    cwd: string,
+    target?: string
+): Promise<WorkspaceMemoryDetails> {
+    const fs = await import('node:fs/promises')
+    const candidates = resolveReadCandidates(target || 'memory')
+    let foundPath = ''
+    let rawContent = ''
+    let exists = false
+
+    for (const candidate of candidates) {
+        const fullPath = path.isAbsolute(candidate) ? candidate : path.join(cwd, candidate)
+        try {
+            const stat = await fs.stat(fullPath)
+            if (stat.isFile()) {
+                rawContent = await fs.readFile(fullPath, 'utf8')
+                foundPath = fullPath
+                exists = true
+                break
+            }
+        } catch {
+            // Intentionally swallowed: candidate file not found
+        }
+    }
+
+    const targetFile =
+        foundPath ||
+        (target === 'MEMORY.md'
+            ? path.join(cwd, 'MEMORY.md')
+            : path.join(cwd, '.december', 'memory.md'))
+
+    const totalBytes = Buffer.byteLength(rawContent, 'utf8')
+    const { entries, categories } = parseMemoryContent(rawContent, targetFile)
+
+    return {
+        targetFile,
+        exists,
+        rawContent,
+        totalBytes,
+        maxBytes: MAX_WORKSPACE_MEMORY_BYTES,
+        entries,
+        categories,
+    }
+}
+
+export async function recordMemoryDirect(
+    cwd: string,
+    entry: string,
+    category?: string,
+    target?: string
+): Promise<{ success: boolean; message: string }> {
+    const fs = await import('node:fs/promises')
+    const cleanEntry = normalizeEntry(entry)
+    if (!cleanEntry) {
+        return { success: false, message: 'Entry text cannot be empty.' }
+    }
+
+    const { relativePath, isRules } = resolveWriteTarget(cwd, target, category)
+    const fullPath = path.isAbsolute(relativePath) ? relativePath : path.join(cwd, relativePath)
+    const cat = category || (isRules ? 'rules' : 'conventions')
+
+    let existingContent = ''
+    try {
+        existingContent = await fs.readFile(fullPath, 'utf8')
+    } catch {
+        // Intentionally swallowed: target memory file does not exist yet
+    }
+
+    const lines = existingContent.split('\n')
+    for (const line of lines) {
+        const lineContent = normalizeEntry(line)
+        if (lineContent && lineContent.toLowerCase() === cleanEntry.toLowerCase()) {
+            return {
+                success: false,
+                message: `Entry already exists in ${relativePath} under "${cat}". Skipped duplicate.`,
+            }
+        }
+    }
+
+    const headerRegex = new RegExp(`^##\\s+${cat}\\b`, 'im')
+    const headerMatch = existingContent.match(headerRegex)
+
+    let updatedContent = ''
+    if (headerMatch && headerMatch.index !== undefined) {
+        const headerIndex = headerMatch.index
+        const rest = existingContent.slice(headerIndex)
+        const nextHeaderMatch = rest.slice(headerMatch[0].length).match(/\n##\s+/i)
+
+        if (nextHeaderMatch && nextHeaderMatch.index !== undefined) {
+            const insertPos = headerIndex + headerMatch[0].length + nextHeaderMatch.index
+            updatedContent = `${existingContent.slice(0, insertPos)}\n- ${cleanEntry}${existingContent.slice(insertPos)}`
+        } else {
+            updatedContent = `${existingContent.trimEnd()}\n- ${cleanEntry}\n`
+        }
+    } else {
+        const prefix = existingContent.trim() ? `${existingContent.trimEnd()}\n\n` : ''
+        updatedContent = `${prefix}## ${cat}\n- ${cleanEntry}\n`
+    }
+
+    try {
+        const dir = path.dirname(fullPath)
+        await fs.mkdir(dir, { recursive: true })
+        await fs.writeFile(fullPath, updatedContent, 'utf8')
+        return {
+            success: true,
+            message: `Recorded entry under "${cat}" in ${path.basename(relativePath)}.`,
+        }
+    } catch (err: any) {
+        return { success: false, message: `Failed to write memory file: ${err.message}` }
+    }
+}
+
+export async function forgetMemoryDirect(
+    cwd: string,
+    entry: string,
+    target?: string
+): Promise<{ success: boolean; message: string }> {
+    const fs = await import('node:fs/promises')
+    const targetClean = normalizeEntry(entry).toLowerCase()
+    if (!targetClean) {
+        return { success: false, message: 'Entry text cannot be empty.' }
+    }
+
+    const candidates = resolveReadCandidates(target)
+    let removed = false
+
+    for (const candidate of candidates) {
+        const fullPath = path.isAbsolute(candidate) ? candidate : path.join(cwd, candidate)
+        try {
+            const text = await fs.readFile(fullPath, 'utf8')
+            const lines = text.split('\n')
+            const newLines: string[] = []
+            let fileModified = false
+
+            for (const line of lines) {
+                const lineClean = normalizeEntry(line).toLowerCase()
+                if (lineClean && (lineClean === targetClean || lineClean.includes(targetClean))) {
+                    fileModified = true
+                    removed = true
+                    continue
+                }
+                newLines.push(line)
+            }
+
+            if (fileModified) {
+                await fs.writeFile(fullPath, newLines.join('\n').trimEnd() + '\n', 'utf8')
+            }
+        } catch {
+            // Intentionally swallowed: missing candidate file handled gracefully
+        }
+    }
+
+    if (removed) {
+        return { success: true, message: 'Removed entry from memory.' }
+    }
+    return { success: false, message: 'Entry not found in memory.' }
+}
+
+export async function clearMemoryDirect(
+    cwd: string,
+    target?: string
+): Promise<{ success: boolean; message: string }> {
+    const fs = await import('node:fs/promises')
+    const candidates = resolveReadCandidates(target || 'memory')
+    let cleared = false
+
+    for (const candidate of candidates) {
+        const fullPath = path.isAbsolute(candidate) ? candidate : path.join(cwd, candidate)
+        try {
+            const stat = await fs.stat(fullPath)
+            if (stat.isFile()) {
+                await fs.writeFile(fullPath, '', 'utf8')
+                cleared = true
+            }
+        } catch {
+            // Intentionally swallowed: candidate file not found
+        }
+    }
+
+    if (cleared) {
+        return { success: true, message: 'Cleared workspace memory.' }
+    }
+    return { success: true, message: 'No memory files found to clear.' }
+}
+
 function resolveWriteTarget(
     cwd: string,
     target?: string,

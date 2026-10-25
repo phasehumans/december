@@ -176,6 +176,14 @@ describe('/changelog and /docs commands', () => {
         expect(mcpCmd?.description).toContain('MCP')
     })
 
+    test('should define /memory command forwarded to chat screen', () => {
+        const memCmd = COMMANDS.find((c) => c.name === 'memory')
+        expect(memCmd).toBeDefined()
+        expect(memCmd?.value).toBe('/memory')
+        expect(memCmd?.description).toContain('workspace memory')
+        expect(memCmd?.description).toContain('AGENTS.md')
+    })
+
     test('should define /help command with description', () => {
         const helpCmd = COMMANDS.find((c) => c.name === 'help')
         expect(helpCmd).toBeDefined()

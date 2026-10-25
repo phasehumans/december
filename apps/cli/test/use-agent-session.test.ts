@@ -474,4 +474,18 @@ describe('CLI file view and code search navigation', () => {
         store.setAuthMode('none')
         expect(useCliStore.getState().authMode).toBe('none')
     })
+
+    it('supports memory_view authMode and memoryInitialTab state for memory command', () => {
+        const store = useCliStore.getState()
+        expect(store.memoryInitialTab).toBe('memory')
+
+        store.setMemoryInitialTab('rules')
+        expect(useCliStore.getState().memoryInitialTab).toBe('rules')
+
+        store.setAuthMode('memory_view')
+        expect(useCliStore.getState().authMode).toBe('memory_view')
+
+        store.setAuthMode('none')
+        expect(useCliStore.getState().authMode).toBe('none')
+    })
 })

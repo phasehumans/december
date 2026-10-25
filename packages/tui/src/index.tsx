@@ -46,6 +46,7 @@ export * from './components/menus/shortcuts-menu'
 export * from './components/menus/code-search-menu'
 export * from './components/menus/file-view-menu'
 export * from './components/menus/artifact-view-menu'
+export * from './components/menus/memory-view-menu'
 export * from './components/menus/btw-overlay'
 export * from './utils/diff'
 

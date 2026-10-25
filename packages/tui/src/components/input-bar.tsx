@@ -473,6 +473,8 @@ export const InputBar = React.memo(function InputBar({
                 '/switch',
                 '/skills',
                 '/skill',
+                '/memory',
+                '/rules',
                 '/context',
                 '/tasks',
                 '/usage',

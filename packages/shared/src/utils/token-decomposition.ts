@@ -109,6 +109,8 @@ export function decomposeSystemPrompt(
         'Available Skills:',
         '\n\n<project_context>',
         '<project_context>',
+        '\n\n<project_memory>',
+        '<project_memory>',
         '\n\nCurrent date:',
         'Current date:',
     ]

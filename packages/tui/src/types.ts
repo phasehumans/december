@@ -39,6 +39,10 @@ export type AuthMode =
     | 'code_search'
     | 'file_view'
     | 'artifact_view'
+    | 'skills'
+    | 'skills_menu'
+    | 'memory_view'
+    | 'memory'
 
 export interface CodeSearchResultItem {
     file: string
