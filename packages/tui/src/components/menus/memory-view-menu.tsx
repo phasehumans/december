@@ -6,7 +6,7 @@ import { discoverProjectRules } from '@december/shared'
 import { Box, Text, useInput } from 'ink'
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 
-import { useTerminalColumns, useTerminalRows } from '../../hooks/use-terminal-columns'
+import { useTerminalRows } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
 
 import { MenuFooter, type MenuFooterItem } from './menu-footer'
@@ -17,7 +17,7 @@ export interface MemoryViewMenuProps {
     initialTab?: 'memory' | 'rules'
     memoryInitialTab?: 'memory' | 'rules'
     onClose?: () => void
-    setAuthMode?: (mode: string) => void
+    setAuthMode?: (mode: any) => void
     handleSubmit?: (text: string, options?: any) => void
     addToast?: (msg: string, variant?: string) => void
 }
@@ -52,14 +52,15 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
         setAuthMode,
     } = props
 
-    const terminalColumns = useTerminalColumns()
-    const columns = terminalColumns > 0 ? terminalColumns : 80
     const terminalRows = useTerminalRows()
     const rows = terminalRows > 0 ? terminalRows : 24
 
+    // Bounded viewport height matching FileViewMenu so header, code, and footer fit cleanly
+    const visibleLineCount = Math.max(5, Math.min(18, rows - 10))
+
     const workspaceDir = propWorkspaceDir || agent?.workspaceDir || process.cwd()
 
-    // Determine initial active document category: 'memory' vs 'rules'
+    // Requested initial document category: 'memory' vs 'rules'
     const requestedTab = initialTab || memoryInitialTab || 'memory'
 
     const [documents, setDocuments] = useState<ContextDocument[]>([])
@@ -89,7 +90,7 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
         async function loadAllDocuments() {
             const docs: ContextDocument[] = []
 
-            // 1. Detect memory file (case-insensitive check)
+            // 1. Detect memory file (case-insensitive candidate check)
             const memoryCandidates = [
                 path.join(workspaceDir, '.december', 'memory.md'),
                 path.join(workspaceDir, '.december', 'MEMORY.md'),
@@ -134,7 +135,7 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
                 })
             }
 
-            // 2. Discover rules files via shared engine
+            // 2. Discover rules files via shared discovery engine
             try {
                 const discoveredRules = discoverProjectRules(workspaceDir)
                 if (discoveredRules.length > 0) {
@@ -161,7 +162,7 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
                         })
                     })
                 } else {
-                    // Placeholder when no rules file is found
+                    // Placeholder when no rules file exists
                     docs.push({
                         id: 'rules',
                         title: 'AGENTS.md',
@@ -210,13 +211,12 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
     const safeDocIndex = Math.min(Math.max(0, activeDocIndex), Math.max(0, documents.length - 1))
     const currentDoc = documents[safeDocIndex]
 
-    const contentLines = useMemo(() => {
+    const lines = useMemo(() => {
         if (!currentDoc || !currentDoc.content) return []
         return currentDoc.content.split(/\r?\n/)
     }, [currentDoc])
 
-    const totalLines = contentLines.length
-    const visibleLineCount = Math.max(5, rows - 9)
+    const totalLines = lines.length
 
     // Switch documents while preserving scroll offset
     const switchDocument = useCallback(
@@ -257,7 +257,7 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
     // Keyboard navigation (arrows only for scrolling, no j/k)
     useInput((input, key) => {
         // Close menu
-        if (key.escape || (key.ctrl && input === 'c')) {
+        if (key.escape || input === 'q' || (key.ctrl && input === 'c')) {
             handleClose()
             return
         }
@@ -293,9 +293,7 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
         if (key.upArrow) {
             setCursorLineIndex((prev) => {
                 const next = Math.max(0, prev - 1)
-                if (next < scrollOffset) {
-                    setScrollOffset(next)
-                }
+                setScrollOffset((offset) => (next < offset ? next : offset))
                 return next
             })
             return
@@ -305,29 +303,36 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
         if (key.downArrow) {
             setCursorLineIndex((prev) => {
                 const next = Math.min(totalLines - 1, prev + 1)
-                if (next >= scrollOffset + visibleLineCount) {
-                    setScrollOffset(next - visibleLineCount + 1)
-                }
-                return next
-            })
-            return
-        }
-
-        // Page navigation: PageUp / PageDown
-        if (key.pageUp) {
-            setCursorLineIndex((prev) => {
-                const next = Math.max(0, prev - visibleLineCount)
-                setScrollOffset((offset) => Math.max(0, offset - visibleLineCount))
-                return next
-            })
-            return
-        }
-
-        if (key.pageDown) {
-            setCursorLineIndex((prev) => {
-                const next = Math.min(totalLines - 1, prev + visibleLineCount)
                 setScrollOffset((offset) =>
-                    Math.min(Math.max(0, totalLines - visibleLineCount), offset + visibleLineCount)
+                    next >= offset + visibleLineCount ? next - visibleLineCount + 1 : offset
+                )
+                return next
+            })
+            return
+        }
+
+        // Page navigation: PageUp / PageDown or Ctrl+u / Ctrl+d
+        if (key.pageUp || (key.ctrl && input === 'u')) {
+            const step = key.ctrl ? Math.max(1, Math.floor(visibleLineCount / 2)) : visibleLineCount
+            setCursorLineIndex((prev) => {
+                const next = Math.max(0, prev - step)
+                setScrollOffset((offset) => Math.max(0, Math.min(next, offset - step)))
+                return next
+            })
+            return
+        }
+
+        if (key.pageDown || (key.ctrl && input === 'd')) {
+            const step = key.ctrl ? Math.max(1, Math.floor(visibleLineCount / 2)) : visibleLineCount
+            setCursorLineIndex((prev) => {
+                const next = Math.min(totalLines - 1, prev + step)
+                setScrollOffset((offset) =>
+                    Math.min(
+                        Math.max(0, totalLines - visibleLineCount),
+                        next >= offset + visibleLineCount
+                            ? next - visibleLineCount + 1
+                            : offset + step
+                    )
                 )
                 return next
             })
@@ -335,131 +340,120 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
         }
     })
 
-    const visibleLines = contentLines.slice(scrollOffset, scrollOffset + visibleLineCount)
-    const gutterWidth = Math.max(3, String(totalLines).length)
+    const visibleLines = lines.slice(scrollOffset, scrollOffset + visibleLineCount)
     const remainingRows = Math.max(0, visibleLineCount - visibleLines.length)
-
-    const byteSize = currentDoc ? Buffer.byteLength(currentDoc.content, 'utf8') : 0
-    const formatKb = (bytes: number) => {
-        if (bytes < 1024) return `${bytes} B`
-        return `${(bytes / 1024).toFixed(1)} KB`
-    }
+    const gutterWidth = Math.max(3, String(totalLines).length)
 
     const footerItems: MenuFooterItem[] = [
         { key: 'Tab / ← →', label: 'switch file' },
         { key: '↑/↓', label: 'scroll' },
         { key: 'PgUp/PgDn', label: 'page' },
-        { key: 'Esc', label: 'close' },
+        { key: 'esc', label: 'close' },
     ]
 
     return (
-        <Box
-            flexDirection="column"
-            borderStyle="round"
-            borderColor={THEME.colors.brand}
-            paddingX={1}
-            width={Math.min(columns, 110)}
-        >
-            {/* Top Bar: Tabs for each discovered file */}
-            <Box gap={1} paddingBottom={1} flexWrap="wrap">
+        <Box flexDirection="column" width="100%">
+            {/* Top Navigation Bar: Exact HelpMenu Tab Style (no borders) */}
+            <Box flexDirection="row" gap={2} marginBottom={1}>
                 {documents.map((doc, idx) => {
-                    const isActive = idx === safeDocIndex
+                    const isCurrent = idx === safeDocIndex
                     return (
-                        <Box
+                        <Text
                             key={doc.id}
-                            borderStyle={isActive ? 'single' : undefined}
-                            borderColor={THEME.colors.brand}
-                            paddingX={1}
+                            color={isCurrent ? THEME.colors.brand : THEME.colors.muted}
+                            bold={isCurrent}
                         >
-                            <Text
-                                bold={isActive}
-                                color={isActive ? THEME.colors.brand : THEME.colors.muted}
-                            >
-                                [{idx + 1}] {doc.title}
-                                {!doc.exists && ' (empty)'}
-                            </Text>
-                        </Box>
+                            {doc.title}
+                        </Text>
                     )
                 })}
             </Box>
 
-            {/* Document Header: File path, line count, byte size, coordinates */}
-            {currentDoc && (
-                <Box justifyContent="space-between" width="100%" marginBottom={1}>
-                    <Box gap={1} flexShrink={1}>
-                        <Text bold color={THEME.colors.brand}>
-                            {currentDoc.title}
-                        </Text>
-                        <Text color={THEME.colors.dim}>·</Text>
-                        <Text color={THEME.colors.muted} wrap="truncate-end">
-                            {currentDoc.displayPath}
-                        </Text>
-                        {totalLines > 0 && (
-                            <Text color={THEME.colors.dim}>
-                                ({totalLines} lines, {formatKb(byteSize)})
-                            </Text>
-                        )}
-                    </Box>
-                    <Box flexShrink={0} marginLeft={1}>
-                        <Text color={THEME.colors.text} bold>
-                            line {totalLines > 0 ? cursorLineIndex + 1 : 0}:{totalLines}
-                        </Text>
-                    </Box>
-                </Box>
-            )}
-
-            {/* Main Content Viewport */}
-            <Box flexDirection="column" minHeight={visibleLineCount}>
-                {isLoading ? (
-                    <Text color={THEME.colors.muted}>Loading agent memory and rules...</Text>
-                ) : !currentDoc || !currentDoc.exists || totalLines === 0 ? (
-                    <Box flexDirection="column" paddingY={2} gap={1}>
-                        <Text color={THEME.colors.warning} bold>
-                            {currentDoc?.isMemory
-                                ? 'No workspace memory recorded yet.'
-                                : 'No project rules found in workspace.'}
-                        </Text>
+            {/* Top Header: Exact FileViewMenu Header Style */}
+            <Box justifyContent="space-between" width="100%" marginBottom={1}>
+                <Box gap={1}>
+                    <Text bold color={THEME.colors.text}>
+                        {currentDoc ? currentDoc.displayPath : '(no file)'}
+                    </Text>
+                    {totalLines > 0 ? (
                         <Text color={THEME.colors.dim}>
-                            {currentDoc?.isMemory
-                                ? 'December automatically records workspace notes, build commands, and quirks into .december/memory.md as you work.'
-                                : 'Create an AGENTS.md or .december/rules.md file in your repository to define persistent guidelines for the agent.'}
+                            · {totalLines} line{totalLines === 1 ? '' : 's'}
                         </Text>
+                    ) : null}
+                </Box>
+                <Box>
+                    <Text color={THEME.colors.text} bold>
+                        line {totalLines > 0 ? cursorLineIndex + 1 : 0}:1
+                    </Text>
+                </Box>
+            </Box>
+
+            {/* Viewport: Exact FileViewMenu Code Viewport Style */}
+            <Box flexDirection="column" width="100%">
+                {isLoading ? (
+                    <Box marginY={1}>
+                        <Text color={THEME.colors.dim}>Loading file...</Text>
+                    </Box>
+                ) : !currentDoc || !currentDoc.exists || totalLines === 0 ? (
+                    <Box marginY={1}>
+                        <Text color={THEME.colors.dim}>(Empty file)</Text>
                     </Box>
                 ) : (
-                    <Box flexDirection="column" width="100%">
-                        {visibleLines.map((line, idx) => {
-                            const lineNum = scrollOffset + idx + 1
-                            const isCursor = scrollOffset + idx === cursorLineIndex
-                            const numStr = String(lineNum).padStart(gutterWidth, ' ')
+                    <>
+                        {visibleLines.map((lineText, relIdx) => {
+                            const absIdx = scrollOffset + relIdx
+                            const isCursor = absIdx === cursorLineIndex
+                            const lineNum = absIdx + 1
+                            const paddedLineNum = String(lineNum).padStart(gutterWidth, ' ')
 
                             return (
-                                <Box key={idx} width="100%">
-                                    <Text
-                                        color={isCursor ? THEME.colors.brand : THEME.colors.border}
-                                    >
-                                        {numStr} │{' '}
-                                    </Text>
-                                    <Text
-                                        color={isCursor ? THEME.colors.text : THEME.colors.muted}
-                                        wrap="truncate"
-                                    >
-                                        {line || ' '}
-                                    </Text>
+                                <Box
+                                    key={`line-${absIdx}`}
+                                    flexDirection="row"
+                                    width="100%"
+                                    backgroundColor={isCursor ? THEME.colors.codespanBg : undefined}
+                                >
+                                    <Box width={2} flexShrink={0}>
+                                        <Text color={THEME.colors.brand} bold>
+                                            {isCursor ? `${THEME.glyphs.selector} ` : '  '}
+                                        </Text>
+                                    </Box>
+                                    <Box width={gutterWidth + 1} flexShrink={0}>
+                                        <Text
+                                            bold={isCursor}
+                                            color={isCursor ? THEME.colors.brand : THEME.colors.dim}
+                                        >
+                                            {paddedLineNum}{' '}
+                                        </Text>
+                                    </Box>
+                                    <Box flexGrow={1} flexShrink={1}>
+                                        <Text
+                                            bold={isCursor}
+                                            color={THEME.colors.text}
+                                            wrap="truncate-end"
+                                        >
+                                            {lineText || ' '}
+                                        </Text>
+                                    </Box>
                                 </Box>
                             )
                         })}
-
-                        {/* Fill empty viewport rows with subtle tildes */}
-                        {Array.from({ length: remainingRows }).map((_, idx) => (
-                            <Box key={`tilde-${idx}`} width="100%">
-                                <Text color={THEME.colors.border}>{' '.repeat(gutterWidth)} ~</Text>
-                            </Box>
-                        ))}
-                    </Box>
+                        {remainingRows > 0 &&
+                            Array.from({ length: remainingRows }).map((_, idx) => (
+                                <Box key={`tilde-${idx}`} flexDirection="row" width="100%">
+                                    <Box width={2} flexShrink={0}>
+                                        <Text> </Text>
+                                    </Box>
+                                    <Box width={gutterWidth + 1} flexShrink={0}>
+                                        <Text color={THEME.colors.brand}>~ </Text>
+                                    </Box>
+                                </Box>
+                            ))}
+                    </>
                 )}
             </Box>
 
-            {/* Footer with key hints */}
+            {/* Clean Bottom Navigation Footer */}
             <MenuFooter items={footerItems} />
         </Box>
     )
