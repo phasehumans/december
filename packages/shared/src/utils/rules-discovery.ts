@@ -13,10 +13,15 @@ export function discoverProjectRules(
 ): DiscoveredRuleFile[] {
     const candidateNames = [
         'AGENTS.override.md',
+        'agents.override.md',
         'AGENTS.md',
+        'agents.md',
         'CLAUDE.md',
+        'claude.md',
         path.join('.december', 'rules.md'),
+        path.join('.december', 'RULES.md'),
         path.join('.december', 'AGENTS.md'),
+        path.join('.december', 'agents.md'),
     ]
     const seen = new Set<string>()
     let current = path.resolve(startDir)
@@ -58,7 +63,7 @@ export function discoverProjectRules(
     ].filter((dir): dir is string => Boolean(dir))
 
     for (const globalDir of globalCandidateDirs) {
-        for (const candidate of ['rules.md', 'AGENTS.md']) {
+        for (const candidate of ['rules.md', 'RULES.md', 'AGENTS.md', 'agents.md']) {
             const globalPath = path.join(globalDir, candidate)
             if (fs.existsSync(globalPath) && !seen.has(globalPath)) {
                 try {

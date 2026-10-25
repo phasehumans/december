@@ -1,22 +1,13 @@
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 
-import { discoverProjectRules, type DiscoveredRuleFile } from '@december/shared'
-import {
-    getWorkspaceMemoryDetails,
-    recordMemoryDirect,
-    forgetMemoryDirect,
-    clearMemoryDirect,
-    DEFAULT_AGENTS_MD_TEMPLATE,
-    MAX_WORKSPACE_MEMORY_BYTES,
-    type WorkspaceMemoryDetails,
-} from '@december/tools'
+import { discoverProjectRules } from '@december/shared'
 import { Box, Text, useInput } from 'ink'
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 
 import { useTerminalColumns, useTerminalRows } from '../../hooks/use-terminal-columns'
 import { THEME } from '../../theme'
-import { TextInput } from '../text-input'
 
 import { MenuFooter, type MenuFooterItem } from './menu-footer'
 
@@ -24,64 +15,63 @@ export interface MemoryViewMenuProps {
     agent?: any
     workspaceDir?: string
     initialTab?: 'memory' | 'rules'
+    memoryInitialTab?: 'memory' | 'rules'
     onClose?: () => void
     setAuthMode?: (mode: string) => void
     handleSubmit?: (text: string, options?: any) => void
     addToast?: (msg: string, variant?: string) => void
 }
 
-const MEMORY_CATEGORIES = [
-    'conventions',
-    'build_and_test',
-    'architecture',
-    'quirks',
-    'rules',
-    'general',
-] as const
+interface ContextDocument {
+    id: string
+    title: string
+    filePath: string
+    displayPath: string
+    content: string
+    exists: boolean
+    isMemory: boolean
+}
+
+function toTildePath(p: string): string {
+    try {
+        const home = os.homedir()
+        return p.startsWith(home) ? '~' + p.slice(home.length) : p
+    } catch {
+        // Intentionally swallowed: fallback to original path
+        return p
+    }
+}
 
 export function MemoryViewMenu(props: MemoryViewMenuProps) {
     const {
         agent,
         workspaceDir: propWorkspaceDir,
-        initialTab = 'memory',
+        initialTab,
+        memoryInitialTab,
         onClose,
         setAuthMode,
-        handleSubmit,
-        addToast,
     } = props
 
     const terminalColumns = useTerminalColumns()
     const columns = terminalColumns > 0 ? terminalColumns : 80
     const terminalRows = useTerminalRows()
     const rows = terminalRows > 0 ? terminalRows : 24
-    const isNarrow = columns < 88
 
     const workspaceDir = propWorkspaceDir || agent?.workspaceDir || process.cwd()
 
-    // Tab state: 'memory' vs 'rules'
-    const [activeTab, setActiveTab] = useState<'memory' | 'rules'>(initialTab)
+    // Determine initial active document category: 'memory' vs 'rules'
+    const requestedTab = initialTab || memoryInitialTab || 'memory'
 
-    // Workspace memory state
-    const [memoryDetails, setMemoryDetails] = useState<WorkspaceMemoryDetails | null>(null)
-    const [isMemoryLoading, setIsMemoryLoading] = useState(true)
-    const [selectedEntryIndex, setSelectedEntryIndex] = useState(0)
-    const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all')
+    const [documents, setDocuments] = useState<ContextDocument[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [activeDocIndex, setActiveDocIndex] = useState(0)
+    const [cursorLineIndex, setCursorLineIndex] = useState(0)
+    const [scrollOffset, setScrollOffset] = useState(0)
 
-    // Memory mutation states
-    const [isAddingEntry, setIsAddingEntry] = useState(false)
-    const [newEntryText, setNewEntryText] = useState('')
-    const [newEntryCategoryIndex, setNewEntryCategoryIndex] = useState(0)
-    const [isConfirmingClear, setIsConfirmingClear] = useState(false)
-
-    // Search state for memory
-    const [isSearching, setIsSearching] = useState(false)
-    const [searchQuery, setSearchQuery] = useState('')
-
-    // Rules state
-    const [ruleFiles, setRuleFiles] = useState<DiscoveredRuleFile[]>([])
-    const [selectedRuleIndex, setSelectedRuleIndex] = useState(0)
-    const [ruleScrollOffset, setRuleScrollOffset] = useState(0)
-    const [isRulesLoading, setIsRulesLoading] = useState(true)
+    // Store per-document scroll positions
+    const scrollPositionsRef = useRef<
+        Record<string, { cursorIndex: number; scrollOffset: number }>
+    >({})
 
     const handleClose = useCallback(() => {
         if (onClose) {
@@ -91,443 +81,276 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
         }
     }, [onClose, setAuthMode])
 
-    // Load workspace memory
-    const loadMemory = useCallback(async () => {
-        setIsMemoryLoading(true)
-        try {
-            const details = await getWorkspaceMemoryDetails(workspaceDir)
-            setMemoryDetails(details)
-        } catch {
-            // Intentionally swallowed: fallback to empty memory details
-            setMemoryDetails(null)
-        } finally {
-            setIsMemoryLoading(false)
-        }
-    }, [workspaceDir])
-
-    // Load discovered rules
-    const loadRules = useCallback(() => {
-        setIsRulesLoading(true)
-        try {
-            const discovered = discoverProjectRules(workspaceDir)
-            setRuleFiles(discovered)
-        } catch {
-            // Intentionally swallowed: rules discovery error fallback
-            setRuleFiles([])
-        } finally {
-            setIsRulesLoading(false)
-        }
-    }, [workspaceDir])
-
+    // Discover memory and rules documents
     useEffect(() => {
-        loadMemory()
-        loadRules()
-    }, [loadMemory, loadRules])
+        let isMounted = true
+        setIsLoading(true)
 
-    // Filter memory entries by category and search
-    const filteredEntries = useMemo(() => {
-        if (!memoryDetails?.entries) return []
-        let items = memoryDetails.entries
+        async function loadAllDocuments() {
+            const docs: ContextDocument[] = []
 
-        if (selectedCategoryFilter !== 'all') {
-            items = items.filter(
-                (e) => e.category.toLowerCase() === selectedCategoryFilter.toLowerCase()
-            )
-        }
+            // 1. Detect memory file (case-insensitive check)
+            const memoryCandidates = [
+                path.join(workspaceDir, '.december', 'memory.md'),
+                path.join(workspaceDir, '.december', 'MEMORY.md'),
+                path.join(workspaceDir, 'memory.md'),
+                path.join(workspaceDir, 'MEMORY.md'),
+            ]
 
-        if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase().trim()
-            items = items.filter((e) => e.text.toLowerCase().includes(q) || e.category.includes(q))
-        }
+            let foundMemoryPath = ''
+            let memoryContent = ''
 
-        return items
-    }, [memoryDetails, selectedCategoryFilter, searchQuery])
+            for (const cand of memoryCandidates) {
+                try {
+                    const text = await fs.readFile(cand, 'utf8')
+                    foundMemoryPath = cand
+                    memoryContent = text
+                    break
+                } catch {
+                    // Intentionally swallowed: candidate memory file not found
+                }
+            }
 
-    // Keep selected index in bounds
-    useEffect(() => {
-        if (selectedEntryIndex >= filteredEntries.length) {
-            setSelectedEntryIndex(Math.max(0, filteredEntries.length - 1))
-        }
-    }, [filteredEntries.length, selectedEntryIndex])
+            if (foundMemoryPath) {
+                const base = path.basename(foundMemoryPath)
+                docs.push({
+                    id: 'memory',
+                    title: base,
+                    filePath: foundMemoryPath,
+                    displayPath: path.relative(workspaceDir, foundMemoryPath) || base,
+                    content: memoryContent,
+                    exists: true,
+                    isMemory: true,
+                })
+            } else {
+                docs.push({
+                    id: 'memory',
+                    title: 'memory.md',
+                    filePath: path.join(workspaceDir, '.december', 'memory.md'),
+                    displayPath: '.december/memory.md',
+                    content: '',
+                    exists: false,
+                    isMemory: true,
+                })
+            }
 
-    // Keep rule index in bounds
-    useEffect(() => {
-        if (selectedRuleIndex >= ruleFiles.length) {
-            setSelectedRuleIndex(Math.max(0, ruleFiles.length - 1))
-        }
-    }, [ruleFiles.length, selectedRuleIndex])
-
-    // Refresh active agent context if agent instance exists
-    const refreshAgentSession = useCallback(() => {
-        if (agent) {
+            // 2. Discover rules files via shared engine
             try {
-                if (agent.conversation?.initSession) {
-                    agent.conversation.initSession({
-                        workspaceRoot: workspaceDir,
-                        systemPrompt: agent.systemPrompt,
+                const discoveredRules = discoverProjectRules(workspaceDir)
+                if (discoveredRules.length > 0) {
+                    discoveredRules.forEach((rf, idx) => {
+                        const base = path.basename(rf.path)
+                        const isGlobal =
+                            rf.path.includes('.december') && !rf.path.startsWith(workspaceDir)
+                        const relPath = path.relative(workspaceDir, rf.path)
+                        let title = base
+                        if (isGlobal) {
+                            title = `${base} (global)`
+                        } else if (relPath.startsWith('..')) {
+                            title = `${base} (parent)`
+                        }
+
+                        docs.push({
+                            id: `rule-${idx}`,
+                            title,
+                            filePath: rf.path,
+                            displayPath: toTildePath(rf.path),
+                            content: rf.content,
+                            exists: true,
+                            isMemory: false,
+                        })
+                    })
+                } else {
+                    // Placeholder when no rules file is found
+                    docs.push({
+                        id: 'rules',
+                        title: 'AGENTS.md',
+                        filePath: path.join(workspaceDir, 'AGENTS.md'),
+                        displayPath: './AGENTS.md',
+                        content: '',
+                        exists: false,
+                        isMemory: false,
                     })
                 }
             } catch {
-                // Intentionally swallowed: background agent prompt re-sync fallback
+                // Intentionally swallowed: fallback to empty rules entry
+                docs.push({
+                    id: 'rules',
+                    title: 'AGENTS.md',
+                    filePath: path.join(workspaceDir, 'AGENTS.md'),
+                    displayPath: './AGENTS.md',
+                    content: '',
+                    exists: false,
+                    isMemory: false,
+                })
+            }
+
+            if (isMounted) {
+                setDocuments(docs)
+
+                // Select initial document based on requested tab
+                if (requestedTab === 'rules') {
+                    const firstRuleIndex = docs.findIndex((d) => !d.isMemory)
+                    setActiveDocIndex(firstRuleIndex !== -1 ? firstRuleIndex : 0)
+                } else {
+                    setActiveDocIndex(0)
+                }
+
+                setIsLoading(false)
             }
         }
-    }, [agent, workspaceDir])
 
-    // Action: Forget selected memory entry
-    const handleForgetEntry = useCallback(async () => {
-        const item = filteredEntries[selectedEntryIndex]
-        if (!item) return
+        loadAllDocuments()
 
-        try {
-            const res = await forgetMemoryDirect(workspaceDir, item.text)
-            if (res.success) {
-                if (addToast) addToast('Removed entry from memory.', 'success')
-                await loadMemory()
-                refreshAgentSession()
-            } else {
-                if (addToast) addToast(res.message || 'Failed to remove entry.', 'error')
+        return () => {
+            isMounted = false
+        }
+    }, [workspaceDir, requestedTab])
+
+    const safeDocIndex = Math.min(Math.max(0, activeDocIndex), Math.max(0, documents.length - 1))
+    const currentDoc = documents[safeDocIndex]
+
+    const contentLines = useMemo(() => {
+        if (!currentDoc || !currentDoc.content) return []
+        return currentDoc.content.split(/\r?\n/)
+    }, [currentDoc])
+
+    const totalLines = contentLines.length
+    const visibleLineCount = Math.max(5, rows - 9)
+
+    // Switch documents while preserving scroll offset
+    const switchDocument = useCallback(
+        (targetIndex: number) => {
+            if (
+                targetIndex === safeDocIndex ||
+                targetIndex < 0 ||
+                targetIndex >= documents.length
+            ) {
+                return
             }
-        } catch (err: any) {
-            if (addToast) addToast(`Error: ${err.message}`, 'error')
-        }
-    }, [
-        filteredEntries,
-        selectedEntryIndex,
-        workspaceDir,
-        addToast,
-        loadMemory,
-        refreshAgentSession,
-    ])
 
-    // Action: Submit new memory entry
-    const handleAddSubmit = useCallback(async () => {
-        const text = newEntryText.trim()
-        if (!text) {
-            setIsAddingEntry(false)
-            setNewEntryText('')
-            return
-        }
-
-        const category = MEMORY_CATEGORIES[newEntryCategoryIndex] || 'general'
-        try {
-            const res = await recordMemoryDirect(workspaceDir, text, category)
-            if (res.success) {
-                if (addToast) addToast(`Recorded under "${category}".`, 'success')
-                setIsAddingEntry(false)
-                setNewEntryText('')
-                await loadMemory()
-                refreshAgentSession()
-            } else {
-                if (addToast) addToast(res.message, 'warning')
+            if (currentDoc) {
+                scrollPositionsRef.current[currentDoc.id] = {
+                    cursorIndex: cursorLineIndex,
+                    scrollOffset,
+                }
             }
-        } catch (err: any) {
-            if (addToast) addToast(`Error: ${err.message}`, 'error')
-        }
-    }, [
-        newEntryText,
-        newEntryCategoryIndex,
-        workspaceDir,
-        addToast,
-        loadMemory,
-        refreshAgentSession,
-    ])
 
-    // Action: Clear all memory
-    const handleClearAllMemory = useCallback(async () => {
-        try {
-            const res = await clearMemoryDirect(workspaceDir)
-            if (res.success) {
-                if (addToast) addToast('Cleared all workspace memory.', 'success')
-                await loadMemory()
-                refreshAgentSession()
-            } else {
-                if (addToast) addToast(res.message, 'info')
+            setActiveDocIndex(targetIndex)
+
+            const targetDoc = documents[targetIndex]
+            if (targetDoc && scrollPositionsRef.current[targetDoc.id]) {
+                const saved = scrollPositionsRef.current[targetDoc.id]
+                if (saved) {
+                    setCursorLineIndex(saved.cursorIndex)
+                    setScrollOffset(saved.scrollOffset)
+                    return
+                }
             }
-        } catch (err: any) {
-            if (addToast) addToast(`Error: ${err.message}`, 'error')
-        } finally {
-            setIsConfirmingClear(false)
-        }
-    }, [workspaceDir, addToast, loadMemory, refreshAgentSession])
 
-    // Action: Scaffold AGENTS.md in workspace root
-    const handleScaffoldAgentsMd = useCallback(async () => {
-        const targetPath = path.join(workspaceDir, 'AGENTS.md')
-        try {
-            await fs.writeFile(targetPath, DEFAULT_AGENTS_MD_TEMPLATE, 'utf8')
-            if (addToast) addToast('Created AGENTS.md at project root.', 'success')
-            loadRules()
-            refreshAgentSession()
-        } catch (err: any) {
-            if (addToast) addToast(`Failed to create AGENTS.md: ${err.message}`, 'error')
-        }
-    }, [workspaceDir, addToast, loadRules, refreshAgentSession])
-
-    // Action: Open in editor
-    const handleOpenFile = useCallback(
-        (targetFilePath: string) => {
-            if (handleSubmit) {
-                handleSubmit(`/open ${targetFilePath}`)
-            } else if (addToast) {
-                addToast(`Open target: ${targetFilePath}`, 'info')
-            }
+            setCursorLineIndex(0)
+            setScrollOffset(0)
         },
-        [handleSubmit, addToast]
+        [safeDocIndex, documents, currentDoc, cursorLineIndex, scrollOffset]
     )
 
-    // Keyboard navigation
+    // Keyboard navigation (arrows only for scrolling, no j/k)
     useInput((input, key) => {
-        // Esc: exit current sub-modal or close menu
-        if (key.escape) {
-            if (isAddingEntry) {
-                setIsAddingEntry(false)
-                setNewEntryText('')
-                return
-            }
-            if (isConfirmingClear) {
-                setIsConfirmingClear(false)
-                return
-            }
-            if (isSearching) {
-                setIsSearching(false)
-                setSearchQuery('')
-                return
-            }
+        // Close menu
+        if (key.escape || (key.ctrl && input === 'c')) {
             handleClose()
             return
         }
 
-        // Sub-modal: Confirm clear memory
-        if (isConfirmingClear) {
-            if (input === 'y' || input === 'Y') {
-                handleClearAllMemory()
-            } else if (input === 'n' || input === 'N') {
-                setIsConfirmingClear(false)
+        // Tab switching: Tab, Shift+Tab, Left/Right arrow keys
+        if (key.tab || key.rightArrow) {
+            if (documents.length > 1) {
+                const step = key.shift ? -1 : 1
+                const next = (safeDocIndex + step + documents.length) % documents.length
+                switchDocument(next)
             }
             return
         }
 
-        // Sub-modal: Adding entry category cycle
-        if (isAddingEntry) {
-            if (key.tab) {
-                setNewEntryCategoryIndex((prev) => (prev + 1) % MEMORY_CATEGORIES.length)
-                return
-            }
-            if (key.return) {
-                handleAddSubmit()
-                return
+        if (key.leftArrow) {
+            if (documents.length > 1) {
+                const next = (safeDocIndex - 1 + documents.length) % documents.length
+                switchDocument(next)
             }
             return
         }
 
-        // Tab: toggle active tab (Workspace Memory vs Rules)
-        if (key.tab) {
-            setActiveTab((prev) => (prev === 'memory' ? 'rules' : 'memory'))
+        // Number keys 1-9 to jump directly to a tab
+        const num = parseInt(input, 10)
+        if (!isNaN(num) && num >= 1 && num <= documents.length) {
+            switchDocument(num - 1)
             return
         }
 
-        // Number keys 1 and 2 to switch tabs directly
-        if (!isSearching) {
-            if (input === '1') {
-                setActiveTab('memory')
-                return
-            }
-            if (input === '2') {
-                setActiveTab('rules')
-                return
-            }
-        }
+        if (totalLines === 0) return
 
-        // Search toggle in memory tab
-        if (activeTab === 'memory' && !isSearching && input === '/') {
-            setIsSearching(true)
-            return
-        }
-
-        // --- Memory Tab Navigation & Actions ---
-        if (activeTab === 'memory') {
-            if (key.upArrow || input === 'k') {
-                setSelectedEntryIndex((prev) => Math.max(0, prev - 1))
-                return
-            }
-            if (key.downArrow || input === 'j') {
-                setSelectedEntryIndex((prev) => Math.min(filteredEntries.length - 1, prev + 1))
-                return
-            }
-
-            // Category filter cycling (left/right arrows)
-            if (key.leftArrow || key.rightArrow) {
-                const cats = ['all', ...MEMORY_CATEGORIES]
-                const currentIdx = cats.indexOf(selectedCategoryFilter)
-                const nextIdx = key.rightArrow
-                    ? (currentIdx + 1) % cats.length
-                    : (currentIdx - 1 + cats.length) % cats.length
-                setSelectedCategoryFilter(cats[nextIdx] || 'all')
-                setSelectedEntryIndex(0)
-                return
-            }
-
-            // [a]: Add new memory entry
-            if (input === 'a' || input === 'A') {
-                setIsAddingEntry(true)
-                setNewEntryText('')
-                return
-            }
-
-            // [d]: Delete / Forget selected entry
-            if (input === 'd' || input === 'D') {
-                handleForgetEntry()
-                return
-            }
-
-            // [e]: Edit file in editor
-            if (input === 'e' || input === 'E') {
-                const fileToOpen =
-                    memoryDetails?.targetFile || path.join(workspaceDir, '.december', 'memory.md')
-                handleOpenFile(fileToOpen)
-                return
-            }
-
-            // [x] or [C]: Clear all memory prompt
-            if (input === 'x' || input === 'X' || input === 'C') {
-                setIsConfirmingClear(true)
-                return
-            }
-
-            // [r]: Reload memory from disk
-            if (input === 'r' || input === 'R') {
-                loadMemory()
-                refreshAgentSession()
-                if (addToast) addToast('Reloaded workspace memory from disk.', 'info')
-                return
-            }
-        }
-
-        // --- Rules Tab Navigation & Actions ---
-        if (activeTab === 'rules') {
-            if (key.upArrow || input === 'k') {
-                if (key.shift || input === 'K') {
-                    // Scroll rule content up
-                    setRuleScrollOffset((prev) => Math.max(0, prev - 5))
-                } else {
-                    // Navigate files
-                    setSelectedRuleIndex((prev) => Math.max(0, prev - 1))
-                    setRuleScrollOffset(0)
+        // Scrolling: Up arrow (no j/k)
+        if (key.upArrow) {
+            setCursorLineIndex((prev) => {
+                const next = Math.max(0, prev - 1)
+                if (next < scrollOffset) {
+                    setScrollOffset(next)
                 }
-                return
-            }
-            if (key.downArrow || input === 'j') {
-                if (key.shift || input === 'J') {
-                    // Scroll rule content down
-                    setRuleScrollOffset((prev) => prev + 5)
-                } else {
-                    // Navigate files
-                    setSelectedRuleIndex((prev) => Math.min(ruleFiles.length - 1, prev + 1))
-                    setRuleScrollOffset(0)
+                return next
+            })
+            return
+        }
+
+        // Scrolling: Down arrow (no j/k)
+        if (key.downArrow) {
+            setCursorLineIndex((prev) => {
+                const next = Math.min(totalLines - 1, prev + 1)
+                if (next >= scrollOffset + visibleLineCount) {
+                    setScrollOffset(next - visibleLineCount + 1)
                 }
-                return
-            }
+                return next
+            })
+            return
+        }
 
-            if (key.pageUp) {
-                setRuleScrollOffset((prev) => Math.max(0, prev - 10))
-                return
-            }
-            if (key.pageDown) {
-                setRuleScrollOffset((prev) => prev + 10)
-                return
-            }
+        // Page navigation: PageUp / PageDown
+        if (key.pageUp) {
+            setCursorLineIndex((prev) => {
+                const next = Math.max(0, prev - visibleLineCount)
+                setScrollOffset((offset) => Math.max(0, offset - visibleLineCount))
+                return next
+            })
+            return
+        }
 
-            // [c]: Scaffold starter AGENTS.md if none exists
-            if (input === 'c' || input === 'C') {
-                handleScaffoldAgentsMd()
-                return
-            }
-
-            // [e]: Edit active rule file
-            if (input === 'e' || input === 'E') {
-                const currentRule = ruleFiles[selectedRuleIndex]
-                const target = currentRule?.path || path.join(workspaceDir, 'AGENTS.md')
-                handleOpenFile(target)
-                return
-            }
-
-            // [r]: Reload rules and hot-refresh agent context
-            if (input === 'r' || input === 'R') {
-                loadRules()
-                refreshAgentSession()
-                if (addToast) addToast('Reloaded rules and updated agent context.', 'success')
-                return
-            }
+        if (key.pageDown) {
+            setCursorLineIndex((prev) => {
+                const next = Math.min(totalLines - 1, prev + visibleLineCount)
+                setScrollOffset((offset) =>
+                    Math.min(Math.max(0, totalLines - visibleLineCount), offset + visibleLineCount)
+                )
+                return next
+            })
+            return
         }
     })
 
-    // Compute byte budget metrics
-    const totalBytes = memoryDetails?.totalBytes || 0
-    const maxBytes = memoryDetails?.maxBytes || MAX_WORKSPACE_MEMORY_BYTES
-    const usagePct = Math.min(100, (totalBytes / maxBytes) * 100)
-    const budgetGaugeWidth = 16
-    const filledGauge = Math.round((usagePct / 100) * budgetGaugeWidth)
-    const emptyGauge = Math.max(0, budgetGaugeWidth - filledGauge)
-    const gaugeColor =
-        usagePct >= 90
-            ? THEME.colors.error
-            : usagePct >= 75
-              ? THEME.colors.warning
-              : THEME.colors.brand
+    const visibleLines = contentLines.slice(scrollOffset, scrollOffset + visibleLineCount)
+    const gutterWidth = Math.max(3, String(totalLines).length)
+    const remainingRows = Math.max(0, visibleLineCount - visibleLines.length)
 
-    // Active rule file content preview
-    const activeRule = ruleFiles[selectedRuleIndex]
-    const activeRuleLines = useMemo(() => {
-        if (!activeRule) return []
-        return activeRule.content.split('\n')
-    }, [activeRule])
+    const byteSize = currentDoc ? Buffer.byteLength(currentDoc.content, 'utf8') : 0
+    const formatKb = (bytes: number) => {
+        if (bytes < 1024) return `${bytes} B`
+        return `${(bytes / 1024).toFixed(1)} KB`
+    }
 
-    const visibleRuleLineCount = Math.max(5, rows - 12)
-    const displayedRuleLines = activeRuleLines.slice(
-        ruleScrollOffset,
-        ruleScrollOffset + visibleRuleLineCount
-    )
-
-    // Build footer hints based on state
-    const footerItems: MenuFooterItem[] = useMemo(() => {
-        if (isConfirmingClear) {
-            return [
-                { key: 'y', label: 'Confirm Clear' },
-                { key: 'n', label: 'Cancel' },
-                { key: 'Esc', label: 'Back' },
-            ]
-        }
-        if (isAddingEntry) {
-            return [
-                { key: 'Tab', label: 'Cycle Category' },
-                { key: 'Enter', label: 'Save Entry' },
-                { key: 'Esc', label: 'Cancel' },
-            ]
-        }
-        if (activeTab === 'memory') {
-            return [
-                { key: 'Tab', label: 'Rules' },
-                { key: '↑/↓', label: 'Navigate' },
-                { key: '←/→', label: 'Category' },
-                { key: 'a', label: 'Add' },
-                { key: 'd', label: 'Forget' },
-                { key: 'e', label: 'Edit File' },
-                { key: 'x', label: 'Clear' },
-                { key: 'r', label: 'Reload' },
-                { key: '/', label: 'Search' },
-                { key: 'Esc', label: 'Close' },
-            ]
-        }
-        return [
-            { key: 'Tab', label: 'Memory' },
-            { key: '↑/↓', label: 'Files' },
-            { key: 'Shift+↑/↓', label: 'Scroll' },
-            { key: 'c', label: 'Create AGENTS.md' },
-            { key: 'e', label: 'Edit' },
-            { key: 'r', label: 'Hot Reload' },
-            { key: 'Esc', label: 'Close' },
-        ]
-    }, [isConfirmingClear, isAddingEntry, activeTab])
+    const footerItems: MenuFooterItem[] = [
+        { key: 'Tab / ← →', label: 'switch file' },
+        { key: '↑/↓', label: 'scroll' },
+        { key: 'PgUp/PgDn', label: 'page' },
+        { key: 'Esc', label: 'close' },
+    ]
 
     return (
         <Box
@@ -537,337 +360,104 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
             paddingX={1}
             width={Math.min(columns, 110)}
         >
-            {/* Header: Title, Budget & Tabs */}
-            <Box flexDirection="column" paddingBottom={1}>
-                <Box justifyContent="space-between" width="100%">
-                    <Box gap={1}>
-                        <Text bold color={THEME.colors.brand}>
-                            Agent Memory & Rules
-                        </Text>
-                        <Text color={THEME.colors.dim}>│</Text>
-                        <Text color={THEME.colors.muted}>
-                            {activeTab === 'memory' ? 'Workspace Memory' : 'Project Guidelines'}
-                        </Text>
-                    </Box>
-                    <Box gap={1}>
-                        <Text color={THEME.colors.muted}>Budget:</Text>
-                        <Text color={gaugeColor} bold>
-                            {totalBytes} / {maxBytes} B ({usagePct.toFixed(0)}%)
-                        </Text>
-                        <Text color={gaugeColor}>{'█'.repeat(filledGauge)}</Text>
-                        <Text color={THEME.colors.dim}>{'░'.repeat(emptyGauge)}</Text>
-                    </Box>
-                </Box>
-
-                {/* Tabs */}
-                <Box gap={2} paddingTop={1}>
-                    <Box
-                        borderStyle={activeTab === 'memory' ? 'single' : undefined}
-                        borderColor={THEME.colors.brand}
-                        paddingX={1}
-                    >
-                        <Text
-                            bold={activeTab === 'memory'}
-                            color={activeTab === 'memory' ? THEME.colors.brand : THEME.colors.muted}
+            {/* Top Bar: Tabs for each discovered file */}
+            <Box gap={1} paddingBottom={1} flexWrap="wrap">
+                {documents.map((doc, idx) => {
+                    const isActive = idx === safeDocIndex
+                    return (
+                        <Box
+                            key={doc.id}
+                            borderStyle={isActive ? 'single' : undefined}
+                            borderColor={THEME.colors.brand}
+                            paddingX={1}
                         >
-                            [1] Workspace Memory ({filteredEntries.length})
-                        </Text>
-                    </Box>
-                    <Box
-                        borderStyle={activeTab === 'rules' ? 'single' : undefined}
-                        borderColor={THEME.colors.brand}
-                        paddingX={1}
-                    >
-                        <Text
-                            bold={activeTab === 'rules'}
-                            color={activeTab === 'rules' ? THEME.colors.brand : THEME.colors.muted}
-                        >
-                            [2] Rules & Guidelines ({ruleFiles.length} file
-                            {ruleFiles.length === 1 ? '' : 's'})
-                        </Text>
-                    </Box>
-                </Box>
+                            <Text
+                                bold={isActive}
+                                color={isActive ? THEME.colors.brand : THEME.colors.muted}
+                            >
+                                [{idx + 1}] {doc.title}
+                                {!doc.exists && ' (empty)'}
+                            </Text>
+                        </Box>
+                    )
+                })}
             </Box>
 
-            {/* Sub-modal: Confirm Clear Memory */}
-            {isConfirmingClear && (
-                <Box
-                    borderStyle="single"
-                    borderColor={THEME.colors.error}
-                    padding={1}
-                    flexDirection="column"
-                    marginY={1}
-                >
-                    <Text bold color={THEME.colors.error}>
-                        Clear All Workspace Memory?
-                    </Text>
-                    <Text color={THEME.colors.text}>
-                        This will erase all recorded memories from {memoryDetails?.targetFile}. This
-                        action cannot be undone.
-                    </Text>
-                    <Box paddingTop={1} gap={2}>
-                        <Text bold color={THEME.colors.error}>
-                            [y] Confirm and Erase
+            {/* Document Header: File path, line count, byte size, coordinates */}
+            {currentDoc && (
+                <Box justifyContent="space-between" width="100%" marginBottom={1}>
+                    <Box gap={1} flexShrink={1}>
+                        <Text bold color={THEME.colors.brand}>
+                            {currentDoc.title}
                         </Text>
-                        <Text color={THEME.colors.muted}>[n] Cancel</Text>
-                    </Box>
-                </Box>
-            )}
-
-            {/* Sub-modal: Add New Memory Entry */}
-            {isAddingEntry && (
-                <Box
-                    borderStyle="single"
-                    borderColor={THEME.colors.brand}
-                    padding={1}
-                    flexDirection="column"
-                    marginY={1}
-                >
-                    <Text bold color={THEME.colors.brand}>
-                        Record New Workspace Memory
-                    </Text>
-                    <Box gap={1} paddingTop={1}>
-                        <Text color={THEME.colors.muted}>Category:</Text>
-                        <Text bold color={THEME.colors.warning}>
-                            [{MEMORY_CATEGORIES[newEntryCategoryIndex]}]
+                        <Text color={THEME.colors.dim}>·</Text>
+                        <Text color={THEME.colors.muted} wrap="truncate-end">
+                            {currentDoc.displayPath}
                         </Text>
-                        <Text color={THEME.colors.dim}>(Press Tab to cycle category)</Text>
+                        {totalLines > 0 && (
+                            <Text color={THEME.colors.dim}>
+                                ({totalLines} lines, {formatKb(byteSize)})
+                            </Text>
+                        )}
                     </Box>
-                    <Box paddingTop={1}>
-                        <Text color={THEME.colors.brand}>Entry: </Text>
-                        <TextInput
-                            value={newEntryText}
-                            onChange={setNewEntryText}
-                            placeholder="e.g. bun test requires test DB migration first"
-                            focus={true}
-                        />
+                    <Box flexShrink={0} marginLeft={1}>
+                        <Text color={THEME.colors.text} bold>
+                            line {totalLines > 0 ? cursorLineIndex + 1 : 0}:{totalLines}
+                        </Text>
                     </Box>
                 </Box>
             )}
 
-            {/* Search Bar for Memory Tab */}
-            {activeTab === 'memory' && isSearching && !isAddingEntry && !isConfirmingClear && (
-                <Box paddingY={1} gap={1}>
-                    <Text color={THEME.colors.brand}>Search Memory: </Text>
-                    <TextInput
-                        value={searchQuery}
-                        onChange={setSearchQuery}
-                        placeholder="filter memories by keyword..."
-                        focus={true}
-                    />
-                </Box>
-            )}
+            {/* Main Content Viewport */}
+            <Box flexDirection="column" minHeight={visibleLineCount}>
+                {isLoading ? (
+                    <Text color={THEME.colors.muted}>Loading agent memory and rules...</Text>
+                ) : !currentDoc || !currentDoc.exists || totalLines === 0 ? (
+                    <Box flexDirection="column" paddingY={2} gap={1}>
+                        <Text color={THEME.colors.warning} bold>
+                            {currentDoc?.isMemory
+                                ? 'No workspace memory recorded yet.'
+                                : 'No project rules found in workspace.'}
+                        </Text>
+                        <Text color={THEME.colors.dim}>
+                            {currentDoc?.isMemory
+                                ? 'December automatically records workspace notes, build commands, and quirks into .december/memory.md as you work.'
+                                : 'Create an AGENTS.md or .december/rules.md file in your repository to define persistent guidelines for the agent.'}
+                        </Text>
+                    </Box>
+                ) : (
+                    <Box flexDirection="column" width="100%">
+                        {visibleLines.map((line, idx) => {
+                            const lineNum = scrollOffset + idx + 1
+                            const isCursor = scrollOffset + idx === cursorLineIndex
+                            const numStr = String(lineNum).padStart(gutterWidth, ' ')
 
-            {/* TAB 1: WORKSPACE MEMORY */}
-            {activeTab === 'memory' && !isAddingEntry && !isConfirmingClear && (
-                <Box flexDirection="column" flexGrow={1} minHeight={8}>
-                    {/* Category Filter Pills */}
-                    <Box gap={1} paddingBottom={1}>
-                        <Text color={THEME.colors.muted}>Filter:</Text>
-                        {['all', ...MEMORY_CATEGORIES].map((cat) => {
-                            const isSelected = selectedCategoryFilter === cat
                             return (
-                                <Text
-                                    key={cat}
-                                    color={isSelected ? THEME.colors.brand : THEME.colors.dim}
-                                    bold={isSelected}
-                                >
-                                    {isSelected ? `▶[${cat}]` : `[${cat}]`}
-                                </Text>
+                                <Box key={idx} width="100%">
+                                    <Text
+                                        color={isCursor ? THEME.colors.brand : THEME.colors.border}
+                                    >
+                                        {numStr} │{' '}
+                                    </Text>
+                                    <Text
+                                        color={isCursor ? THEME.colors.text : THEME.colors.muted}
+                                        wrap="truncate"
+                                    >
+                                        {line || ' '}
+                                    </Text>
+                                </Box>
                             )
                         })}
+
+                        {/* Fill empty viewport rows with subtle tildes */}
+                        {Array.from({ length: remainingRows }).map((_, idx) => (
+                            <Box key={`tilde-${idx}`} width="100%">
+                                <Text color={THEME.colors.border}>{' '.repeat(gutterWidth)} ~</Text>
+                            </Box>
+                        ))}
                     </Box>
-
-                    {isMemoryLoading ? (
-                        <Text color={THEME.colors.muted}>Loading workspace memory...</Text>
-                    ) : filteredEntries.length === 0 ? (
-                        <Box flexDirection="column" paddingY={2}>
-                            <Text color={THEME.colors.muted}>
-                                No memories recorded yet in this workspace.
-                            </Text>
-                            <Text color={THEME.colors.dim}>
-                                Press [a] to record an entry, or December will automatically note
-                                conventions as you pair program.
-                            </Text>
-                        </Box>
-                    ) : (
-                        <Box flexDirection={isNarrow ? 'column' : 'row'} gap={2}>
-                            {/* Entry list */}
-                            <Box flexDirection="column" width={isNarrow ? '100%' : '60%'}>
-                                {filteredEntries.map((item, idx) => {
-                                    const isSelected = idx === selectedEntryIndex
-                                    return (
-                                        <Box key={idx} gap={1}>
-                                            <Text
-                                                color={
-                                                    isSelected
-                                                        ? THEME.colors.brand
-                                                        : THEME.colors.muted
-                                                }
-                                                bold={isSelected}
-                                            >
-                                                {isSelected ? '❭' : ' '} [{item.category}]
-                                            </Text>
-                                            <Text
-                                                color={
-                                                    isSelected
-                                                        ? THEME.colors.text
-                                                        : THEME.colors.muted
-                                                }
-                                                wrap="truncate"
-                                            >
-                                                {item.text}
-                                            </Text>
-                                        </Box>
-                                    )
-                                })}
-                            </Box>
-
-                            {/* Entry Detail Panel */}
-                            {!isNarrow && (
-                                <Box
-                                    flexDirection="column"
-                                    width="40%"
-                                    borderStyle="single"
-                                    borderColor={THEME.colors.border}
-                                    padding={1}
-                                >
-                                    <Text bold color={THEME.colors.brand}>
-                                        Entry Details
-                                    </Text>
-                                    {filteredEntries[selectedEntryIndex] ? (
-                                        <Box flexDirection="column" paddingTop={1} gap={1}>
-                                            <Box gap={1}>
-                                                <Text color={THEME.colors.muted}>Category:</Text>
-                                                <Text color={THEME.colors.warning}>
-                                                    {filteredEntries[selectedEntryIndex]?.category}
-                                                </Text>
-                                            </Box>
-                                            <Box gap={1}>
-                                                <Text color={THEME.colors.muted}>Target:</Text>
-                                                <Text color={THEME.colors.text}>
-                                                    {path.basename(
-                                                        filteredEntries[selectedEntryIndex]
-                                                            ?.sourceFile || '.december/memory.md'
-                                                    )}
-                                                </Text>
-                                            </Box>
-                                            <Box flexDirection="column" paddingTop={1}>
-                                                <Text color={THEME.colors.muted}>Content:</Text>
-                                                <Text color={THEME.colors.text} wrap="wrap">
-                                                    {filteredEntries[selectedEntryIndex]?.text}
-                                                </Text>
-                                            </Box>
-                                        </Box>
-                                    ) : (
-                                        <Text color={THEME.colors.dim}>Select an entry</Text>
-                                    )}
-                                </Box>
-                            )}
-                        </Box>
-                    )}
-                </Box>
-            )}
-
-            {/* TAB 2: RULES & GUIDELINES (AGENTS.md) */}
-            {activeTab === 'rules' && (
-                <Box flexDirection="column" flexGrow={1} minHeight={8}>
-                    {isRulesLoading ? (
-                        <Text color={THEME.colors.muted}>Scanning for project rules...</Text>
-                    ) : ruleFiles.length === 0 ? (
-                        <Box flexDirection="column" paddingY={2} gap={1}>
-                            <Text color={THEME.colors.warning} bold>
-                                No AGENTS.md or project rules found.
-                            </Text>
-                            <Text color={THEME.colors.muted}>
-                                December loads instructions from AGENTS.md, CLAUDE.md, or
-                                .december/rules.md to align with repository conventions.
-                            </Text>
-                            <Box paddingTop={1}>
-                                <Text bold color={THEME.colors.brand}>
-                                    Press [c] to create a starter AGENTS.md in the project root.
-                                </Text>
-                            </Box>
-                        </Box>
-                    ) : (
-                        <Box flexDirection={isNarrow ? 'column' : 'row'} gap={2}>
-                            {/* Rule file selector */}
-                            <Box flexDirection="column" width={isNarrow ? '100%' : '35%'}>
-                                <Box paddingBottom={1}>
-                                    <Text color={THEME.colors.muted} bold>
-                                        Discovered Rule Files ({ruleFiles.length}):
-                                    </Text>
-                                </Box>
-                                {ruleFiles.map((rf, idx) => {
-                                    const isSelected = idx === selectedRuleIndex
-                                    const relPath = path.relative(workspaceDir, rf.path)
-                                    const displayName = relPath.startsWith('..')
-                                        ? path.basename(rf.path) + ' (parent)'
-                                        : relPath || path.basename(rf.path)
-                                    const isGlobal =
-                                        rf.path.includes('.december') &&
-                                        !rf.path.startsWith(workspaceDir)
-
-                                    return (
-                                        <Box key={rf.path} gap={1}>
-                                            <Text
-                                                color={
-                                                    isSelected
-                                                        ? THEME.colors.brand
-                                                        : THEME.colors.muted
-                                                }
-                                                bold={isSelected}
-                                            >
-                                                {isSelected ? '❭' : ' '} {displayName}
-                                            </Text>
-                                            {isGlobal && (
-                                                <Text color={THEME.colors.dim}>[global]</Text>
-                                            )}
-                                        </Box>
-                                    )
-                                })}
-                            </Box>
-
-                            {/* Rule File Content Viewer */}
-                            <Box
-                                flexDirection="column"
-                                width={isNarrow ? '100%' : '65%'}
-                                borderStyle="single"
-                                borderColor={THEME.colors.border}
-                                padding={1}
-                            >
-                                <Box justifyContent="space-between" paddingBottom={1}>
-                                    <Text bold color={THEME.colors.brand}>
-                                        {activeRule
-                                            ? path.basename(activeRule.path)
-                                            : 'No Rule Selected'}
-                                    </Text>
-                                    {activeRuleLines.length > visibleRuleLineCount && (
-                                        <Text color={THEME.colors.dim}>
-                                            Lines {ruleScrollOffset + 1}-
-                                            {Math.min(
-                                                ruleScrollOffset + visibleRuleLineCount,
-                                                activeRuleLines.length
-                                            )}{' '}
-                                            of {activeRuleLines.length} (Shift+↑/↓ to scroll)
-                                        </Text>
-                                    )}
-                                </Box>
-
-                                {displayedRuleLines.length > 0 ? (
-                                    displayedRuleLines.map((line, lIdx) => (
-                                        <Text key={lIdx} color={THEME.colors.text} wrap="truncate">
-                                            {line || ' '}
-                                        </Text>
-                                    ))
-                                ) : (
-                                    <Text color={THEME.colors.dim}>Empty file</Text>
-                                )}
-                            </Box>
-                        </Box>
-                    )}
-                </Box>
-            )}
+                )}
+            </Box>
 
             {/* Footer with key hints */}
             <MenuFooter items={footerItems} />

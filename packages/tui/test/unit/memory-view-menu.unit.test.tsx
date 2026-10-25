@@ -31,7 +31,7 @@ describe('MemoryViewMenu Component (Unit)', () => {
         await rm(testDir, { recursive: true, force: true })
     })
 
-    it('renders memory view menu with header, budget, and workspace memory entries', async () => {
+    it('renders memory view menu with tabs, file header, and line-numbered viewport', async () => {
         const handleClose = mock()
         const { lastFrame } = renderWithProviders(
             <MemoryViewMenu onClose={handleClose} workspaceDir={testDir} />
@@ -41,35 +41,33 @@ describe('MemoryViewMenu Component (Unit)', () => {
         await new Promise((resolve) => setTimeout(resolve, 50))
         const frame = lastFrame()
 
-        expect(frame).toContain('Agent Memory & Rules')
-        expect(frame).toContain('Budget:')
-        expect(frame).toContain('Workspace Memory')
-        expect(frame).toContain('Rules & Guidelines')
+        expect(frame).toContain('memory.md')
+        expect(frame).toContain('AGENTS.md')
         expect(frame).toContain('lowercase commits')
         expect(frame).toContain('no em dashes')
         expect(frame).toContain('bun test before push')
+        expect(frame).toContain('line')
     })
 
-    it('switches between Workspace Memory and Rules tabs via Tab key', async () => {
+    it('switches between memory.md and AGENTS.md tabs via Tab or arrow keys', async () => {
         const handleClose = mock()
         const { lastFrame, stdin } = renderWithProviders(
             <MemoryViewMenu onClose={handleClose} workspaceDir={testDir} />
         )
 
         await new Promise((resolve) => setTimeout(resolve, 50))
-        expect(lastFrame()).toContain('Workspace Memory')
+        expect(lastFrame()).toContain('lowercase commits')
 
-        // Press Tab to switch to Rules tab
+        // Press Tab to switch to AGENTS.md
         stdin.write('\t')
         await new Promise((resolve) => setTimeout(resolve, 50))
 
         const rulesFrame = lastFrame()
-        expect(rulesFrame).toContain('Discovered Rule Files')
-        expect(rulesFrame).toContain('AGENTS.md')
+        expect(rulesFrame).toContain('Project Guidelines')
         expect(rulesFrame).toContain('follow module architecture')
 
-        // Press Tab again to switch back
-        stdin.write('\t')
+        // Press Left arrow to switch back to memory.md
+        stdin.write('\u001B[D')
         await new Promise((resolve) => setTimeout(resolve, 50))
         expect(lastFrame()).toContain('lowercase commits')
     })
@@ -82,54 +80,49 @@ describe('MemoryViewMenu Component (Unit)', () => {
 
         await new Promise((resolve) => setTimeout(resolve, 50))
         const frame = lastFrame()
-        expect(frame).toContain('Discovered Rule Files')
         expect(frame).toContain('AGENTS.md')
+        expect(frame).toContain('Project Guidelines')
+        expect(frame).toContain('follow module architecture')
     })
 
-    it('opens add entry sub-modal on "a" key', async () => {
+    it('scrolls content with Up/Down arrow keys', async () => {
         const handleClose = mock()
         const { lastFrame, stdin } = renderWithProviders(
             <MemoryViewMenu onClose={handleClose} workspaceDir={testDir} />
         )
 
         await new Promise((resolve) => setTimeout(resolve, 50))
-        expect(lastFrame()).toContain('Agent Memory & Rules')
+        expect(lastFrame()).toContain('line 1:')
 
-        // Press 'a' to enter add mode
-        stdin.write('a')
+        // Down arrow scrolls down
+        stdin.write('\u001B[B')
         await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(lastFrame()).toContain('line 2:')
 
-        const addFrame = lastFrame()
-        expect(addFrame).toContain('Record New Workspace Memory')
-        expect(addFrame).toContain('Category:')
-        expect(addFrame).toContain('Entry:')
-
-        // Press Esc to exit add mode
-        stdin.write('\u001B')
+        // Up arrow scrolls back up
+        stdin.write('\u001B[A')
         await new Promise((resolve) => setTimeout(resolve, 50))
-        expect(lastFrame()).not.toContain('Record New Workspace Memory')
+        expect(lastFrame()).toContain('line 1:')
     })
 
-    it('opens confirm clear sub-modal on "x" key', async () => {
+    it('does not scroll with j or k keys (arrow navigation only)', async () => {
         const handleClose = mock()
         const { lastFrame, stdin } = renderWithProviders(
             <MemoryViewMenu onClose={handleClose} workspaceDir={testDir} />
         )
 
         await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(lastFrame()).toContain('line 1:')
 
-        // Press 'x' to confirm clear
-        stdin.write('x')
+        // Press 'j' - should NOT scroll
+        stdin.write('j')
         await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(lastFrame()).toContain('line 1:')
 
-        const clearFrame = lastFrame()
-        expect(clearFrame).toContain('Clear All Workspace Memory?')
-        expect(clearFrame).toContain('[y] Confirm and Erase')
-
-        // Press 'n' to cancel
-        stdin.write('n')
+        // Press 'k' - should NOT scroll
+        stdin.write('k')
         await new Promise((resolve) => setTimeout(resolve, 50))
-        expect(lastFrame()).not.toContain('Clear All Workspace Memory?')
+        expect(lastFrame()).toContain('line 1:')
     })
 
     it('closes menu when pressing Escape', async () => {
