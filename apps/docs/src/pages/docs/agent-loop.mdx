@@ -1,13 +1,13 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Agent Reasoning Loop
-description: How December plans, verifies, and self-corrects during complex code refactoring and feature implementation.
+description: How December reads files, plans changes, makes safe edits, and tests everything before finishing.
 currentSlug: 'agent-loop'
 ---
 
-## The Four-Phase Execution Loop
+## The Four-Phase Loop
 
-Rather than generating speculative code strings in a single pass, December enforces a deterministic four-phase loop:
+Instead of blindly generating code, December follows four straightforward steps: inspect your repository, write a clear plan, make small edits, and test everything:
 
 <div class="my-8 p-4 sm:p-6 border border-[#e2e8f0] bg-[#f8fafc]/50 relative">
   <span class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#87b2f4]"></span>

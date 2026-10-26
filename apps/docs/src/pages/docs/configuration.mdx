@@ -1,0 +1,87 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Configuration & Project Rules
+description: Customize global defaults and use AGENTS.md to enforce coding standards across your team.
+currentSlug: 'configuration'
+---
+
+December works out of the box with zero configuration. When you want to customize default models, enforce repository conventions, or set environment variables, use the configuration options below.
+
+## 1. Project Rules (AGENTS.md)
+
+You can place an `AGENTS.md` file in the root of your repository. December reads this file at the start of every session to understand your team's specific requirements.
+
+Example `AGENTS.md`:
+
+```markdown
+# AGENTS.md
+
+## Code Standards
+- Use TypeScript strict mode with explicit return types on public functions.
+- Write unit tests in Bun test (`bun test`).
+- Never leave empty catch blocks.
+
+## Commit Guidelines
+- Write all commit messages in lowercase only.
+- Format: `feat(scope): concise description`.
+```
+
+Whenever December plans a task, modifies files, or writes commit messages, it automatically aligns with the rules in your `AGENTS.md`.
+
+## 2. Global CLI Config (~/.december/config.json)
+
+Global user settings are stored in `~/.december/config.json`. This file is created when you first run `december login` or configure preferences:
+
+```json
+{
+  "defaultModel": "claude-3-7-sonnet",
+  "theme": "terminal",
+  "autoOpenPreviews": true,
+  "telemetry": false
+}
+```
+
+### Supported Global Options
+
+| Key | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `defaultModel` | string | `"claude-3-7-sonnet"` | The fallback model used when `--model` is not passed |
+| `theme` | string | `"terminal"` | Terminal visual theme (`"terminal"` or `"light"`) |
+| `autoOpenPreviews` | boolean | `true` | Automatically open browser preview URLs in cloud workspaces |
+| `telemetry` | boolean | `false` | Anonymous usage diagnostics (off by default) |
+
+## 3. Environment Variables
+
+You can configure December through standard environment variables:
+
+| Variable | Description | Example |
+| :--- | :--- | :--- |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Claude models | `sk-ant-api03-...` |
+| `OPENAI_API_KEY` | OpenAI API key for GPT and reasoning models | `sk-proj-...` |
+| `GEMINI_API_KEY` | Google Gemini API key | `AIzaSy...` |
+| `DEEPSEEK_API_KEY` | DeepSeek API key | `sk-...` |
+| `OPENROUTER_API_KEY` | OpenRouter unified key | `sk-or-...` |
+| `GROQ_API_KEY` | Groq API key for high-speed inference | `gsk_...` |
+| `DECEMBER_LOG_LEVEL` | Verbosity of terminal debug logs | `debug` or `info` |
+
+## 4. Ignoring Files (.decemberignore)
+
+To prevent December from reading sensitive directories or large binary assets, create a `.decemberignore` file in your project root:
+
+```text
+# Node dependencies
+node_modules/
+.next/
+dist/
+
+# Secret files
+.env
+.env.local
+*.pem
+
+# Large assets
+*.mp4
+*.zip
+```
+
+December also automatically respects your `.gitignore` file.

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import CloudNudge from '../components/CloudNudge.astro';
 
 const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
@@ -10,10 +11,9 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
   canonicalUrl="https://trydecember.com"
   hideHeader={false}
   hideFooter={false}
-  preloadBannerImage={false}
 >
   <!-- Page Container: Generous left & right margins with compact vertical rhythm -->
-  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-2 sm:pt-12 sm:pb-3">
+  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-1 sm:pt-12 sm:pb-2">
     
     <!-- Hero Section -->
     <section class="mb-12 sm:mb-16">
@@ -31,7 +31,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       <div class="mt-7 sm:mt-8 w-full">
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full">
           <!-- Command Bar with Package Manager Dropdown -->
-          <div class="relative w-full sm:w-[62%] sm:min-w-[340px]" id="hero-install-container">
+          <div class="relative w-full sm:flex-1 sm:min-w-[300px]" id="hero-install-container">
             <div class="corner-brackets relative h-10 flex items-center justify-between border border-[#e2e8f0] bg-white rounded-none pl-3 sm:pl-3.5 pr-1.5 transition-all hover:border-[#87b2f4]">
               <span class="corner-brackets-tr"></span>
               <span class="corner-brackets-bl"></span>
@@ -197,14 +197,14 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           <!-- Divider: or -->
           <span class="hidden sm:inline font-mono text-xs text-[#94a3b8] font-normal select-none">or</span>
 
-          <!-- Cloud / Web: Get TRY DECEMBER CLOUD Button -->
+          <!-- Cloud / Web: Sign In Button -->
           <a
             href={`${appUrl}/login`}
-            class="corner-brackets relative h-10 inline-flex items-center justify-center gap-2 border border-[#e2e8f0] bg-[#EDF4FE] px-4 font-mono text-xs uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] transition-all active:scale-[0.98] w-full sm:w-auto sm:flex-1"
+            class="corner-brackets relative h-10 inline-flex items-center justify-center gap-2 border border-[#e2e8f0] bg-[#EDF4FE] px-4 font-mono text-xs uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] transition-all active:scale-[0.98] w-full sm:w-52 sm:shrink-0"
           >
             <span class="corner-brackets-tr"></span>
             <span class="corner-brackets-bl"></span>
-            <span>TRY DECEMBER CLOUD</span>
+            <span>SIGN IN</span>
             <svg class="w-3.5 h-3.5 text-[#64748b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
               <path d="M7 17L17 7M17 7H7M17 7V17" />
             </svg>
@@ -379,25 +379,6 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </div>
     </section>
 
-    <!-- Video Player Showcase (Hero Demo) - Temporarily disabled, will be added later
-    <section class="mb-16 sm:mb-20">
-      <div class="relative w-full mx-auto">
-        <div
-          id="hero-video-container"
-          class="relative w-full aspect-video rounded-none border border-[#e2e8f0] bg-black shadow-xl overflow-hidden"
-        >
-          <iframe
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-            title="December Demo Video"
-            class="w-full h-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen
-          ></iframe>
-        </div>
-      </div>
-    </section>
-    -->
-
     <!-- How It Works Section -->
     <section class="mb-16 sm:mb-20">
       <div class="w-full mb-8">
@@ -407,15 +388,12 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
           Everything you need to write, test, and ship code.
         </h3>
-        <div class="mt-3 space-y-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+        <div class="mt-3 space-y-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
           <p>
-            December runs directly inside your local repository. It plans multi-file changes, edits code with precision, and executes shell commands and test suites to verify every fix.
+            December runs directly inside your local repository. It plans multi-file changes, edits code, and executes shell commands and test suites to verify every fix.
           </p>
           <p>
-            Bring the tools and subscriptions you already have: December connects seamlessly to your existing plans, including Claude Code, Codex plan, Antigravity plan, and Copilot plan. It also supports 100+ model providers via BYOK.
-          </p>
-          <p>
-            Need cloud compute or live browser previews? Spin up isolated cloud sandboxes on December Cloud for instant collaboration and visual verification.
+            Bring your own API keys or use your existing subscriptions like Claude Code, Codex, and others. Run locally on your machine, or spin up cloud sandboxes for live browser previews.
           </p>
         </div>
       </div>
@@ -473,7 +451,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               Cloud Sandboxes
             </h4>
             <p class="text-sm text-[#64748b] leading-relaxed">
-              Spin up remote environments and full-stack previews on trydecember.com.
+              Spin up remote environments and live previews.
             </p>
           </div>
 
@@ -484,7 +462,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
 
             <img
-              src="/illustrations/cloud-handoff.webp"
+              src="/illustrations/cloud-sandboxes.webp"
               alt="Cloud Sandboxes"
               width="240"
               height="240"
@@ -510,7 +488,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               Bring your own AI
             </h4>
             <p class="text-sm text-[#64748b] leading-relaxed">
-              Use API keys for OpenAI, Anthropic, Gemini, and 100+ others, or log in via December to use December credits.
+              Use your own API keys or existing subscriptions.
             </p>
           </div>
 
@@ -536,13 +514,16 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
     <!-- Benchmarks & Adoption Section -->
     <section class="mb-16 sm:mb-20">
-      <div class="w-full mb-6 sm:mb-8">
+      <div class="w-full mb-6">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           Benchmarks & Adoption
         </h2>
         <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
           Tested on open benchmarks. Trusted by developers.
         </h3>
+        <p class="mt-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+          Evaluated on open coding benchmarks and used daily across production codebases.
+        </p>
       </div>
 
       <!-- Top Grid: Left Stacked Cards + Right Benchmark Card -->
@@ -582,20 +563,32 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           </div>
 
           <!-- Card 2: Extensible Skills -->
-          <div class="p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex-1">
+          <a
+            href="https://github.com/phasehumans/skills"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group/skills block p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex-1"
+          >
             <div class="flex items-center justify-between font-mono text-xs text-[#090a0f] font-medium mb-3">
               <div class="flex items-center gap-1.5">
                 <span class="text-[#87b2f4] font-semibold">02</span>
                 <span class="text-[#cbd5e1]">/</span>
                 <span>Skills</span>
               </div>
-              <span class="font-mono text-[10px] uppercase tracking-wider text-[#87b2f4] font-medium">Extensibility</span>
+              <span class="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-[#87b2f4] font-medium group-hover/skills:text-[#1c56ba] transition-colors">
+                <span>phasehumans/skills</span>
+                <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M7 17L17 7M17 7H7M17 7V17" />
+                </svg>
+              </span>
             </div>
-            <h4 class="text-sm font-semibold text-[#090a0f]">Custom skills</h4>
+            <h4 class="text-sm font-semibold text-[#090a0f] group-hover/skills:text-[#87b2f4] transition-colors">
+              December skill support
+            </h4>
             <p class="mt-2 text-sm text-[#52525b] leading-relaxed">
-              Extend December with domain-specific skills in <span class="font-mono text-xs text-[#87b2f4] font-semibold">.december/skills</span> to inject custom scripts, tool instructions, and team workflows.
+              Extend December with domain-specific skills from <span class="font-mono text-xs text-[#87b2f4] font-semibold">phasehumans/skills</span> or create custom skills in <span class="font-mono text-xs text-[#87b2f4] font-semibold">.december/skills</span> for custom workflows.
             </p>
-          </div>
+          </a>
         </div>
 
         <!-- Right Column: Benchmarks Card (7 cols) -->
@@ -789,16 +782,16 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         <!-- 01 Local -->
         <div class="p-5 sm:p-6 flex flex-col justify-between border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all group">
           <div>
-            <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
+            <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
               <span class="text-[#87b2f4] font-semibold">01</span>
               <span class="text-[#cbd5e1]">/</span>
               <span>Local</span>
             </div>
-            <h4 class="text-base font-semibold text-[#090a0f] leading-snug">
+            <h4 class="text-base font-semibold text-[#090a0f] mb-1.5">
               Local Terminal
             </h4>
-            <p class="mt-2 text-sm text-[#52525b] leading-relaxed">
-              Runs in your shell with direct access to your local tools, git branches, and compilers.
+            <p class="text-sm text-[#64748b] leading-relaxed">
+              Runs in your shell with direct access to local files, git branches, and compilers. Test changes and execute commands on your machine with zero latency.
             </p>
           </div>
 
@@ -823,16 +816,16 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         <!-- 02 Cloud -->
         <div class="p-5 sm:p-6 flex flex-col justify-between border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all group">
           <div>
-            <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
+            <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
               <span class="text-[#87b2f4] font-semibold">02</span>
               <span class="text-[#cbd5e1]">/</span>
               <span>Cloud</span>
             </div>
-            <h4 class="text-base font-semibold text-[#090a0f] leading-snug">
+            <h4 class="text-base font-semibold text-[#090a0f] mb-1.5">
               Cloud Sandbox
             </h4>
-            <p class="mt-2 text-sm text-[#52525b] leading-relaxed">
-              Runs inside an isolated cloud sandbox. Run code, execute tests, and view live browser previews without touching your local machine.
+            <p class="text-sm text-[#64748b] leading-relaxed">
+              Runs inside isolated micro-VM sandboxes without touching your local system. Execute long-running tasks, run test suites, and inspect live browser previews safely.
             </p>
           </div>
 
@@ -856,9 +849,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       </div>
     </section>
 
-
     <!-- FAQ Section -->
-    <section id="faq" class="mb-11 sm:mb-14">
+    <section id="faq" class="mb-5 sm:mb-7">
       <div class="w-full mb-6 sm:mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           FAQ
@@ -995,35 +987,9 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
       </div>
     </section>
-
-    <!-- Brand Banner above Footer -->
-    <div class="mb-1 sm:mb-2">
-      <a
-        href={`${appUrl}/login`}
-        class="relative block w-full border border-[#e2e8f0] bg-white overflow-hidden group min-h-[100px] sm:min-h-[120px] flex items-center"
-        aria-label="start building with december"
-      >
-        <!-- Pure Dither Background Image -->
-        <img
-          src="/illustrations/banner.webp"
-          alt=""
-          class="absolute inset-0 w-full h-full object-cover object-right select-none pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity duration-300"
-          loading="lazy"
-          decoding="async"
-        />
-
-        <!-- Soft gradient on the left ensuring crisp text contrast -->
-        <div class="absolute inset-y-0 left-0 w-full sm:w-[48%] md:w-[40%] bg-gradient-to-r from-white via-white/80 to-transparent pointer-events-none"></div>
-
-        <!-- Banner Content -->
-        <div class="relative z-10 px-5 sm:px-7 py-3 sm:py-4 flex items-center">
-          <span class="text-xs sm:text-[13px] md:text-sm font-medium tracking-tight text-[#87b2f4] group-hover:text-[#6fa2ee] transition-colors">
-            start building with december
-          </span>
-        </div>
-      </a>
-    </div>
   </div>
+
+  <CloudNudge appUrl={appUrl} />
 </BaseLayout>
 
 <script>
@@ -1048,8 +1014,12 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     };
 
     let currentHeroCmd = heroDisplayCmd?.getAttribute('data-cmd') || heroDisplayCmd?.textContent?.trim() || "curl -fsSL https://trydecember.com/install.sh | bash";
+    let userManuallySelected = false;
 
-    const selectPmOption = (pmName: string, shouldCopy = false) => {
+    const selectPmOption = (pmName: string, shouldCopy = false, isManual = false) => {
+      if (isManual) {
+        userManuallySelected = true;
+      }
       const option = Array.from(pmOptions).find((opt) => {
         const pm = opt.getAttribute('data-pm');
         return pm === pmName || (pmName === 'curl' && pm === 'bash') || (pmName === 'bash' && pm === 'curl');
@@ -1079,19 +1049,37 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       }
     };
 
-    // Auto-detect Operating System: Windows vs Unix (macOS / Linux)
-    try {
-      const nav = window.navigator as any;
-      const platform = (nav.userAgentData?.platform || nav.platform || '').toLowerCase();
-      const ua = (nav.userAgent || '').toLowerCase();
-      const isWindows = platform.includes('win') || ua.includes('windows');
-      if (isWindows) {
-        selectPmOption('powershell', false);
-      } else {
-        selectPmOption('bash', false);
+    // Auto-detect view & OS: In mobile view (< 640px), show npm script instead of bash/powershell
+    const detectDefaultPm = () => {
+      try {
+        const isMobile = window.innerWidth < 640 || window.matchMedia('(max-width: 639px)').matches;
+        if (isMobile) {
+          return 'npm';
+        }
+        const nav = window.navigator as any;
+        const platform = (nav.userAgentData?.platform || nav.platform || '').toLowerCase();
+        const ua = (nav.userAgent || '').toLowerCase();
+        const isWindows = platform.includes('win') || ua.includes('windows');
+        return isWindows ? 'powershell' : 'bash';
+      } catch {
+        // Intentionally swallowed: fallback to default bash
+        return 'bash';
       }
+    };
+
+    selectPmOption(detectDefaultPm(), false, false);
+
+    // Responsive listener for viewport changes (e.g. devtools resize or orientation change)
+    try {
+      const mobileQuery = window.matchMedia('(max-width: 639px)');
+      const handleViewportChange = () => {
+        if (!userManuallySelected) {
+          selectPmOption(detectDefaultPm(), false, false);
+        }
+      };
+      mobileQuery.addEventListener('change', handleViewportChange);
     } catch {
-      // Intentionally swallowed: fallback to default bash
+      // Intentionally swallowed: media query listener optional
     }
 
     const triggerHeroCopy = async () => {
@@ -1134,7 +1122,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           e.stopPropagation();
           const pm = option.getAttribute('data-pm');
           if (pm) {
-            selectPmOption(pm, true);
+            selectPmOption(pm, true, true);
             pmDropdownMenu.classList.add('hidden');
             pmDropdownToggle.setAttribute('aria-expanded', 'false');
             pmDropdownToggle.classList.remove('bg-[#f1f5f9]', 'text-[#090a0f]');
@@ -1145,7 +1133,6 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         };
       });
     }
-
 
     // 2. FAQ Accordion Toggle Script
     const faqList = document.getElementById('faq-list');

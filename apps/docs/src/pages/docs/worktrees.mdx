@@ -1,0 +1,52 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Git Worktrees & Safe Isolation
+description: Isolate complex refactors and risky experiments in parallel git worktrees without interrupting your active working directory.
+currentSlug: 'worktrees'
+---
+
+## Overview
+
+When an AI agent modifies tens of files at once, a single broken test or incomplete refactor can leave your local git directory in a messy state. Worse, active dev servers, watch mode builds, and open IDE tabs can break mid-turn.
+
+December solves this with native **Git Worktree Isolation**. Using the `enter_worktree` and `exit_worktree` tools, December can branch off into a separate, isolated linked working tree, test its changes in total isolation, and only merge back once everything compiles and passes tests.
+
+---
+
+## How Worktree Isolation Works
+
+```
+Main Workspace (Your Editor)        Isolated Worktree (December Hands)
+────────────────────────────        ──────────────────────────────────
+branch: main (clean)                branch: agent/refactor-auth
+running dev server (port 3000)      runs test suite in background
+uncommitted files untouched         edits 12 files & runs typecheck
+                                    └── verifies all tests pass
+                                    └── merges back to main on success
+```
+
+1. **Enter Worktree**: December creates a temporary git worktree in a parallel directory linked to your repository.
+2. **Execute & Test**: The agent reads files, makes edits, runs compilers, and executes test suites inside the isolated worktree. Your primary files and running dev servers remain completely unaffected.
+3. **Verify & Merge**: Once all tests pass, December commits the clean changes and merges the branch back into your working branch.
+4. **Clean Exit**: If you cancel or if the refactor proves unviable, December exits the worktree and cleans up the temporary directory, leaving your working directory pristine.
+
+---
+
+## When December Uses Worktrees
+
+- **Large Architecture Refactors**: Replacing an ORM, migrating an API schema, or upgrading framework dependencies.
+- **Speculative Bug Fixing**: Testing alternative hypotheses without clobbering your current branch state.
+- **Parallel Subagent Tasks**: Allowing background subagents to work on independent feature slices simultaneously without file-locking conflicts.
+
+---
+
+## Manual Worktree Control
+
+You can also instruct December directly to use worktrees in your natural language prompts:
+
+```bash
+# Explicitly request worktree isolation
+december "Migrate our database models to Prisma 6 inside an isolated worktree"
+```
+
+December will acknowledge the instruction, spin up a linked worktree, run the migration tests, and prompt for confirmation before touching your primary branch.

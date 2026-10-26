@@ -1,0 +1,62 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Session Artifacts & Planning
+description: Inspect structured implementation plans, architecture designs, and task specifications before modifying code.
+currentSlug: 'artifacts'
+---
+
+## Overview
+
+When planning large features or executing multi-file refactors, stuffing hundreds of lines of proposed changes directly into a chat transcript causes clutter and lost context.
+
+December introduces **Session Artifacts**: structured documents created by the agent during complex workflows (such as `/plan`, `/to-spec`, or `/code-review`). Artifacts live alongside your session, providing interactive review interfaces, task checklists, and approval checkpoints before any file is touched.
+
+---
+
+## How Artifacts Work
+
+1. When you run an architectural command (like `december "/plan implement oauth2 pkce flow"`), December inspects your repository.
+2. Rather than immediately generating code, the agent creates an implementation plan artifact via the `write_artifact` tool.
+3. Artifacts are persisted locally under `~/.december/artifacts/<session-id>/`.
+4. An interactive approval prompt lets you inspect the plan, request revisions, or proceed with implementation.
+
+---
+
+## Interactive Artifacts Browser (`/artifacts`)
+
+You can inspect, browse, and manage artifacts at any point in an active session by typing `/artifacts`:
+
+```text
+╭─ Session Artifacts ─────────────────────────────────────────────────────╮
+│ [1] plan-oauth2-flow.md (Implementation Plan) - Pending Approval        │
+│ [2] schema-auth-tokens.md (Data Model Spec)                             │
+│ [3] review-security-audit.md (Code Review Report)                       │
+╰─────────────────────────────────────────────────────────────────────────╯
+ [enter] Open artifact   [p] Proceed with plan   [r] Request changes   [esc] Close
+```
+
+### Plan Approvals
+
+When an artifact requires user sign-off (such as an execution plan):
+
+- **Proceed (`[p]`)**: Confirms the proposed architecture and commands December to begin executing task steps.
+- **Request Changes (`[r]`)**: Opens a prompt where you can provide feedback (e.g. *"Use Redis instead of in-memory maps for token revocation"*). December updates the artifact and presents the revised plan.
+
+---
+
+## Artifact Structure & Visual Formats
+
+December artifacts support standard Markdown and GitHub Flavored Markdown features:
+
+- **Checklists**: Dynamic task lists that check off items as implementation proceeds.
+- **Alert Blocks**: Highlighted notes (`> [!NOTE]`), tips (`> [!TIP]`), and warnings (`> [!WARNING]`).
+- **Mermaid Diagrams**: Visual flowcharts, sequence diagrams, and entity-relationship models rendered directly in compatible viewers.
+- **File Links**: Direct line-referenced links to project files (e.g. `[auth.ts#L42-L58]`).
+
+---
+
+## Benefits for Pair Programming
+
+- **Zero Accidental Overwrites**: You see every file the agent plans to touch before it runs any edit operations.
+- **Audit Trail**: High-level designs and review notes are saved as persistent records that can be referenced or committed to your documentation directory.
+- **Seamless Handoff**: Cloud workspaces and terminal sessions share the same artifact structure, allowing you to review plans in the browser and execute in your terminal.

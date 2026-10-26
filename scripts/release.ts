@@ -35,7 +35,9 @@ await $`bun run format`
 
 await $`bun install` // to update lockfile if needed
 
-await $`git-cliff -o CHANGELOG.md`
+// Generate CHANGELOG.md with the new release tag
+const cleanVersion = version.replace(/^v/, '')
+await $`git-cliff --tag ${cleanVersion} -o CHANGELOG.md`
 
 const changelogPath = path.resolve(process.cwd(), 'CHANGELOG.md')
 const highlightsPath = path.resolve(process.cwd(), 'apps/cli/src/constants/release-highlights.json')

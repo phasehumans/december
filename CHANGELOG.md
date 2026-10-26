@@ -1,4 +1,4 @@
-## [unreleased]
+## [0.4.14] - 2026-10-24
 
 ### Features
 
@@ -9,6 +9,10 @@
 - _(tui)_ Inline subagent breadcrumb ticker without emojis
 - _(cli)_ Ephemeral side questions via /btw with prompt cache prefix reuse
 - _(cli,tui,agent)_ Reasoning controls, session artifacts viewer, and interactive menus
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.14
 
 ## [0.4.13] - 2026-10-18
 

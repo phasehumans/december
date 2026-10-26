@@ -1,0 +1,74 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Workspace Memory & Rules
+description: Learn how December remembers project quirks, tracks learned conventions, and enforces team rules across sessions.
+currentSlug: 'memory'
+---
+
+## Overview
+
+Coding agents often suffer from amnesia: they forget your preferred build flags, repeatedly make the same linting mistakes, and lose context as soon as a session ends.
+
+December solves this with a two-part memory architecture:
+
+1. **Deterministic Team Rules** (`AGENTS.md`): Explicit guidelines written by humans that dictate coding standards, forbidden patterns, and PR rules.
+2. **Autonomous Workspace Memory** (`.december/memory.md`): A compact, persistent ledger where December automatically records learned quirks, test commands, and architectural conventions.
+
+---
+
+## Autonomous Workspace Memory (`.december/memory.md`)
+
+When you correct December during a session (for example: *"Always run tests with bun test --bail, not jest"*), December uses its `manage_memory` tool to commit this knowledge to `.december/memory.md`:
+
+```markdown
+# Project Memory
+
+- Build command: `bun --cwd packages/web build`
+- Unit tests: `bun test --filter web`
+- Database: run `bun db:migrate:test` before executing integration tests
+- React guidelines: all custom hooks must be co-located with their feature folder
+```
+
+### Memory Budgeting (2KB Limit)
+
+To prevent context bloat and degraded model reasoning ("context rot"), December enforces a strict **2KB budget** on workspace memory. As new knowledge is acquired, December summarizes, consolidates, and removes stale entries, keeping only high-signal operational details in active memory.
+
+---
+
+## Interactive Memory Manager (`/memory` or `/rules`)
+
+Inside any active December session, type `/memory` or `/rules` to open the interactive memory manager:
+
+```text
+╭─ Workspace Memory & Rules ──────────────────────────────────────────────╮
+│ Memory (.december/memory.md)                                            │
+│   • Build: bun --cwd packages/web build                                 │
+│   • Tests: bun test packages/web                                        │
+│                                                                         │
+│ Project Guidelines (AGENTS.md)                                          │
+│   • No em dashes in documentation or UI copy                            │
+│   • Lowercase commit messages                                           │
+╰─────────────────────────────────────────────────────────────────────────╯
+ [a] Add entry   [d] Forget entry   [e] Edit in editor   [r] Reload rules   [c] Scaffold AGENTS.md   [esc] Close
+```
+
+### Interactive Keyboard Actions
+
+- `[a]` **Add entry**: Prompt for a key fact to save immediately to persistent memory.
+- `[d]` **Forget entry**: Remove outdated or obsolete conventions from memory.
+- `[e]` **Edit in editor**: Open `.december/memory.md` directly in your `$EDITOR` (VS Code, Neovim, Nano).
+- `[x]` **Clear memory**: Reset learned memory back to a fresh state.
+- `[c]` **Scaffold AGENTS.md**: Automatically generate a starter `AGENTS.md` file tailored to your repository.
+- `[r]` **Reload rules**: Hot-reload modified `AGENTS.md` and guideline files without restarting your session.
+
+---
+
+## Rules Discovery Hierarchy
+
+December automatically scans for project rules in the following order of precedence:
+
+1. **Workspace Root**: `AGENTS.md` (recommended team standard)
+2. **Alternative Agent Files**: `CLAUDE.md` or `.december/rules.md`
+3. **Global Machine Rules**: `~/.december/rules.md` (applied across all repos on your computer)
+
+Rules are injected at the start of every session, guaranteeing that December adheres to your repository standards on every task.

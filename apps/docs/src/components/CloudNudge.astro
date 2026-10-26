@@ -1,0 +1,209 @@
+---
+interface Props {
+  appUrl?: string;
+}
+
+const defaultAppUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
+const { appUrl = defaultAppUrl } = Astro.props;
+const loginUrl = `${appUrl}/login`;
+---
+
+<!-- Floating Side Popup / Cloud Nudge -->
+<aside
+  id="december-cloud-nudge"
+  class="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 w-[calc(100vw-2rem)] sm:w-[280px] opacity-0 translate-y-4 pointer-events-none transition-all duration-300 ease-out"
+  aria-hidden="true"
+  aria-label="Try December Cloud notification"
+>
+  <div class="corner-brackets relative bg-white border border-[#e2e8f0] p-3 sm:p-3.5 shadow-xl">
+    <span class="corner-brackets-tr"></span>
+    <span class="corner-brackets-bl"></span>
+
+    <!-- Top Row: Title & Dismiss Button -->
+    <div class="flex items-start justify-between gap-2">
+      <h3 class="text-[13px] font-medium text-[#090a0f] leading-snug pr-1">
+        Prefer a browser over terminal?
+      </h3>
+      <button
+        id="cloud-nudge-close-btn"
+        type="button"
+        class="w-5 h-5 -mr-1 -mt-0.5 shrink-0 flex items-center justify-center text-[#94a3b8] hover:text-[#090a0f] hover:bg-[#f8fafc] transition-colors cursor-pointer rounded-[2px]"
+        aria-label="Dismiss notification"
+      >
+        <svg class="w-3 h-3 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Description -->
+    <p class="mt-1 text-[11.5px] text-[#52525b] leading-normal">
+      Run December agents in the cloud with sandbox execution, previews, and git sync.
+    </p>
+
+    <!-- Call to Action -->
+    <div class="mt-2.5">
+      <a
+        id="cloud-nudge-cta-btn"
+        href={loginUrl}
+        class="corner-brackets relative h-7 w-full inline-flex items-center justify-center gap-1 border border-[#e2e8f0] bg-[#edf4fe] px-2.5 font-mono text-[11px] uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] transition-all active:scale-[0.98]"
+      >
+        <span class="corner-brackets-tr"></span>
+        <span class="corner-brackets-bl"></span>
+        <span>Sign In to Cloud</span>
+        <svg class="w-3 h-3 text-[#64748b] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+          <path d="M7 17L17 7M17 7H7M17 7V17" />
+        </svg>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<script is:inline>
+  (function () {
+    var STORAGE_KEY = 'december_cloud_nudge_suppressed_until';
+    var ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    var timerId = null;
+    var isDisplayed = false;
+
+    function hasNudgeOverride() {
+      try {
+        return window.location.search.indexOf('nudge') !== -1;
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    function isSuppressed() {
+      // Allow ?nudge URL param to force-test anytime
+      if (hasNudgeOverride()) {
+        return false;
+      }
+
+      try {
+        var suppressedUntil = window.localStorage.getItem(STORAGE_KEY);
+        if (!suppressedUntil) {
+          return false;
+        }
+        var expiry = parseInt(suppressedUntil, 10);
+        return !isNaN(expiry) && Date.now() < expiry;
+      } catch (_e) {
+        // Intentionally swallowed: storage quota or private browsing mode
+        return false;
+      }
+    }
+
+    function markDismissed() {
+      try {
+        var expiryTimestamp = Date.now() + ONE_DAY_MS;
+        window.localStorage.setItem(STORAGE_KEY, expiryTimestamp.toString());
+      } catch (_e) {
+        // Intentionally swallowed: storage quota or private browsing mode
+      }
+    }
+
+    function isLoggedIn() {
+      return document.cookie.split(';').some(function (cookieStr) {
+        return cookieStr.trim().startsWith('december_logged_in=1');
+      });
+    }
+
+    function cleanupListeners() {
+      if (timerId !== null) {
+        window.clearTimeout(timerId);
+        timerId = null;
+      }
+      window.removeEventListener('scroll', onScroll);
+    }
+
+    function hidePopup() {
+      var nudgeEl = document.getElementById('december-cloud-nudge');
+      if (nudgeEl) {
+        nudgeEl.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+        nudgeEl.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+        nudgeEl.setAttribute('aria-hidden', 'true');
+      }
+      cleanupListeners();
+    }
+
+    function showPopup() {
+      if (isDisplayed || isSuppressed() || isLoggedIn()) {
+        cleanupListeners();
+        return;
+      }
+
+      var nudgeEl = document.getElementById('december-cloud-nudge');
+      if (!nudgeEl) {
+        return;
+      }
+
+      isDisplayed = true;
+      cleanupListeners();
+
+      nudgeEl.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+      nudgeEl.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+      nudgeEl.setAttribute('aria-hidden', 'false');
+    }
+
+    function onScroll() {
+      if (isDisplayed) {
+        return;
+      }
+
+      var doc = document.documentElement;
+      var scrollableHeight = doc.scrollHeight - window.innerHeight;
+
+      if (scrollableHeight > 0) {
+        var scrollRatio = (window.scrollY || window.pageYOffset || 0) / scrollableHeight;
+        if (scrollRatio >= 0.3) {
+          showPopup();
+        }
+      }
+    }
+
+    function setupNudge() {
+      isDisplayed = false;
+      cleanupListeners();
+
+      if (isSuppressed() || isLoggedIn()) {
+        return;
+      }
+
+      var closeBtn = document.getElementById('cloud-nudge-close-btn');
+      if (closeBtn) {
+        closeBtn.onclick = function () {
+          markDismissed();
+          hidePopup();
+        };
+      }
+
+      var ctaBtn = document.getElementById('cloud-nudge-cta-btn');
+      if (ctaBtn) {
+        ctaBtn.onclick = function () {
+          markDismissed();
+          hidePopup();
+        };
+      }
+
+      // 5-second timer trigger (or instant if ?nudge is present in URL)
+      var delayMs = window.location.search.indexOf('nudge') !== -1 ? 0 : 5000;
+      timerId = window.setTimeout(function () {
+        showPopup();
+      }, delayMs);
+
+      // Scroll depth trigger (30%)
+      window.addEventListener('scroll', onScroll, { passive: true });
+    }
+
+    // Astro View Transitions and initial load lifecycle
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupNudge);
+    } else {
+      setupNudge();
+    }
+
+    document.addEventListener('astro:page-load', setupNudge);
+    document.addEventListener('astro:before-swap', cleanupListeners);
+  })();
+</script>

@@ -36,62 +36,92 @@ const docCategories = [
       {
         slug: 'architecture',
         label: 'System Architecture',
-        desc: 'Terminal-native execution with isolated cloud sandboxes.',
+        desc: 'Terminal-first coding with isolated cloud sandboxes.',
       },
       {
         slug: 'agent-loop',
         label: 'Agent Reasoning Loop',
-        desc: 'Deterministic inspect-plan-execute-verify cycle for safe edits.',
+        desc: 'How December reads files, plans changes, and tests its work.',
       },
       {
         slug: 'checkpoints',
         label: 'Git Checkpoints',
-        desc: 'Point-in-time versioning and rollback safety for local work trees.',
+        desc: 'Automatic restore points so you can undo any mistake with one command.',
+      },
+      {
+        slug: 'worktrees',
+        label: 'Git Worktrees',
+        desc: 'Isolate complex refactors and risky experiments in parallel git trees.',
+      },
+      {
+        slug: 'artifacts',
+        label: 'Session Artifacts & Plans',
+        desc: 'Structured implementation plans, review walkthroughs, and approval flows.',
       },
       {
         slug: 'previews',
         label: 'Live Sandboxed Previews',
-        desc: 'Isolated Linux sandboxes with dev server provisioning and HMR.',
+        desc: 'Instant browser previews that show your changes as you build.',
       },
     ],
   },
   {
-    category: 'Interfaces & CLI',
+    category: 'CLI & Tools',
     items: [
       {
         slug: 'cli',
         label: 'CLI Reference',
-        desc: 'Complete command flags, options, and shell environment configuration.',
-      },
-      {
-        slug: 'skills',
-        label: 'Agent Skills & Playbooks',
-        desc: 'Modular runbooks, idea-to-ship workflows, and community skills.',
+        desc: 'Every command, shortcut, and flag you can run in your terminal.',
       },
       {
         slug: 'slash-commands',
         label: 'Slash Commands',
-        desc: 'Interactive commands like /undo, /model, /plan, and /login.',
+        desc: 'Built-in commands like /undo, /model, /plan, and /login.',
+      },
+      {
+        slug: 'memory',
+        label: 'Workspace Memory & Rules',
+        desc: 'Autonomous learning, .december/memory.md, and the interactive /memory manager.',
+      },
+      {
+        slug: 'skills',
+        label: 'Skills & Playbooks',
+        desc: 'Teach December specialized workflows for your codebase.',
       },
       {
         slug: 'prompting',
         label: 'Prompting Guide',
-        desc: 'Best practices for providing context and directing the agent.',
+        desc: 'Simple tips for giving clear instructions and getting great results.',
+      },
+      {
+        slug: 'configuration',
+        label: 'Configuration & Rules',
+        desc: 'Customize defaults and use AGENTS.md to enforce team coding rules.',
       },
     ],
   },
   {
-    category: 'Ecosystem & Safety',
+    category: 'Ecosystem & Help',
     items: [
+      {
+        slug: 'mcp',
+        label: 'Model Context Protocol (MCP)',
+        desc: 'Connect external tools, databases, and custom services via MCP.',
+      },
       {
         slug: 'integrations',
         label: 'Model Providers & BYOK',
-        desc: 'Bring your own API keys for Anthropic, OpenAI, Gemini, and DeepSeek.',
+        desc: 'Bring your own API keys with zero markup on token pricing.',
       },
       {
         slug: 'security',
         label: 'Security & Isolation',
-        desc: 'Container sandboxing, secret redaction, and execution boundaries.',
+        desc: 'How your API keys, local files, and secrets are protected.',
+      },
+      {
+        slug: 'troubleshooting',
+        label: 'Troubleshooting & FAQ',
+        desc: 'Quick solutions for common errors, rate limits, and setup questions.',
       },
     ],
   },
@@ -129,7 +159,7 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
       </div>
     </nav>
 
-    <!-- Article Layout: Spans full width matching landing page structure -->
+    <!-- Article Layout: Spans full width matching landing page structure with zero layout shift -->
     <article class="w-full min-w-0 max-w-full">
       <!-- Document Header -->
       <header class="mb-8 max-w-3xl min-w-0">
@@ -306,8 +336,12 @@ const nextItem = currentIdx >= 0 && currentIdx < allSubpages.length - 1 ? allSub
     });
   }
 
-  setupDocsCodeBlocks();
-  document.addEventListener('astro:page-load', setupDocsCodeBlocks);
+  function initDocsScripts() {
+    setupDocsCodeBlocks();
+  }
+
+  initDocsScripts();
+  document.addEventListener('astro:page-load', initDocsScripts);
 </script>
 
 <style is:global>

@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'fs'
+import { join } from 'path'
+
 import { describe, expect, it } from 'bun:test'
 
 import rootPkg, { rawVersion, version } from '../src/lib/version'
@@ -23,5 +26,12 @@ describe('apps/docs version utility', () => {
         expect(Array.isArray(rootPkg.workspaces)).toBe(true)
         expect(rootPkg.workspaces).toContain('apps/*')
         expect(rootPkg.workspaces).toContain('packages/*')
+    })
+
+    it('ensures CHANGELOG.md contains an entry for current package.json release version', () => {
+        const changelogPath = join(__dirname, '../../../CHANGELOG.md')
+        expect(existsSync(changelogPath)).toBe(true)
+        const changelogContent = readFileSync(changelogPath, 'utf-8')
+        expect(changelogContent).toContain(`## [${rawVersion}]`)
     })
 })

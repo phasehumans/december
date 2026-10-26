@@ -14,7 +14,6 @@ interface Props {
   hideHeader?: boolean;
   hideFooter?: boolean;
   showLoader?: boolean;
-  preloadBannerImage?: boolean;
 }
 
 const {
@@ -25,7 +24,6 @@ const {
   hideHeader = false,
   hideFooter = false,
   showLoader = false,
-  preloadBannerImage = false,
 } = Astro.props;
 
 const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
@@ -203,11 +201,6 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Inter:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-
-    <!-- Preload footer banner image if requested -->
-    {preloadBannerImage && (
-      <link rel="preload" as="image" href="/illustrations/banner.webp" type="image/webp" />
-    )}
 
     <!-- Astro View Transitions for instant client navigation -->
     <ClientRouter />

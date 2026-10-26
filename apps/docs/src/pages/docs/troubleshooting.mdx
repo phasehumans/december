@@ -1,0 +1,98 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Troubleshooting & FAQ
+description: Quick solutions for common errors, rate limits, port conflicts, and setup questions.
+currentSlug: 'troubleshooting'
+---
+
+Here are quick solutions for the most common issues when using December in your terminal or cloud workspace.
+
+## 1. API Key Not Detected (401 Unauthorized)
+
+If you see an error saying an API key is missing or unauthorized:
+
+1. **Verify your environment variable**:
+   Check if the key is exported in your current shell:
+
+   ```bash
+   echo $ANTHROPIC_API_KEY
+   # or
+   echo $OPENAI_API_KEY
+   ```
+
+2. **Re-export or add to shell config**:
+   If the output is empty, export it directly:
+
+   ```bash
+   export ANTHROPIC_API_KEY="sk-ant-..."
+   ```
+
+   Add the export line to your `~/.bashrc` or `~/.zshrc` so it persists across terminal sessions.
+
+3. **Check via CLI**:
+   Run `december login` and select **Configure Custom API Keys (BYOK)** to verify the stored key.
+
+## 2. Port Already in Use (e.g. Port 3000)
+
+When running local test suites or launching dev servers, you might encounter `EADDRINUSE: address already in use :::3000`.
+
+To find and stop the existing process:
+
+**macOS & Linux**:
+
+```bash
+# Find process on port 3000
+lsof -i :3000
+
+# Kill the process
+kill -9 <PID>
+```
+
+**Windows (PowerShell)**:
+
+```powershell
+# Find and stop process on port 3000
+Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess | Stop-Process
+```
+
+## 3. Rate Limits & Token Quotas
+
+If an AI provider returns `429 Too Many Requests`:
+
+1. **Switch models instantly**:
+   Type `/model` in your terminal session to switch to a different provider (for example, from Claude to Gemini 2.0 Flash or DeepSeek V3).
+
+2. **Check your provider billing tier**:
+   Free tiers from Anthropic or OpenAI have lower request per minute (RPM) limits. Adding payment details on the provider console increases rate limits.
+
+3. **Reduce file context**:
+   Avoid asking the agent to read huge directories at once. Be specific with filenames (e.g. `december "fix type error in src/auth.ts"`).
+
+## 4. Undoing Unwanted Edits
+
+If December made a change that broke your test suite or you want to return to your previous state:
+
+1. **In-session undo**:
+   Type `/undo` inside your terminal session to roll back the last edit step.
+
+2. **Git restore**:
+   Because December uses local git checkpoints, you can also discard uncommitted changes anytime:
+
+   ```bash
+   git restore .
+   ```
+
+## 5. Stopping a Running Task (Ctrl + C)
+
+If December is running a command that is taking too long (e.g. a long build script or hanging test runner):
+
+- Press `Ctrl + C` in your terminal to safely interrupt the child process.
+- December catches the interrupt signal, terminates the active process, and returns control to your input prompt without crashing the session.
+
+## 6. Getting Help & Reporting Bugs
+
+Still having trouble? We are here to help:
+
+- **GitHub Issues**: [Open an issue on GitHub](https://github.com/phasehumans/december/issues) with reproduction steps.
+- **Email Support**: Reach our engineering team directly at [team@trydecember.com](mailto:team@trydecember.com).
+- **Changelog**: Check [/docs/changelog](/docs/changelog) for the latest fixes and improvements.

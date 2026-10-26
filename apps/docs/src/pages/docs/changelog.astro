@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { rawVersion } from '../../lib/version';
 
 // Changelog Page - generated directly from CHANGELOG.md
 export interface ChangelogItem {
@@ -104,6 +105,16 @@ try {
 }
 
 const releases = parseChangelog(changelogContent);
+
+// Self-healing fallback: If top entry is unreleased, but CHANGELOG lacks an entry for active package.json version
+if (releases.length > 0 && releases[0].isUnreleased) {
+  const hasCurrentVersion = releases.some((r) => !r.isUnreleased && r.version === rawVersion);
+  if (!hasCurrentVersion) {
+    releases[0].version = rawVersion;
+    releases[0].isUnreleased = false;
+    releases[0].date = new Date().toISOString().split('T')[0];
+  }
+}
 ---
 
 <BaseLayout
