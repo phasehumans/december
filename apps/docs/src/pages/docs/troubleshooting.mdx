@@ -14,20 +14,20 @@ If you see an error saying an API key is missing or unauthorized:
 1. **Verify your environment variable**:
    Check if the key is exported in your current shell:
 
-   ```bash
-   echo $ANTHROPIC_API_KEY
-   # or
-   echo $OPENAI_API_KEY
-   ```
+    ```bash
+    echo $ANTHROPIC_API_KEY
+    # or
+    echo $OPENAI_API_KEY
+    ```
 
 2. **Re-export or add to shell config**:
    If the output is empty, export it directly:
 
-   ```bash
-   export ANTHROPIC_API_KEY="sk-ant-..."
-   ```
+    ```bash
+    export ANTHROPIC_API_KEY="sk-ant-..."
+    ```
 
-   Add the export line to your `~/.bashrc` or `~/.zshrc` so it persists across terminal sessions.
+    Add the export line to your `~/.bashrc` or `~/.zshrc` so it persists across terminal sessions.
 
 3. **Check via CLI**:
    Run `december login` and select **Configure Custom API Keys (BYOK)** to verify the stored key.
@@ -78,9 +78,9 @@ If December made a change that broke your test suite or you want to return to yo
 2. **Git restore**:
    Because December uses local git checkpoints, you can also discard uncommitted changes anytime:
 
-   ```bash
-   git restore .
-   ```
+    ```bash
+    git restore .
+    ```
 
 ## 5. Stopping a Running Task (Ctrl + C)
 

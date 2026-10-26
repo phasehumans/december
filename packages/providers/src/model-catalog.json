@@ -374,7 +374,7 @@
                 },
                 {
                     "id": "deep-research-pro-preview-12-2025",
-                    "label": "Deep Research Pro Preview (Dec-12-2025)",
+                    "label": "Deep Research Pro Preview (Dec-12-2025) [Rerouted]",
                     "contextWindow": 131072,
                     "thinking": true
                 }
@@ -1822,7 +1822,7 @@
             "models": [
                 {
                     "id": "MiniMax-M3",
-                    "label": "MiniMax M3",
+                    "label": "MiniMax M3.1 Flash",
                     "contextWindow": 1048576,
                     "thinking": false
                 },

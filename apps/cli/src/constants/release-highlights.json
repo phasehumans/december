@@ -1,9 +1,9 @@
 {
-    "version": "0.4.14",
-    "title": "What's New in v0.4.14",
+    "version": "0.4.15",
+    "title": "What's New in v0.4.15",
     "bullets": [
-        "Dynamic subagent spawning with isolated context and workspace delegation",
-        "Native model context protocol (mcp) client integration"
+        "Add token login, refine device activation flow, and add context doc",
+        "Durable step checkpointing and optimistic epoch fencing"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

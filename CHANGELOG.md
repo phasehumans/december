@@ -1,4 +1,42 @@
-## [0.4.14] - 2026-10-24
+## [0.4.15] - 2026-10-26
+
+### Features
+
+- _(auth,cli,tui)_ Add token login, refine device activation flow, and add context doc
+- _(kernel)_ Durable step checkpointing and optimistic epoch fencing (#572)
+- _(runtime)_ Durable execution, mailbox, and project runtime
+- _(platform,tools,db)_ Replace bespoke abstractions with native git and standard tooling (#579)
+- _(cli,tui,docs)_ Deprecate /handoff and decouple local cli from web sessions (#576)
+- _(session,worker,web)_ Repository-first session onboarding and sandbox auto-clone (#583)
+- _(session,worker,web)_ Multi-session concurrency and afk background execution (#584)
+- _(worker,server,web)_ Interactive pty terminal bridge for workbench shell (#585)
+- _(worker,server,web)_ Native git diff and sandbox status for changes workspace (#586)
+- _(worker,server,web)_ Autonomous task branching, commit, and functional pull requests tab (#587)
+- _(worker,server,web)_ Structured plan checklist panel (#588)
+- _(worker,server,web)_ Test verification dashboard and dynamic preview ports (#589)
+- _(worker,server,web)_ Human-in-the-loop interaction for ask_question (#590)
+- _(worker,server,web)_ Headless browser sandbox automation and desktop view (#591)
+- _(worker,server,web)_ Sandbox lsp code intelligence and dynamic model routing (#592)
+- _(tui)_ Redesign tasks menu and standardize lowercase menu footers
+- _(tui)_ Add interactive memory and rules command
+- _(tui)_ Simplify memory viewer to tabbed read-only document reader
+- _(tui)_ Align memory viewer to exact help tabs and file-view styles
+- _(docs)_ Refine landing sections, footer email copy tooltip, and remove pnpm from dropdown
+
+### Bug Fixes
+
+- _(worker,web)_ Escape regex patterns in lsp and resolve react hook dependencies
+
+### Refactor
+
+- _(core)_ Purge legacy lovable features and dead code (#580)
+- _(workspace)_ Purge legacy website builder relics and vercel deploy (#582)
+
+### Miscellaneous Tasks
+
+- _(scripts)_ Add announcement email engine and agent marketing standards
+
+## [0.4.14] - 2026-10-19
 
 ### Features
 

@@ -26,23 +26,27 @@ December uses the standard `mcpServers` JSON structure:
 
 ```json
 {
-  "mcpServers": {
-    "postgres": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://user:pass@localhost:5432/mydb"]
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
-      }
-    },
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+    "mcpServers": {
+        "postgres": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-postgres",
+                "postgresql://user:pass@localhost:5432/mydb"
+            ]
+        },
+        "github": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github"],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+            }
+        },
+        "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+        }
     }
-  }
 }
 ```
 
@@ -76,6 +80,7 @@ Tools exposed by MCP servers are automatically namespaced to avoid collisions wi
 `mcp_<server_name>_<tool_name>`
 
 For example:
+
 - `mcp_postgres_query`
 - `mcp_github_create_issue`
 - `mcp_linear_search_issues`
@@ -84,7 +89,7 @@ For example:
 
 Unlike naive agent loops that dump all tool definitions into every prompt, December indexes your MCP tools in a deferred registry:
 
-1. When you ask December: *"Check our local database for the latest user signup"*, December identifies that it needs database access.
+1. When you ask December: _"Check our local database for the latest user signup"_, December identifies that it needs database access.
 2. The agent executes `search_tools(query="database query")` to discover `mcp_postgres_query`.
 3. The tool definition is loaded into context just for that turn, executed, and the results are presented cleanly.
 
