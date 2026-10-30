@@ -118,22 +118,23 @@ else
 fi
 
 TMP_DIR="$(mktemp -d)"
-trap 'rm -rf "$TMP_DIR"' EXIT
+CURL_ERR_LOG="${TMP_DIR}/curl.err"
+trap 'rm -rf "$TMP_DIR" "${INSTALL_DIR}/.${BINARY_NAME}.tmp.$$" 2>/dev/null' EXIT
 
 CURL_TIMEOUT_OPTS=(--connect-timeout 15 --retry 2 --retry-delay 2 --speed-limit 10240 --speed-time 25)
 
 log_tree "downloading pre-compiled release binary..."
 DOWNLOAD_SUCCESS=0
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
-    if curl -fL "${CURL_TIMEOUT_OPTS[@]}" --progress-bar "$PRIMARY_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
+    if curl -fL "${CURL_TIMEOUT_OPTS[@]}" --progress-bar "$PRIMARY_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>"$CURL_ERR_LOG"; then
         DOWNLOAD_SUCCESS=1
-    elif curl -fL "${CURL_TIMEOUT_OPTS[@]}" --progress-bar "$FALLBACK_URL" -o "${TMP_DIR}/${ARCHIVE}"; then
+    elif curl -fL "${CURL_TIMEOUT_OPTS[@]}" --progress-bar "$FALLBACK_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>"$CURL_ERR_LOG"; then
         DOWNLOAD_SUCCESS=1
     fi
 else
-    if curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$PRIMARY_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>/dev/null; then
+    if curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$PRIMARY_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>"$CURL_ERR_LOG"; then
         DOWNLOAD_SUCCESS=1
-    elif curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$FALLBACK_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>/dev/null; then
+    elif curl -fsSL "${CURL_TIMEOUT_OPTS[@]}" "$FALLBACK_URL" -o "${TMP_DIR}/${ARCHIVE}" 2>"$CURL_ERR_LOG"; then
         DOWNLOAD_SUCCESS=1
     fi
 fi
@@ -141,6 +142,9 @@ fi
 if [ "$DOWNLOAD_SUCCESS" -ne 1 ]; then
     log_space
     log_error "Failed to download release asset."
+    if [ -s "$CURL_ERR_LOG" ]; then
+        log_tree "curl error: $(tr '\r\n' ' ' < "$CURL_ERR_LOG" | sed 's/  */ /g')"
+    fi
     log_tree "Primary CDN and GitHub fallback downloads timed out or failed."
     log_space
     log_tree "Tip: You can install via package manager in seconds:"
@@ -180,20 +184,28 @@ tar -xzf "${TMP_DIR}/${ARCHIVE}" -C "$TMP_DIR"
 
 mkdir -p "$INSTALL_DIR"
 if [ -f "${TMP_DIR}/${BINARY_NAME}" ]; then
-    mv "${TMP_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}"
+    FOUND_BIN="${TMP_DIR}/${BINARY_NAME}"
 elif [ -f "${TMP_DIR}/december-${TARGET}" ]; then
-    mv "${TMP_DIR}/december-${TARGET}" "${INSTALL_DIR}/${BINARY_NAME}"
+    FOUND_BIN="${TMP_DIR}/december-${TARGET}"
 else
     FOUND_BIN="$(find "$TMP_DIR" -type f -name "*december*" | head -n 1)"
-    if [ -n "$FOUND_BIN" ]; then
-        mv "$FOUND_BIN" "${INSTALL_DIR}/${BINARY_NAME}"
-    else
-        log_space
-        log_error "Failed to locate extracted binary."
-        exit 1
-    fi
 fi
-chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+
+if [ -z "$FOUND_BIN" ] || [ ! -f "$FOUND_BIN" ]; then
+    log_space
+    log_error "Failed to locate extracted binary."
+    exit 1
+fi
+
+# To safely replace a running executable (preventing "ETXTBSY: Text file busy")
+# and ensure an atomic update across filesystem boundaries:
+# 1. Stage the binary into a temporary file in INSTALL_DIR (guaranteed same filesystem).
+# 2. Make it executable.
+# 3. Atomically rename (mv -f) over the destination binary.
+TEMP_BIN="${INSTALL_DIR}/.${BINARY_NAME}.tmp.$$"
+cp "$FOUND_BIN" "$TEMP_BIN" 2>/dev/null || mv "$FOUND_BIN" "$TEMP_BIN"
+chmod +x "$TEMP_BIN"
+mv -f "$TEMP_BIN" "${INSTALL_DIR}/${BINARY_NAME}"
 
 # On macOS, clear quarantine attribute if present
 if [ "$(uname -s)" = "Darwin" ]; then
@@ -211,6 +223,9 @@ fi
 if [ -n "$INSTALLED_VERSION" ]; then
     CLEAN_VER="${INSTALLED_VERSION#v}"
     log_success "verified binary execution (v${CLEAN_VER})"
+else
+    log_warn "binary installed, but execution verification failed."
+    log_tree "If using Alpine Linux or a musl system, install gcompat or run: npm install -g @trydecember/cli"
 fi
 
 # Clean up legacy ~/.local/bin/december to prevent PATH shadowing
@@ -254,17 +269,38 @@ if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
 
     DETECTED_SHELL="$(basename "${SHELL:-bash}")"
 
-    if [ "$DETECTED_SHELL" = "zsh" ] || [ -n "${ZSH_VERSION:-}" ] || [ -f "$HOME/.zshrc" ]; then
-        SHELL_PROFILE="$HOME/.zshrc"
-    elif [ "$DETECTED_SHELL" = "bash" ] || [ -f "$HOME/.bashrc" ]; then
-        SHELL_PROFILE="$HOME/.bashrc"
-    elif [ "$DETECTED_SHELL" = "fish" ] || [ -d "$HOME/.config/fish" ]; then
-        SHELL_PROFILE="$HOME/.config/fish/config.fish"
-    elif [ -f "$HOME/.profile" ]; then
-        SHELL_PROFILE="$HOME/.profile"
-    else
-        SHELL_PROFILE="$HOME/.bashrc"
-    fi
+    case "$DETECTED_SHELL" in
+        zsh)
+            SHELL_PROFILE="$HOME/.zshrc"
+            ;;
+        bash)
+            if [ -f "$HOME/.bashrc" ]; then
+                SHELL_PROFILE="$HOME/.bashrc"
+            elif [ -f "$HOME/.bash_profile" ]; then
+                SHELL_PROFILE="$HOME/.bash_profile"
+            else
+                SHELL_PROFILE="$HOME/.bashrc"
+            fi
+            ;;
+        fish)
+            SHELL_PROFILE="$HOME/.config/fish/config.fish"
+            ;;
+        *)
+            if [ -n "${ZSH_VERSION:-}" ]; then
+                SHELL_PROFILE="$HOME/.zshrc"
+            elif [ -n "${BASH_VERSION:-}" ]; then
+                SHELL_PROFILE="$HOME/.bashrc"
+            elif [ -f "$HOME/.bashrc" ]; then
+                SHELL_PROFILE="$HOME/.bashrc"
+            elif [ -f "$HOME/.zshrc" ]; then
+                SHELL_PROFILE="$HOME/.zshrc"
+            elif [ -f "$HOME/.profile" ]; then
+                SHELL_PROFILE="$HOME/.profile"
+            else
+                SHELL_PROFILE="$HOME/.bashrc"
+            fi
+            ;;
+    esac
 
     if [ "$DETECTED_SHELL" = "fish" ]; then
         EXPORT_LINE="fish_add_path $INSTALL_DIR"
@@ -294,6 +330,9 @@ if [ "$PATH_NEEDS_SOURCE" -eq 1 ] && [ -n "$SHELL_PROFILE" ]; then
 else
     log_tree "To get started:"
     echo -e "${TRUNK}│${RESET}    ${WHITE}december${RESET}"
+    log_space
+    log_tree "Tip: If your terminal still resolves an older version, run:"
+    echo -e "${TRUNK}│${RESET}    ${WHITE}hash -r${RESET} (bash) or ${WHITE}rehash${RESET} (zsh)"
 fi
 
 log_space

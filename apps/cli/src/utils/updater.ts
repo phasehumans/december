@@ -354,9 +354,11 @@ export async function performCliUpdate(options?: PerformUpdateOptions): Promise<
     )
 
     const execCommand = options?.execFn ?? exec
+    // Extend timeout for curl/standalone binary downloads (~54MB compressed)
+    const updateTimeout = method === 'curl' ? 600_000 : 180_000
 
     return new Promise<UpdateResult>((resolve) => {
-        execCommand(command, { timeout: 120_000 }, async (error, stdout, stderr) => {
+        execCommand(command, { timeout: updateTimeout }, async (error, stdout, stderr) => {
             if (error) {
                 const errMessage = (stderr || error.message || 'Unknown update failure').trim()
                 const isPerm = isPermissionDeniedError(errMessage)
