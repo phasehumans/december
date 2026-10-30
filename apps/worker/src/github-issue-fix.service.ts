@@ -53,7 +53,7 @@ async function generateAiExplanation(params: {
     }
 
     try {
-        const stream = provider([
+        const stream = provider.stream([
             {
                 role: 'system',
                 content:

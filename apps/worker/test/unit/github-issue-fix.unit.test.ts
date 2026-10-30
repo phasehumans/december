@@ -189,4 +189,70 @@ describe('GitHub Issue Fix Worker Service (Unit Tests)', () => {
             E2BSandboxService.resetMockClient()
         }
     })
+
+    it('generates AI explanation via LLM stream when explanation query is requested', async () => {
+        prisma.user.findUnique = mock(async () => ({
+            id: 'user-777',
+            creditBalance: 500,
+        })) as any
+
+        const mockSandbox = {
+            commands: {
+                run: mock(async () => ({ stdout: '', exitCode: 0 })),
+            },
+            kill: mock(async () => {}),
+        }
+
+        E2BSandboxService.setMockClient({
+            create: async () => mockSandbox,
+        })
+
+        const originalGeminiKey = process.env.GEMINI_API_KEY
+        process.env.GEMINI_API_KEY = 'mock_gemini_key'
+
+        let issueCommentBody: any = null
+        globalThis.fetch = mock(async (url: string | URL | Request, init?: any) => {
+            const urlStr = url.toString()
+            if (urlStr.includes('/comments') && init?.method === 'POST') {
+                issueCommentBody = JSON.parse(init.body)
+                return new Response(JSON.stringify({ id: 888 }), { status: 201 })
+            }
+            if (urlStr.includes('generativelanguage.googleapis.com')) {
+                const ssePayload =
+                    'data: ' +
+                    JSON.stringify({
+                        candidates: [
+                            {
+                                content: {
+                                    parts: [
+                                        {
+                                            text: 'Here is a detailed breakdown of issue #568.',
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    }) +
+                    '\n\n'
+                return new Response(ssePayload, {
+                    status: 200,
+                    headers: { 'content-type': 'text/event-stream' },
+                })
+            }
+            return new Response('{}', { status: 200 })
+        }) as any
+
+        try {
+            const res = await processGithubIssueFix({
+                ...baseJobData,
+                prompt: 'explain me this issue',
+            })
+
+            expect(res.status).toBe('SKIPPED')
+            expect(issueCommentBody.body).toContain('Here is a detailed breakdown of issue #568.')
+        } finally {
+            process.env.GEMINI_API_KEY = originalGeminiKey
+            E2BSandboxService.resetMockClient()
+        }
+    })
 })
