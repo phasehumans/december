@@ -686,7 +686,7 @@ const executeCommand = async (
     return { exitCode: 0, output }
 }
 
-const getLlmProvider = (providerName?: string, apiKey?: string) => {
+export const getLlmProvider = (providerName?: string, apiKey?: string) => {
     const key =
         apiKey ||
         process.env.GEMINI_API_KEY ||

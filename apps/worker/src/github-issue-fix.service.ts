@@ -1,8 +1,19 @@
+import { AgentHarness, runAgentLoop } from '@december/agent'
 import { prisma } from '@december/database'
 import { geminiProvider, openaiProvider } from '@december/providers'
 import { createIssueComment, createPullRequest } from '@december/shared'
+import {
+    BashTool,
+    EditFileTool,
+    FindFilesTool,
+    GrepSearchTool,
+    LsTool,
+    ReadFileTool,
+    WriteFileTool,
+} from '@december/tools'
 
-import { E2BSandboxService } from './e2b-sandbox.service'
+import { E2BSandboxService, getLlmProvider } from './e2b-sandbox.service'
+import { RemotePlatformAdapter } from './remote-operations'
 
 export interface GithubIssueFixJobData {
     taskType: 'github_issue_fix'
@@ -180,7 +191,75 @@ export const processGithubIssueFix = async (
                     // Intentionally swallowed: checkout fallback
                 })
 
-            // Attempt automated fixes and tests
+            // Run autonomous agent loop to inspect files, make changes, or answer user query
+            let agentResponseText = ''
+            const hasLlm = Boolean(
+                process.env.GEMINI_API_KEY ||
+                process.env.OPENAI_API_KEY ||
+                process.env.OPENROUTER_API_KEY ||
+                process.env.ANTHROPIC_API_KEY
+            )
+
+            if (hasLlm && sandbox.sandboxId && !sandbox.sandboxId.startsWith('mock-')) {
+                try {
+                    const llm = getLlmProvider()
+                    const adapter = new RemotePlatformAdapter(sandbox.sandboxId, {
+                        sessionId: `github-issue-${issueNumber}`,
+                    })
+
+                    const tools = [
+                        BashTool,
+                        ReadFileTool,
+                        WriteFileTool,
+                        LsTool,
+                        EditFileTool,
+                        FindFilesTool,
+                        GrepSearchTool,
+                    ]
+
+                    const agentPrompt = [
+                        `You are working in /workspace on GitHub Issue #${issueNumber}: "${issueTitle}".`,
+                        '',
+                        'Issue description:',
+                        issueBody || 'No issue description provided.',
+                        '',
+                        `User instruction from @${commentAuthor}:`,
+                        prompt,
+                        '',
+                        'Instructions:',
+                        '1. If the user asks for code, documentation, or configuration changes (e.g. updating README, fixing a bug, adding a test): inspect the files in /workspace, make the necessary edits using WriteFileTool or EditFileTool, and run verification commands.',
+                        '2. If the user only asks a question or explanation: provide a clear, helpful explanation without editing files.',
+                        '3. Do not use em dashes.',
+                    ].join('\n')
+
+                    const harness = new AgentHarness({
+                        llm,
+                        tools,
+                        operations: adapter,
+                        workspaceDir: '/workspace',
+                        sessionId: `github-issue-${issueNumber}`,
+                        runtime: 'cloud',
+                        modelOptions: {
+                            model: process.env.DEFAULT_MODEL || 'gemini-3.6-flash',
+                            thinkingLevel: 'auto',
+                        },
+                    })
+
+                    const agent = harness.getAgent()
+
+                    for await (const event of runAgentLoop(agent, agentPrompt)) {
+                        if (event.type === 'StreamChunk' && event.content) {
+                            agentResponseText += event.content
+                        }
+                    }
+                } catch (agentErr: any) {
+                    console.warn(
+                        `[GitHub Issue Fix] Agent loop execution warning: ${agentErr?.message || agentErr}`
+                    )
+                }
+            }
+
+            // Fallback linter/formatter if present
             const fixRes = await sandbox.commands
                 .run('npm run fix --if-present', { cwd: '/workspace' })
                 .catch(() => null)
@@ -223,21 +302,26 @@ export const processGithubIssueFix = async (
                     }))
 
                 if (pushRes?.exitCode === 0) {
-                    const prBody = [
+                    const prBodyLines = [
                         `Closes #${issueNumber}`,
                         '',
                         '### Summary of Changes',
                         `- Addressed issue #${issueNumber}: ${issueTitle}`,
                         `- Prompt: ${prompt}`,
                         '',
-                        '### Verification & Tests',
-                        '```',
-                        testOutput.slice(0, 1500),
-                        '```',
-                        '',
-                        '---',
-                        `Generated by [December](https://trydecember.com) · Triggered by @${commentAuthor} in #${issueNumber}`,
-                    ].join('\n')
+                    ]
+
+                    if (testOutput && testOutput.trim() !== 'Tests executed.') {
+                        prBodyLines.push(
+                            '### Verification & Tests',
+                            '```',
+                            testOutput.slice(0, 1500),
+                            '```',
+                            ''
+                        )
+                    }
+
+                    prBodyLines.push('---', `Triggered by @${commentAuthor} in #${issueNumber}`)
 
                     const pr = await createPullRequest({
                         token: gitToken,
@@ -246,7 +330,7 @@ export const processGithubIssueFix = async (
                         title: `fix: #${issueNumber} ${issueTitle}`,
                         head: branchName,
                         base: defaultBranch,
-                        body: prBody,
+                        body: prBodyLines.join('\n'),
                     })
 
                     await createIssueComment({
@@ -254,12 +338,7 @@ export const processGithubIssueFix = async (
                         owner: repoOwner,
                         repo: repoName,
                         issueNumber,
-                        body: [
-                            `I have opened PR #${pr.number} with the requested changes.`,
-                            '',
-                            '---',
-                            'Generated by [December](https://trydecember.com)',
-                        ].join('\n'),
+                        body: `I have opened PR #${pr.number} with the requested changes.`,
                     }).catch(() => {
                         // Intentionally swallowed: comment reply fallback
                     })
@@ -273,17 +352,19 @@ export const processGithubIssueFix = async (
                 }
             }
 
-            // No changes produced or query/explanation request
-            let replyText = await generateAiExplanation({
-                issueNumber,
-                issueTitle,
-                issueBody,
-                commentAuthor,
-                prompt,
-            })
-
+            // No changes produced: post AI response or explanation
+            let replyText = agentResponseText.trim()
             if (!replyText) {
-                replyText = 'I analyzed this issue but no automated code changes were produced.'
+                const explanation = await generateAiExplanation({
+                    issueNumber,
+                    issueTitle,
+                    issueBody,
+                    commentAuthor,
+                    prompt,
+                })
+                replyText =
+                    explanation ||
+                    'I analyzed this issue but no automated code changes were produced.'
             }
 
             await createIssueComment({
@@ -291,12 +372,7 @@ export const processGithubIssueFix = async (
                 owner: repoOwner,
                 repo: repoName,
                 issueNumber,
-                body: [
-                    replyText,
-                    '',
-                    '---',
-                    'Generated by [December](https://trydecember.com)',
-                ].join('\n'),
+                body: replyText,
             }).catch(() => {
                 // Intentionally swallowed: fallback
             })
