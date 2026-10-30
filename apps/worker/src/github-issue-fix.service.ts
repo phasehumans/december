@@ -64,17 +64,22 @@ async function generateAiExplanation(params: {
     }
 
     try {
-        const stream = provider.stream([
-            {
-                role: 'system',
-                content:
-                    'You are December, an expert AI software engineer. Analyze the GitHub issue and user query clearly, concisely, and accurately in markdown. Do not use em dashes.',
-            },
-            {
-                role: 'user',
-                content: `Issue #${issueNumber}: ${issueTitle}\n\nDescription:\n${issueBody || 'No description provided.'}\n\nUser Question/Instruction from @${commentAuthor}:\n${prompt}`,
-            },
-        ])
+        const stream = provider.stream(
+            [
+                {
+                    role: 'system',
+                    content:
+                        'You are December, an expert AI software engineer. Analyze the GitHub issue and user query clearly, concisely, and accurately in markdown. Do not use em dashes.',
+                },
+                {
+                    role: 'user',
+                    content: `Issue #${issueNumber}: ${issueTitle}\n\nDescription:\n${issueBody || 'No description provided.'}\n\nUser Question/Instruction from @${commentAuthor}:\n${prompt}`,
+                },
+            ],
+            undefined,
+            undefined,
+            { model: process.env.GITHUB_BOT_MODEL || 'gemini-3.6-flash' }
+        )
 
         let explanation = ''
         for await (const chunk of stream) {
@@ -240,7 +245,7 @@ export const processGithubIssueFix = async (
                         sessionId: `github-issue-${issueNumber}`,
                         runtime: 'cloud',
                         modelOptions: {
-                            model: process.env.DEFAULT_MODEL || 'gemini-3.6-flash',
+                            model: process.env.GITHUB_BOT_MODEL || 'gemini-3.6-flash',
                             thinkingLevel: 'auto',
                         },
                     })

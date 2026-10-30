@@ -961,6 +961,10 @@ const runEphemeralTask = async (data: EphemeralTaskInput): Promise<EphemeralTask
             }
         }
 
+        if (sandbox?.sandboxId) {
+            activeSandboxes.set(sandbox.sandboxId, sandbox)
+        }
+
         // In-memory credential hygiene: Pass GITHUB_TOKEN in-memory without disk footprint
         const envVars: Record<string, string> = {}
         if (gitToken) {
@@ -977,8 +981,13 @@ const runEphemeralTask = async (data: EphemeralTaskInput): Promise<EphemeralTask
         console.error(`[E2BSandboxService] Ephemeral task ${taskType} failed:`, e)
         return { success: false, error: e?.message || String(e) }
     } finally {
-        if (sandbox && typeof sandbox.kill === 'function') {
-            await sandbox.kill().catch(() => {})
+        if (sandbox) {
+            if (sandbox.sandboxId) {
+                activeSandboxes.delete(sandbox.sandboxId)
+            }
+            if (typeof sandbox.kill === 'function') {
+                await sandbox.kill().catch(() => {})
+            }
         }
     }
 }
