@@ -158,6 +158,37 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
     } else if (event === 'installation' && payload.action === 'deleted') {
         const installationId = payload.installation.id.toString()
         await githubAppService.processUninstallation({ installationId })
+    } else if (event === 'issue_comment' && payload.action === 'created') {
+        const installationId = payload.installation?.id?.toString()
+        if (installationId) {
+            await githubAppService.handleIssueComment({
+                installationId,
+                repository: {
+                    name: payload.repository?.name,
+                    fullName: payload.repository?.full_name,
+                    owner: {
+                        login: payload.repository?.owner?.login,
+                    },
+                    defaultBranch: payload.repository?.default_branch || 'main',
+                    private: payload.repository?.private ?? false,
+                },
+                issue: {
+                    number: payload.issue?.number,
+                    title: payload.issue?.title,
+                    body: payload.issue?.body,
+                    pullRequest: payload.issue?.pull_request,
+                },
+                comment: {
+                    id: payload.comment?.id,
+                    body: payload.comment?.body,
+                    user: {
+                        login: payload.comment?.user?.login,
+                        id: payload.comment?.user?.id,
+                    },
+                    authorAssociation: payload.comment?.author_association || 'NONE',
+                },
+            })
+        }
     }
 
     return sendSuccess(res, 'webhook processed successfully', null)

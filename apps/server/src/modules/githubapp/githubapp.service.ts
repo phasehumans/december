@@ -1,10 +1,19 @@
 import crypto from 'crypto'
 
+import { prisma } from '@december/database'
+import { enqueueJob } from '@december/shared'
+
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 
 import { githubAppRepository } from './githubapp.repository'
-import { generateAppJwt } from './githubapp.utils'
+import {
+    createCommentReaction,
+    createIssueComment,
+    extractBotMention,
+    generateAppJwt,
+    isAuthorizedGithubSender,
+} from './githubapp.utils'
 
 import type {
     GetInstallationAccessToken,
@@ -12,6 +21,9 @@ import type {
     GetUserInstallationStatus,
     GetUserInstallationToken,
     GithubInstallationRepo,
+    GithubIssueJobData,
+    HandleIssueComment,
+    HandleIssueCommentResult,
     InstallationStatusResponse,
     ProcessInstallation,
     ProcessUninstallation,
@@ -224,6 +236,106 @@ const getUserInstallationStatus = async (
     }
 }
 
+const handleIssueComment = async (data: HandleIssueComment): Promise<HandleIssueCommentResult> => {
+    const { installationId, repository, issue, comment } = data
+
+    const { isMentioned, instruction } = extractBotMention(comment.body)
+    if (!isMentioned) {
+        return { handled: false, reason: 'not_mentioned' }
+    }
+
+    const isAuthorized = isAuthorizedGithubSender(comment.authorAssociation)
+
+    let token = ''
+    try {
+        const tokenRes = await getInstallationAccessToken({ installationId })
+        token = tokenRes.token
+    } catch (err: any) {
+        console.error('[GitHubApp Service] Failed to obtain installation access token:', err)
+        return { handled: false, reason: 'token_error' }
+    }
+
+    if (!isAuthorized) {
+        try {
+            await createIssueComment({
+                token,
+                owner: repository.owner.login,
+                repo: repository.name,
+                issueNumber: issue.number,
+                body: `@${comment.user.login} December is configured to only execute tasks requested by repository collaborators.`,
+            })
+        } catch {
+            // Intentionally swallowed: fallback if unauthorized comment fails to post
+        }
+        return { handled: false, reason: 'unauthorized_sender' }
+    }
+
+    // Acknowledge immediately with an emoji reaction on the comment
+    try {
+        await createCommentReaction({
+            token,
+            owner: repository.owner.login,
+            repo: repository.name,
+            commentId: comment.id,
+            reaction: 'eyes',
+        })
+    } catch {
+        // Intentionally swallowed: emoji reaction fallback
+    }
+
+    // Check installation and user wallet credits
+    const installation = await githubAppRepository.findByInstallationId(installationId)
+    const effectiveUserId = installation?.userId || null
+
+    if (effectiveUserId) {
+        const user = await prisma.user.findUnique({
+            where: { id: effectiveUserId },
+            select: { creditBalance: true },
+        })
+
+        if (user && user.creditBalance < 50) {
+            try {
+                await createIssueComment({
+                    token,
+                    owner: repository.owner.login,
+                    repo: repository.name,
+                    issueNumber: issue.number,
+                    body: `@${comment.user.login} Insufficient wallet credits to run December on this issue. Please top up credits at https://app.trydecember.com/settings/billing to continue.`,
+                })
+            } catch {
+                // Intentionally swallowed: credit warning comment fallback
+            }
+            return { handled: false, reason: 'insufficient_credits' }
+        }
+    }
+
+    // Dispatch job to worker queue
+    const jobData: GithubIssueJobData = {
+        taskType: 'github_issue_fix',
+        installationId,
+        gitToken: token,
+        repoFullName: repository.fullName,
+        repoOwner: repository.owner.login,
+        repoName: repository.name,
+        defaultBranch: repository.defaultBranch || 'main',
+        issueNumber: issue.number,
+        issueTitle: issue.title,
+        issueBody: issue.body || '',
+        commentId: comment.id,
+        commentAuthor: comment.user.login,
+        prompt: instruction,
+        userId: effectiveUserId,
+    }
+
+    const job = await enqueueJob('github_issue_fix', jobData)
+
+    return {
+        handled: true,
+        issueNumber: issue.number,
+        jobId: job?.id?.toString(),
+    }
+}
+
 export const githubAppService = {
     processInstallation,
     processUninstallation,
@@ -232,4 +344,5 @@ export const githubAppService = {
     getUserInstallationToken,
     getUserInstallationRepos,
     getUserInstallationStatus,
+    handleIssueComment,
 }

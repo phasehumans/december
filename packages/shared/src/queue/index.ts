@@ -39,6 +39,10 @@ export function getAgentQueue() {
     return _agentQueue
 }
 
+export function setAgentQueue(queue: Queue | null) {
+    _agentQueue = queue
+}
+
 export async function enqueueJob(jobName: string, jobData: any) {
     return await getAgentQueue().add(jobName, jobData)
 }

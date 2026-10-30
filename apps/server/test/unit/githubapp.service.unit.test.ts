@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 
+import { setAgentQueue } from '@december/shared'
 import { describe, it, expect } from 'bun:test'
 
 import { env } from '../../src/env'
@@ -266,6 +267,133 @@ describe('GitHubApp Service - Unit Tests', () => {
                 expect(repos[1].private).toBe(true)
             } finally {
                 githubAppRepository.findAllByUserId = originalFindAll
+                globalThis.fetch = originalFetch
+            }
+        })
+    })
+
+    describe('handleIssueComment', () => {
+        const baseCommentData = {
+            installationId: 'inst-999',
+            repository: {
+                name: 'test-repo',
+                fullName: 'org/test-repo',
+                owner: { login: 'org' },
+                defaultBranch: 'main',
+                private: false,
+            },
+            issue: {
+                number: 101,
+                title: 'Bug in auth token',
+                body: 'The auth token expires too early.',
+            },
+            comment: {
+                id: 555,
+                body: 'Hello world without bot mention',
+                user: { login: 'someuser', id: 12 },
+                authorAssociation: 'COLLABORATOR',
+            },
+        }
+
+        it('returns handled: false if comment does not mention @december', async () => {
+            const res = await githubAppService.handleIssueComment(baseCommentData)
+            expect(res.handled).toBe(false)
+            expect(res.reason).toBe('not_mentioned')
+        })
+
+        it('rejects trigger and posts warning comment if sender is unauthorized', async () => {
+            const originalFetch = globalThis.fetch
+            const originalGetToken = githubAppService.getInstallationAccessToken
+            let postedCommentBody = ''
+
+            githubAppService.getInstallationAccessToken = (async () => ({
+                token: 'ghs_token_mock',
+                expiresAt: '2026-10-30T00:00:00Z',
+            })) as any
+
+            globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
+                if (url.toString().includes('/comments') && options?.method === 'POST') {
+                    postedCommentBody = JSON.parse(options.body).body
+                    return new Response(JSON.stringify({ id: 1 }), { status: 201 })
+                }
+                return new Response(JSON.stringify({}), { status: 200 })
+            }) as any
+
+            try {
+                const res = await githubAppService.handleIssueComment({
+                    ...baseCommentData,
+                    comment: {
+                        ...baseCommentData.comment,
+                        body: '@december fix this',
+                        authorAssociation: 'NONE',
+                    },
+                })
+
+                expect(res.handled).toBe(false)
+                expect(res.reason).toBe('unauthorized_sender')
+                expect(postedCommentBody).toContain('collaborator')
+            } finally {
+                githubAppService.getInstallationAccessToken = originalGetToken
+                globalThis.fetch = originalFetch
+            }
+        })
+
+        it('acknowledges with eyes reaction and enqueues job for authorized mention', async () => {
+            const originalFetch = globalThis.fetch
+            const originalGetToken = githubAppService.getInstallationAccessToken
+            const originalFindByInstallationId = githubAppRepository.findByInstallationId
+            let reactionAdded = ''
+            let enqueuedJobName = ''
+            let enqueuedJobData: any = null
+
+            setAgentQueue({
+                add: (async (name: string, data: any) => {
+                    enqueuedJobName = name
+                    enqueuedJobData = data
+                    return { id: 'job-123' }
+                }) as any,
+            } as any)
+
+            githubAppService.getInstallationAccessToken = (async () => ({
+                token: 'ghs_token_mock',
+                expiresAt: '2026-10-30T00:00:00Z',
+            })) as any
+
+            githubAppRepository.findByInstallationId = (async () => ({
+                id: 'inst-rec-1',
+                installationId: 'inst-999',
+                userId: null,
+            })) as any
+
+            globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
+                if (url.toString().includes('/reactions') && options?.method === 'POST') {
+                    reactionAdded = JSON.parse(options.body).content
+                    return new Response(JSON.stringify({ id: 1, content: 'eyes' }), { status: 201 })
+                }
+                return new Response(JSON.stringify({}), { status: 200 })
+            }) as any
+
+            try {
+                const res = await githubAppService.handleIssueComment({
+                    ...baseCommentData,
+                    comment: {
+                        ...baseCommentData.comment,
+                        body: '@december please fix auth token refresh and write tests',
+                        authorAssociation: 'OWNER',
+                    },
+                })
+
+                expect(res.handled).toBe(true)
+                expect(res.issueNumber).toBe(101)
+                expect(res.jobId).toBe('job-123')
+                expect(reactionAdded).toBe('eyes')
+                expect(enqueuedJobName).toBe('github_issue_fix')
+                expect(enqueuedJobData.prompt).toBe('please fix auth token refresh and write tests')
+                expect(enqueuedJobData.repoFullName).toBe('org/test-repo')
+            } finally {
+                setAgentQueue(null)
+                githubAppService.getInstallationAccessToken = originalGetToken
+                githubAppRepository.findByInstallationId = originalFindByInstallationId
                 globalThis.fetch = originalFetch
             }
         })

@@ -77,3 +77,55 @@ export type InstallationStatusResponse = {
     accountType: string | null
     targetType: string | null
 }
+
+export type HandleIssueComment = {
+    installationId: string
+    repository: {
+        name: string
+        fullName: string
+        owner: {
+            login: string
+        }
+        defaultBranch?: string
+        private?: boolean
+    }
+    issue: {
+        number: number
+        title: string
+        body?: string | null
+        pullRequest?: any
+    }
+    comment: {
+        id: number
+        body: string
+        user: {
+            login: string
+            id?: number
+        }
+        authorAssociation?: string | null
+    }
+}
+
+export type HandleIssueCommentResult = {
+    handled: boolean
+    reason?: string
+    issueNumber?: number
+    jobId?: string
+}
+
+export type GithubIssueJobData = {
+    taskType: 'github_issue_fix'
+    installationId: string
+    gitToken: string
+    repoFullName: string
+    repoOwner: string
+    repoName: string
+    defaultBranch: string
+    issueNumber: number
+    issueTitle: string
+    issueBody: string
+    commentId: number
+    commentAuthor: string
+    prompt: string
+    userId?: string | null
+}

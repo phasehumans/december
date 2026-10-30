@@ -52,3 +52,11 @@ export const getInstallationDetails = async (installationId: string): Promise<an
         return null
     }
 }
+
+export {
+    extractBotMention,
+    isAuthorizedGithubSender,
+    createCommentReaction,
+    createIssueComment,
+    createPullRequest,
+} from '@december/shared'

@@ -5,6 +5,7 @@ import Redis from 'ioredis'
 import jwt from 'jsonwebtoken'
 
 import { E2BSandboxService } from './e2b-sandbox.service'
+import { processGithubIssueFix } from './github-issue-fix.service'
 import { processGrpcStream } from './listener'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { WakeUpSweeper } from './wake-up-sweeper'
@@ -34,6 +35,12 @@ export const worker = new Worker(
         console.log(
             `Processing job ${job.id} (type: ${effectiveTaskType}) for session ${sessionId || reviewId}`
         )
+
+        // Handle GitHub Automated Issue Fix tasks
+        if (effectiveTaskType === 'github_issue_fix') {
+            const fixResult = await processGithubIssueFix(job.data)
+            return fixResult
+        }
 
         // Handle Ephemeral Tasks (One-Click Fix, Security Audit)
         const isEphemeralTask = ['one_click_fix', 'security_audit'].includes(effectiveTaskType)
