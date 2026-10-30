@@ -36,12 +36,14 @@ export function extractBotMention(commentBody: string): BotMentionResult {
         return { isMentioned: false, instruction: '' }
     }
 
-    const mentionRegex = /@december\b/i
+    const mentionRegex = /@(trydecember|december)(?:\[bot\])?(?=[\s:;,.]|$)/i
     if (!mentionRegex.test(commentBody)) {
         return { isMentioned: false, instruction: '' }
     }
 
-    const stripped = commentBody.replace(/@december\b/gi, '').trim()
+    const stripped = commentBody
+        .replace(/@(trydecember|december)(?:\[bot\])?(?=[\s:;,.]|$)/gi, '')
+        .trim()
     const instruction =
         stripped.length > 0
             ? stripped
