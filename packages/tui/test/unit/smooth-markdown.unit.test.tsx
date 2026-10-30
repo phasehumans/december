@@ -57,4 +57,14 @@ describe('SmoothMarkdown Component', () => {
         const { lastFrame } = render(<SmoothMarkdown text={text} isRunning={false} />)
         expect(lastFrame()).toContain('Finished paragraph')
     })
+
+    it('bypasses astCache for streaming tail chunks during active streaming', async () => {
+        const { clearMarkdownCache, getMarkdownCacheStats } =
+            await import('../../src/components/markdown')
+        clearMarkdownCache()
+        const text = 'Streaming uncommitted token chunk'
+        const { lastFrame } = render(<SmoothMarkdown text={text} isRunning={true} />)
+        expect(lastFrame()).toContain('Streaming uncommitted token chunk')
+        expect(getMarkdownCacheStats().astCacheSize).toBe(0)
+    })
 })

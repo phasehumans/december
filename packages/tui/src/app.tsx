@@ -357,6 +357,7 @@ export function ChatApp({
                     modelLabel={effectiveModelLabel}
                     authMethod={effectiveAuthMethod}
                     selectedProvider={effectiveProvider}
+                    isStreaming={session.isStreaming}
                 />
             </ScrollViewport>
 

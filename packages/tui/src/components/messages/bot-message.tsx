@@ -40,6 +40,7 @@ type Props = {
     usage?: { promptTokens: number; completionTokens: number }
     expandCommands?: boolean
     hasTopMargin?: boolean
+    isStreaming?: boolean
 }
 
 export function formatThought(raw: string): string {
@@ -363,10 +364,25 @@ export function CompactFileChange({
     )
 }
 
+export function truncateToolOutputLines(
+    rawOutput: string,
+    maxLines = 15
+): { lines: string[]; hiddenCount: number } {
+    const allLines = rawOutput.split(/\r?\n/)
+    if (allLines.length <= maxLines) {
+        return { lines: allLines, hiddenCount: 0 }
+    }
+    return {
+        lines: allLines.slice(0, maxLines),
+        hiddenCount: allLines.length - maxLines,
+    }
+}
+
 function CompactCommandOutput({
     command,
     output,
     status,
+    forceExpanded,
 }: {
     command: string
     output?: string
@@ -374,22 +390,42 @@ function CompactCommandOutput({
     forceExpanded?: boolean
 }) {
     const isError = status === 'error'
+    const shouldShowOutput = (isError || forceExpanded) && !!output
+
+    let renderedLines: string[] = []
+    let hiddenCount = 0
+
+    if (shouldShowOutput && output) {
+        if (forceExpanded) {
+            const truncated = truncateToolOutputLines(output.trim(), 15)
+            renderedLines = truncated.lines
+            hiddenCount = truncated.hiddenCount
+        } else if (isError) {
+            renderedLines = output.trim().split(/\r?\n/).slice(-3)
+        }
+    }
+
     return (
         <Box flexDirection="column" marginY={0}>
             <Box alignItems="center" gap={1}>
                 <StyledCommand command={command} />
             </Box>
-            {isError && output && (
+            {shouldShowOutput && renderedLines.length > 0 && (
                 <Box flexDirection="column" paddingLeft={2} marginTop={0}>
-                    {output
-                        .trim()
-                        .split(/\r?\n/)
-                        .slice(-3)
-                        .map((line, lidx) => (
-                            <Text key={lidx} color={THEME.colors.error} wrap="truncate-end">
-                                │ {line}
-                            </Text>
-                        ))}
+                    {renderedLines.map((line, lidx) => (
+                        <Text
+                            key={lidx}
+                            color={isError ? THEME.colors.error : THEME.colors.muted}
+                            wrap="truncate-end"
+                        >
+                            │ {line}
+                        </Text>
+                    ))}
+                    {hiddenCount > 0 && (
+                        <Text color={THEME.colors.muted} wrap="truncate-end">
+                            │ {`[+${hiddenCount} more lines - press enter to view in pager]`}
+                        </Text>
+                    )}
                 </Box>
             )}
         </Box>
@@ -564,6 +600,7 @@ export const formatConsolidatedReadArgs = formatConsolidatedArgs
 export function ConsolidatedDiscoveryView({
     category,
     blocks,
+    forceExpanded,
     isLastBlock,
 }: {
     category: DiscoveryCategory
@@ -613,6 +650,7 @@ export function ConsolidatedDiscoveryView({
                 command={errorBlock?.command || `${label}()`}
                 output={errorBlock?.output}
                 status="error"
+                forceExpanded={forceExpanded}
             />
         )
     }
@@ -713,8 +751,27 @@ export const BotMessage = React.memo(function BotMessage({
     usage,
     expandCommands,
     hasTopMargin,
+    isStreaming: isStreamingProp,
 }: Props) {
     const groupedItems = groupBlocks(blocks)
+
+    const MAX_VISIBLE_BLOCKS = 25
+    let itemsToRender = groupedItems
+    let hiddenStepsCount = 0
+    let hasLeadingText = false
+
+    if (!expandCommands && groupedItems.length > MAX_VISIBLE_BLOCKS) {
+        hiddenStepsCount = groupedItems.length - MAX_VISIBLE_BLOCKS
+        if (groupedItems[0]?.kind === 'single' && groupedItems[0].block.type === 'text') {
+            hasLeadingText = true
+            itemsToRender = [
+                groupedItems[0],
+                ...groupedItems.slice(groupedItems.length - (MAX_VISIBLE_BLOCKS - 1)),
+            ]
+        } else {
+            itemsToRender = groupedItems.slice(hiddenStepsCount)
+        }
+    }
 
     return (
         <Box
@@ -725,520 +782,575 @@ export const BotMessage = React.memo(function BotMessage({
             gap={0}
             marginTop={hasTopMargin ? 1 : 0}
         >
-            {groupedItems.map((item) => {
-                if (item.kind === 'consolidated_discovery') {
-                    return (
-                        <ConsolidatedDiscoveryView
-                            key={item.originalIdx}
-                            category={item.category}
-                            blocks={item.blocks}
-                            forceExpanded={expandCommands}
-                            isLastBlock={item.originalIdx + item.blocks.length >= blocks.length}
-                        />
-                    )
-                }
+            {hiddenStepsCount > 0 && !hasLeadingText && (
+                <Text color={THEME.colors.muted}>
+                    {`[+${hiddenStepsCount} earlier steps hidden]`}
+                </Text>
+            )}
+            {itemsToRender.map((item, mapIdx) => {
+                const hiddenStepsBanner =
+                    hiddenStepsCount > 0 && hasLeadingText && mapIdx === 1 ? (
+                        <Text color={THEME.colors.muted}>
+                            {`[+${hiddenStepsCount} earlier steps hidden]`}
+                        </Text>
+                    ) : null
 
-                const block = item.block
-                const idx = item.originalIdx
-                let prevBlock: MessageBlock | null = null
-                for (let i = idx - 1; i >= 0; i--) {
-                    const b = blocks[i]
-                    if (!b) continue
-                    if (
-                        (b.type === 'text' || b.type === 'thinking') &&
-                        (!b.content || b.content.trim() === '')
-                    ) {
-                        continue
-                    }
-                    if (b.type === 'thinking' && !b.isStreaming) {
-                        continue
-                    }
-                    prevBlock = b
-                    break
-                }
-                const needsTopMargin = Boolean(
-                    prevBlock &&
-                    (prevBlock.type === 'command' ||
-                        prevBlock.type === 'thinking' ||
-                        prevBlock.type === 'compaction')
-                )
-
-                switch (block.type) {
-                    case 'text': {
-                        if (!block.content || block.content.trim() === '') return null
-                        const isThinking =
-                            block.content === 'Thinking...' ||
-                            block.content === 'Searching...' ||
-                            block.content === 'Reading...' ||
-                            block.content === 'Writing...' ||
-                            block.content === 'Planning...' ||
-                            block.content === 'Coding...' ||
-                            block.content === 'Executing...' ||
-                            block.content === 'Testing...' ||
-                            block.content === 'Verifying...' ||
-                            block.content === 'Refining...' ||
-                            block.content === 'Finalizing...' ||
-                            block.content === 'Working...' ||
-                            block.content === 'Preparing...' ||
-                            block.content === 'Compacting...' ||
-                            block.content === 'Generating...' ||
-                            block.content === 'Analyzing...' ||
-                            block.content === 'Analyzing prompt...' ||
-                            block.content === 'Generating questions...' ||
-                            block.content === 'Understanding...' ||
-                            block.content === 'Searching web...' ||
-                            block.content === 'Searching codebase...' ||
-                            block.content === 'Listing directory...' ||
-                            block.content === 'Modifying...' ||
-                            block.content === 'Asking question...' ||
-                            block.content === 'Managing tasks...' ||
-                            block.content === 'Checking permissions...' ||
-                            block.content === 'Generating image...' ||
-                            block.content === 'Sending message...' ||
-                            block.content === 'Scheduling timer...'
-                        if (isThinking) {
-                            if (idx !== blocks.length - 1) return null
-                            return (
-                                <Box key={idx} flexDirection="column">
-                                    <Box gap={1} alignItems="center">
-                                        <Spinner />
-                                        <Text color={THEME.colors.muted}>{block.content}</Text>
-                                        <InlineTip active={true} />
-                                    </Box>
-                                </Box>
-                            )
-                        }
-
-                        const isRetryStatus =
-                            block.content.includes('rate limit hit') ||
-                            block.content.includes('high demand hit') ||
-                            (block.content.includes('Retrying in') &&
-                                block.content.includes('attempt')) ||
-                            block.content.startsWith('Rate limit') ||
-                            block.content.startsWith('High demand') ||
-                            block.content.startsWith('LLM Provider')
-                        if (isRetryStatus) {
-                            if (idx !== blocks.length - 1) return null
-                            return (
-                                <Box key={idx} flexDirection="column">
-                                    <Box gap={1} alignItems="center">
-                                        <Spinner />
-                                        <Text color={THEME.colors.muted}>
-                                            {block.content.trim()}
-                                        </Text>
-                                    </Box>
-                                </Box>
-                            )
-                        }
-
-                        if (block.color) {
-                            return (
-                                <Box key={idx} flexDirection="column">
-                                    {needsTopMargin && <Text> </Text>}
-                                    <Text color={block.color}>{block.content}</Text>
-                                </Box>
-                            )
-                        }
-
-                        // split by <thought> and <think> tags (case insensitive, allow attributes)
-                        const parts = block.content.split(
-                            /(<(?:thought|think)(?:>| [^>]*>)[\s\S]*?<\/(?:thought|think)>|<(?:thought|think)(?:>| [^>]*>)[\s\S]*)/i
-                        )
+                const renderedElement = (() => {
+                    if (item.kind === 'consolidated_discovery') {
                         return (
-                            <Box key={idx} flexDirection="column">
-                                {needsTopMargin && <Text> </Text>}
-                                {parts.map((part, pidx) => {
-                                    if (/^<(?:thought|think)(?:>| [^>]*>)/i.test(part)) {
-                                        const isClosed = /<\/(?:thought|think)>$/i.test(part)
-                                        const isStreaming =
-                                            !isClosed &&
-                                            idx === blocks.length - 1 &&
-                                            pidx === parts.length - 1
-                                        const thoughtContent = part
-                                            .replace(/^<(?:thought|think)(?:>| [^>]*>)/i, '')
-                                            .replace(/<\/(?:thought|think)>$/i, '')
-                                            .trim()
-                                        return (
-                                            <CollapsibleThought
-                                                key={pidx}
-                                                content={thoughtContent}
-                                                isStreaming={isStreaming}
-                                                forceExpanded={expandCommands}
-                                            />
-                                        )
-                                    }
-                                    if (part.trim() === '') return null
-                                    const hasLeadingNewline =
-                                        (part.startsWith('\n') ||
-                                            (pidx === 0 && block.content.startsWith('\n'))) &&
-                                        !needsTopMargin
-                                    const isStreaming =
-                                        idx === blocks.length - 1 && pidx === parts.length - 1
-                                    const contentText = isStreaming
-                                        ? part.replace(/^\n+/, '')
-                                        : part.trim()
-                                    return (
-                                        <Box key={pidx} flexDirection="column">
-                                            {hasLeadingNewline && <Text> </Text>}
-                                            <SmoothMarkdown
-                                                text={contentText}
-                                                isRunning={isStreaming}
-                                            />
-                                        </Box>
-                                    )
-                                })}
-                            </Box>
-                        )
-                    }
-                    case 'error': {
-                        const parsed = parseTuiError(block.error, block.cause, block.hint)
-                        return (
-                            <Box key={idx} flexDirection="column">
-                                {needsTopMargin && <Text> </Text>}
-                                <FormattedErrorText
-                                    text={parsed.message}
-                                    defaultColor={THEME.colors.error}
-                                />
-                                {parsed.hint && parsed.hint !== '' && (
-                                    <FormattedErrorText
-                                        text={parsed.hint}
-                                        defaultColor={THEME.colors.muted}
-                                    />
-                                )}
-                            </Box>
-                        )
-                    }
-                    case 'interrupt': {
-                        return (
-                            <Box key={idx} flexDirection="row" paddingY={1}>
-                                <Text color={THEME.colors.muted}>
-                                    Interrupted · What should December do instead?
-                                </Text>
-                            </Box>
-                        )
-                    }
-                    case 'thinking': {
-                        return (
-                            <CollapsibleThought
-                                key={idx}
-                                content={block.content}
-                                isStreaming={block.isStreaming}
-                                durationMs={block.durationMs}
+                            <ConsolidatedDiscoveryView
+                                key={item.originalIdx}
+                                category={item.category}
+                                blocks={item.blocks}
                                 forceExpanded={expandCommands}
+                                isLastBlock={item.originalIdx + item.blocks.length >= blocks.length}
                             />
                         )
                     }
-                    case 'compaction': {
-                        return (
-                            <Box key={idx} flexDirection="column" paddingY={1}>
-                                <Box flexDirection="row" gap={1} alignItems="center">
-                                    <Text color={THEME.colors.warning} italic>
-                                        Context Compacted
-                                    </Text>
-                                </Box>
-                                <Box paddingLeft={1} paddingTop={1}>
-                                    <Text color={THEME.colors.muted}>
-                                        {block.summary.replace(
-                                            /^\[COMPACTED HISTORY SUMMARY\]\n/,
-                                            ''
-                                        )}
-                                    </Text>
-                                </Box>
-                            </Box>
-                        )
+
+                    const block = item.block
+                    const idx = item.originalIdx
+                    let prevBlock: MessageBlock | null = null
+                    for (let i = idx - 1; i >= 0; i--) {
+                        const b = blocks[i]
+                        if (!b) continue
+                        if (
+                            (b.type === 'text' || b.type === 'thinking') &&
+                            (!b.content || b.content.trim() === '')
+                        ) {
+                            continue
+                        }
+                        if (b.type === 'thinking' && !b.isStreaming) {
+                            continue
+                        }
+                        prevBlock = b
+                        break
                     }
-                    case 'command': {
-                        const isSubagent =
-                            block.toolName === 'invoke_subagent' ||
-                            block.toolName === 'spawn_subagent' ||
-                            block.command?.startsWith('invoke_subagent(') ||
-                            block.command?.startsWith('spawn_subagent(') ||
-                            block.command?.startsWith('SubAgent(')
+                    const needsTopMargin = Boolean(
+                        prevBlock &&
+                        (prevBlock.type === 'command' ||
+                            prevBlock.type === 'thinking' ||
+                            prevBlock.type === 'compaction')
+                    )
 
-                        if (isSubagent) {
-                            return (
-                                <SubagentTickerView
-                                    key={idx}
-                                    toolName={block.toolName}
-                                    command={block.command}
-                                    toolInput={block.toolInput}
-                                    output={block.output}
-                                    status={block.status}
-                                    isLastBlock={idx === blocks.length - 1}
-                                    forceExpanded={expandCommands}
-                                />
-                            )
-                        }
-
-                        const isRunning = block.status === 'running'
-
-                        let parsedInput: any = {}
-                        try {
-                            parsedInput = JSON.parse(block.toolInput || '{}')
-                        } catch {
-                            // ignore parse errors
-                        }
-
-                        if (!isRunning) {
-                            const isNoOutputTool =
-                                block.status !== 'error' &&
-                                (block.toolName === 'read_file' ||
-                                    block.toolName === 'view_file' ||
-                                    block.command?.startsWith('Read(') ||
-                                    block.toolName === 'ask_permission' ||
-                                    block.toolName === 'list_permissions')
-
-                            if (isNoOutputTool) {
+                    switch (block.type) {
+                        case 'text': {
+                            if (!block.content || block.content.trim() === '') return null
+                            const isThinking =
+                                block.content === 'Thinking...' ||
+                                block.content === 'Searching...' ||
+                                block.content === 'Reading...' ||
+                                block.content === 'Writing...' ||
+                                block.content === 'Planning...' ||
+                                block.content === 'Coding...' ||
+                                block.content === 'Executing...' ||
+                                block.content === 'Testing...' ||
+                                block.content === 'Verifying...' ||
+                                block.content === 'Refining...' ||
+                                block.content === 'Finalizing...' ||
+                                block.content === 'Working...' ||
+                                block.content === 'Preparing...' ||
+                                block.content === 'Compacting...' ||
+                                block.content === 'Generating...' ||
+                                block.content === 'Analyzing...' ||
+                                block.content === 'Analyzing prompt...' ||
+                                block.content === 'Generating questions...' ||
+                                block.content === 'Understanding...' ||
+                                block.content === 'Searching web...' ||
+                                block.content === 'Searching codebase...' ||
+                                block.content === 'Listing directory...' ||
+                                block.content === 'Modifying...' ||
+                                block.content === 'Asking question...' ||
+                                block.content === 'Managing tasks...' ||
+                                block.content === 'Checking permissions...' ||
+                                block.content === 'Generating image...' ||
+                                block.content === 'Sending message...' ||
+                                block.content === 'Scheduling timer...'
+                            if (isThinking) {
+                                if (idx !== blocks.length - 1) return null
                                 return (
                                     <Box key={idx} flexDirection="column">
-                                        <Box alignItems="center" gap={1}>
-                                            <StyledCommand command={block.command} />
+                                        <Box gap={1} alignItems="center">
+                                            <Spinner />
+                                            <Text color={THEME.colors.muted}>{block.content}</Text>
+                                            <InlineTip active={true} />
                                         </Box>
                                     </Box>
                                 )
                             }
 
-                            let displayOutput = block.output
-                            if (
-                                block.toolName === 'replace_file_content' ||
-                                block.toolName === 'multi_replace_file_content' ||
-                                block.toolName === 'edit_file' ||
-                                block.toolName === 'edit_diff' ||
-                                block.toolName === 'write_file' ||
-                                block.toolName === 'write_to_file'
-                            ) {
-                                const targetContent =
-                                    parsedInput.targetContent ?? parsedInput.TargetContent
-                                const replacementContent =
-                                    parsedInput.replacementContent ?? parsedInput.ReplacementContent
-
-                                if (
-                                    targetContent !== undefined ||
-                                    replacementContent !== undefined
-                                ) {
-                                    const target = (targetContent || '')
-                                        .split(/\r?\n/)
-                                        .map((l: string) => (l.startsWith('-') ? l : `-${l}`))
-                                        .join('\n')
-                                    const replacement = (replacementContent || '')
-                                        .split(/\r?\n/)
-                                        .map((l: string) => (l.startsWith('+') ? l : `+${l}`))
-                                        .join('\n')
-                                    displayOutput = [target, replacement].filter(Boolean).join('\n')
-                                } else if (
-                                    parsedInput.ReplacementChunks &&
-                                    Array.isArray(parsedInput.ReplacementChunks)
-                                ) {
-                                    displayOutput = parsedInput.ReplacementChunks.map(
-                                        (chunk: any) => {
-                                            const tContent =
-                                                chunk.targetContent ?? chunk.TargetContent ?? ''
-                                            const rContent =
-                                                chunk.replacementContent ??
-                                                chunk.ReplacementContent ??
-                                                ''
-                                            const t = tContent
-                                                .split(/\r?\n/)
-                                                .map((l: string) =>
-                                                    l.startsWith('-') ? l : `-${l}`
-                                                )
-                                                .join('\n')
-                                            const r = rContent
-                                                .split(/\r?\n/)
-                                                .map((l: string) =>
-                                                    l.startsWith('+') ? l : `+${l}`
-                                                )
-                                                .join('\n')
-                                            return `${t}\n${r}`
-                                        }
-                                    ).join('\n')
-                                } else if (parsedInput.diff) {
-                                    displayOutput = parsedInput.diff
-                                } else if (
-                                    block.toolName === 'write_file' ||
-                                    block.toolName === 'write_to_file'
-                                ) {
-                                    const code =
-                                        parsedInput.codeContent ??
-                                        parsedInput.CodeContent ??
-                                        parsedInput.content ??
-                                        parsedInput.code ??
-                                        ''
-                                    displayOutput = (code || '')
-                                        .split(/\r?\n/)
-                                        .map((l: string) => (l.startsWith('+') ? l : `+${l}`))
-                                        .join('\n')
-                                }
-
-                                if (displayOutput) {
-                                    const filePath =
-                                        parsedInput.TargetFile ??
-                                        parsedInput.targetFile ??
-                                        parsedInput.filePath ??
-                                        parsedInput.path
-                                    const startLine =
-                                        parsedInput.StartLine ?? parsedInput.startLine ?? 1
-                                    const isCreated =
-                                        block.toolName === 'write_file' ||
-                                        block.toolName === 'write_to_file'
-
-                                    return (
-                                        <CompactFileChange
-                                            key={idx}
-                                            filePath={filePath}
-                                            action={isCreated ? 'created' : 'modified'}
-                                            diff={displayOutput}
-                                            startLine={startLine}
-                                        />
-                                    )
-                                }
+                            const isRetryStatus =
+                                block.content.includes('rate limit hit') ||
+                                block.content.includes('high demand hit') ||
+                                (block.content.includes('Retrying in') &&
+                                    block.content.includes('attempt')) ||
+                                block.content.startsWith('Rate limit') ||
+                                block.content.startsWith('High demand') ||
+                                block.content.startsWith('LLM Provider')
+                            if (isRetryStatus) {
+                                if (idx !== blocks.length - 1) return null
+                                return (
+                                    <Box key={idx} flexDirection="column">
+                                        <Box gap={1} alignItems="center">
+                                            <Spinner />
+                                            <Text color={THEME.colors.muted}>
+                                                {block.content.trim()}
+                                            </Text>
+                                        </Box>
+                                    </Box>
+                                )
                             }
 
+                            if (block.color) {
+                                return (
+                                    <Box key={idx} flexDirection="column">
+                                        {needsTopMargin && <Text> </Text>}
+                                        <Text color={block.color}>{block.content}</Text>
+                                    </Box>
+                                )
+                            }
+
+                            // split by <thought> and <think> tags (case insensitive, allow attributes)
+                            const parts = block.content.split(
+                                /(<(?:thought|think)(?:>| [^>]*>)[\s\S]*?<\/(?:thought|think)>|<(?:thought|think)(?:>| [^>]*>)[\s\S]*)/i
+                            )
                             return (
-                                <CompactCommandOutput
+                                <Box key={idx} flexDirection="column">
+                                    {needsTopMargin && <Text> </Text>}
+                                    {parts.map((part, pidx) => {
+                                        if (/^<(?:thought|think)(?:>| [^>]*>)/i.test(part)) {
+                                            const isClosed = /<\/(?:thought|think)>$/i.test(part)
+                                            const isStreaming =
+                                                !isClosed &&
+                                                (isStreamingProp !== undefined
+                                                    ? isStreamingProp &&
+                                                      idx === blocks.length - 1 &&
+                                                      pidx === parts.length - 1
+                                                    : idx === blocks.length - 1 &&
+                                                      pidx === parts.length - 1)
+                                            const thoughtContent = part
+                                                .replace(/^<(?:thought|think)(?:>| [^>]*>)/i, '')
+                                                .replace(/<\/(?:thought|think)>$/i, '')
+                                                .trim()
+                                            return (
+                                                <CollapsibleThought
+                                                    key={pidx}
+                                                    content={thoughtContent}
+                                                    isStreaming={isStreaming}
+                                                    forceExpanded={expandCommands}
+                                                />
+                                            )
+                                        }
+                                        if (part.trim() === '') return null
+                                        const hasLeadingNewline =
+                                            (part.startsWith('\n') ||
+                                                (pidx === 0 && block.content.startsWith('\n'))) &&
+                                            !needsTopMargin
+                                        const isStreaming =
+                                            isStreamingProp !== undefined
+                                                ? isStreamingProp &&
+                                                  idx === blocks.length - 1 &&
+                                                  pidx === parts.length - 1
+                                                : idx === blocks.length - 1 &&
+                                                  pidx === parts.length - 1
+                                        const contentText = isStreaming
+                                            ? part.replace(/^\n+/, '')
+                                            : part.trim()
+                                        return (
+                                            <Box key={pidx} flexDirection="column">
+                                                {hasLeadingNewline && <Text> </Text>}
+                                                <SmoothMarkdown
+                                                    text={contentText}
+                                                    isRunning={isStreaming}
+                                                />
+                                            </Box>
+                                        )
+                                    })}
+                                </Box>
+                            )
+                        }
+                        case 'error': {
+                            const parsed = parseTuiError(block.error, block.cause, block.hint)
+                            return (
+                                <Box key={idx} flexDirection="column">
+                                    {needsTopMargin && <Text> </Text>}
+                                    <FormattedErrorText
+                                        text={parsed.message}
+                                        defaultColor={THEME.colors.error}
+                                    />
+                                    {parsed.hint && parsed.hint !== '' && (
+                                        <FormattedErrorText
+                                            text={parsed.hint}
+                                            defaultColor={THEME.colors.muted}
+                                        />
+                                    )}
+                                </Box>
+                            )
+                        }
+                        case 'interrupt': {
+                            return (
+                                <Box key={idx} flexDirection="row" paddingY={1}>
+                                    <Text color={THEME.colors.muted}>
+                                        Interrupted · What should December do instead?
+                                    </Text>
+                                </Box>
+                            )
+                        }
+                        case 'thinking': {
+                            return (
+                                <CollapsibleThought
                                     key={idx}
-                                    command={block.command}
-                                    output={displayOutput}
-                                    status={block.status}
+                                    content={block.content}
+                                    isStreaming={block.isStreaming}
+                                    durationMs={block.durationMs}
+                                    forceExpanded={expandCommands}
                                 />
                             )
                         }
-
-                        // expanded state for running tools
-                        let statusLabel = 'Working...'
-                        if (block.toolName === 'read_file' || block.toolName === 'view_file')
-                            statusLabel = 'Reading...'
-                        else if (
-                            block.toolName === 'write_file' ||
-                            block.toolName === 'write_to_file'
-                        )
-                            statusLabel = 'Writing...'
-                        else if (block.toolName === 'run_command' || block.toolName === 'bash')
-                            statusLabel = 'Executing...'
-                        else if (block.toolName === 'search_web') statusLabel = 'Searching web...'
-                        else if (block.toolName === 'list_dir') statusLabel = 'Listing directory...'
-                        else if (
-                            block.toolName === 'find_files' ||
-                            block.toolName === 'grep_search'
-                        )
-                            statusLabel = 'Searching codebase...'
-                        else if (
-                            block.toolName === 'edit_file' ||
-                            block.toolName === 'edit_diff' ||
-                            block.toolName === 'replace_file_content' ||
-                            block.toolName === 'multi_replace_file_content'
-                        )
-                            statusLabel = 'Modifying...'
-                        else if (block.toolName === 'ask_question')
-                            statusLabel = 'Asking question...'
-                        else if (block.toolName === 'manage_task') statusLabel = 'Managing tasks...'
-                        else if (block.toolName === 'manage_subagent')
-                            statusLabel = 'Managing subagents...'
-                        else if (block.toolName === 'write_artifact')
-                            statusLabel = 'Writing artifact...'
-                        else if (
-                            block.toolName === 'browser' ||
-                            block.toolName === 'browser_action'
-                        )
-                            statusLabel = 'Browsing...'
-                        else if (block.toolName === 'manage_memory')
-                            statusLabel = 'Managing memory...'
-                        else if (block.toolName === 'code_intelligence')
-                            statusLabel = 'Analyzing code...'
-                        else if (block.toolName === 'run_skill') statusLabel = 'Running skill...'
-                        else if (
-                            block.toolName === 'list_permissions' ||
-                            block.toolName === 'ask_permission'
-                        )
-                            statusLabel = 'Checking permissions...'
-                        else if (block.toolName === 'generate_image')
-                            statusLabel = 'Generating image...'
-                        else if (block.toolName === 'send_message')
-                            statusLabel = 'Sending message...'
-                        else if (block.toolName === 'schedule') statusLabel = 'Scheduling timer...'
-
-                        return (
-                            <Box key={idx} flexDirection="column">
-                                <Box gap={1} alignItems="center">
-                                    <Spinner />
-                                    {block.command ? (
-                                        <StyledRunningCommand command={block.command} />
-                                    ) : (
-                                        <Text color={THEME.colors.muted}>{statusLabel}</Text>
-                                    )}
-                                    <InlineTip active={idx === blocks.length - 1} />
-                                </Box>
-                                {block.output && (
-                                    <Box
-                                        flexDirection="column"
-                                        marginLeft={0}
-                                        marginTop={0.5}
-                                        paddingX={1}
-                                        paddingY={0.5}
-                                    >
-                                        {block.output
-                                            .trim()
-                                            .split(/\r?\n/)
-                                            .slice(-2)
-                                            .map((line, lidx) => (
-                                                <Text
-                                                    key={lidx}
-                                                    color={THEME.colors.muted}
-                                                    wrap="truncate-end"
-                                                >
-                                                    │ {line}
-                                                </Text>
-                                            ))}
+                        case 'compaction': {
+                            return (
+                                <Box key={idx} flexDirection="column" paddingY={1}>
+                                    <Box flexDirection="row" gap={1} alignItems="center">
+                                        <Text color={THEME.colors.warning} italic>
+                                            Context Compacted
+                                        </Text>
                                     </Box>
-                                )}
-                            </Box>
-                        )
-                    }
-                    case 'file_change': {
-                        const isCreated = block.action === 'created'
-                        const isDeleted = block.action === 'deleted'
-                        const actionLabel = isCreated
-                            ? 'created'
-                            : isDeleted
-                              ? 'deleted'
-                              : 'modified'
+                                    <Box paddingLeft={1} paddingTop={1}>
+                                        <Text color={THEME.colors.muted}>
+                                            {block.summary.replace(
+                                                /^\[COMPACTED HISTORY SUMMARY\]\n/,
+                                                ''
+                                            )}
+                                        </Text>
+                                    </Box>
+                                </Box>
+                            )
+                        }
+                        case 'command': {
+                            const isSubagent =
+                                block.toolName === 'invoke_subagent' ||
+                                block.toolName === 'spawn_subagent' ||
+                                block.command?.startsWith('invoke_subagent(') ||
+                                block.command?.startsWith('spawn_subagent(') ||
+                                block.command?.startsWith('SubAgent(')
 
-                        return (
-                            <CompactFileChange
-                                key={idx}
-                                filePath={block.filePath}
-                                action={actionLabel}
-                                diff={block.diff}
-                            />
-                        )
-                    }
-                    case 'code': {
-                        return (
-                            <Box key={idx} flexDirection="column" paddingLeft={2} paddingY={0.5}>
-                                {block.code.split(/\r?\n/).map((line, lidx) => (
-                                    <Text key={lidx} color={THEME.colors.text}>
-                                        {line}
-                                    </Text>
-                                ))}
-                            </Box>
-                        )
-                    }
-                    case 'status': {
-                        return (
-                            <Box key={idx} gap={1} alignItems="center">
-                                <Text
-                                    color={
-                                        block.success ? THEME.colors.success : THEME.colors.error
+                            if (isSubagent) {
+                                return (
+                                    <SubagentTickerView
+                                        key={idx}
+                                        toolName={block.toolName}
+                                        command={block.command}
+                                        toolInput={block.toolInput}
+                                        output={block.output}
+                                        status={block.status}
+                                        isLastBlock={idx === blocks.length - 1}
+                                        forceExpanded={expandCommands}
+                                    />
+                                )
+                            }
+
+                            const isRunning = block.status === 'running'
+
+                            let parsedInput: any = {}
+                            try {
+                                parsedInput = JSON.parse(block.toolInput || '{}')
+                            } catch {
+                                // ignore parse errors
+                            }
+
+                            if (!isRunning) {
+                                const isNoOutputTool =
+                                    block.status !== 'error' &&
+                                    (block.toolName === 'read_file' ||
+                                        block.toolName === 'view_file' ||
+                                        block.command?.startsWith('Read(') ||
+                                        block.toolName === 'ask_permission' ||
+                                        block.toolName === 'list_permissions')
+
+                                if (isNoOutputTool) {
+                                    return (
+                                        <Box key={idx} flexDirection="column">
+                                            <Box alignItems="center" gap={1}>
+                                                <StyledCommand command={block.command} />
+                                            </Box>
+                                        </Box>
+                                    )
+                                }
+
+                                let displayOutput = block.output
+                                if (
+                                    block.toolName === 'replace_file_content' ||
+                                    block.toolName === 'multi_replace_file_content' ||
+                                    block.toolName === 'edit_file' ||
+                                    block.toolName === 'edit_diff' ||
+                                    block.toolName === 'write_file' ||
+                                    block.toolName === 'write_to_file'
+                                ) {
+                                    const targetContent =
+                                        parsedInput.targetContent ?? parsedInput.TargetContent
+                                    const replacementContent =
+                                        parsedInput.replacementContent ??
+                                        parsedInput.ReplacementContent
+
+                                    if (
+                                        targetContent !== undefined ||
+                                        replacementContent !== undefined
+                                    ) {
+                                        const target = (targetContent || '')
+                                            .split(/\r?\n/)
+                                            .map((l: string) => (l.startsWith('-') ? l : `-${l}`))
+                                            .join('\n')
+                                        const replacement = (replacementContent || '')
+                                            .split(/\r?\n/)
+                                            .map((l: string) => (l.startsWith('+') ? l : `+${l}`))
+                                            .join('\n')
+                                        displayOutput = [target, replacement]
+                                            .filter(Boolean)
+                                            .join('\n')
+                                    } else if (
+                                        parsedInput.ReplacementChunks &&
+                                        Array.isArray(parsedInput.ReplacementChunks)
+                                    ) {
+                                        displayOutput = parsedInput.ReplacementChunks.map(
+                                            (chunk: any) => {
+                                                const tContent =
+                                                    chunk.targetContent ?? chunk.TargetContent ?? ''
+                                                const rContent =
+                                                    chunk.replacementContent ??
+                                                    chunk.ReplacementContent ??
+                                                    ''
+                                                const t = tContent
+                                                    .split(/\r?\n/)
+                                                    .map((l: string) =>
+                                                        l.startsWith('-') ? l : `-${l}`
+                                                    )
+                                                    .join('\n')
+                                                const r = rContent
+                                                    .split(/\r?\n/)
+                                                    .map((l: string) =>
+                                                        l.startsWith('+') ? l : `+${l}`
+                                                    )
+                                                    .join('\n')
+                                                return `${t}\n${r}`
+                                            }
+                                        ).join('\n')
+                                    } else if (parsedInput.diff) {
+                                        displayOutput = parsedInput.diff
+                                    } else if (
+                                        block.toolName === 'write_file' ||
+                                        block.toolName === 'write_to_file'
+                                    ) {
+                                        const code =
+                                            parsedInput.codeContent ??
+                                            parsedInput.CodeContent ??
+                                            parsedInput.content ??
+                                            parsedInput.code ??
+                                            ''
+                                        displayOutput = (code || '')
+                                            .split(/\r?\n/)
+                                            .map((l: string) => (l.startsWith('+') ? l : `+${l}`))
+                                            .join('\n')
                                     }
+
+                                    if (displayOutput) {
+                                        const filePath =
+                                            parsedInput.TargetFile ??
+                                            parsedInput.targetFile ??
+                                            parsedInput.filePath ??
+                                            parsedInput.path
+                                        const startLine =
+                                            parsedInput.StartLine ?? parsedInput.startLine ?? 1
+                                        const isCreated =
+                                            block.toolName === 'write_file' ||
+                                            block.toolName === 'write_to_file'
+
+                                        return (
+                                            <CompactFileChange
+                                                key={idx}
+                                                filePath={filePath}
+                                                action={isCreated ? 'created' : 'modified'}
+                                                diff={displayOutput}
+                                                startLine={startLine}
+                                            />
+                                        )
+                                    }
+                                }
+
+                                return (
+                                    <CompactCommandOutput
+                                        key={idx}
+                                        command={block.command}
+                                        output={displayOutput}
+                                        status={block.status}
+                                        forceExpanded={expandCommands}
+                                    />
+                                )
+                            }
+
+                            // expanded state for running tools
+                            let statusLabel = 'Working...'
+                            if (block.toolName === 'read_file' || block.toolName === 'view_file')
+                                statusLabel = 'Reading...'
+                            else if (
+                                block.toolName === 'write_file' ||
+                                block.toolName === 'write_to_file'
+                            )
+                                statusLabel = 'Writing...'
+                            else if (block.toolName === 'run_command' || block.toolName === 'bash')
+                                statusLabel = 'Executing...'
+                            else if (block.toolName === 'search_web')
+                                statusLabel = 'Searching web...'
+                            else if (block.toolName === 'list_dir')
+                                statusLabel = 'Listing directory...'
+                            else if (
+                                block.toolName === 'find_files' ||
+                                block.toolName === 'grep_search'
+                            )
+                                statusLabel = 'Searching codebase...'
+                            else if (
+                                block.toolName === 'edit_file' ||
+                                block.toolName === 'edit_diff' ||
+                                block.toolName === 'replace_file_content' ||
+                                block.toolName === 'multi_replace_file_content'
+                            )
+                                statusLabel = 'Modifying...'
+                            else if (block.toolName === 'ask_question')
+                                statusLabel = 'Asking question...'
+                            else if (block.toolName === 'manage_task')
+                                statusLabel = 'Managing tasks...'
+                            else if (block.toolName === 'manage_subagent')
+                                statusLabel = 'Managing subagents...'
+                            else if (block.toolName === 'write_artifact')
+                                statusLabel = 'Writing artifact...'
+                            else if (
+                                block.toolName === 'browser' ||
+                                block.toolName === 'browser_action'
+                            )
+                                statusLabel = 'Browsing...'
+                            else if (block.toolName === 'manage_memory')
+                                statusLabel = 'Managing memory...'
+                            else if (block.toolName === 'code_intelligence')
+                                statusLabel = 'Analyzing code...'
+                            else if (block.toolName === 'run_skill')
+                                statusLabel = 'Running skill...'
+                            else if (
+                                block.toolName === 'list_permissions' ||
+                                block.toolName === 'ask_permission'
+                            )
+                                statusLabel = 'Checking permissions...'
+                            else if (block.toolName === 'generate_image')
+                                statusLabel = 'Generating image...'
+                            else if (block.toolName === 'send_message')
+                                statusLabel = 'Sending message...'
+                            else if (block.toolName === 'schedule')
+                                statusLabel = 'Scheduling timer...'
+
+                            return (
+                                <Box key={idx} flexDirection="column">
+                                    <Box gap={1} alignItems="center">
+                                        <Spinner />
+                                        {block.command ? (
+                                            <StyledRunningCommand command={block.command} />
+                                        ) : (
+                                            <Text color={THEME.colors.muted}>{statusLabel}</Text>
+                                        )}
+                                        <InlineTip active={idx === blocks.length - 1} />
+                                    </Box>
+                                    {block.output && (
+                                        <Box
+                                            flexDirection="column"
+                                            marginLeft={0}
+                                            marginTop={0.5}
+                                            paddingX={1}
+                                            paddingY={0.5}
+                                        >
+                                            {block.output
+                                                .trim()
+                                                .split(/\r?\n/)
+                                                .slice(-2)
+                                                .map((line, lidx) => (
+                                                    <Text
+                                                        key={lidx}
+                                                        color={THEME.colors.muted}
+                                                        wrap="truncate-end"
+                                                    >
+                                                        │ {line}
+                                                    </Text>
+                                                ))}
+                                        </Box>
+                                    )}
+                                </Box>
+                            )
+                        }
+                        case 'file_change': {
+                            const isCreated = block.action === 'created'
+                            const isDeleted = block.action === 'deleted'
+                            const actionLabel = isCreated
+                                ? 'created'
+                                : isDeleted
+                                  ? 'deleted'
+                                  : 'modified'
+
+                            return (
+                                <CompactFileChange
+                                    key={idx}
+                                    filePath={block.filePath}
+                                    action={actionLabel}
+                                    diff={block.diff}
+                                />
+                            )
+                        }
+                        case 'code': {
+                            const { lines, hiddenCount } = truncateToolOutputLines(block.code, 15)
+                            return (
+                                <Box
+                                    key={idx}
+                                    flexDirection="column"
+                                    paddingLeft={2}
+                                    paddingY={0.5}
                                 >
-                                    {block.label}
-                                </Text>
-                            </Box>
-                        )
+                                    {lines.map((line, lidx) => (
+                                        <Text key={lidx} color={THEME.colors.text}>
+                                            {line}
+                                        </Text>
+                                    ))}
+                                    {hiddenCount > 0 && (
+                                        <Text color={THEME.colors.muted}>
+                                            {`[+${hiddenCount} more lines - press enter to view in pager]`}
+                                        </Text>
+                                    )}
+                                </Box>
+                            )
+                        }
+                        case 'status': {
+                            return (
+                                <Box key={idx} gap={1} alignItems="center">
+                                    <Text
+                                        color={
+                                            block.success
+                                                ? THEME.colors.success
+                                                : THEME.colors.error
+                                        }
+                                    >
+                                        {block.label}
+                                    </Text>
+                                </Box>
+                            )
+                        }
+                        default:
+                            return null
                     }
-                    default:
-                        return null
+                })()
+
+                if (hiddenStepsBanner) {
+                    return (
+                        <React.Fragment key={item.originalIdx}>
+                            {hiddenStepsBanner}
+                            {renderedElement}
+                        </React.Fragment>
+                    )
                 }
+                return renderedElement
             })}
         </Box>
     )

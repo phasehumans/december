@@ -222,6 +222,25 @@ describe('local-operations', () => {
                 localOperations.search.grep(testDir + '-nonexistent', 'fatal')
             ).rejects.toThrow()
         })
+
+        test('find streams results and filters ignored workspace directories like node_modules', async () => {
+            const ignoredDir = path.join(testDir, 'node_modules')
+            await fs.mkdir(ignoredDir, { recursive: true })
+            await fs.writeFile(path.join(ignoredDir, 'dep.ts'), 'export const dep = 1;\n')
+            const res = await localOperations.search.find(testDir, '*.ts')
+            expect(res).toContain('file1.ts')
+            expect(res).toContain('file2.ts')
+            expect(res).not.toContain('dep.ts')
+        })
+
+        test('grep handles regex queries with quotes and special characters without shell escaping failure', async () => {
+            const res = await localOperations.search.grep(
+                testDir,
+                'console\\.log\\("hello world"\\)'
+            )
+            expect(res).toContain('file1.ts')
+            expect(res).toContain('hello world')
+        })
     })
 
     describe('ui operations', () => {

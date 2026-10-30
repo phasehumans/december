@@ -26,6 +26,7 @@ export interface MessageItemProps {
     authMethod?: string
     selectedProvider?: string
     isAuthenticated?: boolean
+    isStreaming?: boolean
     onHeightMeasured?: (key: string, height: number) => void
 }
 
@@ -88,6 +89,7 @@ export const MessageItem = React.memo(
         authMethod,
         selectedProvider,
         isAuthenticated,
+        isStreaming,
         onHeightMeasured,
     }: MessageItemProps) {
         const itemKey = msg.id != null ? `${msg.id}` : `msg-idx-${index}`
@@ -139,6 +141,7 @@ export const MessageItem = React.memo(
                     usage={msg.usage}
                     expandCommands={expandCommands}
                     hasTopMargin={hasTopMargin}
+                    isStreaming={isStreaming}
                 />
             )
         }
@@ -162,6 +165,7 @@ export const MessageItem = React.memo(
         if (prev.modelLabel !== next.modelLabel) return false
         if (prev.authMethod !== next.authMethod) return false
         if (prev.selectedProvider !== next.selectedProvider) return false
+        if (prev.isStreaming !== next.isStreaming) return false
         return true
     }
 )
@@ -184,6 +188,7 @@ export const MessageList = React.memo(function MessageList({
     modelLabel,
     authMethod,
     selectedProvider,
+    isStreaming,
 }: {
     staticKey: number
     staticMessages: Message[]
@@ -200,6 +205,7 @@ export const MessageList = React.memo(function MessageList({
     modelLabel?: string
     authMethod?: string
     selectedProvider?: string
+    isStreaming?: boolean
 }) {
     const columns = useTerminalColumns()
     const scrollViewport = useScrollViewport()
@@ -274,8 +280,8 @@ export const MessageList = React.memo(function MessageList({
             }
             endIndex = Math.min(allMessages.length, Math.max(endIndex, startIndex + 1))
 
-            topSpacer = offsets[startIndex]
-            bottomSpacer = Math.max(0, totalHeight - offsets[endIndex])
+            topSpacer = effectiveReadingMode ? offsets[startIndex] : 0
+            bottomSpacer = effectiveReadingMode ? Math.max(0, totalHeight - offsets[endIndex]) : 0
         }
 
         const visibleMessages = allMessages.slice(startIndex, endIndex)
@@ -301,6 +307,8 @@ export const MessageList = React.memo(function MessageList({
                     const actualIndex = startIndex + index
                     const prevRole = actualIndex > 0 ? allMessages[actualIndex - 1]?.role : null
                     const key = msg.id != null ? `${msg.id}` : `msg-idx-${actualIndex}`
+                    const isLastItem = actualIndex === allMessages.length - 1
+                    const itemIsStreaming = Boolean(isStreaming && isLastItem)
                     return (
                         <MessageItem
                             key={key}
@@ -317,6 +325,7 @@ export const MessageList = React.memo(function MessageList({
                             authMethod={authMethod}
                             selectedProvider={selectedProvider}
                             isAuthenticated={isAuthenticated}
+                            isStreaming={itemIsStreaming}
                             onHeightMeasured={handleHeightMeasured}
                         />
                     )
@@ -359,6 +368,8 @@ export const MessageList = React.memo(function MessageList({
                 const all = [...staticMessages, ...activeMessages]
                 const prevRole = actualIndex > 0 ? all[actualIndex - 1]?.role : null
                 const key = msg.id != null ? `${msg.id}` : `msg-idx-${actualIndex}`
+                const isLastItem = actualIndex === all.length - 1
+                const itemIsStreaming = Boolean(isStreaming && isLastItem)
                 return (
                     <MessageItem
                         key={key}
@@ -375,6 +386,7 @@ export const MessageList = React.memo(function MessageList({
                         authMethod={authMethod}
                         selectedProvider={selectedProvider}
                         isAuthenticated={isAuthenticated}
+                        isStreaming={itemIsStreaming}
                     />
                 )
             })}

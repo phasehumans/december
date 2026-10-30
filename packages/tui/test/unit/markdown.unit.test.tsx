@@ -245,4 +245,14 @@ graph LR
         const frame = lastFrame() || ''
         expect(frame).toContain('const greeting = "hello"')
     })
+
+    it('bypasses markdown AST lexing and cache entirely when isStreaming is true', async () => {
+        const { clearMarkdownCache, getMarkdownCacheStats } =
+            await import('../../src/components/markdown')
+        clearMarkdownCache()
+        const text = 'Streaming token chunk `# heading` **bold** ```ts\ncode\n```'
+        const { lastFrame } = render(<Markdown isStreaming={true}>{text}</Markdown>)
+        expect(lastFrame()).toContain(text)
+        expect(getMarkdownCacheStats().astCacheSize).toBe(0)
+    })
 })

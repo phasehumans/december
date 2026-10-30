@@ -532,14 +532,19 @@ const CodeBlock = React.memo(function CodeBlock({
 
 export const Markdown = React.memo(function Markdown({ children, isStreaming }: Props) {
     const tokens = React.useMemo(() => {
+        if (isStreaming || !children) return []
         return parseMarkdownTokens(children)
-    }, [children])
+    }, [children, isStreaming])
 
     if (!children) return null
 
+    if (isStreaming) {
+        return <Text>{children}</Text>
+    }
+
     return (
         <Box flexDirection="column" gap={1}>
-            {tokens.map((token, index) => renderToken(token, index, isStreaming))}
+            {tokens.map((token, index) => renderToken(token, index))}
         </Box>
     )
 })

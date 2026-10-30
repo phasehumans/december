@@ -1,7 +1,8 @@
-import { exec, spawn } from 'node:child_process'
+import { exec, spawn, spawnSync } from 'node:child_process'
 import nodeFs from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import readline from 'node:readline'
 import { promisify } from 'node:util'
 
 import { PlatformAdapter, BashExecOptions, LspClient } from '@december/agent'
@@ -33,6 +34,270 @@ export const SERVER_READY_REGEX =
 
 export const DEFAULT_BG_TIMEOUT_MS = 20_000
 export const DEFAULT_SERVER_READY_DELAY_MS = 2_500
+
+let ripgrepAvailable: boolean | undefined
+
+export function isRipgrepAvailable(): boolean {
+    if (ripgrepAvailable !== undefined) {
+        return ripgrepAvailable
+    }
+    try {
+        const { status } = spawnSync('rg', ['--version'], { stdio: 'ignore' })
+        ripgrepAvailable = status === 0
+    } catch {
+        // Intentionally swallowed: fallback when rg is not available in PATH
+        ripgrepAvailable = false
+    }
+    return Boolean(ripgrepAvailable)
+}
+
+const MAX_STREAMED_SEARCH_LINES = 1000
+
+function streamRipgrepFind(
+    targetDir: string,
+    query: string,
+    ignores: string[],
+    root: string
+): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const args = ['--files', '--hidden']
+        if (query) {
+            args.push('-g', query)
+            if (!query.endsWith('/') && !query.endsWith('*')) {
+                args.push('-g', `${query}/**`)
+            }
+        }
+        for (const ig of ignores) {
+            if (ig.includes('!')) continue
+            args.push('-g', `!${ig}`)
+        }
+        args.push(targetDir)
+
+        let child: ReturnType<typeof spawn>
+        try {
+            child = spawn('rg', args, {
+                cwd: root,
+                stdio: ['ignore', 'pipe', 'pipe'],
+            })
+        } catch (err) {
+            return reject(err)
+        }
+
+        const rl = readline.createInterface({
+            input: child.stdout,
+            crlfDelay: Infinity,
+        })
+
+        const results: string[] = []
+        let closed = false
+
+        ;(rl as any).on('line', (line: string) => {
+            const trimmed = line.trim()
+            if (!trimmed) return
+            const relPath = path.isAbsolute(trimmed) ? path.relative(root, trimmed) : trimmed
+            results.push(relPath)
+            if (results.length >= MAX_STREAMED_SEARCH_LINES && !closed) {
+                closed = true
+                child.kill()
+                resolve(results.join('\n'))
+            }
+        })
+
+        let stderr = ''
+        child.stderr?.on('data', (chunk) => {
+            stderr += chunk.toString()
+        })
+        ;(child as any).on('error', (err: any) => {
+            if (!closed) {
+                closed = true
+                reject(err)
+            }
+        })
+        ;(child as any).on('close', (code: number | null) => {
+            if (!closed) {
+                closed = true
+                if (code === 0 || code === 1) {
+                    resolve(results.join('\n'))
+                } else {
+                    reject(new Error(stderr.trim() || `rg exited with code ${code}`))
+                }
+            }
+        })
+    })
+}
+
+function streamRipgrepGrep(
+    targetDir: string,
+    query: string,
+    ignores: string[],
+    root: string
+): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const args = ['-n', '-H', '--no-heading', '--color=never', '--hidden']
+        for (const ig of ignores) {
+            if (ig.includes('!')) continue
+            args.push('-g', `!${ig}`)
+        }
+        args.push('-e', query, targetDir)
+
+        let child: ReturnType<typeof spawn>
+        try {
+            child = spawn('rg', args, {
+                cwd: root,
+                stdio: ['ignore', 'pipe', 'pipe'],
+            })
+        } catch (err) {
+            return reject(err)
+        }
+
+        const rl = readline.createInterface({
+            input: child.stdout,
+            crlfDelay: Infinity,
+        })
+
+        const results: string[] = []
+        let closed = false
+
+        ;(rl as any).on('line', (line: string) => {
+            const trimmed = line.trim()
+            if (!trimmed) return
+            const colonIdx = trimmed.indexOf(':')
+            if (colonIdx !== -1) {
+                const rawPath = trimmed.slice(0, colonIdx)
+                const rest = trimmed.slice(colonIdx)
+                const relPath = path.isAbsolute(rawPath) ? path.relative(root, rawPath) : rawPath
+                results.push(relPath + rest)
+            } else {
+                results.push(trimmed)
+            }
+            if (results.length >= MAX_STREAMED_SEARCH_LINES && !closed) {
+                closed = true
+                child.kill()
+                resolve(results.join('\n'))
+            }
+        })
+
+        let stderr = ''
+        child.stderr?.on('data', (chunk) => {
+            stderr += chunk.toString()
+        })
+        ;(child as any).on('error', (err: any) => {
+            if (!closed) {
+                closed = true
+                reject(err)
+            }
+        })
+        ;(child as any).on('close', (code: number | null) => {
+            if (!closed) {
+                closed = true
+                if (code === 0 || code === 1) {
+                    resolve(results.join('\n'))
+                } else {
+                    reject(new Error(stderr.trim() || `grep exited with code ${code}`))
+                }
+            }
+        })
+    })
+}
+
+function streamFallbackGrep(
+    targetDir: string,
+    query: string,
+    ignores: string[],
+    root: string
+): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const child = spawn('git', ['grep', '-nI', query, '--', targetDir], {
+            cwd: root,
+            stdio: ['ignore', 'pipe', 'pipe'],
+        })
+
+        const rl = readline.createInterface({
+            input: child.stdout,
+            crlfDelay: Infinity,
+        })
+
+        const results: string[] = []
+        let closed = false
+
+        ;(rl as any).on('line', (line: string) => {
+            const trimmed = line.trim()
+            if (!trimmed) return
+            const rawPath = trimmed.split(':')[0]
+            const relPath = path.isAbsolute(rawPath) ? path.relative(root, rawPath) : rawPath
+            if (!isPathIgnored(relPath, ignores)) {
+                results.push(trimmed)
+                if (results.length >= MAX_STREAMED_SEARCH_LINES && !closed) {
+                    closed = true
+                    child.kill()
+                    resolve(results.join('\n'))
+                }
+            }
+        })
+        ;(child as any).on('error', (err: any) => {
+            if (!closed) {
+                closed = true
+                reject(err)
+            }
+        })
+        ;(child as any).on('close', (code: number | null) => {
+            if (!closed) {
+                closed = true
+                if (code === 0 || code === 1) {
+                    resolve(results.join('\n'))
+                } else {
+                    try {
+                        const fallback = spawn(
+                            'grep',
+                            [
+                                '-rnI',
+                                '--exclude-dir=node_modules',
+                                '--exclude-dir=.git',
+                                query,
+                                targetDir,
+                            ],
+                            { stdio: ['ignore', 'pipe', 'pipe'] }
+                        )
+                        const fResults: string[] = []
+                        const fRl = readline.createInterface({
+                            input: fallback.stdout,
+                            crlfDelay: Infinity,
+                        })
+                        let fClosed = false
+                        ;(fRl as any).on('line', (fLine: string) => {
+                            const trimmed = fLine.trim()
+                            if (!trimmed) return
+                            fResults.push(trimmed)
+                            if (fResults.length >= MAX_STREAMED_SEARCH_LINES && !fClosed) {
+                                fClosed = true
+                                fallback.kill()
+                                resolve(fResults.join('\n'))
+                            }
+                        })
+                        ;(fallback as any).on('close', (fCode: number | null) => {
+                            if (!fClosed) {
+                                fClosed = true
+                                if (fCode === 0 || fCode === 1) {
+                                    resolve(fResults.join('\n'))
+                                } else {
+                                    reject(new Error(`grep exited with code ${fCode}`))
+                                }
+                            }
+                        })
+                        ;(fallback as any).on('error', (fErr: any) => {
+                            if (!fClosed) {
+                                fClosed = true
+                                reject(fErr)
+                            }
+                        })
+                    } catch (fallbackErr) {
+                        reject(fallbackErr)
+                    }
+                }
+            }
+        })
+    })
+}
 
 export const localOperations: PlatformAdapter = {
     bash: {
@@ -227,6 +492,14 @@ export const localOperations: PlatformAdapter = {
             const root = getScopedCwd()
             const targetDir = path.isAbsolute(dirPath) ? dirPath : path.resolve(root, dirPath)
             const ignores = getWorkspaceIgnores(root)
+            if (isRipgrepAvailable()) {
+                try {
+                    return await streamRipgrepFind(targetDir, query, ignores, root)
+                } catch (err: any) {
+                    if (err.code === 'ENOENT') throw err
+                    // Intentionally swallowed: fallback to fast-glob on unexpected ripgrep error
+                }
+            }
             const files = await fg([query], {
                 cwd: targetDir,
                 ignore: ignores,
@@ -238,25 +511,10 @@ export const localOperations: PlatformAdapter = {
             const root = getScopedCwd()
             const targetDir = path.isAbsolute(dirPath) ? dirPath : path.resolve(root, dirPath)
             const ignores = getWorkspaceIgnores(root)
-            try {
-                const escapedQuery = query.replace(/"/g, '\\"')
-                const cmd = `git grep -nI "${escapedQuery}" -- ${targetDir} || grep -rnI --exclude-dir=node_modules --exclude-dir=.git "${escapedQuery}" ${targetDir}`
-                const { stdout } = await execAsync(cmd)
-                if (!stdout) return ''
-                const lines = stdout.split('\n')
-                const filtered = lines.filter((line) => {
-                    if (!line.trim()) return false
-                    const rawPath = line.split(':')[0]
-                    const relPath = path.isAbsolute(rawPath)
-                        ? path.relative(root, rawPath)
-                        : rawPath
-                    return !isPathIgnored(relPath, ignores)
-                })
-                return filtered.join('\n')
-            } catch (error: any) {
-                if (error.code === 1) return '' // grep returns 1 when no matches
-                throw error
+            if (isRipgrepAvailable()) {
+                return await streamRipgrepGrep(targetDir, query, ignores, root)
             }
+            return await streamFallbackGrep(targetDir, query, ignores, root)
         },
     },
     env: {

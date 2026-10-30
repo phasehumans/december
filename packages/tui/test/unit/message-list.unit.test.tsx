@@ -411,4 +411,54 @@ describe('MessageList Component (Unit)', () => {
         expect(frame).not.toContain('Not connected · Run /login')
         expect(frame).toContain('Humans R1 · December Wallet')
     })
+
+    it('passes isStreaming correctly to active messages and triggers full markdown upon completion', async () => {
+        const { clearMarkdownCache, getMarkdownCacheStats } =
+            await import('../../src/components/markdown')
+        clearMarkdownCache()
+
+        const activeMessages = [
+            {
+                id: 'streaming-assistant',
+                role: 'assistant' as const,
+                blocks: [
+                    {
+                        type: 'text' as const,
+                        content: 'Active stream uncommitted text: `code` and **bold**',
+                    },
+                ],
+            },
+        ]
+
+        const { lastFrame, rerender } = renderWithProviders(
+            <MessageList
+                staticKey={0}
+                staticMessages={[]}
+                activeMessages={activeMessages}
+                isAuthenticated={true}
+                isStreaming={true}
+            />
+        )
+
+        let frame = lastFrame() || ''
+        expect(frame).toContain('Active stream uncommitted text: `code` and **bold**')
+        // AST cache should be 0 during streaming
+        expect(getMarkdownCacheStats().astCacheSize).toBe(0)
+
+        // Turn completion
+        rerender(
+            <MessageList
+                staticKey={0}
+                staticMessages={[]}
+                activeMessages={activeMessages}
+                isAuthenticated={true}
+                isStreaming={false}
+            />
+        )
+
+        frame = lastFrame() || ''
+        expect(frame).toContain('Active stream uncommitted text')
+        // AST cache populated after completion
+        expect(getMarkdownCacheStats().astCacheSize).toBeGreaterThan(0)
+    })
 })

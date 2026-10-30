@@ -927,4 +927,91 @@ describe('BotMessage Component (Unit)', () => {
         expect(frame).not.toContain('● manage_subagent')
         expect(frame).not.toContain('● custom_mcp_tool')
     })
+
+    it('caps large code block output in the active ink tree to 15 lines with pager badge', () => {
+        const lines = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join('\n')
+        const { lastFrame } = render(
+            <BotMessage
+                blocks={[
+                    {
+                        type: 'code',
+                        language: 'typescript',
+                        code: lines,
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('line 1')
+        expect(frame).toContain('line 15')
+        expect(frame).not.toContain('line 16')
+        expect(frame).toContain('[+15 more lines - press enter to view in pager]')
+    })
+
+    it('caps large command output when forceExpanded to 15 lines with pager badge', () => {
+        const outputLines = Array.from({ length: 25 }, (_, i) => `stdout row ${i + 1}`).join('\n')
+        const { lastFrame } = render(
+            <BotMessage
+                expandCommands={true}
+                blocks={[
+                    {
+                        type: 'command',
+                        command: 'cat large_file.log',
+                        status: 'error',
+                        output: outputLines,
+                    },
+                ]}
+            />
+        )
+        const frame = lastFrame() || ''
+        expect(frame).toContain('stdout row 1')
+        expect(frame).toContain('stdout row 15')
+        expect(frame).not.toContain('stdout row 16')
+        expect(frame).toContain('[+10 more lines - press enter to view in pager]')
+    })
+
+    it('windows out earlier steps when grouped blocks exceed 25 and not expandCommands', () => {
+        const blocks = Array.from({ length: 35 }, (_, i) => ({
+            type: 'command' as const,
+            command: `echo step ${i + 1}`,
+            status: 'success' as const,
+        }))
+        const { lastFrame } = render(<BotMessage expandCommands={false} blocks={blocks} />)
+        const frame = lastFrame() || ''
+        expect(frame).toContain('[+10 earlier steps hidden]')
+        expect(frame).not.toMatch(/\becho step 1\b/)
+        expect(frame).not.toMatch(/\becho step 10\b/)
+        expect(frame).toContain('echo step 11')
+        expect(frame).toContain('echo step 35')
+    })
+
+    it('does not window earlier steps when expandCommands is true', () => {
+        const blocks = Array.from({ length: 35 }, (_, i) => ({
+            type: 'command' as const,
+            command: `echo step ${i + 1}`,
+            status: 'success' as const,
+        }))
+        const { lastFrame } = render(<BotMessage expandCommands={true} blocks={blocks} />)
+        const frame = lastFrame() || ''
+        expect(frame).not.toContain('earlier steps hidden')
+        expect(frame).toMatch(/\becho step 1\b/)
+        expect(frame).toContain('echo step 35')
+    })
+
+    it('preserves leading text when windowing earlier steps', () => {
+        const blocks = [
+            { type: 'text' as const, content: 'Leading plan overview' },
+            ...Array.from({ length: 30 }, (_, i) => ({
+                type: 'command' as const,
+                command: `echo step ${i + 1}`,
+                status: 'success' as const,
+            })),
+        ]
+        const { lastFrame } = render(<BotMessage expandCommands={false} blocks={blocks} />)
+        const frame = lastFrame() || ''
+        expect(frame).toContain('Leading plan overview')
+        expect(frame).toContain('[+6 earlier steps hidden]')
+        expect(frame).not.toMatch(/\becho step 1\b/)
+        expect(frame).toContain('echo step 30')
+    })
 })
