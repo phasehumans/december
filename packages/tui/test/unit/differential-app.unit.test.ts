@@ -119,4 +119,90 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         app.stop()
     })
+
+    it('navigates floating command menu when input starts with /', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        // Type '/'
+        app.handleKey('/')
+        expect(app.state.input).toBe('/')
+
+        // Type 'm'
+        app.handleKey('m')
+        expect(app.state.input).toBe('/m')
+
+        // Tab autocompletes selected command (e.g. /model )
+        app.handleKey('\t')
+        expect(app.state.input.startsWith('/m')).toBe(true)
+        expect(app.state.input.endsWith(' ')).toBe(true)
+
+        // Esc dismisses command
+        app.handleKey('\x1b')
+        expect(app.state.input).toBe('')
+
+        app.stop()
+    })
+
+    it('opens overlay menus on command execution and closes on Esc', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        // Execute /help
+        app.executeCommand('help')
+        expect(app.state.activeOverlay).toBe('help')
+
+        // Esc closes overlay
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // Execute /model
+        app.executeCommand('model')
+        expect(app.state.activeOverlay).toBe('model')
+
+        // Esc closes overlay
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // Ctrl+T toggles tasks
+        app.handleKey('\x14')
+        expect(app.state.activeOverlay).toBe('tasks')
+
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        app.stop()
+    })
+
+    it('triggers exit confirm on first Ctrl+C and calls onExit on second Ctrl+C', () => {
+        let exitCalled = false
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onExit: () => {
+                exitCalled = true
+            },
+        })
+        app.start()
+
+        // First Ctrl+C
+        app.handleKey('\x03')
+        expect(app.state.showExitConfirm).toBe(true)
+        expect(exitCalled).toBe(false)
+
+        // Second Ctrl+C
+        app.handleKey('\x03')
+        expect(exitCalled).toBe(true)
+
+        app.stop()
+    })
 })

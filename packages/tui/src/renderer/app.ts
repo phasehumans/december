@@ -1,15 +1,31 @@
+import { fetchGitStatusFiles, type DiffFileEntry } from '../utils/diff'
+
 import { DifferentialScreen } from './screen'
 import { TerminalController } from './terminal'
+import { CommandMenuView, WINDOW_SIZE as CMD_WINDOW_SIZE } from './views/command-menu-view'
+import { DiffViewMenuView, DIFF_WINDOW_SIZE } from './views/diff-view-menu-view'
 import { HeaderView } from './views/header-view'
+import { HelpMenuView } from './views/help-menu-view'
 import { InputBarView } from './views/input-bar-view'
 import { MessageListView, type MessageItem } from './views/message-list-view'
+import {
+    ModelSelectMenuView,
+    MODEL_WINDOW_SIZE,
+    type ModelItem,
+    DEFAULT_MODELS,
+} from './views/model-select-menu-view'
+import { TasksModeMenuView, type TaskItem } from './views/tasks-mode-menu-view'
 
 import type { DifferentialScreenOptions } from './types'
+
+export type OverlayType = 'none' | 'help' | 'model' | 'diff' | 'tasks'
 
 export interface DifferentialAppState {
     input: string
     cursorPos: number
     messages: MessageItem[]
+    promptHistory: string[]
+    historyIndex: number
     scrollOffset?: number
     isReadingMode: boolean
     isStreaming: boolean
@@ -17,19 +33,60 @@ export interface DifferentialAppState {
     modelLabel?: string
     authMethod?: string
     selectedProvider?: string
+    isAuthenticated?: boolean
     contextTokens?: number
+    maxContextTokens?: number
     cliVersion?: string
+    userEmail?: string
+    cwd?: string
+    branch?: string
+    latestVersion?: string
+    showExitConfirm: boolean
+    toast: { message: string; variant?: 'success' | 'error' | 'info' } | null
+    activeOverlay: OverlayType
+
+    // Command menu drop-up state
+    commandSelectedIndex: number
+    commandWindowStart: number
+
+    // Model select state
+    models: ModelItem[]
+    modelSearchQuery: string
+    modelSelectedIndex: number
+    modelWindowStart: number
+    isModelSearching: boolean
+
+    // Diff view state
+    diffFiles: DiffFileEntry[]
+    diffSelectedIndex: number
+    diffWindowStart: number
+    isDiffDetailView: boolean
+    diffScrollOffset: number
+
+    // Tasks view state
+    tasks: TaskItem[]
+    tasksSelectedIndex: number
+    tasksWindowStart: number
 }
 
 export interface DifferentialAppOptions extends DifferentialScreenOptions {
     cliVersion?: string
+    latestVersion?: string
     modelLabel?: string
     activeModel?: string
     authMethod?: string
     selectedProvider?: string
+    isAuthenticated?: boolean
+    userEmail?: string
+    cwd?: string
+    branch?: string
     contextTokens?: number
+    maxContextTokens?: number
+    models?: ModelItem[]
+    tasks?: TaskItem[]
     onSubmit?: (prompt: string) => void
     onExit?: () => void
+    onModelSelect?: (model: ModelItem) => void
 }
 
 export class DifferentialApp {
@@ -39,8 +96,11 @@ export class DifferentialApp {
     private isRunning = false
     private stdinListener?: (chunk: Buffer | string) => void
     private maxScroll = 0
+    private exitTimer: any = null
+    private toastTimer: any = null
     private onSubmitCallback?: (prompt: string) => void
     private onExitCallback?: () => void
+    private onModelSelectCallback?: (model: ModelItem) => void
 
     constructor(options?: DifferentialAppOptions) {
         this.terminal = options?.terminal ?? new TerminalController()
@@ -53,19 +113,50 @@ export class DifferentialApp {
 
         this.onSubmitCallback = options?.onSubmit
         this.onExitCallback = options?.onExit
+        this.onModelSelectCallback = options?.onModelSelect
 
         this.state = {
             input: '',
             cursorPos: 0,
             messages: [],
+            promptHistory: [],
+            historyIndex: -1,
             isReadingMode: false,
             isStreaming: false,
             cliVersion: options?.cliVersion || '0.4.15',
+            latestVersion: options?.latestVersion,
             modelLabel: options?.modelLabel || 'Gemini 3.7 Flash',
             activeModel: options?.activeModel,
             authMethod: options?.authMethod,
             selectedProvider: options?.selectedProvider,
+            isAuthenticated: options?.isAuthenticated ?? true,
+            userEmail: options?.userEmail,
+            cwd: options?.cwd,
+            branch: options?.branch,
             contextTokens: options?.contextTokens || 0,
+            maxContextTokens: options?.maxContextTokens,
+            showExitConfirm: false,
+            toast: null,
+            activeOverlay: 'none',
+
+            commandSelectedIndex: 0,
+            commandWindowStart: 0,
+
+            models: options?.models || DEFAULT_MODELS,
+            modelSearchQuery: '',
+            modelSelectedIndex: 0,
+            modelWindowStart: 0,
+            isModelSearching: false,
+
+            diffFiles: [],
+            diffSelectedIndex: 0,
+            diffWindowStart: 0,
+            isDiffDetailView: false,
+            diffScrollOffset: 0,
+
+            tasks: options?.tasks || [],
+            tasksSelectedIndex: 0,
+            tasksWindowStart: 0,
         }
 
         this.screen.onResize(() => {
@@ -95,6 +186,15 @@ export class DifferentialApp {
         if (!this.isRunning) return
         this.isRunning = false
 
+        if (this.exitTimer) {
+            clearTimeout(this.exitTimer)
+            this.exitTimer = null
+        }
+        if (this.toastTimer) {
+            clearTimeout(this.toastTimer)
+            this.toastTimer = null
+        }
+
         if (
             this.stdinListener &&
             this.terminal.stdin &&
@@ -107,35 +207,209 @@ export class DifferentialApp {
         this.screen.stop()
     }
 
+    showToast(message: string, variant: 'success' | 'error' | 'info' = 'info'): void {
+        if (this.toastTimer) {
+            clearTimeout(this.toastTimer)
+        }
+        this.state.toast = { message, variant }
+        this.render()
+        this.toastTimer = setTimeout(() => {
+            this.state.toast = null
+            this.render()
+        }, 3000)
+    }
+
     handleKey(key: string): void {
-        // Ctrl+C (SIGINT / Exit)
+        // Ctrl+C
         if (key === '\x03') {
-            if (this.onExitCallback) {
-                this.onExitCallback()
-            } else {
-                this.stop()
-                process.exit(0)
+            if (this.state.isStreaming) {
+                this.state.isStreaming = false
+                this.showToast('Aborted streaming.', 'info')
+                return
             }
+
+            if (this.state.showExitConfirm) {
+                if (this.exitTimer) {
+                    clearTimeout(this.exitTimer)
+                    this.exitTimer = null
+                }
+                if (this.onExitCallback) {
+                    this.onExitCallback()
+                } else {
+                    this.stop()
+                    process.exit(0)
+                }
+                return
+            }
+
+            this.state.showExitConfirm = true
+            this.render()
+            this.exitTimer = setTimeout(() => {
+                this.state.showExitConfirm = false
+                this.render()
+            }, 3000)
             return
         }
 
-        // Esc: reset reading mode / scroll to bottom
+        // Ctrl+T: Toggle Tasks overlay
+        if (key === '\x14') {
+            this.toggleOverlay('tasks')
+            return
+        }
+
+        // Esc: Close overlay, cancel exit confirm, or clear input
         if (key === '\x1b') {
+            if (this.state.showExitConfirm) {
+                this.state.showExitConfirm = false
+                this.render()
+                return
+            }
+
+            if (this.state.activeOverlay !== 'none') {
+                if (this.state.activeOverlay === 'diff' && this.state.isDiffDetailView) {
+                    this.state.isDiffDetailView = false
+                    this.render()
+                    return
+                }
+                if (this.state.activeOverlay === 'model' && this.state.isModelSearching) {
+                    this.state.isModelSearching = false
+                    this.render()
+                    return
+                }
+                this.state.activeOverlay = 'none'
+                this.render()
+                return
+            }
+
+            if (this.state.input.startsWith('/')) {
+                this.state.input = ''
+                this.state.cursorPos = 0
+                this.render()
+                return
+            }
+
             if (this.state.isReadingMode) {
                 this.scrollToBottom()
                 return
             }
-        }
 
-        // Arrow Up: \x1b[A
-        if (key === '\x1b[A') {
-            this.scrollUp(1)
+            if (this.state.input.length > 0) {
+                this.state.input = ''
+                this.state.cursorPos = 0
+                this.render()
+                return
+            }
             return
         }
 
-        // Arrow Down: \x1b[B
+        // Handle Active Overlay Key Events
+        if (this.state.activeOverlay !== 'none') {
+            this.handleOverlayKey(key)
+            return
+        }
+
+        // Handle Command Menu Navigation when input starts with '/'
+        if (this.state.input.startsWith('/')) {
+            const query = this.state.input.slice(1).trim()
+            const filtered = CommandMenuView.getFiltered(query)
+
+            // Arrow Up in command menu
+            if (key === '\x1b[A') {
+                if (this.state.commandSelectedIndex > 0) {
+                    this.state.commandSelectedIndex -= 1
+                    if (this.state.commandSelectedIndex < this.state.commandWindowStart) {
+                        this.state.commandWindowStart = this.state.commandSelectedIndex
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            // Arrow Down in command menu
+            if (key === '\x1b[B') {
+                if (this.state.commandSelectedIndex < filtered.length - 1) {
+                    this.state.commandSelectedIndex += 1
+                    if (
+                        this.state.commandSelectedIndex >=
+                        this.state.commandWindowStart + CMD_WINDOW_SIZE
+                    ) {
+                        this.state.commandWindowStart =
+                            this.state.commandSelectedIndex - CMD_WINDOW_SIZE + 1
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            // Tab: Autocomplete selected command
+            if (key === '\t') {
+                if (filtered.length > 0) {
+                    const sel =
+                        filtered[Math.min(this.state.commandSelectedIndex, filtered.length - 1)]
+                    if (sel) {
+                        this.state.input = `/${sel.name} `
+                        this.state.cursorPos = this.state.input.length
+                        this.render()
+                    }
+                }
+                return
+            }
+
+            // Enter: Execute or submit command
+            if (key === '\r' || key === '\n') {
+                if (filtered.length > 0) {
+                    const sel =
+                        filtered[Math.min(this.state.commandSelectedIndex, filtered.length - 1)]
+                    if (sel) {
+                        const fullCmd = `/${sel.name}`
+                        if (
+                            this.state.input.trim() === fullCmd ||
+                            !this.state.input.trim().includes(' ')
+                        ) {
+                            this.executeCommand(sel.name)
+                            return
+                        }
+                    }
+                }
+                this.submitPrompt()
+                return
+            }
+        }
+
+        // Arrow Up: Prompt history or scroll message history
+        if (key === '\x1b[A') {
+            if (!this.state.input && this.state.messages.length > 0) {
+                this.scrollUp(1)
+            } else if (this.state.promptHistory.length > 0) {
+                const nextIdx =
+                    this.state.historyIndex === -1
+                        ? this.state.promptHistory.length - 1
+                        : Math.max(0, this.state.historyIndex - 1)
+                this.state.historyIndex = nextIdx
+                this.state.input = this.state.promptHistory[nextIdx] || ''
+                this.state.cursorPos = this.state.input.length
+                this.render()
+            }
+            return
+        }
+
+        // Arrow Down: Prompt history or scroll message history
         if (key === '\x1b[B') {
-            this.scrollDown(1)
+            if (!this.state.input && this.state.messages.length > 0) {
+                this.scrollDown(1)
+            } else if (this.state.historyIndex !== -1) {
+                const nextIdx = this.state.historyIndex + 1
+                if (nextIdx >= this.state.promptHistory.length) {
+                    this.state.historyIndex = -1
+                    this.state.input = ''
+                    this.state.cursorPos = 0
+                } else {
+                    this.state.historyIndex = nextIdx
+                    this.state.input = this.state.promptHistory[nextIdx] || ''
+                    this.state.cursorPos = this.state.input.length
+                }
+                this.render()
+            }
             return
         }
 
@@ -151,7 +425,7 @@ export class DifferentialApp {
             return
         }
 
-        // Enter: submit prompt
+        // Enter: Submit prompt
         if (key === '\r' || key === '\n') {
             if (this.state.input.trim()) {
                 this.submitPrompt()
@@ -166,6 +440,7 @@ export class DifferentialApp {
                 const after = this.state.input.slice(this.state.cursorPos)
                 this.state.input = before + after
                 this.state.cursorPos -= 1
+                this.resetCommandSelection()
                 this.render()
             }
             return
@@ -189,19 +464,273 @@ export class DifferentialApp {
             return
         }
 
-        // Printable text input (ignore other ANSI escape sequences)
+        // Printable text input
         if (!key.startsWith('\x1b') && key.length > 0) {
             const before = this.state.input.slice(0, this.state.cursorPos)
             const after = this.state.input.slice(this.state.cursorPos)
             this.state.input = before + key + after
             this.state.cursorPos += key.length
+            this.resetCommandSelection()
             this.render()
         }
     }
 
-    submitPrompt(): void {
-        const text = this.state.input.trim()
+    private resetCommandSelection(): void {
+        this.state.commandSelectedIndex = 0
+        this.state.commandWindowStart = 0
+    }
+
+    executeCommand(name: string): void {
+        const cmd = name.toLowerCase().trim()
+        this.state.input = ''
+        this.state.cursorPos = 0
+
+        if (cmd === 'exit') {
+            if (this.onExitCallback) {
+                this.onExitCallback()
+            } else {
+                this.stop()
+                process.exit(0)
+            }
+            return
+        }
+
+        if (cmd === 'clear') {
+            this.state.messages = []
+            this.showToast('Cleared conversation history.', 'success')
+            return
+        }
+
+        if (cmd === 'help') {
+            this.state.activeOverlay = 'help'
+            this.render()
+            return
+        }
+
+        if (cmd === 'model') {
+            this.state.activeOverlay = 'model'
+            this.state.modelSearchQuery = ''
+            this.state.modelSelectedIndex = 0
+            this.state.modelWindowStart = 0
+            this.state.isModelSearching = false
+            this.render()
+            return
+        }
+
+        if (cmd === 'diff') {
+            this.state.activeOverlay = 'diff'
+            this.state.isDiffDetailView = false
+            this.state.diffScrollOffset = 0
+            this.state.diffSelectedIndex = 0
+            this.state.diffWindowStart = 0
+            fetchGitStatusFiles()
+                .then((files) => {
+                    this.state.diffFiles = files
+                    this.render()
+                })
+                .catch(() => {
+                    // Intentionally swallowed: ignore background git fetch failure
+                })
+            this.render()
+            return
+        }
+
+        if (cmd === 'tasks') {
+            this.state.activeOverlay = 'tasks'
+            this.state.tasksSelectedIndex = 0
+            this.state.tasksWindowStart = 0
+            this.render()
+            return
+        }
+
+        // Fallback: submit as prompt
+        this.submitPrompt(`/${name}`)
+    }
+
+    toggleOverlay(type: OverlayType): void {
+        if (this.state.activeOverlay === type) {
+            this.state.activeOverlay = 'none'
+        } else {
+            this.executeCommand(type)
+        }
+        this.render()
+    }
+
+    private handleOverlayKey(key: string): void {
+        const overlay = this.state.activeOverlay
+
+        if (overlay === 'help') {
+            if (key === '\r' || key === '\n' || key === ' ' || key === 'q') {
+                this.state.activeOverlay = 'none'
+                this.render()
+            }
+            return
+        }
+
+        if (overlay === 'model') {
+            const models = this.state.models.length > 0 ? this.state.models : DEFAULT_MODELS
+            const filtered = ModelSelectMenuView.getFilteredModels(
+                models,
+                this.state.modelSearchQuery
+            )
+
+            if (this.state.isModelSearching) {
+                if (key === '\r' || key === '\n' || key === '\x1b[B') {
+                    this.state.isModelSearching = false
+                    this.render()
+                    return
+                }
+                if (key === '\x7f' || key === '\b') {
+                    this.state.modelSearchQuery = this.state.modelSearchQuery.slice(0, -1)
+                    this.state.modelSelectedIndex = 0
+                    this.state.modelWindowStart = 0
+                    this.render()
+                    return
+                }
+                if (!key.startsWith('\x1b') && key.length > 0) {
+                    this.state.modelSearchQuery += key
+                    this.state.modelSelectedIndex = 0
+                    this.state.modelWindowStart = 0
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '/' || key === 's') {
+                this.state.isModelSearching = true
+                this.render()
+                return
+            }
+
+            if (key === '\x1b[A' || key === 'k') {
+                if (this.state.modelSelectedIndex > 0) {
+                    this.state.modelSelectedIndex -= 1
+                    if (this.state.modelSelectedIndex < this.state.modelWindowStart) {
+                        this.state.modelWindowStart = this.state.modelSelectedIndex
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\x1b[B' || key === 'j') {
+                if (this.state.modelSelectedIndex < filtered.length - 1) {
+                    this.state.modelSelectedIndex += 1
+                    if (
+                        this.state.modelSelectedIndex >=
+                        this.state.modelWindowStart + MODEL_WINDOW_SIZE
+                    ) {
+                        this.state.modelWindowStart =
+                            this.state.modelSelectedIndex - MODEL_WINDOW_SIZE + 1
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\r' || key === '\n') {
+                const selected = filtered[this.state.modelSelectedIndex]
+                if (selected) {
+                    this.state.activeModel = selected.value
+                    this.state.modelLabel = selected.label
+                    this.state.activeOverlay = 'none'
+                    this.showToast(`Switched active model to ${selected.label}`, 'success')
+                    if (this.onModelSelectCallback) {
+                        this.onModelSelectCallback(selected)
+                    }
+                }
+                return
+            }
+            return
+        }
+
+        if (overlay === 'diff') {
+            const files = this.state.diffFiles
+
+            if (this.state.isDiffDetailView) {
+                if (key === '\x1b[A' || key === 'k') {
+                    this.state.diffScrollOffset = Math.max(0, this.state.diffScrollOffset - 1)
+                    this.render()
+                    return
+                }
+                if (key === '\x1b[B' || key === 'j') {
+                    this.state.diffScrollOffset += 1
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            if (key === '\x1b[A' || key === 'k') {
+                if (this.state.diffSelectedIndex > 0) {
+                    this.state.diffSelectedIndex -= 1
+                    if (this.state.diffSelectedIndex < this.state.diffWindowStart) {
+                        this.state.diffWindowStart = this.state.diffSelectedIndex
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\x1b[B' || key === 'j') {
+                if (this.state.diffSelectedIndex < files.length - 1) {
+                    this.state.diffSelectedIndex += 1
+                    if (
+                        this.state.diffSelectedIndex >=
+                        this.state.diffWindowStart + DIFF_WINDOW_SIZE
+                    ) {
+                        this.state.diffWindowStart =
+                            this.state.diffSelectedIndex - DIFF_WINDOW_SIZE + 1
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\r' || key === '\n') {
+                if (files.length > 0) {
+                    this.state.isDiffDetailView = true
+                    this.state.diffScrollOffset = 0
+                    this.render()
+                }
+                return
+            }
+            return
+        }
+
+        if (overlay === 'tasks') {
+            const tasks = this.state.tasks
+            if (key === '\x1b[A' || key === 'k') {
+                if (this.state.tasksSelectedIndex > 0) {
+                    this.state.tasksSelectedIndex -= 1
+                    this.render()
+                }
+                return
+            }
+            if (key === '\x1b[B' || key === 'j') {
+                if (this.state.tasksSelectedIndex < tasks.length - 1) {
+                    this.state.tasksSelectedIndex += 1
+                    this.render()
+                }
+                return
+            }
+            if (key === 'k') {
+                const currentTask = tasks[this.state.tasksSelectedIndex]
+                if (currentTask && currentTask.status === 'running') {
+                    currentTask.status = 'failed'
+                    this.showToast(`Killed task: ${currentTask.command}`, 'info')
+                }
+                return
+            }
+        }
+    }
+
+    submitPrompt(overridePrompt?: string): void {
+        const text = (overridePrompt ?? this.state.input).trim()
         if (!text) return
+
+        this.state.promptHistory.push(text)
+        this.state.historyIndex = -1
 
         this.state.messages.push({
             role: 'user',
@@ -233,7 +762,6 @@ export class DifferentialApp {
             })
         }
 
-        // Auto-scroll to bottom if not in reading mode
         if (!this.state.isReadingMode) {
             this.state.scrollOffset = undefined
         }
@@ -269,47 +797,145 @@ export class DifferentialApp {
 
         this.screen.backBuffer.clear()
 
-        // 1. Render Header (rows 0..1)
+        // 1. Render Multi-Line Brand Header
+        const headerHeight = HeaderView.getHeight({
+            width,
+            cliVersion: this.state.cliVersion,
+            latestVersion: this.state.latestVersion,
+            userEmail: this.state.userEmail,
+            activeModel: this.state.activeModel,
+            modelLabel: this.state.modelLabel,
+            authMethod: this.state.authMethod,
+            selectedProvider: this.state.selectedProvider,
+            isAuthenticated: this.state.isAuthenticated,
+            branch: this.state.branch,
+            cwd: this.state.cwd,
+        })
+
         HeaderView.render(this.screen.backBuffer, {
             x: 0,
             y: 0,
             width,
             cliVersion: this.state.cliVersion,
+            latestVersion: this.state.latestVersion,
+            userEmail: this.state.userEmail,
+            activeModel: this.state.activeModel,
             modelLabel: this.state.modelLabel,
             authMethod: this.state.authMethod,
             selectedProvider: this.state.selectedProvider,
-            contextTokens: this.state.contextTokens,
+            isAuthenticated: this.state.isAuthenticated,
+            branch: this.state.branch,
+            cwd: this.state.cwd,
         })
 
-        // 2. Render Input Bar at bottom (height - 3 .. height - 1)
-        const inputHeight = 3
-        const inputY = Math.max(2, height - inputHeight)
+        // 2. Render Input Bar at bottom (4 rows)
+        const inputHeight = InputBarView.getHeight()
+        const inputY = Math.max(headerHeight, height - inputHeight)
+
+        // 3. Check for Floating Command Menu
+        let commandMenuHeight = 0
+        const isCommandMenuVisible =
+            this.state.activeOverlay === 'none' && this.state.input.startsWith('/')
+        if (isCommandMenuVisible) {
+            const query = this.state.input.slice(1).trim()
+            commandMenuHeight = CommandMenuView.getHeight(query)
+            const cmdY = Math.max(headerHeight, inputY - commandMenuHeight)
+            CommandMenuView.render(this.screen.backBuffer, {
+                x: 0,
+                y: cmdY,
+                width,
+                query,
+                selectedIndex: this.state.commandSelectedIndex,
+                windowStart: this.state.commandWindowStart,
+            })
+        }
+
+        // 4. Render Main Body (Overlay View OR Message List)
+        const bodyY = headerHeight
+        const bodyHeight = Math.max(
+            1,
+            inputY - bodyY - (isCommandMenuVisible ? commandMenuHeight : 0)
+        )
+
+        if (this.state.activeOverlay === 'help') {
+            HelpMenuView.render(this.screen.backBuffer, {
+                x: 0,
+                y: bodyY,
+                width,
+                height: bodyHeight,
+            })
+        } else if (this.state.activeOverlay === 'model') {
+            ModelSelectMenuView.render(this.screen.backBuffer, {
+                x: 0,
+                y: bodyY,
+                width,
+                height: bodyHeight,
+                models: this.state.models,
+                activeModel: this.state.activeModel,
+                selectedIndex: this.state.modelSelectedIndex,
+                windowStart: this.state.modelWindowStart,
+                searchQuery: this.state.modelSearchQuery,
+                isSearching: this.state.isModelSearching,
+            })
+        } else if (this.state.activeOverlay === 'diff') {
+            DiffViewMenuView.render(this.screen.backBuffer, {
+                x: 0,
+                y: bodyY,
+                width,
+                height: bodyHeight,
+                files: this.state.diffFiles,
+                selectedFileIndex: this.state.diffSelectedIndex,
+                windowStart: this.state.diffWindowStart,
+                isDetailView: this.state.isDiffDetailView,
+                detailScrollOffset: this.state.diffScrollOffset,
+            })
+        } else if (this.state.activeOverlay === 'tasks') {
+            TasksModeMenuView.render(this.screen.backBuffer, {
+                x: 0,
+                y: bodyY,
+                width,
+                height: bodyHeight,
+                tasks: this.state.tasks,
+                selectedTaskIndex: this.state.tasksSelectedIndex,
+                windowStart: this.state.tasksWindowStart,
+            })
+        } else {
+            // Normal message list view
+            const { maxScroll } = MessageListView.render(this.screen.backBuffer, {
+                x: 0,
+                y: bodyY,
+                width,
+                height: bodyHeight,
+                messages: this.state.messages,
+                scrollOffset: this.state.scrollOffset,
+            })
+            this.maxScroll = maxScroll
+        }
+
+        // 5. Render Input Bar
         const cursor = InputBarView.render(this.screen.backBuffer, {
             x: 0,
             y: inputY,
             width,
-            height: inputHeight,
             input: this.state.input,
             cursorPos: this.state.cursorPos,
             isStreaming: this.state.isStreaming,
+            activeModel: this.state.activeModel,
+            modelLabel: this.state.modelLabel,
+            isAuthenticated: this.state.isAuthenticated,
+            authMethod: this.state.authMethod,
+            contextTokens: this.state.contextTokens,
+            maxContextTokens: this.state.maxContextTokens,
+            tasksCount: this.state.tasks.length,
+            runningTasksCount: this.state.tasks.filter((t) => t.status === 'running').length,
+            showExitConfirm: this.state.showExitConfirm,
+            toast: this.state.toast,
         })
 
-        // 3. Render Message List View in the middle area (rows 2 .. inputY - 1)
-        const messageListHeight = Math.max(1, inputY - 2)
-        const { maxScroll } = MessageListView.render(this.screen.backBuffer, {
-            x: 0,
-            y: 2,
-            width,
-            height: messageListHeight,
-            messages: this.state.messages,
-            scrollOffset: this.state.scrollOffset,
-        })
-        this.maxScroll = maxScroll
-
-        // Update terminal cursor
+        // Update terminal cursor position
         this.screen.setCursor(cursor.x, cursor.y, cursor.visible)
 
-        // Diff and flush
+        // Diff and flush to stdout
         this.screen.render()
     }
 }

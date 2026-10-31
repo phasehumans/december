@@ -372,7 +372,7 @@ async function main() {
     // Path 5: Full Interactive TUI Session (Differential 2D Screen Buffer Engine)
     const [
         { AgentHarness, runAgentLoop },
-        { openaiProvider },
+        { openaiProvider, getModelContextWindow },
         toolsModule,
         { DifferentialApp },
         { FileSessionRepository },
@@ -500,11 +500,21 @@ async function main() {
 
     const differentialApp = new DifferentialApp({
         cliVersion: pkg.version,
+        userEmail,
+        isAuthenticated,
         modelLabel: getModelLabel(initialModel),
         activeModel: initialModel,
         authMethod: providerConfig?.authMethod,
         selectedProvider: activeProvider,
         contextTokens: 0,
+        maxContextTokens: getModelContextWindow(initialModel),
+        onModelSelect: async (selected) => {
+            try {
+                await saveConfig({ model: selected.value })
+            } catch {
+                // Intentionally swallowed: ignore model config save error
+            }
+        },
         onSubmit: async (promptText: string) => {
             differentialApp.state.isStreaming = true
             differentialApp.render()
@@ -534,6 +544,20 @@ async function main() {
             handleExit()
         },
     })
+
+    // Background version check
+    import('./utils/version-check')
+        .then(({ checkForLatestVersion }) => {
+            checkForLatestVersion(pkg.version).then((v) => {
+                if (v) {
+                    differentialApp.state.latestVersion = v
+                    differentialApp.render()
+                }
+            })
+        })
+        .catch(() => {
+            // Intentionally swallowed: ignore version check error
+        })
 
     const handleExit = () => {
         mcpClientManager.disconnectAll().catch(() => {
