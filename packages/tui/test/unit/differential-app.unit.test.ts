@@ -179,6 +179,63 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.handleKey('\x1b')
         expect(app.state.activeOverlay).toBe('none')
 
+        // Execute /settings
+        app.executeCommand('settings')
+        expect(app.state.activeOverlay).toBe('settings')
+
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // Execute /context
+        app.executeCommand('context')
+        expect(app.state.activeOverlay).toBe('context')
+
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // Execute /skills
+        app.executeCommand('skills')
+        expect(app.state.activeOverlay).toBe('skills')
+
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        app.stop()
+    })
+
+    it('handles web & clipboard commands without submitting to chat', () => {
+        let submittedPrompt: string | null = null
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSubmit: (prompt) => {
+                submittedPrompt = prompt
+            },
+        })
+        app.start()
+
+        // /changelog
+        app.executeCommand('changelog')
+        expect(submittedPrompt).toBeNull()
+        expect(app.state.toast?.message).toContain('changelog')
+
+        // /docs
+        app.executeCommand('docs')
+        expect(submittedPrompt).toBeNull()
+        expect(app.state.toast?.message).toContain('docs')
+
+        // /copy
+        app.state.messages.push({ role: 'assistant', content: 'generated answer' })
+        app.executeCommand('copy')
+        expect(submittedPrompt).toBeNull()
+        expect(app.state.toast?.message).toContain('Copied')
+
+        // unknown command does not submit to chat
+        app.executeCommand('unknown_test_cmd')
+        expect(submittedPrompt).toBeNull()
+        expect(app.state.toast?.message).toContain('Unknown command')
+
         app.stop()
     })
 

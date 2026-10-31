@@ -2,12 +2,15 @@ import { describe, expect, it } from 'bun:test'
 
 import { ScreenBuffer } from '../../src/renderer/buffer'
 import { CommandMenuView } from '../../src/renderer/views/command-menu-view'
+import { ContextMenuView } from '../../src/renderer/views/context-menu-view'
 import { DiffViewMenuView } from '../../src/renderer/views/diff-view-menu-view'
 import { HeaderView } from '../../src/renderer/views/header-view'
 import { HelpMenuView } from '../../src/renderer/views/help-menu-view'
 import { InputBarView } from '../../src/renderer/views/input-bar-view'
 import { MessageListView } from '../../src/renderer/views/message-list-view'
 import { ModelSelectMenuView } from '../../src/renderer/views/model-select-menu-view'
+import { SettingsMenuView } from '../../src/renderer/views/settings-menu-view'
+import { SkillsMenuView } from '../../src/renderer/views/skills-menu-view'
 import { TasksModeMenuView } from '../../src/renderer/views/tasks-mode-menu-view'
 
 describe('Interactive Differential TUI Views (Renderer)', () => {
@@ -236,6 +239,103 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(2)).toContain('packages/tui/src/renderer/app.ts')
             expect(buffer.getLine(2)).toContain('+120')
             expect(buffer.getLine(2)).toContain('-15')
+        })
+
+        it('renders detailed diff lines with line numbers and syntax styling', () => {
+            const buffer = new ScreenBuffer(60, 10)
+            DiffViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 60,
+                height: 10,
+                files: [
+                    {
+                        path: 'packages/tui/src/renderer/app.ts',
+                        additions: 1,
+                        deletions: 1,
+                        status: 'modified',
+                        diff: '@@ -10,2 +10,2 @@\n-const oldVal = 1\n+const newVal = 2\n',
+                    },
+                ],
+                selectedFileIndex: 0,
+                windowStart: 0,
+                isDetailView: true,
+                detailScrollOffset: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('packages/tui/src/renderer/app.ts')
+            expect(buffer.getLine(0)).toContain('+1')
+            expect(buffer.getLine(0)).toContain('-1')
+            expect(buffer.getLine(2)).toContain('unchanged lines')
+            expect(buffer.getLine(3)).toContain('-')
+            expect(buffer.getLine(3)).toContain('const oldVal = 1')
+            expect(buffer.getLine(4)).toContain('+')
+            expect(buffer.getLine(4)).toContain('const newVal = 2')
+        })
+    })
+
+    describe('SettingsMenuView', () => {
+        it('renders settings items, selection indicator, and values', () => {
+            const buffer = new ScreenBuffer(60, 10)
+            SettingsMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 60,
+                height: 10,
+                selectedIndex: 0,
+                settings: [
+                    { id: 'model', title: 'Active Model', value: 'Claude 3.5 Sonnet' },
+                    { id: 'pathguard', title: 'PathGuard Protection', value: 'on' },
+                ],
+            })
+
+            expect(buffer.getLine(0)).toContain('December Settings')
+            expect(buffer.getLine(2)).toContain('❭')
+            expect(buffer.getLine(2)).toContain('Active Model')
+            expect(buffer.getLine(2)).toContain('[Claude 3.5 Sonnet]')
+            expect(buffer.getLine(3)).toContain('PathGuard Protection')
+            expect(buffer.getLine(3)).toContain('[on]')
+        })
+    })
+
+    describe('ContextMenuView', () => {
+        it('renders progress bar and token breakdown', () => {
+            const buffer = new ScreenBuffer(60, 12)
+            ContextMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 60,
+                height: 12,
+                activeModel: 'claude-3-5-sonnet',
+                modelLabel: 'Claude 3.5 Sonnet',
+                contextTokens: 25000,
+                maxContextTokens: 200000,
+            })
+
+            expect(buffer.getLine(0)).toContain('Context Window Usage')
+            expect(buffer.getLine(2)).toContain('Claude 3.5 Sonnet')
+            expect(buffer.getLine(3)).toContain('25k / 200k (12.5%)')
+            expect(buffer.getLine(5)).toContain('TOKEN BREAKDOWN')
+        })
+    })
+
+    describe('SkillsMenuView', () => {
+        it('renders discovered skills list with descriptions', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            SkillsMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                selectedIndex: 0,
+                windowStart: 0,
+                skills: [{ name: 'tdd', description: 'Test driven development workflow' }],
+            })
+
+            expect(buffer.getLine(0)).toContain('Installed Skills (1 available)')
+            expect(buffer.getLine(2)).toContain('❭')
+            expect(buffer.getLine(2)).toContain('tdd')
+            expect(buffer.getLine(2)).toContain('Test driven development workflow')
         })
     })
 

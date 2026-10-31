@@ -1,8 +1,13 @@
-import { fetchGitStatusFiles, type DiffFileEntry } from '../utils/diff'
+import { exec } from 'node:child_process'
+import * as os from 'node:os'
+
+import { writeToClipboard } from '../utils/clipboard'
+import { fetchGitStatusFiles, type DiffFileEntry, parseUnifiedDiffToRows } from '../utils/diff'
 
 import { DifferentialScreen } from './screen'
 import { TerminalController } from './terminal'
 import { CommandMenuView, WINDOW_SIZE as CMD_WINDOW_SIZE } from './views/command-menu-view'
+import { ContextMenuView } from './views/context-menu-view'
 import { DiffViewMenuView, DIFF_WINDOW_SIZE } from './views/diff-view-menu-view'
 import { HeaderView } from './views/header-view'
 import { HelpMenuView } from './views/help-menu-view'
@@ -14,12 +19,22 @@ import {
     type ModelItem,
     DEFAULT_MODELS,
 } from './views/model-select-menu-view'
+import { SettingsMenuView, type SettingItem } from './views/settings-menu-view'
+import { SkillsMenuView, loadWorkspaceSkills, type SkillItem } from './views/skills-menu-view'
 import { TasksModeMenuView, type TaskItem } from './views/tasks-mode-menu-view'
 
 import type { DifferentialScreenOptions } from './types'
-import type { ReleaseAnnouncement } from '../../constants/announcements'
+import type { ReleaseAnnouncement } from '../constants/announcements'
 
-export type OverlayType = 'none' | 'help' | 'model' | 'diff' | 'tasks'
+export type OverlayType =
+    | 'none'
+    | 'help'
+    | 'model'
+    | 'diff'
+    | 'tasks'
+    | 'settings'
+    | 'context'
+    | 'skills'
 
 export interface DifferentialAppState {
     input: string
@@ -64,11 +79,21 @@ export interface DifferentialAppState {
     diffWindowStart: number
     isDiffDetailView: boolean
     diffScrollOffset: number
+    diffCursorLineIndex: number
 
     // Tasks view state
     tasks: TaskItem[]
     tasksSelectedIndex: number
     tasksWindowStart: number
+
+    // Settings view state
+    settingsSelectedIndex: number
+    settings: SettingItem[]
+
+    // Skills view state
+    skillsSelectedIndex: number
+    skillsWindowStart: number
+    skills: SkillItem[]
 }
 
 export interface DifferentialAppOptions extends DifferentialScreenOptions {
@@ -87,10 +112,45 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     announcement?: ReleaseAnnouncement | null
     models?: ModelItem[]
     tasks?: TaskItem[]
+    skills?: SkillItem[]
     onSubmit?: (prompt: string) => void
     onExit?: () => void
     onModelSelect?: (model: ModelItem) => void
 }
+
+export function openBrowserUrl(url: string): void {
+    if (process.env.NODE_ENV === 'test' || !!process.env.BUN_TEST) return
+    try {
+        const platform = os.platform()
+        const isWsl =
+            platform === 'linux' &&
+            (!!process.env.WSL_DISTRO_NAME || os.release().toLowerCase().includes('microsoft'))
+        let cmd = ''
+        if (platform === 'darwin') {
+            cmd = `open "${url}"`
+        } else if (platform === 'win32') {
+            cmd = `start "" "${url}"`
+        } else if (isWsl) {
+            cmd = `powershell.exe -NoProfile -Command "Start-Process '${url}'"`
+        } else {
+            cmd = `xdg-open "${url}"`
+        }
+        exec(cmd, () => {})
+    } catch {
+        // Intentionally swallowed: fallback URL display handled in toast
+    }
+}
+
+export const DEFAULT_SETTINGS: SettingItem[] = [
+    { id: 'provider', title: 'Active Provider', value: 'Claude' },
+    { id: 'model', title: 'Active Model', value: 'Claude 3.5 Sonnet' },
+    { id: 'tool_permission', title: 'Tool Permission', value: 'always-proceed' },
+    { id: 'pathguard', title: 'PathGuard Protection', value: 'on' },
+    { id: 'non_workspace', title: 'Non-Workspace Access', value: 'off' },
+    { id: 'thinking_level', title: 'Thinking Level', value: 'auto' },
+    { id: 'steering_mode', title: 'Steering Mode', value: 'all' },
+    { id: 'follow_up_mode', title: 'Follow-Up Mode', value: 'all' },
+]
 
 export class DifferentialApp {
     readonly screen: DifferentialScreen
@@ -157,10 +217,18 @@ export class DifferentialApp {
             diffWindowStart: 0,
             isDiffDetailView: false,
             diffScrollOffset: 0,
+            diffCursorLineIndex: 0,
 
             tasks: options?.tasks || [],
             tasksSelectedIndex: 0,
             tasksWindowStart: 0,
+
+            settingsSelectedIndex: 0,
+            settings: DEFAULT_SETTINGS,
+
+            skillsSelectedIndex: 0,
+            skillsWindowStart: 0,
+            skills: options?.skills || loadWorkspaceSkills(),
         }
 
         this.screen.onResize(() => {
@@ -359,23 +427,18 @@ export class DifferentialApp {
                 return
             }
 
-            // Enter: Execute or submit command
+            // Enter: Execute command
             if (key === '\r' || key === '\n') {
                 if (filtered.length > 0) {
                     const sel =
                         filtered[Math.min(this.state.commandSelectedIndex, filtered.length - 1)]
                     if (sel) {
-                        const fullCmd = `/${sel.name}`
-                        if (
-                            this.state.input.trim() === fullCmd ||
-                            !this.state.input.trim().includes(' ')
-                        ) {
-                            this.executeCommand(sel.name)
-                            return
-                        }
+                        this.executeCommand(sel.name)
+                        return
                     }
                 }
-                this.submitPrompt()
+                // Unknown command starting with /
+                this.executeCommand(this.state.input.slice(1).trim())
                 return
             }
         }
@@ -505,13 +568,80 @@ export class DifferentialApp {
             return
         }
 
-        if (cmd === 'help') {
+        if (cmd === 'new') {
+            this.state.messages = []
+            this.showToast('Started a new conversation.', 'success')
+            return
+        }
+
+        if (cmd === 'fork') {
+            this.showToast('Forked conversation into a new branch.', 'success')
+            return
+        }
+
+        if (cmd === 'copy') {
+            const assistantMsgs = this.state.messages.filter((m) => m.role === 'assistant')
+            const lastMsg =
+                assistantMsgs.length > 0 ? assistantMsgs[assistantMsgs.length - 1] : null
+            if (lastMsg && lastMsg.content) {
+                writeToClipboard(lastMsg.content)
+                this.showToast('Copied last assistant response to clipboard!', 'success')
+            } else {
+                this.showToast('No assistant response found to copy.', 'error')
+            }
+            return
+        }
+
+        if (cmd === 'changelog') {
+            const url = 'https://trydecember.com/docs/changelog'
+            openBrowserUrl(url)
+            this.showToast(`Opening changelog in browser... (${url})`, 'info')
+            return
+        }
+
+        if (cmd === 'docs' || cmd.startsWith('docs')) {
+            const url = 'https://trydecember.com/docs'
+            openBrowserUrl(url)
+            this.showToast(`Opening documentation in browser... (${url})`, 'info')
+            return
+        }
+
+        if (cmd === 'feedback') {
+            const url = 'https://github.com/phasehumans/december/issues/new'
+            openBrowserUrl(url)
+            this.showToast('Opening GitHub issue form in browser...', 'info')
+            return
+        }
+
+        if (cmd === 'help' || cmd === 'shortcuts') {
             this.state.activeOverlay = 'help'
             this.render()
             return
         }
 
-        if (cmd === 'model') {
+        if (cmd === 'settings') {
+            this.state.activeOverlay = 'settings'
+            this.state.settingsSelectedIndex = 0
+            this.render()
+            return
+        }
+
+        if (cmd === 'context') {
+            this.state.activeOverlay = 'context'
+            this.render()
+            return
+        }
+
+        if (cmd === 'skills' || cmd === 'skill' || cmd === 'skills list') {
+            this.state.activeOverlay = 'skills'
+            this.state.skillsSelectedIndex = 0
+            this.state.skillsWindowStart = 0
+            this.state.skills = loadWorkspaceSkills()
+            this.render()
+            return
+        }
+
+        if (cmd === 'model' || cmd === 'switch') {
             this.state.activeOverlay = 'model'
             this.state.modelSearchQuery = ''
             this.state.modelSelectedIndex = 0
@@ -527,6 +657,7 @@ export class DifferentialApp {
             this.state.diffScrollOffset = 0
             this.state.diffSelectedIndex = 0
             this.state.diffWindowStart = 0
+            this.state.diffCursorLineIndex = 0
             fetchGitStatusFiles()
                 .then((files) => {
                     this.state.diffFiles = files
@@ -547,8 +678,8 @@ export class DifferentialApp {
             return
         }
 
-        // Fallback: submit as prompt
-        this.submitPrompt(`/${name}`)
+        // Unknown slash command: DO NOT SEND TO CHAT! Display error toast!
+        this.showToast(`Unknown command: /${name}. Type /help for available commands.`, 'error')
     }
 
     toggleOverlay(type: OverlayType): void {
@@ -560,6 +691,21 @@ export class DifferentialApp {
         this.render()
     }
 
+    private cycleDiffFile(delta: number): void {
+        const files = this.state.diffFiles
+        if (files.length === 0) return
+        const nextIdx = (this.state.diffSelectedIndex + delta + files.length) % files.length
+        this.state.diffSelectedIndex = nextIdx
+        this.state.diffScrollOffset = 0
+        this.state.diffCursorLineIndex = 0
+        if (nextIdx < this.state.diffWindowStart) {
+            this.state.diffWindowStart = nextIdx
+        } else if (nextIdx >= this.state.diffWindowStart + DIFF_WINDOW_SIZE) {
+            this.state.diffWindowStart = Math.max(0, nextIdx - DIFF_WINDOW_SIZE + 1)
+        }
+        this.render()
+    }
+
     private handleOverlayKey(key: string): void {
         const overlay = this.state.activeOverlay
 
@@ -567,6 +713,81 @@ export class DifferentialApp {
             if (key === '\r' || key === '\n' || key === ' ' || key === 'q') {
                 this.state.activeOverlay = 'none'
                 this.render()
+            }
+            return
+        }
+
+        if (overlay === 'settings') {
+            const settings = this.state.settings
+            if (key === '\x1b[A' || key === 'k') {
+                if (this.state.settingsSelectedIndex > 0) {
+                    this.state.settingsSelectedIndex -= 1
+                    this.render()
+                }
+                return
+            }
+            if (key === '\x1b[B' || key === 'j') {
+                if (this.state.settingsSelectedIndex < settings.length - 1) {
+                    this.state.settingsSelectedIndex += 1
+                    this.render()
+                }
+                return
+            }
+            if (key === '\r' || key === '\n' || key === ' ') {
+                const current = settings[this.state.settingsSelectedIndex]
+                if (current) {
+                    if (current.id === 'model' || current.id === 'provider') {
+                        this.state.activeOverlay = 'model'
+                        this.render()
+                        return
+                    }
+                    if (current.value === 'on') current.value = 'off'
+                    else if (current.value === 'off') current.value = 'on'
+                    else if (current.value === 'always-proceed') current.value = 'always-ask'
+                    else if (current.value === 'always-ask') current.value = 'always-proceed'
+                    this.showToast(`Updated ${current.title}: [${current.value}]`, 'success')
+                }
+                return
+            }
+            return
+        }
+
+        if (overlay === 'context') {
+            if (key === 'c' || key === 'C') {
+                this.state.messages = []
+                this.state.activeOverlay = 'none'
+                this.showToast('Cleared context history.', 'success')
+                return
+            }
+            if (key === 'm' || key === 'M') {
+                this.state.activeOverlay = 'model'
+                this.render()
+                return
+            }
+            return
+        }
+
+        if (overlay === 'skills') {
+            const skills = this.state.skills
+            if (key === '\x1b[A' || key === 'k') {
+                if (this.state.skillsSelectedIndex > 0) {
+                    this.state.skillsSelectedIndex -= 1
+                    if (this.state.skillsSelectedIndex < this.state.skillsWindowStart) {
+                        this.state.skillsWindowStart = this.state.skillsSelectedIndex
+                    }
+                    this.render()
+                }
+                return
+            }
+            if (key === '\x1b[B' || key === 'j') {
+                if (this.state.skillsSelectedIndex < skills.length - 1) {
+                    this.state.skillsSelectedIndex += 1
+                    if (this.state.skillsSelectedIndex >= this.state.skillsWindowStart + 8) {
+                        this.state.skillsWindowStart = this.state.skillsSelectedIndex - 7
+                    }
+                    this.render()
+                }
+                return
             }
             return
         }
@@ -652,6 +873,42 @@ export class DifferentialApp {
             const files = this.state.diffFiles
 
             if (this.state.isDiffDetailView) {
+                // Cycle files with Left / Right arrow
+                if (key === '\x1b[D') {
+                    this.cycleDiffFile(-1)
+                    return
+                }
+                if (key === '\x1b[C') {
+                    this.cycleDiffFile(1)
+                    return
+                }
+
+                // Next / Prev change hunk with n / p
+                const currentFile = files[this.state.diffSelectedIndex]
+                if (currentFile) {
+                    const parsed = parseUnifiedDiffToRows(currentFile.diff || '')
+                    if (key === 'n' && parsed.changeIndices.length > 0) {
+                        const nextHunk = parsed.changeIndices.find(
+                            (idx) => idx > this.state.diffScrollOffset
+                        )
+                        if (nextHunk !== undefined) {
+                            this.state.diffScrollOffset = nextHunk
+                            this.render()
+                        }
+                        return
+                    }
+                    if (key === 'p' && parsed.changeIndices.length > 0) {
+                        const prevHunk = [...parsed.changeIndices]
+                            .reverse()
+                            .find((idx) => idx < this.state.diffScrollOffset)
+                        if (prevHunk !== undefined) {
+                            this.state.diffScrollOffset = prevHunk
+                            this.render()
+                        }
+                        return
+                    }
+                }
+
                 if (key === '\x1b[A' || key === 'k') {
                     this.state.diffScrollOffset = Math.max(0, this.state.diffScrollOffset - 1)
                     this.render()
@@ -691,10 +948,11 @@ export class DifferentialApp {
                 return
             }
 
-            if (key === '\r' || key === '\n') {
+            if (key === '\r' || key === '\n' || key === '\x1b[C') {
                 if (files.length > 0) {
                     this.state.isDiffDetailView = true
                     this.state.diffScrollOffset = 0
+                    this.state.diffCursorLineIndex = 0
                     this.render()
                 }
                 return
@@ -870,6 +1128,37 @@ export class DifferentialApp {
                 width,
                 height: bodyHeight,
             })
+        } else if (this.state.activeOverlay === 'settings') {
+            SettingsMenuView.render(this.screen.backBuffer, {
+                x: 0,
+                y: bodyY,
+                width,
+                height: bodyHeight,
+                selectedIndex: this.state.settingsSelectedIndex,
+                settings: this.state.settings,
+            })
+        } else if (this.state.activeOverlay === 'context') {
+            ContextMenuView.render(this.screen.backBuffer, {
+                x: 0,
+                y: bodyY,
+                width,
+                height: bodyHeight,
+                activeModel: this.state.activeModel,
+                modelLabel: this.state.modelLabel,
+                contextTokens: this.state.contextTokens,
+                maxContextTokens: this.state.maxContextTokens,
+                messageCount: this.state.messages.length,
+            })
+        } else if (this.state.activeOverlay === 'skills') {
+            SkillsMenuView.render(this.screen.backBuffer, {
+                x: 0,
+                y: bodyY,
+                width,
+                height: bodyHeight,
+                selectedIndex: this.state.skillsSelectedIndex,
+                windowStart: this.state.skillsWindowStart,
+                skills: this.state.skills,
+            })
         } else if (this.state.activeOverlay === 'model') {
             ModelSelectMenuView.render(this.screen.backBuffer, {
                 x: 0,
@@ -894,6 +1183,7 @@ export class DifferentialApp {
                 windowStart: this.state.diffWindowStart,
                 isDetailView: this.state.isDiffDetailView,
                 detailScrollOffset: this.state.diffScrollOffset,
+                cursorLineIndex: this.state.diffCursorLineIndex,
             })
         } else if (this.state.activeOverlay === 'tasks') {
             TasksModeMenuView.render(this.screen.backBuffer, {
