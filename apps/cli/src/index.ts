@@ -611,6 +611,8 @@ async function main() {
         releaseHighlights,
     })
 
+    differentialApp.state.announcement = announcement
+
     differentialApp.start()
 }
 

@@ -17,6 +17,7 @@ import {
 import { TasksModeMenuView, type TaskItem } from './views/tasks-mode-menu-view'
 
 import type { DifferentialScreenOptions } from './types'
+import type { ReleaseAnnouncement } from '../../constants/announcements'
 
 export type OverlayType = 'none' | 'help' | 'model' | 'diff' | 'tasks'
 
@@ -41,6 +42,7 @@ export interface DifferentialAppState {
     cwd?: string
     branch?: string
     latestVersion?: string
+    announcement?: ReleaseAnnouncement | null
     showExitConfirm: boolean
     toast: { message: string; variant?: 'success' | 'error' | 'info' } | null
     activeOverlay: OverlayType
@@ -82,6 +84,7 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     branch?: string
     contextTokens?: number
     maxContextTokens?: number
+    announcement?: ReleaseAnnouncement | null
     models?: ModelItem[]
     tasks?: TaskItem[]
     onSubmit?: (prompt: string) => void
@@ -135,6 +138,7 @@ export class DifferentialApp {
             branch: options?.branch,
             contextTokens: options?.contextTokens || 0,
             maxContextTokens: options?.maxContextTokens,
+            announcement: options?.announcement,
             showExitConfirm: false,
             toast: null,
             activeOverlay: 'none',
@@ -802,6 +806,7 @@ export class DifferentialApp {
             width,
             cliVersion: this.state.cliVersion,
             latestVersion: this.state.latestVersion,
+            announcement: this.state.announcement,
             userEmail: this.state.userEmail,
             activeModel: this.state.activeModel,
             modelLabel: this.state.modelLabel,
@@ -818,6 +823,7 @@ export class DifferentialApp {
             width,
             cliVersion: this.state.cliVersion,
             latestVersion: this.state.latestVersion,
+            announcement: this.state.announcement,
             userEmail: this.state.userEmail,
             activeModel: this.state.activeModel,
             modelLabel: this.state.modelLabel,

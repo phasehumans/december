@@ -38,6 +38,41 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(line3).toContain('Claude Subscription')
             expect(line4).toContain('~/code/december (main)')
         })
+
+        it('renders release announcement banner with highlights bullets and changelog link', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            HeaderView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                cliVersion: '0.4.15',
+                activeModel: 'claude-3-5-sonnet',
+                authMethod: 'subscription',
+                cwd: '~/code/december',
+                branch: 'main',
+                announcement: {
+                    version: '0.4.15',
+                    title: "What's New in v0.4.15",
+                    bullets: [
+                        'Add token login, refine device activation flow, and add context doc',
+                        'Durable step checkpointing and optimistic epoch fencing',
+                    ],
+                    url: 'https://trydecember.com/docs/changelog',
+                },
+            })
+
+            const line5 = buffer.getLine(5)
+            const line6 = buffer.getLine(6)
+            const line7 = buffer.getLine(7)
+            const line8 = buffer.getLine(8)
+
+            expect(line5).toContain("▎ What's New in v0.4.15")
+            expect(line6).toContain('▎ Add token login, refine device activation flow')
+            expect(line7).toContain('▎ Durable step checkpointing and optimistic epoch fencing')
+            expect(line8).toContain(
+                '▎ Check out detailed changelog on https://trydecember.com/docs/changelog'
+            )
+        })
     })
 
     describe('InputBarView', () => {
