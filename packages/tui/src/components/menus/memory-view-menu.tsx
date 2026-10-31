@@ -345,7 +345,7 @@ export function MemoryViewMenu(props: MemoryViewMenuProps) {
     const gutterWidth = Math.max(3, String(totalLines).length)
 
     const footerItems: MenuFooterItem[] = [
-        { key: 'Tab / ← →', label: 'switch file' },
+        { key: '←/→', label: 'switch file' },
         { key: '↑/↓', label: 'scroll' },
         { key: 'PgUp/PgDn', label: 'page' },
         { key: 'esc', label: 'close' },

@@ -314,6 +314,13 @@ export function isFilePath(text: string): boolean {
     if (!text || text.includes('\n')) return false
     const trimmed = text.trim()
     if (trimmed.includes(' ')) return false
+    if (
+        /^\/(?:artifacts|ask|auth|btw|changelog|clear|codesearch|context|copy|diff|docs|doctor|effort|exit|feedback|fork|grill|grill-me|help|key|link|login|mcp|memory|model|new|open|plan|resume|rewind|settings|skills|switch|tasks|undo|update|usage|voice)\b/i.test(
+            trimmed
+        )
+    ) {
+        return false
+    }
     if (/^(\/|\.\/|\.\.\/|~\/|[a-zA-Z]:[/\\])/.test(trimmed)) return true
     if (trimmed.includes('/') || trimmed.includes('\\')) return true
     if (
@@ -337,7 +344,7 @@ const renderToken = (token: any, index: number, isStreaming?: boolean): React.Re
                     {token.tokens?.map((t: any, i: number) => renderToken(t, i, isStreaming))}
                 </Text>
             )
-        case 'text':
+        case 'text': {
             if ('tokens' in token && token.tokens) {
                 return (
                     <Text key={index}>
@@ -345,7 +352,25 @@ const renderToken = (token: any, index: number, isStreaming?: boolean): React.Re
                     </Text>
                 )
             }
-            return <Text key={index}>{token.text || token.raw}</Text>
+            const rawText = token.text || token.raw || ''
+            if (rawText.includes('/login')) {
+                const parts = rawText.split(/(\/login\b)/g)
+                return (
+                    <Text key={index}>
+                        {parts.map((part: string, pIdx: number) =>
+                            part === '/login' ? (
+                                <Text key={pIdx} color={THEME.colors.brand}>
+                                    {part}
+                                </Text>
+                            ) : (
+                                part
+                            )
+                        )}
+                    </Text>
+                )
+            }
+            return <Text key={index}>{rawText}</Text>
+        }
         case 'strong':
             return (
                 <Text key={index} bold>
@@ -371,10 +396,11 @@ const renderToken = (token: any, index: number, isStreaming?: boolean): React.Re
                     </Text>
                 )
             }
+            const isSlashCommand = token.text.startsWith('/')
             return (
                 <Text
                     key={index}
-                    backgroundColor={THEME.colors.codespanBg}
+                    backgroundColor={isSlashCommand ? undefined : THEME.colors.codespanBg}
                     color={THEME.colors.brand}
                 >
                     {token.text}

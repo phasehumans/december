@@ -2708,30 +2708,6 @@ ${decStatus}
         }
     }, [isStreaming, agent, setQueuedPrompts, setPlanWorkflow, handleAbortAuth])
 
-    const hasTriggeredFirstLaunchRef = useRef(false)
-    const handleAuthMenuSelectRef = useRef(handleAuthMenuSelect)
-    handleAuthMenuSelectRef.current = handleAuthMenuSelect
-
-    useEffect(() => {
-        if (hasTriggeredFirstLaunchRef.current) return
-        hasTriggeredFirstLaunchRef.current = true
-
-        let isMounted = true
-        const checkFirstLaunchAuth = async () => {
-            const { loadConfig } = await import('../config')
-            const config = await loadConfig()
-            if (!config.email && !config.decemberToken && !initialAuth && isMounted) {
-                await handleAuthMenuSelectRef.current({ value: 'december' })
-            }
-        }
-        checkFirstLaunchAuth().catch(() => {
-            // Intentionally swallowed: fallback to manual /login if first-launch check fails
-        })
-        return () => {
-            isMounted = false
-        }
-    }, [initialAuth])
-
     const handlePlanApprovalSelect = useCallback(
         async (item: any) => {
             const originalPrompt =

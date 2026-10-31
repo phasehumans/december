@@ -234,6 +234,8 @@ graph LR
         expect(isFilePath('/server/src/shared/codeRunner.ts')).toBe(true)
         expect(isFilePath('packages/tui/src/app.tsx:42')).toBe(true)
         expect(isFilePath('session.service.ts')).toBe(true)
+        expect(isFilePath('/login')).toBe(false)
+        expect(isFilePath('/help')).toBe(false)
         expect(isFilePath('bun test')).toBe(false)
         expect(isFilePath('submission')).toBe(false)
         expect(isFilePath('const x = 1')).toBe(false)
