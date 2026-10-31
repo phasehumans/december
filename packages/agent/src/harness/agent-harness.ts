@@ -38,6 +38,7 @@ export interface HarnessConfig extends Omit<AgentConfig, 'systemPrompt'> {
     rootBoundary?: string
     userRules?: string
     availableSecrets?: string[]
+    lean?: boolean
 }
 
 export class AgentHarness {
@@ -82,6 +83,7 @@ export class AgentHarness {
             rules: this.rules,
             userRules: config.userRules,
             availableSecrets: config.availableSecrets,
+            lean: config.lean,
         })
 
         // 4. initialize core agent
@@ -112,6 +114,7 @@ export class AgentHarness {
             rules: this.rules,
             userRules: this.config.userRules,
             availableSecrets: this.config.availableSecrets,
+            lean: this.config.lean,
         })
         this.agent.setSystemPrompt(finalPrompt)
         return finalPrompt

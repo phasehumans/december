@@ -211,6 +211,7 @@ export interface AgentLoopOptions {
 
 export const READ_ONLY_TOOLS = new Set([
     'read_file',
+    'read',
     'ls',
     'find_files',
     'grep_search',
@@ -897,11 +898,23 @@ async function executeToolCalls(
     signal: AbortSignal,
     options?: { readOnly?: boolean }
 ) {
+    const getToolInstance = (name: string) => {
+        return (
+            agent.tools.get(name) ||
+            (name === 'read' ? agent.tools.get('read_file') : undefined) ||
+            (name === 'read_file' ? agent.tools.get('read') : undefined) ||
+            (name === 'write' ? agent.tools.get('write_file') : undefined) ||
+            (name === 'write_file' ? agent.tools.get('write') : undefined) ||
+            (name === 'edit' ? agent.tools.get('edit_file') : undefined) ||
+            (name === 'edit_file' ? agent.tools.get('edit') : undefined)
+        )
+    }
+
     const isSequentialTool = (tc: ToolCall) => {
-        const tool = agent.tools.get(tc.name)
+        const tool = getToolInstance(tc.name)
         return (
             tool?.executionMode === 'sequential' ||
-            ['bash', 'write_file', 'edit_file', 'edit_diff'].includes(tc.name)
+            ['bash', 'write_file', 'write', 'edit_file', 'edit', 'edit_diff'].includes(tc.name)
         )
     }
 
@@ -935,7 +948,14 @@ async function executeSingleTool(
     const toolStartTime = Date.now()
     eventQueue.push({ type: 'ToolCallStart', toolCall })
 
-    const tool = agent.tools.get(toolCall.name)
+    const tool =
+        agent.tools.get(toolCall.name) ||
+        (toolCall.name === 'read' ? agent.tools.get('read_file') : undefined) ||
+        (toolCall.name === 'read_file' ? agent.tools.get('read') : undefined) ||
+        (toolCall.name === 'write' ? agent.tools.get('write_file') : undefined) ||
+        (toolCall.name === 'write_file' ? agent.tools.get('write') : undefined) ||
+        (toolCall.name === 'edit' ? agent.tools.get('edit_file') : undefined) ||
+        (toolCall.name === 'edit_file' ? agent.tools.get('edit') : undefined)
     let resultStr = ''
     let errorStr = undefined
 
@@ -984,7 +1004,12 @@ async function executeSingleTool(
         errorStr = `Tool ${toolCall.name} not found.`
     } else {
         try {
-            let parsedArgs = toolCall.input ? safeParseJson(toolCall.input) : {}
+            let parsedArgs =
+                typeof toolCall.input === 'object' && toolCall.input !== null
+                    ? toolCall.input
+                    : toolCall.input
+                      ? safeParseJson(toolCall.input)
+                      : {}
             if (tool.prepareArguments) {
                 parsedArgs = tool.prepareArguments(parsedArgs)
             }

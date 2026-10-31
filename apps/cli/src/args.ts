@@ -7,6 +7,8 @@ export interface ParsedCliArgs {
     isVersion: boolean
     yes: boolean
     json: boolean
+    rpc: boolean
+    print: boolean
     fix: boolean
     force: boolean
     isGlobal: boolean
@@ -34,6 +36,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 version: { type: 'boolean', short: 'v' },
                 yes: { type: 'boolean', short: 'y' },
                 json: { type: 'boolean' },
+                rpc: { type: 'boolean' },
+                print: { type: 'boolean' },
                 fix: { type: 'boolean' },
                 force: { type: 'boolean', short: 'f' },
                 global: { type: 'boolean', short: 'g' },
@@ -56,6 +60,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const isVersion = Boolean(values.version)
         const yes = Boolean(values.yes)
         const json = Boolean(values.json)
+        const rpc = Boolean(values.rpc)
+        const print = Boolean(values.print)
         const fix = Boolean(values.fix)
         const force = Boolean(values.force)
         const isGlobal = Boolean(values.global)
@@ -111,6 +117,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             isVersion,
             yes,
             json,
+            rpc,
+            print,
             fix,
             force,
             isGlobal,
@@ -134,6 +142,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             isVersion: false,
             yes: false,
             json: false,
+            rpc: false,
+            print: false,
             fix: false,
             force: false,
             isGlobal: false,
@@ -192,6 +202,8 @@ Options:
   -y, --yes                         Auto-approve tool permissions (non-interactive mode)
   --inline                          Run in classic inline mode (standard terminal scrollback)
   --json                            Output structured JSON events
+  --rpc                             Run in headless RPC mode streaming NDJSON over stdio (default headless)
+  --print                           Print raw output text to stdout instead of NDJSON RPC stream
   --fix                             Automatically fix detected PATH collisions and stale links
   -m, --model <model>               Override target LLM model
   -p, --provider <provider>         Override target LLM provider

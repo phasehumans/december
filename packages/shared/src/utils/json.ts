@@ -1,5 +1,8 @@
-export function safeParseJson(text: string): any {
-    if (!text || text.trim() === '') {
+export function safeParseJson(text: any): any {
+    if (typeof text === 'object' && text !== null) {
+        return text
+    }
+    if (!text || typeof text !== 'string' || text.trim() === '') {
         return {}
     }
 

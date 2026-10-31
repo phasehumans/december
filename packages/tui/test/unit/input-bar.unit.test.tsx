@@ -55,15 +55,15 @@ describe('InputBar Component (Unit)', () => {
 
         stdin.write('/')
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /artifacts')
+        expect(lastFrame()).toContain('❭ /btw')
 
         stdin.write('\u001B[B') // Down
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /btw')
+        expect(lastFrame()).toContain('❭ /changelog')
 
         stdin.write('\u001B[A') // Up
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /artifacts')
+        expect(lastFrame()).toContain('❭ /btw')
     })
 
     it('suppresses prompt separators and prompt glyph when authUI is provided', () => {
@@ -263,11 +263,11 @@ describe('InputBar Component (Unit)', () => {
                 <InputBar
                     onSubmit={mock(() => {})}
                     activeModel="claude-3-7-sonnet"
-                    planWorkflowPhase="grilling"
+                    planWorkflowPhase="executing"
                 />
             </RootLayout>
         )
-        expect(lastFrame()).toContain('[GRILL]')
+        expect(lastFrame()).toContain('[EXEC]')
 
         rerender(
             <RootLayout>
@@ -331,9 +331,9 @@ describe('InputBar Component (Unit)', () => {
         stdin.write('/')
         await new Promise((resolve) => setTimeout(resolve, 30))
         const frame = lastFrame() || ''
-        expect(frame).toContain('❭ /artifacts')
+        expect(frame).toContain('❭ /btw')
         expect(frame).toContain('❭ /')
-        const cmdIndex = frame.indexOf('❭ /artifacts')
+        const cmdIndex = frame.indexOf('❭ /btw')
         const promptIndex = frame.lastIndexOf('❭ /')
         // Command menu must appear above the prompt text
         expect(cmdIndex).toBeLessThan(promptIndex)

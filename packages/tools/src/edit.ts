@@ -11,7 +11,10 @@ const singleEditSchema = Type.Object({
 })
 
 const editSchema = Type.Object({
-    path: Type.String({ description: 'Path to the file to edit (relative or absolute)' }),
+    path: Type.Optional(
+        Type.String({ description: 'Path to the file to edit (relative or absolute)' })
+    ),
+    filePath: Type.Optional(Type.String({ description: 'Alias for path' })),
     targetContent: Type.Optional(
         Type.String({ description: 'The exact block of text to replace (single edit mode)' })
     ),
@@ -337,7 +340,10 @@ export const EditFileTool: Tool<EditFileInput> = {
         'Edits an existing file with exact or fuzzy text replacement. Supports single replacements (targetContent -> replacementContent) or multiple disjoint replacements in a single turn via edits: [{ targetContent, replacementContent }].',
     inputSchema: editSchema,
     execute: async (input, context: ToolExecuteContext) => {
-        const filePath = input.path
+        const filePath = input.path || input.filePath || ''
+        if (!filePath) {
+            return 'Error: Path to file is required.'
+        }
         return withFileMutationQueue(filePath, async () => {
             try {
                 const rawContent = await context.operations.fs.readFile(filePath)
@@ -459,4 +465,7 @@ export const EditFileTool: Tool<EditFileInput> = {
     },
 }
 
-export const EditTool = EditFileTool
+export const EditTool: Tool<EditFileInput> = {
+    ...EditFileTool,
+    name: 'edit',
+}

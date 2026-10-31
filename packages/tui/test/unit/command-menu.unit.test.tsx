@@ -122,15 +122,15 @@ describe('CommandMenu Component (Unit)', () => {
             </KeyboardLayerProvider>
         )
 
-        expect(lastFrame()).toContain('❭ /artifacts')
+        expect(lastFrame()).toContain('❭ /btw')
 
         stdin.write('\u001B[B') // Down
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /btw')
+        expect(lastFrame()).toContain('❭ /changelog')
 
         stdin.write('\u001B[A') // Up
         await new Promise((resolve) => setTimeout(resolve, 20))
-        expect(lastFrame()).toContain('❭ /artifacts')
+        expect(lastFrame()).toContain('❭ /btw')
     })
 
     it('renders clean compact layout without status indicator for single match', () => {

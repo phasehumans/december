@@ -1,13 +1,11 @@
 import React from 'react'
 
-import { ArtifactViewMenu } from './artifact-view-menu'
 import { ByokKeyMenu } from './byok-key-menu'
 import { ByokProviderMenu } from './byok-provider-menu'
 import { CodeSearchMenu } from './code-search-menu'
 import { ContextSelectMenu } from './context-select-menu'
 import { DiffViewMenu } from './diff-view-menu'
 import { FileViewMenu } from './file-view-menu'
-import { GrillQuestionMenu } from './grill-question-menu'
 import { HelpMenu } from './help-menu'
 import { MemoryViewMenu } from './memory-view-menu'
 import { MenuMenu } from './menu-menu'
@@ -46,8 +44,6 @@ export function AuthMenus(props: any) {
             return <TasksModeMenu {...props} />
         case 'plan_approve':
             return <PlanApproveMenu {...props} />
-        case 'grill_question':
-            return <GrillQuestionMenu {...props} />
         case 'settings_main':
             return <SettingsMainMenu {...props} />
         case 'usage':
@@ -64,8 +60,6 @@ export function AuthMenus(props: any) {
             return <CodeSearchMenu {...props} />
         case 'file_view':
             return <FileViewMenu {...props} onClose={props.onCloseFileView || props.onClose} />
-        case 'artifact_view':
-            return <ArtifactViewMenu {...props} />
         case 'skills':
         case 'skills_menu':
             return <SkillsMenu {...props} />

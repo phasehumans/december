@@ -7,7 +7,15 @@ const mockRunAgentLoop = mock()
 mock.module('@december/agent', () => {
     return {
         runAgentLoop: mockRunAgentLoop,
-        Agent: class MockAgent {},
+        Agent: class MockAgent {
+            sessionId = 'default'
+            modelOptions = {}
+            workspaceDir = ''
+            operations = { ui: {} }
+            setOnToolActivated() {}
+            steer = mock()
+            abort = mock()
+        },
     }
 })
 
@@ -48,6 +56,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
+            print: true,
         })
 
         expect(mockRunAgentLoop).toHaveBeenCalledWith(mockAgent, 'test prompt')
@@ -76,6 +85,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
+            print: true,
         })
 
         expect(result.success).toBe(true)
@@ -95,6 +105,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
+            print: true,
         })
 
         expect(mockAgent.operations.ui.askQuestion).toBeDefined()
@@ -124,6 +135,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
+            print: true,
         })
 
         expect(stdoutData).toContain('[Tool Executing: read_file]')
@@ -151,6 +163,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
+            print: true,
         })
 
         expect(result.success).toBe(false)
@@ -175,6 +188,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
+            print: true,
         })
 
         expect(mockAgent.steer).not.toHaveBeenCalled()
@@ -197,6 +211,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
+            print: true,
         })
 
         expect(mockAgent.steer).not.toHaveBeenCalled()
@@ -215,6 +230,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
+            print: true,
         })
     })
 
@@ -229,6 +245,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
+            print: true,
         })
 
         expect(mockAgent.steer).toHaveBeenCalledWith({
@@ -291,6 +308,7 @@ describe('runHeadlessTask', () => {
             stdout: mockStdout as any,
             stderr: mockStderr as any,
             isAuthenticated: false,
+            print: true,
         })
 
         expect(result.success).toBe(false)
@@ -306,6 +324,30 @@ describe('runHeadlessTask', () => {
 
         restoreConsole()
         expect(console.log).toBe(originalLog)
+    })
+
+    it('defaults to Stdio NDJSON RPC mode when options.print is omitted', async () => {
+        async function* mockGenerator() {
+            yield { type: 'StreamChunk', content: 'rpc default stream' }
+        }
+        mockRunAgentLoop.mockReturnValue(mockGenerator())
+
+        let stdoutData = ''
+        mockStdout.on('data', (chunk) => {
+            stdoutData += chunk.toString()
+        })
+
+        const result = await runHeadlessTask('test default rpc', {
+            agent: mockAgent,
+            stdin: mockStdin as any,
+            stdout: mockStdout as any,
+            stderr: mockStderr as any,
+        })
+
+        expect(result.success).toBe(true)
+        expect(stdoutData).toContain('"type":"session_init"')
+        expect(stdoutData).toContain('"type":"turn_start"')
+        expect(stdoutData).toContain('"type":"token_delta"')
     })
 
     it('blocks mutating tools in requestPermission and forwards readOnly option when readOnly is true', async () => {
@@ -339,5 +381,113 @@ describe('runHeadlessTask', () => {
         })
 
         expect(result.success).toBe(true)
+    })
+
+    describe('RPC mode', () => {
+        it('streams structured line-delimited JSON events over stdout', async () => {
+            mockAgent.sessionId = 'test-session-123'
+            mockAgent.modelOptions = { model: 'gpt-4o' }
+            mockAgent.workspaceDir = '/test/workspace'
+
+            async function* mockGenerator() {
+                yield { type: 'ThinkingChunk', content: 'thinking step' }
+                yield { type: 'StreamChunk', content: 'hello rpc' }
+                yield {
+                    type: 'ToolCallStart',
+                    toolCall: { id: 'call_1', name: 'read_file', input: { path: 'a.txt' } },
+                }
+                yield {
+                    type: 'ToolCallResult',
+                    result: { toolCallId: 'call_1', name: 'read_file', result: 'file contents' },
+                }
+                yield { type: 'AgentUsage', promptTokens: 50, completionTokens: 20 }
+            }
+
+            mockRunAgentLoop.mockReturnValue(mockGenerator())
+
+            const emittedEvents: any[] = []
+            mockStdout.on('data', (chunk) => {
+                const lines = chunk.toString().trim().split('\n')
+                for (const line of lines) {
+                    if (line.trim()) {
+                        emittedEvents.push(JSON.parse(line))
+                    }
+                }
+            })
+
+            const result = await runHeadlessTask('test rpc prompt', {
+                agent: mockAgent,
+                stdin: mockStdin as any,
+                stdout: mockStdout as any,
+                stderr: mockStderr as any,
+                rpc: true,
+            })
+
+            expect(result.success).toBe(true)
+            expect(emittedEvents.map((e) => e.type)).toEqual([
+                'session_init',
+                'turn_start',
+                'thought_delta',
+                'token_delta',
+                'tool_call',
+                'tool_result',
+                'turn_complete',
+            ])
+            expect(emittedEvents[0].sessionId).toBe('test-session-123')
+            expect(emittedEvents[0].model).toBe('gpt-4o')
+            expect(emittedEvents[1].prompt).toBe('test rpc prompt')
+            expect(emittedEvents[2].content).toBe('thinking step')
+            expect(emittedEvents[3].content).toBe('hello rpc')
+            expect(emittedEvents[4].id).toBe('call_1')
+            expect(emittedEvents[4].name).toBe('read_file')
+            expect(emittedEvents[5].result).toBe('file contents')
+            expect(emittedEvents[6].promptTokens).toBe(50)
+            expect(emittedEvents[6].completionTokens).toBe(20)
+        })
+
+        it('receives inbound abort signal from stdin and triggers agent.abort()', async () => {
+            mockAgent.abort = mock()
+
+            mockRunAgentLoop.mockImplementation(async function* () {
+                mockStdin.write(JSON.stringify({ type: 'abort' }) + '\n')
+                // Wait small microtask for stdin listener
+                await new Promise((r) => setTimeout(r, 10))
+                yield { type: 'StreamChunk', content: 'aborted' }
+            })
+
+            await runHeadlessTask('test prompt', {
+                agent: mockAgent,
+                stdin: mockStdin as any,
+                stdout: mockStdout as any,
+                stderr: mockStderr as any,
+                rpc: true,
+            })
+
+            expect(mockAgent.abort).toHaveBeenCalled()
+        })
+
+        it('receives inbound prompt from stdin and steers agent', async () => {
+            mockRunAgentLoop.mockImplementation(async function* () {
+                mockStdin.write(
+                    JSON.stringify({ type: 'prompt', content: 'new instruction' }) + '\n'
+                )
+                await new Promise((r) => setTimeout(r, 10))
+                yield { type: 'StreamChunk', content: 'acknowledged' }
+            })
+
+            await runHeadlessTask('test prompt', {
+                agent: mockAgent,
+                stdin: mockStdin as any,
+                stdout: mockStdout as any,
+                stderr: mockStderr as any,
+                rpc: true,
+            })
+
+            expect(mockAgent.steer).toHaveBeenCalledWith({
+                role: 'user',
+                content: 'new instruction',
+                isUI: true,
+            })
+        })
     })
 })

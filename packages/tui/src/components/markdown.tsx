@@ -315,7 +315,7 @@ export function isFilePath(text: string): boolean {
     const trimmed = text.trim()
     if (trimmed.includes(' ')) return false
     if (
-        /^\/(?:artifacts|ask|auth|btw|changelog|clear|codesearch|context|copy|diff|docs|doctor|effort|exit|feedback|fork|grill|grill-me|help|key|link|login|mcp|memory|model|new|open|plan|resume|rewind|settings|skills|switch|tasks|undo|update|usage|voice)\b/i.test(
+        /^\/(?:ask|auth|btw|changelog|clear|codesearch|context|copy|diff|docs|doctor|effort|exit|feedback|fork|help|key|link|login|mcp|memory|model|new|open|plan|resume|rewind|settings|skills|switch|tasks|undo|update|usage|voice)\b/i.test(
             trimmed
         )
     ) {

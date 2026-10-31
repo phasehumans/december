@@ -38,10 +38,9 @@ type Props = {
     resetChat?: () => void
     onUpdateSuccess?: () => Promise<void>
     planMode?: boolean
-    grillMode?: boolean
     planRefineMode?: boolean
     customInputMode?: boolean
-    planWorkflowPhase?: 'idle' | 'grilling' | 'reviewing' | 'refining' | 'executing'
+    planWorkflowPhase?: 'idle' | 'reviewing' | 'refining' | 'executing'
     interactivePlanGoalMode?: boolean
     workflowUI?: React.ReactNode
     onInterrupt?: () => void
@@ -94,7 +93,6 @@ export const InputBar = React.memo(function InputBar({
     resetChat,
     onUpdateSuccess,
     planMode = false,
-    grillMode = false,
     planRefineMode = false,
     customInputMode = false,
     planWorkflowPhase,
@@ -335,7 +333,6 @@ export const InputBar = React.memo(function InputBar({
     const stateRef = useRef({
         value,
         handleContentChange,
-        grillMode,
         onSubmit,
         onCopy,
         isVoiceActive,
@@ -345,7 +342,6 @@ export const InputBar = React.memo(function InputBar({
     stateRef.current = {
         value,
         handleContentChange,
-        grillMode,
         onSubmit,
         onCopy,
         isVoiceActive,
@@ -387,9 +383,6 @@ export const InputBar = React.memo(function InputBar({
                     state.handleContentChange(next)
                     return next
                 })
-            }
-            if ((key.backspace || key.delete) && state.value.length === 0 && state.grillMode) {
-                state.onSubmit('/grill-me')
             }
             if (key.ctrl && input === 'y') {
                 if (state.onCopy) state.onCopy()
@@ -462,8 +455,6 @@ export const InputBar = React.memo(function InputBar({
 
             // Forward chat & session commands and custom commands to chat component
             const forwardCommands = [
-                '/grill',
-                '/grill-me',
                 '/login',
                 '/exit',
                 '/model',
@@ -628,17 +619,15 @@ export const InputBar = React.memo(function InputBar({
     const isOverlayActive = Boolean(authUI || workflowUI) && !customInputMode
 
     const activeModeTag =
-        planWorkflowPhase === 'grilling' || grillMode
-            ? '[GRILL]'
-            : planWorkflowPhase === 'executing'
-              ? '[EXEC]'
-              : planWorkflowPhase === 'reviewing' ||
-                  planWorkflowPhase === 'refining' ||
-                  planRefineMode ||
-                  planMode ||
-                  interactivePlanGoalMode
-                ? '[PLAN]'
-                : null
+        planWorkflowPhase === 'executing'
+            ? '[EXEC]'
+            : planWorkflowPhase === 'reviewing' ||
+                planWorkflowPhase === 'refining' ||
+                planRefineMode ||
+                planMode ||
+                interactivePlanGoalMode
+              ? '[PLAN]'
+              : null
 
     return (
         <Box
@@ -745,11 +734,6 @@ export const InputBar = React.memo(function InputBar({
                                 color={disabled ? THEME.colors.muted : THEME.colors.brand}
                             >{`${THEME.glyphs.prompt} `}</Text>
                         </Box>
-                        {grillMode && (
-                            <Box flexShrink={0}>
-                                <Text color={THEME.colors.brand}>/grill-me </Text>
-                            </Box>
-                        )}
                         {planRefineMode && (
                             <Box flexShrink={0}>
                                 <Text color={THEME.colors.brand}>[Refine Plan] </Text>
@@ -774,13 +758,11 @@ export const InputBar = React.memo(function InputBar({
                                         ? 'Transcribing speech...'
                                         : isVoiceActive
                                           ? 'Listening...'
-                                          : grillMode
-                                            ? ''
-                                            : planRefineMode
-                                              ? 'Enter feedback to refine plan (or Esc to cancel)...'
-                                              : interactivePlanGoalMode
-                                                ? 'Enter your goal (e.g. add dark mode) or Esc to cancel...'
-                                                : placeholder
+                                          : planRefineMode
+                                            ? 'Enter feedback to refine plan (or Esc to cancel)...'
+                                            : interactivePlanGoalMode
+                                              ? 'Enter your goal (e.g. add dark mode) or Esc to cancel...'
+                                              : placeholder
                                 }
                                 placeholderColor={isVoiceActive ? THEME.colors.brand : undefined}
                                 focus={!disabled}

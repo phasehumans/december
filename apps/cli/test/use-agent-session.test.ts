@@ -178,23 +178,7 @@ describe('useCliStore activeMessages handling', () => {
         expect(store.planWorkflow).toEqual({ phase: 'idle' })
         expect(store.interactivePlanGoalMode).toBe(false)
 
-        // 1. Transition to grilling
-        store.setPlanWorkflow({
-            phase: 'grilling',
-            prompt: 'Implement auth',
-            questions: [
-                {
-                    question: 'Which auth method?',
-                    options: ['JWT', 'Session'],
-                },
-            ],
-            currentIndex: 0,
-            answers: [],
-        })
-        expect(useCliStore.getState().planWorkflow.phase).toBe('grilling')
-        expect(useCliStore.getState().authMode).toBe('none') // Decoupled from authMode
-
-        // 2. Transition to reviewing
+        // 1. Transition to reviewing
         store.setPlanWorkflow({
             phase: 'reviewing',
             prompt: 'Implement auth',
@@ -202,6 +186,7 @@ describe('useCliStore activeMessages handling', () => {
             qaPairs: [{ question: 'Which auth method?', answer: 'JWT' }],
         })
         expect(useCliStore.getState().planWorkflow.phase).toBe('reviewing')
+        expect(useCliStore.getState().authMode).toBe('none') // Decoupled from authMode
         if (useCliStore.getState().planWorkflow.phase === 'reviewing') {
             expect((useCliStore.getState().planWorkflow as any).planText).toContain(
                 '### Implementation Plan'

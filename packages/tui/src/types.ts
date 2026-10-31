@@ -27,7 +27,6 @@ export type AuthMode =
     | 'switch_select'
     | 'session_select'
     | 'plan_approve'
-    | 'grill_question'
     | 'ask_question'
     | 'tool_permission'
     | 'settings_main'
@@ -38,7 +37,6 @@ export type AuthMode =
     | 'reasoning_select'
     | 'code_search'
     | 'file_view'
-    | 'artifact_view'
     | 'skills'
     | 'skills_menu'
     | 'memory_view'
@@ -50,21 +48,8 @@ export interface CodeSearchResultItem {
     content: string
 }
 
-export interface GrillQuestion {
-    question: string
-    options: string[]
-    docSource?: string
-}
-
 export type PlanWorkflowState =
     | { phase: 'idle' }
-    | {
-          phase: 'grilling'
-          prompt: string
-          questions: GrillQuestion[]
-          currentIndex: number
-          answers: string[]
-      }
     | {
           phase: 'reviewing'
           prompt: string

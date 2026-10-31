@@ -1,27 +1,17 @@
-import { AskQuestionTool } from './ask_question'
 import { BashTool } from './bash'
 import { BrowserTool } from './browser'
 import { BrowserActionTool } from './browser_action'
-import { CodeIntelligenceTool } from './code_intelligence'
 import { defaultDeferredRegistry } from './deferred-registry'
 import { EditFileTool } from './edit'
 import { EditDiffTool } from './edit_diff'
-import { FindFilesTool } from './find'
-import { GrepSearchTool } from './grep'
-import { LsTool } from './ls'
 import { ManageMemoryTool } from './manage_memory'
 import { ManageTaskTool } from './manage_task'
 import { ReadFileTool } from './read'
-import { SearchToolsTool } from './search_tools'
 import { WebSearchTool } from './web_search'
 import { EnterWorktreeTool, ExitWorktreeTool } from './worktree'
 import { WriteFileTool } from './write'
-import { WriteArtifactTool } from './write_artifact'
 
 export * from './worktree'
-export * from './artifacts/artifact-types'
-export * from './artifacts/artifact-manager'
-export * from './write_artifact'
 
 export * from './bash'
 export * from './bash-operations'
@@ -48,22 +38,9 @@ export * from './snapshot'
 export * from './file-mutation-queue'
 export { Type, type Static } from '@sinclair/typebox'
 
-export const CORE_TOOLS = [
-    BashTool,
-    ReadFileTool,
-    WriteFileTool,
-    LsTool,
-    EditFileTool,
-    FindFilesTool,
-    GrepSearchTool,
-    AskQuestionTool,
-    SearchToolsTool,
-    CodeIntelligenceTool,
-    ManageMemoryTool,
-    EnterWorktreeTool,
-    ExitWorktreeTool,
-    WriteArtifactTool,
-]
+export const FOUNDATIONAL_TOOLS = [ReadFileTool, WriteFileTool, EditFileTool, BashTool]
+
+export const CORE_TOOLS = [ReadFileTool, WriteFileTool, EditFileTool, BashTool]
 
 export const DEFERRED_TOOLS = [
     ManageTaskTool,

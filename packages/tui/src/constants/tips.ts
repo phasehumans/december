@@ -1,7 +1,6 @@
 export const TIPS: readonly string[] = [
     '/switch changes active LLM providers',
     '/plan generates a step-by-step implementation plan',
-    '/grill-me interviews you to align on design decisions',
     '/tasks lists running background processes',
     '/context shows token breakdown and active file sizes',
     '/fork branches your conversation without losing history',

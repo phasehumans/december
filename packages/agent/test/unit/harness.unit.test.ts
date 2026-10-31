@@ -42,9 +42,8 @@ describe('AgentHarness (Unit)', () => {
         expect(systemPrompt).toContain('Root Agents Guide')
         expect(systemPrompt).toContain('December Agents Guide')
         expect(systemPrompt).toContain('Workspace Rules')
-        expect(systemPrompt).toContain('Inspect Logs & Stack Traces First')
-        expect(systemPrompt).toContain('Root Cause Resolution')
-        expect(systemPrompt).toContain('Execution & Verification')
+        expect(systemPrompt).toContain('<rules>')
+        expect(systemPrompt).toContain('Use bash for file operations like ls, rg, find')
     })
 
     test('passively ingests .december/memory.md under <project_memory> in harness agent prompt', () => {
@@ -180,7 +179,7 @@ description: |
         expect(systemPrompt).not.toContain('Here are paragraphs of additional explanations')
     })
 
-    test('uses DEFAULT_BASE_SYSTEM_PROMPT when baseSystemPrompt is omitted', () => {
+    test('uses DEFAULT_PI_IDENTITY and DEFAULT_PI_RULES when baseSystemPrompt is omitted', () => {
         const harness = new AgentHarness({
             llm: new MockLLM(),
             tools: [],
@@ -189,11 +188,11 @@ description: |
         })
 
         const systemPrompt = harness.getAgent().systemPrompt
-        expect(systemPrompt).toContain('You are December, an autonomous, expert coding agent.')
-        expect(systemPrompt).toContain('Inspect Logs & Stack Traces First')
-        expect(systemPrompt).toContain('Root Cause Resolution')
-        expect(systemPrompt).toContain('No Raw Code In Chat')
-        expect(systemPrompt).toContain('Strict Workspace Boundary')
+        expect(systemPrompt).toContain('You are an expert coding assistant')
+        expect(systemPrompt).toContain('<rules>')
+        expect(systemPrompt).toContain('Use bash for file operations like ls, rg, find')
+        expect(systemPrompt).toContain('Be concise in your responses')
+        expect(systemPrompt).toContain('Show file paths clearly when working with files')
     })
 
     test('climbs ancestor directories to root collecting rules with root-most rules ordered first', () => {
@@ -224,7 +223,7 @@ description: |
         expect(rootPos).toBeLessThan(nestedPos)
     })
 
-    test('suppresses <thought> tags instruction for native reasoning models (o3, deepseek-r1, claude thinking)', () => {
+    test('maintains prompt cache stability across different model targets without unnecessary prompt drift', () => {
         const o3Harness = new AgentHarness({
             llm: new MockLLM(),
             tools: [],
@@ -233,24 +232,6 @@ description: |
             modelOptions: { model: 'o3-mini' },
         })
 
-        const o3Prompt = o3Harness.getAgent().systemPrompt
-        expect(o3Prompt).not.toContain('<thought>')
-        expect(o3Prompt).toContain('Autonomous Reasoning & Verification')
-        expect(o3Prompt).toContain('Persistent Problem Solving')
-        expect(o3Prompt).toContain('Comprehensive Verification')
-
-        const claudeThinkingHarness = new AgentHarness({
-            llm: new MockLLM(),
-            tools: [],
-            operations: {} as any,
-            workspaceDir: tmpDir,
-            modelOptions: { model: 'claude-3-7-sonnet-20250219', thinkingLevel: 'high' },
-        })
-        const claudeThinkingPrompt = claudeThinkingHarness.getAgent().systemPrompt
-        expect(claudeThinkingPrompt).not.toContain('<thought>')
-    })
-
-    test('specializes prompt for Anthropic with objectivity and task breakdown', () => {
         const anthropicHarness = new AgentHarness({
             llm: new MockLLM(),
             tools: [],
@@ -259,92 +240,31 @@ description: |
             modelOptions: { model: 'claude-3-5-sonnet-20241022' },
         })
 
-        const prompt = anthropicHarness.getAgent().systemPrompt
-        expect(prompt).toContain('Anthropic / Claude')
-        expect(prompt).toContain('Objectivity & Discipline')
-        expect(prompt).toContain('Proactive Task Breakdown')
-        expect(prompt).not.toContain('<thought>')
+        const o3Prompt = o3Harness.getAgent().systemPrompt
+        const anthropicPrompt = anthropicHarness.getAgent().systemPrompt
+
+        expect(o3Prompt).toContain('You are an expert coding assistant')
+        expect(o3Prompt).toContain('<rules>')
+        expect(anthropicPrompt).toContain('You are an expert coding assistant')
+        expect(anthropicPrompt).toContain('<rules>')
     })
 
-    test('specializes prompt for Gemini with absolute file path enforcement and operational phases', () => {
-        const geminiHarness = new AgentHarness({
+    test('keeps dynamic environment context (<cwd> and date) strictly at the end of the prompt', () => {
+        const harness = new AgentHarness({
             llm: new MockLLM(),
             tools: [],
             operations: {} as any,
             workspaceDir: tmpDir,
-            modelOptions: { model: 'gemini-2.5-pro' },
         })
 
-        const prompt = geminiHarness.getAgent().systemPrompt
-        expect(prompt).toContain('Model Specialization (Gemini)')
-        expect(prompt).toContain('STRICTLY specify absolute file paths')
-        expect(prompt).toContain('Structured Execution')
-        expect(prompt).not.toContain('<thought>')
-    })
+        const prompt = harness.getAgent().systemPrompt
+        const rulesIndex = prompt.indexOf('</rules>')
+        const cwdIndex = prompt.indexOf('<cwd>')
+        const dateIndex = prompt.indexOf('Current date:')
 
-    test('does not force <thought> tags instruction on non-reasoning models (sarvam, llama, mistral)', () => {
-        const sarvamHarness = new AgentHarness({
-            llm: new MockLLM(),
-            tools: [],
-            operations: {} as any,
-            workspaceDir: tmpDir,
-            modelOptions: { model: 'sarvam-105b' },
-        })
-
-        const sarvamPrompt = sarvamHarness.getAgent().systemPrompt
-        expect(sarvamPrompt).not.toContain('<thought>')
-        expect(sarvamPrompt).toContain('Communication Protocol')
-        expect(sarvamPrompt).not.toContain('Thought Enclosure')
-
-        const llamaHarness = new AgentHarness({
-            llm: new MockLLM(),
-            tools: [],
-            operations: {} as any,
-            workspaceDir: tmpDir,
-            modelOptions: { model: 'meta-llama/llama-3.3-70b-instruct' },
-        })
-
-        const llamaPrompt = llamaHarness.getAgent().systemPrompt
-        expect(llamaPrompt).not.toContain('<thought>')
-        expect(llamaPrompt).not.toContain('Thought Enclosure')
-    })
-
-    test('dynamically includes guidelines only for active tools', () => {
-        const harnessWithEdit = new AgentHarness({
-            llm: new MockLLM(),
-            tools: [
-                {
-                    name: 'edit_file',
-                    description: 'edit',
-                    inputSchema: {},
-                    execute: async () => '',
-                },
-            ],
-            operations: {} as any,
-            workspaceDir: tmpDir,
-        })
-
-        const promptWithEdit = harnessWithEdit.getAgent().systemPrompt
-        expect(promptWithEdit).toContain('multiple entries in edits[]')
-        expect(promptWithEdit).not.toContain("Use 'web_search'")
-
-        const harnessWithWeb = new AgentHarness({
-            llm: new MockLLM(),
-            tools: [
-                {
-                    name: 'web_search',
-                    description: 'web search',
-                    inputSchema: {},
-                    execute: async () => '',
-                },
-            ],
-            operations: {} as any,
-            workspaceDir: tmpDir,
-        })
-
-        const promptWithWeb = harnessWithWeb.getAgent().systemPrompt
-        expect(promptWithWeb).toContain("Use 'web_search'")
-        expect(promptWithWeb).not.toContain('multiple entries in edits[]')
+        expect(rulesIndex).toBeGreaterThan(0)
+        expect(cwdIndex).toBeGreaterThan(rulesIndex)
+        expect(dateIndex).toBeGreaterThan(cwdIndex)
     })
 
     test('injects userRules into system prompt alongside discovered workspace rules', () => {
@@ -395,7 +315,6 @@ description: |
         })
 
         const systemPrompt = harness.getAgent().systemPrompt
-        expect(systemPrompt).toContain('Environment Secrets & Variables')
         expect(systemPrompt).toContain('<injected_secrets>')
         expect(systemPrompt).toContain(
             '- $STRIPE_API_KEY (referenced in prompts as @secret:STRIPE_API_KEY or $STRIPE_API_KEY)'
@@ -405,7 +324,7 @@ description: |
         )
     })
 
-    test('automatically injects invoke_subagent and manage_subagent tools and guidelines', () => {
+    test('automatically injects invoke_subagent and manage_subagent tools', () => {
         const harness = new AgentHarness({
             llm: new MockLLM(),
             tools: [],
@@ -416,9 +335,5 @@ description: |
         const agent = harness.getAgent()
         expect(agent.tools.has('invoke_subagent')).toBe(true)
         expect(agent.tools.has('manage_subagent')).toBe(true)
-        expect(agent.systemPrompt).toContain(
-            "Use 'invoke_subagent' to delegate deep exploratory tasks"
-        )
-        expect(agent.systemPrompt).toContain("Use 'manage_subagent' to monitor running subagents")
     })
 })

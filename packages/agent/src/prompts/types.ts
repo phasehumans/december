@@ -24,4 +24,5 @@ export interface AssembleSystemPromptOptions {
     rules?: { path: string; content: string }[]
     userRules?: string
     availableSecrets?: string[]
+    lean?: boolean
 }

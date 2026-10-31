@@ -2,7 +2,8 @@ import { Tool, truncateOutput, ToolExecuteContext } from '@december/shared'
 import { Type, Static } from '@sinclair/typebox'
 
 const readSchema = Type.Object({
-    path: Type.String({ description: 'The file path to read.' }),
+    path: Type.Optional(Type.String({ description: 'The file path to read.' })),
+    filePath: Type.Optional(Type.String({ description: 'Alias for path.' })),
     startLine: Type.Optional(Type.Number({ description: 'Optional start line' })),
     endLine: Type.Optional(Type.Number({ description: 'Optional end line' })),
     noTruncate: Type.Optional(Type.Boolean({ description: 'Avoid truncating the output' })),
@@ -18,9 +19,16 @@ export const ReadFileTool: Tool<ReadFileInput> = {
     description:
         'Reads the contents of a file. Automatically truncates and summarizes massive files exceeding 500 KB or 2,000 lines to protect context limits. Use noTruncate: true if you absolutely need the full file for AST rewriting, or use startLine/endLine for pagination.',
     inputSchema: readSchema,
-    execute: async ({ path, startLine, endLine, noTruncate }, context: ToolExecuteContext) => {
+    execute: async (
+        { path, filePath, startLine, endLine, noTruncate },
+        context: ToolExecuteContext
+    ) => {
         try {
-            const content = await context.operations.fs.readFile(path)
+            const targetPath = path || filePath || ''
+            if (!targetPath) {
+                return 'Error: Path to file is required.'
+            }
+            const content = await context.operations.fs.readFile(targetPath)
             const lines = content.split('\n')
             const totalBytes = Buffer.byteLength(content, 'utf8')
 
@@ -57,4 +65,9 @@ export const ReadFileTool: Tool<ReadFileInput> = {
             return `Failed to read file: ${error.message}`
         }
     },
+}
+
+export const ReadTool: Tool<ReadFileInput> = {
+    ...ReadFileTool,
+    name: 'read',
 }

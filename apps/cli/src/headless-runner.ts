@@ -36,6 +36,8 @@ export interface HeadlessTaskOptions {
     nonInteractive?: boolean
     isAuthenticated?: boolean
     json?: boolean
+    rpc?: boolean
+    print?: boolean
     readOnly?: boolean
 }
 
@@ -59,7 +61,9 @@ export async function runHeadlessTask(
 
     purgeProjectEnvApiKeys(options.cwd)
 
-    const isJson = Boolean(options.json)
+    const isPrint = Boolean(options.print)
+    const isRpc = options.rpc !== undefined ? Boolean(options.rpc) : !isPrint
+    const isJson = Boolean(options.json) || isRpc
 
     const writeOut = (msg: string) => {
         if (stdout && stdout.write) stdout.write(msg)
@@ -90,7 +94,8 @@ export async function runHeadlessTask(
 
     const rl = readline.createInterface({
         input: stdin as any,
-        output: stdout as any,
+        output: isRpc || options.json ? undefined : (stdout as any),
+        terminal: false,
     })
 
     let isPromptActive = false
@@ -175,11 +180,47 @@ export async function runHeadlessTask(
     }
 
     rl.on('line', (input: string) => {
-        if (isPromptActive) return
-        if (input.trim()) {
-            agent.steer({ role: 'user', content: input, isUI: true })
-            writeOut(`\n[Steering input sent to agent]\n`)
+        const trimmed = input.trim()
+        if (!trimmed) return
+
+        if (isRpc) {
+            let parsed: any = null
+            try {
+                parsed = JSON.parse(trimmed)
+            } catch {
+                // Intentionally swallowed: fallback to plain text command below
+            }
+
+            if (parsed && typeof parsed === 'object') {
+                if (parsed.type === 'abort' || parsed.type === 'cancel') {
+                    if (typeof agent.abort === 'function') {
+                        agent.abort()
+                    }
+                    return
+                }
+                if (parsed.type === 'prompt') {
+                    const content = parsed.content || parsed.text || ''
+                    if (content) {
+                        agent.steer({ role: 'user', content, isUI: true })
+                    }
+                    return
+                }
+            }
+
+            if (trimmed === 'abort' || trimmed === 'cancel') {
+                if (typeof agent.abort === 'function') {
+                    agent.abort()
+                }
+                return
+            }
+
+            agent.steer({ role: 'user', content: trimmed, isUI: true })
+            return
         }
+
+        if (isPromptActive) return
+        agent.steer({ role: 'user', content: trimmed, isUI: true })
+        writeOut(`\n[Steering input sent to agent]\n`)
     })
 
     let hasError = false
@@ -200,6 +241,23 @@ export async function runHeadlessTask(
             }
         }
 
+        if (isRpc) {
+            writeJson({
+                type: 'session_init',
+                sessionId: agent.sessionId || 'default',
+                model: agent.modelOptions?.model,
+                workspace: options.cwd || agent.workspaceDir || process.cwd(),
+            })
+            writeJson({
+                type: 'turn_start',
+                turn: 1,
+                prompt: effectivePrompt,
+            })
+        }
+
+        let totalPromptTokens = 0
+        let totalCompletionTokens = 0
+
         const stream = runAgentLoop(
             agent,
             options.readOnly ? { content: effectivePrompt, readOnly: true } : effectivePrompt
@@ -207,34 +265,53 @@ export async function runHeadlessTask(
 
         for await (const event of stream) {
             switch (event.type) {
-                case 'StreamChunk':
-                    if (isJson) {
+                case 'StreamChunk': {
+                    if (isRpc) {
+                        writeJson({ type: 'token_delta', content: event.content })
+                    } else if (isJson) {
                         writeJson({ type: 'content', content: event.content })
                     } else {
                         writeOut(event.content)
                     }
                     break
-                case 'ThinkingChunk':
-                    if (isJson) {
+                }
+                case 'ThinkingChunk': {
+                    if (isRpc) {
+                        writeJson({ type: 'thought_delta', content: event.content })
+                    } else if (isJson) {
                         writeJson({ type: 'thinking', content: event.content })
                     }
                     break
-                case 'AgentStatus':
-                    if (isJson) {
+                }
+                case 'AgentStatus': {
+                    if (isRpc) {
+                        // Suppressed in pure RPC lifecycle
+                    } else if (isJson) {
                         writeJson({ type: 'status', message: event.message })
                     } else {
                         writeOut(`\n[Status: ${event.message}]\n`)
                     }
                     break
-                case 'ContextCompacted':
-                    if (isJson) {
+                }
+                case 'ContextCompacted': {
+                    if (isRpc) {
+                        writeJson({ type: 'context_compacted', summary: event.summary })
+                    } else if (isJson) {
                         writeJson({ type: 'compacted', summary: event.summary })
                     } else {
                         writeOut(`\n[Context Compacted: ${event.summary}]\n`)
                     }
                     break
-                case 'ToolCallStart':
-                    if (isJson) {
+                }
+                case 'ToolCallStart': {
+                    if (isRpc) {
+                        writeJson({
+                            type: 'tool_call',
+                            id: event.toolCall.id,
+                            name: event.toolCall.name,
+                            input: event.toolCall.input,
+                        })
+                    } else if (isJson) {
                         writeJson({ type: 'tool_start', toolCall: event.toolCall })
                     } else {
                         writeOut(`\n\n[Tool Executing: ${event.toolCall.name}]\n`)
@@ -246,8 +323,17 @@ export async function runHeadlessTask(
                         writeOut('\n')
                     }
                     break
-                case 'ToolCallResult':
-                    if (isJson) {
+                }
+                case 'ToolCallResult': {
+                    if (isRpc) {
+                        writeJson({
+                            type: 'tool_result',
+                            id: event.result.toolCallId,
+                            name: (event.result as any).name || (event.result as any).toolName,
+                            result: event.result.result,
+                            ...(event.result.error ? { error: event.result.error } : {}),
+                        })
+                    } else if (isJson) {
                         writeJson({ type: 'tool_result', result: event.result })
                     } else {
                         if (event.result.error) {
@@ -257,31 +343,43 @@ export async function runHeadlessTask(
                         }
                     }
                     break
-                case 'AgentUsage':
-                    if (isJson) {
+                }
+                case 'AgentUsage': {
+                    totalPromptTokens = event.promptTokens
+                    totalCompletionTokens = event.completionTokens
+                    if (!isRpc && isJson) {
                         writeJson({
                             type: 'usage',
                             promptTokens: event.promptTokens,
                             completionTokens: event.completionTokens,
                         })
-                    } else {
+                    } else if (!isRpc && !isJson) {
                         writeOut(
                             `\n[Usage: ${event.promptTokens} prompt, ${event.completionTokens} completion]\n`
                         )
                     }
                     break
-                case 'AgentError':
+                }
+                case 'AgentError': {
                     hasError = true
                     errorMessage = event.error
-                    if (isJson) {
+                    if (isRpc || isJson) {
                         writeJson({ type: 'error', error: event.error })
                     } else {
                         writeErr(`\n[Error: ${event.error}]\n`)
                     }
                     break
+                }
             }
         }
-        if (isJson) {
+        if (isRpc) {
+            writeJson({
+                type: 'turn_complete',
+                success: !hasError,
+                promptTokens: totalPromptTokens,
+                completionTokens: totalCompletionTokens,
+            })
+        } else if (isJson) {
             writeJson({ type: 'done', success: !hasError })
         } else {
             writeOut('\n\nHeadless task complete.\n')

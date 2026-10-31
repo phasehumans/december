@@ -3,18 +3,47 @@ import { describe, expect, test } from 'bun:test'
 import { AskQuestionTool } from '../../src/ask_question'
 import { BashTool } from '../../src/bash'
 import { CodeIntelligenceTool } from '../../src/code_intelligence'
-import { EditFileTool } from '../../src/edit'
+import { EditFileTool, EditTool } from '../../src/edit'
 import { EditDiffTool } from '../../src/edit_diff'
 import { FindFilesTool } from '../../src/find'
 import { GrepSearchTool } from '../../src/grep'
+import { FOUNDATIONAL_TOOLS } from '../../src/index'
 import { LsTool } from '../../src/ls'
 import { ManageMemoryTool } from '../../src/manage_memory'
 import { ManageTaskTool } from '../../src/manage_task'
-import { ReadFileTool } from '../../src/read'
+import { ReadFileTool, ReadTool } from '../../src/read'
 import { WebSearchTool } from '../../src/web_search'
-import { WriteFileTool } from '../../src/write'
+import { WriteFileTool, WriteTool } from '../../src/write'
 
 describe('Tools Schema & Registration (Unit)', () => {
+    test('FOUNDATIONAL_TOOLS contains strictly the 4 primitives', () => {
+        expect(FOUNDATIONAL_TOOLS).toBeDefined()
+        expect(FOUNDATIONAL_TOOLS.length).toBe(4)
+        const names = FOUNDATIONAL_TOOLS.map((t) => t.name)
+        expect(names).toContain('read_file')
+        expect(names).toContain('write_file')
+        expect(names).toContain('edit_file')
+        expect(names).toContain('bash')
+    })
+
+    test('ReadTool and ReadFileTool are configured with aliases', () => {
+        expect(ReadFileTool.name).toBe('read_file')
+        expect(ReadTool.name).toBe('read')
+        expect(ReadTool.execute).toBe(ReadFileTool.execute)
+    })
+
+    test('WriteTool and WriteFileTool are configured with aliases', () => {
+        expect(WriteFileTool.name).toBe('write_file')
+        expect(WriteTool.name).toBe('write')
+        expect(WriteTool.execute).toBe(WriteFileTool.execute)
+    })
+
+    test('EditTool and EditFileTool are configured with aliases', () => {
+        expect(EditFileTool.name).toBe('edit_file')
+        expect(EditTool.name).toBe('edit')
+        expect(EditTool.execute).toBe(EditFileTool.execute)
+    })
+
     test('AskQuestionTool has correct metadata', () => {
         expect(AskQuestionTool.name).toBe('ask_question')
         expect(AskQuestionTool.description).toBeDefined()

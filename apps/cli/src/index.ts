@@ -229,11 +229,11 @@ async function main() {
     const { ensureWorkspaceTrust } = await import('./utils/workspace-trust')
     await ensureWorkspaceTrust({
         targetDir: parsedArgs.scope,
-        isHeadless: Boolean(parsedArgs.prompt),
+        isHeadless: Boolean(parsedArgs.prompt || parsedArgs.rpc),
     })
 
-    // Path 4: Headless Task Execution (Load agent harness & tools, skip Ink/React/TUI)
-    if (parsedArgs.prompt) {
+    // Path 4: Headless Task / RPC Execution (Load agent harness & tools, skip Ink/React/TUI)
+    if (parsedArgs.prompt || parsedArgs.rpc) {
         const [
             { AgentHarness },
             { openaiProvider },
@@ -334,25 +334,24 @@ async function main() {
             thinkingLevel: config.thinkingLevel || 'auto',
             steeringMode: config.steeringMode || 'all',
             followUpMode: config.followUpMode || 'all',
+            lean: true,
         })
 
         const agent = harness.getAgent()
         await agent.loadContext()
 
-        if (!parsedArgs.json) {
-            console.log(
-                isAskMode
-                    ? `\nExecuting Ask Q&A: "${parsedArgs.prompt}"\n`
-                    : `\nExecuting Headless Task: "${parsedArgs.prompt}"\n`
-            )
-        }
+        const isPrint = Boolean(parsedArgs.print)
+        const isRpc = parsedArgs.rpc || (!isPrint && !parsedArgs.json)
 
-        const effectivePrompt = isAskMode ? getAskPrompt(parsedArgs.prompt) : parsedArgs.prompt
+        const rawPrompt = parsedArgs.prompt || ''
+        const effectivePrompt = isAskMode ? getAskPrompt(rawPrompt) : rawPrompt
 
         const result = await runHeadlessTask(effectivePrompt, {
             agent,
             nonInteractive: parsedArgs.yes,
             json: parsedArgs.json,
+            rpc: isRpc,
+            print: isPrint,
             readOnly: isAskMode,
         })
         await mcpClientManager.disconnectAll().catch(() => {

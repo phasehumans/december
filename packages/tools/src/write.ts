@@ -4,7 +4,10 @@ import { Type, Static } from '@sinclair/typebox'
 import { withFileMutationQueue } from './file-mutation-queue'
 
 const writeSchema = Type.Object({
-    filePath: Type.String({ description: 'The relative or absolute path to the file.' }),
+    filePath: Type.Optional(
+        Type.String({ description: 'The relative or absolute path to the file.' })
+    ),
+    path: Type.Optional(Type.String({ description: 'Alias for filePath.' })),
     content: Type.String({ description: 'The complete file contents to write.' }),
 })
 
@@ -24,15 +27,20 @@ export const WriteFileTool: Tool<WriteFileInput> = {
     description:
         'Creates a new file or completely overwrites an existing file with the provided content. Note: For modifying existing files, always use edit_file instead to prevent token limit truncation and preserve untouched lines.',
     inputSchema: writeSchema,
-    execute: async ({ filePath, content }, context: ToolExecuteContext) => {
-        return withFileMutationQueue(filePath, async () => {
+    execute: async ({ filePath, path, content }, context: ToolExecuteContext) => {
+        const targetPath = filePath || path || ''
+        if (!targetPath) {
+            return 'Error: Path to file is required.'
+        }
+        return withFileMutationQueue(targetPath, async () => {
             try {
-                await context.operations.fs.writeFile(filePath, content)
+                await context.operations.fs.writeFile(targetPath, content)
 
                 let lspNotice = ''
                 if (context.operations.diagnostics?.getDiagnostics) {
                     try {
-                        const diags = await context.operations.diagnostics.getDiagnostics(filePath)
+                        const diags =
+                            await context.operations.diagnostics.getDiagnostics(targetPath)
                         if (typeof diags === 'string' && diags.trim()) {
                             lspNotice = `\n\nLSP errors detected in this file, please fix:\n${diags.trim()}`
                         } else if (Array.isArray(diags) && diags.length > 0) {
@@ -51,10 +59,15 @@ export const WriteFileTool: Tool<WriteFileInput> = {
                     }
                 }
 
-                return `Successfully wrote to ${filePath}${lspNotice}`
+                return `Successfully wrote to ${targetPath}${lspNotice}`
             } catch (e: any) {
                 return `Failed to write file: ${e.message}`
             }
         })
     },
+}
+
+export const WriteTool: Tool<WriteFileInput> = {
+    ...WriteFileTool,
+    name: 'write',
 }

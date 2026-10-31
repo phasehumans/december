@@ -1,6 +1,5 @@
 import { describe, test, expect } from 'bun:test'
 
-import { AgentHarness } from '../../src/harness/agent-harness'
 import {
     assembleSystemPrompt,
     getModelFamily,
@@ -9,7 +8,6 @@ import {
     isCompactModel,
     isReasoningModel,
 } from '../../src/prompts'
-import { MockLLM } from '../mock-provider'
 
 describe('Prompts & Model Specialization (Unit)', () => {
     describe('Model Classification', () => {
@@ -124,71 +122,33 @@ describe('Prompts & Model Specialization (Unit)', () => {
                 rules: [{ path: '/test/workspace/AGENTS.md', content: 'Project rule text' }],
             })
 
-            // 1. Identity & Core Principles come first
-            const personaIdx = prompt.indexOf('You are December')
-            const principlesIdx = prompt.indexOf('Core Operating Principles & Guardrails')
-            const modelSpecIdx = prompt.indexOf('Model Specialization')
-            const toolSpecIdx = prompt.indexOf('Tool Selection & Guidelines')
-            const rulesIdx = prompt.indexOf('<project_context>')
+            // 1. Static Identity & Rules come first
+            const personaIdx = prompt.indexOf('You are an expert coding assistant')
+            const rulesIdx = prompt.indexOf('<rules>')
+            const projectContextIdx = prompt.indexOf('<project_context>')
+            const cwdIdx = prompt.indexOf('<cwd>')
             const envIdx = prompt.indexOf('Current date:')
 
-            expect(personaIdx).toBeGreaterThanOrEqual(0)
-            expect(principlesIdx).toBeGreaterThan(personaIdx)
-            expect(modelSpecIdx).toBeGreaterThan(principlesIdx)
-            expect(toolSpecIdx).toBeGreaterThan(modelSpecIdx)
-            expect(rulesIdx).toBeGreaterThan(toolSpecIdx)
-            expect(envIdx).toBeGreaterThan(rulesIdx)
+            expect(personaIdx).toBe(0)
+            expect(rulesIdx).toBeGreaterThan(personaIdx)
+            expect(projectContextIdx).toBeGreaterThan(rulesIdx)
+            expect(cwdIdx).toBeGreaterThan(projectContextIdx)
+            expect(envIdx).toBeGreaterThan(cwdIdx)
         })
 
-        test('dynamically updates system prompt on AgentHarness.updateModel without losing rules', () => {
-            const harness = new AgentHarness({
-                llm: new MockLLM(),
-                tools: [{ name: 'read_file', description: 'Read', inputSchema: {} } as any],
-                operations: {} as any,
-                workspaceDir: '/tmp',
-                modelOptions: { model: 'gpt-4o-mini' },
+        test('assembles lean Pi-style system prompt (~150 words) without redundant tool manuals or negative constraints', () => {
+            const prompt = assembleSystemPrompt({
+                workspaceDir: '/workspace/my-app',
+                userRules: 'Follow repository conventions',
             })
-
-            const initialPrompt = harness.getAgent().systemPrompt
-            expect(initialPrompt).toContain('Compact Model Execution & Grounding')
-            expect(initialPrompt).not.toContain('Diff-First Protocol ("Diff Model")')
-
-            // Switch model to modern reasoning model (claude-sonnet-5)
-            harness.updateModel('claude-sonnet-5')
-            const updatedPrompt = harness.getAgent().systemPrompt
-            expect(updatedPrompt).toContain('Anthropic / Claude')
-            expect(updatedPrompt).toContain('Autonomous Reasoning & Verification')
-            expect(updatedPrompt).toContain('Diff-First Protocol ("Diff Model")')
-            expect(updatedPrompt).not.toContain('Compact Model Execution & Grounding')
-        })
-
-        test('dynamically refreshes tool guidelines when deferred tools are activated', () => {
-            const harness = new AgentHarness({
-                llm: new MockLLM(),
-                tools: [{ name: 'read_file', description: 'Read', inputSchema: {} } as any],
-                deferredTools: [
-                    {
-                        name: 'grep_search',
-                        description: 'Grep search',
-                        inputSchema: {},
-                    } as any,
-                ],
-                operations: {} as any,
-                workspaceDir: '/tmp',
-            })
-
-            expect(harness.getAgent().systemPrompt).not.toContain(
-                "Use 'grep_search' for exact matching"
-            )
-
-            // Dynamically activate grep_search
-            const activated = harness.getAgent().activateDeferredTool('grep_search')
-            expect(activated).toBe(true)
-
-            // System prompt should now contain grep_search guidelines
-            expect(harness.getAgent().systemPrompt).toContain(
-                "Use 'grep_search' for exact matching"
-            )
+            expect(prompt).toContain('You are an expert coding assistant')
+            expect(prompt).toContain('<cwd>\n/workspace/my-app\n</cwd>')
+            expect(prompt).toContain('Follow repository conventions')
+            expect(prompt).not.toContain('Inspect Logs & Stack Traces First')
+            expect(prompt).not.toContain('buildDynamicToolGuidelines')
+            expect(prompt).not.toContain('Reasoning Protocol')
+            const wordCount = prompt.trim().split(/\s+/).length
+            expect(wordCount).toBeLessThan(150)
         })
     })
 })

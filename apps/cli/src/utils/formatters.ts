@@ -97,10 +97,6 @@ export function getToolSummary(name: string, inputStr: string): string {
                 const role = args.role || (args.subagents ? `batch:${args.subagents.length}` : '')
                 return `SubAgent(${role})`.trim()
             }
-            case 'write_artifact': {
-                const rawPath = args.filePath || args.path || args.title || ''
-                return `Artifact(${toRelativePath(rawPath)})`.trim()
-            }
             case 'browser':
             case 'browser_action': {
                 const action = args.action || args.actionType || args.url || ''

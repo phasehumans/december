@@ -73,16 +73,6 @@ export interface CliState {
     setPlanRefineMode: (mode: boolean) => void
     planRefineFeedback: string
     setPlanRefineFeedback: (feedback: string) => void
-    grillMode: boolean
-    setGrillMode: (mode: boolean) => void
-    grillQuestions: { question: string; options: string[] }[]
-    setGrillQuestions: (questions: { question: string; options: string[] }[]) => void
-    currentGrillIndex: number
-    setCurrentGrillIndex: (index: number) => void
-    grillAnswers: string[]
-    setGrillAnswers: (answers: string[]) => void
-    grillPrompt: string | null
-    setGrillPrompt: (prompt: string | null) => void
     customInputMode: boolean
     setCustomInputMode: (mode: boolean) => void
     customAnswer: string
@@ -205,13 +195,6 @@ export interface CliState {
             returnQuery?: string
         } | null
     ) => void
-
-    // artifact review feature
-    pendingArtifactReview: {
-        artifact: any
-        resolve: (result: any) => void
-    } | null
-    setPendingArtifactReview: (pendingArtifactReview: any) => void
 }
 
 export const useCliStore = create<CliState>((set) => ({
@@ -310,16 +293,6 @@ export const useCliStore = create<CliState>((set) => ({
     setPlanRefineMode: (planRefineMode) => set({ planRefineMode }),
     planRefineFeedback: '',
     setPlanRefineFeedback: (planRefineFeedback) => set({ planRefineFeedback }),
-    grillMode: false,
-    setGrillMode: (grillMode) => set({ grillMode }),
-    grillQuestions: [],
-    setGrillQuestions: (grillQuestions) => set({ grillQuestions }),
-    currentGrillIndex: 0,
-    setCurrentGrillIndex: (currentGrillIndex) => set({ currentGrillIndex }),
-    grillAnswers: [],
-    setGrillAnswers: (grillAnswers) => set({ grillAnswers }),
-    grillPrompt: null,
-    setGrillPrompt: (grillPrompt) => set({ grillPrompt }),
     customInputMode: false,
     setCustomInputMode: (customInputMode) => set({ customInputMode }),
     customAnswer: '',
@@ -450,8 +423,4 @@ export const useCliStore = create<CliState>((set) => ({
     // file view feature
     fileViewTarget: null,
     setFileViewTarget: (fileViewTarget) => set({ fileViewTarget }),
-
-    // artifact review feature
-    pendingArtifactReview: null,
-    setPendingArtifactReview: (pendingArtifactReview) => set({ pendingArtifactReview }),
 }))

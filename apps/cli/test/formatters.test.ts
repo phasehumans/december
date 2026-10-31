@@ -82,10 +82,7 @@ describe('formatters', () => {
             )
         })
 
-        test('formats write_artifact and specialized tools', () => {
-            expect(
-                getToolSummary('write_artifact', JSON.stringify({ filePath: 'report.md' }))
-            ).toBe('Artifact(report.md)')
+        test('formats specialized tools', () => {
             expect(getToolSummary('browser', JSON.stringify({ action: 'launch' }))).toBe(
                 'Browser(launch)'
             )

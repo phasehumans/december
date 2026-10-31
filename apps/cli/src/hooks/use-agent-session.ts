@@ -18,7 +18,6 @@ import {
 import { AUTH_REQUIRED_NOTICE } from '../constants/messages'
 import {
     getAskPrompt,
-    getGrillPrompt,
     getPlanPrompt,
     getPlanExecutionPrompt,
     getPlanRefinePrompt,
@@ -27,11 +26,9 @@ import { useCliStore } from '../store'
 import { setupAgentInterceptors } from '../store/interceptors'
 import { taskManager } from '../task-manager'
 import { startDirectCommand } from '../utils/direct-shell'
-import { parseErrorMessage, parseError } from '../utils/error-parser'
-import { extractJsonArray } from '../utils/json-parser'
+import { parseError } from '../utils/error-parser'
 import { getProviderModels } from '../utils/models'
 import { fetchOpenRouterModels } from '../utils/openrouter-models'
-import { getProjectContext } from '../utils/project-context'
 import { fetchProviderBalance } from '../utils/provider-balance'
 import { instantiateProvider } from '../utils/provider-factory'
 import { getWeeklyUsageSummary, loadUsageLedger } from '../utils/usage-tracker'
@@ -130,16 +127,6 @@ export function useAgentSession({
         setPlanRefineMode,
         planRefineFeedback,
         setPlanRefineFeedback,
-        grillMode,
-        setGrillMode,
-        grillQuestions,
-        setGrillQuestions,
-        currentGrillIndex,
-        setCurrentGrillIndex,
-        grillAnswers,
-        setGrillAnswers,
-        grillPrompt,
-        setGrillPrompt,
         customInputMode,
         setCustomInputMode,
         customAnswer,
@@ -158,8 +145,6 @@ export function useAgentSession({
         setPendingQuestions,
         pendingToolCall,
         setPendingToolCall,
-        pendingArtifactReview,
-        setPendingArtifactReview,
         toasts,
         addToast,
         setShouldExit,
@@ -285,10 +270,9 @@ export function useAgentSession({
                 setAuthMode,
                 setPendingQuestions,
                 setPendingToolCall,
-                setPendingArtifactReview,
             })
         }
-    }, [agent, setAuthMode, setPendingQuestions, setPendingToolCall, setPendingArtifactReview])
+    }, [agent, setAuthMode, setPendingQuestions, setPendingToolCall])
 
     useEffect(() => {
         if (!agent) return
@@ -427,335 +411,6 @@ export function useAgentSession({
             addToast(`Killed ${count} background task${count === 1 ? '' : 's'}.`, 'info')
         }
     }, [setTasksData, addToast])
-
-    // Explicitly documented ref per AGENTS.md React Hook guidelines
-    const generatePlanFromGrillRef = useRef<((answers: string[]) => Promise<void>) | null>(null)
-
-    const generateGrillQuestions = useCallback(
-        async (userPrompt: string) => {
-            const trimmedPrompt = userPrompt.trim()
-            const displayPrompt = trimmedPrompt.startsWith('/')
-                ? trimmedPrompt
-                : `/grill ${trimmedPrompt}`
-
-            if (!isAuthenticated) {
-                const userMsg: Message = {
-                    id: getNextMsgId(),
-                    role: 'user',
-                    text: displayPrompt,
-                }
-                const noticeMsg: Message = {
-                    id: getNextMsgId(),
-                    role: 'assistant',
-                    blocks: [
-                        {
-                            type: 'text',
-                            content: AUTH_REQUIRED_NOTICE,
-                        },
-                    ],
-                }
-                setStaticMessages((prev) => [
-                    ...prev,
-                    ...useCliStore.getState().activeMessages,
-                    userMsg,
-                    noticeMsg,
-                ])
-                setActiveMessages([])
-                return
-            }
-
-            setIsStreaming(true)
-            const userMsgId = getNextMsgId()
-            const assistantMsgId = getNextMsgId()
-
-            setStaticMessages((prev) => [
-                ...prev,
-                ...useCliStore.getState().activeMessages,
-                { id: userMsgId, role: 'user', text: displayPrompt },
-            ])
-            setActiveMessages([
-                {
-                    id: assistantMsgId,
-                    role: 'assistant',
-                    blocks: [
-                        {
-                            type: 'text',
-                            content: 'Analyzing prompt...',
-                        },
-                    ],
-                },
-            ])
-
-            try {
-                const projectContext = getProjectContext(agent?.workspaceDir || process.cwd())
-                const prompt = getGrillPrompt(trimmedPrompt, projectContext)
-
-                const stream = agent.llm.stream(
-                    [{ role: 'user', content: prompt }],
-                    undefined,
-                    undefined,
-                    agent.modelOptions
-                )
-                let accumulatedText = ''
-                for await (const chunk of stream) {
-                    if (chunk.type === 'text') {
-                        accumulatedText += chunk.text
-                        setActiveMessages((prev) =>
-                            prev.map((msg) => {
-                                if (msg.id !== assistantMsgId) return msg
-                                return {
-                                    ...msg,
-                                    blocks: [
-                                        {
-                                            type: 'text',
-                                            content: 'Generating questions...',
-                                        },
-                                    ],
-                                }
-                            })
-                        )
-                    }
-                }
-
-                let questions: any[] = []
-                try {
-                    questions = extractJsonArray(accumulatedText)
-                } catch {
-                    // Intentionally swallowed: fallback to direct plan generation on malformed json
-                    questions = []
-                }
-                if (Array.isArray(questions) && questions.length > 0) {
-                    setGrillQuestions(questions)
-                    setGrillPrompt(trimmedPrompt)
-                    setGrillAnswers([])
-                    setCurrentGrillIndex(0)
-                    setGrillMode(true)
-                    setPlanWorkflow({
-                        phase: 'grilling',
-                        prompt: trimmedPrompt,
-                        questions,
-                        currentIndex: 0,
-                        answers: [],
-                    })
-                    setAuthMode('none')
-                    setCustomInputMode(false)
-                    setActiveMessages([])
-                } else {
-                    // Task is clear with zero questions or fallback: generate plan directly
-                    setActiveMessages([])
-                    setGrillPrompt(trimmedPrompt)
-                    setGrillMode(false)
-                    await generatePlanFromGrillRef.current?.([])
-                }
-            } catch (err: any) {
-                const errorContext = {
-                    provider:
-                        agent?.modelOptions?.provider || useCliStore.getState().selectedProvider,
-                    model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
-                }
-                const cleanError = parseErrorMessage(err, errorContext)
-                const isAuthErr =
-                    cleanError.includes('401') ||
-                    cleanError.includes('dummy-key') ||
-                    cleanError.toLowerCase().includes('incorrect api key') ||
-                    cleanError.toLowerCase().includes('invalid api key') ||
-                    cleanError.toLowerCase().includes('unauthorized')
-
-                if (isAuthErr) {
-                    setActiveMessages([])
-                    const isSessionExpired =
-                        cleanError.toLowerCase().includes('expired') ||
-                        cleanError.toLowerCase().includes('token expired') ||
-                        cleanError.toLowerCase().includes('session expired')
-
-                    const noticeContent = isSessionExpired
-                        ? 'Your December session token has expired after 30 days.\n\nPlease run `/login` to reconnect your terminal.'
-                        : AUTH_REQUIRED_NOTICE
-
-                    const noticeMsg: Message = {
-                        id: getNextMsgId(),
-                        role: 'assistant',
-                        blocks: [
-                            {
-                                type: 'text',
-                                content: noticeContent,
-                            },
-                        ],
-                    }
-                    setStaticMessages((prev) => [...prev, noticeMsg])
-                } else {
-                    setActiveMessages([])
-                    const parsed = parseError(err, errorContext)
-                    const errorMsg: Message = {
-                        id: getNextMsgId(),
-                        role: 'error',
-                        text: parsed.message,
-                        cause: parsed.cause,
-                        hint: parsed.hint,
-                    }
-                    setStaticMessages((prev) => [...prev, errorMsg])
-                }
-            } finally {
-                setIsStreaming(false)
-            }
-        },
-        [
-            agent,
-            isAuthenticated,
-            setActiveMessages,
-            setAuthMode,
-            setCurrentGrillIndex,
-            setCustomInputMode,
-            setGrillAnswers,
-            setGrillMode,
-            setGrillPrompt,
-            setGrillQuestions,
-            setIsStreaming,
-            setPlanWorkflow,
-            setStaticMessages,
-        ]
-    )
-
-    const generatePlanFromGrill = useCallback(
-        async (answers: string[]) => {
-            setAuthMode('none')
-            const originalPrompt = grillPrompt || useCliStore.getState().grillPrompt
-            const questions =
-                grillQuestions.length > 0 ? grillQuestions : useCliStore.getState().grillQuestions
-            const qaPairs = questions.map((q, i) => ({
-                question: q.question,
-                answer: answers[i] || '',
-            }))
-
-            setGrillPrompt(null)
-            setGrillQuestions([])
-            setGrillAnswers([])
-
-            if (!originalPrompt) return
-
-            if (!isAuthenticated) {
-                const userMsg: Message = {
-                    id: getNextMsgId(),
-                    role: 'user',
-                    text: `Generate plan from grill interview for: "${originalPrompt}"`,
-                }
-                const noticeMsg: Message = {
-                    id: getNextMsgId(),
-                    role: 'assistant',
-                    blocks: [
-                        {
-                            type: 'text',
-                            content: AUTH_REQUIRED_NOTICE,
-                        },
-                    ],
-                }
-                setStaticMessages((prev) => [
-                    ...prev,
-                    ...useCliStore.getState().activeMessages,
-                    userMsg,
-                    noticeMsg,
-                ])
-                setActiveMessages([])
-                return
-            }
-
-            setCurrentPlannedPrompt(originalPrompt)
-            setCurrentPlanQAPairs(qaPairs)
-
-            const planPrompt = getPlanPrompt(originalPrompt || '', qaPairs)
-
-            setIsStreaming(true)
-            setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
-            const assistantMsgId = getNextMsgId()
-            setActiveMessages([
-                {
-                    id: getNextMsgId(),
-                    role: 'user',
-                    text: `Generate plan from grill interview for: "${originalPrompt}"`,
-                },
-                {
-                    id: assistantMsgId,
-                    role: 'assistant',
-                    blocks: [{ type: 'text', content: 'Thinking...' }],
-                },
-            ])
-            let planSuccess = false
-            const errorContext = {
-                provider: agent?.modelOptions?.provider || useCliStore.getState().selectedProvider,
-                model: agent?.modelOptions?.model || useCliStore.getState().activeModel,
-            }
-            try {
-                const stream = runAgentLoop(agent, planPrompt)
-                await processAgentStream({
-                    stream,
-                    setActiveMessages,
-                    assistantMsgId,
-                    context: errorContext,
-                })
-                planSuccess = true
-            } catch (err: any) {
-                const parsed = parseError(err, errorContext)
-                setActiveMessages((prev) => [
-                    ...prev,
-                    {
-                        id: getNextMsgId(),
-                        role: 'error',
-                        text: parsed.message,
-                        cause: parsed.cause,
-                        hint: parsed.hint,
-                    },
-                ])
-            } finally {
-                setIsStreaming(false)
-                const assistantMsg = useCliStore
-                    .getState()
-                    .activeMessages.find((m) => m.id === assistantMsgId)
-                const textContent =
-                    assistantMsg?.blocks
-                        ?.filter((b: any) => b.type === 'text')
-                        .map((b: any) => b.content)
-                        .join('') ||
-                    assistantMsg?.text ||
-                    ''
-                if (textContent) {
-                    setCurrentPlanText(textContent)
-                }
-
-                setStaticMessages((prev) => [...prev, ...useCliStore.getState().activeMessages])
-                setActiveMessages([])
-                if (planSuccess) {
-                    setPlanWorkflow({
-                        phase: 'reviewing',
-                        prompt: originalPrompt,
-                        planText: textContent,
-                        qaPairs,
-                    })
-                    setAuthMode('none')
-                } else {
-                    setPlanWorkflow({ phase: 'idle' })
-                    setAuthMode('none')
-                }
-            }
-        },
-        [
-            agent,
-            isAuthenticated,
-            grillPrompt,
-            grillQuestions,
-            setActiveMessages,
-            setAuthMode,
-            setCurrentPlannedPrompt,
-            setCurrentPlanText,
-            setCurrentPlanQAPairs,
-            setGrillAnswers,
-            setGrillPrompt,
-            setGrillQuestions,
-            setIsStreaming,
-            setPlanWorkflow,
-            setStaticMessages,
-        ]
-    )
-    generatePlanFromGrillRef.current = generatePlanFromGrill
 
     const generatePlanRefinement = useCallback(
         async (feedback: string) => {
@@ -979,47 +634,6 @@ export function useAgentSession({
             setIsStreaming,
             setPlanWorkflow,
             setStaticMessages,
-        ]
-    )
-
-    const handleGrillSelect = useCallback(
-        async (item: any) => {
-            if (item.value === 'custom') {
-                setCustomInputMode(true)
-                return
-            }
-            if (item.value === '__finish_now__' || item.value === '__plan_now__') {
-                await generatePlanFromGrill(grillAnswers)
-                return
-            }
-
-            const nextAnswers = [...grillAnswers, item.value]
-            setGrillAnswers(nextAnswers)
-
-            if (currentGrillIndex + 1 < grillQuestions.length) {
-                setCurrentGrillIndex(currentGrillIndex + 1)
-                setPlanWorkflow((prev) =>
-                    prev.phase === 'grilling'
-                        ? {
-                              ...prev,
-                              currentIndex: prev.currentIndex + 1,
-                              answers: nextAnswers,
-                          }
-                        : prev
-                )
-            } else {
-                await generatePlanFromGrill(nextAnswers)
-            }
-        },
-        [
-            grillAnswers,
-            currentGrillIndex,
-            grillQuestions,
-            generatePlanFromGrill,
-            setCurrentGrillIndex,
-            setCustomInputMode,
-            setGrillAnswers,
-            setPlanWorkflow,
         ]
     )
 
@@ -2280,16 +1894,6 @@ ${decStatus}
             }
 
             if (
-                text.trim() === '/artifacts' ||
-                text.trim() === '/artifact' ||
-                text.trim().startsWith('/artifacts ') ||
-                text.trim().startsWith('/artifact ')
-            ) {
-                setAuthMode('artifact_view')
-                return
-            }
-
-            if (
                 text.trim() === '/skills' ||
                 text.trim() === '/skill' ||
                 text.trim() === '/skills list' ||
@@ -2509,10 +2113,6 @@ ${decStatus}
                         'usage',
                     ])
 
-                    if (potentialCmd === 'grill') {
-                        potentialCmd = 'grill-me'
-                    }
-
                     if (isExplicitSkillPrefix || !coreBuiltins.has(potentialCmd)) {
                         try {
                             const engine = new SkillDiscoveryEngine({ workspaceDir: process.cwd() })
@@ -2627,20 +2227,17 @@ ${decStatus}
             fetchUsageData,
             isAuthenticated,
             isStreaming,
-            generateGrillQuestions,
             generatePlanFromGoal,
             generatePlanRefinement,
             interactivePlanGoalMode,
             planRefineMode,
             sessionRepository,
-            grillMode,
             setInteractivePlanGoalMode,
             setPlanRefineMode,
             setQueuedPrompts,
             addToast,
             setActiveMessages,
             setAuthMode,
-            setGrillMode,
             setIsStreaming,
             setSelectedProvider,
             setSessionPage,
@@ -2691,13 +2288,6 @@ ${decStatus}
         }
         if (handleAbortAuth) {
             handleAbortAuth()
-        }
-        if (useCliStore.getState().pendingArtifactReview) {
-            useCliStore.getState().pendingArtifactReview.resolve?.({
-                action: 'reject',
-                feedback: 'Cancelled by user',
-            })
-            useCliStore.getState().setPendingArtifactReview(null)
         }
         if (isStreaming && agent) {
             agent.abort()
@@ -2922,7 +2512,6 @@ ${decStatus}
         setPlanRefineMode,
         planRefineFeedback,
         setPlanRefineFeedback,
-        generatePlanFromGrill,
         generatePlanRefinement,
         generatePlanFromGoal,
         planWorkflow,
@@ -2930,8 +2519,6 @@ ${decStatus}
         interactivePlanGoalMode,
         setInteractivePlanGoalMode,
         planSummary: currentPlannedPrompt ? `Plan: ${currentPlannedPrompt}` : undefined,
-        grillMode,
-        setGrillMode,
         tasksData,
         tasks: tasksData,
         setTasksData,
@@ -2941,14 +2528,6 @@ ${decStatus}
         setTaskViewingId,
         taskScrollOffset,
         setTaskScrollOffset,
-        grillQuestions,
-        setGrillQuestions,
-        currentGrillIndex,
-        setCurrentGrillIndex,
-        grillAnswers,
-        setGrillAnswers,
-        grillPrompt,
-        setGrillPrompt,
         customInputMode,
         setCustomInputMode,
         customAnswer,
@@ -3032,7 +2611,6 @@ ${decStatus}
         handleLogoutSelect,
         handleDeleteProvider,
         handleSwitchSelect,
-        handleGrillSelect,
         pendingQuestions,
         setPendingQuestions,
         getProviderModels,
@@ -3085,7 +2663,5 @@ ${decStatus}
         initialLine: fileViewTarget?.initialLine,
         onCloseFileView: handleFileViewClose,
         onInsertContext: handleFileViewInsertContext,
-        pendingArtifactReview,
-        setPendingArtifactReview,
     }
 }

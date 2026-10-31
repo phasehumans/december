@@ -4,14 +4,6 @@ import type { Command } from './types'
 
 export const COMMANDS: Command[] = [
     {
-        name: 'artifacts',
-        description: 'View and review session artifacts, plans, and architectural specs',
-        value: '/artifacts',
-        action: (ctx) => {
-            // forwarded to chat screen / session handler
-        },
-    },
-    {
         name: 'btw',
         description: 'Ask an ephemeral side question without polluting history or breaking cache',
         value: '/btw',

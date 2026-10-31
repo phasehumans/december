@@ -1220,8 +1220,6 @@ export const BotMessage = React.memo(function BotMessage({
                                 statusLabel = 'Managing tasks...'
                             else if (block.toolName === 'manage_subagent')
                                 statusLabel = 'Managing subagents...'
-                            else if (block.toolName === 'write_artifact')
-                                statusLabel = 'Writing artifact...'
                             else if (
                                 block.toolName === 'browser' ||
                                 block.toolName === 'browser_action'

@@ -13,15 +13,15 @@ When activated, your goal is to analyze the user's objective, inspect relevant c
 
 ## Strict Rules
 
-1. **Read-Only Inspection**: Use read-only tools (`grep_search`, `find_files`, `read_file`, `list_directory`, `web_search`) to understand the codebase.
+1. **Read-Only Inspection**: Use read-only inspection (`read_file` and non-mutating `bash` commands like `rg` or `git ls-files`) to understand the codebase.
 2. **No Premature Execution**: Do NOT create, modify, or delete files, and do NOT run mutating bash commands while drafting the plan.
-3. **Interactive Sign-Off**: Once the plan is drafted, ask the user to approve or refine it before proceeding to execution.
+3. **Interactive Sign-Off**: Once the plan is drafted, ask the user in chat to approve or refine it before proceeding to execution.
 
 ## Planning Workflow
 
 ### Step 1: Context & Dependency Analysis
 
-- Search for relevant files, existing patterns, types, and schemas using search tools.
+- Search for relevant files, existing patterns, types, and schemas using `read_file` or `bash` (`rg`, `find`).
 - Identify touchpoints across frontend, backend, database models, and unit tests.
 - Note any potential breaking changes, migration requirements, or dependency updates.
 
@@ -58,13 +58,13 @@ Key tradeoffs, patterns, and state management choices made.
 
 ### Step 3: Approval Gate
 
-Once the plan is presented, call the `ask_question` tool with:
+Once the plan is presented, ask the user directly in chat:
 
-- Question: "How would you like to proceed with this implementation plan?"
-- Options:
-    1. "Approve and execute plan immediately"
-    2. "Refine plan with additional feedback"
-    3. "Cancel"
+"How would you like to proceed with this implementation plan?
+
+1. Approve and execute plan immediately
+2. Refine plan with additional feedback
+3. Cancel"
 
 If the user approves, switch to execution mode and implement the plan step-by-step.
 If the user requests refinements, incorporate their feedback and update the plan.

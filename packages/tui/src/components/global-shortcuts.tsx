@@ -19,12 +19,6 @@ export function GlobalShortcuts(session: any) {
         setSessionRenameMode,
         customInputMode,
         setCustomInputMode,
-        grillMode,
-        setGrillMode,
-        setGrillQuestions,
-        setCurrentGrillIndex,
-        setGrillAnswers,
-        setGrillPrompt,
         setCurrentPlannedPrompt,
         tasksData,
         handleKillTask,
@@ -42,17 +36,6 @@ export function GlobalShortcuts(session: any) {
 
         if (customInputMode) {
             if (key.escape) setCustomInputMode(false)
-            return
-        }
-
-        if (grillMode) {
-            if (key.escape) {
-                setGrillMode(false)
-                setGrillQuestions([])
-                setCurrentGrillIndex(0)
-                setGrillAnswers([])
-                setGrillPrompt(null)
-            }
             return
         }
 

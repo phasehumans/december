@@ -118,14 +118,10 @@ describe('/switch command', () => {
     })
 })
 
-describe('/grill-me and /plan skills', () => {
-    test('should not register /grill-me and /plan in static COMMANDS because they are builtin skills', () => {
-        const grillMeCmd = COMMANDS.find((c) => c.name === 'grill-me')
+describe('/plan skill', () => {
+    test('should not register /plan in static COMMANDS because it is a builtin skill', () => {
         const planCmd = COMMANDS.find((c) => c.name === 'plan')
-        const grillCmd = COMMANDS.find((c) => c.name === 'grill')
-        expect(grillMeCmd).toBeUndefined()
         expect(planCmd).toBeUndefined()
-        expect(grillCmd).toBeUndefined()
     })
 })
 
@@ -133,17 +129,6 @@ describe('/ask command', () => {
     test('is removed and not registered in COMMANDS', () => {
         const askCmd = COMMANDS.find((c) => c.name === 'ask' || c.value === '/ask')
         expect(askCmd).toBeUndefined()
-    })
-})
-
-describe('/artifacts command', () => {
-    test('registers /artifacts in COMMANDS and does not register duplicate /artifact', () => {
-        const artifactsCmd = COMMANDS.find((c) => c.name === 'artifacts')
-        expect(artifactsCmd).toBeDefined()
-        expect(artifactsCmd?.value).toBe('/artifacts')
-
-        const artifactCmd = COMMANDS.find((c) => c.name === 'artifact')
-        expect(artifactCmd).toBeUndefined()
     })
 })
 

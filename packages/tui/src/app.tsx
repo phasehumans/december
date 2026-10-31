@@ -7,7 +7,6 @@ import { formatModelDisplayName } from './components/header'
 import { InputBar } from './components/input-bar'
 import { AskQuestionMenu } from './components/menus/ask-question-menu'
 import { AuthMenus } from './components/menus/auth-menus'
-import { GrillQuestionMenu } from './components/menus/grill-question-menu'
 import { PlanApproveMenu } from './components/menus/plan-approve-menu'
 import { ToolPermissionMenu } from './components/menus/tool-permission-menu'
 import { MessageList } from './components/message-list'
@@ -150,7 +149,6 @@ export function ChatApp({
         isAuthenticated,
         currentEmail,
         authMode,
-        grillMode,
         planWorkflow,
         setStaticMessages,
         setStaticKey,
@@ -162,14 +160,7 @@ export function ChatApp({
     const workflowPhase = planWorkflow?.phase
 
     const workflowUI =
-        workflowPhase === 'grilling' ? (
-            <GrillQuestionMenu
-                {...session}
-                grillQuestions={planWorkflow.questions}
-                currentGrillIndex={planWorkflow.currentIndex}
-                grillAnswers={planWorkflow.answers}
-            />
-        ) : workflowPhase === 'reviewing' ? (
+        workflowPhase === 'reviewing' ? (
             <PlanApproveMenu
                 {...session}
                 planSummary={
@@ -296,9 +287,7 @@ export function ChatApp({
             placeholder={
                 isDeviceAuthPending
                     ? 'Waiting for approval...'
-                    : session.pendingArtifactReview
-                      ? 'Artifact ready for review. Type /artifacts to review · Esc to cancel'
-                      : 'Ask December to build features, fix bugs, or work on your code...'
+                    : 'Ask December to build features, fix bugs, or work on your code...'
             }
             activeModel={effectiveModel}
             modelLabel={effectiveModelLabel}
@@ -315,7 +304,6 @@ export function ChatApp({
             resetChat={handleResetChat}
             onUpdateSuccess={onUpdateSuccess}
             queuedPrompts={session.queuedPrompts}
-            grillMode={grillMode}
             planRefineMode={session.planRefineMode}
             customInputMode={session.customInputMode || false}
             showExitConfirm={exitConfirm}

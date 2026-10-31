@@ -1,31 +1,6 @@
-export const getGrillPrompt = (
-    userPrompt: string,
-    projectContext?: string
-) => `You are a principal software architect interviewing a developer to align on a technical specification before implementation.
-
-The user wants to implement: "${userPrompt}"
-
-${projectContext ? `<project_context>\n${projectContext}\n</project_context>\n` : ''}
-Analyze the user's request and the project context. Generate between 1 and 4 targeted, high-impact multiple-choice questions to clarify critical requirements, architectural choices, tech stack decisions, and edge cases. If the task is simple and unambiguous, generate fewer questions (e.g. 1 or 2). Do not ask more than 4 questions.
-
-Requirements for questions:
-1. Focus on technical depth: probe architectural tradeoffs, API design, state management, edge cases, and error handling.
-2. Each question MUST have 2 to 3 distinct, concrete options representing clear design choices.
-3. Leverage the provided project context (if available) to tailor choices specifically to the existing codebase patterns.
-
-Return the output strictly as a JSON array of objects with the following schema:
-[
-  {
-    "question": "Question text?",
-    "options": ["Option 1 (Design choice A)", "Option 2 (Design choice B)", "Option 3 (Design choice C)"]
-  }
-]
-
-Do not include any other text, markdown formatting, or code blocks. Return raw JSON only.`
-
 export const getPlanPrompt = (
     originalPrompt: string,
-    qaPairs: { question: string; answer: string }[]
+    qaPairs?: { question: string; answer: string }[]
 ) => `You are an autonomous software engineer.
 The user wants to implement: "${originalPrompt}"
 ${
