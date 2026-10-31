@@ -369,18 +369,15 @@ async function main() {
         process.exit(result.success ? 0 : 1)
     }
 
-    // Path 5: Full Interactive TUI Session (Lazy load Ink, React, and TUI modules)
+    // Path 5: Full Interactive TUI Session (Differential 2D Screen Buffer Engine)
     const [
-        { AgentHarness },
+        { AgentHarness, runAgentLoop },
         { openaiProvider },
         toolsModule,
-        tuiModule,
-        inkModule,
-        reactModule,
+        { DifferentialApp },
         { FileSessionRepository },
         { getProviderConfig, loadConfig, saveConfig, getAuthStatus },
         { suppressConsole },
-        { useAgentSession },
         { localOperations, setActiveScopeDir },
         { instantiateProvider },
         { ensureValidModelForProvider, getModelLabel },
@@ -390,12 +387,9 @@ async function main() {
         import('@december/providers'),
         import('@december/tools'),
         import('@december/tui'),
-        import('ink'),
-        import('react'),
         import('./file-session-repository'),
         import('./config'),
         import('./headless-runner'),
-        import('./hooks/use-agent-session'),
         import('./local-operations'),
         import('./utils/provider-factory'),
         import('./utils/models'),
@@ -406,11 +400,7 @@ async function main() {
         setActiveScopeDir(parsedArgs.scope)
     }
 
-    const React = reactModule.default || reactModule
-    const { render } = inkModule
-    const { ChatApp: App, RootLayout } = tuiModule
-
-    // Suppress noisy sdk console logs that corrupt the ink tui layout
+    // Suppress noisy sdk console logs that corrupt the tui layout
     suppressConsole()
 
     const providerConfig = await getProviderConfig()
@@ -504,18 +494,72 @@ async function main() {
 
     const agent = harness.getAgent()
 
+    const userEmail = config.decemberToken
+        ? config.email
+        : providerConfig?.subscription?.email || config.email || undefined
+
+    const differentialApp = new DifferentialApp({
+        cliVersion: pkg.version,
+        modelLabel: getModelLabel(initialModel),
+        activeModel: initialModel,
+        authMethod: providerConfig?.authMethod,
+        selectedProvider: activeProvider,
+        contextTokens: 0,
+        onSubmit: async (promptText: string) => {
+            differentialApp.state.isStreaming = true
+            differentialApp.render()
+
+            try {
+                const stream = runAgentLoop(agent, promptText)
+                for await (const event of stream) {
+                    if (event.type === 'StreamChunk') {
+                        differentialApp.appendStreamDelta(event.content)
+                    } else if (event.type === 'AgentUsage') {
+                        differentialApp.state.contextTokens =
+                            event.promptTokens + event.completionTokens
+                        differentialApp.render()
+                    }
+                }
+            } catch (err: any) {
+                differentialApp.state.messages.push({
+                    role: 'error',
+                    content: err.message || 'Execution error',
+                })
+            } finally {
+                differentialApp.state.isStreaming = false
+                differentialApp.render()
+            }
+        },
+        onExit: () => {
+            handleExit()
+        },
+    })
+
+    const handleExit = () => {
+        mcpClientManager.disconnectAll().catch(() => {
+            // Intentionally swallowed: ignore disconnect errors on exit
+        })
+        differentialApp.stop()
+        process.exit(0)
+    }
+
+    if (process.stdout.isTTY) {
+        process.on('SIGINT', handleExit)
+        process.on('SIGTERM', handleExit)
+    }
+
     if (targetSessionId) {
         await agent.loadContext().catch(() => {
             // Intentionally swallowed: ignore context load errors on fresh sessions
         })
         const nonSystem = (agent.messages || []).filter((m: any) => m.role !== 'system')
         if (nonSystem.length > 0) {
-            const { convertAgentMessagesToTuiMessages } = await import('./hooks/use-agent-runner')
-            const resumed = convertAgentMessagesToTuiMessages(agent.messages)
-            if (resumed.length > 0) {
-                useCliStore
-                    .getState()
-                    .setStaticMessages([{ id: 'header', role: 'header' }, ...resumed])
+            for (const msg of nonSystem) {
+                differentialApp.state.messages.push({
+                    role: msg.role,
+                    content:
+                        typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                })
             }
         }
     } else {
@@ -543,112 +587,7 @@ async function main() {
         releaseHighlights,
     })
 
-    function AppWrapper(props: any) {
-        const [latestVersion, setLatestVersion] = React.useState(undefined as string | undefined)
-        React.useEffect(() => {
-            import('./utils/version-check')
-                .then(({ checkForLatestVersion }) => {
-                    checkForLatestVersion(pkg.version).then((v) => {
-                        if (v) setLatestVersion(v)
-                    })
-                })
-                .catch(() => {})
-        }, [])
-
-        const handleUpdateSuccess = React.useCallback(async () => {
-            const { clearVersionCheckCache } = await import('./utils/version-check')
-            await clearVersionCheckCache()
-        }, [])
-
-        const session = useAgentSession(props)
-        return React.createElement(App, {
-            ...props,
-            latestVersion,
-            announcement,
-            onUpdateSuccess: handleUpdateSuccess,
-            session,
-        })
-    }
-
-    const userEmail = config.decemberToken
-        ? config.email
-        : providerConfig?.subscription?.email || config.email || undefined
-
-    let inkInstance: any = null
-
-    const handleExit = () => {
-        mcpClientManager.disconnectAll().catch(() => {
-            // Intentionally swallowed: ignore disconnect errors on exit
-        })
-        if (inkInstance) {
-            try {
-                inkInstance.clear()
-                inkInstance.unmount()
-            } catch {
-                // Intentionally swallowed: ignore unmount errors on exit
-            }
-        }
-        process.exit(0)
-    }
-
-    if (process.stdout.isTTY) {
-        const exitSequences =
-            '\x1b[?2026l\x1b[?2004l\x1b[?1002l\x1b[?1000l\x1b[?1006l\x1b[?1007l\x1b[?1049l\x1b[?25h'
-
-        const cleanupTerminal = () => {
-            try {
-                if (inkInstance) {
-                    try {
-                        inkInstance.clear()
-                        inkInstance.unmount()
-                    } catch {
-                        // Intentionally swallowed: ignore unmount errors on exit
-                    }
-                }
-                process.stdout.write(exitSequences)
-            } catch {
-                // Intentionally swallowed: cleanup terminal escape sequences on exit
-            }
-        }
-        process.on('exit', cleanupTerminal)
-        process.on('SIGINT', handleExit)
-        process.on('SIGTERM', handleExit)
-    }
-
-    inkInstance = render(
-        React.createElement(
-            RootLayout,
-            { fullscreen: true },
-            React.createElement(AppWrapper, {
-                agent,
-                isAuthenticated,
-                authMethod: providerConfig?.authMethod,
-                hasBothAuth: authStatus.hasByok && authStatus.hasDecember,
-                hasDecember: authStatus.hasDecember,
-                decemberEmail: config.decemberToken ? config.email : undefined,
-                settingsAuthPriority: authStatus.authPriority,
-                cliVersion: pkg.version,
-                userEmail,
-                activeModel: initialModel,
-                modelLabel: getModelLabel(initialModel),
-                selectedProvider: activeProvider,
-                sessionRepository,
-                onExit: handleExit,
-                onLogin: (onCode: (code: string, uri: string) => void, signal?: AbortSignal) =>
-                    import('./auth').then(({ loginViaDeviceCode }) =>
-                        loginViaDeviceCode(undefined, onCode, signal)
-                    ),
-            })
-        ),
-        {
-            alternateScreen: true,
-            exitOnCtrlC: false,
-            maxFps: 60,
-        }
-    )
-
-    await inkInstance.waitUntilExit()
-    handleExit()
+    differentialApp.start()
 }
 
 main().catch(console.error)
