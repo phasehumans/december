@@ -53,7 +53,10 @@ export async function readPipedStdin(): Promise<string | null> {
 
 async function main() {
     process.title = 'december'
-    process.stdout.write('\x1b]0;december\x07')
+    const isPrintArg = process.argv.includes('--print')
+    if (process.stdout.isTTY && !isPrintArg) {
+        process.stdout.write('\x1b]0;december\x07')
+    }
 
     // If the terminal inherited NODE_ENV=test from prior test scripts, reset to development
     // so the live CLI doesn't accidentally redirect configuration to /tmp/december-test-config
@@ -225,15 +228,21 @@ async function main() {
         parsedArgs.prompt = question
     }
 
+    const isHeadless = Boolean(parsedArgs.prompt || parsedArgs.rpc || parsedArgs.print)
+
     // Safety: Verify workspace trust before executing headless tasks or entering interactive TUI
     const { ensureWorkspaceTrust } = await import('./utils/workspace-trust')
     await ensureWorkspaceTrust({
         targetDir: parsedArgs.scope,
-        isHeadless: Boolean(parsedArgs.prompt || parsedArgs.rpc),
+        isHeadless,
     })
 
     // Path 4: Headless Task / RPC Execution (Load agent harness & tools, skip Ink/React/TUI)
-    if (parsedArgs.prompt || parsedArgs.rpc) {
+    if (isHeadless) {
+        if (parsedArgs.print && !parsedArgs.prompt) {
+            console.error('Error: Please provide a prompt or pipe input when using --print.\n')
+            process.exit(1)
+        }
         const [
             { AgentHarness },
             { openaiProvider },
@@ -348,7 +357,7 @@ async function main() {
 
         const result = await runHeadlessTask(effectivePrompt, {
             agent,
-            nonInteractive: parsedArgs.yes,
+            nonInteractive: parsedArgs.yes || isPrint,
             json: parsedArgs.json,
             rpc: isRpc,
             print: isPrint,

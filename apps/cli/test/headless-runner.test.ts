@@ -56,7 +56,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
-            print: true,
+            rpc: false,
         })
 
         expect(mockRunAgentLoop).toHaveBeenCalledWith(mockAgent, 'test prompt')
@@ -85,7 +85,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
-            print: true,
+            rpc: false,
         })
 
         expect(result.success).toBe(true)
@@ -105,7 +105,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
-            print: true,
+            rpc: false,
         })
 
         expect(mockAgent.operations.ui.askQuestion).toBeDefined()
@@ -135,7 +135,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
-            print: true,
+            rpc: false,
         })
 
         expect(stdoutData).toContain('[Tool Executing: read_file]')
@@ -163,7 +163,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
-            print: true,
+            rpc: false,
         })
 
         expect(result.success).toBe(false)
@@ -188,7 +188,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
-            print: true,
+            rpc: false,
         })
 
         expect(mockAgent.steer).not.toHaveBeenCalled()
@@ -211,7 +211,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
-            print: true,
+            rpc: false,
         })
 
         expect(mockAgent.steer).not.toHaveBeenCalled()
@@ -245,7 +245,7 @@ describe('runHeadlessTask', () => {
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
-            print: true,
+            rpc: false,
         })
 
         expect(mockAgent.steer).toHaveBeenCalledWith({
@@ -488,6 +488,178 @@ describe('runHeadlessTask', () => {
                 content: 'new instruction',
                 isUI: true,
             })
+        })
+    })
+
+    describe('Quiet print mode (--print)', () => {
+        it('outputs strictly assistant response text to stdout with no banners, usage, or trailers', async () => {
+            async function* mockGenerator() {
+                yield { type: 'ThinkingChunk', content: 'internal reasoning' }
+                yield { type: 'StreamChunk', content: 'clean response text' }
+                yield { type: 'AgentUsage', promptTokens: 42, completionTokens: 12 }
+            }
+            mockRunAgentLoop.mockReturnValue(mockGenerator())
+
+            let stdoutData = ''
+            let stderrData = ''
+            mockStdout.on('data', (chunk) => {
+                stdoutData += chunk.toString()
+            })
+            mockStderr.on('data', (chunk) => {
+                stderrData += chunk.toString()
+            })
+
+            const result = await runHeadlessTask('test print prompt', {
+                agent: mockAgent,
+                stdin: mockStdin as any,
+                stdout: mockStdout as any,
+                stderr: mockStderr as any,
+                print: true,
+            })
+
+            expect(result.success).toBe(true)
+            expect(stdoutData).toBe('clean response text')
+            expect(stdoutData).not.toContain('internal reasoning')
+            expect(stdoutData).not.toContain('[Usage:')
+            expect(stdoutData).not.toContain('Headless task complete.')
+            expect(stderrData).toBe('')
+        })
+
+        it('routes diagnostic messages, tool execution headers, status, and compaction to stderr', async () => {
+            async function* mockGenerator() {
+                yield { type: 'AgentStatus', message: 'scanning repository' }
+                yield {
+                    type: 'ToolCallStart',
+                    toolCall: { name: 'read_file', input: { path: 'file.ts' } },
+                }
+                yield {
+                    type: 'ToolCallResult',
+                    result: { output: 'content of file.ts' },
+                }
+                yield { type: 'ContextCompacted', summary: 'compacted 5 messages' }
+                yield { type: 'StreamChunk', content: 'final analysis' }
+            }
+            mockRunAgentLoop.mockReturnValue(mockGenerator())
+
+            let stdoutData = ''
+            let stderrData = ''
+            mockStdout.on('data', (chunk) => {
+                stdoutData += chunk.toString()
+            })
+            mockStderr.on('data', (chunk) => {
+                stderrData += chunk.toString()
+            })
+
+            const result = await runHeadlessTask('diagnose', {
+                agent: mockAgent,
+                stdin: mockStdin as any,
+                stdout: mockStdout as any,
+                stderr: mockStderr as any,
+                print: true,
+            })
+
+            expect(result.success).toBe(true)
+            // stdout must strictly be the assistant text
+            expect(stdoutData).toBe('final analysis')
+            // stderr receives the diagnostic timeline
+            expect(stderrData).toContain('[Status: scanning repository]')
+            expect(stderrData).toContain('[Tool Executing: read_file]')
+            expect(stderrData).toContain('[Tool Result Received]')
+            expect(stderrData).toContain('[Context Compacted: compacted 5 messages]')
+        })
+
+        it('auto-approves tool execution and answers questions without prompting in print mode', async () => {
+            mockRunAgentLoop.mockImplementation(async function* () {
+                const perm = await mockAgent.operations.ui.requestPermission({
+                    name: 'edit_file',
+                    input: { path: 'demo.ts' },
+                })
+                expect(perm).toEqual({ block: false })
+
+                const ans = await mockAgent.operations.ui.askQuestion([
+                    { question: 'Choose format?', options: ['json', 'yaml'] },
+                ])
+                expect(ans).toBe('json')
+
+                yield { type: 'StreamChunk', content: 'edited and configured' }
+            })
+
+            let stdoutData = ''
+            mockStdout.on('data', (chunk) => {
+                stdoutData += chunk.toString()
+            })
+
+            const result = await runHeadlessTask('execute without prompts', {
+                agent: mockAgent,
+                stdin: mockStdin as any,
+                stdout: mockStdout as any,
+                stderr: mockStderr as any,
+                print: true,
+            })
+
+            expect(result.success).toBe(true)
+            expect(stdoutData).toBe('edited and configured')
+        })
+
+        it('redirects console.log, console.warn, and console.info to stderr preserving stdout', async () => {
+            mockRunAgentLoop.mockImplementation(async function* () {
+                console.log('diagnostic log message')
+                console.warn('warning notice')
+                console.info('info telemetry')
+                yield { type: 'StreamChunk', content: 'pipeline text' }
+            })
+
+            let stdoutData = ''
+            let stderrData = ''
+            mockStdout.on('data', (chunk) => {
+                stdoutData += chunk.toString()
+            })
+            mockStderr.on('data', (chunk) => {
+                stderrData += chunk.toString()
+            })
+
+            const result = await runHeadlessTask('test console redirection', {
+                agent: mockAgent,
+                stdin: mockStdin as any,
+                stdout: mockStdout as any,
+                stderr: mockStderr as any,
+                print: true,
+            })
+
+            expect(result.success).toBe(true)
+            expect(stdoutData).toBe('pipeline text')
+            expect(stderrData).toContain('diagnostic log message')
+            expect(stderrData).toContain('warning notice')
+            expect(stderrData).toContain('info telemetry')
+        })
+
+        it('returns success: false and routes errors to stderr on agent failure in print mode', async () => {
+            async function* mockGenerator() {
+                yield { type: 'AgentError', error: 'api request failed' }
+            }
+            mockRunAgentLoop.mockReturnValue(mockGenerator())
+
+            let stdoutData = ''
+            let stderrData = ''
+            mockStdout.on('data', (chunk) => {
+                stdoutData += chunk.toString()
+            })
+            mockStderr.on('data', (chunk) => {
+                stderrData += chunk.toString()
+            })
+
+            const result = await runHeadlessTask('failing task', {
+                agent: mockAgent,
+                stdin: mockStdin as any,
+                stdout: mockStdout as any,
+                stderr: mockStderr as any,
+                print: true,
+            })
+
+            expect(result.success).toBe(false)
+            expect(result.error).toBe('api request failed')
+            expect(stdoutData).toBe('')
+            expect(stderrData).toContain('[Error: api request failed]')
         })
     })
 })

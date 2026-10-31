@@ -63,7 +63,7 @@ export async function runHeadlessTask(
 
     const isPrint = Boolean(options.print)
     const isRpc = options.rpc !== undefined ? Boolean(options.rpc) : !isPrint
-    const isJson = Boolean(options.json) || isRpc
+    const isJson = Boolean(options.json) || (isRpc && !isPrint)
 
     const writeOut = (msg: string) => {
         if (stdout && stdout.write) stdout.write(msg)
@@ -77,156 +77,181 @@ export async function runHeadlessTask(
         writeOut(JSON.stringify(data) + '\n')
     }
 
-    if (options.isAuthenticated === false) {
-        if (isJson) {
-            writeJson({ type: 'error', error: 'Not authenticated' })
-        } else {
-            writeErr(
-                'Error: Not authenticated. Please run `december login` or configure an API key (e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY).\n'
+    let hasError = false
+    let errorMessage: string | undefined
+    let rl: readline.Interface | undefined
+
+    try {
+        if (isPrint) {
+            const routeStderr = (...args: any[]) => {
+                if (stderr && stderr.write) {
+                    const text = args
+                        .map((a) => (typeof a === 'string' ? a : JSON.stringify(a)))
+                        .join(' ')
+                    stderr.write(text + '\n')
+                }
+            }
+            console.log = routeStderr
+            console.info = routeStderr
+            console.warn = routeStderr
+            console.error = routeStderr
+        }
+
+        if (options.isAuthenticated === false) {
+            if (isJson) {
+                writeJson({ type: 'error', error: 'Not authenticated' })
+            } else {
+                writeErr(
+                    'Error: Not authenticated. Please run `december login` or configure an API key (e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY).\n'
+                )
+            }
+            return { success: false, error: 'Not authenticated' }
+        }
+
+        const isNonInteractive =
+            options.nonInteractive ??
+            Boolean(
+                isPrint ||
+                process.env.NON_INTERACTIVE ||
+                (stdin === process.stdin && !process.stdin.isTTY)
             )
-        }
-        return { success: false, error: 'Not authenticated' }
-    }
 
-    const isNonInteractive =
-        options.nonInteractive ??
-        Boolean(process.env.NON_INTERACTIVE || (stdin === process.stdin && !process.stdin.isTTY))
+        rl = readline.createInterface({
+            input: stdin as any,
+            output: isRpc || isJson || isPrint ? undefined : (stdout as any),
+            terminal: false,
+        })
 
-    const rl = readline.createInterface({
-        input: stdin as any,
-        output: isRpc || options.json ? undefined : (stdout as any),
-        terminal: false,
-    })
+        let isPromptActive = false
 
-    let isPromptActive = false
-
-    const promptUser = (query: string): Promise<string> => {
-        isPromptActive = true
-        return new Promise((resolve) => {
-            rl.question(query, (answer: string) => {
-                queueMicrotask(() => {
-                    isPromptActive = false
+        const promptUser = (query: string): Promise<string> => {
+            isPromptActive = true
+            return new Promise((resolve) => {
+                rl.question(query, (answer: string) => {
+                    queueMicrotask(() => {
+                        isPromptActive = false
+                    })
+                    resolve(answer)
                 })
-                resolve(answer)
             })
-        })
-    }
-
-    if (!agent.operations) agent.operations = {} as any
-    if (!agent.operations.ui) agent.operations.ui = {} as any
-
-    agent.operations.ui.askQuestion = (questions: any[]) => {
-        const q = questions[0]
-        writeOut(`\n\n[Question]: ${q.question}\n`)
-        if (q.options) {
-            q.options.forEach((opt: string, i: number) => writeOut(`${i + 1}. ${opt}\n`))
         }
-        if (isNonInteractive) {
-            const defaultAnswer = q.options && q.options.length > 0 ? q.options[0] : ''
-            writeOut(`\n[Auto-selected in non-interactive mode]: ${defaultAnswer}\n`)
-            return Promise.resolve(defaultAnswer)
-        }
-        return promptUser('\nSelect an option or type your answer: ').then((answer) => {
-            const num = parseInt(answer)
-            if (!isNaN(num) && num > 0 && q.options && num <= q.options.length) {
-                return q.options[num - 1]
+
+        if (!agent.operations) agent.operations = {} as any
+        if (!agent.operations.ui) agent.operations.ui = {} as any
+
+        agent.operations.ui.askQuestion = (questions: any[]) => {
+            const q = questions[0]
+            if (!isPrint && !isRpc && !isJson) {
+                writeOut(`\n\n[Question]: ${q.question}\n`)
+                if (q.options) {
+                    q.options.forEach((opt: string, i: number) => writeOut(`${i + 1}. ${opt}\n`))
+                }
             }
-            return answer
-        })
-    }
-
-    agent.operations.ui.requestPermission = async (toolCall: any) => {
-        if (
-            options.readOnly &&
-            ![
-                'read_file',
-                'ls',
-                'find_files',
-                'grep_search',
-                'web_search',
-                'browser',
-                'ask_question',
-            ].includes(toolCall.name)
-        ) {
-            return {
-                block: true,
-                reason: `Tool '${toolCall.name}' is not allowed in read-only / ask mode.`,
+            if (isNonInteractive || isPrint) {
+                const defaultAnswer = q.options && q.options.length > 0 ? q.options[0] : ''
+                if (!isPrint && !isRpc && !isJson) {
+                    writeOut(`\n[Auto-selected in non-interactive mode]: ${defaultAnswer}\n`)
+                }
+                return Promise.resolve(defaultAnswer)
             }
+            return promptUser('\nSelect an option or type your answer: ').then((answer) => {
+                const num = parseInt(answer)
+                if (!isNaN(num) && num > 0 && q.options && num <= q.options.length) {
+                    return q.options[num - 1]
+                }
+                return answer
+            })
         }
 
-        if (isNonInteractive) {
+        agent.operations.ui.requestPermission = async (toolCall: any) => {
+            if (
+                options.readOnly &&
+                ![
+                    'read_file',
+                    'ls',
+                    'find_files',
+                    'grep_search',
+                    'web_search',
+                    'browser',
+                    'ask_question',
+                ].includes(toolCall.name)
+            ) {
+                return {
+                    block: true,
+                    reason: `Tool '${toolCall.name}' is not allowed in read-only / ask mode.`,
+                }
+            }
+
+            if (isNonInteractive || isPrint) {
+                return { block: false }
+            }
+
+            if (
+                [
+                    'edit_file',
+                    'edit_diff',
+                    'write_file',
+                    'bash',
+                    'replace_file_content',
+                    'multi_replace_file_content',
+                    'run_command',
+                ].includes(toolCall.name)
+            ) {
+                const answer = await promptUser(`\nExecute ${toolCall.name}? (y/n): `)
+                if (answer.toLowerCase().startsWith('y')) {
+                    return { block: false }
+                } else {
+                    return { block: true, reason: 'User denied execution in UI.' }
+                }
+            }
             return { block: false }
         }
 
-        if (
-            [
-                'edit_file',
-                'edit_diff',
-                'write_file',
-                'bash',
-                'replace_file_content',
-                'multi_replace_file_content',
-                'run_command',
-            ].includes(toolCall.name)
-        ) {
-            const answer = await promptUser(`\nExecute ${toolCall.name}? (y/n): `)
-            if (answer.toLowerCase().startsWith('y')) {
-                return { block: false }
-            } else {
-                return { block: true, reason: 'User denied execution in UI.' }
-            }
-        }
-        return { block: false }
-    }
+        rl.on('line', (input: string) => {
+            if (isPrint) return
+            const trimmed = input.trim()
+            if (!trimmed) return
 
-    rl.on('line', (input: string) => {
-        const trimmed = input.trim()
-        if (!trimmed) return
+            if (isRpc) {
+                let parsed: any = null
+                try {
+                    parsed = JSON.parse(trimmed)
+                } catch {
+                    // Intentionally swallowed: fallback to plain text command below
+                }
 
-        if (isRpc) {
-            let parsed: any = null
-            try {
-                parsed = JSON.parse(trimmed)
-            } catch {
-                // Intentionally swallowed: fallback to plain text command below
-            }
+                if (parsed && typeof parsed === 'object') {
+                    if (parsed.type === 'abort' || parsed.type === 'cancel') {
+                        if (typeof agent.abort === 'function') {
+                            agent.abort()
+                        }
+                        return
+                    }
+                    if (parsed.type === 'prompt') {
+                        const content = parsed.content || parsed.text || ''
+                        if (content) {
+                            agent.steer({ role: 'user', content, isUI: true })
+                        }
+                        return
+                    }
+                }
 
-            if (parsed && typeof parsed === 'object') {
-                if (parsed.type === 'abort' || parsed.type === 'cancel') {
+                if (trimmed === 'abort' || trimmed === 'cancel') {
                     if (typeof agent.abort === 'function') {
                         agent.abort()
                     }
                     return
                 }
-                if (parsed.type === 'prompt') {
-                    const content = parsed.content || parsed.text || ''
-                    if (content) {
-                        agent.steer({ role: 'user', content, isUI: true })
-                    }
-                    return
-                }
-            }
 
-            if (trimmed === 'abort' || trimmed === 'cancel') {
-                if (typeof agent.abort === 'function') {
-                    agent.abort()
-                }
+                agent.steer({ role: 'user', content: trimmed, isUI: true })
                 return
             }
 
+            if (isPromptActive) return
             agent.steer({ role: 'user', content: trimmed, isUI: true })
-            return
-        }
+            writeOut(`\n[Steering input sent to agent]\n`)
+        })
 
-        if (isPromptActive) return
-        agent.steer({ role: 'user', content: trimmed, isUI: true })
-        writeOut(`\n[Steering input sent to agent]\n`)
-    })
-
-    let hasError = false
-    let errorMessage: string | undefined
-
-    try {
         let effectivePrompt = prompt
         if (prompt && prompt.includes('@')) {
             try {
@@ -288,6 +313,10 @@ export async function runHeadlessTask(
                         // Suppressed in pure RPC lifecycle
                     } else if (isJson) {
                         writeJson({ type: 'status', message: event.message })
+                    } else if (isPrint) {
+                        if (event.message && event.message.trim()) {
+                            writeErr(`\n[Status: ${event.message}]\n`)
+                        }
                     } else {
                         writeOut(`\n[Status: ${event.message}]\n`)
                     }
@@ -298,6 +327,8 @@ export async function runHeadlessTask(
                         writeJson({ type: 'context_compacted', summary: event.summary })
                     } else if (isJson) {
                         writeJson({ type: 'compacted', summary: event.summary })
+                    } else if (isPrint) {
+                        writeErr(`\n[Context Compacted: ${event.summary}]\n`)
                     } else {
                         writeOut(`\n[Context Compacted: ${event.summary}]\n`)
                     }
@@ -313,6 +344,14 @@ export async function runHeadlessTask(
                         })
                     } else if (isJson) {
                         writeJson({ type: 'tool_start', toolCall: event.toolCall })
+                    } else if (isPrint) {
+                        writeErr(`\n\n[Tool Executing: ${event.toolCall.name}]\n`)
+                        writeErr(
+                            typeof event.toolCall.input === 'string'
+                                ? event.toolCall.input
+                                : JSON.stringify(event.toolCall.input)
+                        )
+                        writeErr('\n')
                     } else {
                         writeOut(`\n\n[Tool Executing: ${event.toolCall.name}]\n`)
                         writeOut(
@@ -335,6 +374,12 @@ export async function runHeadlessTask(
                         })
                     } else if (isJson) {
                         writeJson({ type: 'tool_result', result: event.result })
+                    } else if (isPrint) {
+                        if (event.result.error) {
+                            writeErr(`\n[Tool Error] ${event.result.error}\n`)
+                        } else {
+                            writeErr(`\n[Tool Result Received]\n`)
+                        }
                     } else {
                         if (event.result.error) {
                             writeErr(`\n[Tool Error] ${event.result.error}\n`)
@@ -353,7 +398,7 @@ export async function runHeadlessTask(
                             promptTokens: event.promptTokens,
                             completionTokens: event.completionTokens,
                         })
-                    } else if (!isRpc && !isJson) {
+                    } else if (!isRpc && !isJson && !isPrint) {
                         writeOut(
                             `\n[Usage: ${event.promptTokens} prompt, ${event.completionTokens} completion]\n`
                         )
@@ -381,11 +426,12 @@ export async function runHeadlessTask(
             })
         } else if (isJson) {
             writeJson({ type: 'done', success: !hasError })
-        } else {
+        } else if (!isPrint) {
             writeOut('\n\nHeadless task complete.\n')
         }
     } finally {
-        rl.close()
+        restoreConsole()
+        rl?.close()
     }
 
     return {
