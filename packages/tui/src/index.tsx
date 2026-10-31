@@ -48,6 +48,7 @@ export * from './components/menus/memory-view-menu'
 export * from './components/menus/btw-overlay'
 export * from './utils/diff'
 
+export * from './renderer'
 export * from './app'
 
 export * from './components/global-shortcuts'
