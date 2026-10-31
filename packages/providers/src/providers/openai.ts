@@ -1,6 +1,7 @@
 import { OpenAI } from 'openai'
 
 import { createProvider, supportsModelThinking } from '../models.ts'
+import { normalizeForOpenAI } from '../normalizer/index.ts'
 
 import type { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
@@ -160,59 +161,19 @@ export function openaiProvider(
             modelOptions?: Record<string, any>,
             signal?: AbortSignal
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
-            const oaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = []
             const resolvedModel = resolveOpenAIModel(modelOptions?.model)
             const isReasoning = supportsModelThinking(resolvedModel)
             const effectiveSystemPrompt =
                 systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
 
-            if (effectiveSystemPrompt) {
-                oaiMessages.push({ role: 'system', content: effectiveSystemPrompt })
-            }
-
-            for (const msg of messages) {
-                if (msg.role === 'tool') {
-                    oaiMessages.push({
-                        role: 'tool',
-                        tool_call_id: msg.toolCallId!,
-                        content: msg.content,
-                    })
-                } else if (msg.role === 'assistant') {
-                    const asstMsg: OpenAI.Chat.ChatCompletionAssistantMessageParam = {
-                        role: 'assistant',
-                        content: msg.content,
-                    }
-                    if (msg.thinking) {
-                        ;(asstMsg as any).reasoning_content = msg.thinking
-                    }
-                    if (msg.toolCalls && msg.toolCalls.length > 0) {
-                        asstMsg.tool_calls = msg.toolCalls.map((tc) => ({
-                            id: tc.id,
-                            type: 'function',
-                            function: {
-                                name: tc.name,
-                                arguments: tc.input,
-                            },
-                        }))
-                    }
-                    oaiMessages.push(asstMsg)
-                } else if (msg.role === 'system') {
-                    if (msg.content === effectiveSystemPrompt) {
-                        continue // Omit duplicate root system prompt
-                    }
-                    if (msg.content.includes('[COMPACTED HISTORY SUMMARY]')) {
-                        oaiMessages.push({
-                            role: 'user',
-                            content: msg.content,
-                        })
-                    }
-                } else {
-                    oaiMessages.push({
-                        role: 'user',
-                        content: msg.content,
-                    })
-                }
-            }
+            const oaiMessages = normalizeForOpenAI(messages, {
+                model: resolvedModel,
+                systemPrompt: effectiveSystemPrompt,
+                supportsReasoning: modelOptions?.model ? isReasoning : true,
+                supportsTools:
+                    !resolvedModel.includes('deepseek-reasoner') &&
+                    !resolvedModel.includes('deepseek-r1'),
+            })
 
             const oaiTools: OpenAI.Chat.ChatCompletionTool[] | undefined =
                 tools && tools.length > 0

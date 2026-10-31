@@ -1,11 +1,10 @@
-import { safeParseJson } from '@december/shared'
 import { GoogleGenAI } from '@google/genai'
 import { v4 as uuidv4 } from 'uuid'
 
 import { createProvider, supportsModelThinking } from '../models.ts'
+import { normalizeForGemini } from '../normalizer/index.ts'
 
 import type { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
-import type { Content } from '@google/genai'
 
 export function sanitizeSchemaForGemini(schema: any): any {
     if (!schema || typeof schema !== 'object') return schema
@@ -78,107 +77,14 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
             modelOptions?: Record<string, any>,
             signal?: AbortSignal
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
-            const geminiMessages: Content[] = []
             const resolvedSystemPrompt =
                 systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
+            const resolvedModel = resolveGeminiModel(modelOptions?.model)
 
-            for (const msg of messages) {
-                if (msg.role === 'tool') {
-                    let name = 'unknown'
-                    let extraFields: any = { id: msg.toolCallId }
-                    try {
-                        const parsed = safeParseJson(msg.toolCallId!)
-                        if (parsed && typeof parsed === 'object') {
-                            extraFields = parsed
-                            if (extraFields.thoughtSignature) {
-                                delete extraFields.thoughtSignature
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('[gemini provider] failed to parse toolCallId:', e)
-                    }
-
-                    for (let i = geminiMessages.length - 1; i >= 0; i--) {
-                        const prev = geminiMessages[i]
-                        if (prev && prev.role === 'model') {
-                            const call = prev.parts?.find(
-                                (p) =>
-                                    p.functionCall && (p.functionCall as any).id === extraFields.id
-                            )
-                            if (call && call.functionCall?.name) {
-                                name = call.functionCall.name
-                                break
-                            }
-                        }
-                    }
-
-                    geminiMessages.push({
-                        role: 'user',
-                        parts: [
-                            {
-                                functionResponse: {
-                                    ...extraFields,
-                                    name: name,
-                                    response: { result: msg.content },
-                                },
-                            },
-                        ],
-                    })
-                } else if (msg.role === 'assistant') {
-                    const parts: any[] = []
-                    if (msg.content) {
-                        parts.push({ text: msg.content })
-                    }
-                    if (msg.toolCalls && msg.toolCalls.length > 0) {
-                        for (const tc of msg.toolCalls) {
-                            let extraFields: any = { id: tc.id }
-                            let thoughtSignature: string | undefined
-                            try {
-                                const parsed = safeParseJson(tc.id)
-                                if (parsed && typeof parsed === 'object') {
-                                    extraFields = parsed
-                                    if (parsed.thoughtSignature) {
-                                        thoughtSignature = parsed.thoughtSignature
-                                        delete extraFields.thoughtSignature
-                                    }
-                                }
-                            } catch (e) {
-                                console.warn('[gemini provider] failed to parse tool call id:', e)
-                            }
-
-                            const part: any = {
-                                functionCall: {
-                                    ...extraFields,
-                                    name: tc.name,
-                                    args: safeParseJson(tc.input || '{}'),
-                                },
-                            }
-                            if (thoughtSignature) {
-                                part.thoughtSignature = thoughtSignature
-                            }
-                            parts.push(part)
-                        }
-                    }
-                    if (parts.length > 0) {
-                        geminiMessages.push({ role: 'model', parts })
-                    }
-                } else if (msg.role === 'system') {
-                    if (msg.content === resolvedSystemPrompt) {
-                        continue // Omit duplicate root system prompt
-                    }
-                    if (msg.content.includes('[COMPACTED HISTORY SUMMARY]')) {
-                        geminiMessages.push({
-                            role: 'user',
-                            parts: [{ text: msg.content }],
-                        })
-                    }
-                } else {
-                    geminiMessages.push({
-                        role: 'user',
-                        parts: [{ text: msg.content }],
-                    })
-                }
-            }
+            const geminiMessages = normalizeForGemini(messages, {
+                model: resolvedModel,
+                systemPrompt: resolvedSystemPrompt,
+            })
 
             const geminiTools =
                 tools && tools.length > 0
@@ -193,7 +99,6 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
                       ]
                     : undefined
 
-            const resolvedModel = resolveGeminiModel(modelOptions?.model)
             const supportsThinking = supportsModelThinking(resolvedModel)
 
             const thinkingLevel = modelOptions?.thinkingLevel

@@ -1,7 +1,7 @@
-import { safeParseJson } from '@december/shared'
 import { v4 as uuidv4 } from 'uuid'
 
 import { createProvider } from '../models.ts'
+import { normalizeForGemini } from '../normalizer/index.ts'
 
 import { sanitizeSchemaForGemini } from './gemini.ts'
 
@@ -70,107 +70,14 @@ export function antigravityProvider(
             modelOptions?: Record<string, any>,
             signal?: AbortSignal
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
-            const antigravityMessages: any[] = []
             const resolvedSystemPrompt =
                 systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
+            const resolvedModel = resolveAntigravityModel(modelOptions?.model)
 
-            for (const msg of messages) {
-                if (msg.role === 'tool') {
-                    let name = 'unknown'
-                    let extraFields: any = { id: msg.toolCallId }
-                    try {
-                        const parsed = safeParseJson(msg.toolCallId!)
-                        if (parsed && typeof parsed === 'object') {
-                            extraFields = parsed
-                            if (extraFields.thoughtSignature) {
-                                delete extraFields.thoughtSignature
-                            }
-                        }
-                    } catch (e) {
-                        // Intentionally swallowed: tool call ID is a raw identifier string
-                    }
-
-                    for (let i = antigravityMessages.length - 1; i >= 0; i--) {
-                        const prev = antigravityMessages[i]
-                        if (prev && prev.role === 'model') {
-                            const call = prev.parts?.find(
-                                (p: any) =>
-                                    p.functionCall && (p.functionCall as any).id === extraFields.id
-                            )
-                            if (call && call.functionCall?.name) {
-                                name = call.functionCall.name
-                                break
-                            }
-                        }
-                    }
-
-                    antigravityMessages.push({
-                        role: 'user',
-                        parts: [
-                            {
-                                functionResponse: {
-                                    ...extraFields,
-                                    name: name,
-                                    response: { result: msg.content },
-                                },
-                            },
-                        ],
-                    })
-                } else if (msg.role === 'assistant') {
-                    const parts: any[] = []
-                    if (msg.content) {
-                        parts.push({ text: msg.content })
-                    }
-                    if (msg.toolCalls && msg.toolCalls.length > 0) {
-                        for (const tc of msg.toolCalls) {
-                            let extraFields: any = { id: tc.id }
-                            let thoughtSignature: string | undefined
-                            try {
-                                const parsed = safeParseJson(tc.id)
-                                if (parsed && typeof parsed === 'object') {
-                                    extraFields = parsed
-                                    if (parsed.thoughtSignature) {
-                                        thoughtSignature = parsed.thoughtSignature
-                                        delete extraFields.thoughtSignature
-                                    }
-                                }
-                            } catch (e) {
-                                // Intentionally swallowed: tool call ID is a raw identifier string
-                            }
-
-                            const part: any = {
-                                functionCall: {
-                                    ...extraFields,
-                                    name: tc.name,
-                                    args: safeParseJson(tc.input || '{}'),
-                                },
-                            }
-                            if (thoughtSignature) {
-                                part.thoughtSignature = thoughtSignature
-                            }
-                            parts.push(part)
-                        }
-                    }
-                    if (parts.length > 0) {
-                        antigravityMessages.push({ role: 'model', parts })
-                    }
-                } else if (msg.role === 'system') {
-                    if (msg.content === resolvedSystemPrompt) {
-                        continue // Omit duplicate root system prompt
-                    }
-                    if (msg.content.includes('[COMPACTED HISTORY SUMMARY]')) {
-                        antigravityMessages.push({
-                            role: 'user',
-                            parts: [{ text: msg.content }],
-                        })
-                    }
-                } else {
-                    antigravityMessages.push({
-                        role: 'user',
-                        parts: [{ text: msg.content }],
-                    })
-                }
-            }
+            const antigravityMessages = normalizeForGemini(messages, {
+                model: resolvedModel,
+                systemPrompt: resolvedSystemPrompt,
+            })
 
             const antigravityTools =
                 tools && tools.length > 0

@@ -11,7 +11,10 @@ export interface Message {
     content: string
     toolCalls?: ToolCall[]
     toolCallId?: string
+    toolName?: string
     thinking?: string
+    thoughtSignature?: string
+    thoughtProvider?: string
 }
 
 export interface ProviderTool {
@@ -23,6 +26,7 @@ export interface ProviderTool {
 export type ProviderStreamChunk =
     | { type: 'text'; text: string }
     | { type: 'thinking_delta'; text: string }
+    | { type: 'thought_signature'; signature: string }
     | { type: 'tool_call'; toolCall: ToolCall }
     | { type: 'tool_call_delta'; id: string; name?: string; inputDelta: string }
     | {

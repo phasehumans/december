@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { safeParseJson } from '@december/shared'
 
 import { createProvider, supportsModelThinking } from '../models.ts'
+import { normalizeForAnthropic } from '../normalizer/index.ts'
 
 import type { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
@@ -106,74 +106,37 @@ export function anthropicProvider(
         ): AsyncGenerator<ProviderStreamChunk, void, unknown> {
             const resolvedSystemPrompt =
                 systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
-            const antMessages: Anthropic.MessageParam[] = []
+            const resolvedModel = resolveAnthropicModel(modelOptions?.model)
+            const thinkingLevel = modelOptions?.thinkingLevel
+            let thinking: { type: 'enabled' | 'adaptive'; budget_tokens?: number } | undefined
+            let maxTokens = modelOptions?.max_tokens || 4096
 
-            for (const msg of messages) {
-                if (msg.role === 'tool') {
-                    antMessages.push({
-                        role: 'user',
-                        content: [
-                            {
-                                type: 'tool_result',
-                                tool_use_id: msg.toolCallId!,
-                                content: msg.content,
-                            },
-                        ],
-                    })
-                } else if (msg.role === 'assistant') {
-                    const content: Anthropic.ContentBlockParam[] = []
-                    if (msg.thinking) {
-                        content.push({
-                            type: 'thinking',
-                            thinking: msg.thinking,
-                        } as any)
+            const supportsThinking = supportsModelThinking(resolvedModel)
+
+            if (supportsThinking) {
+                if (thinkingLevel === 'auto') {
+                    thinking = { type: 'adaptive' }
+                } else if (thinkingLevel && thinkingLevel !== 'off') {
+                    const budgetMap: Record<string, number> = {
+                        minimal: 1024,
+                        low: 2048,
+                        medium: 4096,
+                        high: 8192,
                     }
-                    if (msg.content) {
-                        content.push({ type: 'text', text: msg.content })
-                    }
-                    if (msg.toolCalls && msg.toolCalls.length > 0) {
-                        for (const tc of msg.toolCalls) {
-                            content.push({
-                                type: 'tool_use',
-                                id: tc.id,
-                                name: tc.name,
-                                input: safeParseJson(tc.input || '{}'),
-                            })
-                        }
-                    }
-                    if (content.length > 0) {
-                        antMessages.push({ role: 'assistant', content })
-                    }
-                } else if (msg.role === 'system') {
-                    if (msg.content === resolvedSystemPrompt) {
-                        continue // Omit duplicate root system prompt
-                    }
-                    if (msg.content.includes('[COMPACTED HISTORY SUMMARY]')) {
-                        antMessages.push({
-                            role: 'user',
-                            content: [{ type: 'text', text: msg.content }],
-                        })
-                    }
-                } else {
-                    const prev = antMessages[antMessages.length - 1]
-                    if (prev && prev.role === 'user' && Array.isArray(prev.content)) {
-                        prev.content.push({
-                            type: 'text',
-                            text: msg.content,
-                        })
-                    } else {
-                        antMessages.push({
-                            role: 'user',
-                            content: [
-                                {
-                                    type: 'text',
-                                    text: msg.content,
-                                },
-                            ],
-                        })
+                    const budget = budgetMap[thinkingLevel]
+                    if (budget) {
+                        thinking = { type: 'enabled', budget_tokens: budget }
+                        maxTokens = Math.max(maxTokens, budget + 1024)
                     }
                 }
             }
+
+            // Cross-provider message normalization
+            const antMessages = normalizeForAnthropic(messages, {
+                model: resolvedModel,
+                systemPrompt: resolvedSystemPrompt,
+                thinkingEnabled: supportsThinking && thinkingLevel !== 'off',
+            })
 
             // Tier 3 Prompt Caching: Mark history prefix (2 turns back) and last message
             if (antMessages.length >= 4) {
@@ -243,31 +206,6 @@ export function anthropicProvider(
                   ]
                 : undefined
 
-            const resolvedModel = resolveAnthropicModel(modelOptions?.model)
-            const thinkingLevel = modelOptions?.thinkingLevel
-            let thinking: { type: 'enabled' | 'adaptive'; budget_tokens?: number } | undefined
-            let maxTokens = modelOptions?.max_tokens || 4096
-
-            const supportsThinking = supportsModelThinking(resolvedModel)
-
-            if (supportsThinking) {
-                if (thinkingLevel === 'auto') {
-                    thinking = { type: 'adaptive' }
-                } else if (thinkingLevel && thinkingLevel !== 'off') {
-                    const budgetMap: Record<string, number> = {
-                        minimal: 1024,
-                        low: 2048,
-                        medium: 4096,
-                        high: 8192,
-                    }
-                    const budget = budgetMap[thinkingLevel]
-                    if (budget) {
-                        thinking = { type: 'enabled', budget_tokens: budget }
-                        maxTokens = Math.max(maxTokens, budget + 1024)
-                    }
-                }
-            }
-
             const stream = await client.messages.create(
                 {
                     model: resolvedModel,
@@ -318,6 +256,11 @@ export function anthropicProvider(
                         yield { type: 'text', text: event.delta.text }
                     } else if (event.delta.type === 'thinking_delta') {
                         yield { type: 'thinking_delta', text: (event.delta as any).thinking }
+                    } else if ((event.delta as any).type === 'signature_delta') {
+                        yield {
+                            type: 'thought_signature',
+                            signature: (event.delta as any).signature,
+                        }
                     } else if (event.delta.type === 'input_json_delta') {
                         const id = activeToolCalls.get(event.index)
                         if (id) {

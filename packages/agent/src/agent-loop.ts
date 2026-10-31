@@ -395,13 +395,8 @@ async function runInnerLoop(
         eventQueue.push({ type: 'TurnStart', initialStatus })
 
         // stream assistant response
-        const { assistantMessage, toolCalls, thinking, error } = await streamAssistantResponse(
-            agent,
-            eventQueue,
-            signal,
-            turnCount,
-            options
-        )
+        const { assistantMessage, toolCalls, thinking, thoughtSignature, error } =
+            await streamAssistantResponse(agent, eventQueue, signal, turnCount, options)
 
         if (error || signal.aborted) {
             break
@@ -412,6 +407,7 @@ async function runInnerLoop(
                 role: 'assistant',
                 content: assistantMessage,
                 thinking,
+                thoughtSignature,
             })
             isDone = true
         } else {
@@ -419,6 +415,7 @@ async function runInnerLoop(
                 role: 'assistant',
                 content: assistantMessage,
                 thinking,
+                thoughtSignature,
                 toolCalls: toolCalls,
             })
 
@@ -480,10 +477,17 @@ async function streamAssistantResponse(
     signal: AbortSignal,
     turnCount: number = 1,
     options?: { readOnly?: boolean }
-): Promise<{ assistantMessage: string; toolCalls: ToolCall[]; thinking?: string; error?: string }> {
+): Promise<{
+    assistantMessage: string
+    toolCalls: ToolCall[]
+    thinking?: string
+    thoughtSignature?: string
+    error?: string
+}> {
     let assistantMessage = ''
     let toolCalls: ToolCall[] = []
     let thinkingText = ''
+    let thoughtSignature = ''
     let lastUsage:
         | { promptTokens?: number; completionTokens?: number; totalTokens?: number }
         | undefined = undefined
@@ -498,6 +502,7 @@ async function streamAssistantResponse(
                 assistantMessage = ''
                 toolCalls = []
                 thinkingText = ''
+                thoughtSignature = ''
                 lastUsage = undefined
                 if (signal.aborted) throw new AbortError(new Error('Aborted'))
 
@@ -603,6 +608,8 @@ async function streamAssistantResponse(
                     } else if (chunk.type === 'thinking_delta') {
                         thinkingText += chunk.text
                         eventQueue.push({ type: 'ThinkingChunk', content: chunk.text })
+                    } else if (chunk.type === 'thought_signature') {
+                        thoughtSignature += chunk.signature
                     } else if (chunk.type === 'tool_call_delta') {
                         if (!activeToolCalls.has(chunk.id)) {
                             activeToolCalls.set(chunk.id, {
@@ -647,7 +654,12 @@ async function streamAssistantResponse(
                     }
                 }
                 toolCalls = Array.from(activeToolCalls.values())
-                return { assistantMessage, toolCalls, thinking: thinkingText || undefined }
+                return {
+                    assistantMessage,
+                    toolCalls,
+                    thinking: thinkingText || undefined,
+                    thoughtSignature: thoughtSignature || undefined,
+                }
             },
             {
                 retries: 5,
@@ -703,6 +715,7 @@ async function streamAssistantResponse(
             assistantMessage: string
             toolCalls: ToolCall[]
             thinking?: string
+            thoughtSignature?: string
         }>((_, reject) => {
             if (signal.aborted) {
                 reject(new AbortError(new Error('Aborted')))
@@ -718,6 +731,9 @@ async function streamAssistantResponse(
         toolCalls = result.toolCalls
         if (result.thinking) {
             thinkingText = result.thinking
+        }
+        if (result.thoughtSignature) {
+            thoughtSignature = result.thoughtSignature
         }
 
         const durationMs = Date.now() - startTime
@@ -1078,6 +1094,7 @@ async function executeToolCallsSequential(
             role: 'tool',
             content: finalContent,
             toolCallId: r.toolCall.id,
+            toolName: r.toolCall.name,
         })
     }
 }
@@ -1103,6 +1120,7 @@ async function executeToolCallsParallel(
             role: 'tool',
             content: finalContent,
             toolCallId: r.toolCall.id,
+            toolName: r.toolCall.name,
         })
     }
 }

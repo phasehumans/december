@@ -1,4 +1,5 @@
 export * from './types.ts'
+export * from './normalizer/index.ts'
 export { registerProvider, getProvider, getAllProviders } from './registry.ts'
 
 export {
