@@ -107,12 +107,14 @@ function parseInlineMarkdown(lineText: string): FormattedLine {
         }
 
         // 5. Regular text segment until next formatting token
+        // Must search starting from i + 1 so that if lineText[i] is an unmatched special character,
+        // we advance past it rather than re-matching at i and creating an infinite loop!
         let nextSpecial = lineText.length
-        const nextTick = lineText.indexOf('`', i)
-        const nextBold = lineText.indexOf('**', i)
-        const nextBracket = lineText.indexOf('[', i)
-        const nextHttp = lineText.indexOf('http://', i)
-        const nextHttps = lineText.indexOf('https://', i)
+        const nextTick = lineText.indexOf('`', i + 1)
+        const nextBold = lineText.indexOf('**', i + 1)
+        const nextBracket = lineText.indexOf('[', i + 1)
+        const nextHttp = lineText.indexOf('http://', i + 1)
+        const nextHttps = lineText.indexOf('https://', i + 1)
 
         if (nextTick !== -1) nextSpecial = Math.min(nextSpecial, nextTick)
         if (nextBold !== -1) nextSpecial = Math.min(nextSpecial, nextBold)
@@ -124,7 +126,7 @@ function parseInlineMarkdown(lineText: string): FormattedLine {
         if (plainText) {
             segments.push({ text: plainText, style: { fg: THEME.colors.text } })
         }
-        i = nextSpecial
+        i = Math.max(i + 1, nextSpecial)
     }
 
     return segments.length > 0 ? segments : [{ text: '', style: {} }]
@@ -139,7 +141,7 @@ function wrapSegments(segments: FormattedLine, maxWidth: number): FormattedLine[
     const lines: FormattedLine[] = []
     let currentLine: FormattedLine = []
     let currentLen = 0
-    const targetWidth = Math.max(10, maxWidth)
+    const targetWidth = Math.max(10, Number.isFinite(maxWidth) ? maxWidth : 80)
 
     for (const seg of segments) {
         const words = seg.text.split(/(\s+)/)
@@ -209,6 +211,9 @@ function highlightCodeLine(lineText: string, language: string): FormattedLine {
 
     let match: RegExpExecArray | null
     while ((match = regex.exec(lineText)) !== null) {
+        if (match.index === regex.lastIndex) {
+            regex.lastIndex++
+        }
         const [full, comment, str, keyword, num, typeIdent, other] = match
         if (comment) {
             segments.push({ text: comment, style: { fg: THEME.colors.dim, italic: true, bg } })

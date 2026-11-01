@@ -117,6 +117,61 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.scrollToBottom()
         expect(app.state.isReadingMode).toBe(false)
 
+        // Mouse wheel scrolling: wheel up (\x1b[<64;35;10M) and wheel down (\x1b[<65;35;10M)
+        app.handleKey('\x1b[<64;35;10M')
+        expect(app.state.scrollOffset).toBeDefined()
+        expect(app.state.isReadingMode).toBe(true)
+
+        app.handleKey('\x1b[<65;35;10M')
+        // Scrolled back down to bottom
+        expect(app.state.isReadingMode).toBe(false)
+
+        // Stray SGR mouse clicks should be swallowed and not corrupt prompt input
+        app.handleKey('\x1b[<0;20;10M')
+        expect(app.state.input).toBe('')
+
+        app.stop()
+    })
+
+    it('processes chunked multi-sequence mouse wheel bursts and coalesces renders', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            cliVersion: '0.4.15',
+        })
+        app.start()
+
+        for (let i = 1; i <= 30; i++) {
+            app.state.messages.push({
+                role: 'assistant',
+                content: `message row ${i}`,
+            })
+        }
+        app.render()
+
+        const initialScroll = app.state.scrollOffset ?? (app as any).maxScroll
+        expect(initialScroll).toBeGreaterThan(0)
+
+        let screenRenderCount = 0
+        const origScreenRender = app.screen.render.bind(app.screen)
+        app.screen.render = (opts) => {
+            screenRenderCount++
+            return origScreenRender(opts)
+        }
+
+        // Simulate terminal emitting a burst of 3 wheel-up events in a single stdin data chunk
+        const chunk = Buffer.from('\x1b[<64;20;10M\x1b[<64;20;10M\x1b[<64;20;10M')
+        ;(app as any).stdinListener(chunk)
+
+        // All 3 wheel up events (each 3 lines) should have taken effect: 9 lines scrolled up
+        const expectedScroll = initialScroll - 9
+        expect(app.state.scrollOffset).toBe(expectedScroll)
+        expect(app.state.isReadingMode).toBe(true)
+
+        // Exactly 1 screen render pass should have occurred due to input batching
+        expect(screenRenderCount).toBe(1)
+
         app.stop()
     })
 
@@ -239,6 +294,35 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('renders 1-line separation spacing above prompt box and above card overlays', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        // 1. Prompt Mode: Input bar is at height 20..23 (inputHeight = 4)
+        // Row 19 must be the cleared 1-line breathing separation gap
+        const line19 = app.screen.backBuffer.getLine(19).trim()
+        const line20 = app.screen.backBuffer.getLine(20)
+        expect(line19).toBe('') // Clean breathing line
+        expect(line20).toContain('─') // Prompt bar top divider
+
+        // 2. Overlay Mode: Execute /context
+        app.executeCommand('context')
+        expect(app.state.activeOverlay).toBe('context')
+
+        // ContextMenuView height is 9, so overlay sits at rows 15..23
+        // Row 14 must be the 1-line separation gap
+        const line14 = app.screen.backBuffer.getLine(14).trim()
+        const line15 = app.screen.backBuffer.getLine(15)
+        expect(line14).toBe('') // Clean separation line above context overlay
+        expect(line15).toContain('Context') // Overlay starts at row 15
+
+        app.stop()
+    })
+
     it('handles web & clipboard commands without submitting to chat', () => {
         let submittedPrompt: string | null = null
         const app = new DifferentialApp({
@@ -303,6 +387,31 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // Second Ctrl+C
         app.handleKey('\x03')
         expect(exitCalled).toBe(true)
+
+        app.stop()
+    })
+
+    it('calls onAbort callback and stops streaming on Ctrl+C during active stream', () => {
+        let abortCalled = false
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onAbort: () => {
+                abortCalled = true
+            },
+        })
+        app.start()
+
+        app.state.isStreaming = true
+        app.startSpinner()
+        expect(app.state.isStreaming).toBe(true)
+
+        // Ctrl+C during stream
+        app.handleKey('\x03')
+        expect(abortCalled).toBe(true)
+        expect(app.state.isStreaming).toBe(false)
+        expect(app.state.toast?.message).toContain('Aborted')
 
         app.stop()
     })

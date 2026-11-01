@@ -29,6 +29,7 @@ import {
 } from '../utils/diff'
 import { getFileQueryMatch, scoreAndSortFiles, type ScoredFile } from '../utils/fuzzy'
 
+import { splitInputSequences } from './input-lexer'
 import { DifferentialScreen } from './screen'
 import { TerminalController } from './terminal'
 import { AskQuestionMenuView, type QuestionItem } from './views/ask-question-menu-view'
@@ -52,7 +53,7 @@ import { DiffViewMenuView, DIFF_WINDOW_SIZE } from './views/diff-view-menu-view'
 import { EffortMenuView, type ReasoningLevel, REASONING_OPTIONS } from './views/effort-menu-view'
 import { FileAutocompleteMenuView, FILE_WINDOW_SIZE } from './views/file-autocomplete-menu-view'
 import { FileViewMenuView } from './views/file-view-menu-view'
-import { HeaderView } from './views/header-view'
+import { HeaderView, type HeaderViewProps } from './views/header-view'
 import { HelpMenuView, type HelpTab, SHORTCUTS } from './views/help-menu-view'
 import { InputBarView } from './views/input-bar-view'
 import { LoginMenuView, LOGIN_OPTIONS } from './views/login-menu-view'
@@ -64,6 +65,7 @@ import {
     type MemoryDetailsProps,
     type RuleFileViewItem,
 } from './views/memory-view-menu-view'
+import { MessageLineCache } from './views/message-line-cache'
 import { MessageListView, type MessageItem } from './views/message-list-view'
 import {
     ModelSelectMenuView,
@@ -134,6 +136,8 @@ export interface DifferentialAppState {
     scrollOffset?: number
     isReadingMode: boolean
     isStreaming: boolean
+    spinnerFrame: number
+    statusMessage?: string
     activeModel?: string
     modelLabel?: string
     authMethod?: string
@@ -346,6 +350,7 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     sessionId?: string
     configPath?: string
     onSubmit?: (prompt: string) => void
+    onAbort?: () => void
     onExit?: () => void
     onModelSelect?: (model: ModelItem) => void
     getProviderModels?: (provider: string) => ModelItem[]
@@ -442,10 +447,14 @@ export class DifferentialApp {
     private options?: DifferentialAppOptions
     private isRunning = false
     private stdinListener?: (chunk: Buffer | string) => void
+    private lineCache = new MessageLineCache()
+    private isBatchingInput = false
     private maxScroll = 0
     private exitTimer: any = null
     private toastTimer: any = null
+    private spinnerTimer: any = null
     private onSubmitCallback?: (prompt: string) => void
+    private onAbortCallback?: () => void
     private onExitCallback?: () => void
     private onModelSelectCallback?: (model: ModelItem) => void
     private getProviderModelsCallback?: (provider: string) => ModelItem[]
@@ -507,6 +516,7 @@ export class DifferentialApp {
 
         this.options = options
         this.onSubmitCallback = options?.onSubmit
+        this.onAbortCallback = options?.onAbort
         this.onExitCallback = options?.onExit
         this.onModelSelectCallback = options?.onModelSelect
         this.getProviderModelsCallback = options?.getProviderModels
@@ -544,6 +554,8 @@ export class DifferentialApp {
             historyIndex: -1,
             isReadingMode: false,
             isStreaming: false,
+            spinnerFrame: 0,
+            statusMessage: undefined,
             cliVersion: options?.cliVersion || '0.4.15',
             latestVersion: options?.latestVersion,
             modelLabel: options?.modelLabel || 'Gemini 3.7 Flash',
@@ -718,6 +730,7 @@ export class DifferentialApp {
         this.refreshModelsForProvider(this.state.selectedProvider)
 
         this.screen.onResize(() => {
+            this.lineCache.clear()
             this.render()
         })
     }
@@ -730,7 +743,23 @@ export class DifferentialApp {
 
         this.stdinListener = (data) => {
             const str = data.toString()
-            this.handleKey(str)
+            const sequences = splitInputSequences(str)
+            if (sequences.length === 0) return
+
+            if (sequences.length === 1) {
+                this.handleKey(sequences[0]!)
+                return
+            }
+
+            this.isBatchingInput = true
+            try {
+                for (const seq of sequences) {
+                    this.handleKey(seq)
+                }
+            } finally {
+                this.isBatchingInput = false
+                this.render()
+            }
         }
 
         if (this.terminal.stdin && typeof this.terminal.stdin.on === 'function') {
@@ -753,6 +782,8 @@ export class DifferentialApp {
     stop(): void {
         if (!this.isRunning) return
         this.isRunning = false
+
+        this.stopSpinner()
 
         if (this.exitTimer) {
             clearTimeout(this.exitTimer)
@@ -793,6 +824,32 @@ export class DifferentialApp {
             this.state.toast = null
             this.render()
         }, 3000)
+    }
+
+    startSpinner(): void {
+        if (this.spinnerTimer) return
+        this.spinnerTimer = setInterval(() => {
+            this.state.spinnerFrame = (this.state.spinnerFrame + 1) % 10
+            this.render()
+        }, 80)
+    }
+
+    stopSpinner(): void {
+        if (this.spinnerTimer) {
+            clearInterval(this.spinnerTimer)
+            this.spinnerTimer = null
+        }
+        this.state.spinnerFrame = 0
+    }
+
+    setStatusMessage(msg?: string): void {
+        this.state.statusMessage = msg
+        this.render()
+    }
+
+    clearStatusMessage(): void {
+        this.state.statusMessage = undefined
+        this.render()
     }
 
     async openFileView(
@@ -1388,8 +1445,14 @@ export class DifferentialApp {
         // Ctrl+C
         if (key === '\x03') {
             if (this.state.isStreaming) {
+                this.stopSpinner()
                 this.state.isStreaming = false
-                this.showToast('Aborted streaming.', 'info')
+                this.clearStatusMessage()
+                if (this.onAbortCallback) {
+                    this.onAbortCallback()
+                }
+                this.showToast('Aborted.', 'info')
+                this.render()
                 return
             }
 
@@ -1656,10 +1719,54 @@ export class DifferentialApp {
             }
         }
 
+        // Mouse wheel / trackpad scrolling:
+        // Wheel up: \x1b[<64;... or \x1b[<64M
+        // Wheel down: \x1b[<65;... or \x1b[<65M
+        if (
+            key.startsWith('\x1b[<64;') ||
+            key.startsWith('\x1b[<64?') ||
+            key === '\x1b[<64M' ||
+            key === '\x1b[<64m'
+        ) {
+            if (this.state.activeOverlay !== 'none') {
+                this.handleOverlayKey('\x1b[A')
+            } else {
+                this.scrollUp(3)
+            }
+            return
+        }
+        if (
+            key.startsWith('\x1b[<65;') ||
+            key.startsWith('\x1b[<65?') ||
+            key === '\x1b[<65M' ||
+            key === '\x1b[<65m'
+        ) {
+            if (this.state.activeOverlay !== 'none') {
+                this.handleOverlayKey('\x1b[B')
+            } else {
+                this.scrollDown(3)
+            }
+            return
+        }
+        if (key.startsWith('\x1b[<')) {
+            return
+        }
+
+        // Shift+Up / Ctrl+Up: scroll up regardless of prompt input
+        if (key === '\x1b[1;2A' || key === '\x1b[1;5A') {
+            this.scrollUp(3)
+            return
+        }
+        // Shift+Down / Ctrl+Down: scroll down regardless of prompt input
+        if (key === '\x1b[1;2B' || key === '\x1b[1;5B') {
+            this.scrollDown(3)
+            return
+        }
+
         // Arrow Up: Prompt history or scroll message history
-        if (key === '\x1b[A') {
+        if (key === '\x1b[A' || key === '\x1bOA') {
             if (!this.state.input && this.state.messages.length > 0) {
-                this.scrollUp(1)
+                this.scrollUp(2)
             } else if (this.state.promptHistory.length > 0) {
                 const nextIdx =
                     this.state.historyIndex === -1
@@ -1674,9 +1781,9 @@ export class DifferentialApp {
         }
 
         // Arrow Down: Prompt history or scroll message history
-        if (key === '\x1b[B') {
+        if (key === '\x1b[B' || key === '\x1bOB') {
             if (!this.state.input && this.state.messages.length > 0) {
-                this.scrollDown(1)
+                this.scrollDown(2)
             } else if (this.state.historyIndex !== -1) {
                 const nextIdx = this.state.historyIndex + 1
                 if (nextIdx >= this.state.promptHistory.length) {
@@ -1693,15 +1800,39 @@ export class DifferentialApp {
             return
         }
 
-        // Page Up: \x1b[5~
-        if (key === '\x1b[5~') {
-            this.scrollUp(5)
+        // Page Up: \x1b[5~ or Shift+PageUp \x1b[5;2~
+        if (key === '\x1b[5~' || key === '\x1b[5;2~') {
+            const pageSize = Math.max(1, this.screen.height - 8)
+            this.scrollUp(pageSize)
             return
         }
 
-        // Page Down: \x1b[6~
-        if (key === '\x1b[6~') {
-            this.scrollDown(5)
+        // Page Down: \x1b[6~ or Shift+PageDown \x1b[6;2~
+        if (key === '\x1b[6~' || key === '\x1b[6;2~') {
+            const pageSize = Math.max(1, this.screen.height - 8)
+            this.scrollDown(pageSize)
+            return
+        }
+
+        // Home: \x1b[H or \x1b[1~ or \x1bOH
+        if (key === '\x1b[H' || key === '\x1b[1~' || key === '\x1bOH') {
+            if (this.state.input.length > 0) {
+                this.state.cursorPos = 0
+                this.render()
+            } else if (this.state.messages.length > 0) {
+                this.scrollUp(this.maxScroll)
+            }
+            return
+        }
+
+        // End: \x1b[F or \x1b[4~ or \x1bOF
+        if (key === '\x1b[F' || key === '\x1b[4~' || key === '\x1bOF') {
+            if (this.state.cursorPos < this.state.input.length) {
+                this.state.cursorPos = this.state.input.length
+                this.render()
+            } else {
+                this.scrollToBottom()
+            }
             return
         }
 
@@ -4945,6 +5076,7 @@ export class DifferentialApp {
             toolCall: {
                 id: toolCall.id,
                 name: toolCall.name,
+                input: toolCall.input,
                 command: fallbackSummary,
                 status: 'running',
                 output: '',
@@ -4992,8 +5124,13 @@ export class DifferentialApp {
     scrollDown(delta = 1): void {
         const current = this.state.scrollOffset ?? this.maxScroll
         const next = Math.min(this.maxScroll, current + delta)
-        this.state.scrollOffset = next
-        this.state.isReadingMode = next < this.maxScroll
+        if (next >= this.maxScroll) {
+            this.state.scrollOffset = undefined
+            this.state.isReadingMode = false
+        } else {
+            this.state.scrollOffset = next
+            this.state.isReadingMode = true
+        }
         this.render()
     }
 
@@ -5021,6 +5158,8 @@ export class DifferentialApp {
     }
 
     render(): void {
+        if (this.isBatchingInput) return
+
         const width = this.screen.columns
         const height = this.screen.rows
 
@@ -5120,12 +5259,8 @@ export class DifferentialApp {
             return
         }
 
-        // 2. Render Multi-Line Brand Header (Prompt Mode & Card Overlays)
-        const headerHeight = this.getHeaderHeight()
-
-        HeaderView.render(this.screen.backBuffer, {
-            x: 0,
-            y: 0,
+        // 2. Build Header View props (prepended to scrollable messages in MessageListView)
+        const headerProps: HeaderViewProps = {
             width,
             cliVersion: this.state.cliVersion,
             latestVersion: this.state.latestVersion,
@@ -5138,7 +5273,7 @@ export class DifferentialApp {
             isAuthenticated: this.state.isAuthenticated,
             branch: this.state.branch,
             cwd: this.state.cwd,
-        })
+        }
 
         const isOverlayActive = this.state.activeOverlay !== 'none'
 
@@ -5146,7 +5281,7 @@ export class DifferentialApp {
             // PROMPT MODE:
             // 2. Input Bar (4 rows at bottom)
             const inputHeight = InputBarView.getHeight()
-            const inputY = Math.max(headerHeight, height - inputHeight)
+            const inputY = Math.max(0, height - inputHeight)
 
             // 3. Compute floating overlay heights
             let fileMenuHeight = 0
@@ -5174,25 +5309,36 @@ export class DifferentialApp {
                 btwHeight = BtwOverlayView.getHeight(this.state.btwState)
             }
 
-            // 4. Message List View (between header and interactive area)
-            // Render the base chat layer FIRST so floating overlays always sit on top!
+            // 4. Message List View (full height above interactive area)
+            // Insert a 1-line separation gap above the interactive area (both floating menus and the prompt box)
             const bottomFloating = Math.max(fileMenuHeight, commandMenuHeight)
-            const topOfInteractive = inputY - bottomFloating - btwHeight
-            const bodyHeight = Math.max(1, topOfInteractive - headerHeight)
+            const interactiveGap = height >= 10 ? 1 : 0
+            const topOfInteractive = inputY - bottomFloating - btwHeight - interactiveGap
+            const bodyHeight = Math.max(1, topOfInteractive)
 
             const { maxScroll } = MessageListView.render(this.screen.backBuffer, {
                 x: 0,
-                y: headerHeight,
+                y: 0,
                 width,
                 height: bodyHeight,
                 messages: this.state.messages,
                 scrollOffset: this.state.scrollOffset,
+                isStreaming: this.state.isStreaming,
+                spinnerFrame: this.state.spinnerFrame,
+                statusMessage: this.state.statusMessage,
+                headerProps,
+                lineCache: this.lineCache,
             })
             this.maxScroll = maxScroll
 
+            // Clear the 1-row separator line so chat text does not bleed into the gap
+            if (interactiveGap > 0 && topOfInteractive >= 0 && topOfInteractive < height) {
+                this.screen.backBuffer.clearArea(0, topOfInteractive, width, 1)
+            }
+
             // 5. Render floating overlays on top of chat area (with clearArea)
             if (this.state.btwState && btwHeight > 0) {
-                const btwY = Math.max(headerHeight, inputY - bottomFloating - btwHeight)
+                const btwY = Math.max(0, inputY - bottomFloating - btwHeight)
                 this.screen.backBuffer.clearArea(0, btwY, width, btwHeight)
                 BtwOverlayView.render(this.screen.backBuffer, {
                     x: 0,
@@ -5204,7 +5350,7 @@ export class DifferentialApp {
             }
 
             if (fileMenuHeight > 0) {
-                const fileMenuY = Math.max(headerHeight, inputY - fileMenuHeight)
+                const fileMenuY = Math.max(0, inputY - fileMenuHeight)
                 this.screen.backBuffer.clearArea(0, fileMenuY, width, fileMenuHeight)
                 FileAutocompleteMenuView.render(this.screen.backBuffer, {
                     x: 0,
@@ -5218,7 +5364,7 @@ export class DifferentialApp {
 
             if (isCommandMenuVisible && commandMenuHeight > 0) {
                 const query = this.state.input.slice(1).trim()
-                const cmdY = Math.max(headerHeight, inputY - commandMenuHeight)
+                const cmdY = Math.max(0, inputY - commandMenuHeight)
                 this.screen.backBuffer.clearArea(0, cmdY, width, commandMenuHeight)
                 CommandMenuView.render(this.screen.backBuffer, {
                     x: 0,
@@ -5316,24 +5462,34 @@ export class DifferentialApp {
                 naturalHeight = SwitchSelectMenuView.getHeight(this.state.switchItems.length)
             }
 
+            const overlayGap = height >= 12 ? 1 : 0
             const clampedOverlayHeight = Math.min(
                 naturalHeight,
-                Math.max(5, height - headerHeight - 1)
+                Math.max(5, height - overlayGap - 1)
             )
-            const overlayY = Math.max(headerHeight, height - clampedOverlayHeight)
-            const chatHeight = Math.max(0, overlayY - headerHeight)
+            const overlayY = Math.max(overlayGap, height - clampedOverlayHeight)
+            const chatHeight = Math.max(0, overlayY - overlayGap)
 
             // Render messages above the overlay card
             if (chatHeight > 0) {
                 const { maxScroll } = MessageListView.render(this.screen.backBuffer, {
                     x: 0,
-                    y: headerHeight,
+                    y: 0,
                     width,
                     height: chatHeight,
                     messages: this.state.messages,
                     scrollOffset: this.state.scrollOffset,
+                    isStreaming: this.state.isStreaming,
+                    spinnerFrame: this.state.spinnerFrame,
+                    statusMessage: this.state.statusMessage,
+                    headerProps,
                 })
                 this.maxScroll = maxScroll
+            }
+
+            // Clear the 1-line separation gap so no residual chat cells remain in the gap
+            if (overlayGap > 0 && overlayY - overlayGap >= 0) {
+                this.screen.backBuffer.clearArea(0, overlayY - overlayGap, width, overlayGap)
             }
 
             // Clear overlay region completely so no residual chat cells remain

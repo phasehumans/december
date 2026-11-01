@@ -659,7 +659,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(line1).toContain('line 4')
         })
 
-        it('displays reading mode indicator when scrolled up from bottom', () => {
+        it('renders message content cleanly without invasive reading mode banner when scrolled up', () => {
             const buffer = new ScreenBuffer(50, 4)
             const messages = [
                 {
@@ -680,7 +680,38 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             const firstLine = buffer.getLine(0)
-            expect(firstLine).toContain('Reading mode')
+            expect(firstLine).toContain('line 1')
+            expect(firstLine).not.toContain('Reading mode')
+        })
+
+        it('prepends headerProps as scrollable lines at top of chat view', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            const messages = [
+                {
+                    id: '1',
+                    role: 'user',
+                    content: 'hello world',
+                },
+            ]
+
+            MessageListView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                messages,
+                scrollOffset: 0,
+                headerProps: {
+                    width: 80,
+                    cliVersion: '0.4.15',
+                    activeModel: 'gemini-2.5-flash',
+                    userEmail: 'user@example.com',
+                },
+            })
+
+            const line1 = buffer.getLine(1)
+            expect(line1).toContain('December')
+            expect(line1).toContain('0.4.15')
         })
     })
 
@@ -1633,6 +1664,104 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             )
             expect(text).toContain('Read(src/index.ts)')
             expect(text).toContain('Thinking... analyzing token expiration threshold')
+        })
+
+        it('renders user prompt with brand color and bold styling', () => {
+            const buffer = new ScreenBuffer(80, 5)
+            MessageListView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 5,
+                messages: [{ role: 'user', content: 'hello agent' }],
+            })
+
+            expect(buffer.getLine(0)).toContain('❭ hello agent')
+            const cell = buffer.get(3, 0)
+            expect(cell?.char).toBe('h')
+            expect(cell?.fg).toBe('#89B4F8')
+            expect(cell?.bold).toBe(true)
+        })
+
+        it('renders animated spinner frame and active streaming loader', () => {
+            const buffer = new ScreenBuffer(80, 5)
+            MessageListView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 5,
+                messages: [{ role: 'user', content: 'tell me a joke' }],
+                isStreaming: true,
+                spinnerFrame: 2, // '⠹'
+            })
+
+            expect(buffer.getLine(0)).toContain('❭ tell me a joke')
+            expect(buffer.getLine(2)).toContain('⠹ Thinking...')
+        })
+
+        it('renders status message when streaming with custom status', () => {
+            const buffer = new ScreenBuffer(80, 5)
+            MessageListView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 5,
+                messages: [{ role: 'user', content: 'test status' }],
+                isStreaming: true,
+                spinnerFrame: 1, // '⠙'
+                statusMessage: 'Gemini rate limit hit. Retrying in 4s...',
+            })
+
+            expect(buffer.getLine(2)).toContain('⠙ Gemini rate limit hit. Retrying in 4s...')
+        })
+
+        it('renders compact file edits with addition/deletion stats and command output gutter', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            MessageListView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                messages: [
+                    {
+                        role: 'tool',
+                        toolCall: {
+                            id: 'tc-edit',
+                            name: 'edit_file',
+                            command: 'Edit(src/app.ts)',
+                            input: {
+                                path: 'src/app.ts',
+                                Target: 'foo\nbar',
+                                Replacement: 'foo\nbar\nbaz\nqux',
+                            },
+                            status: 'success',
+                        },
+                    },
+                    {
+                        role: 'tool',
+                        toolCall: {
+                            id: 'tc-bash',
+                            name: 'run_command',
+                            command: 'Bash(git status)',
+                            status: 'success',
+                            output: 'On branch main\nnothing to commit',
+                        },
+                    },
+                ],
+            })
+
+            const text = Array.from({ length: buffer.height }, (_, i) => buffer.getLine(i)).join(
+                '\n'
+            )
+            // Edited file with diff stats
+            expect(text).toContain('Edited')
+            expect(text).toContain('src/app.ts')
+            expect(text).toContain('(+4, -2)')
+
+            // Two-tone bash command and output gutter
+            expect(text).toContain('Bash(git status)')
+            expect(text).toContain('│ On branch main')
+            expect(text).toContain('│ nothing to commit')
         })
     })
 })

@@ -139,6 +139,13 @@ export class TerminalController {
         if (this.isCleanedUp) return
         this.isCleanedUp = true
 
+        // 0. Disable mouse tracking modes
+        try {
+            this.stdout.write('\x1b[?1006l\x1b[?1002l\x1b[?1000l\x1b[?1007l')
+        } catch {
+            // Intentionally swallowed: stdout may be closed on sudden termination
+        }
+
         // 1. Reset text styles
         try {
             this.stdout.write('\x1b[0m')

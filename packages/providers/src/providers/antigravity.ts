@@ -299,6 +299,17 @@ export function antigravityProvider(
                         }
 
                         const resp = chunk.response || chunk
+
+                        // Check for top-level or inner stream error payload
+                        const possibleError = chunk.error || resp.error
+                        if (possibleError) {
+                            const errMsg =
+                                typeof possibleError === 'string'
+                                    ? possibleError
+                                    : possibleError.message || JSON.stringify(possibleError)
+                            throw new Error(`Antigravity stream error: ${errMsg}`)
+                        }
+
                         const usage = resp.usageMetadata || chunk.usageMetadata
 
                         if (usage) {
@@ -308,6 +319,17 @@ export function antigravityProvider(
                         }
 
                         const candidate = resp.candidates?.[0] || chunk.candidates?.[0]
+                        if (candidate?.finishReason) {
+                            if (candidate.finishReason === 'SAFETY') {
+                                throw new Error('Gemini output blocked due to safety settings.')
+                            }
+                            if (candidate.finishReason === 'RECITATION') {
+                                throw new Error('Gemini output blocked due to recitation policy.')
+                            }
+                            if (candidate.finishReason === 'BLOCKLIST') {
+                                throw new Error('Gemini output blocked due to blocklist.')
+                            }
+                        }
                         const parts = candidate?.content?.parts || []
                         let chunkText = ''
 

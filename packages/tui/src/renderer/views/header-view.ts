@@ -9,6 +9,7 @@ import { drawText } from '../ui'
 
 import type { ReleaseAnnouncement } from '../../constants/announcements'
 import type { ScreenBuffer } from '../buffer'
+import type { FormattedLine } from './markdown'
 
 export interface HeaderViewProps {
     x?: number
@@ -28,6 +29,107 @@ export interface HeaderViewProps {
 }
 
 export const HeaderView = {
+    toLines(props: HeaderViewProps, _maxWidth?: number): FormattedLine[] {
+        const lines: FormattedLine[] = []
+        const pad = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
+        const prefix = ' '.repeat(pad)
+
+        // Top padding
+        lines.push([{ text: '', style: {} }])
+
+        // 1. Line 1: ✱ December v0.4.15
+        const versionStr = props.cliVersion ? ` v${props.cliVersion.replace(/^v/, '')}` : ''
+        lines.push([
+            { text: `${prefix}✱ `, style: { fg: THEME.colors.brand, bold: true } },
+            { text: 'December', style: { fg: THEME.colors.text, bold: true } },
+            { text: versionStr, style: { fg: THEME.colors.subtle } },
+        ])
+
+        // 2. Line 2: User email (if present)
+        if (props.userEmail) {
+            lines.push([
+                { text: `${prefix}${props.userEmail}`, style: { fg: THEME.colors.subtle } },
+            ])
+        }
+
+        // 3. Line 3: Model and billing status line
+        let modelStatusLine: string
+        if (props.isAuthenticated === false) {
+            modelStatusLine = 'Not connected · Run /login'
+        } else {
+            const modelName = props.modelLabel || formatModelDisplayName(props.activeModel)
+            const billingLabel = formatBillingLabel(
+                props.authMethod,
+                props.selectedProvider,
+                props.activeModel,
+                props.isAuthenticated ?? true
+            )
+            if (modelName && billingLabel) {
+                modelStatusLine = `${modelName} · ${billingLabel}`
+            } else if (modelName) {
+                modelStatusLine = modelName
+            } else {
+                modelStatusLine = billingLabel || 'API'
+            }
+        }
+        lines.push([{ text: `${prefix}${modelStatusLine}`, style: { fg: THEME.colors.subtle } }])
+
+        // 4. Line 4: CWD and Git branch: ~/code/december (main)
+        const cwd = props.cwd || getCwd()
+        const branch = props.branch !== undefined ? props.branch : getGitBranch()
+        const locationLine = branch ? `${cwd} (${branch})` : cwd
+        lines.push([{ text: `${prefix}${locationLine}`, style: { fg: THEME.colors.subtle } }])
+
+        // 5. Line 5: Latest update notification OR Release Announcement banner
+        if (props.latestVersion) {
+            lines.push([{ text: '', style: {} }])
+            const currentV = props.cliVersion ? props.cliVersion.replace(/^v/, '') : '0.1.0'
+            const nextV = props.latestVersion.replace(/^v/, '')
+            lines.push([
+                { text: `${prefix}▎ `, style: { fg: THEME.colors.brand, bold: true } },
+                {
+                    text: `A new version is available: v${currentV} → v${nextV}`,
+                    style: { fg: THEME.colors.text, bold: true },
+                },
+            ])
+            lines.push([
+                { text: `${prefix}▎ `, style: { fg: THEME.colors.brand, bold: true } },
+                {
+                    text: 'Run /update to upgrade · Changelog: trydecember.com/docs/changelog',
+                    style: { fg: THEME.colors.muted },
+                },
+            ])
+        } else if (props.announcement) {
+            lines.push([{ text: '', style: {} }])
+            const title = props.announcement.title || `What's New in v${props.announcement.version}`
+            lines.push([
+                { text: `${prefix}▎ `, style: { fg: THEME.colors.brand, bold: true } },
+                { text: title, style: { fg: THEME.colors.text, bold: true } },
+            ])
+
+            const bullets = (props.announcement.bullets || []).slice(0, 2)
+            for (const bullet of bullets) {
+                lines.push([
+                    { text: `${prefix}▎ `, style: { fg: THEME.colors.brand, bold: true } },
+                    { text: bullet, style: { fg: THEME.colors.muted } },
+                ])
+            }
+
+            if (props.announcement.url) {
+                lines.push([
+                    { text: `${prefix}▎ `, style: { fg: THEME.colors.brand, bold: true } },
+                    { text: 'Check out detailed changelog on ', style: { fg: THEME.colors.muted } },
+                    { text: props.announcement.url, style: { fg: THEME.colors.brand } },
+                ])
+            }
+        }
+
+        // Trailing blank line for separation from first user message
+        lines.push([{ text: '', style: {} }])
+
+        return lines
+    },
+
     getHeight(props?: HeaderViewProps): number {
         let lines = 4 // Brand, Model status, CWD/branch, blank line
         if (props?.userEmail) {

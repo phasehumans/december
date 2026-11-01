@@ -516,6 +516,11 @@ async function main() {
         maxContextTokens: getModelContextWindow(initialModel),
         sessionId,
         thinkingLevel: config.thinkingLevel || 'auto',
+        onAbort: () => {
+            if (agent?.activeAbortController) {
+                agent.activeAbortController.abort()
+            }
+        },
         sessions: allSessions.map((s) => ({
             id: s.id,
             preview: s.preview || s.id,
@@ -827,6 +832,7 @@ async function main() {
             }
 
             differentialApp.state.isStreaming = true
+            differentialApp.startSpinner()
             differentialApp.render()
 
             try {
@@ -857,10 +863,30 @@ async function main() {
                 const stream = runAgentLoop(agent, executionPrompt)
                 for await (const event of stream) {
                     if (event.type === 'StreamChunk') {
+                        differentialApp.clearStatusMessage()
                         differentialApp.appendStreamDelta(event.content)
                     } else if (event.type === 'ThinkingChunk') {
                         differentialApp.appendThinkingChunk(event.content)
+                    } else if (event.type === 'AgentStatus') {
+                        if (event.message && event.message.trim().length > 0) {
+                            differentialApp.setStatusMessage(event.message.trim())
+                        } else {
+                            differentialApp.clearStatusMessage()
+                        }
+                    } else if (event.type === 'AgentError') {
+                        differentialApp.clearStatusMessage()
+                        differentialApp.state.messages.push({
+                            role: 'error',
+                            content: event.error,
+                        })
+                        differentialApp.render()
+                    } else if (event.type === 'AgentInterrupt') {
+                        differentialApp.clearStatusMessage()
+                        differentialApp.appendStreamDelta(
+                            '\n\nInterrupted · What should December do instead?'
+                        )
                     } else if (event.type === 'ToolCallStart') {
+                        differentialApp.clearStatusMessage()
                         const inputStr =
                             typeof event.toolCall.input === 'string'
                                 ? event.toolCall.input
@@ -890,6 +916,8 @@ async function main() {
                     content: err.message || 'Execution error',
                 })
             } finally {
+                differentialApp.clearStatusMessage()
+                differentialApp.stopSpinner()
                 differentialApp.state.isStreaming = false
                 differentialApp.render()
                 differentialApp.refreshWorkspaceFiles().catch(() => {

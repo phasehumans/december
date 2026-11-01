@@ -217,7 +217,7 @@ export const InputBarView = {
         return {
             x: textOffsetX + cursorPos,
             y: promptY,
-            visible: !props.isStreaming,
+            visible: !props.isStreaming || input.length > 0,
         }
     },
 }

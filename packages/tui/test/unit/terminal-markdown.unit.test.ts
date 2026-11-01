@@ -144,4 +144,26 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         expect(combined).toContain('[Server]')
         expect(combined).toContain(': ping')
     })
+
+    it('safely formats incomplete and unclosed markdown tokens during live streaming without freezing', () => {
+        // Unclosed opening bracket
+        const lines1 = formatMarkdownToLines('Streaming [WebSockets RFC', 80)
+        expect(lines1.length).toBeGreaterThan(0)
+        expect(lines1[0].map((s) => s.text).join('')).toContain('Streaming [WebSockets RFC')
+
+        // Unclosed opening bold
+        const lines2 = formatMarkdownToLines('Here is **bold start without end', 80)
+        expect(lines2.length).toBeGreaterThan(0)
+        expect(lines2[0].map((s) => s.text).join('')).toContain('Here is **bold start without end')
+
+        // Unclosed backtick
+        const lines3 = formatMarkdownToLines('Check `ws:// protocol', 80)
+        expect(lines3.length).toBeGreaterThan(0)
+        expect(lines3[0].map((s) => s.text).join('')).toContain('Check `ws:// protocol')
+
+        // Incomplete http prefix
+        const lines4 = formatMarkdownToLines('Visit http://', 80)
+        expect(lines4.length).toBeGreaterThan(0)
+        expect(lines4[0].map((s) => s.text).join('')).toContain('Visit http://')
+    })
 })

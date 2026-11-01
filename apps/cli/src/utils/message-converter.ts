@@ -52,6 +52,7 @@ export function convertAgentMessagesToDifferentialMessages(messages: any[]): Mes
                         toolCall: {
                             id: tc.id,
                             name: tc.name,
+                            input: tc.input,
                             command: getToolSummary(tc.name, inputStr),
                             status: hasError ? 'error' : 'success',
                             output: toolMsg?.content || '',

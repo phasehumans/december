@@ -289,4 +289,73 @@ describe('Antigravity Provider Adapter (Unit)', () => {
         expect(tokensUsed[1]).toBe('Bearer ya29.freshly-refreshed-token')
         expect(chunks.some((c) => c.text === 'success after 401 retry')).toBe(true)
     })
+
+    it('throws descriptive error when SSE stream chunk contains an error payload', async () => {
+        const sseError =
+            'data: {"error":{"code":429,"message":"Resource has been exhausted","status":"RESOURCE_EXHAUSTED"}}\n\n'
+
+        const mockFetch: typeof fetch = async () => {
+            const encoder = new TextEncoder()
+            const stream = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseError))
+                    controller.close()
+                },
+            })
+            return new Response(stream, {
+                status: 200,
+                headers: { 'Content-Type': 'text/event-stream' },
+            })
+        }
+
+        const provider = antigravityProvider('ya29.test-token', { fetchFn: mockFetch })
+
+        let thrownError: any = null
+        try {
+            const stream = provider.stream([{ role: 'user', content: 'test' }])
+            for await (const _ of stream) {
+                // consume
+            }
+        } catch (err) {
+            thrownError = err
+        }
+
+        expect(thrownError).not.toBeNull()
+        expect(thrownError.message).toContain('Antigravity stream error')
+        expect(thrownError.message).toContain('Resource has been exhausted')
+    })
+
+    it('throws descriptive error when candidate finishReason indicates safety or recitation blockage', async () => {
+        const sseBlocked =
+            'data: {"candidates":[{"finishReason":"SAFETY","content":{"parts":[]}}]}\n\n'
+
+        const mockFetch: typeof fetch = async () => {
+            const encoder = new TextEncoder()
+            const stream = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseBlocked))
+                    controller.close()
+                },
+            })
+            return new Response(stream, {
+                status: 200,
+                headers: { 'Content-Type': 'text/event-stream' },
+            })
+        }
+
+        const provider = antigravityProvider('ya29.test-token', { fetchFn: mockFetch })
+
+        let thrownError: any = null
+        try {
+            const stream = provider.stream([{ role: 'user', content: 'test' }])
+            for await (const _ of stream) {
+                // consume
+            }
+        } catch (err) {
+            thrownError = err
+        }
+
+        expect(thrownError).not.toBeNull()
+        expect(thrownError.message).toContain('Gemini output blocked due to safety settings')
+    })
 })

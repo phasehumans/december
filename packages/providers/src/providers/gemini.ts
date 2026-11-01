@@ -159,8 +159,19 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
                         chunk.usageMetadata.candidatesTokenCount || totalCompletionTokens
                 }
                 const candidate = chunk.candidates?.[0]
-                if (candidate?.finishReason === 'MAX_TOKENS') {
-                    console.warn('[gemini provider] candidate reached MAX_TOKENS output limit')
+                if (candidate?.finishReason) {
+                    if (candidate.finishReason === 'SAFETY') {
+                        throw new Error('Gemini output blocked due to safety settings.')
+                    }
+                    if (candidate.finishReason === 'RECITATION') {
+                        throw new Error('Gemini output blocked due to recitation policy.')
+                    }
+                    if (candidate.finishReason === 'BLOCKLIST') {
+                        throw new Error('Gemini output blocked due to blocklist.')
+                    }
+                    if (candidate.finishReason === 'MAX_TOKENS') {
+                        console.warn('[gemini provider] candidate reached MAX_TOKENS output limit')
+                    }
                 }
                 const parts = candidate?.content?.parts || []
                 let chunkText = ''
