@@ -1,5 +1,5 @@
 import { THEME } from '../../theme'
-import { drawDivider, drawText } from '../ui'
+import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
@@ -39,6 +39,14 @@ export const DEFAULT_MODELS: ModelItem[] = [
 ]
 
 export const ModelSelectMenuView = {
+    getHeight(modelsCount: number, windowSize = MODEL_WINDOW_SIZE): number {
+        const count = modelsCount || 1
+        const visible = Math.min(windowSize, count)
+        const hasOverflow = count > windowSize
+        // Title (1) + Margin (1) + Search (1) + Margin (1) + Visible + Overflow (0|1) + Margin (1) + Footer (1)
+        return 4 + visible + (hasOverflow ? 1 : 0) + 1 + 1
+    },
+
     getFilteredModels(models: ModelItem[], query: string): ModelItem[] {
         if (!query.trim()) return models
         const q = query.toLowerCase()
@@ -54,21 +62,12 @@ export const ModelSelectMenuView = {
         const windowSize = MODEL_WINDOW_SIZE
 
         // Title
-        drawText(buffer, 'Select AI Model', {
+        drawText(buffer, 'Models', {
             x,
             y,
             style: { fg: THEME.colors.text, bold: true },
         })
-        y += 1
-
-        drawDivider(buffer, {
-            x: props.x ?? 0,
-            y,
-            width,
-            char: '─',
-            style: { fg: THEME.colors.border },
-        })
-        y += 1
+        y += 2 // Clean 1-row empty margin matching React/Ink marginBottom={1}
 
         // Search row
         const searchPrompt = props.isSearching
@@ -179,16 +178,23 @@ export const ModelSelectMenuView = {
 
         // Footer at bottom of viewport
         const footerY = props.y + props.height - 1
+        const footerItems = props.isSearching
+            ? [
+                  { key: 'enter / ↓', label: 'focus list' },
+                  { key: 'esc', label: 'exit search' },
+              ]
+            : [
+                  { key: '↑/↓', label: 'navigate' },
+                  { key: 'enter', label: 'select' },
+                  { key: '/', label: 'search' },
+                  { key: 'esc', label: 'dismiss' },
+              ]
+
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,
             y: footerY,
             width,
-            items: [
-                { key: '↑↓', label: 'Navigate' },
-                { key: 'Enter', label: 'Select' },
-                { key: 'Esc', label: 'Close' },
-                { key: '/', label: 'Search' },
-            ],
+            items: footerItems,
         })
     },
 }

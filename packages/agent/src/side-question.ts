@@ -60,7 +60,7 @@ export async function runSideQuestion(
     // 4. Append ephemeral side question turn
     messages.push({
         role: 'user',
-        content: `[Side Question (ephemeral / by the way)]: ${trimmedQuestion}\n\nPlease answer this question directly, concisely, and helpfully based on the context so far. Do not use tools.`,
+        content: `[Side Question (ephemeral / by the way)]: ${trimmedQuestion}\n\nPlease provide a clear, well-structured explanation (roughly 5-8 lines or 2-3 focused bullet points) covering key concepts directly and helpfully based on the context so far. Do not use tools. Avoid one-line answers unless specifically requested.`,
     })
 
     // 5. Execute stream with thinking turned off for instantaneous response

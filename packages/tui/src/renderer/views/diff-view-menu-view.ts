@@ -1,6 +1,6 @@
 import { THEME } from '../../theme'
 import { parseUnifiedDiffToRows, type DiffFileEntry, type DiffRow } from '../../utils/diff'
-import { drawDivider, drawText } from '../ui'
+import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
@@ -22,6 +22,13 @@ export interface DiffViewMenuViewProps {
 }
 
 export const DiffViewMenuView = {
+    getHeight(filesCount: number, windowSize = DIFF_WINDOW_SIZE): number {
+        const count = filesCount || 1
+        const visible = Math.min(windowSize, count)
+        const hasOverflow = count > windowSize
+        return 2 + visible + (hasOverflow ? 1 : 0) + 1 + 1
+    },
+
     render(buffer: ScreenBuffer, props: DiffViewMenuViewProps): void {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
@@ -35,14 +42,6 @@ export const DiffViewMenuView = {
                 y,
                 style: { fg: THEME.colors.text, bold: true },
             })
-            y += 1
-            drawDivider(buffer, {
-                x: props.x ?? 0,
-                y,
-                width,
-                char: '─',
-                style: { fg: THEME.colors.border },
-            })
             y += 2
             drawText(buffer, 'No changed files in workspace.', {
                 x,
@@ -55,7 +54,7 @@ export const DiffViewMenuView = {
                 x: props.x ?? 0,
                 y: footerY,
                 width,
-                items: [{ key: 'Esc', label: 'Close' }],
+                items: [{ key: 'esc', label: 'dismiss' }],
             })
             return
         }
@@ -65,22 +64,32 @@ export const DiffViewMenuView = {
 
         if (!props.isDetailView) {
             // ==========================================
-            // 1. FILES LIST MODE
+            // 1. FILES LIST MODE (MATCHING REACT)
             // ==========================================
-            drawText(buffer, `Workspace Changes (${files.length} changed files)`, {
+            const totalAdditions = files.reduce((acc, f) => acc + (f.additions || 0), 0)
+            const totalDeletions = files.reduce((acc, f) => acc + (f.deletions || 0), 0)
+            const summaryText = `${files.length} file${files.length === 1 ? '' : 's'} (+${totalAdditions} -${totalDeletions})`
+
+            drawText(buffer, 'Workspace Changes', {
                 x,
                 y,
                 style: { fg: THEME.colors.text, bold: true },
             })
-            y += 1
-            drawDivider(buffer, {
-                x: props.x ?? 0,
-                y,
-                width,
-                char: '─',
-                style: { fg: THEME.colors.border },
-            })
-            y += 1
+            if (files.length > 0) {
+                drawText(buffer, ` · ${summaryText}`, {
+                    x: x + 17,
+                    y,
+                    style: { fg: THEME.colors.muted },
+                })
+                const countLabel = `${safeIndex + 1}/${files.length}`
+                const countX = Math.max(x + 40, width - countLabel.length - 4)
+                drawText(buffer, countLabel, {
+                    x: countX,
+                    y,
+                    style: { fg: THEME.colors.muted },
+                })
+            }
+            y += 2
 
             const windowStart = Math.max(
                 0,
@@ -95,34 +104,20 @@ export const DiffViewMenuView = {
                 const isSelected = absIdx === safeIndex
                 const rowY = y + i
 
-                // Selector indicator
+                // Selector indicator (No background highlight band)
                 const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
                 drawText(buffer, selector, {
                     x,
                     y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted },
+                    style: {
+                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
+                        bold: isSelected,
+                    },
                 })
 
-                // Status badge: M, A, D, ?
-                let badge = 'M'
-                let badgeColor = THEME.colors.warning
-                if (file.status === 'added' || file.status === 'untracked') {
-                    badge = file.status === 'untracked' ? '?' : 'A'
-                    badgeColor = THEME.colors.success
-                } else if (file.status === 'deleted') {
-                    badge = 'D'
-                    badgeColor = THEME.colors.error
-                }
-
-                drawText(buffer, badge, {
-                    x: x + 2,
-                    y: rowY,
-                    style: { fg: badgeColor, bold: true },
-                })
-
-                // File path
+                // File path (Clean display without artificial badges or ? marks)
                 drawText(buffer, file.path, {
-                    x: x + 5,
+                    x: x + 2,
                     y: rowY,
                     maxWidth: Math.max(10, width - x - 25),
                     style: {
@@ -134,16 +129,18 @@ export const DiffViewMenuView = {
                 // Stats: +X -Y
                 const statsText = `+${file.additions} -${file.deletions}`
                 const statsX = Math.max(x + 40, width - statsText.length - 4)
-                drawText(buffer, `+${file.additions}`, {
-                    x: statsX,
-                    y: rowY,
-                    style: { fg: THEME.colors.success },
-                })
-                drawText(buffer, ` -${file.deletions}`, {
-                    x: statsX + `+${file.additions}`.length,
-                    y: rowY,
-                    style: { fg: THEME.colors.error },
-                })
+                if (file.additions > 0 || file.deletions > 0) {
+                    drawText(buffer, `+${file.additions}`, {
+                        x: statsX,
+                        y: rowY,
+                        style: { fg: THEME.colors.success },
+                    })
+                    drawText(buffer, ` -${file.deletions}`, {
+                        x: statsX + `+${file.additions}`.length,
+                        y: rowY,
+                        style: { fg: THEME.colors.error },
+                    })
+                }
             }
 
             // Pagination overflow
@@ -174,9 +171,10 @@ export const DiffViewMenuView = {
                 y: footerY,
                 width,
                 items: [
-                    { key: '↑↓', label: 'Navigate' },
-                    { key: 'Enter', label: 'View Diff' },
-                    { key: 'Esc', label: 'Close' },
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'enter', label: 'view diff' },
+                    { key: 'tab', label: 'insert context' },
+                    { key: 'esc', label: 'dismiss' },
                 ],
             })
         } else {
@@ -185,6 +183,25 @@ export const DiffViewMenuView = {
             // ==========================================
             const parsed = parseUnifiedDiffToRows(currentFile.diff || '')
             const diffRows: DiffRow[] = parsed.rows
+            const changeBlocks = parsed.changeBlocks
+            const cursorLine = props.cursorLineIndex ?? 0
+
+            // Current change hunk under cursor
+            const currentChangeUnderCursor = (() => {
+                if (changeBlocks.length === 0) return '-'
+                const insideIdx = changeBlocks.findIndex(
+                    (b) => cursorLine >= b.startIndex && cursorLine <= b.endIndex
+                )
+                if (insideIdx >= 0) return `${insideIdx + 1}`
+                let nearestBefore = -1
+                for (let i = 0; i < changeBlocks.length; i++) {
+                    const b = changeBlocks[i]
+                    if (b && b.startIndex <= cursorLine) {
+                        nearestBefore = i + 1
+                    }
+                }
+                return nearestBefore > 0 ? `${nearestBefore}` : '1'
+            })()
 
             // Header line: [path] +X -Y          change X/Y · file A/B
             drawText(buffer, currentFile.path, {
@@ -204,23 +221,14 @@ export const DiffViewMenuView = {
                 style: { fg: THEME.colors.error },
             })
 
-            const rightHeader = `file ${safeIndex + 1}/${files.length} · ${parsed.changeBlocks.length} changes`
+            const rightHeader = `change ${currentChangeUnderCursor}/${changeBlocks.length || 0} · file ${safeIndex + 1}/${files.length}`
             const rightHeaderX = Math.max(statsOffset + 15, width - rightHeader.length - 2)
             drawText(buffer, rightHeader, {
                 x: rightHeaderX,
                 y,
                 style: { fg: THEME.colors.muted },
             })
-            y += 1
-
-            drawDivider(buffer, {
-                x: props.x ?? 0,
-                y,
-                width,
-                char: '─',
-                style: { fg: THEME.colors.border },
-            })
-            y += 1
+            y += 2
 
             const visibleDiffHeight = Math.max(2, props.height - 4)
             const maxScroll = Math.max(0, diffRows.length - visibleDiffHeight)
@@ -270,30 +278,42 @@ export const DiffViewMenuView = {
                           ? THEME.colors.diffDeleteBg
                           : undefined
 
+                const rowBg = isCursor ? bgColor || THEME.colors.codespanBg : bgColor
+                if (rowBg) {
+                    const rowWidth = Math.max(10, width - x - 2)
+                    for (let c = 0; c < rowWidth; c++) {
+                        buffer.setChar(x + c, rowY, ' ', { bg: rowBg })
+                    }
+                }
+
                 const cursorGlyph = isCursor ? `${THEME.glyphs.selector} ` : '  '
                 drawText(buffer, cursorGlyph, {
                     x,
                     y: rowY,
-                    style: { fg: isCursor ? THEME.colors.brand : THEME.colors.dim },
+                    style: { fg: isCursor ? THEME.colors.brand : THEME.colors.dim, bg: rowBg },
                 })
 
                 drawText(buffer, `${paddedNum} `, {
                     x: x + 2,
                     y: rowY,
-                    style: { fg: THEME.colors.dim },
+                    style: {
+                        fg: isCursor ? THEME.colors.brand : THEME.colors.dim,
+                        bg: rowBg,
+                        bold: isCursor,
+                    },
                 })
 
                 drawText(buffer, `${sign} `, {
                     x: x + 8,
                     y: rowY,
-                    style: { fg: signColor, bold: line.type !== 'context' },
+                    style: { fg: signColor, bg: rowBg, bold: line.type !== 'context' || isCursor },
                 })
 
                 drawText(buffer, line.content, {
                     x: x + 10,
                     y: rowY,
                     maxWidth: width - x - 12,
-                    style: { fg: textColor, bg: bgColor },
+                    style: { fg: textColor, bg: rowBg, bold: isCursor },
                 })
             }
 
@@ -304,10 +324,11 @@ export const DiffViewMenuView = {
                 y: footerY,
                 width,
                 items: [
-                    { key: '↑↓', label: 'Scroll' },
-                    { key: 'n/p', label: 'Next/Prev Hunk' },
-                    { key: '←/→', label: 'Cycle File' },
-                    { key: 'Esc', label: 'Back to Files' },
+                    { key: '↑/↓', label: 'scroll' },
+                    { key: 'p/n', label: 'hunk' },
+                    { key: '←/→', label: 'cycle file' },
+                    { key: 'enter', label: 'insert @file:line' },
+                    { key: 'esc', label: 'back' },
                 ],
             })
         }

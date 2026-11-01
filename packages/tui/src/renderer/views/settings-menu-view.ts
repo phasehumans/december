@@ -1,5 +1,5 @@
 import { THEME } from '../../theme'
-import { drawDivider, drawText } from '../ui'
+import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
@@ -21,26 +21,22 @@ export interface SettingsMenuViewProps {
 }
 
 export const SettingsMenuView = {
+    getHeight(settingsCount = 8): number {
+        // Title (1) + Top Margin (1) + Settings items + Bottom Margin (1) + Footer (1)
+        return 2 + settingsCount + 1 + 1
+    },
+
     render(buffer: ScreenBuffer, props: SettingsMenuViewProps): void {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
         const width = props.width
 
-        drawText(buffer, 'December Settings', {
+        drawText(buffer, 'Settings', {
             x,
             y,
             style: { fg: THEME.colors.text, bold: true },
         })
-        y += 1
-
-        drawDivider(buffer, {
-            x: props.x ?? 0,
-            y,
-            width,
-            char: '─',
-            style: { fg: THEME.colors.border },
-        })
-        y += 1
+        y += 2 // Clean 1-row empty margin matching React/Ink marginBottom={1}
 
         for (let i = 0; i < props.settings.length; i++) {
             const item = props.settings[i]
@@ -84,9 +80,9 @@ export const SettingsMenuView = {
             y: footerY,
             width,
             items: [
-                { key: '↑↓', label: 'Navigate' },
-                { key: 'Enter', label: 'Toggle/Select' },
-                { key: 'Esc', label: 'Close' },
+                { key: '↑/↓', label: 'navigate' },
+                { key: 'enter', label: 'toggle' },
+                { key: 'esc', label: 'dismiss' },
             ],
         })
     },

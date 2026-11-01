@@ -271,3 +271,21 @@ export function scoreAndSortFiles(
 
     return scored
 }
+
+export type FileQueryMatch = {
+    type: 'at' | 'open'
+    query: string
+}
+
+export function getFileQueryMatch(text: string): FileQueryMatch | null {
+    const openMatch = text.match(/^\/open\s+(\S*)$/)
+    if (openMatch) {
+        const raw = openMatch[1] || ''
+        return { type: 'open', query: raw.startsWith('@') ? raw.slice(1) : raw }
+    }
+    const atMatch = text.match(/@(\S*)$/)
+    if (atMatch) {
+        return { type: 'at', query: atMatch[1] || '' }
+    }
+    return null
+}

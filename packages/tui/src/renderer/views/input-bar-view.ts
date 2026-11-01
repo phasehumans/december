@@ -50,12 +50,14 @@ export const InputBarView = {
         const input = props.input
         const cursorPos = props.cursorPos ?? input.length
         const paddingLeft = THEME.padding.paddingLeft ?? 2
+        const paddingRight = THEME.padding.paddingRight ?? 4
+        const sepWidth = Math.max(10, width - paddingLeft - paddingRight)
 
         // 1. Top separator
         drawDivider(buffer, {
-            x,
+            x: x + paddingLeft,
             y,
-            width,
+            width: sepWidth,
             char: '─',
             style: { fg: THEME.colors.border },
         })
@@ -106,9 +108,9 @@ export const InputBarView = {
         // 3. Bottom separator
         const bottomDividerY = y + 2
         drawDivider(buffer, {
-            x,
+            x: x + paddingLeft,
             y: bottomDividerY,
-            width,
+            width: sepWidth,
             char: '─',
             style: { fg: THEME.colors.border },
         })
@@ -202,7 +204,7 @@ export const InputBarView = {
                     tokenLabel = `${tokensFormatted} tokens`
                 }
 
-                const rightX = Math.max(leftX + 2, width - tokenLabel.length - paddingLeft)
+                const rightX = Math.max(leftX + 2, width - tokenLabel.length - paddingRight)
                 drawText(buffer, tokenLabel, {
                     x: rightX,
                     y: statusY,

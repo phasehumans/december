@@ -28,14 +28,14 @@ export interface HeaderViewProps {
 }
 
 export const HeaderView = {
-    getHeight(props: HeaderViewProps): number {
+    getHeight(props?: HeaderViewProps): number {
         let lines = 4 // Brand, Model status, CWD/branch, blank line
-        if (props.userEmail) {
+        if (props?.userEmail) {
             lines += 1
         }
-        if (props.latestVersion) {
+        if (props?.latestVersion) {
             lines += 3 // blank line + new version + action
-        } else if (props.announcement) {
+        } else if (props?.announcement) {
             const bulletsCount = Math.min(2, props.announcement.bullets?.length || 0)
             const urlLine = props.announcement.url ? 1 : 0
             lines += 1 + 1 + bulletsCount + urlLine // blank line + title + bullets + url

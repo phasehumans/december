@@ -37,7 +37,7 @@ describe('useCliStore activeMessages handling', () => {
         expect(finalStatic).toHaveLength(3)
         expect(finalStatic[0].role).toBe('header')
         expect(finalStatic[1].text).toBe('Hello AI')
-        expect(finalStatic[2].blocks?.[0].content).toBe('Hello human!')
+        expect((finalStatic[2].blocks?.[0] as any)?.content).toBe('Hello human!')
         expect(useCliStore.getState().activeMessages).toHaveLength(0)
     })
 

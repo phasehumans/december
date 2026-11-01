@@ -1,7 +1,6 @@
+import { PROVIDER_KEY_URLS, PROVIDER_MENU_ITEMS } from '@december/tui'
 import { describe, expect, test } from 'bun:test'
 
-import { PROVIDER_KEY_URLS } from '../../../../packages/tui/src/components/menus/byok-key-menu'
-import { PROVIDER_MENU_ITEMS } from '../../../../packages/tui/src/components/menus/byok-provider-menu'
 import { formatProviderName } from '../../src/config'
 import { parseError } from '../../src/utils/error-parser'
 import {

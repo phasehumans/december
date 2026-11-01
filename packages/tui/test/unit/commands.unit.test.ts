@@ -1,6 +1,6 @@
 import { describe, expect, test, mock } from 'bun:test'
 
-import { COMMANDS } from '../../src/components/command-menu/commands'
+import { COMMANDS } from '../../src/commands/commands'
 
 describe('/update command action', () => {
     test('should define update command forwarded to chat screen', async () => {

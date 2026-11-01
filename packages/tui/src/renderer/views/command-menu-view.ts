@@ -1,4 +1,4 @@
-import { getFilteredCommands } from '../../components/command-menu/filter-commands'
+import { getFilteredCommands } from '../../commands/filter-commands'
 import { THEME } from '../../theme'
 import { drawText } from '../ui'
 

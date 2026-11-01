@@ -8,8 +8,8 @@ export class DifferentialScreen {
     readonly terminal: TerminalController
     frontBuffer: ScreenBuffer
     backBuffer: ScreenBuffer
-    private width: number
-    private height: number
+    private _width: number
+    private _height: number
     private readonly synchronized: boolean
     private cursor?: CursorPosition
     private forceFullRedraw = false
@@ -19,20 +19,28 @@ export class DifferentialScreen {
 
     constructor(options?: DifferentialScreenOptions) {
         this.terminal = options?.terminal ?? new TerminalController()
-        this.width = options?.width ?? this.terminal.columns
-        this.height = options?.height ?? this.terminal.rows
+        this._width = options?.width ?? this.terminal.columns
+        this._height = options?.height ?? this.terminal.rows
         this.synchronized = options?.synchronized ?? true
 
-        this.frontBuffer = new ScreenBuffer(this.width, this.height)
-        this.backBuffer = new ScreenBuffer(this.width, this.height)
+        this.frontBuffer = new ScreenBuffer(this._width, this._height)
+        this.backBuffer = new ScreenBuffer(this._width, this._height)
     }
 
     get columns(): number {
-        return this.width
+        return this._width
     }
 
     get rows(): number {
-        return this.height
+        return this._height
+    }
+
+    get width(): number {
+        return this._width
+    }
+
+    get height(): number {
+        return this._height
     }
 
     start(): void {
@@ -76,12 +84,12 @@ export class DifferentialScreen {
         const clampedWidth = Math.max(1, Math.floor(newWidth))
         const clampedHeight = Math.max(1, Math.floor(newHeight))
 
-        if (clampedWidth === this.width && clampedHeight === this.height) {
+        if (clampedWidth === this._width && clampedHeight === this._height) {
             return
         }
 
-        this.width = clampedWidth
-        this.height = clampedHeight
+        this._width = clampedWidth
+        this._height = clampedHeight
 
         // Dynamically resize buffers
         this.backBuffer = this.backBuffer.resize(clampedWidth, clampedHeight)
@@ -97,6 +105,10 @@ export class DifferentialScreen {
 
     setCursor(x: number, y: number, visible = false): void {
         this.cursor = { x, y, visible }
+    }
+
+    get cursorPosition(): CursorPosition | undefined {
+        return this.cursor
     }
 
     clear(style?: CellStyle): void {

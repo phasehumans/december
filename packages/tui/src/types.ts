@@ -1,3 +1,27 @@
+export type MessageBlock =
+    | { type: 'text'; content: string; color?: string }
+    | { type: 'thinking'; content: string; isStreaming?: boolean; durationMs?: number }
+    | { type: 'compaction'; summary: string }
+    | { type: 'error'; error: string; cause?: string; hint?: string }
+    | { type: 'interrupt' }
+    | {
+          type: 'command'
+          toolCallId?: string
+          toolName?: string
+          toolInput?: string
+          command: string
+          status: 'running' | 'success' | 'error'
+          output?: string
+      }
+    | {
+          type: 'file_change'
+          filePath: string
+          action: 'created' | 'modified' | 'deleted'
+          diff?: string
+      }
+    | { type: 'code'; language: string; filename?: string; code: string }
+    | { type: 'status'; label: string; success: boolean; hidePill?: boolean }
+
 export type Message = {
     id: number | string
     role: 'user' | 'assistant' | 'error' | 'header'
@@ -5,7 +29,7 @@ export type Message = {
     cause?: string
     hint?: string
     displayText?: string
-    blocks?: any[]
+    blocks?: MessageBlock[]
     usage?: {
         promptTokens: number
         completionTokens: number
@@ -66,4 +90,5 @@ export interface BtwState {
     answer: string
     status: 'loading' | 'streaming' | 'complete' | 'error'
     error?: string
+    isExpanded?: boolean
 }

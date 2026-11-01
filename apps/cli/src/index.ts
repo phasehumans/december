@@ -508,11 +508,69 @@ async function main() {
         selectedProvider: activeProvider,
         contextTokens: 0,
         maxContextTokens: getModelContextWindow(initialModel),
+        sessionId,
+        thinkingLevel: config.thinkingLevel || 'auto',
+        onEffortSelect: async (level) => {
+            if (agent) {
+                agent.thinkingLevel = level
+                if (agent.modelOptions) {
+                    agent.modelOptions.thinkingLevel = level
+                }
+            }
+            try {
+                const cfg = await loadConfig()
+                await saveConfig({ ...cfg, thinkingLevel: level })
+            } catch {
+                // Intentionally swallowed: ignore thinking level config save error
+            }
+        },
         onModelSelect: async (selected) => {
             try {
-                await saveConfig({ model: selected.value })
+                const cfg = await loadConfig()
+                await saveConfig({ ...cfg, activeModel: selected.value })
             } catch {
                 // Intentionally swallowed: ignore model config save error
+            }
+        },
+        onLogin: async (onCode, signal) => {
+            const { loginViaDeviceCode } = await import('./auth')
+            const result = await loginViaDeviceCode(undefined, onCode, signal)
+            try {
+                const cfg = await loadConfig()
+                await saveConfig({
+                    ...cfg,
+                    decemberToken: result.token,
+                    email: result.email || undefined,
+                    authPriority: 'december',
+                    activeModel: 'december-auto',
+                })
+            } catch {
+                // Intentionally swallowed: ignore login config save error
+            }
+            return result
+        },
+        onSubscriptionLogin: async (provider) => {
+            const { loginSubscription } = await import('./auth/subscriptions/subscription-manager')
+            const { openUrl } = await import('./utils/open')
+            await loginSubscription(provider, (code, uri) => {
+                const fullUrl = uri.includes('?')
+                    ? `${uri}&code=${encodeURIComponent(code)}`
+                    : `${uri}?code=${encodeURIComponent(code)}`
+                openUrl(fullUrl).catch(() => {
+                    // Intentionally swallowed: browser launch error handled
+                })
+            })
+        },
+        onSideQuestion: async (question, handlers) => {
+            try {
+                const { runSideQuestion } = await import('@december/agent')
+                await runSideQuestion(agent, question, {
+                    signal: handlers.signal,
+                    onChunk: handlers.onChunk,
+                })
+                handlers.onComplete()
+            } catch (err: any) {
+                handlers.onError(err)
             }
         },
         onSubmit: async (promptText: string) => {

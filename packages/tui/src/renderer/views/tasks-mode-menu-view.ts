@@ -1,5 +1,5 @@
 import { THEME } from '../../theme'
-import { drawDivider, drawText } from '../ui'
+import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
@@ -24,6 +24,14 @@ export interface TasksModeMenuViewProps {
 }
 
 export const TasksModeMenuView = {
+    getHeight(tasksCount: number, windowSize = 5): number {
+        const count = tasksCount || 1
+        const visible = Math.min(windowSize, count)
+        const hasOverflow = count > windowSize
+        // Title (1) + Top Margin (1) + Tasks (visible) + Overflow (0|1) + Bottom Margin (1) + Footer (1)
+        return 2 + visible + (hasOverflow ? 1 : 0) + 1 + 1
+    },
+
     render(buffer: ScreenBuffer, props: TasksModeMenuViewProps): void {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
@@ -31,21 +39,12 @@ export const TasksModeMenuView = {
         const tasks = props.tasks
         const windowSize = 8
 
-        drawText(buffer, `Background Tasks (${tasks.length} total)`, {
+        drawText(buffer, `Tasks (${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'})`, {
             x,
             y,
             style: { fg: THEME.colors.text, bold: true },
         })
-        y += 1
-
-        drawDivider(buffer, {
-            x: props.x ?? 0,
-            y,
-            width,
-            char: '─',
-            style: { fg: THEME.colors.border },
-        })
-        y += 1
+        y += 2 // Clean 1-row empty margin matching React/Ink marginBottom={1}
 
         if (tasks.length === 0) {
             drawText(buffer, 'No background tasks running or completed.', {
@@ -77,7 +76,7 @@ export const TasksModeMenuView = {
 
                 // Status Badge
                 let badge = 'DONE'
-                let badgeColor = THEME.colors.success
+                let badgeColor: string = THEME.colors.success
                 if (task.status === 'running') {
                     badge = 'RUNNING'
                     badgeColor = THEME.colors.warning
@@ -121,9 +120,9 @@ export const TasksModeMenuView = {
             y: footerY,
             width,
             items: [
-                { key: '↑↓', label: 'Navigate' },
-                { key: 'k', label: 'Kill Task' },
-                { key: 'Esc', label: 'Close' },
+                { key: '↑/↓', label: 'navigate' },
+                { key: 'k', label: 'kill' },
+                { key: 'esc', label: 'dismiss' },
             ],
         })
     },

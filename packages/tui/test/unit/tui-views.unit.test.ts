@@ -1,17 +1,32 @@
 import { describe, expect, it } from 'bun:test'
 
 import { ScreenBuffer } from '../../src/renderer/buffer'
+import { AskQuestionMenuView } from '../../src/renderer/views/ask-question-menu-view'
+import { AuthMenuView } from '../../src/renderer/views/auth-menu-view'
+import { BtwOverlayView } from '../../src/renderer/views/btw-overlay-view'
+import { CodeSearchMenuView } from '../../src/renderer/views/code-search-menu-view'
 import { CommandMenuView } from '../../src/renderer/views/command-menu-view'
 import { ContextMenuView } from '../../src/renderer/views/context-menu-view'
 import { DiffViewMenuView } from '../../src/renderer/views/diff-view-menu-view'
+import { EffortMenuView } from '../../src/renderer/views/effort-menu-view'
+import { FileAutocompleteMenuView } from '../../src/renderer/views/file-autocomplete-menu-view'
+import { FileViewMenuView } from '../../src/renderer/views/file-view-menu-view'
 import { HeaderView } from '../../src/renderer/views/header-view'
 import { HelpMenuView } from '../../src/renderer/views/help-menu-view'
 import { InputBarView } from '../../src/renderer/views/input-bar-view'
+import { LoginMenuView } from '../../src/renderer/views/login-menu-view'
+import { MemoryViewMenuView } from '../../src/renderer/views/memory-view-menu-view'
 import { MessageListView } from '../../src/renderer/views/message-list-view'
 import { ModelSelectMenuView } from '../../src/renderer/views/model-select-menu-view'
+import { PlanApproveMenuView } from '../../src/renderer/views/plan-approve-menu-view'
+import { RewindSelectMenuView } from '../../src/renderer/views/rewind-select-menu-view'
+import { SessionSelectMenuView } from '../../src/renderer/views/session-select-menu-view'
 import { SettingsMenuView } from '../../src/renderer/views/settings-menu-view'
 import { SkillsMenuView } from '../../src/renderer/views/skills-menu-view'
 import { TasksModeMenuView } from '../../src/renderer/views/tasks-mode-menu-view'
+import { ToolPermissionMenuView } from '../../src/renderer/views/tool-permission-menu-view'
+import { UsageSelectMenuView } from '../../src/renderer/views/usage-select-menu-view'
+import { THEME } from '../../src/theme'
 
 describe('Interactive Differential TUI Views (Renderer)', () => {
     describe('HeaderView', () => {
@@ -165,20 +180,172 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
     })
 
     describe('HelpMenuView', () => {
-        it('renders help title, commands, shortcuts, and footer', () => {
-            const buffer = new ScreenBuffer(60, 18)
+        it('computes correct fixed height matching compact card overlay', () => {
+            expect(HelpMenuView.getHeight()).toBe(13)
+        })
+
+        it('renders general tab with system information and tab bar', () => {
+            const buffer = new ScreenBuffer(70, 13)
             HelpMenuView.render(buffer, {
                 x: 0,
                 y: 0,
-                width: 60,
-                height: 18,
+                width: 70,
+                height: 13,
+                activeTab: 'general',
+                cliVersion: '0.4.15',
+                userEmail: 'dev@december.io',
+                activeModel: 'claude-3-7-sonnet',
+                modelLabel: 'Claude 3.7 Sonnet',
+                branch: 'feature/effort-help',
+                sessionId: 'sess-xyz-789',
             })
 
-            expect(buffer.getLine(0)).toContain('Help & Commands')
-            expect(buffer.getLine(2)).toContain('COMMANDS')
-            expect(buffer.getLine(3)).toContain('/model')
-            expect(buffer.getLine(10)).toContain('KEYBOARD SHORTCUTS')
-            expect(buffer.getLine(17)).toContain('Esc Close Help')
+            expect(buffer.getLine(0)).toContain('general')
+            expect(buffer.getLine(0)).toContain('commands')
+            expect(buffer.getLine(0)).toContain('shortcuts')
+            expect(buffer.getLine(2)).toContain('December is a')
+            expect(buffer.getLine(5)).toContain('0.4.15')
+            expect(buffer.getLine(6)).toContain('dev@december.io')
+            expect(buffer.getLine(7)).toContain('Claude 3.7 Sonnet')
+            expect(buffer.getLine(8)).toContain('feature/effort-help')
+            expect(buffer.getLine(10)).toContain('sess-xyz-789')
+            expect(buffer.getLine(12)).toContain('cycle tab')
+            expect(buffer.getLine(12)).toContain('esc dismiss')
+        })
+
+        it('renders commands tab with windowed commands list and pagination', () => {
+            const buffer = new ScreenBuffer(70, 13)
+            HelpMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 70,
+                height: 13,
+                activeTab: 'commands',
+                commands: [
+                    { name: 'clear', description: 'Clear conversation history' },
+                    { name: 'diff', description: 'View git diff and workspace changes' },
+                    { name: 'effort', description: 'Set model reasoning depth' },
+                    { name: 'help', description: 'Show interactive help menu' },
+                ],
+                cmdSelectedIndex: 1,
+                cmdWindowStart: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('commands')
+            expect(buffer.getLine(2)).toContain('/clear')
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('/diff')
+            expect(buffer.getLine(3)).toContain('View git diff')
+            expect(buffer.getLine(4)).toContain('/effort')
+            expect(buffer.getLine(12)).toContain('navigate')
+        })
+
+        it('renders shortcuts tab with keyboard shortcuts directory', () => {
+            const buffer = new ScreenBuffer(70, 13)
+            HelpMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 70,
+                height: 13,
+                activeTab: 'shortcuts',
+                shortcuts: [
+                    { key: 'ctrl+c', desc: 'Exit / Graceful interrupt' },
+                    { key: 'ctrl+t', desc: 'Tasks mode' },
+                    { key: 'esc', desc: 'Cancel / Return to bottom' },
+                ],
+                shortcutSelectedIndex: 0,
+                shortcutWindowStart: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('shortcuts')
+            expect(buffer.getLine(2)).toContain('ctrl+c')
+            expect(buffer.getLine(2)).toContain('Exit / Graceful interrupt')
+            expect(buffer.getLine(3)).toContain('ctrl+t')
+            expect(buffer.getLine(4)).toContain('esc')
+            expect(buffer.getLine(12)).toContain('navigate')
+        })
+    })
+
+    describe('EffortMenuView', () => {
+        it('renders reasoning depth options, selection indicator, active level, and footer', () => {
+            const buffer = new ScreenBuffer(70, 9)
+            EffortMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 70,
+                height: 9,
+                modelLabel: 'Claude 3.7 Sonnet',
+                currentLevel: 'medium',
+                selectedIndex: 3,
+            })
+
+            expect(buffer.getLine(0)).toContain('Reasoning')
+            expect(buffer.getLine(0)).toContain('Claude 3.7 Sonnet')
+            expect(buffer.getLine(2)).toContain('Auto')
+            expect(buffer.getLine(3)).toContain('Off')
+            expect(buffer.getLine(4)).toContain('Low')
+            expect(buffer.getLine(5)).toContain('❭')
+            expect(buffer.getLine(5)).toContain('Medium')
+            expect(buffer.getLine(5)).toContain('(Current)')
+            expect(buffer.getLine(6)).toContain('High')
+            expect(buffer.getLine(8)).toContain('navigate')
+            expect(buffer.getLine(8)).toContain('enter select')
+            expect(buffer.getLine(8)).toContain('esc close')
+        })
+
+        it('computes correct fixed height', () => {
+            expect(EffortMenuView.getHeight()).toBe(9)
+        })
+    })
+
+    describe('LoginMenuView', () => {
+        it('renders authentication options with selector and status', () => {
+            const buffer = new ScreenBuffer(70, 6)
+            LoginMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 70,
+                height: 6,
+                selectedIndex: 0,
+                userEmail: 'dev@december.io',
+                isAuthenticated: true,
+                authMethod: 'december',
+            })
+
+            expect(buffer.getLine(0)).toContain('Authentication')
+            expect(buffer.getLine(2)).toContain('❭')
+            expect(buffer.getLine(2)).toContain('Use your own Key or Subscription')
+            expect(buffer.getLine(3)).toContain('Login via December')
+            expect(buffer.getLine(3)).toContain('(Logged in as dev@december.io)')
+            expect(buffer.getLine(5)).toContain('navigate')
+            expect(buffer.getLine(5)).toContain('enter select')
+            expect(buffer.getLine(5)).toContain('esc close')
+        })
+
+        it('renders confirmation view when switching account', () => {
+            const buffer = new ScreenBuffer(70, 6)
+            LoginMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 70,
+                height: 6,
+                selectedIndex: 1,
+                confirmSwitch: true,
+                userEmail: 'dev@december.io',
+                isAuthenticated: true,
+            })
+
+            expect(buffer.getLine(0)).toContain('Switch Account')
+            expect(buffer.getLine(2)).toContain('Already logged in as dev@december.io')
+            expect(buffer.getLine(3)).toContain(
+                'Do you want to switch to a different account? (y/n)'
+            )
+            expect(buffer.getLine(5)).toContain('y confirm')
+            expect(buffer.getLine(5)).toContain('n / esc cancel')
+        })
+
+        it('computes correct fixed height', () => {
+            expect(LoginMenuView.getHeight()).toBe(6)
         })
     })
 
@@ -201,13 +368,13 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 isSearching: false,
             })
 
-            expect(buffer.getLine(0)).toContain('Select AI Model')
+            expect(buffer.getLine(0)).toContain('Models')
             expect(buffer.getLine(2)).toContain('Type / to filter models')
             expect(buffer.getLine(4)).toContain('❭')
             expect(buffer.getLine(4)).toContain('Claude 3.7 Sonnet')
             expect(buffer.getLine(5)).toContain('(●)')
             expect(buffer.getLine(5)).toContain('Claude 3.5 Sonnet')
-            expect(buffer.getLine(13)).toContain('Navigate')
+            expect(buffer.getLine(buffer.height - 1)).toContain('select')
         })
     })
 
@@ -234,11 +401,13 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 detailScrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Workspace Changes (1 changed files)')
-            expect(buffer.getLine(2)).toContain('M')
+            expect(buffer.getLine(0)).toContain('Workspace Changes')
+            expect(buffer.getLine(0)).toContain('1 file (+120 -15)')
+            expect(buffer.getLine(2)).toContain('❭')
             expect(buffer.getLine(2)).toContain('packages/tui/src/renderer/app.ts')
             expect(buffer.getLine(2)).toContain('+120')
             expect(buffer.getLine(2)).toContain('-15')
+            expect(buffer.get(2, 2)?.bg).toBeUndefined()
         })
 
         it('renders detailed diff lines with line numbers and syntax styling', () => {
@@ -289,7 +458,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 ],
             })
 
-            expect(buffer.getLine(0)).toContain('December Settings')
+            expect(buffer.getLine(0)).toContain('Settings')
             expect(buffer.getLine(2)).toContain('❭')
             expect(buffer.getLine(2)).toContain('Active Model')
             expect(buffer.getLine(2)).toContain('[Claude 3.5 Sonnet]')
@@ -312,10 +481,28 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 maxContextTokens: 200000,
             })
 
-            expect(buffer.getLine(0)).toContain('Context Window Usage')
-            expect(buffer.getLine(2)).toContain('Claude 3.5 Sonnet')
-            expect(buffer.getLine(3)).toContain('25k / 200k (12.5%)')
-            expect(buffer.getLine(5)).toContain('TOKEN BREAKDOWN')
+            expect(buffer.getLine(0)).toContain('Context · Claude 3.5 Sonnet')
+            expect(buffer.getLine(2)).toContain('██████')
+            expect(buffer.getLine(4)).toContain('Base System Prompt')
+            expect(buffer.getLine(4)).toContain('Tool Schemas')
+        })
+
+        it('renders wider progress bar scaling up to 88 columns in wide terminals', () => {
+            const buffer = new ScreenBuffer(100, 12)
+            ContextMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 100,
+                height: 12,
+                activeModel: 'claude-3-7-sonnet',
+                modelLabel: 'Claude 3.7 Sonnet',
+                contextTokens: 0,
+                maxContextTokens: 200000,
+            })
+
+            const barLine = buffer.getLine(2)
+            const emptyBlocksCount = (barLine.match(/░/g) || []).length
+            expect(emptyBlocksCount).toBe(88)
         })
     })
 
@@ -332,7 +519,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 skills: [{ name: 'tdd', description: 'Test driven development workflow' }],
             })
 
-            expect(buffer.getLine(0)).toContain('Installed Skills (1 available)')
+            expect(buffer.getLine(0)).toContain('Skills (1)')
             expect(buffer.getLine(2)).toContain('❭')
             expect(buffer.getLine(2)).toContain('tdd')
             expect(buffer.getLine(2)).toContain('Test driven development workflow')
@@ -359,7 +546,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 windowStart: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Background Tasks (1 total)')
+            expect(buffer.getLine(0)).toContain('Tasks (1 task)')
             expect(buffer.getLine(2)).toContain('[RUNNING]')
             expect(buffer.getLine(2)).toContain('bun test')
             expect(buffer.getLine(2)).toContain('4s')
@@ -412,6 +599,576 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
             const firstLine = buffer.getLine(0)
             expect(firstLine).toContain('Reading mode')
+        })
+    })
+
+    describe('CodeSearchMenuView', () => {
+        it('renders search results with selector, file:line, and content snippet', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            const results = [
+                { file: 'src/index.ts', line: 42, content: 'export const run = true' },
+                { file: 'src/config.ts', line: 12, content: 'const config = {}' },
+            ]
+
+            CodeSearchMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                query: 'config',
+                results,
+                selectedIndex: 0,
+                windowStart: 0,
+            })
+
+            const title = buffer.getLine(0)
+            const item0 = buffer.getLine(2)
+            const item1 = buffer.getLine(3)
+            const footer = buffer.getLine(9)
+
+            expect(title).toContain('Code Search')
+            expect(title).toContain('"config"')
+            expect(title).toContain('1/2')
+            expect(item0).toContain('❭')
+            expect(item0).toContain('src/index.ts:42')
+            expect(item0).toContain('export const run = true')
+            expect(buffer.get(2, 2)?.bg).toBeUndefined()
+            expect(item1).toContain('src/config.ts:12')
+            expect(buffer.get(2, 3)?.bg).toBeUndefined()
+            expect(footer).toContain('navigate')
+            expect(footer).toContain('view file')
+            expect(footer).toContain('insert @file:line')
+        })
+
+        it('renders empty workspace notice when no matches found', () => {
+            const buffer = new ScreenBuffer(60, 5)
+            CodeSearchMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 60,
+                height: 5,
+                query: 'unknown_xyz',
+                results: [],
+                selectedIndex: 0,
+                windowStart: 0,
+            })
+
+            expect(buffer.getLine(2)).toContain('No matches found in workspace.')
+        })
+    })
+
+    describe('BtwOverlayView', () => {
+        it('renders callout header, answer lines, and footer', () => {
+            const buffer = new ScreenBuffer(80, 6)
+            BtwOverlayView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                state: {
+                    question: 'what port is redis?',
+                    answer: 'Redis default port is 6379.',
+                    status: 'complete',
+                },
+                scrollOffset: 0,
+            })
+
+            const line0 = buffer.getLine(0)
+            const line1 = buffer.getLine(1)
+            const footer = buffer.getLine(2)
+
+            expect(line0).toContain('[btw]')
+            expect(line0).toContain('what port is redis?')
+            expect(line1).toContain('Redis default port is 6379.')
+            expect(footer).toContain('copy')
+            expect(footer).toContain('dismiss')
+        })
+
+        it('renders loading status correctly', () => {
+            const buffer = new ScreenBuffer(80, 4)
+            BtwOverlayView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                state: {
+                    question: 'cache query',
+                    answer: '',
+                    status: 'loading',
+                },
+                scrollOffset: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('[btw]')
+            expect(buffer.getLine(1)).toContain('Looking up cached context...')
+        })
+
+        it('renders expanded mode with collapse label and higher visible lines', () => {
+            const buffer = new ScreenBuffer(80, 18)
+            const answer = Array.from({ length: 12 }, (_, i) => `Point ${i + 1}`).join('\n')
+            BtwOverlayView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                state: {
+                    question: 'explain websockets in detail',
+                    answer,
+                    status: 'complete',
+                    isExpanded: true,
+                },
+                scrollOffset: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('[btw]')
+            expect(buffer.getLine(1)).toContain('Point 1')
+            expect(buffer.getLine(12)).toContain('Point 12')
+            const footer = buffer.getLine(13)
+            expect(footer).toContain('collapse')
+            expect(footer).toContain('copy')
+            expect(footer).toContain('dismiss')
+        })
+
+        it('renders 401 error state with structured helpful guidance', () => {
+            const buffer = new ScreenBuffer(80, 6)
+            BtwOverlayView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                state: {
+                    question: 'what are websockets',
+                    answer: '',
+                    status: 'error',
+                    error: '401 Incorrect API key provided: dummy-key.',
+                },
+                scrollOffset: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('[btw]')
+            expect(buffer.getLine(1)).toContain('Error: 401 Incorrect API key provided')
+            expect(buffer.getLine(2)).toContain('Authentication Failed: Invalid or missing API key')
+            expect(buffer.getLine(3)).toContain('Tip: Configure your key via /login')
+        })
+    })
+
+    describe('FileViewMenuView', () => {
+        it('renders file header, line numbers, cursor, and navigation footer', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            FileViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                filePath: 'src/main.ts',
+                lines: [
+                    'import { app } from "december"',
+                    'export function init() {',
+                    '  app.start()',
+                    '}',
+                ],
+                cursorLineIndex: 1,
+                scrollOffset: 0,
+                returnOverlay: 'codesearch',
+            })
+
+            expect(buffer.getLine(0)).toContain('src/main.ts')
+            expect(buffer.getLine(0)).toContain('4 lines')
+            expect(buffer.getLine(0)).toContain('line 2:1')
+            expect(buffer.getLine(2)).toContain('  1 ')
+            expect(buffer.getLine(2)).toContain('import { app } from "december"')
+            expect(buffer.get(2, 2)?.bg).toBeUndefined()
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('  2 ')
+            expect(buffer.getLine(3)).toContain('export function init() {')
+            expect(buffer.get(2, 3)?.bg).toBe(THEME.colors.codespanBg)
+            expect(buffer.getLine(buffer.height - 1)).toContain('insert @file:line')
+            expect(buffer.getLine(buffer.height - 1)).toContain('back')
+        })
+
+        it('renders error state when file cannot be loaded', () => {
+            const buffer = new ScreenBuffer(80, 6)
+            FileViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 6,
+                filePath: 'missing.ts',
+                lines: [],
+                cursorLineIndex: 0,
+                scrollOffset: 0,
+                error: 'ENOENT: no such file or directory',
+            })
+
+            expect(buffer.getLine(0)).toContain('missing.ts')
+            expect(buffer.getLine(2)).toContain('Error: ENOENT: no such file or directory')
+        })
+    })
+
+    describe('SessionSelectMenuView', () => {
+        it('renders session list with titles, relative time, and selector indicator', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            SessionSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                sessions: [
+                    {
+                        id: 'session-1',
+                        preview: 'Fix user authentication bug',
+                        updatedAt: Date.now() - 3600 * 1000,
+                    },
+                    {
+                        id: 'session-2',
+                        preview: 'Add payment integration with Stripe',
+                        updatedAt: Date.now() - 86400 * 1000,
+                    },
+                ],
+                selectedIndex: 0,
+                windowStart: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Session History')
+            expect(buffer.getLine(1)).toContain('Filter: [/ to search]')
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('Fix user authentication bug')
+            expect(buffer.getLine(3)).toContain('1h ago')
+            expect(buffer.getLine(4)).toContain('Add payment integration with Stripe')
+            expect(buffer.getLine(buffer.height - 1)).toContain('resume')
+            expect(buffer.getLine(buffer.height - 1)).toContain('rename')
+            expect(buffer.getLine(buffer.height - 1)).toContain('delete')
+        })
+
+        it('renders delete confirmation state', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            SessionSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                sessions: [
+                    {
+                        id: 'session-1',
+                        preview: 'Fix user authentication bug',
+                        updatedAt: Date.now(),
+                    },
+                ],
+                selectedIndex: 0,
+                windowStart: 0,
+                confirmDeleteId: 'session-1',
+            })
+
+            expect(buffer.getLine(3)).toContain('[Delete? y/n]')
+            expect(buffer.getLine(buffer.height - 1)).toContain('confirm delete')
+        })
+    })
+
+    describe('UsageSelectMenuView', () => {
+        it('renders daily sparkline bar chart and session statistics', () => {
+            const buffer = new ScreenBuffer(80, 16)
+            UsageSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                activeModel: 'claude-3-5-sonnet',
+                providerDisplayName: 'Anthropic',
+                sessionStats: {
+                    requests: 12,
+                    inputTokens: 45000,
+                    outputTokens: 12000,
+                    cacheReadTokens: 5000,
+                    totalTokens: 57000,
+                    cost: 0.155,
+                },
+                dailyUsage: [
+                    {
+                        date: '2026-11-01',
+                        dayName: 'Sun',
+                        formattedDate: 'Nov 1',
+                        tokens: 57000,
+                        isToday: true,
+                    },
+                    {
+                        date: '2026-10-31',
+                        dayName: 'Sat',
+                        formattedDate: 'Oct 31',
+                        tokens: 12000,
+                        isToday: false,
+                    },
+                ],
+            })
+
+            expect(buffer.getLine(0)).toContain('Token Usage & Cost Analysis')
+            expect(buffer.getLine(0)).toContain('claude-3-5-sonnet')
+            expect(buffer.getLine(2)).toContain('Daily Volume (Past 7 Days)')
+            expect(buffer.getLine(2)).toContain('Session Statistics')
+            expect(buffer.getLine(3)).toContain('Sun Nov 1')
+            expect(buffer.getLine(3)).toContain('Today')
+            expect(buffer.getLine(3)).toContain('· Requests:      12 requests')
+            expect(buffer.getLine(7)).toContain('Estimated Cost: $0.1550')
+            expect(buffer.getLine(buffer.height - 1)).toContain('billing portal')
+            expect(buffer.getLine(buffer.height - 1)).toContain('refresh')
+        })
+    })
+
+    describe('RewindSelectMenuView', () => {
+        it('renders turn snapshots with commit hash, touched files count, and prompt preview', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            RewindSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                turns: [
+                    {
+                        turnIndex: 3,
+                        commitHash: 'abcdef1234',
+                        prompt: 'Refactor TUI renderer',
+                        timestamp: Date.now() - 120000,
+                        touchedFiles: ['app.ts', 'screen.ts'],
+                    },
+                    {
+                        turnIndex: 2,
+                        commitHash: '1234567890',
+                        prompt: 'Add diff buffer',
+                        timestamp: Date.now() - 600000,
+                        touchedFiles: ['diff.ts'],
+                    },
+                ],
+                selectedIndex: 0,
+                windowStart: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Rewind Checkpoint / Turn Snapshot')
+            expect(buffer.getLine(3)).toContain('Turn 3')
+            expect(buffer.getLine(3)).toContain('abcdef1')
+            expect(buffer.getLine(3)).toContain('Refactor TUI renderer')
+            expect(buffer.getLine(3)).toContain('(2 files)')
+            expect(buffer.getLine(buffer.height - 1)).toContain('rewind to turn')
+        })
+    })
+
+    describe('AskQuestionMenuView', () => {
+        it('renders question, quick-select numbers, and highlighted option', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            AskQuestionMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                questions: [
+                    {
+                        question: 'Which database should we configure?',
+                        options: ['PostgreSQL', 'SQLite', 'Redis'],
+                    },
+                ],
+                currentQuestionIndex: 0,
+                selectedIndex: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Q1/1: Which database should we configure?')
+            expect(buffer.getLine(2)).toContain('❭')
+            expect(buffer.getLine(2)).toContain('(1) PostgreSQL')
+            expect(buffer.getLine(3)).toContain('(2) SQLite')
+            expect(buffer.getLine(4)).toContain('(3) Redis')
+            expect(buffer.getLine(buffer.height - 1)).toContain('quick select')
+        })
+
+        it('renders multi-select checkboxes', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            AskQuestionMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                questions: [
+                    {
+                        question: 'Select target platforms:',
+                        options: ['Web', 'CLI', 'Server'],
+                        is_multi_select: true,
+                    },
+                ],
+                currentQuestionIndex: 0,
+                selectedIndex: 1,
+                selectedMultiIndices: new Set([0, 1]),
+            })
+
+            expect(buffer.getLine(2)).toContain('[x] Web')
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('[x] CLI')
+            expect(buffer.getLine(4)).toContain('[ ] Server')
+            expect(buffer.getLine(buffer.height - 1)).toContain('toggle')
+        })
+    })
+
+    describe('ToolPermissionMenuView', () => {
+        it('renders tool summary, diff preview, and approval options', () => {
+            const buffer = new ScreenBuffer(80, 14)
+            ToolPermissionMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                toolName: 'run_command',
+                toolCommandOrTarget: 'git checkout -b feature/tui',
+                diffPreviewLines: ['+ added line 1', '- removed line 2'],
+                selectedIndex: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Tool Permission Required: run_command')
+            expect(buffer.getLine(1)).toContain('git checkout -b feature/tui')
+            expect(buffer.getLine(3)).toContain('+ added line 1')
+            expect(buffer.getLine(4)).toContain('- removed line 2')
+            expect(buffer.getLine(6)).toContain('❭')
+            expect(buffer.getLine(6)).toContain('[y] Approve once')
+            expect(buffer.getLine(7)).toContain('[a] Always allow in session')
+            expect(buffer.getLine(buffer.height - 1)).toContain('approve')
+            expect(buffer.getLine(buffer.height - 1)).toContain('deny')
+        })
+    })
+
+    describe('PlanApproveMenuView', () => {
+        it('renders plan summary, approve/refine/reject options, and navigation footer', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            PlanApproveMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                planSummary: '1. Remove Ink. 2. Implement 2D buffer views. 3. Delete React.',
+                selectedIndex: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('[PLAN] Architectural Plan Generated')
+            expect(buffer.getLine(1)).toContain(
+                '1. Remove Ink. 2. Implement 2D buffer views. 3. Delete React.'
+            )
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('[y] Approve & Execute')
+            expect(buffer.getLine(4)).toContain('[r] Refine Plan')
+            expect(buffer.getLine(buffer.height - 1)).toContain('approve')
+            expect(buffer.getLine(buffer.height - 1)).toContain('reject')
+        })
+    })
+
+    describe('FileAutocompleteMenuView', () => {
+        it('renders fuzzy matched files with directory prefix and match highlighting', () => {
+            const buffer = new ScreenBuffer(80, 8)
+            FileAutocompleteMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                files: [
+                    {
+                        path: 'src/renderer/app.ts',
+                        basename: 'app.ts',
+                        dir: 'src/renderer',
+                        extension: 'ts',
+                        score: 100,
+                        basenameIndices: [0],
+                    },
+                    {
+                        path: 'src/renderer/screen.ts',
+                        basename: 'screen.ts',
+                        dir: 'src/renderer',
+                        extension: 'ts',
+                        score: 80,
+                        basenameIndices: [],
+                    },
+                ],
+                selectedIndex: 0,
+                windowStart: 0,
+            })
+
+            expect(buffer.getLine(1)).toContain('❭')
+            expect(buffer.getLine(1)).toContain('src/renderer/')
+            expect(buffer.getLine(1)).toContain('app.ts')
+            expect(buffer.getLine(2)).toContain('screen.ts')
+        })
+    })
+
+    describe('MemoryViewMenuView', () => {
+        it('renders project rules vs memory tabs and document line numbers', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            MemoryViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                activeTab: 'rules',
+                documents: [
+                    {
+                        id: 'agents-md',
+                        title: 'Project Rules',
+                        filePath: 'AGENTS.md',
+                        content: '# AGENTS.md\nRule 1: No Ink\nRule 2: No React',
+                        isMemory: false,
+                    },
+                ],
+                activeDocIndex: 0,
+                cursorLineIndex: 0,
+                scrollOffset: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('[ Project Rules ]')
+            expect(buffer.getLine(0)).toContain('Memory Docs')
+            expect(buffer.getLine(1)).toContain('Project Rules · AGENTS.md')
+            expect(buffer.getLine(3)).toContain('1 │ # AGENTS.md')
+            expect(buffer.getLine(4)).toContain('2 │ Rule 1: No Ink')
+            expect(buffer.getLine(buffer.height - 1)).toContain('open in editor')
+            expect(buffer.getLine(buffer.height - 1)).toContain('reload')
+        })
+    })
+
+    describe('AuthMenuView', () => {
+        it('renders main auth menu with options', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'menu',
+                isAuthenticated: true,
+                userEmail: 'dev@trydecember.com',
+                authMethod: 'december',
+                menuSelectedIndex: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Authentication & Model Access')
+            expect(buffer.getLine(1)).toContain('Logged in as dev@trydecember.com')
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('Use your own Key or Subscription')
+            expect(buffer.getLine(4)).toContain('Login via December Account')
+        })
+
+        it('renders provider selection with search and active indicator', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'switch',
+                selectedProvider: 'anthropic',
+                providers: [
+                    { label: 'Anthropic', value: 'anthropic' },
+                    { label: 'OpenAI', value: 'openai' },
+                    { label: 'Google AI Studio', value: 'google' },
+                ],
+                providerSelectedIndex: 0,
+                providerWindowStart: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Switch Active Provider')
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('Anthropic (active)')
+            expect(buffer.getLine(4)).toContain('OpenAI')
+        })
+
+        it('renders masked API key input prompt', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'byok_key',
+                activeProviderName: 'Anthropic',
+                apiKeyInput: 'sk-ant-123456',
+                apiKeyMasked: true,
+            })
+
+            expect(buffer.getLine(0)).toContain('Enter API Key for Anthropic')
+            expect(buffer.getLine(3)).toContain('API Key: •••••••••••••█')
+            expect(buffer.getLine(buffer.height - 1)).toContain('save & test')
         })
     })
 })

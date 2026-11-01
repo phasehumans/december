@@ -4,8 +4,8 @@ import {
     formatProviderName,
     PROVIDER_KEY_URLS,
     PROVIDER_NAMES,
-} from '../../src/components/menus/byok-key-menu'
-import { PROVIDER_MENU_ITEMS } from '../../src/components/menus/byok-provider-menu'
+    PROVIDER_MENU_ITEMS,
+} from '../../src/constants/providers'
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
     it('ensures all BYOK providers have corresponding key URLs starting with https://', () => {

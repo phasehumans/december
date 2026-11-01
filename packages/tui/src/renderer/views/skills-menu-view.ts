@@ -1,7 +1,7 @@
 import { SkillDiscoveryEngine } from '@december/shared'
 
 import { THEME } from '../../theme'
-import { drawDivider, drawText } from '../ui'
+import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
@@ -37,6 +37,14 @@ export function loadWorkspaceSkills(workspaceDir: string = process.cwd()): Skill
 }
 
 export const SkillsMenuView = {
+    getHeight(skillsCount: number, windowSize = 5): number {
+        const count = skillsCount || 1
+        const visible = Math.min(windowSize, count)
+        const hasOverflow = count > windowSize
+        // Title (1) + Top Margin (1) + Skills (visible) + Overflow (0|1) + Bottom Margin (1) + Footer (1)
+        return 2 + visible + (hasOverflow ? 1 : 0) + 1 + 1
+    },
+
     render(buffer: ScreenBuffer, props: SkillsMenuViewProps): void {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
@@ -46,21 +54,12 @@ export const SkillsMenuView = {
         const skills =
             props.skills && props.skills.length > 0 ? props.skills : loadWorkspaceSkills()
 
-        drawText(buffer, `Installed Skills (${skills.length} available)`, {
+        drawText(buffer, `Skills (${skills.length})`, {
             x,
             y,
             style: { fg: THEME.colors.text, bold: true },
         })
-        y += 1
-
-        drawDivider(buffer, {
-            x: props.x ?? 0,
-            y,
-            width,
-            char: '─',
-            style: { fg: THEME.colors.border },
-        })
-        y += 1
+        y += 2 // Clean 1-row empty margin matching React/Ink marginBottom={1}
 
         if (skills.length === 0) {
             drawText(buffer, 'No skills discovered in workspace.', {
@@ -140,8 +139,8 @@ export const SkillsMenuView = {
             y: footerY,
             width,
             items: [
-                { key: '↑↓', label: 'Navigate' },
-                { key: 'Esc', label: 'Close' },
+                { key: '↑/↓', label: 'navigate' },
+                { key: 'esc', label: 'dismiss' },
             ],
         })
     },
