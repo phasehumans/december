@@ -1,9 +1,10 @@
 import { THEME } from '../../theme'
-import { drawText } from '../ui'
+import { groupCodeSearchResults } from '../../utils/code-search'
+import { drawHighlightedText, drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
-import type { CodeSearchResultItem } from '../../types'
+import type { CodeSearchGroupItem, CodeSearchResultItem } from '../../types'
 import type { ScreenBuffer } from '../buffer'
 
 export const CODE_SEARCH_WINDOW_SIZE = 6
@@ -15,6 +16,7 @@ export interface CodeSearchMenuViewProps {
     height: number
     query: string
     results: CodeSearchResultItem[]
+    groups?: CodeSearchGroupItem[]
     selectedIndex: number
     windowStart: number
     windowSize?: number
@@ -35,8 +37,9 @@ export const CodeSearchMenuView = {
         let y = props.y
         const width = props.width
         const windowSize = props.windowSize ?? CODE_SEARCH_WINDOW_SIZE
-        const results = props.results
-        const totalItems = results.length
+        const groups = props.groups || groupCodeSearchResults(props.results)
+        const totalFiles = groups.length
+        const totalMatches = groups.reduce((acc, g) => acc + g.matchCount, 0)
 
         // Header Title
         drawText(buffer, 'Code Search', {
@@ -46,7 +49,10 @@ export const CodeSearchMenuView = {
         })
 
         if (props.query) {
-            const queryLabel = ` · "${props.query}" (${totalItems} match${totalItems === 1 ? '' : 'es'})`
+            const queryLabel =
+                totalFiles > 1 && totalMatches !== totalFiles
+                    ? ` · "${props.query}" (${totalMatches} matches in ${totalFiles} files)`
+                    : ` · "${props.query}" (${totalMatches} match${totalMatches === 1 ? '' : 'es'})`
             drawText(buffer, queryLabel, {
                 x: x + 11,
                 y,
@@ -54,8 +60,8 @@ export const CodeSearchMenuView = {
             })
         }
 
-        if (totalItems > 0) {
-            const countLabel = `${props.selectedIndex + 1}/${totalItems}`
+        if (totalFiles > 0) {
+            const countLabel = `${props.selectedIndex + 1}/${totalFiles}`
             const countX = Math.max(x + 40, width - countLabel.length - 4)
             drawText(buffer, countLabel, {
                 x: countX,
@@ -65,7 +71,7 @@ export const CodeSearchMenuView = {
         }
         y += 2 // Clean 1 empty line spacing matching React/Ink marginBottom={1}
 
-        if (totalItems === 0) {
+        if (totalFiles === 0) {
             drawText(buffer, 'No matches found in workspace.', {
                 x: x + 2,
                 y,
@@ -73,13 +79,13 @@ export const CodeSearchMenuView = {
             })
             y += 1
         } else {
-            const fileColWidth = Math.min(36, Math.max(24, Math.floor(width * 0.35)))
-            const windowEnd = Math.min(props.windowStart + windowSize, totalItems)
-            const visibleItems = results.slice(props.windowStart, windowEnd)
+            const fileColWidth = Math.min(38, Math.max(24, Math.floor(width * 0.35)))
+            const windowEnd = Math.min(props.windowStart + windowSize, totalFiles)
+            const visibleGroups = groups.slice(props.windowStart, windowEnd)
 
-            for (let i = 0; i < visibleItems.length; i++) {
-                const item = visibleItems[i]
-                if (!item) continue
+            for (let i = 0; i < visibleGroups.length; i++) {
+                const group = visibleGroups[i]
+                if (!group) continue
                 const absIdx = props.windowStart + i
                 const isSelected = absIdx === props.selectedIndex
                 const rowY = y + i
@@ -95,8 +101,12 @@ export const CodeSearchMenuView = {
                     },
                 })
 
-                // File and line
-                const fileStr = `${item.file}:${item.line}`
+                // File and match count (or file:line if 1 match)
+                const fileStr =
+                    group.matchCount > 1
+                        ? `${group.file} (${group.matchCount} matches)`
+                        : `${group.file}:${group.firstLine}`
+
                 drawText(buffer, fileStr, {
                     x: x + 2,
                     y: rowY,
@@ -107,25 +117,29 @@ export const CodeSearchMenuView = {
                     },
                 })
 
-                // Content snippet in readable white text
+                // Content snippet with search query highlighted
                 const snippetX = x + fileColWidth + 3
                 const snippetMaxW = Math.max(10, width - snippetX - 2)
-                drawText(buffer, item.content.trim(), {
+                drawHighlightedText(buffer, group.firstSnippet.trim(), props.query, {
                     x: snippetX,
                     y: rowY,
                     maxWidth: snippetMaxW,
-                    style: {
+                    normalStyle: {
                         fg: THEME.colors.text,
                         bold: isSelected,
                     },
+                    highlightStyle: {
+                        fg: THEME.colors.warning,
+                        bold: true,
+                    },
                 })
             }
-            y += visibleItems.length
+            y += visibleGroups.length
 
             // Overflow Indicator
             const itemsAbove = props.windowStart
-            const itemsBelow = totalItems - windowEnd
-            if (totalItems > windowSize) {
+            const itemsBelow = totalFiles - windowEnd
+            if (totalFiles > windowSize) {
                 let overflowText = ''
                 if (itemsAbove > 0 && itemsBelow > 0) {
                     overflowText = `↑ ${itemsAbove} more · ↓ ${itemsBelow} more`
@@ -148,7 +162,7 @@ export const CodeSearchMenuView = {
         // Branded Footer Navigation
         const footerY = props.y + props.height - 1
         const footerItems =
-            totalItems > 0
+            totalFiles > 0
                 ? [
                       { key: '↑/↓', label: 'navigate' },
                       { key: 'enter', label: 'view file' },

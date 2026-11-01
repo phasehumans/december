@@ -288,11 +288,30 @@ export function parseUnifiedDiffToRows(
     return { rows, totalChanges, changeIndices, changeBlocks }
 }
 
+async function collectDirectoryFiles(dir: string, baseDir: string): Promise<string[]> {
+    const files: string[] = []
+    try {
+        const entries = await fs.readdir(dir, { withFileTypes: true })
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name)
+            if (entry.isDirectory()) {
+                const subFiles = await collectDirectoryFiles(fullPath, baseDir)
+                files.push(...subFiles)
+            } else if (entry.isFile()) {
+                files.push(path.relative(baseDir, fullPath))
+            }
+        }
+    } catch {
+        // Intentionally swallowed: ignore unreadable directory entries
+    }
+    return files
+}
+
 export async function fetchGitStatusFiles(
     workspaceDir: string = process.cwd()
 ): Promise<DiffFileEntry[]> {
     try {
-        const { stdout: statusOut } = await execAsync('git status --porcelain', {
+        const { stdout: statusOut } = await execAsync('git status --porcelain -uall', {
             cwd: workspaceDir,
             timeout: 5000,
         })
@@ -419,69 +438,86 @@ export async function fetchGitStatusFiles(
             const cleanPath = rawFilePath.replace(/^"|"$/g, '').trim()
             if (!cleanPath) continue
 
-            let status: DiffFileEntry['status'] = 'modified'
-            if (code === '??') {
-                status = 'untracked'
-            } else if (code.includes('A')) {
-                status = 'added'
-            } else if (code.includes('D')) {
-                status = 'deleted'
-            }
-
-            let fileDiff = diffBlocksByFile[cleanPath] || ''
-            let additions = numstatMap[cleanPath]?.additions || 0
-            let deletions = numstatMap[cleanPath]?.deletions || 0
-
-            // If untracked, generate synthetic diff from file content
-            if (status === 'untracked') {
-                try {
-                    const absPath = path.resolve(workspaceDir, cleanPath)
-                    const content = await fs.readFile(absPath, 'utf8')
-                    const contentLines = content.split('\n')
-                    additions = contentLines.length
-                    deletions = 0
-                    fileDiff = [
-                        `--- /dev/null`,
-                        `+++ b/${cleanPath}`,
-                        `@@ -0,0 +1,${contentLines.length} @@`,
-                        ...contentLines.map((l) => `+${l}`),
-                    ].join('\n')
-                } catch {
-                    // Intentionally swallowed: unreadable untracked file fallback
-                    fileDiff = `--- /dev/null\n+++ b/${cleanPath}\n@@ -0,0 +1,1 @@\n+[untracked file]`
-                    additions = 1
+            // If path is a directory, expand all files inside it
+            const absCandidate = path.resolve(workspaceDir, cleanPath)
+            let pathsToProcess = [cleanPath]
+            try {
+                const stat = await fs.stat(absCandidate)
+                if (stat.isDirectory()) {
+                    const expanded = await collectDirectoryFiles(absCandidate, workspaceDir)
+                    if (expanded.length > 0) {
+                        pathsToProcess = expanded
+                    }
                 }
-            } else if (!fileDiff) {
-                // If tracked but diff not found in block, run targeted git diff
-                try {
-                    const { stdout: singleDiff } = await execAsync(
-                        `git diff HEAD -- "${cleanPath}"`,
-                        {
-                            cwd: workspaceDir,
-                            timeout: 3000,
-                        }
-                    )
-                    fileDiff = singleDiff.trim()
-                } catch {
-                    // Intentionally swallowed: fallback to generic git diff
+            } catch {
+                // Intentionally swallowed: candidate is not an accessible directory
+            }
+
+            for (const singlePath of pathsToProcess) {
+                let status: DiffFileEntry['status'] = 'modified'
+                if (code === '??') {
+                    status = 'untracked'
+                } else if (code.includes('A')) {
+                    status = 'added'
+                } else if (code.includes('D')) {
+                    status = 'deleted'
                 }
-            }
 
-            // Fallback addition/deletion counting from diff text if numstat was 0
-            if (additions === 0 && deletions === 0 && fileDiff) {
-                const addMatches = fileDiff.match(/^\+[^+]/gm)
-                const delMatches = fileDiff.match(/^-[^-]/gm)
-                additions = addMatches ? addMatches.length : 0
-                deletions = delMatches ? delMatches.length : 0
-            }
+                let fileDiff = diffBlocksByFile[singlePath] || ''
+                let additions = numstatMap[singlePath]?.additions || 0
+                let deletions = numstatMap[singlePath]?.deletions || 0
 
-            results.push({
-                path: cleanPath,
-                additions,
-                deletions,
-                status,
-                diff: fileDiff,
-            })
+                // If untracked or added without an existing diff, generate synthetic diff from file content
+                if ((status === 'untracked' || status === 'added') && !fileDiff) {
+                    try {
+                        const absPath = path.resolve(workspaceDir, singlePath)
+                        const content = await fs.readFile(absPath, 'utf8')
+                        const contentLines = content.split(/\r?\n/)
+                        additions = contentLines.length
+                        deletions = 0
+                        fileDiff = [
+                            `--- /dev/null`,
+                            `+++ b/${singlePath}`,
+                            `@@ -0,0 +1,${contentLines.length} @@`,
+                            ...contentLines.map((l) => `+${l}`),
+                        ].join('\n')
+                    } catch {
+                        // Intentionally swallowed: unreadable file fallback
+                        fileDiff = `--- /dev/null\n+++ b/${singlePath}\n@@ -0,0 +1,1 @@\n+[untracked file]`
+                        additions = 1
+                    }
+                } else if (!fileDiff) {
+                    // If tracked but diff not found in block, run targeted git diff
+                    try {
+                        const { stdout: singleDiff } = await execAsync(
+                            `git diff HEAD -- "${singlePath}"`,
+                            {
+                                cwd: workspaceDir,
+                                timeout: 3000,
+                            }
+                        )
+                        fileDiff = singleDiff.trim()
+                    } catch {
+                        // Intentionally swallowed: fallback to generic git diff
+                    }
+                }
+
+                // Fallback addition/deletion counting from diff text if numstat was 0
+                if (additions === 0 && deletions === 0 && fileDiff) {
+                    const addMatches = fileDiff.match(/^\+[^+]/gm)
+                    const delMatches = fileDiff.match(/^-[^-]/gm)
+                    additions = addMatches ? addMatches.length : 0
+                    deletions = delMatches ? delMatches.length : 0
+                }
+
+                results.push({
+                    path: singlePath,
+                    additions,
+                    deletions,
+                    status,
+                    diff: fileDiff,
+                })
+            }
         }
 
         return results

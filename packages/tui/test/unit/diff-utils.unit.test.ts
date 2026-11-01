@@ -97,6 +97,19 @@ describe('Diff Utils (TDD)', () => {
         for (const f of files) {
             expect(f.path).not.toMatch(/^ackages\//)
             expect(f.path.length).toBeGreaterThan(0)
+            expect(f.path.endsWith('/')).toBe(false)
+        }
+    })
+
+    it('generates synthetic diffs for newly created untracked files with valid addition counts', async () => {
+        const { fetchGitStatusFiles } = await import('../../src/utils/diff')
+        const files = await fetchGitStatusFiles()
+        const untrackedFiles = files.filter((f) => f.status === 'untracked')
+        for (const f of untrackedFiles) {
+            expect(f.diff).toContain('--- /dev/null')
+            expect(f.diff).toContain(`+++ b/${f.path}`)
+            expect(f.additions).toBeGreaterThanOrEqual(1)
+            expect(f.deletions).toBe(0)
         }
     })
 })

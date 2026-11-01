@@ -43,13 +43,13 @@ export const ModelSelectMenuView = {
         const count = modelsCount || 1
         const visible = Math.min(windowSize, count)
         const hasOverflow = count > windowSize
-        // Title (1) + Margin (1) + Search (1) + Margin (1) + Visible + Overflow (0|1) + Margin (1) + Footer (1)
-        return 4 + visible + (hasOverflow ? 1 : 0) + 1 + 1
+        // Title (1) + Search (1) + Gap (1) + Visible + Overflow (0|1) + Gap (1) + Footer (1)
+        return 3 + visible + (hasOverflow ? 1 : 0) + 2
     },
 
     getFilteredModels(models: ModelItem[], query: string): ModelItem[] {
         if (!query.trim()) return models
-        const q = query.toLowerCase()
+        const q = query.toLowerCase().trim()
         return models.filter(
             (m) => m.label.toLowerCase().includes(q) || m.value.toLowerCase().includes(q)
         )
@@ -58,7 +58,10 @@ export const ModelSelectMenuView = {
     render(buffer: ScreenBuffer, props: ModelSelectMenuViewProps): void {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
-        const width = props.width
+        const width = Math.max(
+            20,
+            props.width - (THEME.padding.paddingLeft ?? 2) - (THEME.padding.paddingRight ?? 2)
+        )
         const windowSize = MODEL_WINDOW_SIZE
 
         // Title
@@ -67,21 +70,24 @@ export const ModelSelectMenuView = {
             y,
             style: { fg: THEME.colors.text, bold: true },
         })
-        y += 2 // Clean 1-row empty margin matching React/Ink marginBottom={1}
+        y += 1
 
-        // Search row
-        const searchPrompt = props.isSearching
-            ? `Search: ${props.searchQuery}█`
-            : props.searchQuery
-              ? `Filter: ${props.searchQuery} (press / to edit)`
-              : `Type / to filter models`
-        drawText(buffer, searchPrompt, {
+        // Search row matching React + Ink style
+        const searchLabel = 'Search: '
+        drawText(buffer, searchLabel, {
             x,
             y,
-            style: {
-                fg: props.isSearching ? THEME.colors.brand : THEME.colors.muted,
-                italic: !props.isSearching,
-            },
+            style: { fg: props.isSearching ? THEME.colors.brand : THEME.colors.muted },
+        })
+        const searchHint = props.isSearching
+            ? `${props.searchQuery}█`
+            : props.searchQuery
+              ? `${props.searchQuery} [/ to filter]`
+              : '[/ to filter]'
+        drawText(buffer, searchHint, {
+            x: x + searchLabel.length,
+            y,
+            style: { fg: props.searchQuery ? THEME.colors.brand : THEME.colors.dim },
         })
         y += 2
 
@@ -89,7 +95,7 @@ export const ModelSelectMenuView = {
         const filtered = ModelSelectMenuView.getFilteredModels(models, props.searchQuery)
 
         if (filtered.length === 0) {
-            drawText(buffer, 'No matching models found.', {
+            drawText(buffer, '  No models found.', {
                 x,
                 y,
                 style: { fg: THEME.colors.muted },
@@ -107,9 +113,7 @@ export const ModelSelectMenuView = {
                 const absIdx = windowStart + i
                 const isSelected = absIdx === props.selectedIndex
                 const isActive =
-                    props.activeModel === item.value ||
-                    props.activeModel === item.label ||
-                    (props.activeModel && item.value.includes(props.activeModel))
+                    props.activeModel === item.value || props.activeModel === item.label
                 const rowY = y + i
 
                 // Selector indicator
@@ -120,38 +124,30 @@ export const ModelSelectMenuView = {
                     style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted },
                 })
 
-                // Radio active dot
-                const radio = isActive ? '(●) ' : '( ) '
-                drawText(buffer, radio, {
+                // Model label
+                drawText(buffer, item.label, {
                     x: x + 2,
                     y: rowY,
+                    maxWidth: width - 4,
                     style: {
                         fg: isActive
-                            ? THEME.colors.brand
+                            ? THEME.colors.success
                             : isSelected
-                              ? THEME.colors.muted
-                              : THEME.colors.subtle,
+                              ? THEME.colors.brand
+                              : THEME.colors.text,
+                        bold: isSelected || isActive,
                     },
                 })
 
-                // Label
-                drawText(buffer, item.label, {
-                    x: x + 6,
-                    y: rowY,
-                    maxWidth: 24,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
-                })
-
-                // Model ID
-                drawText(buffer, item.value, {
-                    x: x + 32,
-                    y: rowY,
-                    maxWidth: Math.max(10, width - x - 34),
-                    style: { fg: THEME.colors.subtle },
-                })
+                // Active badge
+                if (isActive) {
+                    const labelEnd = x + 2 + item.label.length
+                    drawText(buffer, ' (active)', {
+                        x: labelEnd,
+                        y: rowY,
+                        style: { fg: THEME.colors.success },
+                    })
+                }
             }
 
             // Pagination overflow
@@ -177,7 +173,7 @@ export const ModelSelectMenuView = {
         }
 
         // Footer at bottom of viewport
-        const footerY = props.y + props.height - 1
+        const footerY = (props.y ?? 0) + (props.height ?? this.getHeight(filtered.length)) - 1
         const footerItems = props.isSearching
             ? [
                   { key: 'enter / ↓', label: 'focus list' },
@@ -187,13 +183,13 @@ export const ModelSelectMenuView = {
                   { key: '↑/↓', label: 'navigate' },
                   { key: 'enter', label: 'select' },
                   { key: '/', label: 'search' },
-                  { key: 'esc', label: 'dismiss' },
+                  { key: 'esc', label: 'close' },
               ]
 
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,
             y: footerY,
-            width,
+            width: props.width,
             items: footerItems,
         })
     },

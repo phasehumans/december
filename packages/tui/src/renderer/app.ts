@@ -1,9 +1,26 @@
 import { exec } from 'node:child_process'
+import * as fs from 'node:fs'
 import * as os from 'node:os'
+import * as path from 'node:path'
+
+import { PROVIDER_BILLING_LINKS } from '@december/shared'
 
 import { getAllAvailableCommands } from '../commands/filter-commands'
+import {
+    UNIFIED_PROVIDER_MENU_ITEMS,
+    SUBSCRIPTION_PROVIDER_ITEMS,
+    BYOK_PROVIDER_ITEMS,
+    PROVIDER_KEY_URLS,
+    PROVIDER_KEY_NOTES,
+    formatProviderName,
+} from '../constants/providers'
 import { writeToClipboard } from '../utils/clipboard'
-import { searchWorkspaceCode, type CodeSearchResultItem } from '../utils/code-search'
+import {
+    groupCodeSearchResults,
+    searchWorkspaceCode,
+    type CodeSearchGroupItem,
+    type CodeSearchResultItem,
+} from '../utils/code-search'
 import {
     fetchGitStatusFiles,
     type DiffFileEntry,
@@ -41,8 +58,11 @@ import { InputBarView } from './views/input-bar-view'
 import { LoginMenuView, LOGIN_OPTIONS } from './views/login-menu-view'
 import {
     MemoryViewMenuView,
+    MEMORY_CATEGORIES,
     type MemoryTab,
     type MemoryDocument,
+    type MemoryDetailsProps,
+    type RuleFileViewItem,
 } from './views/memory-view-menu-view'
 import { MessageListView, type MessageItem } from './views/message-list-view'
 import {
@@ -64,6 +84,7 @@ import {
 } from './views/session-select-menu-view'
 import { SettingsMenuView, type SettingItem } from './views/settings-menu-view'
 import { SkillsMenuView, loadWorkspaceSkills, type SkillItem } from './views/skills-menu-view'
+import { SwitchSelectMenuView, type SwitchItem } from './views/switch-select-menu-view'
 import { TasksModeMenuView, type TaskItem } from './views/tasks-mode-menu-view'
 import {
     ToolPermissionMenuView,
@@ -71,8 +92,10 @@ import {
 } from './views/tool-permission-menu-view'
 import {
     UsageSelectMenuView,
+    calculateUsageCost,
     type UsageStats,
     type DailyUsageEntry,
+    type WeeklyStats,
 } from './views/usage-select-menu-view'
 
 import type { DifferentialScreenOptions } from './types'
@@ -100,6 +123,7 @@ export type OverlayType =
     | 'tool_permission'
     | 'plan_approve'
     | 'auth'
+    | 'switch'
 
 export interface DifferentialAppState {
     input: string
@@ -119,6 +143,8 @@ export interface DifferentialAppState {
     maxContextTokens?: number
     cliVersion?: string
     userEmail?: string
+    decemberEmail?: string
+    hasDecember?: boolean
     cwd?: string
     branch?: string
     latestVersion?: string
@@ -160,10 +186,20 @@ export interface DifferentialAppState {
     skillsSelectedIndex: number
     skillsWindowStart: number
     skills: SkillItem[]
+    skillsSearchQuery: string
+    skillsIsSearching: boolean
+    skillsIsDetailView: boolean
+    skillsDetailContent: string | null
+    skillsDetailLines: string[]
+    skillsDetailLoading: boolean
+    skillsDetailError: string | null
+    skillsCursorLine: number
+    skillsScrollOffset: number
 
     // Code search state
     codeSearchQuery: string
     codeSearchResults: CodeSearchResultItem[]
+    codeSearchGroups: CodeSearchGroupItem[]
     codeSearchSelectedIndex: number
     codeSearchWindowStart: number
 
@@ -175,6 +211,9 @@ export interface DifferentialAppState {
     fileViewIsLoading: boolean
     fileViewError: string | null
     fileViewReturnOverlay: OverlayType
+    fileViewSearchQuery?: string
+    fileViewMatchLines?: number[]
+    fileViewCurrentMatchIndex?: number
 
     // Btw side question state
     btwState: BtwState | null
@@ -208,14 +247,24 @@ export interface DifferentialAppState {
     // Usage view state
     usageStats: UsageStats
     dailyUsage: DailyUsageEntry[]
+    weeklyStats?: WeeklyStats
     balance?: { supported: boolean; balance?: string; currency?: string; error?: string }
 
     // Memory view state
     memoryTab: MemoryTab
+    memoryInitialTab: MemoryTab
+    memoryReturnOverlay: OverlayType
     memoryDocuments: MemoryDocument[]
+    workspaceMemoryDetails: MemoryDetailsProps | null
+    memoryRuleFiles: RuleFileViewItem[]
     memoryActiveDocIndex: number
     memoryCursorLine: number
     memoryScrollOffset: number
+    memoryRuleScrollOffset: number
+    memorySelectedIndex: number
+    isAddingMemory: boolean
+    memoryNewEntryText: string
+    memoryNewEntryCategoryIndex: number
     memoryIsLoading: boolean
 
     // Rewind view state
@@ -255,12 +304,19 @@ export interface DifferentialAppState {
     authApiKeyInput: string
     authKeyError: string | null
     authMenuSelectedIndex: number
+    authConfirmDeleteValue: string | null
+    authConfirmTarget: { label: string; value: string; account?: string } | null
 
     // File autocomplete dropup state
     fileAutocompleteItems: ScoredFile[]
     fileAutocompleteSelectedIndex: number
     fileAutocompleteWindowStart: number
     isFileAutocompleteVisible: boolean
+
+    // Switch view state
+    switchItems: SwitchItem[]
+    switchSelectedIndex: number
+    switchConfirmDeleteValue: string | null
 
     sessionId?: string
     configPath?: string
@@ -275,6 +331,8 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     selectedProvider?: string
     isAuthenticated?: boolean
     userEmail?: string
+    decemberEmail?: string
+    hasDecember?: boolean
     cwd?: string
     branch?: string
     contextTokens?: number
@@ -289,12 +347,16 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     onSubmit?: (prompt: string) => void
     onExit?: () => void
     onModelSelect?: (model: ModelItem) => void
+    getProviderModels?: (provider: string) => ModelItem[]
     onEffortSelect?: (level: ReasoningLevel) => void
     onLogin?: (
         onCode: (code: string, url: string) => void,
         signal?: AbortSignal
     ) => Promise<{ token: string; email: string | null }>
-    onSubscriptionLogin?: (provider: string) => Promise<void>
+    onSubscriptionLogin?: (
+        provider: string,
+        onCode?: (code: string, url: string) => void
+    ) => Promise<any>
     onCodeSearch?: (query: string) => Promise<CodeSearchResultItem[]>
     onOpenCodeSearchResult?: (item: CodeSearchResultItem) => void
     onInsertContext?: (file: string, line?: number) => void
@@ -318,9 +380,24 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     dailyUsage?: DailyUsageEntry[]
     rewindTurns?: RewindTurnEntry[]
     memoryDocuments?: MemoryDocument[]
+    onLoadMemoryDetails?: () => Promise<MemoryDetailsProps | null>
+    onLoadProjectRules?: () => Promise<RuleFileViewItem[]>
+    onRecordMemory?: (
+        text: string,
+        category: string
+    ) => Promise<{ success: boolean; message: string }>
+    onForgetMemory?: (text: string) => Promise<{ success: boolean; message: string }>
+    onScaffoldRules?: () => Promise<{ success: boolean; message: string }>
+    onOpenEditor?: (filePath: string) => Promise<void>
     workspaceFiles?: string[]
     recentFiles?: Set<string>
     onSaveApiKey?: (provider: string, apiKey: string) => Promise<void> | void
+    switchItems?: SwitchItem[]
+    onSwitchSelect?: (value: string) => Promise<void> | void
+    onDeleteProvider?: (value: string) => Promise<void> | void
+    onExecuteDirectCommand?: (command: string) => Promise<void> | void
+    onUndo?: () => Promise<void> | void
+    authRequiredNotice?: string
 }
 
 export function openBrowserUrl(url: string): void {
@@ -361,6 +438,7 @@ export class DifferentialApp {
     readonly screen: DifferentialScreen
     readonly terminal: TerminalController
     readonly state: DifferentialAppState
+    private options?: DifferentialAppOptions
     private isRunning = false
     private stdinListener?: (chunk: Buffer | string) => void
     private maxScroll = 0
@@ -369,6 +447,7 @@ export class DifferentialApp {
     private onSubmitCallback?: (prompt: string) => void
     private onExitCallback?: () => void
     private onModelSelectCallback?: (model: ModelItem) => void
+    private getProviderModelsCallback?: (provider: string) => ModelItem[]
     private onCodeSearchCallback?: (query: string) => Promise<CodeSearchResultItem[]>
     private onOpenCodeSearchResultCallback?: (item: CodeSearchResultItem) => void
     private onInsertContextCallback?: (file: string, line?: number) => void
@@ -377,7 +456,12 @@ export class DifferentialApp {
         onCode: (code: string, url: string) => void,
         signal?: AbortSignal
     ) => Promise<{ token: string; email: string | null }>
-    private onSubscriptionLoginCallback?: (provider: string) => Promise<void>
+    private onSubscriptionLoginCallback?: (
+        provider: string,
+        onCode?: (code: string, url: string) => void
+    ) => Promise<any>
+    private onSwitchSelectCallback?: (value: string) => Promise<void> | void
+    private onDeleteProviderCallback?: (value: string) => Promise<void> | void
     private onSessionSelectCallback?: (sessionId: string) => Promise<void> | void
     private onSessionDeleteCallback?: (sessionId: string) => Promise<void> | void
     private onSessionRenameCallback?: (sessionId: string, newName: string) => Promise<void> | void
@@ -388,6 +472,8 @@ export class DifferentialApp {
     readonly workspaceFiles: string[] = []
     readonly recentFiles: Set<string> = new Set<string>()
     private onSaveApiKeyCallback?: (provider: string, apiKey: string) => Promise<void> | void
+    private onOpenEditorCallback?: (filePath: string) => Promise<void> | void
+    private isLoadingWorkspaceFiles = false
     private pendingQuestionAnswers: Record<string, string | string[]> = {}
     private pendingQuestionResolver?: (answers: Record<string, string | string[]>) => void
     private pendingToolPermissionResolver?: (
@@ -405,6 +491,9 @@ export class DifferentialApp {
             onError: (err: any) => void
         }
     ) => void
+    private onExecuteDirectCommandCallback?: (command: string) => Promise<void> | void
+    private onUndoCallback?: () => Promise<void> | void
+    private authRequiredNotice?: string
 
     constructor(options?: DifferentialAppOptions) {
         this.terminal = options?.terminal ?? new TerminalController()
@@ -415,12 +504,16 @@ export class DifferentialApp {
             synchronized: options?.synchronized,
         })
 
+        this.options = options
         this.onSubmitCallback = options?.onSubmit
         this.onExitCallback = options?.onExit
         this.onModelSelectCallback = options?.onModelSelect
+        this.getProviderModelsCallback = options?.getProviderModels
         this.onEffortSelectCallback = options?.onEffortSelect
         this.onLoginCallback = options?.onLogin
         this.onSubscriptionLoginCallback = options?.onSubscriptionLogin
+        this.onSwitchSelectCallback = options?.onSwitchSelect
+        this.onDeleteProviderCallback = options?.onDeleteProvider
         this.onCodeSearchCallback = options?.onCodeSearch
         this.onOpenCodeSearchResultCallback = options?.onOpenCodeSearchResult
         this.onInsertContextCallback = options?.onInsertContext
@@ -432,6 +525,10 @@ export class DifferentialApp {
         this.onOpenBillingPortalCallback = options?.onOpenBillingPortal
         this.sessionRepository = options?.sessionRepository
         this.onSaveApiKeyCallback = options?.onSaveApiKey
+        this.onOpenEditorCallback = options?.onOpenEditor
+        this.onExecuteDirectCommandCallback = options?.onExecuteDirectCommand
+        this.onUndoCallback = options?.onUndo
+        this.authRequiredNotice = options?.authRequiredNotice
         this.workspaceFiles = options?.workspaceFiles ? [...options.workspaceFiles] : []
         this.recentFiles = options?.recentFiles ? new Set(options.recentFiles) : new Set<string>()
 
@@ -454,6 +551,8 @@ export class DifferentialApp {
             selectedProvider: options?.selectedProvider,
             isAuthenticated: options?.isAuthenticated ?? true,
             userEmail: options?.userEmail,
+            decemberEmail: options?.decemberEmail,
+            hasDecember: options?.hasDecember,
             cwd: options?.cwd,
             branch: options?.branch,
             contextTokens: options?.contextTokens || 0,
@@ -495,11 +594,20 @@ export class DifferentialApp {
             dailyUsage: options?.dailyUsage || [],
 
             // Memory view state
-            memoryTab: 'rules',
+            memoryTab: 'memory',
+            memoryInitialTab: 'memory',
+            memoryReturnOverlay: 'none',
             memoryDocuments: options?.memoryDocuments || [],
+            workspaceMemoryDetails: null,
+            memoryRuleFiles: [],
             memoryActiveDocIndex: 0,
             memoryCursorLine: 0,
             memoryScrollOffset: 0,
+            memoryRuleScrollOffset: 0,
+            memorySelectedIndex: 0,
+            isAddingMemory: false,
+            memoryNewEntryText: '',
+            memoryNewEntryCategoryIndex: 0,
             memoryIsLoading: false,
 
             // Rewind view state
@@ -523,7 +631,7 @@ export class DifferentialApp {
 
             // Auth view state
             authViewMode: 'menu',
-            authProviders: [],
+            authProviders: BYOK_PROVIDER_ITEMS,
             authProviderSelectedIndex: 0,
             authProviderWindowStart: 0,
             authProviderSearchQuery: '',
@@ -531,6 +639,8 @@ export class DifferentialApp {
             authApiKeyInput: '',
             authKeyError: null,
             authMenuSelectedIndex: 0,
+            authConfirmDeleteValue: null,
+            authConfirmTarget: null,
 
             // File autocomplete dropup state
             fileAutocompleteItems: [],
@@ -568,9 +678,19 @@ export class DifferentialApp {
             skillsSelectedIndex: 0,
             skillsWindowStart: 0,
             skills: options?.skills || loadWorkspaceSkills(),
+            skillsSearchQuery: '',
+            skillsIsSearching: false,
+            skillsIsDetailView: false,
+            skillsDetailContent: null,
+            skillsDetailLines: [],
+            skillsDetailLoading: false,
+            skillsDetailError: null,
+            skillsCursorLine: 0,
+            skillsScrollOffset: 0,
 
             codeSearchQuery: '',
             codeSearchResults: [],
+            codeSearchGroups: [],
             codeSearchSelectedIndex: 0,
             codeSearchWindowStart: 0,
 
@@ -581,10 +701,19 @@ export class DifferentialApp {
             fileViewIsLoading: false,
             fileViewError: null,
             fileViewReturnOverlay: 'none',
+            fileViewSearchQuery: undefined,
+            fileViewMatchLines: undefined,
+            fileViewCurrentMatchIndex: undefined,
 
             btwState: null,
             btwScrollOffset: 0,
+
+            switchItems: options?.switchItems ? [...options.switchItems] : [],
+            switchSelectedIndex: 0,
+            switchConfirmDeleteValue: null,
         }
+
+        this.refreshModelsForProvider(this.state.selectedProvider)
 
         this.screen.onResize(() => {
             this.render()
@@ -604,6 +733,16 @@ export class DifferentialApp {
 
         if (this.terminal.stdin && typeof this.terminal.stdin.on === 'function') {
             this.terminal.stdin.on('data', this.stdinListener)
+        }
+
+        if (
+            this.workspaceFiles.length === 0 &&
+            process.env.NODE_ENV !== 'test' &&
+            !process.env.BUN_TEST
+        ) {
+            this.refreshWorkspaceFiles().catch(() => {
+                // Intentionally swallowed: initial workspace indexing fallback
+            })
         }
 
         this.render()
@@ -657,17 +796,29 @@ export class DifferentialApp {
     async openFileView(
         filePath: string,
         targetLine = 1,
-        returnOverlay: OverlayType = 'none'
+        returnOverlay: OverlayType = 'none',
+        searchQuery?: string,
+        matchLines?: number[]
     ): Promise<void> {
         this.state.activeOverlay = 'fileview'
         this.state.fileViewPath = filePath
         this.state.fileViewReturnOverlay = returnOverlay
+        this.state.fileViewSearchQuery = searchQuery
+        this.state.fileViewMatchLines = matchLines || []
         this.state.fileViewIsLoading = true
         this.state.fileViewError = null
         this.state.fileViewLines = []
         const line0 = Math.max(0, targetLine - 1)
         this.state.fileViewCursorLine = line0
         this.state.fileViewScrollOffset = Math.max(0, line0 - 5)
+
+        if (matchLines && matchLines.length > 0) {
+            const foundIdx = matchLines.indexOf(targetLine)
+            this.state.fileViewCurrentMatchIndex = foundIdx !== -1 ? foundIdx : 0
+        } else {
+            this.state.fileViewCurrentMatchIndex = 0
+        }
+
         this.render()
 
         try {
@@ -679,12 +830,198 @@ export class DifferentialApp {
             this.state.fileViewIsLoading = false
             const clampedLine = lines.length > 0 ? Math.min(lines.length - 1, line0) : 0
             this.state.fileViewCursorLine = clampedLine
-            this.state.fileViewScrollOffset = Math.max(0, clampedLine - 5)
+            const visibleLineCount = Math.max(5, this.screen.height - 4)
+            this.state.fileViewScrollOffset = Math.max(
+                0,
+                clampedLine - Math.floor(visibleLineCount / 2)
+            )
         } catch (err: any) {
             this.state.fileViewIsLoading = false
             this.state.fileViewError = err?.message || 'Failed to read file'
         }
         this.render()
+    }
+
+    refreshUsageStats(): void {
+        let requests = 0
+        let inputTokens = 0
+        let outputTokens = 0
+        let cacheReadTokens = 0
+
+        for (const msg of this.state.messages) {
+            if (msg && msg.usage) {
+                inputTokens += msg.usage.promptTokens || 0
+                outputTokens += msg.usage.completionTokens || 0
+                cacheReadTokens +=
+                    (msg.usage as any).cacheReadInputTokens ||
+                    (msg.usage as any).cacheReadTokens ||
+                    0
+                requests++
+            }
+        }
+
+        const totalTokens = inputTokens + outputTokens
+        const cost = calculateUsageCost(
+            this.state.activeModel,
+            inputTokens,
+            outputTokens,
+            cacheReadTokens
+        )
+
+        this.state.usageStats = {
+            requests,
+            inputTokens,
+            outputTokens,
+            cacheReadTokens,
+            totalTokens,
+            cost,
+        }
+    }
+
+    async loadUsageTrackerData(): Promise<void> {
+        try {
+            const configDir =
+                process.env.DECEMBER_CONFIG_DIR || path.join(os.homedir(), '.december')
+            const usagePath = path.join(configDir, 'usage.json')
+            const raw = await fs.promises.readFile(usagePath, 'utf8')
+            const parsed = JSON.parse(raw)
+            if (parsed && parsed.version === 1 && parsed.days) {
+                const now = new Date()
+                const items: DailyUsageEntry[] = []
+                let inputTokens = 0
+                let outputTokens = 0
+                let cacheReadTokens = 0
+                let requests = 0
+                let activeDays = 0
+                const modelTokensMap: Record<string, number> = {}
+
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+                    const dateKey = d.toISOString().slice(0, 10)
+                    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' })
+                    const formattedDate = d.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                    })
+                    const day = parsed.days[dateKey]
+                    const dayTokens = day ? (day.inputTokens || 0) + (day.outputTokens || 0) : 0
+
+                    if (day && (day.requests > 0 || dayTokens > 0)) {
+                        activeDays++
+                        inputTokens += day.inputTokens || 0
+                        outputTokens += day.outputTokens || 0
+                        cacheReadTokens += day.cacheReadTokens || 0
+                        requests += day.requests || 0
+                        if (day.models) {
+                            for (const [modelName, bucket] of Object.entries(
+                                day.models as Record<string, any>
+                            )) {
+                                const modelTotal =
+                                    (bucket.inputTokens || 0) + (bucket.outputTokens || 0)
+                                modelTokensMap[modelName] =
+                                    (modelTokensMap[modelName] || 0) + modelTotal
+                            }
+                        }
+                    }
+
+                    items.push({
+                        date: dateKey,
+                        dayName,
+                        formattedDate,
+                        tokens: dayTokens,
+                        isToday: i === 0,
+                    })
+                }
+
+                const totalTokens = inputTokens + outputTokens
+                const topModels = Object.entries(modelTokensMap)
+                    .map(([model, tokens]) => ({
+                        model,
+                        totalTokens: tokens,
+                        percentage: totalTokens > 0 ? Math.round((tokens / totalTokens) * 100) : 0,
+                    }))
+                    .sort((a, b) => b.totalTokens - a.totalTokens)
+
+                this.state.dailyUsage = items
+                this.state.weeklyStats = {
+                    totalTokens,
+                    activeDays,
+                    topModels,
+                }
+                this.render()
+            }
+        } catch {
+            // Intentionally swallowed: fallback to generated default daily usage
+        }
+    }
+
+    async openSkillDetail(skill: SkillItem): Promise<void> {
+        this.state.skillsIsDetailView = true
+        this.state.skillsCursorLine = 0
+        this.state.skillsScrollOffset = 0
+        this.state.skillsDetailLoading = true
+        this.state.skillsDetailError = null
+        this.state.skillsDetailLines = []
+        this.render()
+
+        if (!skill.entryFilePath) {
+            this.state.skillsDetailLoading = false
+            this.state.skillsDetailError = 'No entry file path found for skill.'
+            this.render()
+            return
+        }
+
+        try {
+            const content = await fs.promises.readFile(skill.entryFilePath, 'utf8')
+            this.state.skillsDetailContent = content
+            this.state.skillsDetailLines = content.split(/\r?\n/)
+            this.state.skillsDetailLoading = false
+            this.state.skillsDetailError = null
+        } catch (e: any) {
+            // Intentionally swallowed: display read error in skill detail viewport
+            this.state.skillsDetailLoading = false
+            this.state.skillsDetailError = e?.message || 'Failed to read skill documentation file.'
+            this.state.skillsDetailLines = []
+        }
+        this.render()
+    }
+
+    async openMemoryView(
+        initialTab: MemoryTab = 'memory',
+        returnOverlay: OverlayType = 'none'
+    ): Promise<void> {
+        this.state.activeOverlay = 'memory'
+        this.state.memoryTab = initialTab
+        this.state.memoryInitialTab = initialTab
+        this.state.memoryReturnOverlay = returnOverlay
+        this.state.memorySelectedIndex = 0
+        this.state.memoryScrollOffset = 0
+        this.state.memoryCursorLine = 0
+        this.state.memoryRuleScrollOffset = 0
+        this.state.isAddingMemory = false
+        this.state.memoryNewEntryText = ''
+        this.state.memoryIsLoading = true
+        this.render()
+
+        await this.loadMemoryAndRules()
+    }
+
+    async loadMemoryAndRules(): Promise<void> {
+        this.state.memoryIsLoading = true
+        this.render()
+        try {
+            if (this.options?.onLoadMemoryDetails) {
+                this.state.workspaceMemoryDetails = await this.options.onLoadMemoryDetails()
+            }
+            if (this.options?.onLoadProjectRules) {
+                this.state.memoryRuleFiles = await this.options.onLoadProjectRules()
+            }
+        } catch {
+            // Intentionally swallowed: ignore memory loading error
+        } finally {
+            this.state.memoryIsLoading = false
+            this.render()
+        }
     }
 
     async startDecemberLogin(): Promise<void> {
@@ -716,7 +1053,7 @@ export class DifferentialApp {
 
                 this.state.messages[msgIndex] = {
                     role: 'assistant',
-                    content: `Confirm code: ${code}\nOpen URL: ${fullUrl}\n\nWaiting for approval in your browser...`,
+                    content: `Confirm code: \`${code}\`\nOpen URL: [${fullUrl}](${fullUrl})\n\nWaiting for approval in your browser...`,
                 }
                 this.render()
                 openBrowserUrl(fullUrl)
@@ -725,13 +1062,22 @@ export class DifferentialApp {
             const { token, email } = await loginFn(onCode)
             if (email) {
                 this.state.userEmail = email
+                this.state.decemberEmail = email
+            }
+            this.state.hasDecember = true
+            if (this.state.messages[msgIndex]) {
+                this.state.messages[msgIndex].content = (
+                    this.state.messages[msgIndex].content || ''
+                )
+                    .replace(/\n\s*Waiting for approval.*$/gm, '')
+                    .trim()
             }
             this.state.isAuthenticated = true
             this.state.authMethod = 'december'
-            this.state.messages[msgIndex] = {
+            this.state.messages.push({
                 role: 'assistant',
                 content: `Successfully logged in as ${email || 'December user'}!`,
-            }
+            })
             this.showToast(`Logged in as ${email || 'December user'}.`, 'success')
             this.render()
         } catch (err: any) {
@@ -739,6 +1085,114 @@ export class DifferentialApp {
                 role: 'error',
                 content: `Login failed: ${err?.message || 'Unknown error'}`,
             }
+            this.render()
+        }
+    }
+
+    getConfiguredSubscriptionValues(): string[] {
+        const result: string[] = []
+        for (const it of this.state.switchItems) {
+            if (it.value.startsWith('subscription:')) {
+                result.push(it.value.slice('subscription:'.length))
+            } else if ((it as any).type === 'subscription' && (it as any).provider) {
+                result.push((it as any).provider)
+            }
+        }
+        return result
+    }
+
+    getConfiguredProviderValues(): string[] {
+        const result: string[] = []
+        for (const it of this.state.switchItems) {
+            if (it.value.startsWith('provider:') || it.value.startsWith('byok:')) {
+                result.push(it.value.replace(/^(provider|byok):/, ''))
+            } else if ((it as any).type === 'byok' && (it as any).provider) {
+                result.push((it as any).provider)
+            }
+        }
+        return result
+    }
+
+    refreshModelsForProvider(provider?: string): void {
+        const prov = provider || this.state.selectedProvider
+        if (this.getProviderModelsCallback && prov) {
+            const providerModels = this.getProviderModelsCallback(prov)
+            if (providerModels && providerModels.length > 0) {
+                this.state.models = providerModels
+                return
+            }
+        }
+        if (!this.state.models || this.state.models.length === 0) {
+            this.state.models = DEFAULT_MODELS
+        }
+    }
+
+    async startSubscriptionLogin(provider: string, label?: string): Promise<void> {
+        this.state.activeOverlay = 'none'
+        const loginFn = this.onSubscriptionLoginCallback
+        const displayLabel = label || formatProviderName(provider)
+
+        const msgIndex = this.state.messages.length
+        this.state.messages.push({
+            role: 'assistant',
+            content: `Initiating ${displayLabel} subscription verification...`,
+        })
+        this.render()
+
+        if (!loginFn) {
+            this.state.messages[msgIndex] = {
+                role: 'error',
+                content: `Subscription login is not available in this environment. Run \`december login ${provider}\` in your terminal.`,
+            }
+            this.render()
+            return
+        }
+
+        try {
+            const onCode = (code: string, uri: string) => {
+                const targetUrl = uri
+                const isBrowserAuth = !code || code.endsWith('-AUTH')
+                let promptText: string
+
+                if (isBrowserAuth) {
+                    writeToClipboard(targetUrl)
+                    promptText = `Opening browser to authorize ${displayLabel} subscription...\n(Link copied to clipboard - paste in browser if it did not open automatically)\n\nAuthorization URL:\n${targetUrl}\n\nWaiting for authorization and subscription verification...`
+                } else {
+                    writeToClipboard(code)
+                    promptText = `To authorize ${displayLabel}:\n1. Open: ${targetUrl}\n2. Enter code: \`${code}\` (code copied to clipboard)\n\nWaiting for authorization and subscription verification...`
+                }
+
+                this.state.messages[msgIndex] = {
+                    role: 'assistant',
+                    content: promptText,
+                }
+                this.render()
+                openBrowserUrl(targetUrl)
+            }
+
+            await loginFn(provider, onCode)
+            if (this.state.messages[msgIndex]) {
+                this.state.messages[msgIndex].content = (
+                    this.state.messages[msgIndex].content || ''
+                )
+                    .replace(/\n\s*Waiting for authorization.*$/gm, '')
+                    .trim()
+            }
+            this.state.isAuthenticated = true
+            this.state.authMethod = 'subscription'
+            this.state.selectedProvider = provider
+            this.state.messages.push({
+                role: 'assistant',
+                content: `Successfully connected to ${displayLabel} subscription!`,
+            })
+            this.showToast(`Logged in to ${displayLabel} subscription.`, 'success')
+            this.render()
+        } catch (err: any) {
+            this.state.messages[msgIndex] = {
+                role: 'error',
+                content: `Subscription login failed: ${err?.message || 'Unknown error'}`,
+            }
+            this.showToast(`Subscription login failed: ${err?.message || 'Error'}`, 'error')
             this.render()
         }
     }
@@ -751,6 +1205,64 @@ export class DifferentialApp {
 
     addRecentFile(filePath: string): void {
         this.recentFiles.add(filePath)
+    }
+
+    async refreshWorkspaceFiles(cwd?: string): Promise<string[]> {
+        if (this.isLoadingWorkspaceFiles) return this.workspaceFiles
+        this.isLoadingWorkspaceFiles = true
+        const targetDir = cwd || this.state.cwd || process.cwd()
+
+        try {
+            let files: string[] = []
+            try {
+                const { exec } = await import('node:child_process')
+                const { promisify } = await import('node:util')
+                const execAsync = promisify(exec)
+                const { stdout } = await execAsync(
+                    'git ls-files --cached --others --exclude-standard',
+                    {
+                        cwd: targetDir,
+                        maxBuffer: 10 * 1024 * 1024,
+                    }
+                )
+                files = stdout.split('\n').filter(Boolean)
+            } catch {
+                // Intentionally swallowed: fallback to fast-glob when not a git repository
+            }
+
+            if (files.length === 0) {
+                const { getWorkspaceIgnores } = await import('@december/shared')
+                const ignores = getWorkspaceIgnores(targetDir)
+                const fg = (await import('fast-glob')).default
+                files = await fg(['**/*'], {
+                    cwd: targetDir,
+                    dot: true,
+                    ignore: ignores,
+                    onlyFiles: true,
+                    suppressErrors: true,
+                })
+            }
+
+            this.setWorkspaceFiles(files)
+
+            try {
+                const diffEntries = await fetchGitStatusFiles(targetDir)
+                if (diffEntries && diffEntries.length > 0) {
+                    for (const e of diffEntries) {
+                        this.addRecentFile(e.path)
+                    }
+                }
+            } catch {
+                // Intentionally swallowed: git status fallback
+            }
+
+            return files
+        } catch {
+            // Intentionally swallowed: fallback to empty workspace files on error
+            return []
+        } finally {
+            this.isLoadingWorkspaceFiles = false
+        }
     }
 
     askQuestion(questions: QuestionItem[]): Promise<Record<string, string | string[]>> {
@@ -844,7 +1356,19 @@ export class DifferentialApp {
 
     private updateFileAutocomplete(): void {
         const match = getFileQueryMatch(this.state.input)
-        if (match !== null && this.workspaceFiles.length > 0) {
+        if (match !== null) {
+            if (this.workspaceFiles.length === 0) {
+                this.refreshWorkspaceFiles()
+                    .then(() => {
+                        this.updateFileAutocomplete()
+                        this.render()
+                    })
+                    .catch(() => {
+                        // Intentionally swallowed: lazy file scan fallback
+                    })
+                return
+            }
+
             const scored = scoreAndSortFiles(this.workspaceFiles, match.query, this.recentFiles)
             if (scored.length > 0) {
                 this.state.fileAutocompleteItems = scored
@@ -940,12 +1464,52 @@ export class DifferentialApp {
                     this.render()
                     return
                 }
-                if (this.state.activeOverlay === 'auth' && this.state.authViewMode !== 'menu') {
+                if (this.state.activeOverlay === 'auth') {
+                    if (this.state.authConfirmDeleteValue) {
+                        this.state.authConfirmDeleteValue = null
+                        this.render()
+                        return
+                    }
+                    if (this.state.authViewMode === 'confirm_switch_subscription') {
+                        this.state.authConfirmTarget = null
+                        this.state.authViewMode = 'subscription'
+                        this.render()
+                        return
+                    }
+                    if (this.state.authViewMode === 'confirm_replace_byok') {
+                        this.state.authConfirmTarget = null
+                        this.state.authViewMode = 'byok_provider'
+                        this.render()
+                        return
+                    }
                     if (this.state.authViewMode === 'byok_key') {
                         this.state.authViewMode = 'byok_provider'
-                    } else {
-                        this.state.authViewMode = 'menu'
+                        this.render()
+                        return
                     }
+                    if (this.state.isSearchingAuthProviders) {
+                        this.state.isSearchingAuthProviders = false
+                        this.render()
+                        return
+                    }
+                    if (this.state.authProviderSearchQuery) {
+                        this.state.authProviderSearchQuery = ''
+                        this.state.authProviderSelectedIndex = 0
+                        this.state.authProviderWindowStart = 0
+                        this.render()
+                        return
+                    }
+                    this.state.activeOverlay = 'login'
+                    this.render()
+                    return
+                }
+                if (this.state.activeOverlay === 'login') {
+                    if (this.state.loginConfirmSwitch) {
+                        this.state.loginConfirmSwitch = false
+                        this.render()
+                        return
+                    }
+                    this.state.activeOverlay = 'none'
                     this.render()
                     return
                 }
@@ -968,6 +1532,25 @@ export class DifferentialApp {
                 }
                 if (this.state.activeOverlay === 'fileview') {
                     this.state.activeOverlay = this.state.fileViewReturnOverlay || 'none'
+                    this.render()
+                    return
+                }
+                if (this.state.activeOverlay === 'memory') {
+                    if (this.state.isAddingMemory) {
+                        this.state.isAddingMemory = false
+                        this.state.memoryNewEntryText = ''
+                        this.render()
+                        return
+                    }
+                    if (
+                        this.state.memoryTab === 'rules' &&
+                        this.state.memoryInitialTab === 'memory'
+                    ) {
+                        this.state.memoryTab = 'memory'
+                        this.render()
+                        return
+                    }
+                    this.state.activeOverlay = this.state.memoryReturnOverlay || 'none'
                     this.render()
                     return
                 }
@@ -1050,6 +1633,14 @@ export class DifferentialApp {
         }
 
         // Handle File Autocomplete Navigation when @ or /open query is active
+        if (this.state.isFileAutocompleteVisible) {
+            if (key === '\x1b') {
+                this.state.isFileAutocompleteVisible = false
+                this.render()
+                return
+            }
+        }
+
         if (this.state.isFileAutocompleteVisible && this.state.fileAutocompleteItems.length > 0) {
             const items = this.state.fileAutocompleteItems
             // Arrow Up in file autocomplete
@@ -1304,6 +1895,33 @@ export class DifferentialApp {
         this.state.input = ''
         this.state.cursorPos = 0
 
+        if (cmd === 'ask') {
+            if (args) {
+                this.executeCommand(`btw ${args}`)
+            } else {
+                this.showToast('Usage: /btw <question> (/ask was replaced by /btw)', 'info')
+            }
+            return
+        }
+
+        if (cmd === 'plan') {
+            if (!args) {
+                this.showToast('Usage: /plan <goal> (e.g. /plan refactor authentication)', 'info')
+                return
+            }
+            this.state.promptHistory.push(`/${raw}`)
+            this.state.historyIndex = -1
+            this.state.messages.push({
+                role: 'user',
+                content: `/plan ${args}`,
+            })
+            this.render()
+            if (this.onSubmitCallback) {
+                this.onSubmitCallback(`/plan ${args}`)
+            }
+            return
+        }
+
         if (cmd === 'exit') {
             if (this.onExitCallback) {
                 this.onExitCallback()
@@ -1347,21 +1965,21 @@ export class DifferentialApp {
         if (cmd === 'changelog') {
             const url = 'https://trydecember.com/docs/changelog'
             openBrowserUrl(url)
-            this.showToast(`Opening changelog in browser... (${url})`, 'info')
+            this.showToast('Opened changelog in browser.', 'success')
             return
         }
 
         if (cmd === 'docs' || cmd.startsWith('docs')) {
             const url = 'https://trydecember.com/docs'
             openBrowserUrl(url)
-            this.showToast(`Opening documentation in browser... (${url})`, 'info')
+            this.showToast('Opened documentation in browser.', 'success')
             return
         }
 
         if (cmd === 'feedback') {
             const url = 'https://github.com/phasehumans/december/issues/new'
             openBrowserUrl(url)
-            this.showToast('Opening GitHub issue form in browser...', 'info')
+            this.showToast('Opened feedback in browser.', 'success')
             return
         }
 
@@ -1429,16 +2047,7 @@ export class DifferentialApp {
             if (args) {
                 const provider = args.toLowerCase().trim()
                 if (this.onSubscriptionLoginCallback) {
-                    this.showToast(
-                        `Initiating subscription login for ${provider.toUpperCase()}...`,
-                        'info'
-                    )
-                    this.onSubscriptionLoginCallback(provider).catch((err: any) => {
-                        this.showToast(
-                            `Subscription login failed: ${err?.message || 'Error'}`,
-                            'error'
-                        )
-                    })
+                    this.startSubscriptionLogin(provider)
                 } else {
                     this.showToast(`Run \`december login ${provider}\` in your terminal.`, 'info')
                 }
@@ -1469,17 +2078,66 @@ export class DifferentialApp {
             this.state.activeOverlay = 'skills'
             this.state.skillsSelectedIndex = 0
             this.state.skillsWindowStart = 0
-            this.state.skills = loadWorkspaceSkills()
+            if (!this.state.skills || this.state.skills.length === 0) {
+                this.state.skills = loadWorkspaceSkills()
+            }
+            this.state.skillsSearchQuery = ''
+            this.state.skillsIsSearching = false
+            this.state.skillsIsDetailView = false
+            this.state.skillsDetailContent = null
+            this.state.skillsDetailLines = []
+            this.state.skillsDetailLoading = false
+            this.state.skillsDetailError = null
+            this.state.skillsCursorLine = 0
+            this.state.skillsScrollOffset = 0
             this.render()
             return
         }
 
-        if (cmd === 'model' || cmd === 'switch') {
+        if (cmd === 'switch') {
+            this.state.activeOverlay = 'switch'
+            this.state.switchSelectedIndex = 0
+            this.state.switchConfirmDeleteValue = null
+            this.render()
+            return
+        }
+
+        if (cmd === 'model') {
+            if (
+                !this.state.isAuthenticated &&
+                this.getConfiguredProviderValues().length === 0 &&
+                this.getConfiguredSubscriptionValues().length === 0 &&
+                !this.state.hasDecember
+            ) {
+                this.state.messages.push({
+                    role: 'user',
+                    content: '/model',
+                })
+                const notice =
+                    this.authRequiredNotice ||
+                    'You are not logged in and have no custom API keys (BYOK) configured.\n\nPlease run `/login` to:\n- Link an AI Subscription (Copilot, Claude, ChatGPT, Gemini), or\n- Sign in with your December account (Cloud Wallet), or\n- Configure Bring Your Own Key (BYOK) for providers like OpenAI, Anthropic, Gemini, OpenRouter, etc.'
+                this.state.messages.push({
+                    role: 'assistant',
+                    content: notice,
+                })
+                this.render()
+                return
+            }
+            this.refreshModelsForProvider()
             this.state.activeOverlay = 'model'
             this.state.modelSearchQuery = ''
-            this.state.modelSelectedIndex = 0
-            this.state.modelWindowStart = 0
             this.state.isModelSearching = false
+            const activeIdx = this.state.models.findIndex(
+                (m) => m.value === this.state.activeModel || m.label === this.state.activeModel
+            )
+            this.state.modelSelectedIndex = activeIdx >= 0 ? activeIdx : 0
+            this.state.modelWindowStart = Math.max(
+                0,
+                Math.min(
+                    this.state.modelSelectedIndex,
+                    Math.max(0, this.state.models.length - MODEL_WINDOW_SIZE)
+                )
+            )
             this.render()
             return
         }
@@ -1515,7 +2173,7 @@ export class DifferentialApp {
             this.state.activeOverlay = 'session'
             this.state.sessionSelectedIndex = 0
             this.state.sessionWindowStart = 0
-            this.state.sessionSearchQuery = ''
+            this.state.sessionSearchQuery = args || ''
             this.state.isSessionSearching = false
             this.state.sessionRenameMode = false
             this.state.sessionConfirmDeleteId = null
@@ -1541,21 +2199,36 @@ export class DifferentialApp {
 
         if (cmd === 'usage' || cmd === 'cost') {
             this.state.activeOverlay = 'usage'
+            this.refreshUsageStats()
+            this.loadUsageTrackerData().catch(() => {
+                // Intentionally swallowed: ignore usage tracker load failure
+            })
             this.render()
             return
         }
 
         if (cmd === 'memory' || cmd === 'rules') {
-            this.state.activeOverlay = 'memory'
-            this.state.memoryTab = cmd === 'rules' ? 'rules' : 'memory'
-            this.state.memoryActiveDocIndex = 0
-            this.state.memoryCursorLine = 0
-            this.state.memoryScrollOffset = 0
-            this.render()
+            const returnOverlay =
+                this.state.activeOverlay !== 'none' ? this.state.activeOverlay : 'none'
+            this.openMemoryView(cmd === 'rules' ? 'rules' : 'memory', returnOverlay).catch(() => {
+                // Intentionally swallowed: openMemoryView error
+            })
             return
         }
 
-        if (cmd === 'rewind' || cmd === 'undo') {
+        if (cmd === 'undo') {
+            if (this.onUndoCallback) {
+                this.onUndoCallback()
+            } else {
+                this.state.activeOverlay = 'rewind'
+                this.state.rewindSelectedIndex = 0
+                this.state.rewindWindowStart = 0
+                this.render()
+            }
+            return
+        }
+
+        if (cmd === 'rewind') {
             this.state.activeOverlay = 'rewind'
             this.state.rewindSelectedIndex = 0
             this.state.rewindWindowStart = 0
@@ -1564,13 +2237,42 @@ export class DifferentialApp {
         }
 
         if (cmd === 'open') {
-            if (!args) {
-                this.showToast('Usage: /open <file>[:line]', 'info')
+            if (!args || args === '.') {
+                this.state.input = '/open '
+                this.state.cursorPos = this.state.input.length
+                this.updateFileAutocomplete()
+                this.showToast('Please specify a file name: /open <file>[:line]', 'info')
+                this.render()
                 return
             }
+
             const match = args.match(/^(.+?)(?::(\d+))?$/)
             const targetPath = match ? match[1] : args
             const targetLine = match && match[2] ? parseInt(match[2], 10) : 1
+
+            const fullPath = path.isAbsolute(targetPath)
+                ? targetPath
+                : path.resolve(this.state.cwd || process.cwd(), targetPath)
+
+            try {
+                const stat = fs.statSync(fullPath)
+                if (stat.isDirectory()) {
+                    const dirPrefix = targetPath.endsWith('/') ? targetPath : `${targetPath}/`
+                    this.state.input = `/open ${dirPrefix}`
+                    this.state.cursorPos = this.state.input.length
+                    this.updateFileAutocomplete()
+                    this.showToast(
+                        `"${targetPath}" is a directory. Please specify a file to open.`,
+                        'info'
+                    )
+                    this.render()
+                    return
+                }
+            } catch {
+                this.showToast(`File not found: ${targetPath}`, 'error')
+                return
+            }
+
             this.openFileView(targetPath, targetLine, 'none')
             return
         }
@@ -1582,6 +2284,8 @@ export class DifferentialApp {
             }
             this.showToast(`Searching for "${args}"...`, 'info')
             this.state.codeSearchQuery = args
+            this.state.codeSearchResults = []
+            this.state.codeSearchGroups = []
             this.state.codeSearchSelectedIndex = 0
             this.state.codeSearchWindowStart = 0
             this.state.activeOverlay = 'codesearch'
@@ -1594,10 +2298,12 @@ export class DifferentialApp {
             searchFn
                 .then((results) => {
                     this.state.codeSearchResults = results
+                    this.state.codeSearchGroups = groupCodeSearchResults(results)
                     this.render()
                 })
                 .catch(() => {
                     this.state.codeSearchResults = []
+                    this.state.codeSearchGroups = []
                     this.render()
                 })
             return
@@ -1658,6 +2364,31 @@ export class DifferentialApp {
                         this.render()
                     }
                 }, 100)
+            }
+            return
+        }
+
+        // Check if command matches an installed skill (e.g. /skill:tdd or /tdd [args])
+        const skills = this.state.skills.length > 0 ? this.state.skills : loadWorkspaceSkills()
+        let skillLookup = cmd
+        if (skillLookup.startsWith('skill:')) {
+            skillLookup = skillLookup.slice('skill:'.length)
+        }
+        const matchedSkill = skills.find((s) => s.name.toLowerCase() === skillLookup.toLowerCase())
+        if (matchedSkill) {
+            const taskDetail = args
+                ? `for: "${args}"`
+                : 'based on the conversation context or prompt the user to clarify requirements if needed'
+            const directive = `Execute skill '${matchedSkill.name}' ${taskDetail}. Use the 'run_skill' tool to delegate this procedure to an isolated subagent.`
+            this.state.promptHistory.push(`/${raw}`)
+            this.state.historyIndex = -1
+            this.state.messages.push({
+                role: 'user',
+                content: `/${raw}`,
+            })
+            this.render()
+            if (this.onSubmitCallback) {
+                this.onSubmitCallback(directive)
             }
             return
         }
@@ -1728,6 +2459,22 @@ export class DifferentialApp {
             }
             if (overlay === 'model' && this.state.isModelSearching) {
                 this.state.isModelSearching = false
+                this.render()
+                return
+            }
+            if (overlay === 'memory') {
+                if (this.state.isAddingMemory) {
+                    this.state.isAddingMemory = false
+                    this.state.memoryNewEntryText = ''
+                    this.render()
+                    return
+                }
+                if (this.state.memoryTab === 'rules' && this.state.memoryInitialTab === 'memory') {
+                    this.state.memoryTab = 'memory'
+                    this.render()
+                    return
+                }
+                this.state.activeOverlay = this.state.memoryReturnOverlay || 'none'
                 this.render()
                 return
             }
@@ -1880,9 +2627,17 @@ export class DifferentialApp {
                     this.startDecemberLogin()
                     return
                 }
-                if (key === 'n' || key === 'N' || key === '\x1b') {
+                if (key === 'n' || key === 'N' || key === '\r' || key === '\n') {
+                    const email =
+                        this.state.decemberEmail || this.state.userEmail || 'December user'
                     this.state.loginConfirmSwitch = false
                     this.state.activeOverlay = 'none'
+                    this.showToast(`Already logged in as ${email}.`, 'info')
+                    this.render()
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.loginConfirmSwitch = false
                     this.render()
                     return
                 }
@@ -1909,21 +2664,42 @@ export class DifferentialApp {
                 const selected = LOGIN_OPTIONS[this.state.loginSelectedIndex]
                 if (!selected) return
 
+                if (selected.value === 'subscription') {
+                    this.state.activeOverlay = 'auth'
+                    this.state.authViewMode = 'subscription'
+                    this.state.authProviders = SUBSCRIPTION_PROVIDER_ITEMS
+                    this.state.authProviderSelectedIndex = 0
+                    this.state.authProviderWindowStart = 0
+                    this.state.authProviderSearchQuery = ''
+                    this.state.isSearchingAuthProviders = false
+                    this.state.authConfirmDeleteValue = null
+                    this.state.authConfirmTarget = null
+                    this.render()
+                    return
+                }
+
                 if (selected.value === 'byok') {
-                    this.state.activeOverlay = 'model'
-                    this.showToast(
-                        'Select a model or provider. Configure API keys with `december key <provider>`.',
-                        'info'
-                    )
+                    this.state.activeOverlay = 'auth'
+                    this.state.authViewMode = 'byok_provider'
+                    this.state.authProviders = BYOK_PROVIDER_ITEMS
+                    this.state.authProviderSelectedIndex = 0
+                    this.state.authProviderWindowStart = 0
+                    this.state.authProviderSearchQuery = ''
+                    this.state.isSearchingAuthProviders = false
+                    this.state.authConfirmDeleteValue = null
+                    this.state.authConfirmTarget = null
                     this.render()
                     return
                 }
 
                 if (selected.value === 'december') {
                     const isDecemberLoggedIn = Boolean(
-                        this.state.isAuthenticated &&
-                        this.state.userEmail &&
-                        (this.state.authMethod === 'december' || !this.state.authMethod)
+                        this.state.hasDecember !== undefined
+                            ? this.state.hasDecember &&
+                                  (this.state.decemberEmail || this.state.userEmail)
+                            : this.state.isAuthenticated &&
+                                  (this.state.decemberEmail || this.state.userEmail) &&
+                                  (this.state.authMethod === 'december' || !this.state.authMethod)
                     )
                     if (isDecemberLoggedIn) {
                         this.state.loginConfirmSwitch = true
@@ -1934,6 +2710,12 @@ export class DifferentialApp {
                     this.startDecemberLogin()
                     return
                 }
+            }
+
+            if (key === '\x1b') {
+                this.state.activeOverlay = 'none'
+                this.render()
+                return
             }
 
             return
@@ -2008,8 +2790,11 @@ export class DifferentialApp {
         }
 
         if (overlay === 'codesearch') {
-            const results = this.state.codeSearchResults
-            const total = results.length
+            const groups =
+                this.state.codeSearchGroups.length > 0
+                    ? this.state.codeSearchGroups
+                    : groupCodeSearchResults(this.state.codeSearchResults)
+            const total = groups.length
             const viewportWindowSize = CODE_SEARCH_WINDOW_SIZE
 
             if (key === '\x1b[A' || key === 'k') {
@@ -2039,22 +2824,31 @@ export class DifferentialApp {
             }
 
             if (key === '\r' || key === '\n') {
-                const item = results[this.state.codeSearchSelectedIndex]
-                if (item) {
-                    if (this.onOpenCodeSearchResultCallback) {
-                        this.onOpenCodeSearchResultCallback(item)
+                const group = groups[this.state.codeSearchSelectedIndex]
+                if (group) {
+                    if (this.onOpenCodeSearchResultCallback && group.matches[0]) {
+                        this.onOpenCodeSearchResultCallback(group.matches[0])
                     }
-                    this.openFileView(item.file, item.line, 'codesearch')
+                    this.openFileView(
+                        group.file,
+                        group.firstLine,
+                        'codesearch',
+                        this.state.codeSearchQuery,
+                        group.lineNumbers
+                    )
                 }
                 return
             }
 
             if (key === '\t' || key === 'c' || key === 'C') {
-                const item = results[this.state.codeSearchSelectedIndex]
-                if (item) {
-                    this.state.input = `@${item.file}:${item.line} `
+                const group = groups[this.state.codeSearchSelectedIndex]
+                if (group) {
+                    this.state.input = `@${group.file}:${group.firstLine} `
                     this.state.cursorPos = this.state.input.length
-                    this.showToast(`Inserted reference to ${item.file}:${item.line}`, 'success')
+                    this.showToast(
+                        `Inserted reference to ${group.file}:${group.firstLine}`,
+                        'success'
+                    )
                 }
                 this.state.activeOverlay = 'none'
                 this.render()
@@ -2066,6 +2860,40 @@ export class DifferentialApp {
         if (overlay === 'fileview') {
             if (key === 'q' || key === 'Q') {
                 this.state.activeOverlay = this.state.fileViewReturnOverlay || 'none'
+                this.render()
+                return
+            }
+
+            const matchLines = this.state.fileViewMatchLines || []
+            const totalMatches = matchLines.length
+
+            if ((key === 'n' || key === 'N' || key === 'p' || key === 'P') && totalMatches > 0) {
+                const isNext = key === 'n'
+                let nextIdx = (this.state.fileViewCurrentMatchIndex ?? 0) + (isNext ? 1 : -1)
+                let wrapped = false
+
+                if (nextIdx >= totalMatches) {
+                    nextIdx = 0
+                    wrapped = true
+                } else if (nextIdx < 0) {
+                    nextIdx = totalMatches - 1
+                    wrapped = true
+                }
+
+                this.state.fileViewCurrentMatchIndex = nextIdx
+                const targetLine1 = matchLines[nextIdx]
+                const line0 = Math.max(0, targetLine1 - 1)
+                this.state.fileViewCursorLine = line0
+
+                const visibleLineCount = Math.max(5, this.screen.height - 4)
+                this.state.fileViewScrollOffset = Math.max(
+                    0,
+                    line0 - Math.floor(visibleLineCount / 2)
+                )
+                this.showToast(
+                    `Match ${nextIdx + 1}/${totalMatches} (line ${targetLine1})${wrapped ? ' (wrapped)' : ''}`,
+                    'info'
+                )
                 this.render()
                 return
             }
@@ -2186,7 +3014,173 @@ export class DifferentialApp {
         }
 
         if (overlay === 'skills') {
-            const skills = this.state.skills
+            const query = (this.state.skillsSearchQuery || '').toLowerCase().trim()
+            const skills = query
+                ? this.state.skills.filter(
+                      (s) =>
+                          s.name.toLowerCase().includes(query) ||
+                          (s.description || '').toLowerCase().includes(query)
+                  )
+                : this.state.skills
+
+            // 1. Searching mode (inline search query typing)
+            if (this.state.skillsIsSearching) {
+                if (key === '\r' || key === '\n') {
+                    this.state.skillsIsSearching = false
+                    this.render()
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.skillsIsSearching = false
+                    this.state.skillsSearchQuery = ''
+                    this.state.skillsSelectedIndex = 0
+                    this.state.skillsWindowStart = 0
+                    this.render()
+                    return
+                }
+                if (key === '\x7f' || key === '\b') {
+                    this.state.skillsSearchQuery = this.state.skillsSearchQuery.slice(0, -1)
+                    this.state.skillsSelectedIndex = 0
+                    this.state.skillsWindowStart = 0
+                    this.render()
+                    return
+                }
+                if (key.length === 1 && key >= ' ') {
+                    this.state.skillsSearchQuery += key
+                    this.state.skillsSelectedIndex = 0
+                    this.state.skillsWindowStart = 0
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            // 2. Detail View (SKILL.md documentation reader)
+            if (this.state.skillsIsDetailView) {
+                const totalLines = this.state.skillsDetailLines.length
+                const visibleLineCount = 12
+
+                if (key === '\x1b' || key === 'q' || key === 'Q') {
+                    this.state.skillsIsDetailView = false
+                    this.render()
+                    return
+                }
+
+                if (key === ' ' || key === '\t') {
+                    const currentSkill = skills[this.state.skillsSelectedIndex]
+                    if (currentSkill) {
+                        this.state.activeOverlay = 'none'
+                        this.state.skillsIsDetailView = false
+                        this.state.input = `/${currentSkill.name} `
+                        this.state.cursorPos = this.state.input.length
+                        this.showToast(`Selected skill /${currentSkill.name}`, 'info')
+                        this.render()
+                    }
+                    return
+                }
+
+                // Up arrow: scroll line up
+                if (key === '\x1b[A' || key === 'k' || key === 'K') {
+                    if (this.state.skillsCursorLine > 0) {
+                        this.state.skillsCursorLine -= 1
+                        if (this.state.skillsCursorLine < this.state.skillsScrollOffset) {
+                            this.state.skillsScrollOffset = this.state.skillsCursorLine
+                        }
+                        this.render()
+                    }
+                    return
+                }
+
+                // Down arrow: scroll line down
+                if (key === '\x1b[B' || key === 'j' || key === 'J') {
+                    if (this.state.skillsCursorLine < totalLines - 1) {
+                        this.state.skillsCursorLine += 1
+                        if (
+                            this.state.skillsCursorLine >=
+                            this.state.skillsScrollOffset + visibleLineCount
+                        ) {
+                            this.state.skillsScrollOffset =
+                                this.state.skillsCursorLine - visibleLineCount + 1
+                        }
+                        this.render()
+                    }
+                    return
+                }
+
+                // PageUp / PageDown
+                if (key === '\x1b[5~') {
+                    const step = visibleLineCount
+                    this.state.skillsCursorLine = Math.max(0, this.state.skillsCursorLine - step)
+                    this.state.skillsScrollOffset = Math.max(
+                        0,
+                        Math.min(this.state.skillsCursorLine, this.state.skillsScrollOffset - step)
+                    )
+                    this.render()
+                    return
+                }
+
+                if (key === '\x1b[6~') {
+                    const step = visibleLineCount
+                    this.state.skillsCursorLine = Math.min(
+                        Math.max(0, totalLines - 1),
+                        this.state.skillsCursorLine + step
+                    )
+                    this.state.skillsScrollOffset = Math.min(
+                        Math.max(0, totalLines - visibleLineCount),
+                        this.state.skillsCursorLine >=
+                            this.state.skillsScrollOffset + visibleLineCount
+                            ? this.state.skillsCursorLine - visibleLineCount + 1
+                            : this.state.skillsScrollOffset + step
+                    )
+                    this.render()
+                    return
+                }
+
+                return
+            }
+
+            // 3. List Mode
+            if (key === '/') {
+                this.state.skillsIsSearching = true
+                this.render()
+                return
+            }
+
+            if (key === '\r' || key === '\n') {
+                const currentSkill = skills[this.state.skillsSelectedIndex]
+                if (currentSkill) {
+                    this.openSkillDetail(currentSkill).catch(() => {
+                        // Intentionally swallowed: skill detail load failure
+                    })
+                }
+                return
+            }
+
+            if (key === ' ' || key === '\t') {
+                const currentSkill = skills[this.state.skillsSelectedIndex]
+                if (currentSkill) {
+                    this.state.activeOverlay = 'none'
+                    this.state.input = `/${currentSkill.name} `
+                    this.state.cursorPos = this.state.input.length
+                    this.showToast(`Selected skill /${currentSkill.name}`, 'info')
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\x1b') {
+                if (this.state.skillsSearchQuery) {
+                    this.state.skillsSearchQuery = ''
+                    this.state.skillsSelectedIndex = 0
+                    this.state.skillsWindowStart = 0
+                    this.render()
+                    return
+                }
+                this.state.activeOverlay = 'none'
+                this.render()
+                return
+            }
+
             if (key === '\x1b[A' || key === 'k') {
                 if (this.state.skillsSelectedIndex > 0) {
                     this.state.skillsSelectedIndex -= 1
@@ -2197,16 +3191,95 @@ export class DifferentialApp {
                 }
                 return
             }
+
             if (key === '\x1b[B' || key === 'j') {
                 if (this.state.skillsSelectedIndex < skills.length - 1) {
                     this.state.skillsSelectedIndex += 1
-                    if (this.state.skillsSelectedIndex >= this.state.skillsWindowStart + 8) {
-                        this.state.skillsWindowStart = this.state.skillsSelectedIndex - 7
+                    if (this.state.skillsSelectedIndex >= this.state.skillsWindowStart + 6) {
+                        this.state.skillsWindowStart = this.state.skillsSelectedIndex - 5
                     }
                     this.render()
                 }
                 return
             }
+
+            return
+        }
+
+        if (overlay === 'switch') {
+            const items = this.state.switchItems
+            if (this.state.switchConfirmDeleteValue) {
+                if (key === 'y' || key === 'Y') {
+                    const targetValue = this.state.switchConfirmDeleteValue
+                    this.state.switchConfirmDeleteValue = null
+                    if (this.onDeleteProviderCallback) {
+                        Promise.resolve(this.onDeleteProviderCallback(targetValue)).catch(() => {})
+                    }
+                    const idx = items.findIndex((it) => it.value === targetValue)
+                    if (idx !== -1) {
+                        items.splice(idx, 1)
+                    }
+                    if (this.state.switchSelectedIndex >= items.length) {
+                        this.state.switchSelectedIndex = Math.max(0, items.length - 1)
+                    }
+                    this.showToast('Removed credentials for provider.', 'success')
+                    this.render()
+                    return
+                }
+                if (key === 'n' || key === 'N' || key === '\x1b') {
+                    this.state.switchConfirmDeleteValue = null
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            if (key === 'd' || key === 'D') {
+                const currentItem = items[this.state.switchSelectedIndex]
+                if (currentItem) {
+                    this.state.switchConfirmDeleteValue = currentItem.value
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\x1b[A' || key === 'k') {
+                if (this.state.switchSelectedIndex > 0) {
+                    this.state.switchSelectedIndex -= 1
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\x1b[B' || key === 'j') {
+                if (this.state.switchSelectedIndex < items.length - 1) {
+                    this.state.switchSelectedIndex += 1
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\r' || key === '\n') {
+                const currentItem = items[this.state.switchSelectedIndex]
+                if (currentItem) {
+                    if (this.onSwitchSelectCallback) {
+                        Promise.resolve(this.onSwitchSelectCallback(currentItem.value)).catch(
+                            () => {}
+                        )
+                    }
+                    this.state.activeOverlay = 'none'
+                    this.showToast(`Switched to ${currentItem.label}.`, 'success')
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\x1b') {
+                this.state.activeOverlay = 'none'
+                this.render()
+                return
+            }
+
             return
         }
 
@@ -2227,6 +3300,11 @@ export class DifferentialApp {
                     this.state.modelSearchQuery = this.state.modelSearchQuery.slice(0, -1)
                     this.state.modelSelectedIndex = 0
                     this.state.modelWindowStart = 0
+                    this.render()
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.isModelSearching = false
                     this.render()
                     return
                 }
@@ -2277,11 +3355,24 @@ export class DifferentialApp {
                     this.state.activeModel = selected.value
                     this.state.modelLabel = selected.label
                     this.state.activeOverlay = 'none'
-                    this.showToast(`Switched active model to ${selected.label}`, 'success')
+                    this.showToast(`Switched active model to ${selected.label}.`, 'success')
                     if (this.onModelSelectCallback) {
                         this.onModelSelectCallback(selected)
                     }
                 }
+                return
+            }
+
+            if (key === '\x1b') {
+                if (this.state.modelSearchQuery) {
+                    this.state.modelSearchQuery = ''
+                    this.state.modelSelectedIndex = 0
+                    this.state.modelWindowStart = 0
+                    this.render()
+                    return
+                }
+                this.state.activeOverlay = 'none'
+                this.render()
                 return
             }
             return
@@ -2577,13 +3668,22 @@ export class DifferentialApp {
 
             if (this.state.sessionRenameMode) {
                 if (key === '\r' || key === '\n') {
-                    const cur = this.state.sessions[this.state.sessionSelectedIndex]
+                    const filtered = SessionSelectMenuView.getFiltered(
+                        this.state.sessions,
+                        this.state.sessionSearchQuery
+                    )
+                    const cur = filtered[this.state.sessionSelectedIndex]
                     if (cur) {
-                        cur.preview = this.state.sessionRenameValue.trim() || cur.preview
-                        if (this.onSessionRenameCallback) {
-                            this.onSessionRenameCallback(cur.id, cur.preview || cur.id)
+                        const rawNewName = this.state.sessionRenameValue.trim().replace(/\//g, '-')
+                        if (rawNewName && rawNewName !== cur.id) {
+                            const oldId = cur.id
+                            cur.id = rawNewName
+                            cur.preview = rawNewName
+                            if (this.onSessionRenameCallback) {
+                                this.onSessionRenameCallback(oldId, rawNewName)
+                            }
+                            this.showToast('Renamed session.', 'success')
                         }
-                        this.showToast('Renamed session.', 'success')
                     }
                     this.state.sessionRenameMode = false
                     this.render()
@@ -2612,6 +3712,11 @@ export class DifferentialApp {
                     this.render()
                     return
                 }
+                if (key === '\x1b') {
+                    this.state.isSessionSearching = false
+                    this.render()
+                    return
+                }
                 if (key === '\x7f' || key === '\b') {
                     this.state.sessionSearchQuery = this.state.sessionSearchQuery.slice(0, -1)
                     this.state.sessionSelectedIndex = 0
@@ -2628,6 +3733,11 @@ export class DifferentialApp {
                 return
             }
 
+            const filtered = SessionSelectMenuView.getFiltered(
+                this.state.sessions,
+                this.state.sessionSearchQuery
+            )
+
             if (key === '/' || key === 's') {
                 this.state.isSessionSearching = true
                 this.render()
@@ -2635,7 +3745,7 @@ export class DifferentialApp {
             }
 
             if (key === 'r' || key === 'R') {
-                const cur = this.state.sessions[this.state.sessionSelectedIndex]
+                const cur = filtered[this.state.sessionSelectedIndex]
                 if (cur) {
                     this.state.sessionRenameMode = true
                     this.state.sessionRenameValue = cur.preview || cur.id
@@ -2645,7 +3755,7 @@ export class DifferentialApp {
             }
 
             if (key === 'd' || key === 'D' || key === '\x1b[3~') {
-                const cur = this.state.sessions[this.state.sessionSelectedIndex]
+                const cur = filtered[this.state.sessionSelectedIndex]
                 if (cur) {
                     this.state.sessionConfirmDeleteId = cur.id
                     this.render()
@@ -2664,10 +3774,6 @@ export class DifferentialApp {
                 return
             }
 
-            const filtered = SessionSelectMenuView.getFiltered(
-                this.state.sessions,
-                this.state.sessionSearchQuery
-            )
             if (key === '\x1b[B' || key === 'j') {
                 if (this.state.sessionSelectedIndex < filtered.length - 1) {
                     this.state.sessionSelectedIndex += 1
@@ -2696,7 +3802,7 @@ export class DifferentialApp {
                 return
             }
 
-            if (key === 'q' || key === 'Q') {
+            if (key === 'q' || key === 'Q' || key === '\x1b') {
                 this.state.activeOverlay = 'none'
                 this.render()
                 return
@@ -2705,17 +3811,38 @@ export class DifferentialApp {
         }
 
         if (overlay === 'usage') {
-            if (key === 'p' || key === 'P' || key === 'b' || key === 'B') {
-                const url = 'https://trydecember.com/settings/billing'
+            if (key === 'b' || key === 'B' || key === 'p' || key === 'P') {
+                const providerKey = (this.state.selectedProvider || 'google').toLowerCase()
+                const url =
+                    PROVIDER_BILLING_LINKS[providerKey] ||
+                    'https://trydecember.com/settings/billing'
                 if (this.onOpenBillingPortalCallback) {
                     this.onOpenBillingPortalCallback(url)
                 } else {
                     openBrowserUrl(url)
                 }
-                this.showToast('Opening billing portal in browser...', 'info')
+                this.showToast(`Opening ${providerKey} billing portal in browser...`, 'info')
                 return
             }
-            if (key === 'q' || key === 'Q' || key === '\r' || key === '\n') {
+            if (key === 'm' || key === 'M') {
+                this.state.activeOverlay = 'model'
+                this.state.modelSelectedIndex = 0
+                this.state.modelWindowStart = 0
+                this.state.modelSearchQuery = ''
+                this.state.isModelSearching = false
+                this.render()
+                return
+            }
+            if (key === 'r' || key === 'R') {
+                this.refreshUsageStats()
+                this.loadUsageTrackerData().catch(() => {
+                    // Intentionally swallowed: ignore usage tracker load failure
+                })
+                this.showToast('Usage statistics refreshed', 'info')
+                this.render()
+                return
+            }
+            if (key === 'q' || key === 'Q' || key === '\r' || key === '\n' || key === '\x1b') {
                 this.state.activeOverlay = 'none'
                 this.render()
                 return
@@ -2772,50 +3899,203 @@ export class DifferentialApp {
         }
 
         if (overlay === 'memory') {
+            if (this.state.isAddingMemory) {
+                if (key === '\t') {
+                    this.state.memoryNewEntryCategoryIndex =
+                        (this.state.memoryNewEntryCategoryIndex + 1) % MEMORY_CATEGORIES.length
+                    this.render()
+                    return
+                }
+                if (key === '\r' || key === '\n') {
+                    const text = this.state.memoryNewEntryText.trim()
+                    const category =
+                        MEMORY_CATEGORIES[this.state.memoryNewEntryCategoryIndex] || 'general'
+                    if (text && this.options?.onRecordMemory) {
+                        this.options
+                            .onRecordMemory(text, category)
+                            .then(async (res) => {
+                                if (res.success) {
+                                    this.showToast(
+                                        `Saved to memory under "${category}".`,
+                                        'success'
+                                    )
+                                    await this.loadMemoryAndRules()
+                                } else {
+                                    this.showToast(res.message || 'Failed to save entry.', 'error')
+                                }
+                            })
+                            .catch(() => {
+                                // Intentionally swallowed: ignore save error
+                            })
+                    }
+                    this.state.isAddingMemory = false
+                    this.state.memoryNewEntryText = ''
+                    this.render()
+                    return
+                }
+                if (key === '\x7f' || key === '\b' || key === '\x08') {
+                    if (this.state.memoryNewEntryText.length > 0) {
+                        this.state.memoryNewEntryText = this.state.memoryNewEntryText.slice(0, -1)
+                        this.render()
+                    }
+                    return
+                }
+                if (key.length === 1 && key >= ' ') {
+                    this.state.memoryNewEntryText += key
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            // Tab navigation: toggle between memory and rules
             if (key === '\t' || key === '\x1b[C' || key === '\x1b[D') {
                 this.state.memoryTab = this.state.memoryTab === 'rules' ? 'memory' : 'rules'
                 this.state.memoryActiveDocIndex = 0
                 this.state.memoryCursorLine = 0
-                this.state.memoryScrollOffset = 0
+                this.state.memoryRuleScrollOffset = 0
                 this.render()
                 return
             }
-            const filteredDocs = this.state.memoryDocuments.filter((d) =>
-                this.state.memoryTab === 'rules' ? !d.isMemory : d.isMemory
-            )
+
+            // Switch rule document in rules tab
             if (key === '[' || key === ']') {
-                if (filteredDocs.length > 0) {
+                const rulesCount = this.state.memoryRuleFiles.length
+                if (this.state.memoryTab === 'rules' && rulesCount > 0) {
                     const delta = key === '[' ? -1 : 1
                     this.state.memoryActiveDocIndex =
-                        (this.state.memoryActiveDocIndex + delta + filteredDocs.length) %
-                        filteredDocs.length
+                        (this.state.memoryActiveDocIndex + delta + rulesCount) % rulesCount
                     this.state.memoryCursorLine = 0
-                    this.state.memoryScrollOffset = 0
+                    this.state.memoryRuleScrollOffset = 0
                     this.render()
                 }
                 return
             }
+
+            // Arrow Up / k
             if (key === '\x1b[A' || key === 'k') {
-                if (this.state.memoryCursorLine > 0) {
-                    this.state.memoryCursorLine -= 1
-                    if (this.state.memoryCursorLine < this.state.memoryScrollOffset) {
-                        this.state.memoryScrollOffset = this.state.memoryCursorLine
+                if (this.state.memoryTab === 'memory') {
+                    if (this.state.memorySelectedIndex > 0) {
+                        this.state.memorySelectedIndex -= 1
+                        if (this.state.memorySelectedIndex < this.state.memoryScrollOffset) {
+                            this.state.memoryScrollOffset = this.state.memorySelectedIndex
+                        }
+                        this.render()
                     }
+                } else {
+                    if (this.state.memoryCursorLine > 0) {
+                        this.state.memoryCursorLine -= 1
+                        if (this.state.memoryCursorLine < this.state.memoryRuleScrollOffset) {
+                            this.state.memoryRuleScrollOffset = this.state.memoryCursorLine
+                        }
+                        this.render()
+                    }
+                }
+                return
+            }
+
+            // Arrow Down / j
+            if (key === '\x1b[B' || key === 'j') {
+                const visibleRows = Math.max(5, this.screen.height - 6)
+                if (this.state.memoryTab === 'memory') {
+                    const entries = this.state.workspaceMemoryDetails?.entries || []
+                    if (this.state.memorySelectedIndex < entries.length - 1) {
+                        this.state.memorySelectedIndex += 1
+                        if (
+                            this.state.memorySelectedIndex >=
+                            this.state.memoryScrollOffset + visibleRows
+                        ) {
+                            this.state.memoryScrollOffset =
+                                this.state.memorySelectedIndex - visibleRows + 1
+                        }
+                        this.render()
+                    }
+                } else {
+                    const activeRule = this.state.memoryRuleFiles[this.state.memoryActiveDocIndex]
+                    const totalLines = activeRule ? activeRule.content.split('\n').length : 0
+                    if (this.state.memoryCursorLine < totalLines - 1) {
+                        this.state.memoryCursorLine += 1
+                        if (
+                            this.state.memoryCursorLine >=
+                            this.state.memoryRuleScrollOffset + visibleRows
+                        ) {
+                            this.state.memoryRuleScrollOffset =
+                                this.state.memoryCursorLine - visibleRows + 1
+                        }
+                        this.render()
+                    }
+                }
+                return
+            }
+
+            // [a]: Add new memory entry
+            if (key === 'a' || key === 'A') {
+                if (this.state.memoryTab === 'memory') {
+                    this.state.isAddingMemory = true
+                    this.state.memoryNewEntryText = ''
                     this.render()
                 }
                 return
             }
-            if (key === '\x1b[B' || key === 'j') {
-                this.state.memoryCursorLine += 1
-                const visibleRows = Math.max(5, this.screen.height - 8)
-                if (this.state.memoryCursorLine >= this.state.memoryScrollOffset + visibleRows) {
-                    this.state.memoryScrollOffset = this.state.memoryCursorLine - visibleRows + 1
+
+            // [d]: Forget selected memory entry
+            if (key === 'd' || key === 'D') {
+                if (this.state.memoryTab === 'memory') {
+                    const entries = this.state.workspaceMemoryDetails?.entries || []
+                    const selectedItem = entries[this.state.memorySelectedIndex]
+                    if (selectedItem && this.options?.onForgetMemory) {
+                        this.options
+                            .onForgetMemory(selectedItem.text)
+                            .then(async (res) => {
+                                if (res.success) {
+                                    this.showToast('Removed entry from memory.', 'success')
+                                    await this.loadMemoryAndRules()
+                                    const newLen =
+                                        this.state.workspaceMemoryDetails?.entries?.length || 0
+                                    if (this.state.memorySelectedIndex >= newLen) {
+                                        this.state.memorySelectedIndex = Math.max(0, newLen - 1)
+                                    }
+                                } else {
+                                    this.showToast(
+                                        res.message || 'Failed to remove entry.',
+                                        'error'
+                                    )
+                                }
+                            })
+                            .catch(() => {
+                                // Intentionally swallowed: ignore forget error
+                            })
+                    }
                 }
-                this.render()
                 return
             }
+
+            // [c]: Scaffold starter AGENTS.md
+            if (key === 'c' || key === 'C') {
+                if (this.state.memoryTab === 'rules' && this.options?.onScaffoldRules) {
+                    this.options
+                        .onScaffoldRules()
+                        .then(async (res) => {
+                            if (res.success) {
+                                this.showToast('Created starter AGENTS.md.', 'success')
+                                await this.loadMemoryAndRules()
+                            }
+                        })
+                        .catch(() => {
+                            // Intentionally swallowed: ignore scaffold error
+                        })
+                }
+                return
+            }
+
+            // [q]: Back / close memory viewer
             if (key === 'q' || key === 'Q') {
-                this.state.activeOverlay = 'none'
+                if (this.state.memoryTab === 'rules' && this.state.memoryInitialTab === 'memory') {
+                    this.state.memoryTab = 'memory'
+                    this.render()
+                    return
+                }
+                this.state.activeOverlay = this.state.memoryReturnOverlay || 'none'
                 this.render()
                 return
             }
@@ -3009,18 +4289,171 @@ export class DifferentialApp {
                 }
                 if (key === '\r' || key === '\n' || key === ' ') {
                     if (this.state.authMenuSelectedIndex === 0) {
-                        this.state.authViewMode = 'byok_provider'
-                        if (this.state.authProviders.length === 0) {
-                            this.state.authProviders = DEFAULT_AUTH_PROVIDERS
-                        }
+                        this.state.authViewMode = 'subscription'
+                        this.state.authProviders = SUBSCRIPTION_PROVIDER_ITEMS
                         this.state.authProviderSelectedIndex = 0
                         this.state.authProviderWindowStart = 0
                         this.state.authProviderSearchQuery = ''
                         this.state.isSearchingAuthProviders = false
+                        this.state.authConfirmDeleteValue = null
+                        this.state.authConfirmTarget = null
+                        this.render()
+                    } else if (this.state.authMenuSelectedIndex === 1) {
+                        this.state.authViewMode = 'byok_provider'
+                        this.state.authProviders = BYOK_PROVIDER_ITEMS
+                        this.state.authProviderSelectedIndex = 0
+                        this.state.authProviderWindowStart = 0
+                        this.state.authProviderSearchQuery = ''
+                        this.state.isSearchingAuthProviders = false
+                        this.state.authConfirmDeleteValue = null
+                        this.state.authConfirmTarget = null
                         this.render()
                     } else {
                         this.startDecemberLogin()
                     }
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.activeOverlay = 'none'
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            if (this.state.authViewMode === 'subscription') {
+                if (this.state.authConfirmDeleteValue) {
+                    if (key === 'y' || key === 'Y') {
+                        const targetValue = this.state.authConfirmDeleteValue
+                        this.state.authConfirmDeleteValue = null
+                        if (this.onDeleteProviderCallback) {
+                            Promise.resolve(this.onDeleteProviderCallback(targetValue)).catch(
+                                () => {
+                                    // Intentionally swallowed: delete provider callback error handled
+                                }
+                            )
+                        }
+                        const subKey = targetValue.replace(/^subscription:/, '')
+                        const idx = this.state.switchItems.findIndex(
+                            (it) =>
+                                it.value === targetValue || it.value === `subscription:${subKey}`
+                        )
+                        if (idx !== -1) {
+                            this.state.switchItems.splice(idx, 1)
+                        }
+                        this.showToast('Disconnected subscription.', 'success')
+                        this.render()
+                        return
+                    }
+                    if (key === 'n' || key === 'N' || key === '\x1b') {
+                        this.state.authConfirmDeleteValue = null
+                        this.render()
+                        return
+                    }
+                    return
+                }
+
+                if (key === 'd' || key === 'D') {
+                    const sel = SUBSCRIPTION_PROVIDER_ITEMS[this.state.authProviderSelectedIndex]
+                    const configuredSubs = this.getConfiguredSubscriptionValues()
+                    if (sel && configuredSubs.includes(sel.value)) {
+                        this.state.authConfirmDeleteValue = `subscription:${sel.value}`
+                        this.render()
+                    }
+                    return
+                }
+
+                if (key === '\x1b[A' || key === 'k') {
+                    if (this.state.authProviderSelectedIndex > 0) {
+                        this.state.authProviderSelectedIndex -= 1
+                        this.render()
+                    }
+                    return
+                }
+                if (key === '\x1b[B' || key === 'j') {
+                    if (
+                        this.state.authProviderSelectedIndex <
+                        SUBSCRIPTION_PROVIDER_ITEMS.length - 1
+                    ) {
+                        this.state.authProviderSelectedIndex += 1
+                        this.render()
+                    }
+                    return
+                }
+                if (key === '\r' || key === '\n' || key === ' ') {
+                    const sel = SUBSCRIPTION_PROVIDER_ITEMS[this.state.authProviderSelectedIndex]
+                    if (sel) {
+                        const configuredSubs = this.getConfiguredSubscriptionValues()
+                        if (configuredSubs.includes(sel.value)) {
+                            const configuredItem = this.state.switchItems.find(
+                                (it) =>
+                                    it.value === `subscription:${sel.value}` ||
+                                    (it as any).provider === sel.value
+                            )
+                            this.state.authConfirmTarget = {
+                                label: sel.label,
+                                value: sel.value,
+                                account: (configuredItem as any)?.account,
+                            }
+                            this.state.authViewMode = 'confirm_switch_subscription'
+                            this.render()
+                            return
+                        }
+
+                        if (this.onSubscriptionLoginCallback) {
+                            this.startSubscriptionLogin(sel.value, sel.label)
+                            return
+                        }
+                        this.showToast(
+                            `Run \`december login ${sel.value}\` in your terminal.`,
+                            'info'
+                        )
+                        this.state.activeOverlay = 'none'
+                        this.render()
+                        return
+                    }
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.activeOverlay = 'login'
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            if (this.state.authViewMode === 'confirm_switch_subscription') {
+                if (key === 'y' || key === 'Y') {
+                    const target = this.state.authConfirmTarget
+                    this.state.authConfirmTarget = null
+                    this.state.authViewMode = 'subscription'
+                    if (target && this.onSubscriptionLoginCallback) {
+                        this.startSubscriptionLogin(target.value, target.label)
+                        return
+                    }
+                    this.render()
+                    return
+                }
+                if (key === 'n' || key === 'N' || key === '\r' || key === '\n') {
+                    const target = this.state.authConfirmTarget
+                    this.state.authConfirmTarget = null
+                    this.state.authViewMode = 'subscription'
+                    this.state.activeOverlay = 'none'
+                    if (this.onSwitchSelectCallback && target) {
+                        Promise.resolve(
+                            this.onSwitchSelectCallback(`subscription:${target.value}`)
+                        ).catch(() => {
+                            // Intentionally swallowed: switch provider error handled
+                        })
+                    }
+                    this.showToast(`Switched to ${target?.label || 'subscription'}.`, 'success')
+                    this.render()
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.authConfirmTarget = null
+                    this.state.authViewMode = 'subscription'
+                    this.render()
                     return
                 }
                 return
@@ -3035,6 +4468,39 @@ export class DifferentialApp {
                     providers,
                     this.state.authProviderSearchQuery
                 )
+
+                if (this.state.authConfirmDeleteValue) {
+                    if (key === 'y' || key === 'Y') {
+                        const targetValue = this.state.authConfirmDeleteValue
+                        this.state.authConfirmDeleteValue = null
+                        if (this.onDeleteProviderCallback) {
+                            Promise.resolve(this.onDeleteProviderCallback(targetValue)).catch(
+                                () => {
+                                    // Intentionally swallowed: delete provider callback error handled
+                                }
+                            )
+                        }
+                        const provKey = targetValue.replace(/^(provider|byok):/, '')
+                        const idx = this.state.switchItems.findIndex(
+                            (it) =>
+                                it.value === targetValue ||
+                                it.value === `provider:${provKey}` ||
+                                it.value === `byok:${provKey}`
+                        )
+                        if (idx !== -1) {
+                            this.state.switchItems.splice(idx, 1)
+                        }
+                        this.showToast('Removed API key.', 'success')
+                        this.render()
+                        return
+                    }
+                    if (key === 'n' || key === 'N' || key === '\x1b') {
+                        this.state.authConfirmDeleteValue = null
+                        this.render()
+                        return
+                    }
+                    return
+                }
 
                 if (this.state.isSearchingAuthProviders) {
                     if (key === '\r' || key === '\n' || key === '\x1b[B') {
@@ -3054,6 +4520,16 @@ export class DifferentialApp {
                         this.state.authProviderSearchQuery += key
                         this.state.authProviderSelectedIndex = 0
                         this.state.authProviderWindowStart = 0
+                        this.render()
+                    }
+                    return
+                }
+
+                if (key === 'd' || key === 'D') {
+                    const sel = filtered[this.state.authProviderSelectedIndex]
+                    const configuredKeys = this.getConfiguredProviderValues()
+                    if (sel && configuredKeys.includes(sel.value)) {
+                        this.state.authConfirmDeleteValue = `provider:${sel.value}`
                         this.render()
                     }
                     return
@@ -3098,6 +4574,31 @@ export class DifferentialApp {
                 if (key === '\r' || key === '\n') {
                     const sel = filtered[this.state.authProviderSelectedIndex]
                     if (sel) {
+                        if (sel.isSubscription) {
+                            if (this.onSubscriptionLoginCallback) {
+                                this.startSubscriptionLogin(sel.value, sel.label)
+                                return
+                            }
+                            this.showToast(
+                                `Run \`december login ${sel.value}\` in your terminal.`,
+                                'info'
+                            )
+                            this.state.activeOverlay = 'none'
+                            this.render()
+                            return
+                        }
+
+                        const configuredKeys = this.getConfiguredProviderValues()
+                        if (configuredKeys.includes(sel.value)) {
+                            this.state.authConfirmTarget = {
+                                label: sel.label,
+                                value: sel.value,
+                            }
+                            this.state.authViewMode = 'confirm_replace_byok'
+                            this.render()
+                            return
+                        }
+
                         this.state.authViewMode = 'byok_key'
                         this.state.authApiKeyInput = ''
                         this.state.authKeyError = null
@@ -3107,7 +4608,51 @@ export class DifferentialApp {
                 }
 
                 if (key === '\x1b') {
-                    this.state.authViewMode = 'menu'
+                    if (this.state.authProviderSearchQuery) {
+                        this.state.authProviderSearchQuery = ''
+                        this.state.authProviderSelectedIndex = 0
+                        this.state.authProviderWindowStart = 0
+                        this.render()
+                        return
+                    }
+                    this.state.activeOverlay = 'login'
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            if (this.state.authViewMode === 'confirm_replace_byok') {
+                if (key === 'y' || key === 'Y') {
+                    this.state.authConfirmTarget = null
+                    this.state.authViewMode = 'byok_key'
+                    this.state.authApiKeyInput = ''
+                    this.state.authKeyError = null
+                    this.render()
+                    return
+                }
+                if (key === 'n' || key === 'N' || key === '\r' || key === '\n') {
+                    const target = this.state.authConfirmTarget
+                    this.state.authConfirmTarget = null
+                    this.state.authViewMode = 'byok_provider'
+                    this.state.activeOverlay = 'none'
+                    if (this.onSwitchSelectCallback && target) {
+                        Promise.resolve(
+                            this.onSwitchSelectCallback(`provider:${target.value}`)
+                        ).catch(() => {
+                            // Intentionally swallowed: switch provider error handled
+                        })
+                    }
+                    this.showToast(
+                        `Using existing API key for ${target?.label || 'provider'}.`,
+                        'success'
+                    )
+                    this.render()
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.authConfirmTarget = null
+                    this.state.authViewMode = 'byok_provider'
                     this.render()
                     return
                 }
@@ -3133,17 +4678,43 @@ export class DifferentialApp {
                         this.render()
                         return
                     }
-                    const provider =
-                        this.state.authProviders[this.state.authProviderSelectedIndex]?.value ||
-                        'custom'
+                    const currentProviders =
+                        this.state.authProviders.length > 0
+                            ? this.state.authProviders
+                            : UNIFIED_PROVIDER_MENU_ITEMS
+                    const filtered = AuthMenuView.getFilteredProviders(
+                        currentProviders,
+                        this.state.authProviderSearchQuery
+                    )
+                    const sel = filtered[this.state.authProviderSelectedIndex]
+                    const provider = sel?.value || 'custom'
                     if (this.onSaveApiKeyCallback) {
-                        this.onSaveApiKeyCallback(provider, trimmed)
+                        Promise.resolve(this.onSaveApiKeyCallback(provider, trimmed)).catch(() => {
+                            // Intentionally swallowed: key save callback error handled
+                        })
+                    }
+                    const existingSwitchIdx = this.state.switchItems.findIndex(
+                        (it) =>
+                            it.value === `provider:${provider}` || it.value === `byok:${provider}`
+                    )
+                    if (existingSwitchIdx === -1) {
+                        this.state.switchItems.push({
+                            label: formatProviderName(provider),
+                            value: `provider:${provider}`,
+                            isActive: true,
+                        })
+                    } else {
+                        for (const it of this.state.switchItems) {
+                            it.isActive =
+                                it.value === `provider:${provider}` ||
+                                it.value === `byok:${provider}`
+                        }
                     }
                     this.state.activeOverlay = 'none'
                     this.state.isAuthenticated = true
                     this.state.authMethod = 'byok'
                     this.state.selectedProvider = provider
-                    this.showToast(`Saved API key for ${provider}.`, 'success')
+                    this.showToast(`Saved API key for ${formatProviderName(provider)}.`, 'success')
                     this.render()
                     return
                 }
@@ -3160,6 +4731,37 @@ export class DifferentialApp {
     submitPrompt(overridePrompt?: string): void {
         const text = (overridePrompt ?? this.state.input).trim()
         if (!text) return
+
+        // Direct shell command (!<command>)
+        if (text.startsWith('!')) {
+            const rawCmd = text.slice(1).trim()
+            if (!rawCmd) {
+                this.showToast('Usage: !<command> (e.g. !git status)', 'info')
+                return
+            }
+
+            this.state.promptHistory.push(text)
+            this.state.historyIndex = -1
+
+            this.state.messages.push({
+                role: 'user',
+                content: text,
+            })
+
+            this.state.input = ''
+            this.state.cursorPos = 0
+            this.state.scrollOffset = undefined
+            this.state.isReadingMode = false
+            this.state.isFileAutocompleteVisible = false
+            this.render()
+
+            if (this.onExecuteDirectCommandCallback) {
+                this.onExecuteDirectCommandCallback(rawCmd)
+            } else if (this.onSubmitCallback) {
+                this.onSubmitCallback(text)
+            }
+            return
+        }
 
         // Safeguard: slash commands must NEVER be sent to chat!
         if (text.startsWith('/')) {
@@ -3191,6 +4793,15 @@ export class DifferentialApp {
     appendStreamDelta(delta: string): void {
         if (!delta) return
 
+        // Finalize any in-progress thinking block before streaming answer text
+        for (let i = this.state.messages.length - 1; i >= 0; i--) {
+            const m = this.state.messages[i]
+            if (m && m.role === 'thinking' && m.isStreaming) {
+                m.isStreaming = false
+                break
+            }
+        }
+
         const lastMsg = this.state.messages[this.state.messages.length - 1]
         if (lastMsg && lastMsg.role === 'assistant') {
             lastMsg.content = (lastMsg.content || '') + delta
@@ -3206,6 +4817,85 @@ export class DifferentialApp {
         }
 
         this.render()
+    }
+
+    appendThinkingChunk(chunk: string): void {
+        if (!chunk) return
+
+        const lastMsg = this.state.messages[this.state.messages.length - 1]
+        if (lastMsg && lastMsg.role === 'thinking' && lastMsg.isStreaming) {
+            lastMsg.content = (lastMsg.content || '') + chunk
+        } else {
+            this.state.messages.push({
+                role: 'thinking',
+                content: chunk,
+                isStreaming: true,
+            })
+        }
+
+        if (!this.state.isReadingMode) {
+            this.state.scrollOffset = undefined
+        }
+
+        this.render()
+    }
+
+    appendMessage(message: MessageItem): void {
+        this.state.messages.push(message)
+        this.render()
+    }
+
+    appendToolCall(toolCall: { id: string; name: string; input?: any; command?: string }): void {
+        // Finalize any in-progress thinking block before tool execution
+        for (let i = this.state.messages.length - 1; i >= 0; i--) {
+            const m = this.state.messages[i]
+            if (m && m.role === 'thinking' && m.isStreaming) {
+                m.isStreaming = false
+                break
+            }
+        }
+
+        const fallbackSummary = toolCall.command || `${toolCall.name}()`
+
+        this.state.messages.push({
+            role: 'tool',
+            toolCall: {
+                id: toolCall.id,
+                name: toolCall.name,
+                command: fallbackSummary,
+                status: 'running',
+                output: '',
+            },
+        })
+
+        if (!this.state.isReadingMode) {
+            this.state.scrollOffset = undefined
+        }
+
+        this.render()
+    }
+
+    updateToolExecution(toolCallId: string, chunk: string): void {
+        const msg = this.state.messages.find(
+            (m) => m.role === 'tool' && m.toolCall?.id === toolCallId
+        )
+        if (msg && msg.toolCall) {
+            msg.toolCall.output = (msg.toolCall.output || '') + chunk
+            this.render()
+        }
+    }
+
+    updateToolResult(toolCallId: string, result: { output?: string; isError?: boolean }): void {
+        const msg = this.state.messages.find(
+            (m) => m.role === 'tool' && m.toolCall?.id === toolCallId
+        )
+        if (msg && msg.toolCall) {
+            msg.toolCall.status = result.isError ? 'error' : 'success'
+            if (result.output) {
+                msg.toolCall.output = result.output
+            }
+            this.render()
+        }
     }
 
     scrollUp(delta = 1): void {
@@ -3255,10 +4945,13 @@ export class DifferentialApp {
 
         const overlay = this.state.activeOverlay
         const isPagerMode =
-            overlay === 'fileview' || (overlay === 'diff' && this.state.isDiffDetailView)
+            overlay === 'fileview' ||
+            overlay === 'memory' ||
+            (overlay === 'diff' && this.state.isDiffDetailView) ||
+            (overlay === 'skills' && this.state.skillsIsDetailView)
 
         // 1. TRUE 100% FULL SCREEN PAGER MODE (LESS / VIM STYLE)
-        // When viewing actual code (fileview / diff detail), take over 100% of the screen from row 0 to bottom,
+        // When viewing actual code (fileview / diff detail / memory / skill detail), take over 100% of the screen from row 0 to bottom,
         // replacing even the multi-line brand header. Terminal cursor is hidden.
         if (isPagerMode) {
             this.screen.setCursor(0, 0, false)
@@ -3276,6 +4969,9 @@ export class DifferentialApp {
                     isLoading: this.state.fileViewIsLoading,
                     error: this.state.fileViewError,
                     returnOverlay: this.state.fileViewReturnOverlay,
+                    searchQuery: this.state.fileViewSearchQuery,
+                    matchLines: this.state.fileViewMatchLines,
+                    currentMatchIndex: this.state.fileViewCurrentMatchIndex,
                 })
             } else if (overlay === 'diff') {
                 DiffViewMenuView.render(this.screen.backBuffer, {
@@ -3289,6 +4985,52 @@ export class DifferentialApp {
                     isDetailView: true,
                     detailScrollOffset: this.state.diffScrollOffset,
                     cursorLineIndex: this.state.diffCursorLineIndex,
+                })
+            } else if (overlay === 'skills') {
+                SkillsMenuView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: 0,
+                    width,
+                    height,
+                    selectedIndex: this.state.skillsSelectedIndex,
+                    windowStart: this.state.skillsWindowStart,
+                    skills: this.state.skills,
+                    searchQuery: this.state.skillsSearchQuery,
+                    isSearching: this.state.skillsIsSearching,
+                    isDetailView: true,
+                    detailLines: this.state.skillsDetailLines,
+                    cursorLineIndex: this.state.skillsCursorLine,
+                    scrollOffset: this.state.skillsScrollOffset,
+                    isLoadingDetail: this.state.skillsDetailLoading,
+                    detailError: this.state.skillsDetailError,
+                })
+            } else if (overlay === 'memory') {
+                const currentCat =
+                    MEMORY_CATEGORIES[this.state.memoryNewEntryCategoryIndex] || 'general'
+                MemoryViewMenuView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: 0,
+                    width,
+                    height,
+                    activeTab: this.state.memoryTab,
+                    memoryDetails: this.state.workspaceMemoryDetails,
+                    selectedEntryIndex: this.state.memorySelectedIndex,
+                    scrollOffset: this.state.memoryScrollOffset,
+                    isAddingEntry: this.state.isAddingMemory,
+                    newEntryText: this.state.memoryNewEntryText,
+                    newEntryCategory: currentCat,
+                    ruleFiles: this.state.memoryRuleFiles,
+                    selectedRuleIndex: this.state.memoryActiveDocIndex,
+                    ruleScrollOffset: this.state.memoryRuleScrollOffset,
+                    ruleCursorLineIndex: this.state.memoryCursorLine,
+                    isLoading: this.state.memoryIsLoading,
+                    documents: this.state.memoryDocuments,
+                    canGoBack: Boolean(
+                        (this.state.memoryTab === 'rules' &&
+                            this.state.memoryInitialTab === 'memory') ||
+                        (this.state.memoryReturnOverlay &&
+                            this.state.memoryReturnOverlay !== 'none')
+                    ),
                 })
             }
             this.screen.render()
@@ -3323,7 +5065,7 @@ export class DifferentialApp {
             const inputHeight = InputBarView.getHeight()
             const inputY = Math.max(headerHeight, height - inputHeight)
 
-            // 3. Floating File Autocomplete Menu (when @ query is active)
+            // 3. Compute floating overlay heights
             let fileMenuHeight = 0
             if (
                 this.state.isFileAutocompleteVisible &&
@@ -3332,18 +5074,8 @@ export class DifferentialApp {
                 fileMenuHeight = FileAutocompleteMenuView.getHeight(
                     this.state.fileAutocompleteItems.length
                 )
-                const fileMenuY = Math.max(headerHeight, inputY - fileMenuHeight)
-                FileAutocompleteMenuView.render(this.screen.backBuffer, {
-                    x: 0,
-                    y: fileMenuY,
-                    width,
-                    files: this.state.fileAutocompleteItems,
-                    selectedIndex: this.state.fileAutocompleteSelectedIndex,
-                    windowStart: this.state.fileAutocompleteWindowStart,
-                })
             }
 
-            // 4. Floating Command Menu (only while typing command name without space)
             let commandMenuHeight = 0
             const isCommandMenuVisible =
                 !this.state.isFileAutocompleteVisible &&
@@ -3352,33 +5084,15 @@ export class DifferentialApp {
             if (isCommandMenuVisible) {
                 const query = this.state.input.slice(1).trim()
                 commandMenuHeight = CommandMenuView.getHeight(query)
-                const cmdY = Math.max(headerHeight, inputY - commandMenuHeight)
-                CommandMenuView.render(this.screen.backBuffer, {
-                    x: 0,
-                    y: cmdY,
-                    width,
-                    query,
-                    selectedIndex: this.state.commandSelectedIndex,
-                    windowStart: this.state.commandWindowStart,
-                })
             }
 
-            // 5. Btw side-question callout box above prompt bar
             let btwHeight = 0
             if (this.state.btwState) {
                 btwHeight = BtwOverlayView.getHeight(this.state.btwState)
-                const bottomFloating = Math.max(fileMenuHeight, commandMenuHeight)
-                const btwY = Math.max(headerHeight, inputY - bottomFloating - btwHeight)
-                BtwOverlayView.render(this.screen.backBuffer, {
-                    x: 0,
-                    y: btwY,
-                    width,
-                    state: this.state.btwState,
-                    scrollOffset: this.state.btwScrollOffset,
-                })
             }
 
-            // 6. Message List View (between header and interactive area)
+            // 4. Message List View (between header and interactive area)
+            // Render the base chat layer FIRST so floating overlays always sit on top!
             const bottomFloating = Math.max(fileMenuHeight, commandMenuHeight)
             const topOfInteractive = inputY - bottomFloating - btwHeight
             const bodyHeight = Math.max(1, topOfInteractive - headerHeight)
@@ -3392,6 +5106,46 @@ export class DifferentialApp {
                 scrollOffset: this.state.scrollOffset,
             })
             this.maxScroll = maxScroll
+
+            // 5. Render floating overlays on top of chat area (with clearArea)
+            if (this.state.btwState && btwHeight > 0) {
+                const btwY = Math.max(headerHeight, inputY - bottomFloating - btwHeight)
+                this.screen.backBuffer.clearArea(0, btwY, width, btwHeight)
+                BtwOverlayView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: btwY,
+                    width,
+                    state: this.state.btwState,
+                    scrollOffset: this.state.btwScrollOffset,
+                })
+            }
+
+            if (fileMenuHeight > 0) {
+                const fileMenuY = Math.max(headerHeight, inputY - fileMenuHeight)
+                this.screen.backBuffer.clearArea(0, fileMenuY, width, fileMenuHeight)
+                FileAutocompleteMenuView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: fileMenuY,
+                    width,
+                    files: this.state.fileAutocompleteItems,
+                    selectedIndex: this.state.fileAutocompleteSelectedIndex,
+                    windowStart: this.state.fileAutocompleteWindowStart,
+                })
+            }
+
+            if (isCommandMenuVisible && commandMenuHeight > 0) {
+                const query = this.state.input.slice(1).trim()
+                const cmdY = Math.max(headerHeight, inputY - commandMenuHeight)
+                this.screen.backBuffer.clearArea(0, cmdY, width, commandMenuHeight)
+                CommandMenuView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: cmdY,
+                    width,
+                    query,
+                    selectedIndex: this.state.commandSelectedIndex,
+                    windowStart: this.state.commandWindowStart,
+                })
+            }
 
             // 6. Input Bar View
             const cursor = InputBarView.render(this.screen.backBuffer, {
@@ -3434,25 +5188,33 @@ export class DifferentialApp {
             } else if (overlay === 'tasks') {
                 naturalHeight = TasksModeMenuView.getHeight(this.state.tasks.length)
             } else if (overlay === 'skills') {
-                naturalHeight = SkillsMenuView.getHeight(this.state.skills.length)
+                naturalHeight = SkillsMenuView.getHeight(
+                    this.state.skills.length,
+                    6,
+                    this.state.skillsIsDetailView
+                )
             } else if (overlay === 'codesearch') {
-                naturalHeight = CodeSearchMenuView.getHeight(this.state.codeSearchResults.length)
+                const count =
+                    this.state.codeSearchGroups.length > 0
+                        ? this.state.codeSearchGroups.length
+                        : this.state.codeSearchResults.length
+                naturalHeight = CodeSearchMenuView.getHeight(count)
             } else if (overlay === 'diff') {
                 naturalHeight = DiffViewMenuView.getHeight(this.state.diffFiles.length)
             } else if (overlay === 'effort') {
                 naturalHeight = EffortMenuView.getHeight()
             } else if (overlay === 'login') {
-                naturalHeight = LoginMenuView.getHeight()
+                naturalHeight = LoginMenuView.getHeight(this.state.loginConfirmSwitch)
             } else if (overlay === 'session') {
-                naturalHeight = SessionSelectMenuView.getHeight(this.state.sessions.length)
+                const filtered = SessionSelectMenuView.getFiltered(
+                    this.state.sessions,
+                    this.state.sessionSearchQuery
+                )
+                naturalHeight = SessionSelectMenuView.getHeight(filtered.length)
             } else if (overlay === 'usage') {
                 naturalHeight = UsageSelectMenuView.getHeight()
             } else if (overlay === 'rewind') {
                 naturalHeight = RewindSelectMenuView.getHeight(this.state.rewindTurns.length)
-            } else if (overlay === 'memory') {
-                naturalHeight = MemoryViewMenuView.getHeight(
-                    Math.max(12, height - headerHeight - 1)
-                )
             } else if (overlay === 'ask_question') {
                 const q = this.state.pendingQuestions?.[this.state.currentQuestionIndex]
                 naturalHeight = AskQuestionMenuView.getHeight(q?.options?.length || 0)
@@ -3467,6 +5229,8 @@ export class DifferentialApp {
                     this.state.authViewMode,
                     this.state.authProviders.length
                 )
+            } else if (overlay === 'switch') {
+                naturalHeight = SwitchSelectMenuView.getHeight(this.state.switchItems.length)
             }
 
             const clampedOverlayHeight = Math.min(
@@ -3488,6 +5252,9 @@ export class DifferentialApp {
                 })
                 this.maxScroll = maxScroll
             }
+
+            // Clear overlay region completely so no residual chat cells remain
+            this.screen.backBuffer.clearArea(0, overlayY, width, clampedOverlayHeight)
 
             // Render the active overlay card
             if (overlay === 'help') {
@@ -3567,8 +5334,20 @@ export class DifferentialApp {
                     selectedIndex: this.state.skillsSelectedIndex,
                     windowStart: this.state.skillsWindowStart,
                     skills: this.state.skills,
+                    searchQuery: this.state.skillsSearchQuery,
+                    isSearching: this.state.skillsIsSearching,
+                    isDetailView: this.state.skillsIsDetailView,
+                    detailLines: this.state.skillsDetailLines,
+                    cursorLineIndex: this.state.skillsCursorLine,
+                    scrollOffset: this.state.skillsScrollOffset,
+                    isLoadingDetail: this.state.skillsDetailLoading,
+                    detailError: this.state.skillsDetailError,
                 })
             } else if (overlay === 'codesearch') {
+                const groups =
+                    this.state.codeSearchGroups.length > 0
+                        ? this.state.codeSearchGroups
+                        : groupCodeSearchResults(this.state.codeSearchResults)
                 CodeSearchMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: overlayY,
@@ -3576,6 +5355,7 @@ export class DifferentialApp {
                     height: clampedOverlayHeight,
                     query: this.state.codeSearchQuery,
                     results: this.state.codeSearchResults,
+                    groups,
                     selectedIndex: this.state.codeSearchSelectedIndex,
                     windowStart: this.state.codeSearchWindowStart,
                 })
@@ -3610,6 +5390,8 @@ export class DifferentialApp {
                     selectedIndex: this.state.loginSelectedIndex,
                     confirmSwitch: this.state.loginConfirmSwitch,
                     userEmail: this.state.userEmail,
+                    decemberEmail: this.state.decemberEmail,
+                    hasDecember: this.state.hasDecember,
                     isAuthenticated: this.state.isAuthenticated,
                     authMethod: this.state.authMethod,
                 })
@@ -3629,6 +5411,10 @@ export class DifferentialApp {
                     confirmDeleteId: this.state.sessionConfirmDeleteId,
                 })
             } else if (overlay === 'usage') {
+                const providerKey = (this.state.selectedProvider || 'google').toLowerCase()
+                const billingUrl =
+                    PROVIDER_BILLING_LINKS[providerKey] ||
+                    'https://trydecember.com/settings/billing'
                 UsageSelectMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: overlayY,
@@ -3636,7 +5422,9 @@ export class DifferentialApp {
                     height: clampedOverlayHeight,
                     activeModel: this.state.activeModel,
                     providerDisplayName: this.state.selectedProvider,
+                    billingUrl,
                     sessionStats: this.state.usageStats,
+                    weeklyStats: this.state.weeklyStats,
                     dailyUsage: this.state.dailyUsage,
                     balance: this.state.balance,
                 })
@@ -3649,19 +5437,6 @@ export class DifferentialApp {
                     turns: this.state.rewindTurns,
                     selectedIndex: this.state.rewindSelectedIndex,
                     windowStart: this.state.rewindWindowStart,
-                })
-            } else if (overlay === 'memory') {
-                MemoryViewMenuView.render(this.screen.backBuffer, {
-                    x: 0,
-                    y: overlayY,
-                    width,
-                    height: clampedOverlayHeight,
-                    activeTab: this.state.memoryTab,
-                    documents: this.state.memoryDocuments,
-                    activeDocIndex: this.state.memoryActiveDocIndex,
-                    cursorLineIndex: this.state.memoryCursorLine,
-                    scrollOffset: this.state.memoryScrollOffset,
-                    isLoading: this.state.memoryIsLoading,
                 })
             } else if (overlay === 'ask_question') {
                 if (this.state.pendingQuestions) {
@@ -3697,6 +5472,24 @@ export class DifferentialApp {
                     selectedIndex: this.state.planApproveSelectedIndex,
                 })
             } else if (overlay === 'auth') {
+                const currentProviders =
+                    this.state.authViewMode === 'subscription'
+                        ? SUBSCRIPTION_PROVIDER_ITEMS
+                        : this.state.authProviders.length > 0
+                          ? this.state.authProviders
+                          : BYOK_PROVIDER_ITEMS
+                const filtered = AuthMenuView.getFilteredProviders(
+                    currentProviders,
+                    this.state.authProviderSearchQuery
+                )
+                const currentSelected = filtered[this.state.authProviderSelectedIndex]
+                const providerKeyUrl = currentSelected
+                    ? PROVIDER_KEY_URLS[currentSelected.value]
+                    : undefined
+                const providerKeyNote = currentSelected
+                    ? PROVIDER_KEY_NOTES[currentSelected.value]
+                    : undefined
+
                 AuthMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: overlayY,
@@ -3704,20 +5497,36 @@ export class DifferentialApp {
                     height: clampedOverlayHeight,
                     mode: this.state.authViewMode,
                     userEmail: this.state.userEmail,
+                    decemberEmail: this.state.decemberEmail,
+                    hasDecember: this.state.hasDecember,
                     isAuthenticated: this.state.isAuthenticated,
                     authMethod: this.state.authMethod,
                     selectedProvider: this.state.selectedProvider,
-                    providers: this.state.authProviders,
+                    providers: currentProviders,
                     providerSelectedIndex: this.state.authProviderSelectedIndex,
                     providerWindowStart: this.state.authProviderWindowStart,
                     providerSearchQuery: this.state.authProviderSearchQuery,
                     isSearchingProviders: this.state.isSearchingAuthProviders,
-                    activeProviderName:
-                        this.state.authProviders[this.state.authProviderSelectedIndex]?.label ||
-                        this.state.selectedProvider,
+                    activeProviderName: currentSelected?.label || this.state.selectedProvider,
+                    providerKeyUrl,
+                    providerKeyNote,
                     apiKeyInput: this.state.authApiKeyInput,
                     keyError: this.state.authKeyError,
                     menuSelectedIndex: this.state.authMenuSelectedIndex,
+                    confirmDeleteValue: this.state.authConfirmDeleteValue,
+                    confirmTarget: this.state.authConfirmTarget,
+                    configuredSubscriptionValues: this.getConfiguredSubscriptionValues(),
+                    configuredProviderValues: this.getConfiguredProviderValues(),
+                })
+            } else if (overlay === 'switch') {
+                SwitchSelectMenuView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: overlayY,
+                    width,
+                    height: clampedOverlayHeight,
+                    items: this.state.switchItems,
+                    selectedIndex: this.state.switchSelectedIndex,
+                    confirmDeleteValue: this.state.switchConfirmDeleteValue,
                 })
             }
         }

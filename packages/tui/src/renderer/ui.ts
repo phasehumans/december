@@ -196,6 +196,75 @@ export function drawText(
     return { x: currX, y: currY, linesRendered }
 }
 
+export interface DrawHighlightedTextOptions {
+    x: number
+    y: number
+    maxWidth?: number
+    normalStyle?: CellStyle
+    highlightStyle?: CellStyle
+}
+
+export function drawHighlightedText(
+    buffer: ScreenBuffer,
+    text: string,
+    query: string,
+    options: DrawHighlightedTextOptions
+): { x: number; y: number; linesRendered: number } {
+    const { x, y, maxWidth = buffer.width - x, normalStyle, highlightStyle } = options
+
+    if (maxWidth <= 0 || !text) return { x, y, linesRendered: 0 }
+
+    const cleanQuery = query.trim()
+    if (!cleanQuery) {
+        drawText(buffer, text, { x, y, maxWidth, style: normalStyle })
+        return { x: x + Math.min(text.length, maxWidth), y, linesRendered: 1 }
+    }
+
+    const lowerText = text.toLowerCase()
+    const lowerQuery = cleanQuery.toLowerCase()
+    const queryLen = cleanQuery.length
+
+    let cursorX = x
+    let lastIdx = 0
+    let matchIdx = lowerText.indexOf(lowerQuery, lastIdx)
+
+    while (matchIdx !== -1 && cursorX < x + maxWidth) {
+        if (matchIdx > lastIdx) {
+            const prefix = text.slice(lastIdx, matchIdx)
+            const available = x + maxWidth - cursorX
+            const chunk = prefix.slice(0, available)
+            if (chunk) {
+                buffer.write(cursorX, y, chunk, normalStyle)
+                cursorX += chunk.length
+            }
+        }
+
+        if (cursorX >= x + maxWidth) break
+
+        const available = x + maxWidth - cursorX
+        const matchChunk = text.slice(matchIdx, matchIdx + queryLen).slice(0, available)
+        if (matchChunk) {
+            buffer.write(cursorX, y, matchChunk, highlightStyle)
+            cursorX += matchChunk.length
+        }
+
+        lastIdx = matchIdx + queryLen
+        matchIdx = lowerText.indexOf(lowerQuery, lastIdx)
+    }
+
+    if (lastIdx < text.length && cursorX < x + maxWidth) {
+        const remaining = text.slice(lastIdx)
+        const available = x + maxWidth - cursorX
+        const chunk = remaining.slice(0, available)
+        if (chunk) {
+            buffer.write(cursorX, y, chunk, normalStyle)
+            cursorX += chunk.length
+        }
+    }
+
+    return { x: cursorX, y, linesRendered: 1 }
+}
+
 export interface DrawDividerOptions {
     x?: number
     y: number

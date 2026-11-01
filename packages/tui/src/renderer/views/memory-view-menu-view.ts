@@ -1,11 +1,41 @@
 import { THEME } from '../../theme'
-import { drawDivider, drawText } from '../ui'
+import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
 import type { ScreenBuffer } from '../buffer'
 
-export type MemoryTab = 'rules' | 'memory'
+export type MemoryTab = 'memory' | 'rules'
+
+export const MEMORY_CATEGORIES = [
+    'conventions',
+    'build_and_test',
+    'architecture',
+    'quirks',
+    'rules',
+    'general',
+] as const
+
+export interface MemoryEntryViewItem {
+    category: string
+    text: string
+    sourceFile?: string
+    line?: number
+}
+
+export interface MemoryDetailsProps {
+    filePath?: string
+    targetFile?: string
+    totalBytes: number
+    maxBytes: number
+    budgetPercent?: number
+    entries: MemoryEntryViewItem[]
+}
+
+export interface RuleFileViewItem {
+    path: string
+    content: string
+}
 
 export interface MemoryDocument {
     id: string
@@ -21,11 +51,24 @@ export interface MemoryViewMenuViewProps {
     width: number
     height?: number
     activeTab: MemoryTab
-    documents: MemoryDocument[]
-    activeDocIndex: number
-    cursorLineIndex: number
-    scrollOffset: number
+    // Memory tab state
+    memoryDetails?: MemoryDetailsProps | null
+    selectedEntryIndex?: number
+    scrollOffset?: number
+    isAddingEntry?: boolean
+    newEntryText?: string
+    newEntryCategory?: string
+    // Rules tab state
+    ruleFiles?: RuleFileViewItem[]
+    selectedRuleIndex?: number
+    ruleScrollOffset?: number
+    ruleCursorLineIndex?: number
+    // Backward compatibility for document reader
+    documents?: MemoryDocument[]
+    activeDocIndex?: number
+    cursorLineIndex?: number
     isLoading?: boolean
+    canGoBack?: boolean
 }
 
 export const MemoryViewMenuView = {
@@ -34,176 +77,333 @@ export const MemoryViewMenuView = {
     },
 
     render(buffer: ScreenBuffer, props: MemoryViewMenuViewProps): void {
-        const x = (props.x ?? 0) + THEME.padding.paddingLeft
+        const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
-        const width = Math.max(
-            20,
-            props.width - THEME.padding.paddingLeft - THEME.padding.paddingRight
-        )
+        const width = props.width
         const totalHeight = props.height ?? 14
+        const footerY = props.y + totalHeight - 1
 
-        // 1. Tab Bar Row
-        const isRules = props.activeTab === 'rules'
         const isMem = props.activeTab === 'memory'
+        const isRules = props.activeTab === 'rules'
 
-        const rulesTab = isRules ? '[ Project Rules ]' : '  Project Rules  '
-        const memTab = isMem ? '[ Memory Docs ]' : '  Memory Docs  '
+        // 1. Tab Bar Row (Clean, no boxes, no divider lines)
+        const tabs: MemoryTab[] = ['memory', 'rules']
+        let tabX = x
+        for (const t of tabs) {
+            const isCurrent = t === props.activeTab
+            drawText(buffer, t, {
+                x: tabX,
+                y,
+                style: {
+                    fg: isCurrent ? THEME.colors.brand : THEME.colors.muted,
+                    bold: isCurrent,
+                },
+            })
+            tabX += t.length + 4
+        }
+        y += 2
 
-        drawText(buffer, rulesTab, {
-            x,
-            y,
-            style: {
-                fg: isRules ? THEME.colors.brand : THEME.colors.muted,
-                bold: isRules,
-                underline: isRules,
-            },
-        })
-
-        drawText(buffer, memTab, {
-            x: x + rulesTab.length + 2,
-            y,
-            style: {
-                fg: isMem ? THEME.colors.brand : THEME.colors.muted,
-                bold: isMem,
-                underline: isMem,
-            },
-        })
-        y += 1
-
-        // 2. Active Document Title & Path
-        const docs = props.documents.filter((d) => (isRules ? !d.isMemory : d.isMemory))
-        const activeDoc = docs[props.activeDocIndex] || docs[0]
-
-        if (activeDoc) {
-            drawText(buffer, `${activeDoc.title} · `, {
+        // 2. Sub-Header & Metadata
+        if (isMem) {
+            const filePath =
+                props.memoryDetails?.filePath ||
+                props.memoryDetails?.targetFile ||
+                '.december/memory.md'
+            drawText(buffer, `Workspace Memory (${filePath})`, {
                 x,
                 y,
                 style: { fg: THEME.colors.text, bold: true },
             })
-            const titleLen = activeDoc.title.length + 3
-            drawText(buffer, activeDoc.filePath, {
+
+            const titleLen = `Workspace Memory (${filePath})`.length
+            const totalBytes = props.memoryDetails?.totalBytes ?? 0
+            const maxBytes = props.memoryDetails?.maxBytes ?? 2048
+            const pct =
+                props.memoryDetails?.budgetPercent ??
+                Math.min(100, Math.round((totalBytes / maxBytes) * 100))
+            const entriesCount = props.memoryDetails?.entries?.length ?? 0
+
+            const meta = ` · ${totalBytes}/${maxBytes} B (${pct}%) · ${entriesCount} item${entriesCount === 1 ? '' : 's'}`
+            drawText(buffer, meta, {
                 x: x + titleLen,
                 y,
-                maxWidth: Math.max(10, width - titleLen),
-                style: { fg: THEME.colors.muted },
+                style: { fg: THEME.colors.dim },
             })
+            y += 2
         } else {
-            drawText(buffer, isRules ? 'No project rules found.' : 'No memory records found.', {
+            // Rules tab metadata
+            const ruleFiles = props.ruleFiles || []
+            const activeRule = ruleFiles[props.selectedRuleIndex ?? props.activeDocIndex ?? 0]
+            const legacyDoc = props.documents?.find((d) => !d.isMemory)
+            const filePath = activeRule?.path || legacyDoc?.filePath || 'AGENTS.md'
+            const content = activeRule?.content || legacyDoc?.content || ''
+            const lines = content ? content.split('\n') : []
+
+            drawText(buffer, filePath, {
+                x,
+                y,
+                style: { fg: THEME.colors.text, bold: true },
+            })
+            let headX = x + filePath.length
+
+            if (lines.length > 0) {
+                const countLabel = ` · ${lines.length} line${lines.length === 1 ? '' : 's'}`
+                drawText(buffer, countLabel, {
+                    x: headX,
+                    y,
+                    style: { fg: THEME.colors.dim },
+                })
+                headX += countLabel.length
+            }
+
+            if (ruleFiles.length > 1) {
+                const currentIdx = (props.selectedRuleIndex ?? 0) + 1
+                const switchBadge = ` · (${currentIdx}/${ruleFiles.length}) [ / ] switch`
+                drawText(buffer, switchBadge, {
+                    x: headX,
+                    y,
+                    style: { fg: THEME.colors.muted },
+                })
+            }
+            y += 2
+        }
+
+        // 3. Content Viewport
+        const promptHeight = props.isAddingEntry ? 3 : 0
+        const contentHeight = Math.max(1, footerY - y - promptHeight - 1)
+
+        if (props.isLoading) {
+            drawText(buffer, 'Loading...', {
                 x,
                 y,
                 style: { fg: THEME.colors.dim },
             })
-        }
-        y += 1
+        } else if (isMem) {
+            // Render Memory Entries
+            const entries = props.memoryDetails?.entries || []
+            if (entries.length === 0) {
+                drawText(
+                    buffer,
+                    'No memory recorded yet. Press [a] to add a project convention or quirk.',
+                    {
+                        x,
+                        y,
+                        style: { fg: THEME.colors.dim },
+                    }
+                )
+            } else {
+                const scrollOffset = Math.max(
+                    0,
+                    Math.min(props.scrollOffset ?? 0, Math.max(0, entries.length - contentHeight))
+                )
+                const visibleEntries = entries.slice(scrollOffset, scrollOffset + contentHeight)
 
-        // 3. Divider
-        drawDivider(buffer, {
-            x,
-            y,
-            width,
-            char: '─',
-            style: { fg: THEME.colors.border },
-        })
-        y += 1
+                for (let i = 0; i < visibleEntries.length; i++) {
+                    const absIdx = scrollOffset + i
+                    const isSelected = absIdx === (props.selectedEntryIndex ?? 0)
+                    const item = visibleEntries[i]
+                    const rowY = y + i
+                    const rowBg = isSelected ? THEME.colors.codespanBg : undefined
 
-        // 4. Content Area
-        const viewportHeight = Math.max(3, totalHeight - 6) // tabs (1), doc (1), divider (1), divider (1), footer (1), status (1)
+                    // Active cursor highlight bar across the full row
+                    if (isSelected) {
+                        const rowWidth = Math.max(10, width - x - 2)
+                        for (let c = 0; c < rowWidth; c++) {
+                            buffer.setChar(x + c, rowY, ' ', { bg: rowBg })
+                        }
+                    }
 
-        if (props.isLoading) {
-            drawText(buffer, 'Loading document...', {
-                x: x + 2,
-                y: y + 1,
-                style: { fg: THEME.colors.muted },
-            })
-            y += viewportHeight
-        } else if (!activeDoc || !activeDoc.content) {
-            drawText(buffer, 'Empty document.', {
-                x: x + 2,
-                y: y + 1,
-                style: { fg: THEME.colors.dim },
-            })
-            y += viewportHeight
+                    // Selector indicator glyph
+                    const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
+                    drawText(buffer, selector, {
+                        x,
+                        y: rowY,
+                        style: {
+                            fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
+                            bg: rowBg,
+                            bold: isSelected,
+                        },
+                    })
+
+                    // Category badge
+                    const catLabel = `[${item.category}] `
+                    drawText(buffer, catLabel, {
+                        x: x + 2,
+                        y: rowY,
+                        style: {
+                            fg: isSelected ? THEME.colors.brand : THEME.colors.dim,
+                            bg: rowBg,
+                        },
+                    })
+
+                    // Entry text
+                    const textX = x + 2 + catLabel.length
+                    const textMaxWidth = Math.max(10, width - textX - 4)
+                    drawText(buffer, item.text, {
+                        x: textX,
+                        y: rowY,
+                        maxWidth: textMaxWidth,
+                        style: {
+                            fg: isSelected ? THEME.colors.text : THEME.colors.subtle,
+                            bg: rowBg,
+                            bold: isSelected,
+                        },
+                    })
+                }
+            }
         } else {
-            const lines = activeDoc.content.split('\n')
-            const totalLines = lines.length
-            const scrollOffset = Math.max(
-                0,
-                Math.min(props.scrollOffset, Math.max(0, totalLines - viewportHeight))
-            )
-            const visibleLines = lines.slice(scrollOffset, scrollOffset + viewportHeight)
+            // Render Rules Document
+            const ruleFiles = props.ruleFiles || []
+            const activeRule = ruleFiles[props.selectedRuleIndex ?? props.activeDocIndex ?? 0]
+            const legacyDoc = props.documents?.find((d) => !d.isMemory)
+            const content = activeRule?.content || legacyDoc?.content || ''
 
-            const lineNumWidth = Math.max(3, String(totalLines).length + 1)
+            if (!content) {
+                drawText(
+                    buffer,
+                    'No project rules found. Press [c] to scaffold a starter AGENTS.md.',
+                    {
+                        x,
+                        y,
+                        style: { fg: THEME.colors.dim },
+                    }
+                )
+            } else {
+                const lines = content.split('\n')
+                const totalLines = lines.length
+                const gutterWidth = Math.max(3, String(totalLines).length)
+                const scrollOffset = Math.max(
+                    0,
+                    Math.min(
+                        props.ruleScrollOffset ?? props.scrollOffset ?? 0,
+                        Math.max(0, totalLines - contentHeight)
+                    )
+                )
+                const cursorLine = props.ruleCursorLineIndex ?? props.cursorLineIndex ?? 0
+                const visibleLines = lines.slice(scrollOffset, scrollOffset + contentHeight)
 
-            for (let i = 0; i < visibleLines.length; i++) {
-                const lineIndex = scrollOffset + i
-                const lineText = visibleLines[i]
-                const rowY = y + i
-                const isCursor = lineIndex === props.cursorLineIndex
+                for (let i = 0; i < visibleLines.length; i++) {
+                    const lineIndex = scrollOffset + i
+                    const lineText = visibleLines[i] || ''
+                    const rowY = y + i
+                    const isCursor = lineIndex === cursorLine
+                    const rowBg = isCursor ? THEME.colors.codespanBg : undefined
 
-                // Line number
-                const numStr = String(lineIndex + 1).padStart(lineNumWidth)
-                drawText(buffer, `${numStr} │ `, {
-                    x,
-                    y: rowY,
-                    style: { fg: isCursor ? THEME.colors.brand : THEME.colors.dim },
-                })
+                    // Active cursor line highlight bar across the full row (matching FileViewMenuView)
+                    if (isCursor) {
+                        const rowWidth = Math.max(10, width - x - 2)
+                        for (let c = 0; c < rowWidth; c++) {
+                            buffer.setChar(x + c, rowY, ' ', { bg: rowBg })
+                        }
+                    }
 
-                // Line content
-                const contentX = x + lineNumWidth + 3
-                drawText(buffer, lineText, {
-                    x: contentX,
-                    y: rowY,
-                    maxWidth: Math.max(10, width - (contentX - x)),
-                    style: {
-                        fg: isCursor ? THEME.colors.brand : THEME.colors.text,
-                        bold: isCursor,
-                    },
-                })
+                    // Selector indicator glyph
+                    const selector = isCursor ? `${THEME.glyphs.selector} ` : '  '
+                    drawText(buffer, selector, {
+                        x,
+                        y: rowY,
+                        style: {
+                            fg: isCursor ? THEME.colors.brand : THEME.colors.muted,
+                            bg: rowBg,
+                            bold: isCursor,
+                        },
+                    })
+
+                    // Line number
+                    const numStr = String(lineIndex + 1).padStart(gutterWidth, ' ')
+                    drawText(buffer, `${numStr} │ `, {
+                        x: x + 2,
+                        y: rowY,
+                        style: {
+                            fg: isCursor ? THEME.colors.brand : THEME.colors.dim,
+                            bg: rowBg,
+                            bold: isCursor,
+                        },
+                    })
+
+                    // Line text
+                    const codeX = x + 2 + gutterWidth + 3
+                    const codeMaxWidth = Math.max(10, width - codeX - 4)
+                    drawText(buffer, lineText, {
+                        x: codeX,
+                        y: rowY,
+                        maxWidth: codeMaxWidth,
+                        style: {
+                            fg: isCursor ? THEME.colors.brand : THEME.colors.text,
+                            bg: rowBg,
+                            bold: isCursor,
+                        },
+                    })
+                }
             }
-            y += visibleLines.length
-
-            // Fill empty rows if less than viewportHeight
-            for (let i = visibleLines.length; i < viewportHeight; i++) {
-                drawText(buffer, '~', {
-                    x,
-                    y: y + (i - visibleLines.length),
-                    style: { fg: THEME.colors.dim },
-                })
-            }
-            y = props.y + 3 + viewportHeight
-
-            // Line status bar
-            const statusText = `Line ${props.cursorLineIndex + 1}/${totalLines}`
-            drawText(buffer, statusText, {
-                x: x + 2,
-                y,
-                style: { fg: THEME.colors.subtle },
-            })
-            y += 1
         }
 
-        // 5. Divider
-        drawDivider(buffer, {
-            x,
-            y,
-            width,
-            char: '─',
-            style: { fg: THEME.colors.border },
-        })
-        y += 1
+        // 4. Inline Add Entry Prompt (when adding entry)
+        if (props.isAddingEntry) {
+            const promptY = footerY - 2
+            const cat = props.newEntryCategory || 'general'
+            const promptLabel = `add memory [${cat}] › `
+            drawText(buffer, promptLabel, {
+                x,
+                y: promptY,
+                style: { fg: THEME.colors.brand, bold: true },
+            })
+            const inputX = x + promptLabel.length
+            const inputVal = (props.newEntryText || '') + '█'
+            drawText(buffer, inputVal, {
+                x: inputX,
+                y: promptY,
+                maxWidth: Math.max(10, width - inputX - 2),
+                style: { fg: THEME.colors.text },
+            })
+        }
 
-        // 6. Navigation Footer
-        MenuFooterView.render(buffer, {
-            x,
-            y,
-            width,
-            items: [
-                { key: 'tab', label: 'switch tab' },
-                { key: '↑/↓', label: 'scroll' },
-                { key: 'e', label: 'open in editor' },
-                { key: 'r', label: 'reload' },
-                { key: 'esc', label: 'close' },
-            ],
-        })
+        // 5. Navigation Footer
+        if (props.isAddingEntry) {
+            MenuFooterView.render(buffer, {
+                x: props.x ?? 0,
+                y: footerY,
+                width,
+                items: [
+                    { key: 'enter', label: 'save' },
+                    { key: 'tab', label: 'cycle category' },
+                    { key: 'esc', label: 'cancel' },
+                ],
+            })
+        } else if (isMem) {
+            MenuFooterView.render(buffer, {
+                x: props.x ?? 0,
+                y: footerY,
+                width,
+                items: [
+                    { key: 'tab', label: 'switch tab' },
+                    { key: '↑/↓', label: 'select' },
+                    { key: 'a', label: 'add' },
+                    { key: 'd', label: 'forget' },
+                    { key: 'esc', label: props.canGoBack ? 'back' : 'close' },
+                ],
+            })
+        } else {
+            const ruleFiles = props.ruleFiles || []
+            const footerItems = [{ key: 'tab', label: 'switch tab' }]
+            if (ruleFiles.length > 1) {
+                footerItems.push({ key: '[/]', label: 'switch doc' })
+            }
+            footerItems.push({ key: '↑/↓', label: 'scroll' })
+            if (ruleFiles.length === 0) {
+                footerItems.push({ key: 'c', label: 'scaffold AGENTS.md' })
+            }
+            footerItems.push({
+                key: 'esc',
+                label: props.canGoBack ? 'back' : 'close',
+            })
+
+            MenuFooterView.render(buffer, {
+                x: props.x ?? 0,
+                y: footerY,
+                width,
+                items: footerItems,
+            })
+        }
     },
 }

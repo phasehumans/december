@@ -185,7 +185,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'open',
-        description: 'Open a file or workspace in your default editor',
+        description: 'View and inspect a file in the workspace viewer',
         value: '/open',
         action: () => {
             // forwarded to differential screen

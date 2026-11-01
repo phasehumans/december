@@ -254,12 +254,20 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // /changelog
         app.executeCommand('changelog')
         expect(submittedPrompt).toBeNull()
-        expect(app.state.toast?.message).toContain('changelog')
+        expect(app.state.toast?.message).toBe('Opened changelog in browser.')
+        expect(app.state.toast?.variant).toBe('success')
 
         // /docs
         app.executeCommand('docs')
         expect(submittedPrompt).toBeNull()
-        expect(app.state.toast?.message).toContain('docs')
+        expect(app.state.toast?.message).toBe('Opened documentation in browser.')
+        expect(app.state.toast?.variant).toBe('success')
+
+        // /feedback
+        app.executeCommand('feedback')
+        expect(submittedPrompt).toBeNull()
+        expect(app.state.toast?.message).toBe('Opened feedback in browser.')
+        expect(app.state.toast?.variant).toBe('success')
 
         // /copy
         app.state.messages.push({ role: 'assistant', content: 'generated answer' })
@@ -439,6 +447,49 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.activeOverlay).toBe('none')
         expect(app.state.input).toContain('@package.json:')
         expect(insertedFile).toBe('package.json')
+
+        app.stop()
+    })
+
+    it('groups multi-match code search results and navigates between matches using n and p in fileview', async () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onCodeSearch: async () => [
+                { file: 'package.json', line: 2, content: '"name": "december"' },
+                { file: 'package.json', line: 3, content: '"version": "0.4.15"' },
+            ],
+        })
+        app.start()
+
+        app.state.input = '/codesearch name'
+        app.handleKey('\r')
+        await new Promise((r) => setTimeout(r, 10))
+
+        expect(app.state.activeOverlay).toBe('codesearch')
+        expect(app.state.codeSearchResults.length).toBe(2)
+        expect(app.state.codeSearchGroups.length).toBe(1)
+        expect(app.state.codeSearchGroups[0].matchCount).toBe(2)
+
+        // Open fileview on first match
+        app.handleKey('\r')
+        expect(app.state.activeOverlay).toBe('fileview')
+        expect(app.state.fileViewCursorLine).toBe(1) // 0-based for line 2
+
+        // Press 'n' to jump to next match
+        app.handleKey('n')
+        expect(app.state.fileViewCursorLine).toBe(2) // 0-based for line 3
+        expect(app.state.toast?.message).toContain('Match 2/2 (line 3)')
+
+        // Press 'n' again to wrap to first match
+        app.handleKey('n')
+        expect(app.state.fileViewCursorLine).toBe(1) // wraps back to line 2
+        expect(app.state.toast?.message).toContain('(wrapped)')
+
+        // Press 'p' to jump back to previous match
+        app.handleKey('p')
+        expect(app.state.fileViewCursorLine).toBe(2)
 
         app.stop()
     })
@@ -705,7 +756,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('handles /login command with two-option menu (BYOK and December) and OAuth flow', async () => {
+    it('handles /login command with three-option menu (Subscriptions, BYOK, December) and OAuth flow', async () => {
         let loggedInOnCodeCalled = false
         let subscriptionProviderCalled: string | null = null
 
@@ -718,26 +769,45 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
                 onCode('ABCD-1234', 'https://app.trydecember.com/activate')
                 return { token: 'tok_test_123', email: 'user@example.com' }
             },
-            onSubscriptionLogin: async (provider) => {
+            onSubscriptionLogin: async (provider, onCode) => {
                 subscriptionProviderCalled = provider
+                if (onCode) {
+                    onCode('COPILOT-9999', 'https://github.com/login/device')
+                }
             },
         })
         app.start()
 
-        // 1. Bare /login opens authentication card menu with BYOK and December options
+        // 1. Bare /login opens authentication menu with Subscriptions, BYOK, and December options
         app.executeCommand('login')
         expect(app.state.activeOverlay).toBe('login')
         expect(app.state.loginSelectedIndex).toBe(0)
 
-        // Enter on index 0 (BYOK) switches to model selection
+        // Enter on index 0 (Subscriptions) switches to dedicated AI Subscriptions menu
         app.handleKey('\r')
-        expect(app.state.activeOverlay).toBe('model')
+        expect(app.state.activeOverlay).toBe('auth')
+        expect(app.state.authViewMode).toBe('subscription')
+        expect(app.state.authProviders.length).toBe(4)
 
-        // 2. Open /login again and select December
-        app.executeCommand('login')
+        // Esc returns to login menu
+        app.handleKey('\x1b')
         expect(app.state.activeOverlay).toBe('login')
+
+        // 2. Select BYOK option (index 1)
         app.handleKey('\x1b[B')
         expect(app.state.loginSelectedIndex).toBe(1)
+        app.handleKey('\r')
+        expect(app.state.activeOverlay).toBe('auth')
+        expect(app.state.authViewMode).toBe('byok_provider')
+        expect(app.state.authProviders.length).toBeGreaterThan(10)
+
+        // Esc returns to login menu
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('login')
+
+        // 3. Select December option (index 2)
+        app.handleKey('\x1b[B')
+        expect(app.state.loginSelectedIndex).toBe(2)
 
         // Enter triggers device login flow
         app.handleKey('\r')
@@ -750,9 +820,19 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.userEmail).toBe('user@example.com')
         expect(app.state.authMethod).toBe('december')
 
-        // 3. Targeted /login copilot triggers subscription OAuth directly
+        // 4. Targeted /login copilot triggers subscription OAuth directly and shows code & URL in chat
         app.executeCommand('login copilot')
         expect(subscriptionProviderCalled).toBe('copilot')
+
+        await new Promise((r) => setTimeout(r, 20))
+        expect(app.state.authMethod).toBe('subscription')
+        expect(app.state.selectedProvider).toBe('copilot')
+
+        // Verify message stream has the code and URL rendered cleanly without extra notes
+        const messagesText = app.state.messages.map((m) => m.content).join('\n')
+        expect(messagesText).toContain('COPILOT-9999')
+        expect(messagesText).toContain('https://github.com/login/device')
+        expect(messagesText).not.toContain('Ensure your browser is logged into the GitHub account')
 
         app.stop()
     })
@@ -760,6 +840,8 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
     it('handles /session menu navigation, delete, and session switching', async () => {
         let switchedSessionId: string | null = null
         let deletedSessionId: string | null = null
+        let renamedOldId: string | null = null
+        let renamedNewId: string | null = null
 
         const app = new DifferentialApp({
             terminal,
@@ -776,29 +858,52 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
             onSessionDelete: (id) => {
                 deletedSessionId = id
             },
+            onSessionRename: (oldId, newId) => {
+                renamedOldId = oldId
+                renamedNewId = newId
+            },
         })
         app.start()
 
-        // 1. Open session overlay
-        app.executeCommand('session')
+        // 1. Open session overlay with search query args
+        app.executeCommand('resume bug')
         expect(app.state.activeOverlay).toBe('session')
-        expect(app.state.sessionSelectedIndex).toBe(0)
+        expect(app.state.sessionSearchQuery).toBe('bug')
+
+        // Clear query to see all sessions
+        app.state.sessionSearchQuery = ''
+        app.state.sessionSelectedIndex = 0
 
         // 2. Navigate down to sess-2
         app.handleKey('\x1b[B')
         expect(app.state.sessionSelectedIndex).toBe(1)
 
-        // 3. Press 'd' to trigger delete confirmation
-        app.handleKey('d')
-        expect(app.state.sessionConfirmDeleteId).toBe('sess-2')
+        // 3. Rename sess-2 with 'r'
+        app.handleKey('r')
+        expect(app.state.sessionRenameMode).toBe(true)
+        app.state.sessionRenameValue = 'Refactored bug'
+        app.handleKey('\r')
+        expect(app.state.sessionRenameMode).toBe(false)
+        expect(renamedOldId).toBe('sess-2')
+        expect(renamedNewId).toBe('Refactored bug')
+        expect(app.state.sessions[1].id).toBe('Refactored bug')
 
-        // 4. Press 'y' to confirm delete
+        // 4. Press 'd' to trigger delete confirmation
+        app.handleKey('d')
+        expect(app.state.sessionConfirmDeleteId).toBe('Refactored bug')
+
+        // 5. Press 'y' to confirm delete
         app.handleKey('y')
-        expect(deletedSessionId).toBe('sess-2')
+        expect(deletedSessionId).toBe('Refactored bug')
         expect(app.state.sessions.length).toBe(2)
         expect(app.state.sessionConfirmDeleteId).toBeNull()
 
-        // 5. Select remaining sess-1 on Enter
+        // 6. Test Esc closes session menu
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // 7. Re-open and select remaining sess-1 on Enter
+        app.executeCommand('session')
         app.state.sessionSelectedIndex = 0
         app.handleKey('\r')
         expect(switchedSessionId).toBe('sess-1')
@@ -821,15 +926,119 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         })
         app.start()
 
+        // Populate a message with token usage
+        app.state.messages.push({
+            role: 'assistant',
+            content: 'Hello world',
+            timestamp: Date.now(),
+            usage: {
+                promptTokens: 250,
+                completionTokens: 50,
+            },
+        })
+
+        app.executeCommand('usage')
+        expect(app.state.activeOverlay).toBe('usage')
+        // Automatically aggregates from messages
+        expect(app.state.usageStats.requests).toBe(1)
+        expect(app.state.usageStats.inputTokens).toBe(250)
+        expect(app.state.usageStats.outputTokens).toBe(50)
+
+        // Press 'r' to refresh stats
+        app.handleKey('r')
+        expect(app.state.usageStats.requests).toBe(1)
+
+        // Press 'p' or 'b' to open billing portal
+        app.handleKey('b')
+        expect(billingPortalOpened).toBe(true)
+
+        // Press 'm' to switch to model select overlay
+        app.handleKey('m')
+        expect(app.state.activeOverlay).toBe('model')
+
+        // Return to usage
         app.executeCommand('usage')
         expect(app.state.activeOverlay).toBe('usage')
 
-        // Press 'p' to open billing portal
-        app.handleKey('p')
-        expect(billingPortalOpened).toBe(true)
-
         // Press 'q' to dismiss overlay
         app.handleKey('q')
+        expect(app.state.activeOverlay).toBe('none')
+
+        app.stop()
+    })
+
+    it('handles /skills menu search, detail view navigation, and space shortcut', async () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            skills: [
+                {
+                    name: 'tdd',
+                    description: 'Test driven development workflow',
+                    origin: 'workspace',
+                    directoryPath: '/workspace/.agents/skills/tdd',
+                    entryFilePath: '/workspace/.agents/skills/tdd/SKILL.md',
+                },
+                {
+                    name: 'code-review',
+                    description: 'Performs rigorous code review',
+                    origin: 'global',
+                    directoryPath: '/global/code-review',
+                    entryFilePath: '/global/code-review/SKILL.md',
+                },
+            ],
+        })
+        app.start()
+
+        app.executeCommand('skills')
+        expect(app.state.activeOverlay).toBe('skills')
+        expect(app.state.skills.length).toBe(2)
+
+        // Search mode: press '/'
+        app.handleKey('/')
+        expect(app.state.skillsIsSearching).toBe(true)
+
+        // Type query 'tdd'
+        app.handleKey('t')
+        app.handleKey('d')
+        app.handleKey('d')
+        expect(app.state.skillsSearchQuery).toBe('tdd')
+
+        // Confirm search with Enter
+        app.handleKey('\r')
+        expect(app.state.skillsIsSearching).toBe(false)
+        expect(app.state.skillsSearchQuery).toBe('tdd')
+
+        // Space inserts '/tdd ' into prompt and closes overlay
+        app.handleKey(' ')
+        expect(app.state.activeOverlay).toBe('none')
+        expect(app.state.input).toBe('/tdd ')
+
+        // Re-open skills
+        app.executeCommand('skills')
+        expect(app.state.activeOverlay).toBe('skills')
+
+        // Enter opens detail view
+        app.handleKey('\r')
+        expect(app.state.skillsIsDetailView).toBe(true)
+        app.state.skillsDetailLines = ['# TDD Guide', 'Step 1: Write test', 'Step 2: Implement']
+
+        // Down arrow moves cursor line
+        app.handleKey('\x1b[B')
+        expect(app.state.skillsCursorLine).toBe(1)
+
+        // Up arrow moves cursor line back
+        app.handleKey('\x1b[A')
+        expect(app.state.skillsCursorLine).toBe(0)
+
+        // q returns to list view
+        app.handleKey('q')
+        expect(app.state.skillsIsDetailView).toBe(false)
+        expect(app.state.activeOverlay).toBe('skills')
+
+        // esc closes menu
+        app.handleKey('\x1b')
         expect(app.state.activeOverlay).toBe('none')
 
         app.stop()
@@ -941,6 +1150,661 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.handleKey('\t')
         expect(app.state.input).toBe('@src/agent.ts ')
         expect(app.state.isFileAutocompleteVisible).toBe(false)
+
+        app.stop()
+    })
+
+    it('handles /open <file> autocompletion dropup and opens fileview', async () => {
+        let openedEditorPath: string | null = null
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            workspaceFiles: ['src/agent.ts', 'src/types.ts', 'README.md'],
+            onOpenEditor: async (path) => {
+                openedEditorPath = path
+            },
+        })
+        app.start()
+
+        // Type /open RE
+        for (const ch of '/open RE') {
+            app.handleKey(ch)
+        }
+
+        expect(app.state.input).toBe('/open RE')
+        expect(app.state.isFileAutocompleteVisible).toBe(true)
+        expect(app.state.fileAutocompleteItems.length).toBeGreaterThan(0)
+        expect(app.state.fileAutocompleteItems[0]?.path).toBe('README.md')
+
+        // Tab to autocomplete
+        app.handleKey('\t')
+        expect(app.state.input).toBe('/open README.md ')
+        expect(app.state.isFileAutocompleteVisible).toBe(false)
+
+        // Enter to execute /open README.md
+        app.handleKey('\r')
+        expect(app.state.activeOverlay).toBe('fileview')
+        expect(app.state.fileViewPath).toBe('README.md')
+
+        app.stop()
+    })
+
+    it('handles /open without args by prompting for file name and opening autocomplete', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            workspaceFiles: ['src/agent.ts', 'src/types.ts', 'README.md'],
+        })
+        app.start()
+
+        // Execute /open without args
+        app.executeCommand('open')
+        expect(app.state.input).toBe('/open ')
+        expect(app.state.isFileAutocompleteVisible).toBe(true)
+        expect(app.state.fileAutocompleteItems.length).toBeGreaterThan(0)
+        expect(app.state.toast?.message).toBe('Please specify a file name: /open <file>[:line]')
+
+        app.stop()
+    })
+
+    it('handles /switch overlay navigation, switching providers, and credential deletion', () => {
+        let switchedProvider: string | null = null
+        let deletedProvider: string | null = null
+
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            switchItems: [
+                { label: 'Anthropic (Subscription)', value: 'subscription:claude', isActive: true },
+                { label: 'OpenAI (BYOK)', value: 'provider:openai', isActive: false },
+            ],
+            onSwitchSelect: (val) => {
+                switchedProvider = val
+            },
+            onDeleteProvider: (val) => {
+                deletedProvider = val
+            },
+        })
+        app.start()
+
+        // 1. /switch opens switch overlay
+        app.executeCommand('switch')
+        expect(app.state.activeOverlay).toBe('switch')
+        expect(app.state.switchSelectedIndex).toBe(0)
+
+        // Down arrow selects index 1
+        app.handleKey('\x1b[B')
+        expect(app.state.switchSelectedIndex).toBe(1)
+
+        // Enter switches provider and closes overlay
+        app.handleKey('\r')
+        expect(switchedProvider).toBe('provider:openai')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // 2. Open /switch again and test delete confirmation flow
+        app.executeCommand('switch')
+        expect(app.state.activeOverlay).toBe('switch')
+        expect(app.state.switchItems.length).toBe(2)
+
+        // Press 'd' triggers delete confirmation
+        app.handleKey('d')
+        expect(app.state.switchConfirmDeleteValue).toBe('subscription:claude')
+
+        // Press 'y' confirms deletion
+        app.handleKey('y')
+        expect(deletedProvider).toBe('subscription:claude')
+        expect(app.state.switchItems.length).toBe(1)
+        expect(app.state.switchConfirmDeleteValue).toBeNull()
+
+        app.stop()
+    })
+
+    it('allows disconnecting configured subscription with d and y in subscriptions menu', () => {
+        let deleted = ''
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            switchItems: [
+                {
+                    label: 'Anthropic (Claude) (Subscription)',
+                    value: 'subscription:claude',
+                    isActive: true,
+                },
+            ],
+            onDeleteProvider: (val) => {
+                deleted = val
+            },
+        })
+        app.start()
+
+        // Open login menu, navigate to subscription
+        app.executeCommand('login')
+        expect(app.state.activeOverlay).toBe('login')
+        app.handleKey('\r')
+        expect(app.state.activeOverlay).toBe('auth')
+        expect(app.state.authViewMode).toBe('subscription')
+        expect(app.state.authProviderSelectedIndex).toBe(0) // Claude
+
+        // Press 'd' triggers disconnect confirmation
+        app.handleKey('d')
+        expect(app.state.authConfirmDeleteValue).toBe('subscription:claude')
+
+        // Press 'y' confirms disconnect
+        app.handleKey('y')
+        expect(deleted).toBe('subscription:claude')
+        expect(app.state.switchItems.length).toBe(0)
+        expect(app.state.authConfirmDeleteValue).toBeNull()
+
+        app.stop()
+    })
+
+    it('prompts for account switch confirmation when selecting an already configured subscription', () => {
+        let switched = ''
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            switchItems: [
+                {
+                    label: 'Anthropic (Claude) (Subscription)',
+                    value: 'subscription:claude',
+                    account: 'dev@example.com',
+                },
+            ],
+            onSwitchSelect: (val) => {
+                switched = val
+            },
+        })
+        app.start()
+
+        // Open subscription menu
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'subscription'
+        app.state.authProviderSelectedIndex = 0 // Claude
+
+        // Press Enter on already configured subscription
+        app.handleKey('\r')
+        expect(app.state.authViewMode as string).toBe('confirm_switch_subscription')
+        expect(app.state.authConfirmTarget?.value).toBe('claude')
+        expect(app.state.authConfirmTarget?.account).toBe('dev@example.com')
+
+        // Press Enter (or n) keeps current and switches to it
+        app.handleKey('\r')
+        expect(switched).toBe('subscription:claude')
+        expect(app.state.activeOverlay as string).toBe('none')
+
+        app.stop()
+    })
+
+    it('esc in confirm_switch_subscription returns to subscription menu, not login', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            switchItems: [
+                {
+                    label: 'Anthropic (Claude)',
+                    value: 'subscription:claude',
+                    account: 'dev@example.com',
+                },
+            ],
+        })
+        app.start()
+
+        // Open subscription menu
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'subscription'
+        app.state.authProviderSelectedIndex = 0 // Claude
+
+        // Press Enter on already configured subscription
+        app.handleKey('\r')
+        expect(app.state.authViewMode as string).toBe('confirm_switch_subscription')
+        expect(app.state.authConfirmTarget?.value).toBe('claude')
+
+        // Press Esc -> should return to subscription view, keeping auth overlay
+        app.handleKey('\x1b')
+        expect(app.state.authViewMode as string).toBe('subscription')
+        expect(app.state.activeOverlay as string).toBe('auth')
+        expect(app.state.authConfirmTarget).toBeNull()
+
+        app.stop()
+    })
+
+    it('Login via December with existing session prompts switch confirmation and handles esc', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            hasDecember: true,
+            decemberEmail: 'dev@december.io',
+            userEmail: 'dev@december.io',
+            isAuthenticated: true,
+            authMethod: 'subscription', // Even if currently using subscription!
+        })
+        app.start()
+
+        // Open login menu
+        app.executeCommand('login')
+        expect(app.state.activeOverlay).toBe('login')
+        expect(app.state.loginConfirmSwitch).toBe(false)
+
+        // Navigate to "Login via December" (index 2)
+        app.state.loginSelectedIndex = 2
+        app.handleKey('\r')
+
+        // Should enter switch confirmation
+        expect(app.state.loginConfirmSwitch).toBe(true)
+
+        // Press Esc -> returns to login menu options without closing overlay
+        app.handleKey('\x1b')
+        expect(app.state.loginConfirmSwitch).toBe(false)
+        expect(app.state.activeOverlay).toBe('login')
+
+        // Press Enter again to reopen switch confirmation
+        app.handleKey('\r')
+        expect(app.state.loginConfirmSwitch).toBe(true)
+
+        // Press Enter or n to keep current account -> closes overlay and shows toast
+        app.handleKey('\r')
+        expect(app.state.loginConfirmSwitch).toBe(false)
+        expect(app.state.activeOverlay).toBe('none')
+        expect(app.state.toast?.message).toBe('Already logged in as dev@december.io.')
+
+        app.stop()
+    })
+
+    it('allows deleting configured BYOK key with d and y in byok provider menu', () => {
+        let deleted = ''
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            switchItems: [
+                {
+                    label: 'OpenAI',
+                    value: 'provider:openai',
+                },
+            ],
+            onDeleteProvider: (val) => {
+                deleted = val
+            },
+        })
+        app.start()
+
+        // Open BYOK menu
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'byok_provider'
+        // Filter to openai
+        app.state.authProviderSearchQuery = 'openai'
+        app.state.authProviderSelectedIndex = 0
+
+        // Press 'd' triggers deletion confirmation
+        app.handleKey('d')
+        expect(app.state.authConfirmDeleteValue).toBe('provider:openai')
+
+        // Press 'y' confirms deletion
+        app.handleKey('y')
+        expect(deleted).toBe('provider:openai')
+        expect(app.state.switchItems.length).toBe(0)
+        expect(app.state.authConfirmDeleteValue).toBeNull()
+
+        app.stop()
+    })
+
+    it('prompts to replace key or use existing when selecting an already configured BYOK provider', () => {
+        let switched = ''
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            switchItems: [
+                {
+                    label: 'OpenAI',
+                    value: 'provider:openai',
+                },
+            ],
+            onSwitchSelect: (val) => {
+                switched = val
+            },
+        })
+        app.start()
+
+        // Open BYOK menu, filter to openai
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'byok_provider'
+        app.state.authProviderSearchQuery = 'openai'
+        app.state.authProviderSelectedIndex = 0
+
+        // Press Enter on configured provider
+        app.handleKey('\r')
+        expect(app.state.authViewMode as string).toBe('confirm_replace_byok')
+        expect(app.state.authConfirmTarget?.value).toBe('openai')
+
+        // Press Enter (or n) uses existing key
+        app.handleKey('\r')
+        expect(switched).toBe('provider:openai')
+        expect(app.state.activeOverlay as string).toBe('none')
+
+        // Now test pressing 'y' enters new key
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'confirm_replace_byok'
+        app.handleKey('y')
+        expect(app.state.authViewMode as string).toBe('byok_key')
+
+        app.stop()
+    })
+
+    it('dynamically scopes /model list to active provider and supports search and selection', () => {
+        let selectedModel: any = null
+        const mockProviderModels: Record<string, { label: string; value: string }[]> = {
+            anthropic: [
+                { label: 'Claude 3.7 Sonnet', value: 'claude-3-7-sonnet' },
+                { label: 'Claude 3.5 Haiku', value: 'claude-3-5-haiku' },
+            ],
+            google: [
+                { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+                { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
+            ],
+        }
+
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            selectedProvider: 'anthropic',
+            activeModel: 'claude-3-7-sonnet',
+            getProviderModels: (prov) => mockProviderModels[prov] || [],
+            onModelSelect: (model) => {
+                selectedModel = model
+            },
+        })
+        app.start()
+
+        // 1. /model loads anthropic models initially
+        app.executeCommand('model')
+        expect(app.state.activeOverlay).toBe('model')
+        expect(app.state.models.length).toBe(2)
+        expect(app.state.models[0].value).toBe('claude-3-7-sonnet')
+        expect(app.state.modelSelectedIndex).toBe(0)
+
+        // 2. Search mode with '/'
+        app.handleKey('/')
+        expect(app.state.isModelSearching).toBe(true)
+        app.handleKey('h')
+        app.handleKey('a')
+        app.handleKey('i')
+        expect(app.state.modelSearchQuery).toBe('hai')
+
+        // First escape exits search mode without closing menu
+        app.handleKey('\x1b')
+        expect(app.state.isModelSearching).toBe(false)
+        expect(app.state.activeOverlay).toBe('model')
+
+        // Enter selects the filtered item
+        app.handleKey('\r')
+        expect(selectedModel?.value).toBe('claude-3-5-haiku')
+        expect(app.state.activeModel).toBe('claude-3-5-haiku')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // 3. Switch provider to google, /model refreshes to google models
+        app.state.selectedProvider = 'google'
+        app.executeCommand('model')
+        expect(app.state.activeOverlay).toBe('model')
+        expect(app.state.models.length).toBe(2)
+        expect(app.state.models[0].value).toBe('gemini-2.5-flash')
+
+        app.stop()
+    })
+
+    it('copies authorization url to clipboard and displays link copy notice during subscription login', async () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSubscriptionLogin: async (_prov, onCode) => {
+                if (onCode) {
+                    onCode('CLAUDE-AUTH', 'https://claude.ai/oauth/authorize?test=1')
+                }
+                return { accessToken: 'test-token', provider: 'claude' }
+            },
+        })
+        app.start()
+
+        await app.startSubscriptionLogin('claude', 'Anthropic (Claude)')
+
+        const assistantMsg = app.state.messages.find(
+            (m) => m.role === 'assistant' && m.content.includes('Authorization URL:')
+        )
+        expect(assistantMsg).toBeDefined()
+        expect(assistantMsg?.content).toContain('(Link copied to clipboard')
+        expect(assistantMsg?.content).toContain('https://claude.ai/oauth/authorize?test=1')
+
+        app.stop()
+    })
+
+    it('appends tool calls, updates execution results, and displays thinking', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        // Append thinking
+        app.appendThinkingChunk('analyzing context')
+        expect(app.state.messages.some((m) => m.role === 'thinking')).toBe(true)
+
+        // Append tool call
+        app.appendToolCall({
+            id: 'call-1',
+            name: 'read_file',
+            command: 'Read(src/index.ts)',
+        })
+        expect(
+            app.state.messages.some(
+                (m) => m.role === 'tool' && m.toolCall?.command === 'Read(src/index.ts)'
+            )
+        ).toBe(true)
+
+        // Update tool result
+        app.updateToolResult('call-1', { output: '42 lines read', isError: false })
+        const toolMsg = app.state.messages.find((m) => m.role === 'tool')
+        expect(toolMsg?.toolCall?.status).toBe('success')
+
+        // Stream answer delta finalizes thinking
+        app.appendStreamDelta('Here is the explanation.')
+        const thinkingMsg = app.state.messages.find((m) => m.role === 'thinking')
+        expect(thinkingMsg?.isStreaming).toBe(false)
+
+        app.stop()
+    })
+
+    it('manages fullscreen memory overlay, hierarchical esc back navigation, and adding entries', async () => {
+        let recorded: { text: string; category: string } | null = null
+        let forgotten: string | null = null
+
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onLoadMemoryDetails: async () => ({
+                filePath: '.december/memory.md',
+                totalBytes: 256,
+                maxBytes: 2048,
+                budgetPercent: 12,
+                entries: [
+                    { category: 'build_and_test', text: 'bun test --bail' },
+                    { category: 'conventions', text: 'always lowercase commits' },
+                ],
+            }),
+            onLoadProjectRules: async () => [
+                { path: 'AGENTS.md', content: '# AGENTS.md\nline 1\nline 2' },
+            ],
+            onRecordMemory: async (text, category) => {
+                recorded = { text, category }
+                return { success: true, message: 'Saved' }
+            },
+            onForgetMemory: async (text) => {
+                forgotten = text
+                return { success: true, message: 'Removed' }
+            },
+        })
+        app.start()
+
+        // 1. Open /memory from 'help' overlay to test returnOverlay
+        app.state.activeOverlay = 'help'
+        await app.openMemoryView('memory', 'help')
+        expect(app.state.activeOverlay as string).toBe('memory')
+        expect(app.state.memoryTab).toBe('memory')
+        expect(app.state.workspaceMemoryDetails?.entries.length).toBe(2)
+
+        // 2. Tab switches to rules
+        app.handleKey('\t')
+        expect(app.state.memoryTab).toBe('rules')
+
+        // 3. Esc from rules steps back to memory tab (does NOT close overlay)
+        app.handleKey('\x1b')
+        expect(app.state.memoryTab).toBe('memory')
+        expect(app.state.activeOverlay as string).toBe('memory')
+
+        // 4. Press 'a' to add new memory entry, then Esc cancels adding without closing
+        app.handleKey('a')
+        expect(app.state.isAddingMemory).toBe(true)
+        app.handleKey('\x1b')
+        expect(app.state.isAddingMemory).toBe(false)
+        expect(app.state.activeOverlay as string).toBe('memory')
+
+        // 5. Actually add entry: press 'a', type, submit
+        app.handleKey('a')
+        for (const char of 'run db migration') {
+            app.handleKey(char)
+        }
+        expect(app.state.memoryNewEntryText).toBe('run db migration')
+        // Cycle category with Tab
+        app.handleKey('\t')
+        // Submit with Enter
+        app.handleKey('\r')
+        expect(app.state.isAddingMemory).toBe(false)
+        expect(recorded).not.toBeNull()
+        expect(recorded?.text).toBe('run db migration')
+
+        // 6. Press 'd' to forget selected item
+        app.handleKey('d')
+        expect(forgotten).toBe('bun test --bail')
+
+        // 7. Esc from memory root steps back to returnOverlay ('help')
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay as string).toBe('help')
+
+        // 8. Esc from help closes to none
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay as string).toBe('none')
+
+        app.stop()
+    })
+
+    it('handles direct shell commands (!<cmd>) and invokes onExecuteDirectCommand', async () => {
+        let executedShellCmd = ''
+        const app = new DifferentialApp({
+            onExecuteDirectCommand: (cmd) => {
+                executedShellCmd = cmd
+            },
+        })
+        app.start()
+
+        for (const char of '!git status') {
+            app.handleKey(char)
+        }
+        expect(app.state.input).toBe('!git status')
+        app.handleKey('\r')
+
+        expect(executedShellCmd).toBe('git status')
+        expect(app.state.messages.length).toBe(1)
+        expect(app.state.messages[0].role).toBe('user')
+        expect(app.state.messages[0].content).toBe('!git status')
+        expect(app.state.input).toBe('')
+
+        app.stop()
+    })
+
+    it('redirects /ask to /btw and handles /plan slash commands', async () => {
+        const submitted: string[] = []
+        let sideQuestionAsked: string | null = null
+        const app = new DifferentialApp({
+            onSubmit: (prompt) => {
+                submitted.push(prompt)
+            },
+            onSideQuestion: async (question) => {
+                sideQuestionAsked = question
+            },
+        })
+        app.start()
+
+        // 1. /ask without args shows toast informing about /btw
+        app.executeCommand('ask')
+        expect(app.state.messages.length).toBe(0)
+        expect(app.state.toast?.message).toContain('/btw')
+
+        // 2. /ask with args redirects to /btw (opens btwState and triggers onSideQuestion, no chat message)
+        app.executeCommand('ask how does authentication work?')
+        expect(app.state.messages.length).toBe(0)
+        expect(submitted.length).toBe(0)
+        expect(app.state.btwState?.question).toBe('how does authentication work?')
+        expect(sideQuestionAsked).toBe('how does authentication work?')
+
+        // 3. /plan with args submits plan goal
+        for (const char of '/plan refactor database queries') {
+            app.handleKey(char)
+        }
+        app.handleKey('\r')
+        expect(submitted).toContain('/plan refactor database queries')
+        expect(app.state.messages[0].role).toBe('user')
+        expect(app.state.messages[0].content).toBe('/plan refactor database queries')
+
+        app.stop()
+    })
+
+    it('handles dynamic skill execution and /model unauthenticated notice', async () => {
+        const submitted: string[] = []
+        const app = new DifferentialApp({
+            isAuthenticated: false,
+            skills: [
+                {
+                    name: 'code-review',
+                    description: 'Review recent code changes',
+                },
+            ],
+            onSubmit: (prompt) => {
+                submitted.push(prompt)
+            },
+        })
+        app.start()
+
+        // 1. Dynamic skill invocation: first Enter completes from menu, second Enter executes
+        for (const char of '/code-review') {
+            app.handleKey(char)
+        }
+        app.handleKey('\r')
+        app.handleKey('\r')
+        expect(submitted.length).toBe(1)
+        expect(submitted[0]).toContain("Execute skill 'code-review'")
+
+        // 2. /model when unauthenticated outputs notice in chat
+        app.executeCommand('model')
+        expect(app.state.activeOverlay as string).toBe('none')
+        const msgs = app.state.messages
+        expect(msgs[msgs.length - 2].content).toBe('/model')
+        expect(msgs[msgs.length - 1].content).toContain('You are not logged in')
+
+        // 3. /feedback opens browser and shows toast without polluting chat messages
+        const msgCountBefore = app.state.messages.length
+        app.executeCommand('feedback')
+        expect(app.state.messages.length).toBe(msgCountBefore)
+        expect(app.state.toast?.message).toBe('Opened feedback in browser.')
 
         app.stop()
     })

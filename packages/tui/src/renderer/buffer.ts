@@ -150,6 +150,25 @@ export class ScreenBuffer {
         }
     }
 
+    clearArea(
+        startX: number,
+        startY: number,
+        width: number,
+        height: number,
+        style?: CellStyle
+    ): void {
+        const cell = style ? createCell(' ', style) : cloneCell(EMPTY_CELL as Cell)
+        for (let row = 0; row < height; row++) {
+            const y = startY + row
+            if (y < 0 || y >= this.height) continue
+            for (let col = 0; col < width; col++) {
+                const x = startX + col
+                if (x < 0 || x >= this.width) continue
+                this.cells[this.getIndex(x, y)] = cloneCell(cell)
+            }
+        }
+    }
+
     clone(): ScreenBuffer {
         const copy = new ScreenBuffer(this.width, this.height)
         copy.copyFrom(this)

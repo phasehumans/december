@@ -5,17 +5,24 @@ import { MenuFooterView } from './menu-footer-view'
 
 import type { ScreenBuffer } from '../buffer'
 
+export type LoginOptionValue = 'subscription' | 'byok' | 'december'
+
 export interface LoginMenuItem {
     label: string
-    value: 'byok' | 'december'
+    value: LoginOptionValue
     desc?: string
 }
 
 export const LOGIN_OPTIONS: LoginMenuItem[] = [
     {
-        label: 'Use your own Key or Subscription',
+        label: 'Use your own Subscription',
+        value: 'subscription',
+        desc: 'Connect an AI subscription (Claude, Copilot, Antigravity, ChatGPT)',
+    },
+    {
+        label: 'Use your own API Key (BYOK)',
         value: 'byok',
-        desc: 'Bring your own API key (OpenAI, Anthropic, Gemini) or AI subscription',
+        desc: 'Bring your own API key (OpenAI, Anthropic, Gemini, Groq, etc.)',
     },
     {
         label: 'Login via December',
@@ -32,20 +39,27 @@ export interface LoginMenuViewProps {
     selectedIndex: number
     confirmSwitch?: boolean
     userEmail?: string
+    decemberEmail?: string
+    hasDecember?: boolean
     isAuthenticated?: boolean
     authMethod?: string
 }
 
 export const LoginMenuView = {
-    getHeight(): number {
-        // Title (1) + gap (1) + 2 options (2) + gap (1) + footer (1) = 6
-        return 6
+    getHeight(confirmSwitch?: boolean): number {
+        if (confirmSwitch) {
+            return 6
+        }
+        // Title (1) + gap (1) + 3 options (3) + gap (1) + footer (1) = 7
+        return 7
     },
 
     render(buffer: ScreenBuffer, props: LoginMenuViewProps): void {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
         const width = props.width
+
+        const email = props.decemberEmail || props.userEmail || 'December user'
 
         if (props.confirmSwitch) {
             drawText(buffer, 'Switch Account', {
@@ -55,7 +69,6 @@ export const LoginMenuView = {
             })
             y += 2
 
-            const email = props.userEmail || 'December user'
             drawText(buffer, `Already logged in as ${email}.`, {
                 x,
                 y,
@@ -68,14 +81,15 @@ export const LoginMenuView = {
                 style: { fg: THEME.colors.warning, bold: true },
             })
 
-            const footerY = props.y + (props.height ?? this.getHeight()) - 1
+            const footerY = props.y + (props.height ?? this.getHeight(true)) - 1
             MenuFooterView.render(buffer, {
                 x: props.x ?? 0,
                 y: footerY,
                 width,
                 items: [
-                    { key: 'y', label: 'confirm' },
-                    { key: 'n / esc', label: 'cancel' },
+                    { key: 'y', label: 'switch account' },
+                    { key: 'n / enter', label: 'keep current' },
+                    { key: 'esc', label: 'cancel' },
                 ],
             })
             return
@@ -90,9 +104,11 @@ export const LoginMenuView = {
         y += 2
 
         const isDecemberLoggedIn = Boolean(
-            props.isAuthenticated &&
-            props.userEmail &&
-            (props.authMethod === 'december' || !props.authMethod)
+            props.hasDecember !== undefined
+                ? props.hasDecember && (props.decemberEmail || props.userEmail)
+                : props.isAuthenticated &&
+                      (props.decemberEmail || props.userEmail) &&
+                      (props.authMethod === 'december' || !props.authMethod)
         )
 
         for (let i = 0; i < LOGIN_OPTIONS.length; i++) {
@@ -123,7 +139,7 @@ export const LoginMenuView = {
 
             let labelOffset = x + 2 + opt.label.length
             if (opt.value === 'december' && isDecemberLoggedIn) {
-                const loggedInStatus = `(Logged in as ${props.userEmail})`
+                const loggedInStatus = `(Logged in as ${email})`
                 drawText(buffer, ` ${loggedInStatus}`, {
                     x: labelOffset,
                     y: rowY,

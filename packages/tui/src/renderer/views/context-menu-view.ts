@@ -76,9 +76,10 @@ export const ContextMenuView = {
             { name: 'history', tokens: messagesEst, color: THEME.colors.success },
         ]
 
-        // Line 3: Enhanced Progress Bar (Wider & Multi-Color Segmented)
-        // Dynamically scales with terminal width up to 88 columns (nearly 2x the previous 48)
-        const barWidth = Math.max(30, Math.min(88, width - x - 4))
+        // Line 3: Enhanced Progress Bar (Fullscreen Width & Multi-Color Segmented)
+        // Dynamically scales with 100% of terminal width
+        const paddingRight = THEME.padding.paddingRight ?? 4
+        const barWidth = Math.max(20, width - x - paddingRight)
         const totalFilled =
             currentTokens > 0
                 ? Math.max(
@@ -136,12 +137,11 @@ export const ContextMenuView = {
         }
         y += 2 // Clean 1-row empty margin matching React/Ink
 
-        // Lines 5-7: 2-column breakdown with balanced column gap
-        const col1Width = 42
+        // Lines 5-7: Symmetrical 2-column breakdown dynamically balanced across full screen width
         const col2X =
-            width >= 90
-                ? x + Math.max(col1Width, Math.floor(barWidth * 0.52))
-                : x + Math.min(38, Math.floor((width - x - 2) * 0.5))
+            width >= 80
+                ? x + Math.max(42, Math.floor(barWidth / 2))
+                : x + Math.min(38, Math.max(20, Math.floor((width - x - 2) * 0.5)))
 
         // Row 1
         drawText(buffer, '■ ', { x, y, style: { fg: THEME.colors.muted } })

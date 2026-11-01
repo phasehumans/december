@@ -74,14 +74,20 @@ async function computeToolCallDiff(toolCall: any): Promise<string | undefined> {
     return undefined
 }
 
-export function setupAgentInterceptors(agent: Agent, storeState: any) {
+export function setupAgentInterceptors(agent: Agent, storeStateOrApp: any) {
     if (!agent.operations.ui) agent.operations.ui = {} as any
 
-    agent.operations.ui.askQuestion = (questions) => {
-        return new Promise((resolve) => {
-            storeState.setAuthMode('ask_question')
-            storeState.setPendingQuestions({ questions, resolve })
-        })
+    if (storeStateOrApp && typeof storeStateOrApp.requestQuestions === 'function') {
+        agent.operations.ui.askQuestion = (questions) => {
+            return storeStateOrApp.requestQuestions(questions)
+        }
+    } else {
+        agent.operations.ui.askQuestion = (questions) => {
+            return new Promise((resolve) => {
+                storeStateOrApp?.setAuthMode?.('ask_question')
+                storeStateOrApp?.setPendingQuestions?.({ questions, resolve })
+            })
+        }
     }
 
     agent.operations.ui.requestPermission = async (toolCall: any) => {
@@ -185,16 +191,32 @@ export function setupAgentInterceptors(agent: Agent, storeState: any) {
             // Intentionally swallowed: fallback to displaying toolSummary without diff preview
         }
 
-        const result: any = await new Promise((resolve) => {
-            storeState.setAuthMode('tool_permission')
-            storeState.setPendingToolCall({ toolCall, resolve })
-        })
+        let decision: 'approve' | 'always' | 'git_tracked' | 'deny' = 'approve'
 
-        if (result?.block) {
-            return { block: true, error: result.error || 'User denied permission' }
+        if (storeStateOrApp && typeof storeStateOrApp.requestToolPermission === 'function') {
+            const diffLines = toolCall.diff ? toolCall.diff.split('\n') : undefined
+            decision = await storeStateOrApp.requestToolPermission({
+                toolName: toolCall.name,
+                commandOrTarget: cmdString,
+                diffLines,
+            })
+        } else {
+            const result: any = await new Promise((resolve) => {
+                storeStateOrApp?.setAuthMode?.('tool_permission')
+                storeStateOrApp?.setPendingToolCall?.({ toolCall, resolve })
+            })
+
+            if (result?.block) decision = 'deny'
+            else if (result?.allowAlways) decision = 'always'
+            else if (result?.gitTrackedOnly) decision = 'git_tracked'
+            else decision = 'approve'
         }
 
-        if (result?.allowAlways) {
+        if (decision === 'deny') {
+            return { block: true, error: 'User denied permission' }
+        }
+
+        if (decision === 'always') {
             if (!isDestructiveCommand(cmdString)) {
                 globalSessionWhitelist.add(cmdString)
                 if (!config.approvedTools) config.approvedTools = []
@@ -209,7 +231,7 @@ export function setupAgentInterceptors(agent: Agent, storeState: any) {
             return { block: false }
         }
 
-        if (result?.gitTrackedOnly) {
+        if (decision === 'git_tracked') {
             const targetPath =
                 toolCall.input?.TargetFile ||
                 toolCall.input?.AbsolutePath ||

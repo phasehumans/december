@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 
 import { THEME } from '../../theme'
-import { drawText } from '../ui'
+import { drawHighlightedText, drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
@@ -20,6 +20,9 @@ export interface FileViewMenuViewProps {
     isLoading?: boolean
     error?: string | null
     returnOverlay?: string
+    searchQuery?: string
+    matchLines?: number[]
+    currentMatchIndex?: number
 }
 
 export const FileViewMenuView = {
@@ -42,19 +45,31 @@ export const FileViewMenuView = {
         const gutterWidth = Math.max(3, String(totalLines).length)
         const contentWidth = Math.max(10, width - x - gutterWidth - 5)
 
-        // 1. Header: File path & line count on left, coordinates on right
+        // 1. Header: File path & line count on left, search query & coordinates on right
         drawText(buffer, props.filePath || '(no file)', {
             x,
             y,
             style: { fg: THEME.colors.text, bold: true },
         })
 
+        let headX = x + (props.filePath || '(no file)').length
         if (totalLines > 0) {
             const countLabel = ` · ${totalLines} line${totalLines === 1 ? '' : 's'}`
             drawText(buffer, countLabel, {
-                x: x + (props.filePath || '(no file)').length,
+                x: headX,
                 y,
                 style: { fg: THEME.colors.dim },
+            })
+            headX += countLabel.length
+        }
+
+        if (props.searchQuery && props.matchLines && props.matchLines.length > 0) {
+            const currentIdx = (props.currentMatchIndex ?? 0) + 1
+            const searchBadge = ` · "${props.searchQuery}" (${currentIdx}/${props.matchLines.length})`
+            drawText(buffer, searchBadge, {
+                x: headX,
+                y,
+                style: { fg: THEME.colors.warning, bold: true },
             })
         }
 
@@ -131,30 +146,52 @@ export const FileViewMenuView = {
                     },
                 })
 
-                // Code text: crisp white for all code, highlighted background for cursor line
+                // Code text: crisp white for all code, yellow highlight on query, highlighted background for cursor line
                 const codeX = x + 2 + gutterWidth + 1
-                drawText(buffer, lineText, {
-                    x: codeX,
-                    y: rowY,
-                    maxWidth: contentWidth,
-                    style: {
-                        fg: THEME.colors.text,
-                        bg: rowBg,
-                        bold: isCursor,
-                    },
-                })
+                if (props.searchQuery) {
+                    drawHighlightedText(buffer, lineText, props.searchQuery, {
+                        x: codeX,
+                        y: rowY,
+                        maxWidth: contentWidth,
+                        normalStyle: {
+                            fg: THEME.colors.text,
+                            bg: rowBg,
+                            bold: isCursor,
+                        },
+                        highlightStyle: {
+                            fg: '#000000',
+                            bg: THEME.colors.warning,
+                            bold: true,
+                        },
+                    })
+                } else {
+                    drawText(buffer, lineText, {
+                        x: codeX,
+                        y: rowY,
+                        maxWidth: contentWidth,
+                        style: {
+                            fg: THEME.colors.text,
+                            bg: rowBg,
+                            bold: isCursor,
+                        },
+                    })
+                }
             }
         }
 
         // 3. Branded Footer
-        const footerItems = [
+        const footerItems = []
+        if (props.searchQuery && props.matchLines && props.matchLines.length > 1) {
+            footerItems.push({ key: 'n/p', label: 'next/prev match' })
+        }
+        footerItems.push(
             { key: '↑/↓', label: 'scroll' },
             { key: 'enter', label: 'insert @file:line' },
             {
                 key: 'esc',
                 label: props.returnOverlay && props.returnOverlay !== 'none' ? 'back' : 'dismiss',
-            },
-        ]
+            }
+        )
 
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,

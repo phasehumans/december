@@ -406,9 +406,9 @@ export const geminiAdapter: SubscriptionAdapter = {
 
             if (onCode) {
                 onCode('GOOGLE-AUTH', authUrl)
+            } else {
+                openUrl(authUrl).catch(() => {})
             }
-
-            openUrl(authUrl).catch(() => {})
 
             const callbackResult = await server.waitForCallback()
             if (callbackResult.error) {

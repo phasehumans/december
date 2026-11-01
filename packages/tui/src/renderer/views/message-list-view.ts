@@ -1,15 +1,34 @@
 import { THEME } from '../../theme'
+import { parseTuiError } from '../../utils/error-parser'
 import { drawText } from '../ui'
 
 import { formatMarkdownToLines, type FormattedLine } from './markdown'
 
 import type { ScreenBuffer } from '../buffer'
 
+export interface MessageToolCall {
+    id: string
+    name: string
+    command?: string
+    status: 'running' | 'success' | 'error'
+    output?: string
+}
+
 export interface MessageItem {
     id?: string
-    role: 'user' | 'assistant' | 'error' | 'header' | string
+    role: 'user' | 'assistant' | 'error' | 'header' | 'tool' | 'thinking' | string
+    type?: string
+    timestamp?: number
     content?: string
     text?: string
+    toolCall?: MessageToolCall
+    isStreaming?: boolean
+    usage?: {
+        promptTokens?: number
+        completionTokens?: number
+        cacheReadInputTokens?: number
+        cacheReadTokens?: number
+    }
 }
 
 export interface MessageListViewProps {
@@ -43,17 +62,114 @@ export const MessageListView = {
                     { text, style: { fg: THEME.colors.text, bold: true } },
                 ])
                 allLines.push([{ text: '', style: {} }]) // spacing
+            } else if (msg.role === 'tool' || msg.toolCall) {
+                const tc = msg.toolCall || {
+                    id: '',
+                    name: 'tool',
+                    command: msg.content,
+                    status: 'success' as const,
+                }
+                const isRunning = tc.status === 'running'
+                const glyph = isRunning ? '⠋ ' : '● '
+                const glyphColor =
+                    tc.status === 'error'
+                        ? THEME.colors.error
+                        : isRunning
+                          ? THEME.colors.warning
+                          : THEME.colors.warning
+                const cmdStr = tc.command || `${tc.name}()`
+
+                allLines.push([
+                    { text: glyph, style: { fg: glyphColor } },
+                    { text: cmdStr, style: { fg: THEME.colors.warning, bold: true } },
+                ])
+
+                if ((tc.status === 'error' || (tc as any).status === 'failed') && tc.output) {
+                    const toolErrLines = tc.output.trim().split('\n')
+                    allLines.push([
+                        { text: '    Error: ', style: { fg: THEME.colors.error, bold: true } },
+                        {
+                            text: toolErrLines[0] || 'Tool execution failed',
+                            style: { fg: THEME.colors.error },
+                        },
+                    ])
+                    for (let l = 1; l < Math.min(toolErrLines.length, 5); l++) {
+                        allLines.push([
+                            {
+                                text: `           ${toolErrLines[l]}`,
+                                style: { fg: THEME.colors.muted },
+                            },
+                        ])
+                    }
+                    if (toolErrLines.length > 5) {
+                        allLines.push([
+                            {
+                                text: `           ... (${toolErrLines.length - 5} more lines)`,
+                                style: { fg: THEME.colors.dim },
+                            },
+                        ])
+                    }
+                }
+                allLines.push([{ text: '', style: {} }])
+            } else if (msg.role === 'thinking') {
+                if (msg.isStreaming && msg.content) {
+                    allLines.push([
+                        { text: '⠋ ', style: { fg: THEME.colors.muted } },
+                        {
+                            text: `Thinking... ${msg.content.trim()}`,
+                            style: { fg: THEME.colors.muted },
+                        },
+                    ])
+                    allLines.push([{ text: '', style: {} }])
+                }
             } else if (msg.role === 'assistant') {
                 const text = msg.content || msg.text || ''
                 const formatted = formatMarkdownToLines(text, width - 2)
                 allLines.push(...formatted)
                 allLines.push([{ text: '', style: {} }]) // spacing
             } else if (msg.role === 'error') {
-                const text = msg.content || msg.text || ''
-                allLines.push([
-                    { text: 'Error: ', style: { fg: THEME.colors.error, bold: true } },
-                    { text, style: { fg: THEME.colors.error } },
-                ])
+                const rawText = msg.content || msg.text || ''
+                const parsed = parseTuiError(rawText, (msg as any).cause, (msg as any).hint)
+
+                // 1. Headline Error message in bold red
+                const errorFormatted = formatMarkdownToLines(
+                    `**Error:** ${parsed.message}`,
+                    width - 2
+                )
+                for (const line of errorFormatted) {
+                    for (const seg of line) {
+                        seg.style = { ...seg.style, fg: THEME.colors.error, bold: true }
+                    }
+                }
+                allLines.push(...errorFormatted)
+
+                // 2. Cause (if any)
+                if (parsed.cause) {
+                    const causeFormatted = formatMarkdownToLines(
+                        `Cause: ${parsed.cause}`,
+                        width - 4
+                    )
+                    for (const line of causeFormatted) {
+                        line.unshift({ text: '  ', style: {} })
+                        for (const seg of line) {
+                            if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
+                        }
+                    }
+                    allLines.push(...causeFormatted)
+                }
+
+                // 3. Hint (with highlighted brand URLs)
+                if (parsed.hint) {
+                    const hintFormatted = formatMarkdownToLines(parsed.hint, width - 4)
+                    for (const line of hintFormatted) {
+                        line.unshift({ text: '  ', style: {} })
+                        for (const seg of line) {
+                            if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
+                        }
+                    }
+                    allLines.push(...hintFormatted)
+                }
+
                 allLines.push([{ text: '', style: {} }])
             }
         }
@@ -83,8 +199,13 @@ export const MessageListView = {
             let currX = x + 1
             for (const seg of line) {
                 if (currX >= x + width) break
-                buffer.write(currX, currY, seg.text, seg.style)
-                currX += seg.text.length
+                const available = Math.max(0, x + width - currX)
+                const textToWrite =
+                    seg.text.length > available ? seg.text.slice(0, available) : seg.text
+                if (textToWrite) {
+                    buffer.write(currX, currY, textToWrite, seg.style)
+                    currX += textToWrite.length
+                }
             }
             currY += 1
         }

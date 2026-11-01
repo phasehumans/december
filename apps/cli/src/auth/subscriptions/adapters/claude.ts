@@ -200,11 +200,11 @@ export const claudeAdapter: SubscriptionAdapter = {
 
             if (onCode) {
                 onCode('CLAUDE-AUTH', loginUrl)
+            } else {
+                openUrl(loginUrl).catch(() => {
+                    // Intentionally swallowed: fallback to terminal prompt
+                })
             }
-
-            openUrl(loginUrl).catch(() => {
-                // Intentionally swallowed: fallback to terminal prompt
-            })
 
             const callbackResult = await server.waitForCallback()
             if (callbackResult.error) {

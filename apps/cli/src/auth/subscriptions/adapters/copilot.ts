@@ -211,10 +211,10 @@ export const copilotAdapter: SubscriptionAdapter = {
 
         if (onCode) {
             onCode(user_code, verification_uri)
+        } else {
+            // Auto-open browser when no UI handler provided
+            openUrl(verification_uri).catch(() => {})
         }
-
-        // Auto-open browser
-        openUrl(verification_uri).catch(() => {})
 
         // Poll for access token
         const pollInterval = (interval || 5) * 1000

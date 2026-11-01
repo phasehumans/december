@@ -217,11 +217,14 @@ export const codexAdapter: SubscriptionAdapter = {
                 authUrl.searchParams.set('codex_cli_simplified_flow', 'true')
                 authUrl.searchParams.set('originator', 'december')
 
-                onCode?.('', authUrl.toString())
-                try {
-                    await openUrl(authUrl.toString())
-                } catch {
-                    // Intentionally swallowed: browser launch failed; URL was reported via onCode
+                if (onCode) {
+                    onCode('CODEX-AUTH', authUrl.toString())
+                } else {
+                    try {
+                        await openUrl(authUrl.toString())
+                    } catch {
+                        // Intentionally swallowed: browser launch failed; URL was reported via onCode
+                    }
                 }
 
                 const callbackResult = await localServer.waitForCallback()
@@ -301,11 +304,14 @@ export const codexAdapter: SubscriptionAdapter = {
         const pollIntervalMs =
             (typeof interval === 'number' ? interval : Number(interval) || 5) * 1000
 
-        onCode?.(user_code, DEVICE_VERIFICATION_URI)
-        try {
-            await openUrl(DEVICE_VERIFICATION_URI)
-        } catch {
-            // Intentionally swallowed: browser launch failed; URI and code were reported via onCode
+        if (onCode) {
+            onCode(user_code, DEVICE_VERIFICATION_URI)
+        } else {
+            try {
+                await openUrl(DEVICE_VERIFICATION_URI)
+            } catch {
+                // Intentionally swallowed: browser launch failed; URI and code were reported via onCode
+            }
         }
 
         const maxWaitMs = 15 * 60 * 1000

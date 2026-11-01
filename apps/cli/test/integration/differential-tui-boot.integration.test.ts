@@ -91,4 +91,51 @@ describe('Differential TUI Interactive Boot & Ink Elimination (Integration)', ()
         expect(exitCode).toBe(0)
         expect(stdout.trim()).toBeDefined()
     })
+
+    it('intercepts prompt submissions when unauthenticated and displays AUTH_REQUIRED_NOTICE', async () => {
+        const { AUTH_REQUIRED_NOTICE } = await import('../../src/constants/messages')
+        const mockStdin = new PassThrough()
+        const mockStdout = new PassThrough()
+        const terminal = new TerminalController({
+            stdin: mockStdin as any,
+            stdout: mockStdout as any,
+            handleSignals: false,
+        })
+
+        let submitted = false
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            isAuthenticated: false,
+            authRequiredNotice: AUTH_REQUIRED_NOTICE,
+            onSubmit: (prompt) => {
+                if (!app.state.isAuthenticated) {
+                    app.state.messages.push({
+                        role: 'assistant',
+                        content: AUTH_REQUIRED_NOTICE,
+                    })
+                    return
+                }
+                submitted = true
+            },
+        })
+        app.start()
+
+        for (const char of 'Build me a login screen') {
+            app.handleKey(char)
+        }
+        app.handleKey('\r')
+
+        expect(submitted).toBe(false)
+        expect(app.state.messages.length).toBe(2)
+        expect(app.state.messages[0].role).toBe('user')
+        expect(app.state.messages[0].content).toBe('Build me a login screen')
+        expect(app.state.messages[1].role).toBe('assistant')
+        expect(app.state.messages[1].content).toContain(
+            'You are not logged in and have no custom API keys (BYOK) configured.'
+        )
+
+        app.stop()
+    })
 })

@@ -2,12 +2,37 @@ import { exec } from 'node:child_process'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
-import type { CodeSearchResultItem } from '../types'
-export type { CodeSearchResultItem } from '../types'
+import type { CodeSearchGroupItem, CodeSearchResultItem } from '../types'
+export type { CodeSearchGroupItem, CodeSearchResultItem } from '../types'
 
 const execAsync = promisify(exec)
 
-export function parseGrepOutput(output: string, workspaceDir: string): CodeSearchResultItem[] {
+export function groupCodeSearchResults(items: CodeSearchResultItem[]): CodeSearchGroupItem[] {
+    const map = new Map<string, CodeSearchGroupItem>()
+    for (const item of items) {
+        let group = map.get(item.file)
+        if (!group) {
+            group = {
+                file: item.file,
+                matchCount: 0,
+                firstLine: item.line,
+                firstSnippet: item.content,
+                lineNumbers: [],
+                matches: [],
+            }
+            map.set(item.file, group)
+        }
+        group.matchCount += 1
+        group.lineNumbers.push(item.line)
+        group.matches.push(item)
+    }
+    return Array.from(map.values())
+}
+
+export function parseGrepOutput(
+    output: string,
+    workspaceDir: string = process.cwd()
+): CodeSearchResultItem[] {
     const lines = output.split(/\r?\n/).filter((l) => Boolean(l.trim()))
     const items: CodeSearchResultItem[] = []
 

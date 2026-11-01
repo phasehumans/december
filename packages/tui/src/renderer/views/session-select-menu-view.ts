@@ -1,5 +1,5 @@
 import { THEME } from '../../theme'
-import { drawDivider, drawText } from '../ui'
+import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
@@ -43,6 +43,17 @@ export function formatSessionTimeAgo(date: Date | string | number): string {
     return `${days}d ago`
 }
 
+export function sanitizeSessionTitle(rawTitle: string): string {
+    if (!rawTitle) return ''
+    const cleaned = rawTitle
+        .replace(/<context_file[^>]*>[\s\S]*?<\/context_file>/gi, '')
+        .replace(/<piped_stdin>[\s\S]*?<\/piped_stdin>/gi, '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    return cleaned || rawTitle.replace(/\s+/g, ' ').trim()
+}
+
 export const SessionSelectMenuView = {
     getFiltered(sessions: SessionItem[], query?: string): SessionItem[] {
         if (!query || !query.trim()) return sessions
@@ -55,9 +66,11 @@ export const SessionSelectMenuView = {
     },
 
     getHeight(sessionsCount: number, windowSize = SESSION_WINDOW_SIZE): number {
-        const listRows = Math.min(Math.max(sessionsCount, 1), windowSize)
-        // Title (1), Search Row (1), Divider (1), List (listRows), Status (1), Divider (1), Footer (1) = 6 + listRows
-        return 6 + listRows
+        const count = sessionsCount || 1
+        const visible = Math.min(windowSize, count)
+        const hasOverflow = count > windowSize
+        // Title (1) + Search (1) + Gap (1) + Visible + Overflow (0|1) + Gap (1) + Footer (1)
+        return 3 + visible + (hasOverflow ? 1 : 0) + 2
     },
 
     render(buffer: ScreenBuffer, props: SessionSelectMenuViewProps): void {
@@ -87,25 +100,19 @@ export const SessionSelectMenuView = {
             style: { fg: isSearching ? THEME.colors.brand : THEME.colors.muted, bold: isSearching },
         })
 
-        const queryDisplay = query ? `${query} ` : isSearching ? '' : '[/ to search] '
+        const queryDisplay = isSearching
+            ? `${query}█`
+            : query
+              ? `${query} [/ to filter]`
+              : '[/ to search]'
         drawText(buffer, queryDisplay, {
             x: x + searchLabel.length,
             y,
             style: { fg: query ? THEME.colors.brand : THEME.colors.dim },
         })
-        y += 1
+        y += 2
 
-        // 3. Divider
-        drawDivider(buffer, {
-            x,
-            y,
-            width,
-            char: '─',
-            style: { fg: THEME.colors.border },
-        })
-        y += 1
-
-        // 4. Session Items
+        // 3. Session Items
         const sessions = SessionSelectMenuView.getFiltered(props.sessions || [], props.searchQuery)
         const totalItems = sessions.length
 
@@ -115,7 +122,6 @@ export const SessionSelectMenuView = {
                 y,
                 style: { fg: THEME.colors.muted },
             })
-            y += 1
         } else {
             const windowStart = Math.max(
                 0,
@@ -155,11 +161,11 @@ export const SessionSelectMenuView = {
 
                 const isCustomName = !session.id.startsWith('session-')
                 const rawTitle = isCustomName ? session.id : session.preview || session.id
-                const singleLineTitle = (rawTitle || '').replace(/\s+/g, ' ').trim()
+                const cleanedTitle = sanitizeSessionTitle(rawTitle)
 
-                let displayTitle = singleLineTitle
+                let displayTitle = cleanedTitle
                 if (isConfirmDelete) {
-                    displayTitle = `${singleLineTitle} [Delete? y/n]`
+                    displayTitle = `${cleanedTitle} [Delete? y/n]`
                 }
 
                 drawText(buffer, displayTitle, {
@@ -185,32 +191,32 @@ export const SessionSelectMenuView = {
                     style: { fg: THEME.colors.muted },
                 })
             }
-            y += visible.length
 
-            // Status bar
-            const statusText = `[${windowStart + 1}-${windowEnd} of ${totalItems} sessions]`
-            drawText(buffer, statusText, {
-                x: x + 2,
-                y,
-                style: { fg: THEME.colors.subtle },
-            })
-            y += 1
+            // Pagination overflow indicator
+            if (totalItems > windowSize) {
+                const itemsAbove = windowStart
+                const itemsBelow = totalItems - windowEnd
+                let statusText = ''
+                if (itemsAbove > 0 && itemsBelow > 0) {
+                    statusText = `↑ ${itemsAbove} more · ↓ ${itemsBelow} more`
+                } else if (itemsAbove > 0) {
+                    statusText = `↑ ${itemsAbove} more`
+                } else if (itemsBelow > 0) {
+                    statusText = `↓ ${itemsBelow} more`
+                }
+                if (statusText) {
+                    drawText(buffer, statusText, {
+                        x: x + 2,
+                        y: y + visible.length,
+                        style: { fg: THEME.colors.subtle },
+                    })
+                }
+            }
         }
 
-        // 5. Divider
+        // 4. Navigation Footer
         const height = props.height ?? buffer.height
         const footerY = (props.y ?? 0) + height - 1
-        const bottomDividerY = (props.y ?? 0) + height - 2
-
-        drawDivider(buffer, {
-            x,
-            y: bottomDividerY,
-            width,
-            char: '─',
-            style: { fg: THEME.colors.border },
-        })
-
-        // 6. Navigation Footer
         const footerItems = props.confirmDeleteId
             ? [
                   { key: 'y', label: 'confirm delete' },
@@ -236,7 +242,7 @@ export const SessionSelectMenuView = {
                   ]
 
         MenuFooterView.render(buffer, {
-            x,
+            x: props.x ?? 0,
             y: footerY,
             width,
             items: footerItems,

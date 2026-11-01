@@ -192,7 +192,7 @@ describe('/changelog and /docs commands', () => {
         const openCmd = COMMANDS.find((c) => c.name === 'open')
         expect(openCmd).toBeDefined()
         expect(openCmd?.value).toBe('/open')
-        expect(openCmd?.description).toContain('default editor')
+        expect(openCmd?.description).toContain('file')
     })
 
     test('should define /codesearch command forwarded to chat screen', () => {

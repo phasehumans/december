@@ -37,6 +37,10 @@ export const CommandMenuView = {
         const windowSize = props.windowSize ?? WINDOW_SIZE
         const filtered = getFilteredCommands(props.query)
 
+        // Clear command menu bounding box so zero chat or residual characters bleed through
+        const height = this.getHeight(props.query, windowSize)
+        buffer.clearArea(props.x ?? 0, y, width, height)
+
         if (filtered.length === 0) {
             drawText(buffer, 'No matching commands', {
                 x,

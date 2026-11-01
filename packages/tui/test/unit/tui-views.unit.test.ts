@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
+import { BYOK_PROVIDER_ITEMS } from '../../src/constants/providers'
 import { ScreenBuffer } from '../../src/renderer/buffer'
 import { AskQuestionMenuView } from '../../src/renderer/views/ask-question-menu-view'
 import { AuthMenuView } from '../../src/renderer/views/auth-menu-view'
@@ -23,6 +24,7 @@ import { RewindSelectMenuView } from '../../src/renderer/views/rewind-select-men
 import { SessionSelectMenuView } from '../../src/renderer/views/session-select-menu-view'
 import { SettingsMenuView } from '../../src/renderer/views/settings-menu-view'
 import { SkillsMenuView } from '../../src/renderer/views/skills-menu-view'
+import { SwitchSelectMenuView } from '../../src/renderer/views/switch-select-menu-view'
 import { TasksModeMenuView } from '../../src/renderer/views/tasks-mode-menu-view'
 import { ToolPermissionMenuView } from '../../src/renderer/views/tool-permission-menu-view'
 import { UsageSelectMenuView } from '../../src/renderer/views/usage-select-menu-view'
@@ -196,6 +198,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 userEmail: 'dev@december.io',
                 activeModel: 'claude-3-7-sonnet',
                 modelLabel: 'Claude 3.7 Sonnet',
+                cwd: '~/project',
                 branch: 'feature/effort-help',
                 sessionId: 'sess-xyz-789',
             })
@@ -300,12 +303,12 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
     describe('LoginMenuView', () => {
         it('renders authentication options with selector and status', () => {
-            const buffer = new ScreenBuffer(70, 6)
+            const buffer = new ScreenBuffer(70, 7)
             LoginMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 70,
-                height: 6,
+                height: 7,
                 selectedIndex: 0,
                 userEmail: 'dev@december.io',
                 isAuthenticated: true,
@@ -314,12 +317,13 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
             expect(buffer.getLine(0)).toContain('Authentication')
             expect(buffer.getLine(2)).toContain('❭')
-            expect(buffer.getLine(2)).toContain('Use your own Key or Subscription')
-            expect(buffer.getLine(3)).toContain('Login via December')
-            expect(buffer.getLine(3)).toContain('(Logged in as dev@december.io)')
-            expect(buffer.getLine(5)).toContain('navigate')
-            expect(buffer.getLine(5)).toContain('enter select')
-            expect(buffer.getLine(5)).toContain('esc close')
+            expect(buffer.getLine(2)).toContain('Use your own Subscription')
+            expect(buffer.getLine(3)).toContain('Use your own API Key (BYOK)')
+            expect(buffer.getLine(4)).toContain('Login via December')
+            expect(buffer.getLine(4)).toContain('(Logged in as dev@december.io)')
+            expect(buffer.getLine(6)).toContain('navigate')
+            expect(buffer.getLine(6)).toContain('enter select')
+            expect(buffer.getLine(6)).toContain('esc close')
         })
 
         it('renders confirmation view when switching account', () => {
@@ -340,12 +344,14 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(3)).toContain(
                 'Do you want to switch to a different account? (y/n)'
             )
-            expect(buffer.getLine(5)).toContain('y confirm')
-            expect(buffer.getLine(5)).toContain('n / esc cancel')
+            expect(buffer.getLine(5)).toContain('y switch account')
+            expect(buffer.getLine(5)).toContain('n / enter keep current')
+            expect(buffer.getLine(5)).toContain('esc cancel')
         })
 
         it('computes correct fixed height', () => {
-            expect(LoginMenuView.getHeight()).toBe(6)
+            expect(LoginMenuView.getHeight()).toBe(7)
+            expect(LoginMenuView.getHeight(true)).toBe(6)
         })
     })
 
@@ -369,11 +375,10 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(0)).toContain('Models')
-            expect(buffer.getLine(2)).toContain('Type / to filter models')
-            expect(buffer.getLine(4)).toContain('❭')
-            expect(buffer.getLine(4)).toContain('Claude 3.7 Sonnet')
-            expect(buffer.getLine(5)).toContain('(●)')
-            expect(buffer.getLine(5)).toContain('Claude 3.5 Sonnet')
+            expect(buffer.getLine(1)).toContain('Search: [/ to filter]')
+            expect(buffer.getLine(3)).toContain('Claude 3.7 Sonnet')
+            expect(buffer.getLine(4)).toContain('Claude 3.5 Sonnet')
+            expect(buffer.getLine(4)).toContain('(active)')
             expect(buffer.getLine(buffer.height - 1)).toContain('select')
         })
     })
@@ -487,9 +492,9 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(4)).toContain('Tool Schemas')
         })
 
-        it('renders wider progress bar scaling up to 88 columns in wide terminals', () => {
-            const buffer = new ScreenBuffer(100, 12)
-            ContextMenuView.render(buffer, {
+        it('renders fullscreen progress bar scaling across terminal width', () => {
+            const buffer100 = new ScreenBuffer(100, 12)
+            ContextMenuView.render(buffer100, {
                 x: 0,
                 y: 0,
                 width: 100,
@@ -500,9 +505,24 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 maxContextTokens: 200000,
             })
 
-            const barLine = buffer.getLine(2)
-            const emptyBlocksCount = (barLine.match(/░/g) || []).length
-            expect(emptyBlocksCount).toBe(88)
+            const barLine100 = buffer100.getLine(2)
+            const emptyBlocksCount100 = (barLine100.match(/░/g) || []).length
+            expect(emptyBlocksCount100).toBe(94)
+
+            const buffer120 = new ScreenBuffer(120, 12)
+            ContextMenuView.render(buffer120, {
+                x: 0,
+                y: 0,
+                width: 120,
+                height: 12,
+                activeModel: 'claude-3-7-sonnet',
+                modelLabel: 'Claude 3.7 Sonnet',
+                contextTokens: 0,
+                maxContextTokens: 200000,
+            })
+            const barLine120 = buffer120.getLine(2)
+            const emptyBlocksCount120 = (barLine120.match(/░/g) || []).length
+            expect(emptyBlocksCount120).toBe(114)
         })
     })
 
@@ -523,6 +543,68 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(2)).toContain('❭')
             expect(buffer.getLine(2)).toContain('tdd')
             expect(buffer.getLine(2)).toContain('Test driven development workflow')
+        })
+
+        it('renders template guide, origin line, and search filter in full layout', () => {
+            const buffer = new ScreenBuffer(80, 20)
+            SkillsMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 20,
+                selectedIndex: 0,
+                windowStart: 0,
+                searchQuery: 'tdd',
+                skills: [
+                    {
+                        name: 'tdd',
+                        description: 'Test driven development workflow',
+                        origin: 'workspace',
+                        directoryPath: '/workspace/.agents/skills/tdd',
+                        entryFilePath: '/workspace/.agents/skills/tdd/SKILL.md',
+                    },
+                ],
+            })
+
+            expect(buffer.getLine(0)).toContain('Skills (1)')
+            expect(buffer.getLine(0)).toContain('1 workspace')
+            expect(buffer.getLine(2)).toContain('Create new skills')
+            expect(buffer.getLine(3)).toContain('workspace: .agents/skills/{skill_name}/SKILL.md')
+            expect(buffer.getLine(7)).toContain('Filter: tdd (1 match)')
+            expect(buffer.getLine(8)).toContain('Workspace skills')
+        })
+
+        it('renders skill detail documentation view with line numbers and cursor', () => {
+            const buffer = new ScreenBuffer(80, 15)
+            SkillsMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 15,
+                selectedIndex: 0,
+                windowStart: 0,
+                isDetailView: true,
+                cursorLineIndex: 1,
+                scrollOffset: 0,
+                detailLines: ['# TDD Guide', 'Step 1: Write test', 'Step 2: Implement'],
+                skills: [
+                    {
+                        name: 'tdd',
+                        description: 'Test driven development workflow',
+                        origin: 'workspace',
+                        directoryPath: '/workspace/.agents/skills/tdd',
+                        entryFilePath: '/workspace/.agents/skills/tdd/SKILL.md',
+                    },
+                ],
+            })
+
+            expect(buffer.getLine(0)).toContain('tdd')
+            expect(buffer.getLine(0)).toContain('line 2:3')
+            expect(buffer.getLine(2)).toContain('1 # TDD Guide')
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('2 Step 1: Write test')
+            expect(buffer.getLine(14)).toContain('scroll')
+            expect(buffer.getLine(14)).toContain('back')
         })
     })
 
@@ -655,6 +737,39 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
             expect(buffer.getLine(2)).toContain('No matches found in workspace.')
         })
+
+        it('groups multiple matches in the same file into 1 entry with match count', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            const results = [
+                { file: 'src/index.ts', line: 10, content: 'const query = "hello"' },
+                { file: 'src/index.ts', line: 25, content: 'console.log(query)' },
+                { file: 'src/index.ts', line: 40, content: 'return query' },
+                { file: 'src/config.ts', line: 5, content: 'export const config = true' },
+            ]
+
+            CodeSearchMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                query: 'query',
+                results,
+                selectedIndex: 0,
+                windowStart: 0,
+            })
+
+            const title = buffer.getLine(0)
+            const item0 = buffer.getLine(2)
+            const item1 = buffer.getLine(3)
+
+            expect(title).toContain('Code Search')
+            expect(title).toContain('"query"')
+            expect(title).toContain('4 matches in 2 files')
+            expect(title).toContain('1/2')
+            expect(item0).toContain('src/index.ts (3 matches)')
+            expect(item0).toContain('const query = "hello"')
+            expect(item1).toContain('src/config.ts:5')
+        })
     })
 
     describe('BtwOverlayView', () => {
@@ -782,6 +897,31 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(buffer.height - 1)).toContain('back')
         })
 
+        it('highlights search query matches and renders n/p navigation footer', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            FileViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                filePath: 'src/main.ts',
+                lines: ['const testVal = 1', 'console.log(testVal)', 'return testVal'],
+                cursorLineIndex: 0,
+                scrollOffset: 0,
+                searchQuery: 'testVal',
+                matchLines: [1, 2, 3],
+                currentMatchIndex: 0,
+                returnOverlay: 'codesearch',
+            })
+
+            const title = buffer.getLine(0)
+            const footer = buffer.getLine(buffer.height - 1)
+
+            expect(title).toContain('"testVal" (1/3)')
+            expect(footer).toContain('n/p next/prev match')
+            expect(footer).toContain('back')
+        })
+
         it('renders error state when file cannot be loaded', () => {
             const buffer = new ScreenBuffer(80, 6)
             FileViewMenuView.render(buffer, {
@@ -856,6 +996,35 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(3)).toContain('[Delete? y/n]')
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm delete')
         })
+
+        it('sanitizes XML tags from preview and renders directional overflow', () => {
+            const buffer = new ScreenBuffer(80, 14)
+            const sessions = Array.from({ length: 15 }, (_, i) => ({
+                id: `session-${i}`,
+                preview:
+                    i === 0
+                        ? '@apps/cli/README.md <context_file path="apps/cli/README.md"> # December'
+                        : `Task prompt ${i}`,
+                updatedAt: Date.now() - i * 60000,
+            }))
+
+            SessionSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                sessions,
+                selectedIndex: 0,
+                windowStart: 0,
+            })
+
+            // Line 3: Sanitized preview should not contain <context_file> XML tags
+            expect(buffer.getLine(3)).toContain('@apps/cli/README.md # December')
+            expect(buffer.getLine(3)).not.toContain('<context_file')
+
+            // Line 10: Directional overflow indicator instead of clunky bracketed string
+            expect(buffer.getLine(10)).toContain('↓ 8 more')
+            expect(buffer.getLine(10)).not.toContain('[1-7 of 15 sessions]')
+        })
     })
 
     describe('UsageSelectMenuView', () => {
@@ -899,9 +1068,10 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(2)).toContain('Session Statistics')
             expect(buffer.getLine(3)).toContain('Sun Nov 1')
             expect(buffer.getLine(3)).toContain('Today')
-            expect(buffer.getLine(3)).toContain('· Requests:      12 requests')
+            expect(buffer.getLine(3)).toContain('Requests:')
+            expect(buffer.getLine(3)).toContain('12 requests')
             expect(buffer.getLine(7)).toContain('Estimated Cost: $0.1550')
-            expect(buffer.getLine(buffer.height - 1)).toContain('billing portal')
+            expect(buffer.getLine(buffer.height - 1)).toContain('billing')
             expect(buffer.getLine(buffer.height - 1)).toContain('refresh')
         })
     })
@@ -1070,10 +1240,10 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 windowStart: 0,
             })
 
-            expect(buffer.getLine(1)).toContain('❭')
-            expect(buffer.getLine(1)).toContain('src/renderer/')
-            expect(buffer.getLine(1)).toContain('app.ts')
-            expect(buffer.getLine(2)).toContain('screen.ts')
+            expect(buffer.getLine(0)).toContain('❭')
+            expect(buffer.getLine(0)).toContain('src/renderer/')
+            expect(buffer.getLine(0)).toContain('app.ts')
+            expect(buffer.getLine(1)).toContain('screen.ts')
         })
     })
 
@@ -1086,27 +1256,103 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 width: 80,
                 height: 12,
                 activeTab: 'rules',
-                documents: [
+                ruleFiles: [
                     {
-                        id: 'agents-md',
-                        title: 'Project Rules',
-                        filePath: 'AGENTS.md',
+                        path: 'AGENTS.md',
                         content: '# AGENTS.md\nRule 1: No Ink\nRule 2: No React',
-                        isMemory: false,
                     },
                 ],
-                activeDocIndex: 0,
-                cursorLineIndex: 0,
+                selectedRuleIndex: 0,
+                ruleCursorLineIndex: 0,
+                ruleScrollOffset: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('memory')
+            expect(buffer.getLine(0)).toContain('rules')
+            expect(buffer.getLine(2)).toContain('AGENTS.md')
+            expect(buffer.getLine(4)).toContain('1 │ # AGENTS.md')
+            expect(buffer.getLine(5)).toContain('2 │ Rule 1: No Ink')
+            expect(buffer.getLine(buffer.height - 1)).toContain('scroll')
+            expect(buffer.getLine(buffer.height - 1)).toContain('close')
+            expect(buffer.getLine(buffer.height - 1)).not.toContain('open in editor')
+            expect(buffer.getLine(buffer.height - 1)).not.toContain('reload')
+        })
+
+        it('renders memory tab with budget stats, entries, and interactive footer', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            MemoryViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                activeTab: 'memory',
+                memoryDetails: {
+                    filePath: '.december/memory.md',
+                    totalBytes: 512,
+                    maxBytes: 2048,
+                    budgetPercent: 25,
+                    entries: [
+                        { category: 'build_and_test', text: 'bun test --bail' },
+                        { category: 'conventions', text: 'no em dashes' },
+                    ],
+                },
+                selectedEntryIndex: 0,
                 scrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('[ Project Rules ]')
-            expect(buffer.getLine(0)).toContain('Memory Docs')
-            expect(buffer.getLine(1)).toContain('Project Rules · AGENTS.md')
-            expect(buffer.getLine(3)).toContain('1 │ # AGENTS.md')
-            expect(buffer.getLine(4)).toContain('2 │ Rule 1: No Ink')
-            expect(buffer.getLine(buffer.height - 1)).toContain('open in editor')
-            expect(buffer.getLine(buffer.height - 1)).toContain('reload')
+            expect(buffer.getLine(0)).toContain('memory')
+            expect(buffer.getLine(0)).toContain('rules')
+            expect(buffer.getLine(2)).toContain('Workspace Memory (.december/memory.md)')
+            expect(buffer.getLine(2)).toContain('512/2048 B (25%)')
+            expect(buffer.getLine(4)).toContain('[build_and_test] bun test --bail')
+            expect(buffer.getLine(5)).toContain('[conventions] no em dashes')
+            expect(buffer.getLine(buffer.height - 1)).toContain('add')
+            expect(buffer.getLine(buffer.height - 1)).toContain('forget')
+            expect(buffer.getLine(buffer.height - 1)).toContain('close')
+            expect(buffer.getLine(buffer.height - 1)).not.toContain('open in editor')
+        })
+
+        it('renders back label in footer when canGoBack is true', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            MemoryViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                activeTab: 'rules',
+                ruleFiles: [{ path: 'AGENTS.md', content: 'rule' }],
+                canGoBack: true,
+            })
+
+            expect(buffer.getLine(buffer.height - 1)).toContain('back')
+        })
+
+        it('renders inline add prompt when isAddingEntry is true', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            MemoryViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                activeTab: 'memory',
+                memoryDetails: {
+                    filePath: '.december/memory.md',
+                    totalBytes: 512,
+                    maxBytes: 2048,
+                    budgetPercent: 25,
+                    entries: [{ category: 'conventions', text: 'no em dashes' }],
+                },
+                isAddingEntry: true,
+                newEntryText: 'always use bun',
+                newEntryCategory: 'build_and_test',
+            })
+
+            expect(buffer.getLine(buffer.height - 3)).toContain(
+                'add memory [build_and_test] › always use bun'
+            )
+            expect(buffer.getLine(buffer.height - 1)).toContain('save')
+            expect(buffer.getLine(buffer.height - 1)).toContain('cycle category')
+            expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
         })
     })
 
@@ -1124,11 +1370,30 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 menuSelectedIndex: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Authentication & Model Access')
-            expect(buffer.getLine(1)).toContain('Logged in as dev@trydecember.com')
-            expect(buffer.getLine(3)).toContain('❭')
-            expect(buffer.getLine(3)).toContain('Use your own Key or Subscription')
+            expect(buffer.getLine(0)).toContain('Authentication')
+            expect(buffer.getLine(2)).toContain('❭')
+            expect(buffer.getLine(2)).toContain('Use your own Subscription')
+            expect(buffer.getLine(3)).toContain('Use your own API Key (BYOK)')
             expect(buffer.getLine(4)).toContain('Login via December Account')
+        })
+
+        it('renders dedicated AI subscriptions menu', () => {
+            const buffer = new ScreenBuffer(80, 8)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'subscription',
+                providerSelectedIndex: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('AI Subscriptions')
+            expect(buffer.getLine(2)).toContain('❭ Anthropic (Claude)')
+            expect(buffer.getLine(3)).toContain('GitHub (Copilot)')
+            expect(buffer.getLine(4)).toContain('Google (Antigravity)')
+            expect(buffer.getLine(5)).toContain('OpenAI (ChatGPT)')
+            expect(buffer.getLine(7)).toContain('enter connect')
+            expect(buffer.getLine(7)).toContain('esc back')
         })
 
         it('renders provider selection with search and active indicator', () => {
@@ -1149,26 +1414,225 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(0)).toContain('Switch Active Provider')
-            expect(buffer.getLine(3)).toContain('❭')
-            expect(buffer.getLine(3)).toContain('Anthropic (active)')
-            expect(buffer.getLine(4)).toContain('OpenAI')
+            expect(buffer.getLine(1)).toContain('Search: [/ to filter]')
+            expect(buffer.getLine(2)).toContain('❭')
+            expect(buffer.getLine(2)).toContain('Anthropic (active)')
+            expect(buffer.getLine(3)).toContain('OpenAI')
         })
 
-        it('renders masked API key input prompt', () => {
-            const buffer = new ScreenBuffer(80, 10)
+        it('renders masked API key input prompt with portal url and prompt glyph', () => {
+            const buffer = new ScreenBuffer(80, 8)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
                 mode: 'byok_key',
                 activeProviderName: 'Anthropic',
+                providerKeyUrl: 'https://console.anthropic.com/settings/keys',
                 apiKeyInput: 'sk-ant-123456',
                 apiKeyMasked: true,
             })
 
-            expect(buffer.getLine(0)).toContain('Enter API Key for Anthropic')
-            expect(buffer.getLine(3)).toContain('API Key: •••••••••••••█')
-            expect(buffer.getLine(buffer.height - 1)).toContain('save & test')
+            expect(buffer.getLine(0)).toContain('Enter API Key for Anthropic:')
+            expect(buffer.getLine(1)).toContain("Don't have an API key? Get one at")
+            expect(buffer.getLine(1)).toContain('https://console.anthropic.com/settings/keys')
+            expect(buffer.getLine(3)).toContain('❭ •••••••••••••█')
+            expect(buffer.getLine(buffer.height - 1)).toContain('submit')
+            expect(buffer.getLine(buffer.height - 1)).toContain('close')
+        })
+
+        it('renders byok providers list without ziggle or inline headers', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'byok_provider',
+                providers: BYOK_PROVIDER_ITEMS,
+                providerSelectedIndex: 0,
+                providerWindowStart: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Providers')
+            expect(buffer.getLine(1)).toContain('Search: [/ to filter]')
+            expect(buffer.getLine(2)).toContain('❭ Abacus')
+            expect(buffer.getLine(buffer.height - 1)).toContain('navigate')
+            expect(buffer.getLine(buffer.height - 1)).toContain('select')
+        })
+
+        it('renders connected badges, disconnect shortcut, and delete confirmation for subscriptions', () => {
+            const buffer = new ScreenBuffer(80, 8)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'subscription',
+                providerSelectedIndex: 0,
+                configuredSubscriptionValues: ['claude', 'gemini'],
+                selectedProvider: 'claude',
+                authMethod: 'subscription',
+                confirmDeleteValue: 'subscription:claude',
+            })
+
+            expect(buffer.getLine(2)).toContain('Anthropic (Claude)')
+            expect(buffer.getLine(2)).toContain('(active)')
+            expect(buffer.getLine(2)).toContain('[Disconnect? (y/n)]')
+            expect(buffer.getLine(4)).toContain('Google (Antigravity)')
+            expect(buffer.getLine(4)).toContain('(connected)')
+            expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
+            expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
+        })
+
+        it('renders existing credentials detected switch confirmation prompt', () => {
+            const buffer = new ScreenBuffer(80, 6)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'confirm_switch_subscription',
+                confirmTarget: {
+                    label: 'Anthropic (Claude)',
+                    value: 'claude',
+                    account: 'user@example.com',
+                },
+            })
+
+            expect(buffer.getLine(0)).toContain('Existing Credentials Detected')
+            expect(buffer.getLine(2)).toContain(
+                'Credentials detected for Anthropic (Claude) (user@example.com).'
+            )
+            expect(buffer.getLine(3)).toContain(
+                'Do you want to switch to a different account? (y/n)'
+            )
+            expect(buffer.getLine(buffer.height - 1)).toContain('switch account')
+            expect(buffer.getLine(buffer.height - 1)).toContain('keep current')
+        })
+
+        it('renders configured badge and delete prompt for configured byok provider', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'byok_provider',
+                providers: [
+                    { label: 'Anthropic', value: 'anthropic' },
+                    { label: 'OpenAI', value: 'openai' },
+                ],
+                providerSelectedIndex: 1,
+                configuredProviderValues: ['openai'],
+                confirmDeleteValue: 'provider:openai',
+            })
+
+            expect(buffer.getLine(3)).toContain('OpenAI (configured)')
+            expect(buffer.getLine(3)).toContain('[Delete? (y/n)]')
+            expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
+            expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
+        })
+
+        it('renders configured key detected replace confirmation prompt', () => {
+            const buffer = new ScreenBuffer(80, 6)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'confirm_replace_byok',
+                confirmTarget: {
+                    label: 'OpenAI',
+                    value: 'openai',
+                },
+            })
+
+            expect(buffer.getLine(0)).toContain('Configured Key Detected')
+            expect(buffer.getLine(2)).toContain('An API key for OpenAI is already configured.')
+            expect(buffer.getLine(3)).toContain('Do you want to replace it with a new key? (y/n)')
+            expect(buffer.getLine(buffer.height - 1)).toContain('enter new key')
+            expect(buffer.getLine(buffer.height - 1)).toContain('use existing key')
+        })
+    })
+
+    describe('SwitchSelectMenuView', () => {
+        it('renders configured providers with active indicator and footer', () => {
+            const buffer = new ScreenBuffer(80, 8)
+            SwitchSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 8,
+                items: [
+                    {
+                        label: 'Anthropic (Subscription)',
+                        value: 'subscription:claude',
+                        isActive: true,
+                    },
+                    { label: 'OpenAI (BYOK)', value: 'provider:openai', isActive: false },
+                ],
+                selectedIndex: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Switch Provider')
+            expect(buffer.getLine(2)).toContain('Anthropic (Subscription)')
+            expect(buffer.getLine(2)).toContain('(Active)')
+            expect(buffer.getLine(3)).toContain('OpenAI (BYOK)')
+            expect(buffer.getLine(buffer.height - 1)).toContain('switch')
+            expect(buffer.getLine(buffer.height - 1)).toContain('delete')
+        })
+
+        it('renders delete confirmation prompt when confirmDeleteValue matches', () => {
+            const buffer = new ScreenBuffer(80, 8)
+            SwitchSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 8,
+                items: [
+                    {
+                        label: 'Anthropic (Subscription)',
+                        value: 'subscription:claude',
+                        isActive: false,
+                    },
+                ],
+                selectedIndex: 0,
+                confirmDeleteValue: 'subscription:claude',
+            })
+
+            expect(buffer.getLine(2)).toContain('[Delete? (y/n)]')
+            expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
+            expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
+        })
+    })
+
+    describe('MessageListView with Tools & Thinking', () => {
+        it('renders running and completed tool calls with status glyphs', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            MessageListView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                messages: [
+                    {
+                        role: 'tool',
+                        toolCall: {
+                            id: 'tc-1',
+                            name: 'read_file',
+                            command: 'Read(src/index.ts)',
+                            status: 'success',
+                        },
+                    },
+                    {
+                        role: 'thinking',
+                        content: 'analyzing token expiration threshold',
+                        isStreaming: true,
+                    },
+                ],
+            })
+
+            const text = Array.from({ length: buffer.height }, (_, i) => buffer.getLine(i)).join(
+                '\n'
+            )
+            expect(text).toContain('Read(src/index.ts)')
+            expect(text).toContain('Thinking... analyzing token expiration threshold')
         })
     })
 })

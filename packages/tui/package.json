@@ -18,9 +18,7 @@
         "typescript": "^5"
     },
     "dependencies": {
-        "@december/providers": "workspace:*",
         "@december/shared": "workspace:*",
-        "@december/tools": "workspace:*",
         "cli-highlight": "2.1.11",
         "fast-glob": "3.3.3",
         "marked": "18.0.5"

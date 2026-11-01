@@ -118,16 +118,29 @@ export interface ProviderMenuItem {
     value: string
     isSubscription?: boolean
     section?: 'subscription' | 'popular' | 'all'
+    status?: string
 }
 
-export const POPULAR_PROVIDER_VALUES = [
-    'anthropic',
-    'openai',
-    'google',
-    'openrouter',
-    'deepseek',
-    'groq',
-    'mistral',
+export const SUBSCRIPTION_PROVIDER_ITEMS: ProviderMenuItem[] = [
+    { label: 'Anthropic (Claude)', value: 'claude', isSubscription: true, section: 'subscription' },
+    { label: 'GitHub (Copilot)', value: 'copilot', isSubscription: true, section: 'subscription' },
+    {
+        label: 'Google (Antigravity)',
+        value: 'gemini',
+        isSubscription: true,
+        section: 'subscription',
+    },
+    { label: 'OpenAI (ChatGPT)', value: 'codex', isSubscription: true, section: 'subscription' },
+]
+
+export const BYOK_PROVIDER_ITEMS: ProviderMenuItem[] = PROVIDER_MENU_ITEMS.map((item) => ({
+    ...item,
+    section: 'all' as const,
+}))
+
+export const UNIFIED_PROVIDER_MENU_ITEMS: ProviderMenuItem[] = [
+    ...SUBSCRIPTION_PROVIDER_ITEMS,
+    ...BYOK_PROVIDER_ITEMS,
 ]
 
 export const PROVIDER_NAMES: Record<string, string> = {

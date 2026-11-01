@@ -72,6 +72,15 @@ export interface CodeSearchResultItem {
     content: string
 }
 
+export interface CodeSearchGroupItem {
+    file: string
+    matchCount: number
+    firstLine: number
+    firstSnippet: string
+    lineNumbers: number[]
+    matches: CodeSearchResultItem[]
+}
+
 export type PlanWorkflowState =
     | { phase: 'idle' }
     | {

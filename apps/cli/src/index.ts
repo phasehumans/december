@@ -5,6 +5,7 @@ import path from 'node:path'
 import pkg from '../package.json' with { type: 'json' }
 
 import { parseCliArgs, getHelpText } from './args'
+import { AUTH_REQUIRED_NOTICE } from './constants/messages'
 import releaseHighlights from './constants/release-highlights.json' with { type: 'json' }
 import { purgeProjectEnvApiKeys } from './utils/env-sanitizer'
 
@@ -376,12 +377,13 @@ async function main() {
         toolsModule,
         { DifferentialApp },
         { FileSessionRepository },
-        { getProviderConfig, loadConfig, saveConfig, getAuthStatus },
+        { getProviderConfig, loadConfig, saveConfig, getAuthStatus, getConfiguredProviders },
         { suppressConsole },
         { localOperations, setActiveScopeDir },
         { instantiateProvider },
-        { ensureValidModelForProvider, getModelLabel },
+        { ensureValidModelForProvider, getModelLabel, getProviderModels },
         { useCliStore },
+        { convertAgentMessagesToDifferentialMessages },
     ] = await Promise.all([
         import('@december/agent'),
         import('@december/providers'),
@@ -394,6 +396,7 @@ async function main() {
         import('./utils/provider-factory'),
         import('./utils/models'),
         import('./store'),
+        import('./utils/message-converter'),
     ])
 
     if (parsedArgs.scope) {
@@ -422,15 +425,26 @@ async function main() {
 
     const isAuthenticated = !!providerConfig
     const sessionRepository = new FileSessionRepository()
+    const allSessions = await sessionRepository.listSessions()
     let targetSessionId = parsedArgs.sessionId
-    if (parsedArgs.command === 'resume' || parsedArgs.resume) {
+    const isExplicitResumeCmd = parsedArgs.command === 'resume'
+    const isResumeFlag = Boolean(parsedArgs.resume)
+    let shouldOpenSessionMenuOnBoot = false
+
+    if (isExplicitResumeCmd || isResumeFlag) {
         if (!targetSessionId && parsedArgs.positionals[1]) {
             targetSessionId = parsedArgs.positionals[1]
         }
         if (!targetSessionId) {
-            const sessions = await sessionRepository.listSessions()
-            if (sessions.length > 0) {
-                targetSessionId = sessions[0].id
+            if (isResumeFlag && !isExplicitResumeCmd) {
+                if (allSessions.length > 0) {
+                    targetSessionId = allSessions[0].id
+                }
+            } else if (isExplicitResumeCmd) {
+                shouldOpenSessionMenuOnBoot = true
+                if (allSessions.length > 0) {
+                    targetSessionId = allSessions[0].id
+                }
             }
         }
     }
@@ -501,15 +515,54 @@ async function main() {
     const differentialApp = new DifferentialApp({
         cliVersion: pkg.version,
         userEmail,
+        decemberEmail: config.decemberToken ? config.email : undefined,
+        hasDecember: authStatus.hasDecember,
         isAuthenticated,
+        authRequiredNotice: AUTH_REQUIRED_NOTICE,
         modelLabel: getModelLabel(initialModel),
         activeModel: initialModel,
         authMethod: providerConfig?.authMethod,
         selectedProvider: activeProvider,
+        models: getProviderModels(activeProvider),
+        getProviderModels: (provider) => getProviderModels(provider),
         contextTokens: 0,
         maxContextTokens: getModelContextWindow(initialModel),
         sessionId,
         thinkingLevel: config.thinkingLevel || 'auto',
+        sessions: allSessions.map((s) => ({
+            id: s.id,
+            preview: s.preview || s.id,
+            updatedAt: s.updatedAt || Date.now(),
+            messageCount: s.messageCount,
+        })),
+        sessionRepository,
+        onSessionSelect: async (selectedSessionId: string) => {
+            try {
+                await agent.loadContext(selectedSessionId)
+                differentialApp.state.messages = convertAgentMessagesToDifferentialMessages(
+                    agent.messages || []
+                )
+                differentialApp.state.sessionId = selectedSessionId
+                differentialApp.state.scrollOffset = undefined
+                differentialApp.render()
+            } catch (err: any) {
+                differentialApp.showToast(`Failed to resume session: ${err.message}`, 'error')
+            }
+        },
+        onSessionDelete: async (deletedSessionId: string) => {
+            try {
+                await sessionRepository.deleteSession(deletedSessionId)
+            } catch {
+                // Intentionally swallowed: ignore session delete failure
+            }
+        },
+        onSessionRename: async (oldId: string, newId: string) => {
+            try {
+                await sessionRepository.renameSession(oldId, newId)
+            } catch {
+                // Intentionally swallowed: ignore session rename failure
+            }
+        },
         onEffortSelect: async (level) => {
             if (agent) {
                 agent.thinkingLevel = level
@@ -527,7 +580,15 @@ async function main() {
         onModelSelect: async (selected) => {
             try {
                 const cfg = await loadConfig()
-                await saveConfig({ ...cfg, activeModel: selected.value })
+                cfg.activeModel = selected.value
+                await saveConfig(cfg)
+                if (agent && agent.modelOptions) {
+                    agent.modelOptions.model = selected.value
+                }
+                differentialApp.state.activeModel = selected.value
+                differentialApp.state.modelLabel = selected.label
+                differentialApp.state.maxContextTokens = getModelContextWindow(selected.value)
+                differentialApp.render()
             } catch {
                 // Intentionally swallowed: ignore model config save error
             }
@@ -549,17 +610,140 @@ async function main() {
             }
             return result
         },
-        onSubscriptionLogin: async (provider) => {
+        onSubscriptionLogin: async (provider, onCode) => {
             const { loginSubscription } = await import('./auth/subscriptions/subscription-manager')
-            const { openUrl } = await import('./utils/open')
-            await loginSubscription(provider, (code, uri) => {
-                const fullUrl = uri.includes('?')
-                    ? `${uri}&code=${encodeURIComponent(code)}`
-                    : `${uri}?code=${encodeURIComponent(code)}`
-                openUrl(fullUrl).catch(() => {
-                    // Intentionally swallowed: browser launch error handled
-                })
+            const bundle = await loginSubscription(provider, (code, uri) => {
+                if (onCode) {
+                    onCode(code, uri)
+                }
             })
+            try {
+                const { getDefaultModelForProvider, fetchLiveProviderModels } =
+                    await import('./utils/models')
+                const targetModel = getDefaultModelForProvider(bundle.provider || provider)
+                const cfg = await loadConfig()
+                cfg.subscriptions = cfg.subscriptions || {}
+                cfg.subscriptions[bundle.provider || provider] = bundle
+                const targetProvider = bundle.provider || provider
+                cfg.activeProvider = targetProvider
+                cfg.activeModel = targetModel
+                cfg.authPriority = 'subscription'
+                await saveConfig(cfg)
+                differentialApp.state.selectedProvider = targetProvider
+                differentialApp.state.authMethod = 'subscription'
+                differentialApp.state.activeModel = targetModel
+                differentialApp.state.modelLabel = getModelLabel(targetModel)
+                differentialApp.state.switchItems = getConfiguredProviders(cfg)
+                differentialApp.refreshModelsForProvider(targetProvider)
+                if (agent) {
+                    const { instantiateProvider } = await import('./utils/provider-factory')
+                    const llm = instantiateProvider(bundle.provider, bundle.accessToken, {
+                        authMethod: 'subscription',
+                        subscription: bundle,
+                        baseURL: bundle.endpoint,
+                    })
+                    agent.setLLM(llm)
+                    if (agent.modelOptions) {
+                        agent.modelOptions.model = targetModel
+                    }
+                }
+                fetchLiveProviderModels(
+                    bundle.provider || provider,
+                    bundle.accessToken,
+                    bundle.endpoint
+                ).catch(() => {
+                    // Intentionally swallowed: background live model fetch failure
+                })
+            } catch {
+                // Intentionally swallowed: ignore subscription config save error
+            }
+            return bundle
+        },
+        onSaveApiKey: async (provider: string, apiKey: string) => {
+            try {
+                const cfg = await loadConfig()
+                cfg.providers = cfg.providers || {}
+                cfg.providers[provider] = apiKey
+                cfg.activeProvider = provider
+                cfg.authPriority = 'byok'
+                const { getDefaultModelForProvider, fetchLiveProviderModels } =
+                    await import('./utils/models')
+                const targetModel = getDefaultModelForProvider(provider)
+                cfg.activeModel = targetModel
+                await saveConfig(cfg)
+                differentialApp.state.selectedProvider = provider
+                differentialApp.state.authMethod = 'byok'
+                differentialApp.state.activeModel = targetModel
+                differentialApp.state.modelLabel = getModelLabel(targetModel)
+                differentialApp.state.switchItems = getConfiguredProviders(cfg)
+                differentialApp.refreshModelsForProvider(provider)
+                fetchLiveProviderModels(provider, apiKey).catch(() => {
+                    // Intentionally swallowed: background live model fetch failure
+                })
+            } catch {
+                // Intentionally swallowed: ignore config save failure
+            }
+        },
+        switchItems: getConfiguredProviders(config),
+        onSwitchSelect: async (value: string) => {
+            const { resolveSwitchTarget, applyProviderSwitch, getProviderConfig } =
+                await import('./config')
+            const cfg = await loadConfig()
+            const target = resolveSwitchTarget(cfg, value)
+            if (!target) return
+            const { config: updatedConfig, model } = applyProviderSwitch(cfg, target)
+            await saveConfig(updatedConfig)
+            const providerConfig = await getProviderConfig()
+            if (providerConfig && agent) {
+                const { instantiateProvider } = await import('./utils/provider-factory')
+                const llm = instantiateProvider(providerConfig.provider, providerConfig.apiKey, {
+                    authMethod: providerConfig.authMethod,
+                    subscription: providerConfig.subscription,
+                    headers: providerConfig.headers,
+                    baseURL: providerConfig.baseURL,
+                })
+                agent.setLLM(llm)
+                if (agent.modelOptions) {
+                    agent.modelOptions.model = model
+                }
+            }
+            differentialApp.state.activeModel = model
+            differentialApp.state.modelLabel = getModelLabel(model)
+            differentialApp.state.selectedProvider = target.provider
+            differentialApp.state.authMethod = target.authPriority
+            differentialApp.state.switchItems = getConfiguredProviders(updatedConfig)
+            differentialApp.refreshModelsForProvider(target.provider)
+            differentialApp.render()
+        },
+        onDeleteProvider: async (value: string) => {
+            const cfg = await loadConfig()
+            if (value === 'decemberToken') {
+                cfg.decemberToken = undefined
+                cfg.email = undefined
+            } else if (value.startsWith('subscription:')) {
+                const provider = value.split(':')[1]
+                if (provider && cfg.subscriptions) {
+                    delete cfg.subscriptions[provider]
+                }
+            } else if (value.startsWith('provider:') || value.startsWith('byok:')) {
+                const provider = value.replace(/^(provider|byok):/, '')
+                if (provider && cfg.providers) {
+                    delete cfg.providers[provider]
+                }
+            }
+            await saveConfig(cfg)
+            differentialApp.state.switchItems = getConfiguredProviders(cfg)
+            differentialApp.render()
+        },
+        onCodeSearch: async (query: string) => {
+            try {
+                const raw = await localOperations.search.grep('.', query)
+                const { parseGrepOutput } = await import('@december/tui')
+                return parseGrepOutput(raw, process.cwd())
+            } catch {
+                // Intentionally swallowed: return empty matches on grep failure
+                return []
+            }
         },
         onSideQuestion: async (question, handlers) => {
             try {
@@ -573,15 +757,140 @@ async function main() {
                 handlers.onError(err)
             }
         },
-        onSubmit: async (promptText: string) => {
+        onExecuteDirectCommand: async (cmd: string) => {
+            const toolCallId = `shell_${Date.now()}`
+            differentialApp.appendToolCall({
+                id: toolCallId,
+                name: 'execute_command',
+                command: cmd,
+            })
             differentialApp.state.isStreaming = true
             differentialApp.render()
 
             try {
-                const stream = runAgentLoop(agent, promptText)
+                const { startDirectCommand } = await import('./utils/direct-shell')
+                const { promise } = startDirectCommand(cmd, {
+                    timeoutMs: 30_000,
+                    onData: (chunk) => {
+                        differentialApp.updateToolExecution(toolCallId, chunk)
+                    },
+                    onBackground: (taskId) => {
+                        differentialApp.showToast(
+                            `Command moved to background (${taskId}). Use /tasks to view logs.`,
+                            'info'
+                        )
+                    },
+                })
+                const result = await promise
+                differentialApp.updateToolResult(toolCallId, {
+                    output: result.output,
+                    isError: result.exitCode !== 0,
+                })
+                if (agent && agent.messages) {
+                    agent.messages.push({
+                        role: 'user',
+                        content: `!${cmd}`,
+                    })
+                    agent.messages.push({
+                        role: 'assistant',
+                        content: `[Direct Shell Output: ${cmd}]\n${result.output}`,
+                    })
+                }
+            } catch (err: any) {
+                differentialApp.updateToolResult(toolCallId, {
+                    output: err.message || 'Execution failed',
+                    isError: true,
+                })
+            } finally {
+                differentialApp.state.isStreaming = false
+                differentialApp.render()
+            }
+        },
+        onUndo: async () => {
+            try {
+                const { getSnapshotManager } = await import('@december/tools')
+                const manager = getSnapshotManager(process.cwd())
+                await manager.init()
+                const snapshots = manager.getSnapshots()
+                if (snapshots.length === 0) {
+                    differentialApp.showToast('No turn snapshots recorded in this session.', 'info')
+                    return
+                }
+                differentialApp.showToast('Reverting last agent turn...', 'info')
+                const result = await manager.rollbackLastTurn()
+                const count =
+                    (result.restoredFiles?.length || 0) + (result.deletedFiles?.length || 0)
+                differentialApp.showToast(
+                    `Undid Turn ${result.targetTurn}. (${count} file${count === 1 ? '' : 's'} affected)`,
+                    'success'
+                )
+            } catch (e: any) {
+                differentialApp.showToast(`Failed to undo: ${e.message}`, 'error')
+            }
+        },
+        onSubmit: async (promptText: string) => {
+            if (!differentialApp.state.isAuthenticated) {
+                differentialApp.state.messages.push({
+                    role: 'assistant',
+                    content: AUTH_REQUIRED_NOTICE,
+                })
+                differentialApp.state.isStreaming = false
+                differentialApp.render()
+                return
+            }
+
+            differentialApp.state.isStreaming = true
+            differentialApp.render()
+
+            try {
+                let executionPrompt = promptText
+
+                if (promptText.startsWith('/plan ') || promptText === '/plan') {
+                    const goal = promptText.replace(/^\/plan\s*/, '').trim()
+                    if (goal) {
+                        const { getPlanPrompt } = await import('./constants/prompts')
+                        executionPrompt = getPlanPrompt(goal, [])
+                    }
+                }
+
+                if (executionPrompt.includes('@') && !executionPrompt.includes('<context_file')) {
+                    try {
+                        const { resolveContextMentions } = await import('@december/shared')
+                        const resolved = await resolveContextMentions(
+                            executionPrompt,
+                            process.cwd()
+                        )
+                        executionPrompt = resolved.expandedPrompt
+                    } catch {
+                        // Intentionally swallowed: keep executionPrompt on resolution error
+                    }
+                }
+
+                const { getToolSummary } = await import('./utils/formatters')
+                const stream = runAgentLoop(agent, executionPrompt)
                 for await (const event of stream) {
                     if (event.type === 'StreamChunk') {
                         differentialApp.appendStreamDelta(event.content)
+                    } else if (event.type === 'ThinkingChunk') {
+                        differentialApp.appendThinkingChunk(event.content)
+                    } else if (event.type === 'ToolCallStart') {
+                        const inputStr =
+                            typeof event.toolCall.input === 'string'
+                                ? event.toolCall.input
+                                : JSON.stringify(event.toolCall.input || {})
+                        differentialApp.appendToolCall({
+                            id: event.toolCall.id,
+                            name: event.toolCall.name,
+                            input: event.toolCall.input,
+                            command: getToolSummary(event.toolCall.name, inputStr),
+                        })
+                    } else if (event.type === 'ToolExecutionUpdate') {
+                        differentialApp.updateToolExecution(event.toolCallId, event.chunk)
+                    } else if (event.type === 'ToolCallResult') {
+                        differentialApp.updateToolResult(event.result.toolCallId, {
+                            output: event.result.error || event.result.result,
+                            isError: Boolean(event.result.error),
+                        })
                     } else if (event.type === 'AgentUsage') {
                         differentialApp.state.contextTokens =
                             event.promptTokens + event.completionTokens
@@ -596,11 +905,82 @@ async function main() {
             } finally {
                 differentialApp.state.isStreaming = false
                 differentialApp.render()
+                differentialApp.refreshWorkspaceFiles().catch(() => {
+                    // Intentionally swallowed: refresh workspace files after agent turn
+                })
             }
         },
         onExit: () => {
             handleExit()
         },
+        onLoadMemoryDetails: async () => {
+            const { getWorkspaceMemoryDetails } = await import('@december/tools')
+            return getWorkspaceMemoryDetails(process.cwd())
+        },
+        onLoadProjectRules: async () => {
+            const { discoverProjectRules } = await import('@december/shared')
+            return discoverProjectRules(process.cwd())
+        },
+        onRecordMemory: async (text: string, category: string) => {
+            const { recordMemoryDirect } = await import('@december/tools')
+            const res = await recordMemoryDirect(process.cwd(), text, category)
+            if (res.success && agent?.conversation?.initSession) {
+                try {
+                    agent.conversation.initSession({
+                        workspaceRoot: process.cwd(),
+                        systemPrompt: agent.systemPrompt,
+                    })
+                } catch {
+                    // Intentionally swallowed: agent prompt re-sync fallback
+                }
+            }
+            return res
+        },
+        onForgetMemory: async (text: string) => {
+            const { forgetMemoryDirect } = await import('@december/tools')
+            const res = await forgetMemoryDirect(process.cwd(), text)
+            if (res.success && agent?.conversation?.initSession) {
+                try {
+                    agent.conversation.initSession({
+                        workspaceRoot: process.cwd(),
+                        systemPrompt: agent.systemPrompt,
+                    })
+                } catch {
+                    // Intentionally swallowed: agent prompt re-sync fallback
+                }
+            }
+            return res
+        },
+        onScaffoldRules: async () => {
+            const fs = await import('node:fs/promises')
+            const path = await import('node:path')
+            const { DEFAULT_AGENTS_MD_TEMPLATE } = await import('@december/tools')
+            const targetPath = path.join(process.cwd(), 'AGENTS.md')
+            await fs.writeFile(targetPath, DEFAULT_AGENTS_MD_TEMPLATE, 'utf8')
+            if (agent?.conversation?.initSession) {
+                try {
+                    agent.conversation.initSession({
+                        workspaceRoot: process.cwd(),
+                        systemPrompt: agent.systemPrompt,
+                    })
+                } catch {
+                    // Intentionally swallowed: agent prompt re-sync fallback
+                }
+            }
+            return { success: true, message: 'Created AGENTS.md' }
+        },
+        onOpenEditor: async (filePath: string) => {
+            const { openPath } = await import('./utils/open')
+            await openPath(filePath)
+        },
+    })
+
+    const { setupAgentInterceptors } = await import('./store/interceptors')
+    setupAgentInterceptors(agent, differentialApp)
+
+    // Background workspace file and git status indexing for instantaneous @ and /open suggestions
+    differentialApp.refreshWorkspaceFiles().catch(() => {
+        // Intentionally swallowed: background workspace indexing fallback
     })
 
     // Background version check
@@ -634,21 +1014,20 @@ async function main() {
         await agent.loadContext().catch(() => {
             // Intentionally swallowed: ignore context load errors on fresh sessions
         })
-        const nonSystem = (agent.messages || []).filter((m: any) => m.role !== 'system')
-        if (nonSystem.length > 0) {
-            for (const msg of nonSystem) {
-                differentialApp.state.messages.push({
-                    role: msg.role,
-                    content:
-                        typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-                })
-            }
-        }
+        differentialApp.state.messages = convertAgentMessagesToDifferentialMessages(
+            agent.messages || []
+        )
     } else {
         // Non-blocking session context loading during TUI mounting for fresh sessions
         agent.loadContext().catch(() => {
             // Intentionally swallowed: ignore context load errors on fresh sessions
         })
+    }
+
+    if (shouldOpenSessionMenuOnBoot) {
+        differentialApp.state.activeOverlay = 'session'
+        differentialApp.state.sessionSelectedIndex = 0
+        differentialApp.state.sessionWindowStart = 0
     }
 
     const { compareVersions } = await import('./utils/bin-discovery')
