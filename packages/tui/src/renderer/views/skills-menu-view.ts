@@ -222,16 +222,6 @@ export const SkillsMenuView = {
                         style: { fg: THEME.colors.text, bg: rowBg },
                     })
                 }
-
-                // Empty rows with vim tilde
-                const remainingRows = visibleLineCount - visibleLines.length
-                for (let i = 0; i < remainingRows; i++) {
-                    drawText(buffer, '~', {
-                        x: x + 2,
-                        y: y + visibleLines.length + i,
-                        style: { fg: THEME.colors.dim },
-                    })
-                }
             }
 
             MenuFooterView.render(buffer, {

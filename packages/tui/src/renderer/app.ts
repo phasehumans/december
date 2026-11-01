@@ -152,6 +152,7 @@ export interface DifferentialAppState {
     showExitConfirm: boolean
     toast: { message: string; variant?: 'success' | 'error' | 'info' } | null
     activeOverlay: OverlayType
+    overlayHistory: OverlayType[]
 
     // Command menu drop-up state
     commandSelectedIndex: number
@@ -561,6 +562,7 @@ export class DifferentialApp {
             showExitConfirm: false,
             toast: null,
             activeOverlay: 'none',
+            overlayHistory: [],
 
             thinkingLevel: initialThinking,
             effortSelectedIndex: initialEffortIdx >= 0 ? initialEffortIdx : 0,
@@ -1435,127 +1437,7 @@ export class DifferentialApp {
             }
 
             if (this.state.activeOverlay !== 'none') {
-                if (this.state.activeOverlay === 'diff' && this.state.isDiffDetailView) {
-                    const currentFile = this.state.diffFiles[this.state.diffSelectedIndex]
-                    if (currentFile) {
-                        this.state.diffFilePositions[currentFile.path] = {
-                            cursorIndex: this.state.diffCursorLineIndex,
-                            scrollOffset: this.state.diffScrollOffset,
-                        }
-                    }
-                    this.state.isDiffDetailView = false
-                    this.render()
-                    return
-                }
-                if (this.state.activeOverlay === 'model' && this.state.isModelSearching) {
-                    this.state.isModelSearching = false
-                    this.render()
-                    return
-                }
-                if (
-                    this.state.activeOverlay === 'session' &&
-                    (this.state.isSessionSearching ||
-                        this.state.sessionRenameMode ||
-                        this.state.sessionConfirmDeleteId)
-                ) {
-                    this.state.isSessionSearching = false
-                    this.state.sessionRenameMode = false
-                    this.state.sessionConfirmDeleteId = null
-                    this.render()
-                    return
-                }
-                if (this.state.activeOverlay === 'auth') {
-                    if (this.state.authConfirmDeleteValue) {
-                        this.state.authConfirmDeleteValue = null
-                        this.render()
-                        return
-                    }
-                    if (this.state.authViewMode === 'confirm_switch_subscription') {
-                        this.state.authConfirmTarget = null
-                        this.state.authViewMode = 'subscription'
-                        this.render()
-                        return
-                    }
-                    if (this.state.authViewMode === 'confirm_replace_byok') {
-                        this.state.authConfirmTarget = null
-                        this.state.authViewMode = 'byok_provider'
-                        this.render()
-                        return
-                    }
-                    if (this.state.authViewMode === 'byok_key') {
-                        this.state.authViewMode = 'byok_provider'
-                        this.render()
-                        return
-                    }
-                    if (this.state.isSearchingAuthProviders) {
-                        this.state.isSearchingAuthProviders = false
-                        this.render()
-                        return
-                    }
-                    if (this.state.authProviderSearchQuery) {
-                        this.state.authProviderSearchQuery = ''
-                        this.state.authProviderSelectedIndex = 0
-                        this.state.authProviderWindowStart = 0
-                        this.render()
-                        return
-                    }
-                    this.state.activeOverlay = 'login'
-                    this.render()
-                    return
-                }
-                if (this.state.activeOverlay === 'login') {
-                    if (this.state.loginConfirmSwitch) {
-                        this.state.loginConfirmSwitch = false
-                        this.render()
-                        return
-                    }
-                    this.state.activeOverlay = 'none'
-                    this.render()
-                    return
-                }
-                if (this.state.activeOverlay === 'ask_question') {
-                    const res = this.pendingQuestionResolver
-                    this.pendingQuestionResolver = undefined
-                    this.state.pendingQuestions = null
-                    this.state.activeOverlay = 'none'
-                    this.render()
-                    res?.({})
-                    return
-                }
-                if (this.state.activeOverlay === 'tool_permission') {
-                    this.resolveToolPermission('deny')
-                    return
-                }
-                if (this.state.activeOverlay === 'plan_approve') {
-                    this.resolvePlanApproval('reject')
-                    return
-                }
-                if (this.state.activeOverlay === 'fileview') {
-                    this.state.activeOverlay = this.state.fileViewReturnOverlay || 'none'
-                    this.render()
-                    return
-                }
-                if (this.state.activeOverlay === 'memory') {
-                    if (this.state.isAddingMemory) {
-                        this.state.isAddingMemory = false
-                        this.state.memoryNewEntryText = ''
-                        this.render()
-                        return
-                    }
-                    if (
-                        this.state.memoryTab === 'rules' &&
-                        this.state.memoryInitialTab === 'memory'
-                    ) {
-                        this.state.memoryTab = 'memory'
-                        this.render()
-                        return
-                    }
-                    this.state.activeOverlay = this.state.memoryReturnOverlay || 'none'
-                    this.render()
-                    return
-                }
-                this.state.activeOverlay = 'none'
-                this.render()
+                this.handleOverlayEsc()
                 return
             }
 
@@ -1894,6 +1776,7 @@ export class DifferentialApp {
 
         this.state.input = ''
         this.state.cursorPos = 0
+        this.state.overlayHistory = []
 
         if (cmd === 'ask') {
             if (args) {
@@ -2440,12 +2323,20 @@ export class DifferentialApp {
         this.render()
     }
 
-    private handleOverlayKey(key: string): void {
+    closeOrPopOverlay(): void {
+        if (this.state.overlayHistory && this.state.overlayHistory.length > 0) {
+            this.state.activeOverlay = this.state.overlayHistory.pop()!
+        } else {
+            this.state.activeOverlay = 'none'
+        }
+        this.render()
+    }
+
+    private handleOverlayEsc(): void {
         const overlay = this.state.activeOverlay
 
-        // Esc or Ctrl+C closes any overlay
-        if (key === '\x1b' || key === '\x03') {
-            if (overlay === 'diff' && this.state.isDiffDetailView) {
+        if (overlay === 'diff') {
+            if (this.state.isDiffDetailView) {
                 const currentFile = this.state.diffFiles[this.state.diffSelectedIndex]
                 if (currentFile) {
                     this.state.diffFilePositions[currentFile.path] = {
@@ -2457,33 +2348,219 @@ export class DifferentialApp {
                 this.render()
                 return
             }
-            if (overlay === 'model' && this.state.isModelSearching) {
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'skills') {
+            if (this.state.skillsIsSearching) {
+                this.state.skillsIsSearching = false
+                this.render()
+                return
+            }
+            if (this.state.skillsIsDetailView) {
+                this.state.skillsIsDetailView = false
+                this.render()
+                return
+            }
+            if (this.state.skillsSearchQuery) {
+                this.state.skillsSearchQuery = ''
+                this.state.skillsSelectedIndex = 0
+                this.state.skillsWindowStart = 0
+                this.render()
+                return
+            }
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'session') {
+            if (this.state.sessionConfirmDeleteId !== null) {
+                this.state.sessionConfirmDeleteId = null
+                this.render()
+                return
+            }
+            if (this.state.sessionRenameMode) {
+                this.state.sessionRenameMode = false
+                this.render()
+                return
+            }
+            if (this.state.isSessionSearching) {
+                this.state.isSessionSearching = false
+                this.render()
+                return
+            }
+            if (this.state.sessionSearchQuery) {
+                this.state.sessionSearchQuery = ''
+                this.state.sessionSelectedIndex = 0
+                this.state.sessionWindowStart = 0
+                this.render()
+                return
+            }
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'switch') {
+            if (this.state.switchConfirmDeleteValue !== null) {
+                this.state.switchConfirmDeleteValue = null
+                this.render()
+                return
+            }
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'model') {
+            if (this.state.isModelSearching) {
                 this.state.isModelSearching = false
                 this.render()
                 return
             }
-            if (overlay === 'memory') {
-                if (this.state.isAddingMemory) {
-                    this.state.isAddingMemory = false
-                    this.state.memoryNewEntryText = ''
-                    this.render()
-                    return
-                }
-                if (this.state.memoryTab === 'rules' && this.state.memoryInitialTab === 'memory') {
-                    this.state.memoryTab = 'memory'
-                    this.render()
-                    return
-                }
-                this.state.activeOverlay = this.state.memoryReturnOverlay || 'none'
+            if (this.state.modelSearchQuery) {
+                this.state.modelSearchQuery = ''
+                this.state.modelSelectedIndex = 0
+                this.state.modelWindowStart = 0
                 this.render()
                 return
             }
-            if (overlay === 'fileview') {
-                this.state.activeOverlay = this.state.fileViewReturnOverlay || 'none'
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'auth') {
+            if (this.state.authConfirmDeleteValue) {
+                this.state.authConfirmDeleteValue = null
                 this.render()
                 return
             }
+            if (this.state.authViewMode === 'confirm_switch_subscription') {
+                this.state.authConfirmTarget = null
+                this.state.authViewMode = 'subscription'
+                this.render()
+                return
+            }
+            if (this.state.authViewMode === 'confirm_replace_byok') {
+                this.state.authConfirmTarget = null
+                this.state.authViewMode = 'byok_provider'
+                this.render()
+                return
+            }
+            if (this.state.authViewMode === 'byok_key') {
+                this.state.authApiKeyInput = ''
+                this.state.authKeyError = null
+                this.state.authViewMode = 'byok_provider'
+                this.render()
+                return
+            }
+            if (this.state.isSearchingAuthProviders) {
+                this.state.isSearchingAuthProviders = false
+                this.render()
+                return
+            }
+            if (this.state.authProviderSearchQuery) {
+                this.state.authProviderSearchQuery = ''
+                this.state.authProviderSelectedIndex = 0
+                this.state.authProviderWindowStart = 0
+                this.render()
+                return
+            }
+            if (
+                this.state.authViewMode === 'byok_provider' ||
+                this.state.authViewMode === 'subscription'
+            ) {
+                if (this.state.overlayHistory.length > 0) {
+                    this.state.activeOverlay = this.state.overlayHistory.pop()!
+                } else {
+                    this.state.activeOverlay = 'login'
+                }
+                this.render()
+                return
+            }
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'login') {
+            if (this.state.loginConfirmSwitch) {
+                this.state.loginConfirmSwitch = false
+                this.render()
+                return
+            }
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'memory') {
+            if (this.state.isAddingMemory) {
+                this.state.isAddingMemory = false
+                this.state.memoryNewEntryText = ''
+                this.render()
+                return
+            }
+            if (this.state.memoryTab === 'rules' && this.state.memoryInitialTab === 'memory') {
+                this.state.memoryTab = 'memory'
+                this.render()
+                return
+            }
+            if (this.state.memoryReturnOverlay && this.state.memoryReturnOverlay !== 'none') {
+                const ret = this.state.memoryReturnOverlay
+                this.state.memoryReturnOverlay = 'none'
+                this.state.activeOverlay = ret
+                this.render()
+                return
+            }
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'fileview') {
+            if (this.state.fileViewReturnOverlay && this.state.fileViewReturnOverlay !== 'none') {
+                const ret = this.state.fileViewReturnOverlay
+                this.state.fileViewReturnOverlay = 'none'
+                this.state.activeOverlay = ret
+                this.render()
+                return
+            }
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'ask_question') {
+            const res = this.pendingQuestionResolver
+            this.pendingQuestionResolver = undefined
+            this.state.pendingQuestions = null
+            this.closeOrPopOverlay()
+            res?.({})
+            return
+        }
+
+        if (overlay === 'tool_permission') {
+            this.resolveToolPermission('deny')
+            return
+        }
+
+        if (overlay === 'plan_approve') {
+            this.resolvePlanApproval('reject')
+            return
+        }
+
+        this.closeOrPopOverlay()
+    }
+
+    private handleOverlayKey(key: string): void {
+        const overlay = this.state.activeOverlay
+
+        // Esc cancels sub-states or steps back to previous overlay
+        if (key === '\x1b') {
+            this.handleOverlayEsc()
+            return
+        }
+
+        // Ctrl+C aborts active overlay immediately
+        if (key === '\x03') {
             this.state.activeOverlay = 'none'
+            this.state.overlayHistory = []
             this.render()
             return
         }
@@ -2665,6 +2742,7 @@ export class DifferentialApp {
                 if (!selected) return
 
                 if (selected.value === 'subscription') {
+                    this.state.overlayHistory.push('login')
                     this.state.activeOverlay = 'auth'
                     this.state.authViewMode = 'subscription'
                     this.state.authProviders = SUBSCRIPTION_PROVIDER_ITEMS
@@ -2679,6 +2757,7 @@ export class DifferentialApp {
                 }
 
                 if (selected.value === 'byok') {
+                    this.state.overlayHistory.push('login')
                     this.state.activeOverlay = 'auth'
                     this.state.authViewMode = 'byok_provider'
                     this.state.authProviders = BYOK_PROVIDER_ITEMS
@@ -2713,8 +2792,7 @@ export class DifferentialApp {
             }
 
             if (key === '\x1b') {
-                this.state.activeOverlay = 'none'
-                this.render()
+                this.closeOrPopOverlay()
                 return
             }
 
@@ -2741,11 +2819,13 @@ export class DifferentialApp {
                 const current = settings[this.state.settingsSelectedIndex]
                 if (current) {
                     if (current.id === 'model' || current.id === 'provider') {
+                        this.state.overlayHistory.push('settings')
                         this.state.activeOverlay = 'model'
                         this.render()
                         return
                     }
                     if (current.id === 'thinking_level') {
+                        this.state.overlayHistory.push('settings')
                         this.state.activeOverlay = 'effort'
                         const idx = REASONING_OPTIONS.findIndex(
                             (opt) => opt.value === this.state.thinkingLevel
@@ -2773,6 +2853,7 @@ export class DifferentialApp {
                 return
             }
             if (key === 'm' || key === 'M') {
+                this.state.overlayHistory.push('context')
                 this.state.activeOverlay = 'model'
                 this.state.modelSearchQuery = ''
                 this.state.modelSelectedIndex = 0
@@ -3058,7 +3139,7 @@ export class DifferentialApp {
             // 2. Detail View (SKILL.md documentation reader)
             if (this.state.skillsIsDetailView) {
                 const totalLines = this.state.skillsDetailLines.length
-                const visibleLineCount = 12
+                const visibleLineCount = Math.max(5, this.screen.height - 4)
 
                 if (key === '\x1b' || key === 'q' || key === 'Q') {
                     this.state.skillsIsDetailView = false
@@ -3099,8 +3180,10 @@ export class DifferentialApp {
                             this.state.skillsCursorLine >=
                             this.state.skillsScrollOffset + visibleLineCount
                         ) {
-                            this.state.skillsScrollOffset =
+                            this.state.skillsScrollOffset = Math.min(
+                                Math.max(0, totalLines - visibleLineCount),
                                 this.state.skillsCursorLine - visibleLineCount + 1
+                            )
                         }
                         this.render()
                     }
@@ -3275,8 +3358,7 @@ export class DifferentialApp {
             }
 
             if (key === '\x1b') {
-                this.state.activeOverlay = 'none'
-                this.render()
+                this.closeOrPopOverlay()
                 return
             }
 
@@ -3825,6 +3907,7 @@ export class DifferentialApp {
                 return
             }
             if (key === 'm' || key === 'M') {
+                this.state.overlayHistory.push('usage')
                 this.state.activeOverlay = 'model'
                 this.state.modelSelectedIndex = 0
                 this.state.modelWindowStart = 0
@@ -3843,8 +3926,7 @@ export class DifferentialApp {
                 return
             }
             if (key === 'q' || key === 'Q' || key === '\r' || key === '\n' || key === '\x1b') {
-                this.state.activeOverlay = 'none'
-                this.render()
+                this.closeOrPopOverlay()
                 return
             }
             return
@@ -4779,6 +4861,7 @@ export class DifferentialApp {
 
         this.state.input = ''
         this.state.cursorPos = 0
+        this.state.overlayHistory = []
         this.state.scrollOffset = undefined
         this.state.isReadingMode = false
         this.state.isFileAutocompleteVisible = false

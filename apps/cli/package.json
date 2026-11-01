@@ -37,7 +37,7 @@
         "LICENSE"
     ],
     "scripts": {
-        "build": "bun build ./src/index.ts --target=node --outfile=./dist/december.js",
+        "build": "bun build ./src/index.ts --target=node --minify --splitting --outdir=./dist --entry-naming=december.js --chunk-naming=\"chunk-[hash].js\"",
         "prepublishOnly": "bun run build",
         "typecheck": "tsc --noEmit",
         "test": "bun test",

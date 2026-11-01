@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 
 import { prisma } from '@december/database'
-import { enqueueJob } from '@december/shared'
+import { enqueueJob } from '@december/shared/queue'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'

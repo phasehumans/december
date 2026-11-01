@@ -1808,4 +1808,153 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         app.stop()
     })
+
+    it('hierarchically handles esc key across overlay sub-states without dumping to home', async () => {
+        const app = new DifferentialApp({
+            isAuthenticated: true,
+            skills: [
+                { name: 'flywheel', description: 'advance autonomous research' },
+                { name: 'tdd', description: 'test driven development' },
+            ],
+            sessions: [
+                { id: 'session-1', preview: 'Initial work', updatedAt: '2026-11-01' },
+                { id: 'session-2', preview: 'Second task', updatedAt: '2026-11-01' },
+            ],
+            switchItems: [
+                { label: 'Anthropic', value: 'byok:anthropic' },
+                { label: 'OpenAI', value: 'byok:openai' },
+            ],
+        })
+        app.start()
+
+        // 1. Skills sub-states: Detail View -> Esc -> List View -> Esc -> None
+        app.executeCommand('skills')
+        expect(app.state.activeOverlay).toBe('skills')
+        app.state.skillsIsDetailView = true
+        app.state.skillsDetailLines = ['# Flywheel', 'Description line 1']
+        app.handleKey('\x1b')
+        expect(app.state.skillsIsDetailView).toBe(false)
+        expect(app.state.activeOverlay).toBe('skills')
+
+        // Skills search query: Search -> type query -> Esc exits search mode -> Esc clears query -> Esc closes
+        app.handleKey('/')
+        expect(app.state.skillsIsSearching).toBe(true)
+        app.handleKey('f')
+        app.handleKey('l')
+        expect(app.state.skillsSearchQuery).toBe('fl')
+        app.handleKey('\x1b')
+        expect(app.state.skillsIsSearching).toBe(false)
+        expect(app.state.skillsSearchQuery).toBe('fl')
+        app.handleKey('\x1b')
+        expect(app.state.skillsSearchQuery).toBe('')
+        expect(app.state.activeOverlay).toBe('skills')
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // 2. Session sub-states:
+        // Delete confirm -> Esc cancels confirm
+        app.executeCommand('session')
+        expect(app.state.activeOverlay).toBe('session')
+        app.state.sessionConfirmDeleteId = 'session-1'
+        app.handleKey('\x1b')
+        expect(app.state.sessionConfirmDeleteId).toBeNull()
+        expect(app.state.activeOverlay).toBe('session')
+
+        // Rename mode -> Esc cancels rename
+        app.state.sessionRenameMode = true
+        app.state.sessionRenameValue = 'Renamed Session'
+        app.handleKey('\x1b')
+        expect(app.state.sessionRenameMode).toBe(false)
+        expect(app.state.activeOverlay).toBe('session')
+
+        // Session search query -> Esc exits search mode -> Esc clears query -> Esc closes
+        app.handleKey('/')
+        expect(app.state.isSessionSearching).toBe(true)
+        app.handleKey('w')
+        app.handleKey('o')
+        expect(app.state.sessionSearchQuery).toBe('wo')
+        app.handleKey('\x1b')
+        expect(app.state.isSessionSearching).toBe(false)
+        expect(app.state.sessionSearchQuery).toBe('wo')
+        app.handleKey('\x1b')
+        expect(app.state.sessionSearchQuery).toBe('')
+        expect(app.state.activeOverlay).toBe('session')
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // 3. Switch sub-states: Confirm delete -> Esc cancels confirm -> Esc closes
+        app.executeCommand('switch')
+        expect(app.state.activeOverlay).toBe('switch')
+        app.state.switchConfirmDeleteValue = 'byok:anthropic'
+        app.handleKey('\x1b')
+        expect(app.state.switchConfirmDeleteValue).toBeNull()
+        expect(app.state.activeOverlay).toBe('switch')
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        app.stop()
+    })
+
+    it('navigates cross-menu overlay history stack on esc', async () => {
+        const app = new DifferentialApp({
+            isAuthenticated: true,
+            models: [
+                { label: 'Claude 3.7 Sonnet', value: 'claude-3-7-sonnet' },
+                { label: 'GPT-4o', value: 'gpt-4o' },
+            ],
+        })
+        app.start()
+
+        // 1. /usage -> press 'm' to switch model -> in model press Esc -> returns to /usage -> press Esc -> returns to none
+        app.executeCommand('usage')
+        expect(app.state.activeOverlay).toBe('usage')
+        app.handleKey('m')
+        expect(app.state.activeOverlay).toBe('model')
+        expect(app.state.overlayHistory).toEqual(['usage'])
+
+        // Inside model, type search query -> Esc exits search mode -> Esc clears query -> Esc exits to usage
+        app.handleKey('/')
+        app.handleKey('c')
+        app.handleKey('l')
+        expect(app.state.modelSearchQuery).toBe('cl')
+        app.handleKey('\x1b')
+        expect(app.state.isModelSearching).toBe(false)
+        expect(app.state.modelSearchQuery).toBe('cl')
+        app.handleKey('\x1b')
+        expect(app.state.modelSearchQuery).toBe('')
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('usage')
+        expect(app.state.overlayHistory).toEqual([])
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // 2. /settings -> select Model -> in model press Esc -> returns to /settings -> Esc -> none
+        app.executeCommand('settings')
+        expect(app.state.activeOverlay).toBe('settings')
+        app.state.settingsSelectedIndex = 0 // 'model'
+        app.handleKey('\r')
+        expect(app.state.activeOverlay).toBe('model')
+        expect(app.state.overlayHistory).toEqual(['settings'])
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('settings')
+        expect(app.state.overlayHistory).toEqual([])
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // 3. /settings -> select Thinking Level -> in effort press Esc -> returns to /settings -> Esc -> none
+        app.executeCommand('settings')
+        expect(app.state.activeOverlay).toBe('settings')
+        const thinkingIdx = app.state.settings.findIndex((s) => s.id === 'thinking_level')
+        app.state.settingsSelectedIndex = thinkingIdx >= 0 ? thinkingIdx : 5
+        app.handleKey('\r')
+        expect(app.state.activeOverlay).toBe('effort')
+        expect(app.state.overlayHistory).toEqual(['settings'])
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('settings')
+        expect(app.state.overlayHistory).toEqual([])
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        app.stop()
+    })
 })

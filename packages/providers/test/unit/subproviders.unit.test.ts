@@ -1,43 +1,44 @@
 import { describe, expect, test } from 'bun:test'
 
-import { AbliterationProvider } from '../../src/providers/abliteration'
-import { AgentRouterProvider } from '../../src/providers/agentrouter'
-import { AgnesProvider } from '../../src/providers/agnes'
-import { AIAndProvider } from '../../src/providers/aiand'
-import { AKIProvider } from '../../src/providers/aki'
-import { AmbientProvider } from '../../src/providers/ambient'
-import { ArceeProvider } from '../../src/providers/arcee'
-import { AurikoProvider } from '../../src/providers/auriko'
-import { BasetenProvider } from '../../src/providers/baseten'
-import { CerebrasProvider } from '../../src/providers/cerebras'
-import { CohereProvider } from '../../src/providers/cohere'
-import { DashScopeProvider } from '../../src/providers/dashscope'
-import { DeepSeekProvider } from '../../src/providers/deepseek'
-import { FireworksProvider } from '../../src/providers/fireworks'
-import { GroqProvider } from '../../src/providers/groq'
-import { HuggingFaceProvider } from '../../src/providers/huggingface'
-import { HyperbolicProvider } from '../../src/providers/hyperbolic'
-import { KimiProvider } from '../../src/providers/kimi'
-import { MetaProvider } from '../../src/providers/meta'
-import { MiniMaxProvider } from '../../src/providers/minimax'
-import { MistralProvider } from '../../src/providers/mistral'
-import { MoonshotProvider } from '../../src/providers/moonshot'
-import { NvidiaProvider } from '../../src/providers/nvidia'
-import { PerplexityProvider } from '../../src/providers/perplexity'
-import { SakanaProvider } from '../../src/providers/sakana'
-import { SambaNovaProvider } from '../../src/providers/sambanova'
-import { SarvamProvider } from '../../src/providers/sarvam'
-import { SiliconFlowProvider } from '../../src/providers/siliconflow'
-import { StepFunProvider } from '../../src/providers/stepfun'
 import {
+    AbliterationProvider,
+    AgentRouterProvider,
+    AgnesProvider,
+    AIAndProvider,
+    AKIProvider,
+    AmbientProvider,
+    ArceeProvider,
+    AurikoProvider,
+    BasetenProvider,
+    CerebrasProvider,
+    CohereProvider,
+    DashScopeProvider,
+    DeepSeekProvider,
+    FireworksProvider,
+    GroqProvider,
+    HuggingFaceProvider,
+    HyperbolicProvider,
+    KimiProvider,
+    MetaProvider,
+    MiniMaxProvider,
+    MistralProvider,
+    MoonshotProvider,
+    NvidiaProvider,
+    PerplexityProvider,
+    SakanaProvider,
+    SambaNovaProvider,
+    SarvamProvider,
+    SiliconFlowProvider,
+    StepFunProvider,
     ThinkingMachinesProvider,
+    TogetherProvider,
+    UpstageProvider,
+    XAIProvider,
+    XiaomiProvider,
+    ZAIProvider,
+    ZhipuAIProvider,
     resolveThinkingMachinesModel,
-} from '../../src/providers/thinkingmachines'
-import { TogetherProvider } from '../../src/providers/together'
-import { UpstageProvider } from '../../src/providers/upstage'
-import { XAIProvider } from '../../src/providers/xai'
-import { XiaomiProvider } from '../../src/providers/xiaomi'
-import { ZAIProvider, ZhipuAIProvider } from '../../src/providers/zai'
+} from '../../src/index'
 
 describe('OpenAI-compatible Subproviders (Unit)', () => {
     test('instantiates DeepSeekProvider with correct ID', () => {

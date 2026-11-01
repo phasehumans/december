@@ -11,7 +11,6 @@ import { createLocalBashOperations, killProcessGroup } from '@december/tools'
 import fg from 'fast-glob'
 
 import { taskManager } from './task-manager'
-import { browserRunner } from './utils/browser'
 
 const execAsync = promisify(exec)
 const localBashOps = createLocalBashOperations()
@@ -541,9 +540,18 @@ export const localOperations: PlatformAdapter = {
         },
     },
     browser: {
-        navigate: async (url: string) => browserRunner.navigate(url),
-        action: async (params: any) => browserRunner.action(params),
-        close: async () => browserRunner.close(),
+        navigate: async (url: string) => {
+            const { browserRunner } = await import('./utils/browser')
+            return browserRunner.navigate(url)
+        },
+        action: async (params: any) => {
+            const { browserRunner } = await import('./utils/browser')
+            return browserRunner.action(params)
+        },
+        close: async () => {
+            const { browserRunner } = await import('./utils/browser')
+            return browserRunner.close()
+        },
     },
     diagnostics: {
         getDiagnostics: async (filePath?: string) => {

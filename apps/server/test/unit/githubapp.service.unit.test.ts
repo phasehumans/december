@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 
-import { setAgentQueue } from '@december/shared'
+import { setAgentQueue } from '@december/shared/queue'
 import { describe, it, expect } from 'bun:test'
 
 import { env } from '../../src/env'

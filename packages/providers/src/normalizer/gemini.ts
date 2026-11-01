@@ -27,6 +27,7 @@ export function normalizeForGemini(
             // Mid-conversation summary -> append as user part
             const last = geminiMessages[geminiMessages.length - 1]
             if (last && last.role === 'user') {
+                if (!last.parts) last.parts = []
                 if (msg.content) last.parts.push({ text: msg.content })
             } else {
                 geminiMessages.push({
@@ -67,6 +68,7 @@ export function normalizeForGemini(
 
             const last = geminiMessages[geminiMessages.length - 1]
             if (last && last.role === 'model') {
+                if (!last.parts) last.parts = []
                 last.parts.push(...parts)
             } else {
                 geminiMessages.push({
@@ -95,6 +97,7 @@ export function normalizeForGemini(
 
             const last = geminiMessages[geminiMessages.length - 1]
             if (last && last.role === 'user') {
+                if (!last.parts) last.parts = []
                 last.parts.push(...toolParts)
             } else {
                 geminiMessages.push({
@@ -110,6 +113,7 @@ export function normalizeForGemini(
         const last = geminiMessages[geminiMessages.length - 1]
         if (last && last.role === 'user') {
             if (userText.trim().length > 0) {
+                if (!last.parts) last.parts = []
                 last.parts.push({ text: userText })
             }
         } else {

@@ -1,5 +1,5 @@
 import { prisma } from '@december/database'
-import { publishEvent } from '@december/shared'
+import { publishEvent } from '@december/shared/queue'
 import { Queue } from 'bullmq'
 import Redis from 'ioredis'
 

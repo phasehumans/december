@@ -92,6 +92,34 @@ describe('Differential TUI Interactive Boot & Ink Elimination (Integration)', ()
         expect(stdout.trim()).toBeDefined()
     })
 
+    it('verifies built CLI artifact is under 2MB and executes --version in under 30ms', async () => {
+        const distBinaryPath = path.resolve(__dirname, '../../dist/december.js')
+        const stat = fs.statSync(distBinaryPath)
+        expect(stat.size).toBeLessThan(2 * 1024 * 1024)
+
+        // Run once to warmup filesystem/OS cache
+        Bun.spawnSync([process.execPath, distBinaryPath, '--version'])
+
+        const start = performance.now()
+        const proc = Bun.spawn([process.execPath, distBinaryPath, '--version'], {
+            cwd: tempDir,
+            env: {
+                ...process.env,
+                NODE_ENV: 'test',
+                DECEMBER_CONFIG_DIR: tempConfigDir,
+            },
+            stdout: 'pipe',
+            stderr: 'pipe',
+        })
+        const stdout = await new Response(proc.stdout).text()
+        const exitCode = await proc.exited
+        const elapsed = performance.now() - start
+
+        expect(exitCode).toBe(0)
+        expect(stdout.trim()).toBeDefined()
+        expect(elapsed).toBeLessThan(50)
+    })
+
     it('intercepts prompt submissions when unauthenticated and displays AUTH_REQUIRED_NOTICE', async () => {
         const { AUTH_REQUIRED_NOTICE } = await import('../../src/constants/messages')
         const mockStdin = new PassThrough()

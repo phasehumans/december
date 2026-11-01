@@ -1,6 +1,6 @@
 import { Agent } from '@december/agent'
 import { Message, AuthMode, PlanWorkflowState, BtwState, CodeSearchResultItem } from '@december/tui'
-import { create } from 'zustand'
+import { createStore } from 'zustand/vanilla'
 
 import { DecemberConfig } from '../config'
 
@@ -197,7 +197,7 @@ export interface CliState {
     ) => void
 }
 
-export const useCliStore = create<CliState>((set) => ({
+export const useCliStore = createStore<CliState>((set) => ({
     // core
     agent: null,
     setAgent: (agent) => set({ agent }),

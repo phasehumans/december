@@ -1,6 +1,5 @@
 import { Tool, ToolExecuteContext, truncateOutput } from '@december/shared'
 import { Type, type Static } from '@sinclair/typebox'
-import * as cheerio from 'cheerio'
 
 const webSearchSchema = Type.Object({
     query: Type.String({ description: 'The search query to look up on the internet.' }),
@@ -30,6 +29,7 @@ export const WebSearchTool: Tool<WebSearchInput> = {
             }
 
             const html = await res.text()
+            const cheerio = await import('cheerio')
             const $ = cheerio.load(html)
 
             const results: Array<{ title: string; url: string; snippet: string }> = []

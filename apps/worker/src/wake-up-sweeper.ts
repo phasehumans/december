@@ -1,5 +1,5 @@
 import { prisma } from '@december/database'
-import { enqueueJob } from '@december/shared'
+import { enqueueJob } from '@december/shared/queue'
 
 import { MailboxService } from './mailbox.service'
 

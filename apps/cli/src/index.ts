@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 
-import path from 'node:path'
-
 import pkg from '../package.json' with { type: 'json' }
+
+const rawArgs = process.argv.slice(2)
+if (rawArgs.length === 1 && (rawArgs[0] === '-v' || rawArgs[0] === '--version')) {
+    console.log(pkg.version)
+    process.exit(0)
+}
+
+import path from 'node:path'
 
 import { parseCliArgs, getHelpText } from './args'
 import { AUTH_REQUIRED_NOTICE } from './constants/messages'
@@ -14,25 +20,6 @@ purgeProjectEnvApiKeys()
 
 export { parseCliArgs, getHelpText } from './args'
 export { purgeProjectEnvApiKeys } from './utils/env-sanitizer'
-export {
-    handleLogoutCommand,
-    handleSwitchCommand,
-    handleLoginCommand,
-    handleLinkCommand,
-    handleKeyCommand,
-    handleAuthCommand,
-    handleUpdateCommand,
-    handleDoctorCommand,
-    handleMcpCommand,
-} from './commands'
-export { runHeadlessTask, suppressConsole, restoreConsole } from './headless-runner'
-export type { HeadlessTaskOptions, HeadlessTaskResult } from './headless-runner'
-export {
-    resolveWorkspaceRoot,
-    isWorkspaceTrusted,
-    addTrustedWorkspace,
-    ensureWorkspaceTrust,
-} from './utils/workspace-trust'
 
 export async function readPipedStdin(): Promise<string | null> {
     if (process.stdin.isTTY) return null
