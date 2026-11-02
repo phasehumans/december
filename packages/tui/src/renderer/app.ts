@@ -278,6 +278,7 @@ export interface DifferentialAppState {
     memoryScrollOffset: number
     memoryRuleScrollOffset: number
     memorySelectedIndex: number
+    memoryConfirmForgetText: string | null
     isAddingMemory: boolean
     memoryNewEntryText: string
     memoryNewEntryCategoryIndex: number
@@ -661,6 +662,7 @@ export class DifferentialApp {
             memoryScrollOffset: 0,
             memoryRuleScrollOffset: 0,
             memorySelectedIndex: 0,
+            memoryConfirmForgetText: null,
             isAddingMemory: false,
             memoryNewEntryText: '',
             memoryNewEntryCategoryIndex: 0,
@@ -1227,6 +1229,7 @@ export class DifferentialApp {
         this.state.memoryInitialTab = initialTab
         this.state.memoryReturnOverlay = returnOverlay
         this.state.memorySelectedIndex = 0
+        this.state.memoryConfirmForgetText = null
         this.state.memoryScrollOffset = 0
         this.state.memoryCursorLine = 0
         this.state.memoryRuleScrollOffset = 0
@@ -4902,8 +4905,49 @@ export class DifferentialApp {
                 return
             }
 
+            // Confirmation to forget entry
+            if (this.state.memoryConfirmForgetText) {
+                if (key === 'y' || key === 'Y') {
+                    const textToForget = this.state.memoryConfirmForgetText
+                    this.state.memoryConfirmForgetText = null
+                    if (this.options?.onForgetMemory) {
+                        this.options
+                            .onForgetMemory(textToForget)
+                            .then(async (res) => {
+                                if (res.success) {
+                                    this.showToast('Removed entry from memory.', 'success')
+                                    await this.loadMemoryAndRules()
+                                    const newLen =
+                                        this.state.workspaceMemoryDetails?.entries?.length || 0
+                                    if (this.state.memorySelectedIndex >= newLen) {
+                                        this.state.memorySelectedIndex = Math.max(0, newLen - 1)
+                                    }
+                                } else {
+                                    this.showToast(
+                                        res.message || 'Failed to remove entry.',
+                                        'error'
+                                    )
+                                }
+                            })
+                            .catch(() => {
+                                // Intentionally swallowed: ignore forget error
+                            })
+                    }
+                    this.render()
+                    return
+                }
+                if (key === 'n' || key === 'N' || key === '\x1b') {
+                    this.state.memoryConfirmForgetText = null
+                    this.render()
+                    return
+                }
+                // Any navigation or other key clears confirmation
+                this.state.memoryConfirmForgetText = null
+            }
+
             // Tab navigation: toggle between memory and rules
             if (key === '\t' || key === '\x1b[C' || key === '\x1b[D') {
+                this.state.memoryConfirmForgetText = null
                 this.state.memoryTab = this.state.memoryTab === 'rules' ? 'memory' : 'rules'
                 this.state.memoryActiveDocIndex = 0
                 this.state.memoryCursorLine = 0
@@ -4928,6 +4972,7 @@ export class DifferentialApp {
 
             // Arrow Up / k
             if (key === '\x1b[A' || key === 'k') {
+                this.state.memoryConfirmForgetText = null
                 if (this.state.memoryTab === 'memory') {
                     if (this.state.memorySelectedIndex > 0) {
                         this.state.memorySelectedIndex -= 1
@@ -4950,6 +4995,7 @@ export class DifferentialApp {
 
             // Arrow Down / j
             if (key === '\x1b[B' || key === 'j') {
+                this.state.memoryConfirmForgetText = null
                 const visibleRows = Math.max(5, this.screen.height - 6)
                 if (this.state.memoryTab === 'memory') {
                     const entries = this.state.workspaceMemoryDetails?.entries || []
@@ -4992,33 +5038,14 @@ export class DifferentialApp {
                 return
             }
 
-            // [d]: Forget selected memory entry
+            // [d]: Trigger confirmation to forget selected memory entry
             if (key === 'd' || key === 'D') {
                 if (this.state.memoryTab === 'memory') {
                     const entries = this.state.workspaceMemoryDetails?.entries || []
                     const selectedItem = entries[this.state.memorySelectedIndex]
-                    if (selectedItem && this.options?.onForgetMemory) {
-                        this.options
-                            .onForgetMemory(selectedItem.text)
-                            .then(async (res) => {
-                                if (res.success) {
-                                    this.showToast('Removed entry from memory.', 'success')
-                                    await this.loadMemoryAndRules()
-                                    const newLen =
-                                        this.state.workspaceMemoryDetails?.entries?.length || 0
-                                    if (this.state.memorySelectedIndex >= newLen) {
-                                        this.state.memorySelectedIndex = Math.max(0, newLen - 1)
-                                    }
-                                } else {
-                                    this.showToast(
-                                        res.message || 'Failed to remove entry.',
-                                        'error'
-                                    )
-                                }
-                            })
-                            .catch(() => {
-                                // Intentionally swallowed: ignore forget error
-                            })
+                    if (selectedItem) {
+                        this.state.memoryConfirmForgetText = selectedItem.text
+                        this.render()
                     }
                 }
                 return
@@ -6112,6 +6139,7 @@ export class DifferentialApp {
                     activeTab: this.state.memoryTab,
                     memoryDetails: this.state.workspaceMemoryDetails,
                     selectedEntryIndex: this.state.memorySelectedIndex,
+                    confirmForgetText: this.state.memoryConfirmForgetText,
                     scrollOffset: this.state.memoryScrollOffset,
                     isAddingEntry: this.state.isAddingMemory,
                     newEntryText: this.state.memoryNewEntryText,

@@ -54,6 +54,7 @@ export interface MemoryViewMenuViewProps {
     // Memory tab state
     memoryDetails?: MemoryDetailsProps | null
     selectedEntryIndex?: number
+    confirmForgetText?: string | null
     scrollOffset?: number
     isAddingEntry?: boolean
     newEntryText?: string
@@ -105,30 +106,42 @@ export const MemoryViewMenuView = {
 
         // 2. Sub-Header & Metadata
         if (isMem) {
-            const filePath =
+            const rawPath =
                 props.memoryDetails?.filePath ||
                 props.memoryDetails?.targetFile ||
                 '.december/memory.md'
-            drawText(buffer, `Workspace Memory (${filePath})`, {
+            const displayPath = rawPath.includes('.december/memory.md')
+                ? '.december/memory.md'
+                : rawPath
+            drawText(buffer, displayPath, {
                 x,
                 y,
                 style: { fg: THEME.colors.text, bold: true },
             })
 
-            const titleLen = `Workspace Memory (${filePath})`.length
+            let headX = x + displayPath.length
+            const entriesCount = props.memoryDetails?.entries?.length ?? 0
+            const countLabel = ` · ${entriesCount} item${entriesCount === 1 ? '' : 's'}`
+            drawText(buffer, countLabel, {
+                x: headX,
+                y,
+                style: { fg: THEME.colors.dim },
+            })
+            headX += countLabel.length
+
             const totalBytes = props.memoryDetails?.totalBytes ?? 0
             const maxBytes = props.memoryDetails?.maxBytes ?? 2048
             const pct =
                 props.memoryDetails?.budgetPercent ??
                 Math.min(100, Math.round((totalBytes / maxBytes) * 100))
-            const entriesCount = props.memoryDetails?.entries?.length ?? 0
-
-            const meta = ` · ${totalBytes}/${maxBytes} B (${pct}%) · ${entriesCount} item${entriesCount === 1 ? '' : 's'}`
-            drawText(buffer, meta, {
-                x: x + titleLen,
-                y,
-                style: { fg: THEME.colors.dim },
-            })
+            if (pct >= 85) {
+                const warnBadge = ` · ${pct}% capacity`
+                drawText(buffer, warnBadge, {
+                    x: headX,
+                    y,
+                    style: { fg: THEME.colors.warning, bold: true },
+                })
+            }
             y += 2
         } else {
             // Rules tab metadata
@@ -204,6 +217,8 @@ export const MemoryViewMenuView = {
                     const item = visibleEntries[i]
                     const rowY = y + i
                     const rowBg = isSelected ? THEME.colors.codespanBg : undefined
+                    const isConfirmingForget =
+                        Boolean(props.confirmForgetText) && props.confirmForgetText === item.text
 
                     // Active cursor highlight bar across the full row
                     if (isSelected) {
@@ -238,7 +253,7 @@ export const MemoryViewMenuView = {
 
                     // Entry text
                     const textX = x + 2 + catLabel.length
-                    const textMaxWidth = Math.max(10, width - textX - 4)
+                    const textMaxWidth = Math.max(10, width - textX - (isConfirmingForget ? 20 : 4))
                     drawText(buffer, item.text, {
                         x: textX,
                         y: rowY,
@@ -249,6 +264,15 @@ export const MemoryViewMenuView = {
                             bold: isSelected,
                         },
                     })
+
+                    if (isConfirmingForget) {
+                        const labelEnd = textX + Math.min(item.text.length, textMaxWidth)
+                        drawText(buffer, ' [Forget? (y/n)]', {
+                            x: labelEnd,
+                            y: rowY,
+                            style: { fg: THEME.colors.error, bg: rowBg, bold: true },
+                        })
+                    }
                 }
             }
         } else {
@@ -311,7 +335,7 @@ export const MemoryViewMenuView = {
 
                     // Line number
                     const numStr = String(lineIndex + 1).padStart(gutterWidth, ' ')
-                    drawText(buffer, `${numStr} │ `, {
+                    drawText(buffer, `${numStr} `, {
                         x: x + 2,
                         y: rowY,
                         style: {
@@ -322,7 +346,7 @@ export const MemoryViewMenuView = {
                     })
 
                     // Line text
-                    const codeX = x + 2 + gutterWidth + 3
+                    const codeX = x + 2 + gutterWidth + 1
                     const codeMaxWidth = Math.max(10, width - codeX - 4)
                     drawText(buffer, lineText, {
                         x: codeX,
@@ -371,17 +395,23 @@ export const MemoryViewMenuView = {
                 ],
             })
         } else if (isMem) {
+            const footerItems = props.confirmForgetText
+                ? [
+                      { key: 'y', label: 'confirm' },
+                      { key: 'n / esc', label: 'cancel' },
+                  ]
+                : [
+                      { key: 'tab', label: 'switch tab' },
+                      { key: '↑/↓', label: 'select' },
+                      { key: 'a', label: 'add' },
+                      { key: 'd', label: 'forget' },
+                      { key: 'esc', label: props.canGoBack ? 'back' : 'close' },
+                  ]
             MenuFooterView.render(buffer, {
                 x: props.x ?? 0,
                 y: footerY,
                 width,
-                items: [
-                    { key: 'tab', label: 'switch tab' },
-                    { key: '↑/↓', label: 'select' },
-                    { key: 'a', label: 'add' },
-                    { key: 'd', label: 'forget' },
-                    { key: 'esc', label: props.canGoBack ? 'back' : 'close' },
-                ],
+                items: footerItems,
             })
         } else {
             const ruleFiles = props.ruleFiles || []

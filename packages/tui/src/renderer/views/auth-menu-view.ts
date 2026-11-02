@@ -103,7 +103,7 @@ export const AuthMenuView = {
             return 6
         }
         // byok_provider or switch
-        return 12
+        return 13
     },
 
     render(buffer: ScreenBuffer, props: AuthMenuViewProps): void {
@@ -228,11 +228,11 @@ export const AuthMenuView = {
                 let badge = ''
                 let badgeColor: string = THEME.colors.muted
                 if (isCurrent) {
-                    badge = ' (active)'
+                    badge = ' active'
                     badgeColor = THEME.colors.success
                 } else if (isConfigured) {
-                    badge = ' (connected)'
-                    badgeColor = THEME.colors.brand
+                    badge = ` ${THEME.glyphs.connected}`
+                    badgeColor = THEME.colors.muted
                 }
 
                 drawText(buffer, labelText, {
@@ -240,12 +240,8 @@ export const AuthMenuView = {
                     y: rowY,
                     maxWidth: width - 4,
                     style: {
-                        fg: isCurrent
-                            ? THEME.colors.success
-                            : isSelected
-                              ? THEME.colors.brand
-                              : THEME.colors.text,
-                        bold: isSelected || isCurrent,
+                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
+                        bold: isSelected,
                     },
                 })
 
@@ -473,7 +469,7 @@ export const AuthMenuView = {
             y,
             style: { fg: q ? THEME.colors.brand : THEME.colors.dim },
         })
-        y += 1
+        y += 2
 
         const providers = AuthMenuView.getFilteredProviders(
             props.providers && props.providers.length > 0
@@ -535,11 +531,11 @@ export const AuthMenuView = {
                     badge = ` ${item.status}`
                     badgeColor = THEME.colors.muted
                 } else if (isCurrent) {
-                    badge = ' (active)'
+                    badge = ' active'
                     badgeColor = THEME.colors.success
                 } else if (isConfigured) {
-                    badge = ' (configured)'
-                    badgeColor = THEME.colors.brand
+                    badge = ` ${THEME.glyphs.connected}`
+                    badgeColor = THEME.colors.muted
                 }
 
                 drawText(buffer, labelText, {
@@ -547,12 +543,8 @@ export const AuthMenuView = {
                     y: rowY,
                     maxWidth: width - 4,
                     style: {
-                        fg: isCurrent
-                            ? THEME.colors.success
-                            : isSelected
-                              ? THEME.colors.brand
-                              : THEME.colors.text,
-                        bold: isSelected || isCurrent,
+                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
+                        bold: isSelected,
                     },
                 })
 

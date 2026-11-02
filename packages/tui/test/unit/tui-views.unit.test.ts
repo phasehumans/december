@@ -1404,8 +1404,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(0)).toContain('memory')
             expect(buffer.getLine(0)).toContain('rules')
             expect(buffer.getLine(2)).toContain('AGENTS.md')
-            expect(buffer.getLine(4)).toContain('1 │ # AGENTS.md')
-            expect(buffer.getLine(5)).toContain('2 │ Rule 1: No Ink')
+            expect(buffer.getLine(4)).toContain('1 # AGENTS.md')
+            expect(buffer.getLine(5)).toContain('2 Rule 1: No Ink')
             expect(buffer.getLine(buffer.height - 1)).toContain('scroll')
             expect(buffer.getLine(buffer.height - 1)).toContain('close')
             expect(buffer.getLine(buffer.height - 1)).not.toContain('open in editor')
@@ -1436,14 +1436,39 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
             expect(buffer.getLine(0)).toContain('memory')
             expect(buffer.getLine(0)).toContain('rules')
-            expect(buffer.getLine(2)).toContain('Workspace Memory (.december/memory.md)')
-            expect(buffer.getLine(2)).toContain('512/2048 B (25%)')
+            expect(buffer.getLine(2)).toContain('.december/memory.md')
+            expect(buffer.getLine(2)).toContain('2 items')
             expect(buffer.getLine(4)).toContain('[build_and_test] bun test --bail')
             expect(buffer.getLine(5)).toContain('[conventions] no em dashes')
             expect(buffer.getLine(buffer.height - 1)).toContain('add')
             expect(buffer.getLine(buffer.height - 1)).toContain('forget')
             expect(buffer.getLine(buffer.height - 1)).toContain('close')
             expect(buffer.getLine(buffer.height - 1)).not.toContain('open in editor')
+        })
+
+        it('renders inline forget confirmation tag and contextual confirmation footer', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            MemoryViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                activeTab: 'memory',
+                memoryDetails: {
+                    filePath: '.december/memory.md',
+                    totalBytes: 512,
+                    maxBytes: 2048,
+                    budgetPercent: 25,
+                    entries: [{ category: 'build_and_test', text: 'bun test --bail' }],
+                },
+                selectedEntryIndex: 0,
+                confirmForgetText: 'bun test --bail',
+            })
+
+            expect(buffer.getLine(4)).toContain('[build_and_test] bun test --bail')
+            expect(buffer.getLine(4)).toContain('[Forget? (y/n)]')
+            expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
+            expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
         })
 
         it('renders back label in footer when canGoBack is true', () => {
@@ -1531,7 +1556,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
         })
 
         it('renders provider selection with search and active indicator', () => {
-            const buffer = new ScreenBuffer(80, 12)
+            const buffer = new ScreenBuffer(80, 13)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,
@@ -1549,9 +1574,10 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
             expect(buffer.getLine(0)).toContain('Switch Active Provider')
             expect(buffer.getLine(1)).toContain('Search: [/ to filter]')
-            expect(buffer.getLine(2)).toContain('❭')
-            expect(buffer.getLine(2)).toContain('Anthropic (active)')
-            expect(buffer.getLine(3)).toContain('OpenAI')
+            expect(buffer.getLine(2).trim()).toBe('')
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('Anthropic active')
+            expect(buffer.getLine(4)).toContain('OpenAI')
         })
 
         it('renders masked API key input prompt with portal url and prompt glyph', () => {
@@ -1576,7 +1602,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
         })
 
         it('renders byok providers list without ziggle or inline headers', () => {
-            const buffer = new ScreenBuffer(80, 12)
+            const buffer = new ScreenBuffer(80, 13)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,
@@ -1589,7 +1615,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
             expect(buffer.getLine(0)).toContain('Providers')
             expect(buffer.getLine(1)).toContain('Search: [/ to filter]')
-            expect(buffer.getLine(2)).toContain('❭ Abacus')
+            expect(buffer.getLine(2).trim()).toBe('')
+            expect(buffer.getLine(3)).toContain('❭ Abacus')
             expect(buffer.getLine(buffer.height - 1)).toContain('navigate')
             expect(buffer.getLine(buffer.height - 1)).toContain('select')
         })
@@ -1609,12 +1636,46 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(2)).toContain('Anthropic (Claude)')
-            expect(buffer.getLine(2)).toContain('(active)')
+            expect(buffer.getLine(2)).toContain('active')
             expect(buffer.getLine(2)).toContain('[Disconnect? (y/n)]')
             expect(buffer.getLine(4)).toContain('Google (Antigravity)')
-            expect(buffer.getLine(4)).toContain('(connected)')
+            expect(buffer.getLine(4)).toContain('✓')
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
             expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
+        })
+
+        it('renders active badge in green and label in standard text color, and connected badge in muted color', () => {
+            const buffer = new ScreenBuffer(80, 8)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'subscription',
+                providerSelectedIndex: 0,
+                configuredSubscriptionValues: ['copilot'],
+                selectedProvider: 'gemini',
+                authMethod: 'subscription',
+            })
+
+            expect(buffer.getLine(2)).toContain('Anthropic (Claude)')
+            expect(buffer.getLine(3)).toContain('GitHub (Copilot) ✓')
+            expect(buffer.getLine(4)).toContain('Google (Antigravity) active')
+
+            const labelCell = buffer.get(4, 4)
+            expect(labelCell?.char).toBe('G')
+            expect(labelCell?.fg).toBe(THEME.colors.text)
+
+            const activeLine = buffer.getLine(4)
+            const activeIdx = activeLine.indexOf('active')
+            const activeBadgeCell = buffer.get(activeIdx, 4)
+            expect(activeBadgeCell?.char).toBe('a')
+            expect(activeBadgeCell?.fg).toBe(THEME.colors.success)
+
+            const connectedLine = buffer.getLine(3)
+            const connectedIdx = connectedLine.indexOf('✓')
+            const connectedBadgeCell = buffer.get(connectedIdx, 3)
+            expect(connectedBadgeCell?.char).toBe('✓')
+            expect(connectedBadgeCell?.fg).toBe(THEME.colors.muted)
         })
 
         it('renders existing credentials detected switch confirmation prompt', () => {
@@ -1643,7 +1704,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
         })
 
         it('renders configured badge and delete prompt for configured byok provider', () => {
-            const buffer = new ScreenBuffer(80, 12)
+            const buffer = new ScreenBuffer(80, 13)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,
@@ -1658,10 +1719,39 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 confirmDeleteValue: 'provider:openai',
             })
 
-            expect(buffer.getLine(3)).toContain('OpenAI (configured)')
-            expect(buffer.getLine(3)).toContain('[Delete? (y/n)]')
+            expect(buffer.getLine(4)).toContain('OpenAI ✓')
+            expect(buffer.getLine(4)).toContain('[Delete? (y/n)]')
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
             expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
+        })
+
+        it('renders configured badge in muted color and active badge in green for byok providers', () => {
+            const buffer = new ScreenBuffer(80, 13)
+            AuthMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                mode: 'byok_provider',
+                providers: [
+                    { label: 'Anthropic', value: 'anthropic' },
+                    { label: 'OpenAI', value: 'openai' },
+                ],
+                providerSelectedIndex: 0,
+                selectedProvider: 'openai',
+                configuredProviderValues: ['anthropic'],
+            })
+
+            const openAiLabelCell = buffer.get(4, 4)
+            expect(openAiLabelCell?.char).toBe('O')
+            expect(openAiLabelCell?.fg).toBe(THEME.colors.text)
+
+            const openAiLine = buffer.getLine(4)
+            const activeIdx = openAiLine.indexOf('active')
+            expect(buffer.get(activeIdx, 4)?.fg).toBe(THEME.colors.success)
+
+            const anthropicLine = buffer.getLine(3)
+            const configuredIdx = anthropicLine.indexOf('✓')
+            expect(buffer.get(configuredIdx, 3)?.fg).toBe(THEME.colors.muted)
         })
 
         it('renders configured key detected replace confirmation prompt', () => {

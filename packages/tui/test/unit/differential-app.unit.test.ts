@@ -1932,9 +1932,23 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(recorded).not.toBeNull()
         expect(recorded?.text).toBe('run db migration')
 
-        // 6. Press 'd' to forget selected item
+        // 6. Test cancellation with 'n', arrow keys, and 'y' confirms forget
         app.handleKey('d')
-        expect(forgotten).toBe('bun test --bail')
+        expect(app.state.memoryConfirmForgetText).toBe('bun test --bail')
+        app.handleKey('n')
+        expect(app.state.memoryConfirmForgetText).toBeNull()
+
+        // Arrow down clears confirmation and moves to next item
+        app.handleKey('d')
+        expect(app.state.memoryConfirmForgetText).toBe('bun test --bail')
+        app.handleKey('\x1b[B')
+        expect(app.state.memoryConfirmForgetText).toBeNull()
+
+        // Press 'd' on item 1 and 'y' to confirm
+        app.handleKey('d')
+        expect(app.state.memoryConfirmForgetText).toBe('always lowercase commits')
+        app.handleKey('y')
+        expect(forgotten).toBe('always lowercase commits')
 
         // 7. Esc from memory root steps back to returnOverlay ('help')
         app.handleKey('\x1b')

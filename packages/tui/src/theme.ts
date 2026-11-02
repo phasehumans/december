@@ -26,6 +26,7 @@ export const THEME = {
         selector: '❭',
         bullet: '•',
         status: '●',
+        connected: '✓',
     },
 } as const
 
