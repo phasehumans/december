@@ -289,14 +289,18 @@ async function main() {
                 liveModels = matched.map((m) => {
                     const bareId = m.id.includes('/') ? m.id.split('/').pop()! : m.id
                     const cleanLabel = (m.name || '').replace(/^[^:]+:\s*/, '')
+                    const hasReasoning =
+                        m.id.includes('thinking') ||
+                        m.id.includes('r1') ||
+                        m.id.includes('reason') ||
+                        !!(m as any).reasoning ||
+                        !!(m as any).supported_parameters?.includes?.('reasoning') ||
+                        !!(m as any).supported_parameters?.includes?.('include_reasoning')
                     return {
                         id: bareId,
                         label: cleanLabel || formatModelLabel(bareId),
                         contextWindow: m.context_length || 128000,
-                        thinking:
-                            m.id.includes('thinking') ||
-                            m.id.includes('r1') ||
-                            m.id.includes('reason'),
+                        thinking: hasReasoning,
                     }
                 })
             }
@@ -317,15 +321,27 @@ async function main() {
             if (liveMap.has(bare)) return liveMap.get(bare)
             const nTarget = norm(modelId)
             const nBare = norm(bare)
+
+            // Pass 1: exact normalized match
             for (const [key, meta] of liveMap.entries()) {
                 const nKey = norm(key)
-                if (
-                    nKey === nTarget ||
-                    nKey === nBare ||
-                    nKey.startsWith(nTarget) ||
-                    nBare.startsWith(nKey) ||
-                    nTarget.startsWith(nKey)
-                ) {
+                if (nKey === nTarget || nKey === nBare) {
+                    return meta
+                }
+            }
+
+            // Pass 2: variant/snapshot match (e.g. key has :batch, :free, or date snapshot)
+            for (const [key, meta] of liveMap.entries()) {
+                const cleanKey = key.replace(/:(?:free|batch|online)$/i, '')
+                const nCleanKey = norm(cleanKey)
+                const nCleanBare = norm(
+                    cleanKey.includes('/') ? cleanKey.split('/').pop()! : cleanKey
+                )
+                if (nCleanKey === nTarget || nCleanBare === nBare) {
+                    return meta
+                }
+                const nKey = norm(key)
+                if (nKey.startsWith(nTarget) || nKey.startsWith(nBare)) {
                     return meta
                 }
             }
@@ -344,11 +360,15 @@ async function main() {
                     if (liveMeta.contextWindow && liveMeta.contextWindow > 0) {
                         model.contextWindow = liveMeta.contextWindow
                     }
-                    if (liveMeta.label && liveMeta.label.trim()) {
+                    if (!model.label && liveMeta.label && liveMeta.label.trim()) {
                         model.label = liveMeta.label
                     }
                     if (typeof liveMeta.thinking === 'boolean') {
-                        model.thinking = liveMeta.thinking
+                        if (channel.startsWith('Native')) {
+                            model.thinking = liveMeta.thinking
+                        } else if (liveMeta.thinking) {
+                            model.thinking = true
+                        }
                     }
                 }
                 activeModels.push(model)
