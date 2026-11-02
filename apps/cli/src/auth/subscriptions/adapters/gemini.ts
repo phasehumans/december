@@ -5,7 +5,7 @@ import path from 'node:path'
 
 import type { SubscriptionAdapter, SubscriptionTokenBundle } from '../types'
 
-const DEFAULT_ENDPOINT = 'https://cloudcode-pa.googleapis.com'
+const DEFAULT_ENDPOINT = 'https://daily-cloudcode-pa.googleapis.com'
 // Assembled at runtime to avoid false-positive push protection alerts on native desktop OAuth client credentials
 const DEFAULT_CLIENT_ID = String.fromCharCode(
     49,

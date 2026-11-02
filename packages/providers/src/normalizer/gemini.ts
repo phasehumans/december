@@ -53,12 +53,22 @@ export function normalizeForGemini(
                             ? tc.input
                             : safeParseJson(tc.input) || {}
 
-                    parts.push({
+                    const part: any = {
                         functionCall: {
                             name: tc.name,
                             args: argsObj,
                         },
-                    } as any)
+                    }
+                    const thoughtSig =
+                        tc.thoughtSignature ||
+                        (msg.thinking && typeof msg.thinking === 'object'
+                            ? msg.thinking.signature
+                            : undefined)
+                    if (thoughtSig) {
+                        part.thoughtSignature = thoughtSig
+                    }
+
+                    parts.push(part)
                 }
             }
 

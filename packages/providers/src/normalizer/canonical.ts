@@ -95,16 +95,24 @@ export function toCanonicalMessages(
                 }
                 const unwrapped = unwrapToolCallId(tc.id)
                 const cleanId = unwrapped.id || tc.id
+                const thoughtSig =
+                    unwrapped.thoughtSignature ||
+                    tc.thoughtSignature ||
+                    msg.thoughtSignature ||
+                    msg.thinkingSignature ||
+                    (typeof msg.thinking === 'object' ? msg.thinking?.signature : undefined)
+
                 canonicalCalls.push({
                     id: cleanId,
                     name: tc.name,
                     input: parsedInput,
+                    ...(thoughtSig ? { thoughtSignature: thoughtSig } : {}),
                 })
-                if (unwrapped.thoughtSignature && !canonical.thinking?.signature) {
+                if (thoughtSig && !canonical.thinking?.signature) {
                     if (!canonical.thinking) {
-                        canonical.thinking = { text: '', signature: unwrapped.thoughtSignature }
+                        canonical.thinking = { text: '', signature: thoughtSig }
                     } else {
-                        canonical.thinking.signature = unwrapped.thoughtSignature
+                        canonical.thinking.signature = thoughtSig
                     }
                 }
                 if (cleanId && tc.name) {

@@ -4,6 +4,7 @@ export interface CanonicalToolCall {
     id: string
     name: string
     input: Record<string, any> | string
+    thoughtSignature?: string
 }
 
 export interface CanonicalToolResult {
