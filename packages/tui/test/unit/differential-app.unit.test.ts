@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { DifferentialApp } from '../../src/renderer/app'
 import { TerminalController } from '../../src/renderer/terminal'
+import { InputBarView } from '../../src/renderer/views/input-bar-view'
 
 describe('DifferentialApp Interactive Engine (Renderer)', () => {
     let mockStdin: PassThrough
@@ -599,6 +600,50 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // Press 'p' to jump back to previous match
         app.handleKey('p')
         expect(app.state.fileViewCursorLine).toBe(2)
+
+        app.stop()
+    })
+
+    it('cycles between matching files with Left/Right arrow and h/l in codesearch fileview', async () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onCodeSearch: async () => [
+                { file: 'fileA.ts', line: 10, content: 'const queryVal = 1' },
+                { file: 'fileB.ts', line: 25, content: 'const queryVal = 2' },
+            ],
+        })
+        app.start()
+
+        app.state.input = '/codesearch queryVal'
+        app.handleKey('\r')
+        await new Promise((r) => setTimeout(r, 10))
+
+        expect(app.state.activeOverlay).toBe('codesearch')
+        expect(app.state.codeSearchGroups.length).toBe(2)
+
+        // Open first file in fileview
+        app.handleKey('\r')
+        expect(app.state.activeOverlay).toBe('fileview')
+        expect(app.state.fileViewPath).toBe('fileA.ts')
+        expect(app.state.codeSearchSelectedIndex).toBe(0)
+
+        // Header shows [1/2 files] fileA.ts and footer shows cycle file
+        expect(app.screen.backBuffer.getLine(0)).toContain('[1/2 files] fileA.ts')
+        expect(app.screen.backBuffer.getLine(23)).toContain('←/→ cycle file')
+
+        // Press Right arrow (\x1b[C) to cycle to next file
+        app.handleKey('\x1b[C')
+        expect(app.state.fileViewPath).toBe('fileB.ts')
+        expect(app.state.codeSearchSelectedIndex).toBe(1)
+        expect(app.state.toast?.message).toContain('File 2/2: fileB.ts')
+
+        // Press 'h' to cycle back to previous file
+        app.handleKey('h')
+        expect(app.state.fileViewPath).toBe('fileA.ts')
+        expect(app.state.codeSearchSelectedIndex).toBe(0)
+        expect(app.state.toast?.message).toContain('File 1/2: fileA.ts')
 
         app.stop()
     })
@@ -2190,7 +2235,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('collapses multiline pasted text into token badge and expands on submit', () => {
+    it('collapses pasted text longer than 5 lines into token badge and expands on submit', () => {
         let submittedPrompt = ''
         const app = new DifferentialApp({
             terminal,
@@ -2202,12 +2247,22 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         })
         app.start()
 
-        // Paste multiline code block via bracketed paste sequence
-        const rawCode = 'function calculate() {\n    return 42 * 10;\n}'
-        app.handleKey(`\x1b[200~${rawCode}\x1b[201~`)
+        // Short paste (<= 5 lines) remains as raw multiline text without collapsing
+        const shortCode = 'line 1\nline 2\nline 3'
+        app.handleKey(`\x1b[200~${shortCode}\x1b[201~`)
+        expect(app.state.input).toBe(shortCode)
+        expect(submittedPrompt).toBe('') // No premature submit
+
+        // Clear input
+        app.state.input = ''
+        app.state.cursorPos = 0
+
+        // Long paste (> 5 lines) collapses into token badge
+        const longCode = Array.from({ length: 8 }, (_, i) => `const var_${i} = ${i};`).join('\n')
+        app.handleKey(`\x1b[200~${longCode}\x1b[201~`)
 
         // Input contains collapsed token badge
-        expect(app.state.input).toMatch(/^\[Pasted 3 lines(?: #\d+)?\]$/)
+        expect(app.state.input).toMatch(/^\[Pasted 8 lines(?: #\d+)?\]$/)
 
         // Backspace deletes the entire badge in one hit
         app.handleKey('\x7f')
@@ -2216,14 +2271,69 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         // Type prefix and paste again
         app.handleKey('check this: ')
-        app.handleKey(`\x1b[200~${rawCode}\x1b[201~`)
-        expect(app.state.input).toMatch(/^check this: \[Pasted 3 lines(?: #\d+)?\]$/)
+        app.handleKey(`\x1b[200~${longCode}\x1b[201~`)
+        expect(app.state.input).toMatch(/^check this: \[Pasted 8 lines(?: #\d+)?\]$/)
 
         // Enter submits the fully expanded code
         app.handleKey('\r')
-        expect(submittedPrompt).toBe(`check this: ${rawCode}`)
+        expect(submittedPrompt).toBe(`check this: ${longCode}`)
 
         app.stop()
+    })
+
+    it('handles Shift+Enter and Alt+Enter to insert newlines without submitting', () => {
+        let submittedPrompt = ''
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSubmit: (prompt) => {
+                submittedPrompt = prompt
+            },
+        })
+        app.start()
+
+        app.handleKey('hello')
+        // Shift+Enter (\x1b[13;2u)
+        app.handleKey('\x1b[13;2u')
+        app.handleKey('world')
+        // Alt+Enter (\x1b\r)
+        app.handleKey('\x1b\r')
+        app.handleKey('december')
+
+        expect(app.state.input).toBe('hello\nworld\ndecember')
+        expect(submittedPrompt).toBe('') // Not submitted yet
+
+        // Enter submits the multiline text
+        app.handleKey('\r')
+        expect(submittedPrompt).toBe('hello\nworld\ndecember')
+
+        app.stop()
+    })
+
+    it('dynamically expands input bar from 1 to 8 rows based on text and newlines', () => {
+        // 1 line: promptRows = 1 -> height = 1 + 3 = 4
+        expect(InputBarView.getHeight('', 80)).toBe(4)
+        expect(InputBarView.getHeight('hello', 80)).toBe(4)
+
+        // 3 lines: promptRows = 3 -> height = 3 + 3 = 6
+        expect(InputBarView.getHeight('line 1\nline 2\nline 3', 80)).toBe(6)
+
+        // 5 lines: promptRows = 5 -> height = 5 + 3 = 8
+        const fiveLines = Array.from({ length: 5 }, (_, i) => `line ${i}`).join('\n')
+        expect(InputBarView.getHeight(fiveLines, 80)).toBe(8)
+
+        // 8 lines: promptRows = 8 -> height = 8 + 3 = 11
+        const eightLines = Array.from({ length: 8 }, (_, i) => `line ${i}`).join('\n')
+        expect(InputBarView.getHeight(eightLines, 80)).toBe(11)
+
+        // 12 lines: capped at promptRows = 8 -> height = 8 + 3 = 11
+        const twelveLines = Array.from({ length: 12 }, (_, i) => `line ${i}`).join('\n')
+        expect(InputBarView.getHeight(twelveLines, 80)).toBe(11)
+
+        // Long single line wrapping across rows:
+        const longLine = 'a'.repeat(250)
+        expect(InputBarView.getHeight(longLine, 80)).toBeGreaterThan(4)
     })
 
     it('toggles tool execution output details with Ctrl+O', () => {

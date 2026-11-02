@@ -832,7 +832,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(title).toContain('"query"')
             expect(title).toContain('4 matches in 2 files')
             expect(title).toContain('1/2')
-            expect(item0).toContain('src/index.ts (3 matches)')
+            expect(item0).toContain('src/index.ts:10')
             expect(item0).toContain('const query = "hello"')
             expect(item1).toContain('src/config.ts:5')
         })
@@ -986,6 +986,33 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(title).toContain('"testVal" (1/3)')
             expect(footer).toContain('n/p next/prev match')
             expect(footer).toContain('back')
+        })
+
+        it('renders multi-file header badge and cycle file footer when totalFiles > 1', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            FileViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                filePath: 'src/main.ts',
+                lines: ['const testVal = 1', 'console.log(testVal)'],
+                cursorLineIndex: 0,
+                scrollOffset: 0,
+                searchQuery: 'testVal',
+                matchLines: [1, 2],
+                currentMatchIndex: 0,
+                returnOverlay: 'codesearch',
+                fileIndex: 0,
+                totalFiles: 3,
+            })
+
+            const title = buffer.getLine(0)
+            const footer = buffer.getLine(buffer.height - 1)
+
+            expect(title).toContain('[1/3 files] src/main.ts')
+            expect(footer).toContain('←/→ cycle file')
+            expect(footer).toContain('n/p next/prev match')
         })
 
         it('renders error state when file cannot be loaded', () => {

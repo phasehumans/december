@@ -40,10 +40,20 @@ export function formatTokenCount(n: number): string {
 }
 
 export const InputBarView = {
-    getHeight(input = ''): number {
+    getHeight(input = '', width = 80): number {
         if (!input) return 4
         const lines = input.split('\n')
-        const promptRows = Math.min(6, Math.max(1, lines.length))
+        const paddingLeft = THEME.padding.paddingLeft ?? 2
+        const paddingRight = THEME.padding.paddingRight ?? 4
+        const textOffsetX = paddingLeft + `${THEME.glyphs.prompt} `.length
+        const maxInputWidth = Math.max(10, width - textOffsetX - paddingRight)
+
+        let totalVisualRows = 0
+        for (const line of lines) {
+            const wrappedRows = Math.max(1, Math.ceil(line.length / maxInputWidth))
+            totalVisualRows += wrappedRows
+        }
+        const promptRows = Math.min(8, Math.max(1, Math.max(lines.length, totalVisualRows)))
         return promptRows + 3 // Top separator, prompt rows, bottom separator, status row
     },
 
@@ -58,7 +68,7 @@ export const InputBarView = {
         const sepWidth = Math.max(10, width - paddingLeft - paddingRight)
 
         const promptLines = input ? input.split('\n') : ['']
-        const promptRows = Math.min(6, Math.max(1, promptLines.length))
+        const promptRows = Math.min(8, Math.max(1, promptLines.length))
 
         // Determine cursor line and column inside multiline prompt
         let cursorLine = 0

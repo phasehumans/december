@@ -522,6 +522,7 @@ export class DifferentialApp {
     private onForkContextCallback?: (newSessionId?: string) => Promise<string | void> | void
     private onLoadRewindTurnsCallback?: () => Promise<RewindTurnEntry[]> | RewindTurnEntry[]
     private authRequiredNotice?: string
+    private pasteBuffer: string | null = null
 
     constructor(options?: DifferentialAppOptions) {
         this.terminal = options?.terminal ?? new TerminalController()
@@ -768,7 +769,39 @@ export class DifferentialApp {
         this.screen.start()
 
         this.stdinListener = (data) => {
-            const str = data.toString()
+            let str = data.toString()
+            if (this.pasteBuffer !== null) {
+                this.pasteBuffer += str
+                const pasteEnd = this.pasteBuffer.indexOf('\x1b[201~')
+                if (pasteEnd !== -1) {
+                    const fullPaste = this.pasteBuffer.slice(0, pasteEnd + 6)
+                    const remaining = this.pasteBuffer.slice(pasteEnd + 6)
+                    this.pasteBuffer = null
+                    this.handleKey(fullPaste)
+                    if (remaining) {
+                        str = remaining
+                    } else {
+                        return
+                    }
+                } else {
+                    return
+                }
+            }
+
+            const pasteStart = str.indexOf('\x1b[200~')
+            if (pasteStart !== -1) {
+                const pasteEnd = str.indexOf('\x1b[201~', pasteStart + 6)
+                if (pasteEnd === -1) {
+                    const before = str.slice(0, pasteStart)
+                    this.pasteBuffer = str.slice(pasteStart)
+                    if (before) {
+                        str = before
+                    } else {
+                        return
+                    }
+                }
+            }
+
             const sequences = splitInputSequences(str)
             if (sequences.length === 0) return
 
@@ -1523,7 +1556,7 @@ export class DifferentialApp {
         const cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
         if (!cleaned) return
         const lines = cleaned.split('\n')
-        if (lines.length >= 2 || cleaned.length >= 80) {
+        if (lines.length > 5) {
             const token = storePaste(cleaned)
             const before = this.state.input.slice(0, this.state.cursorPos)
             const after = this.state.input.slice(this.state.cursorPos)
@@ -1988,13 +2021,17 @@ export class DifferentialApp {
             return
         }
 
-        // Alt+Enter / Shift+Enter / Ctrl+J: Insert newline in prompt
+        // Alt+Enter / Shift+Enter / Ctrl+Enter: Insert newline in prompt
         if (
             key === '\x1b\r' ||
             key === '\x1b\n' ||
             key === '\x1b[13;2u' ||
+            key === '\x1b[13;3u' ||
+            key === '\x1b[13;5u' ||
             key === '\x1b[27;2;13~' ||
-            key === '\x1b[1;2B'
+            key === '\x1b[27;3;13~' ||
+            key === '\x1b[27;5;13~' ||
+            key === '\x1bOM'
         ) {
             const before = this.state.input.slice(0, this.state.cursorPos)
             const after = this.state.input.slice(this.state.cursorPos)
@@ -3343,6 +3380,51 @@ export class DifferentialApp {
                 this.state.activeOverlay = this.state.fileViewReturnOverlay || 'none'
                 this.render()
                 return
+            }
+
+            // Cycle files when viewing search results with Left / Right arrow or h / l
+            if (
+                this.state.fileViewReturnOverlay === 'codesearch' &&
+                (key === '\x1b[D' || key === 'h' || key === '\x1b[C' || key === 'l')
+            ) {
+                const groups =
+                    this.state.codeSearchGroups.length > 0
+                        ? this.state.codeSearchGroups
+                        : groupCodeSearchResults(this.state.codeSearchResults)
+                if (groups.length > 1) {
+                    const isNext = key === '\x1b[C' || key === 'l'
+                    const nextIdx =
+                        (this.state.codeSearchSelectedIndex + (isNext ? 1 : -1) + groups.length) %
+                        groups.length
+                    this.state.codeSearchSelectedIndex = nextIdx
+                    const viewportWindowSize = CODE_SEARCH_WINDOW_SIZE
+                    if (nextIdx < this.state.codeSearchWindowStart) {
+                        this.state.codeSearchWindowStart = nextIdx
+                    } else if (nextIdx >= this.state.codeSearchWindowStart + viewportWindowSize) {
+                        this.state.codeSearchWindowStart = Math.max(
+                            0,
+                            nextIdx - viewportWindowSize + 1
+                        )
+                    }
+                    const nextGroup = groups[nextIdx]
+                    if (nextGroup) {
+                        if (this.onOpenCodeSearchResultCallback && nextGroup.matches[0]) {
+                            this.onOpenCodeSearchResultCallback(nextGroup.matches[0])
+                        }
+                        this.openFileView(
+                            nextGroup.file,
+                            nextGroup.firstLine,
+                            'codesearch',
+                            this.state.codeSearchQuery,
+                            nextGroup.lineNumbers
+                        )
+                        this.showToast(
+                            `File ${nextIdx + 1}/${groups.length}: ${nextGroup.file} (${nextGroup.matchCount} match${nextGroup.matchCount === 1 ? '' : 'es'})`,
+                            'info'
+                        )
+                    }
+                    return
+                }
             }
 
             const matchLines = this.state.fileViewMatchLines || []
@@ -5457,6 +5539,7 @@ export class DifferentialApp {
                 command: fallbackSummary,
                 status: 'running',
                 output: '',
+                startTime: Date.now(),
             },
         })
 
@@ -5477,7 +5560,10 @@ export class DifferentialApp {
         }
     }
 
-    updateToolResult(toolCallId: string, result: { output?: string; isError?: boolean }): void {
+    updateToolResult(
+        toolCallId: string,
+        result: { output?: string; isError?: boolean; durationMs?: number }
+    ): void {
         const msg = this.state.messages.find(
             (m) => m.role === 'tool' && m.toolCall?.id === toolCallId
         )
@@ -5485,6 +5571,11 @@ export class DifferentialApp {
             msg.toolCall.status = result.isError ? 'error' : 'success'
             if (result.output) {
                 msg.toolCall.output = result.output
+            }
+            if (result.durationMs !== undefined) {
+                msg.toolCall.durationMs = result.durationMs
+            } else if (msg.toolCall.startTime && msg.toolCall.durationMs === undefined) {
+                msg.toolCall.durationMs = Date.now() - msg.toolCall.startTime
             }
             this.render()
         }
@@ -5556,6 +5647,12 @@ export class DifferentialApp {
             this.screen.setCursor(0, 0, false)
 
             if (overlay === 'fileview') {
+                const isCodesearchReturn = this.state.fileViewReturnOverlay === 'codesearch'
+                const searchGroups = isCodesearchReturn
+                    ? this.state.codeSearchGroups.length > 0
+                        ? this.state.codeSearchGroups
+                        : groupCodeSearchResults(this.state.codeSearchResults)
+                    : []
                 FileViewMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: 0,
@@ -5571,6 +5668,8 @@ export class DifferentialApp {
                     searchQuery: this.state.fileViewSearchQuery,
                     matchLines: this.state.fileViewMatchLines,
                     currentMatchIndex: this.state.fileViewCurrentMatchIndex,
+                    fileIndex: isCodesearchReturn ? this.state.codeSearchSelectedIndex : undefined,
+                    totalFiles: isCodesearchReturn ? searchGroups.length : undefined,
                 })
             } else if (overlay === 'diff') {
                 DiffViewMenuView.render(this.screen.backBuffer, {
@@ -5656,8 +5755,8 @@ export class DifferentialApp {
 
         if (!isOverlayActive) {
             // PROMPT MODE:
-            // 2. Input Bar (dynamically scales 4 to 9 rows based on prompt multiline content)
-            const inputHeight = InputBarView.getHeight(this.state.input)
+            // 2. Input Bar (dynamically scales 4 to 11 rows based on prompt multiline content)
+            const inputHeight = InputBarView.getHeight(this.state.input, width)
             const inputY = Math.max(0, height - inputHeight)
 
             // 3. Compute floating overlay heights

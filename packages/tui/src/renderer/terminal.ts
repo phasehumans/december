@@ -90,6 +90,16 @@ export class TerminalController {
         this.cursorHidden = false
     }
 
+    enableBracketedPaste(): void {
+        if (this.isCleanedUp) return
+        this.write('\x1b[?2004h')
+    }
+
+    disableBracketedPaste(): void {
+        if (this.isCleanedUp) return
+        this.write('\x1b[?2004l')
+    }
+
     enableRawMode(): void {
         if (this.rawModeEnabled || this.isCleanedUp) return
         try {
@@ -139,9 +149,9 @@ export class TerminalController {
         if (this.isCleanedUp) return
         this.isCleanedUp = true
 
-        // 0. Disable mouse tracking modes
+        // 0. Disable mouse tracking and bracketed paste modes
         try {
-            this.stdout.write('\x1b[?1006l\x1b[?1002l\x1b[?1000l\x1b[?1007l')
+            this.stdout.write('\x1b[?1006l\x1b[?1002l\x1b[?1000l\x1b[?1007l\x1b[?2004l')
         } catch {
             // Intentionally swallowed: stdout may be closed on sudden termination
         }
