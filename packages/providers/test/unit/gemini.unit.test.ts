@@ -115,11 +115,57 @@ describe('Gemini Provider Adapter (Unit)', () => {
             { type: 'text', text: 'Here is your answer.' },
             {
                 type: 'tool_call_delta',
-                id: '{"id":"call_123"}',
+                id: 'call_123',
                 name: 'search',
                 inputDelta: '{"query":"bun test"}',
             },
             { type: 'usage', promptTokens: 50, completionTokens: 25 },
+        ])
+    })
+
+    it('yields thought_signature chunk and clean tool call ID when thoughtSignature is present', async () => {
+        const mockClient: any = {
+            models: {
+                generateContentStream: async () => {
+                    return (async function* () {
+                        yield {
+                            candidates: [
+                                {
+                                    content: {
+                                        parts: [
+                                            {
+                                                functionCall: {
+                                                    name: 'bash',
+                                                    args: { command: 'ls' },
+                                                    id: 'call_sig_1',
+                                                },
+                                                thoughtSignature: 'sig_crypto_abc123',
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        }
+                    })()
+                },
+            },
+        }
+
+        const provider = geminiProvider('test-key', mockClient)
+        const stream = provider.stream([{ role: 'user', content: 'run command' }])
+        const chunks = []
+        for await (const chunk of stream) {
+            chunks.push(chunk)
+        }
+
+        expect(chunks).toEqual([
+            { type: 'thought_signature', signature: 'sig_crypto_abc123' },
+            {
+                type: 'tool_call_delta',
+                id: 'call_sig_1',
+                name: 'bash',
+                inputDelta: '{"command":"ls"}',
+            },
         ])
     })
 

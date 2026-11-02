@@ -8,19 +8,44 @@ import type {
     CanonicalToolCall,
 } from './types.ts'
 
+function unwrapToolCallId(rawId?: string): { id?: string; thoughtSignature?: string } {
+    if (!rawId || typeof rawId !== 'string') return { id: rawId }
+    const trimmed = rawId.trim()
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        const parsed = safeParseJson(trimmed)
+        if (parsed && typeof parsed === 'object') {
+            const innerId = typeof parsed.id === 'string' ? parsed.id : undefined
+            const thoughtSig =
+                typeof parsed.thoughtSignature === 'string' ? parsed.thoughtSignature : undefined
+            if (innerId) {
+                return { id: innerId, thoughtSignature: thoughtSig }
+            }
+        }
+    }
+    return { id: rawId }
+}
+
 export function toCanonicalMessages(
     messages: (Message | CanonicalMessage | any)[]
 ): CanonicalMessage[] {
     const canonicalList: CanonicalMessage[] = []
     const toolCallNameMap = new Map<string, string>()
+    const idUnwrapMap = new Map<string, string>()
 
     // First pass: index all tool calls across assistant messages to map toolCallId -> toolName
+    // and extract unwrap mappings for serialized toolCall IDs
     for (const msg of messages) {
         if (!msg) continue
         if (msg.toolCalls && Array.isArray(msg.toolCalls)) {
             for (const tc of msg.toolCalls) {
-                if (tc && tc.id && tc.name) {
-                    toolCallNameMap.set(tc.id, tc.name)
+                if (tc && tc.id) {
+                    const unwrapped = unwrapToolCallId(tc.id)
+                    const cleanId = unwrapped.id || tc.id
+                    idUnwrapMap.set(tc.id, cleanId)
+                    if (tc.name) {
+                        toolCallNameMap.set(cleanId, tc.name)
+                        toolCallNameMap.set(tc.id, tc.name)
+                    }
                 }
             }
         }
@@ -68,13 +93,22 @@ export function toCanonicalMessages(
                         parsedInput = parsed
                     }
                 }
+                const unwrapped = unwrapToolCallId(tc.id)
+                const cleanId = unwrapped.id || tc.id
                 canonicalCalls.push({
-                    id: tc.id,
+                    id: cleanId,
                     name: tc.name,
                     input: parsedInput,
                 })
-                if (tc.id && tc.name) {
-                    toolCallNameMap.set(tc.id, tc.name)
+                if (unwrapped.thoughtSignature && !canonical.thinking?.signature) {
+                    if (!canonical.thinking) {
+                        canonical.thinking = { text: '', signature: unwrapped.thoughtSignature }
+                    } else {
+                        canonical.thinking.signature = unwrapped.thoughtSignature
+                    }
+                }
+                if (cleanId && tc.name) {
+                    toolCallNameMap.set(cleanId, tc.name)
                 }
             }
             if (canonicalCalls.length > 0) {
@@ -84,9 +118,14 @@ export function toCanonicalMessages(
 
         // Tool result normalization
         if (role === 'tool' || msg.toolCallId) {
-            canonical.toolCallId = msg.toolCallId
+            const rawId = msg.toolCallId
+            const cleanId =
+                (rawId ? idUnwrapMap.get(rawId) : undefined) || unwrapToolCallId(rawId).id || rawId
+            canonical.toolCallId = cleanId
             const resolvedName =
-                msg.toolName || (msg.toolCallId ? toolCallNameMap.get(msg.toolCallId) : undefined)
+                msg.toolName ||
+                (cleanId ? toolCallNameMap.get(cleanId) : undefined) ||
+                (rawId ? toolCallNameMap.get(rawId) : undefined)
             if (resolvedName) {
                 canonical.toolName = resolvedName
             }

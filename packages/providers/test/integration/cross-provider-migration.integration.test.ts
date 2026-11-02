@@ -106,6 +106,99 @@ describe('Cross-Provider Context Migration (Integration)', () => {
         expect(toolMsgs[1].content).toBe('# December Agent Runtime')
     })
 
+    test('switches mid-session from Gemini with 187-character thoughtSignature toolCall ID to OpenAI without 400 string too long errors', async () => {
+        let capturedPayload: any = null
+
+        const mockClient: any = {
+            chat: {
+                completions: {
+                    create: async (payload: any) => {
+                        capturedPayload = payload
+
+                        // Enforce OpenAI's 64-character limit on tool call IDs
+                        for (const msg of payload.messages) {
+                            if (msg.role === 'assistant' && msg.tool_calls) {
+                                for (const tc of msg.tool_calls) {
+                                    if (tc.id && tc.id.length > 64) {
+                                        throw new Error(
+                                            `Invalid 'messages.tool_calls.id': string too long. Expected a string with maximum length 64, but got a string with length ${tc.id.length} instead.`
+                                        )
+                                    }
+                                }
+                            }
+                            if (
+                                msg.role === 'tool' &&
+                                msg.tool_call_id &&
+                                msg.tool_call_id.length > 64
+                            ) {
+                                throw new Error(
+                                    `Invalid 'messages.tool_call_id': string too long. Expected a string with maximum length 64, but got a string with length ${msg.tool_call_id.length} instead.`
+                                )
+                            }
+                        }
+
+                        return (async function* () {
+                            yield {
+                                choices: [
+                                    { delta: { content: 'Recovered and generated successfully' } },
+                                ],
+                            }
+                        })()
+                    },
+                },
+            },
+        }
+
+        const longOverloadedId = JSON.stringify({
+            id: 'call_1767274',
+            thoughtSignature:
+                'EmoKaAFpFH0Tn1ik7naao1/T3KcPFi666HfqAKynTn9g5Ey3EWTXvaQ07t8AV/KgJRP4kUWKfCu2oc02D5euQ5f5xK4uhZrNt+vuJjlRF9kTTovWVHIR7vDqrHPlE4W1h9lAhoZtyLl0Zxld',
+        })
+
+        const geminiHistory: Message[] = [
+            { role: 'user', content: 'list dir' },
+            {
+                role: 'assistant',
+                content: '',
+                thinking: 'thinking',
+                toolCalls: [
+                    {
+                        id: longOverloadedId,
+                        name: 'bash',
+                        input: '{"command":"ls -la"}',
+                    },
+                ],
+            },
+            {
+                role: 'tool',
+                toolCallId: longOverloadedId,
+                content: 'total 780',
+            },
+            { role: 'user', content: 'explain this codebase to me' },
+        ]
+
+        const provider = openaiProvider(undefined, 'test-key', undefined, mockClient)
+        const chunks: any[] = []
+
+        const stream = provider.stream(geminiHistory, undefined, undefined, {
+            model: 'gpt-4o',
+        })
+
+        for await (const chunk of stream) {
+            chunks.push(chunk)
+        }
+
+        expect(chunks.some((c) => c.text === 'Recovered and generated successfully')).toBe(true)
+        expect(capturedPayload).not.toBeNull()
+
+        const asst = capturedPayload.messages.find((m: any) => m.role === 'assistant')
+        const toolMsg = capturedPayload.messages.find((m: any) => m.role === 'tool')
+
+        expect(asst.tool_calls[0].id).toBe('call_1767274')
+        expect(toolMsg.tool_call_id).toBe('call_1767274')
+        expect(asst.tool_calls[0].id.length).toBeLessThanOrEqual(64)
+    })
+
     test('switches mid-session to Google Gemini without alternating turn or name mismatch errors', async () => {
         let capturedPayload: any = null
 

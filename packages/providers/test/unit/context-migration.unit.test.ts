@@ -72,6 +72,42 @@ describe('Cross-Provider Context Migration Normalizer (Unit)', () => {
             expect(canonical[3].toolName).toBe('bash')
             expect(canonical[3].content).toBe('folder contents')
         })
+
+        test('unwraps legacy/overloaded JSON toolCall IDs and extracts thoughtSignature', () => {
+            const rawMessages: Message[] = [
+                { role: 'user', content: 'list dir' },
+                {
+                    role: 'assistant',
+                    content: '',
+                    thinking: 'thinking',
+                    toolCalls: [
+                        {
+                            id: JSON.stringify({
+                                id: 'call_gemini_1',
+                                thoughtSignature: 'sig_crypto_long_token_signature_123',
+                            }),
+                            name: 'bash',
+                            input: '{"command":"ls -la"}',
+                        },
+                    ],
+                },
+                {
+                    role: 'tool',
+                    toolCallId: JSON.stringify({
+                        id: 'call_gemini_1',
+                        thoughtSignature: 'sig_crypto_long_token_signature_123',
+                    }),
+                    content: 'total 10',
+                },
+            ]
+
+            const canonical = toCanonicalMessages(rawMessages)
+            expect(canonical).toHaveLength(3)
+            expect(canonical[1].toolCalls?.[0].id).toBe('call_gemini_1')
+            expect(canonical[1].thinking?.signature).toBe('sig_crypto_long_token_signature_123')
+            expect(canonical[2].toolCallId).toBe('call_gemini_1')
+            expect(canonical[2].toolName).toBe('bash')
+        })
     })
 
     describe('normalizeForAnthropic', () => {
@@ -251,6 +287,33 @@ describe('Cross-Provider Context Migration Normalizer (Unit)', () => {
             // The result is in user or assistant content
             const allText = oaiMessages.map((m) => m.content).join('\n')
             expect(allText).toContain('file written')
+        })
+
+        test('sanitizes tool_calls.id longer than 64 characters and keeps consistent mapping with tool_call_id', () => {
+            const longId = 'a'.repeat(187)
+            const historyWithLongId: Message[] = [
+                { role: 'user', content: 'test' },
+                {
+                    role: 'assistant',
+                    content: '',
+                    toolCalls: [{ id: longId, name: 'bash', input: '{"cmd":"ls"}' }],
+                },
+                {
+                    role: 'tool',
+                    toolCallId: longId,
+                    content: 'output',
+                },
+            ]
+
+            const oaiMessages = normalizeForOpenAI(historyWithLongId, {
+                model: 'gpt-4o',
+            })
+
+            const asst = oaiMessages.find((m) => m.role === 'assistant') as any
+            const toolMsg = oaiMessages.find((m) => m.role === 'tool') as any
+
+            expect(asst.tool_calls[0].id.length).toBeLessThanOrEqual(64)
+            expect(asst.tool_calls[0].id).toBe(toolMsg.tool_call_id)
         })
     })
 

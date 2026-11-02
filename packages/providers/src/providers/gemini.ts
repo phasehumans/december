@@ -194,24 +194,20 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
                 for (const part of parts) {
                     if (part.functionCall) {
                         const fc = part.functionCall
-                        const extraFields: any = {}
-
-                        if ((fc as any).id) {
-                            extraFields.id = (fc as any).id
-                        } else {
-                            extraFields.id = uuidv4()
-                        }
+                        const toolCallId = (fc as any).id || uuidv4()
 
                         if ((part as any).thoughtSignature) {
-                            extraFields.thoughtSignature = (part as any).thoughtSignature
+                            yield {
+                                type: 'thought_signature',
+                                signature: (part as any).thoughtSignature,
+                            }
                         }
 
-                        const id = JSON.stringify(extraFields)
                         yield {
                             type: 'tool_call_delta',
-                            id,
+                            id: toolCallId,
                             name: fc.name,
-                            inputDelta: JSON.stringify(fc.args),
+                            inputDelta: JSON.stringify(fc.args || {}),
                         }
                     }
                 }

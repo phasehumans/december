@@ -1,8 +1,34 @@
+import { safeParseJson } from '@december/shared'
+
 import { toCanonicalMessages } from './canonical.ts'
 
 import type { Message } from '../types.ts'
 import type { CanonicalMessage, OpenAINormalizeOptions } from './types.ts'
 import type OpenAI from 'openai'
+
+function sanitizeOpenAIToolCallId(id: string | undefined, idMap: Map<string, string>): string {
+    if (!id) return 'call_unknown'
+    if (idMap.has(id)) return idMap.get(id)!
+
+    let sanitized = id.trim()
+    if (sanitized.startsWith('{') && sanitized.endsWith('}')) {
+        const parsed = safeParseJson(sanitized)
+        if (parsed && typeof parsed === 'object' && typeof parsed.id === 'string') {
+            sanitized = parsed.id.trim()
+        }
+    }
+
+    sanitized = sanitized.replace(/[^a-zA-Z0-9_-]/g, '_')
+    if (sanitized.length > 64) {
+        sanitized = sanitized.slice(0, 64)
+    }
+    if (!sanitized) {
+        sanitized = 'call_unknown'
+    }
+
+    idMap.set(id, sanitized)
+    return sanitized
+}
 
 export function normalizeForOpenAI(
     messages: (Message | CanonicalMessage | any)[],
@@ -11,6 +37,7 @@ export function normalizeForOpenAI(
     const canonical = toCanonicalMessages(messages)
     const oaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = []
     const resolvedModel = (options?.model || 'gpt-4o').toLowerCase()
+    const idMap = new Map<string, string>()
 
     // Determine tool and reasoning support
     const supportsTools =
@@ -87,7 +114,7 @@ export function normalizeForOpenAI(
 
                 if (msg.toolCalls && msg.toolCalls.length > 0) {
                     asstMsg.tool_calls = msg.toolCalls.map((tc) => ({
-                        id: tc.id,
+                        id: sanitizeOpenAIToolCallId(tc.id, idMap),
                         type: 'function',
                         function: {
                             name: tc.name,
@@ -123,7 +150,7 @@ export function normalizeForOpenAI(
 
             oaiMessages.push({
                 role: 'tool',
-                tool_call_id: msg.toolCallId || 'call_unknown',
+                tool_call_id: sanitizeOpenAIToolCallId(msg.toolCallId, idMap),
                 content: msg.content || '',
             })
             i++
