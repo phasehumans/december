@@ -1041,6 +1041,20 @@ async function main() {
         },
         onUndo: async () => {
             try {
+                if (agent) {
+                    const result = await agent.rollbackLastTurn()
+                    differentialApp.state.messages = convertAgentMessagesToDifferentialMessages(
+                        agent.messages || []
+                    )
+                    const count =
+                        (result.restoredFiles?.length || 0) + (result.deletedFiles?.length || 0)
+                    differentialApp.showToast(
+                        `Undid Turn ${result.targetTurn}. (${count} file${count === 1 ? '' : 's'} affected)`,
+                        'success'
+                    )
+                    differentialApp.render()
+                    return
+                }
                 const { getSnapshotManager } = await import('@december/tools')
                 const manager = getSnapshotManager(process.cwd())
                 await manager.init()
@@ -1059,6 +1073,82 @@ async function main() {
                 )
             } catch (e: any) {
                 differentialApp.showToast(`Failed to undo: ${e.message}`, 'error')
+            }
+        },
+        onRewindTurn: async (turnIndex: number) => {
+            try {
+                if (agent) {
+                    const result = await agent.rollbackToTurn(turnIndex)
+                    differentialApp.state.messages = convertAgentMessagesToDifferentialMessages(
+                        agent.messages || []
+                    )
+                    const count =
+                        (result.restoredFiles?.length || 0) + (result.deletedFiles?.length || 0)
+                    differentialApp.showToast(
+                        `Rewound to Turn ${turnIndex}. (${count} file${count === 1 ? '' : 's'} affected)`,
+                        'success'
+                    )
+                    differentialApp.render()
+                    return
+                }
+                const { getSnapshotManager } = await import('@december/tools')
+                const manager = getSnapshotManager(process.cwd())
+                await manager.init()
+                const result = await manager.rollbackToTurn(turnIndex)
+                const count =
+                    (result.restoredFiles?.length || 0) + (result.deletedFiles?.length || 0)
+                differentialApp.showToast(
+                    `Rewound to Turn ${turnIndex}. (${count} file${count === 1 ? '' : 's'} affected)`,
+                    'success'
+                )
+                differentialApp.render()
+            } catch (e: any) {
+                differentialApp.showToast(`Failed to rewind: ${e.message}`, 'error')
+            }
+        },
+        onLoadRewindTurns: async () => {
+            try {
+                const { getSnapshotManager } = await import('@december/tools')
+                const manager = getSnapshotManager(process.cwd())
+                await manager.init()
+                const snapshots = manager.getSnapshots()
+                return [...snapshots]
+                    .sort((a, b) => b.turnIndex - a.turnIndex)
+                    .map((s) => ({
+                        turnIndex: s.turnIndex,
+                        commitHash: s.commitHash,
+                        prompt: s.prompt,
+                        timestamp: s.timestamp,
+                        touchedFiles: s.touchedFiles,
+                    }))
+            } catch {
+                return []
+            }
+        },
+        onClearContext: async () => {
+            if (agent) {
+                await agent.clearContext()
+                differentialApp.state.messages = []
+                differentialApp.state.contextTokens = 0
+                differentialApp.render()
+            }
+        },
+        onNewContext: async () => {
+            if (agent) {
+                await agent.newContext()
+                differentialApp.state.messages = []
+                differentialApp.state.contextTokens = 0
+                differentialApp.state.sessionId = agent.sessionId
+                differentialApp.render()
+                return agent.sessionId
+            }
+        },
+        onForkContext: async (newSessionId?: string) => {
+            if (agent) {
+                const newId = await agent.forkContext(newSessionId)
+                differentialApp.state.sessionId = newId
+                differentialApp.render()
+                return newId
             }
         },
         onSubmit: async (promptText: string) => {

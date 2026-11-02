@@ -410,6 +410,10 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     settings?: SettingItem[]
     onSettingChange?: (settingId: string, newValue: string) => Promise<void> | void
     onKillTask?: (taskId: string) => boolean | void
+    onClearContext?: () => Promise<void> | void
+    onNewContext?: () => Promise<string | void> | void
+    onForkContext?: (newSessionId?: string) => Promise<string | void> | void
+    onLoadRewindTurns?: () => Promise<RewindTurnEntry[]> | RewindTurnEntry[]
 }
 
 export function openBrowserUrl(url: string): void {
@@ -512,6 +516,10 @@ export class DifferentialApp {
     ) => void
     private onExecuteDirectCommandCallback?: (command: string) => Promise<void> | void
     private onUndoCallback?: () => Promise<void> | void
+    private onClearContextCallback?: () => Promise<void> | void
+    private onNewContextCallback?: () => Promise<string | void> | void
+    private onForkContextCallback?: (newSessionId?: string) => Promise<string | void> | void
+    private onLoadRewindTurnsCallback?: () => Promise<RewindTurnEntry[]> | RewindTurnEntry[]
     private authRequiredNotice?: string
 
     constructor(options?: DifferentialAppOptions) {
@@ -550,6 +558,10 @@ export class DifferentialApp {
         this.onUndoCallback = options?.onUndo
         this.onSettingChangeCallback = options?.onSettingChange
         this.onKillTaskCallback = options?.onKillTask
+        this.onClearContextCallback = options?.onClearContext
+        this.onNewContextCallback = options?.onNewContext
+        this.onForkContextCallback = options?.onForkContext
+        this.onLoadRewindTurnsCallback = options?.onLoadRewindTurns
         this.authRequiredNotice = options?.authRequiredNotice
         this.workspaceFiles = options?.workspaceFiles ? [...options.workspaceFiles] : []
         this.recentFiles = options?.recentFiles ? new Set(options.recentFiles) : new Set<string>()
@@ -1028,6 +1040,23 @@ export class DifferentialApp {
             }
         } catch {
             // Intentionally swallowed: fallback to generated default daily usage
+        }
+    }
+
+    async loadRewindTurns(): Promise<void> {
+        if (!this.onLoadRewindTurnsCallback) return
+        try {
+            const result = this.onLoadRewindTurnsCallback()
+            const turns =
+                result && typeof (result as Promise<any>).then === 'function'
+                    ? await result
+                    : (result as RewindTurnEntry[])
+            if (Array.isArray(turns)) {
+                this.state.rewindTurns = turns
+                this.render()
+            }
+        } catch {
+            // Intentionally swallowed: fail silently on loading rewind turns
         }
     }
 
@@ -2095,18 +2124,60 @@ export class DifferentialApp {
 
         if (cmd === 'clear') {
             this.state.messages = []
+            this.state.contextTokens = 0
+            if (this.onClearContextCallback) {
+                const res = this.onClearContextCallback()
+                if (res && typeof (res as Promise<any>).catch === 'function') {
+                    ;(res as Promise<any>).catch(() => {})
+                }
+            }
             this.showToast('Cleared conversation history.', 'success')
+            this.render()
             return
         }
 
         if (cmd === 'new') {
             this.state.messages = []
+            this.state.contextTokens = 0
+            if (this.onNewContextCallback) {
+                const res = this.onNewContextCallback()
+                if (res && typeof (res as Promise<any>).then === 'function') {
+                    ;(res as Promise<string | void>)
+                        .then((newSessionId) => {
+                            if (newSessionId) {
+                                this.state.sessionId = newSessionId
+                                this.render()
+                            }
+                        })
+                        .catch(() => {})
+                } else if (typeof res === 'string') {
+                    this.state.sessionId = res
+                }
+            }
             this.showToast('Started a new conversation.', 'success')
+            this.render()
             return
         }
 
         if (cmd === 'fork') {
+            const forkTarget = args ? args.trim() : undefined
+            if (this.onForkContextCallback) {
+                const res = this.onForkContextCallback(forkTarget)
+                if (res && typeof (res as Promise<any>).then === 'function') {
+                    ;(res as Promise<string | void>)
+                        .then((newSessionId) => {
+                            if (newSessionId) {
+                                this.state.sessionId = newSessionId
+                                this.render()
+                            }
+                        })
+                        .catch(() => {})
+                } else if (typeof res === 'string') {
+                    this.state.sessionId = res
+                }
+            }
             this.showToast('Forked conversation into a new branch.', 'success')
+            this.render()
             return
         }
 
@@ -2384,6 +2455,9 @@ export class DifferentialApp {
                 this.state.activeOverlay = 'rewind'
                 this.state.rewindSelectedIndex = 0
                 this.state.rewindWindowStart = 0
+                this.loadRewindTurns().catch(() => {
+                    // Intentionally swallowed: fail silently on loading rewind turns
+                })
                 this.render()
             }
             return
@@ -2393,6 +2467,9 @@ export class DifferentialApp {
             this.state.activeOverlay = 'rewind'
             this.state.rewindSelectedIndex = 0
             this.state.rewindWindowStart = 0
+            this.loadRewindTurns().catch(() => {
+                // Intentionally swallowed: fail silently on loading rewind turns
+            })
             this.render()
             return
         }
@@ -3139,8 +3216,16 @@ export class DifferentialApp {
         if (overlay === 'context') {
             if (key === 'c' || key === 'C') {
                 this.state.messages = []
+                this.state.contextTokens = 0
                 this.state.activeOverlay = 'none'
+                if (this.onClearContextCallback) {
+                    const res = this.onClearContextCallback()
+                    if (res && typeof (res as Promise<any>).catch === 'function') {
+                        ;(res as Promise<any>).catch(() => {})
+                    }
+                }
                 this.showToast('Cleared context history.', 'success')
+                this.render()
                 return
             }
             if (key === 'm' || key === 'M') {
@@ -3154,8 +3239,29 @@ export class DifferentialApp {
             }
             if (key === 'n' || key === 'N') {
                 this.state.messages = []
+                this.state.contextTokens = 0
                 this.state.activeOverlay = 'none'
+                if (this.onNewContextCallback) {
+                    const res = this.onNewContextCallback()
+                    if (res && typeof (res as Promise<any>).then === 'function') {
+                        ;(res as Promise<string | void>)
+                            .then((newSessionId) => {
+                                if (newSessionId) {
+                                    this.state.sessionId = newSessionId
+                                    this.render()
+                                }
+                            })
+                            .catch(() => {})
+                    } else if (typeof res === 'string') {
+                        this.state.sessionId = res
+                    }
+                }
                 this.showToast('Started a new conversation.', 'success')
+                this.render()
+                return
+            }
+            if (key === '\x1b' || key === 'q' || key === 'Q') {
+                this.closeOrPopOverlay()
                 return
             }
             return
@@ -4301,16 +4407,24 @@ export class DifferentialApp {
                 if (turn) {
                     this.state.activeOverlay = 'none'
                     if (this.onRewindTurnCallback) {
-                        this.onRewindTurnCallback(turn.turnIndex)
+                        const res = this.onRewindTurnCallback(turn.turnIndex)
+                        if (res && typeof (res as Promise<any>).catch === 'function') {
+                            ;(res as Promise<any>).catch((err: any) => {
+                                this.showToast(`Failed to rewind: ${err.message || err}`, 'error')
+                                this.render()
+                            })
+                        }
+                    } else {
+                        this.showToast(
+                            `Rewound conversation to checkpoint ${turn.turnIndex}.`,
+                            'success'
+                        )
                     }
-                    this.showToast(
-                        `Rewound conversation to checkpoint ${turn.turnIndex}.`,
-                        'success'
-                    )
+                    this.render()
                 }
                 return
             }
-            if (key === 'q' || key === 'Q') {
+            if (key === 'q' || key === 'Q' || key === '\x1b') {
                 this.state.activeOverlay = 'none'
                 this.render()
                 return

@@ -2330,4 +2330,147 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         app.stop()
     })
+
+    it('handles context lifecycle for /clear, /new, and /fork commands', async () => {
+        let clearCalled = false
+        let newCalled = false
+        let forkTarget: string | undefined = undefined
+
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            sessionId: 'session-123',
+            onClearContext: () => {
+                clearCalled = true
+            },
+            onNewContext: () => {
+                newCalled = true
+                return 'session-456'
+            },
+            onForkContext: (target) => {
+                forkTarget = target
+                return 'session-forked'
+            },
+        })
+        app.start()
+
+        app.state.messages = [{ role: 'user', content: 'hello' }]
+        app.state.contextTokens = 150
+
+        // /clear
+        app.executeCommand('clear')
+        expect(clearCalled).toBe(true)
+        expect(app.state.messages.length).toBe(0)
+        expect(app.state.contextTokens).toBe(0)
+        expect(app.state.toast?.message).toBe('Cleared conversation history.')
+
+        // /new
+        app.state.messages = [{ role: 'user', content: 'new question' }]
+        app.executeCommand('new')
+        expect(newCalled).toBe(true)
+        expect(app.state.messages.length).toBe(0)
+        expect(app.state.sessionId).toBe('session-456')
+        expect(app.state.toast?.message).toBe('Started a new conversation.')
+
+        // /fork
+        app.executeCommand('fork feature-branch')
+        expect(forkTarget).toBe('feature-branch')
+        expect(app.state.sessionId).toBe('session-forked')
+        expect(app.state.toast?.message).toBe('Forked conversation into a new branch.')
+
+        app.stop()
+    })
+
+    it('handles context menu shortcuts c and n to clear context and start new session', async () => {
+        let clearCalled = false
+        let newCalled = false
+
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            sessionId: 'session-init',
+            onClearContext: () => {
+                clearCalled = true
+            },
+            onNewContext: () => {
+                newCalled = true
+                return 'session-next'
+            },
+        })
+        app.start()
+
+        // Open context overlay
+        app.executeCommand('context')
+        expect(app.state.activeOverlay).toBe('context')
+
+        // 'c' to clear
+        app.state.messages = [{ role: 'user', content: 'test msg' }]
+        app.handleKey('c')
+        expect(clearCalled).toBe(true)
+        expect(app.state.messages.length).toBe(0)
+        expect(app.state.activeOverlay).toBe('none')
+
+        // Reopen and 'n' for new session
+        app.executeCommand('context')
+        expect(app.state.activeOverlay).toBe('context')
+        app.handleKey('n')
+        expect(newCalled).toBe(true)
+        expect(app.state.sessionId).toBe('session-next')
+        expect(app.state.activeOverlay).toBe('none')
+
+        app.stop()
+    })
+
+    it('loads turns via onLoadRewindTurns and executes rollback on Enter in /rewind', async () => {
+        let rolledBackTurn: number | null = null
+        const mockTurns = [
+            {
+                turnIndex: 2,
+                commitHash: 'commit222',
+                prompt: 'second turn prompt',
+                timestamp: Date.now() - 30000,
+                touchedFiles: ['file2.ts'],
+            },
+            {
+                turnIndex: 1,
+                commitHash: 'commit111',
+                prompt: 'initial turn prompt',
+                timestamp: Date.now() - 60000,
+                touchedFiles: ['file1.ts'],
+            },
+        ]
+
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onLoadRewindTurns: async () => mockTurns,
+            onRewindTurn: (turnIndex) => {
+                rolledBackTurn = turnIndex
+            },
+        })
+        app.start()
+
+        // Execute /rewind
+        app.executeCommand('rewind')
+        expect(app.state.activeOverlay).toBe('rewind')
+
+        // Wait for async loadRewindTurns
+        await app.loadRewindTurns()
+        expect(app.state.rewindTurns.length).toBe(2)
+        expect(app.state.rewindTurns[0]?.turnIndex).toBe(2)
+
+        // Press down arrow 'j' to select turn 1
+        app.handleKey('j')
+        expect(app.state.rewindSelectedIndex).toBe(1)
+
+        // Press Enter to rewind to turn 1
+        app.handleKey('\r')
+        expect(rolledBackTurn).toBe(1)
+        expect(app.state.activeOverlay).toBe('none')
+
+        app.stop()
+    })
 })
