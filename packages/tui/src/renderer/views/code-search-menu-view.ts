@@ -101,11 +101,8 @@ export const CodeSearchMenuView = {
                     },
                 })
 
-                // File and match count (or file:line if 1 match)
-                const fileStr =
-                    group.matchCount > 1
-                        ? `${group.file} (${group.matchCount} matches)`
-                        : `${group.file}:${group.firstLine}`
+                // File and line number
+                const fileStr = `${group.file}:${group.firstLine}`
 
                 drawText(buffer, fileStr, {
                     x: x + 2,
@@ -129,7 +126,7 @@ export const CodeSearchMenuView = {
                         bold: isSelected,
                     },
                     highlightStyle: {
-                        fg: THEME.colors.searchHighlight,
+                        fg: THEME.colors.warning,
                         bold: true,
                     },
                 })

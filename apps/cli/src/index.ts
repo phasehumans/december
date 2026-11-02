@@ -1011,6 +1011,14 @@ async function main() {
                         differentialApp.updateToolExecution(toolCallId, chunk)
                     },
                     onBackground: (taskId) => {
+                        differentialApp.updateToolExecution(
+                            toolCallId,
+                            `\n[Moved to background task: ${taskId}. Use /tasks to inspect.]\n`
+                        )
+                        differentialApp.updateToolResult(toolCallId, {
+                            output: `[Moved to background task: ${taskId}. Use /tasks to inspect.]`,
+                            isError: false,
+                        })
                         differentialApp.showToast(
                             `Command moved to background (${taskId}). Use /tasks to view logs.`,
                             'info'
@@ -1018,8 +1026,12 @@ async function main() {
                     },
                 })
                 const result = await promise
+                const finalOutput = result.isBackground
+                    ? (result.output ? result.output.trim() + '\n' : '') +
+                      `[Moved to background task: ${result.taskId}. Use /tasks to inspect.]`
+                    : result.output
                 differentialApp.updateToolResult(toolCallId, {
-                    output: result.output,
+                    output: finalOutput,
                     isError: result.exitCode !== 0,
                 })
                 if (agent && agent.messages) {

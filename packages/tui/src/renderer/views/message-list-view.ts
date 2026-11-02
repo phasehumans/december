@@ -14,6 +14,7 @@ export interface MessageToolCall {
     status: 'running' | 'success' | 'error'
     output?: string
     durationMs?: number
+    startTime?: number
 }
 
 export interface MessageItem {

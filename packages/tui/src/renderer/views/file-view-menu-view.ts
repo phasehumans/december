@@ -76,7 +76,7 @@ export const FileViewMenuView = {
             drawText(buffer, searchBadge, {
                 x: headX,
                 y,
-                style: { fg: THEME.colors.searchHighlight, bold: true },
+                style: { fg: THEME.colors.warning, bold: true },
             })
         }
 
@@ -153,7 +153,7 @@ export const FileViewMenuView = {
                     },
                 })
 
-                // Code text: crisp white for all code, amber highlight on query, highlighted background for cursor line
+                // Code text: crisp white for all code, yellow highlight on query, highlighted background for cursor line
                 const codeX = x + 2 + gutterWidth + 1
                 if (props.searchQuery) {
                     drawHighlightedText(buffer, lineText, props.searchQuery, {
@@ -166,10 +166,9 @@ export const FileViewMenuView = {
                             bold: isCursor,
                         },
                         highlightStyle: {
-                            fg: THEME.colors.searchHighlight,
+                            fg: THEME.colors.warning,
                             bg: rowBg,
                             bold: true,
-                            underline: isCursor,
                         },
                     })
                 } else {

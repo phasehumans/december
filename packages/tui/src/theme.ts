@@ -12,7 +12,6 @@ export const THEME = {
         success: '#6EE7B7',
         error: '#FCA5A5',
         warning: '#FDD663',
-        searchHighlight: '#FB923C',
         diffAddBg: '#122f1e',
         diffDeleteBg: '#3f1316',
         codespanBg: '#303030',
