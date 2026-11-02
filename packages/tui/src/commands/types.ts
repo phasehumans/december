@@ -6,6 +6,7 @@ export type CommandContext = {
     exit: () => void
     toast: ToastContextValue
     agent?: any
+    args?: string
     resetChat?: () => void
     onUpdateSuccess?: () => Promise<void>
 }
