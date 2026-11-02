@@ -11,6 +11,7 @@ export interface TaskItem {
     status: 'running' | 'completed' | 'failed'
     duration?: string
     exitCode?: number
+    output?: string
 }
 
 export interface TasksModeMenuViewProps {
@@ -121,6 +122,7 @@ export const TasksModeMenuView = {
             width,
             items: [
                 { key: '↑/↓', label: 'navigate' },
+                { key: 'enter', label: 'view log' },
                 { key: 'k', label: 'kill' },
                 { key: 'esc', label: 'dismiss' },
             ],

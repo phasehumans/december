@@ -2133,4 +2133,60 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         app.stop()
     })
+
+    it('handles background tasks, termination via k, log inspection, and clipboard copying via c', () => {
+        let killedTaskId = ''
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onKillTask: (id) => {
+                killedTaskId = id
+            },
+        })
+        app.start()
+
+        app.updateTasks([
+            {
+                id: 'task-1',
+                command: 'npm run dev',
+                status: 'running',
+                output: 'Server listening on :3000\nCompiling client...',
+            },
+            {
+                id: 'task-2',
+                command: 'bun test',
+                status: 'completed',
+                output: '10 pass\n0 fail',
+            },
+        ])
+
+        app.executeCommand('tasks')
+        expect(app.state.activeOverlay).toBe('tasks')
+        expect(app.state.tasks).toHaveLength(2)
+
+        // Press 'k' on running task
+        app.state.tasksSelectedIndex = 0
+        app.handleKey('k')
+        expect(killedTaskId).toBe('task-1')
+        expect(app.state.tasks[0].status).toBe('failed')
+
+        // Press enter on task to open raw log viewer
+        app.handleKey('\r')
+        expect(app.state.activeOverlay).toBe('fileview')
+        expect(app.state.fileViewLines).toEqual([
+            'Server listening on :3000',
+            'Compiling client...',
+        ])
+
+        // Press 'c' to copy task output
+        app.handleKey('c')
+        expect(app.state.toast?.message).toBe('Copied task output to clipboard.')
+
+        // Press Esc to return to tasks
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('tasks')
+
+        app.stop()
+    })
 })

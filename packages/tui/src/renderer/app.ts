@@ -407,6 +407,7 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     authRequiredNotice?: string
     settings?: SettingItem[]
     onSettingChange?: (settingId: string, newValue: string) => Promise<void> | void
+    onKillTask?: (taskId: string) => boolean | void
 }
 
 export function openBrowserUrl(url: string): void {
@@ -458,6 +459,7 @@ export class DifferentialApp {
     private toastTimer: any = null
     private spinnerTimer: any = null
     private onSettingChangeCallback?: (settingId: string, newValue: string) => Promise<void> | void
+    private onKillTaskCallback?: (taskId: string) => boolean | void
     private onSubmitCallback?: (prompt: string) => void
     private onAbortCallback?: () => void
     private onExitCallback?: () => void
@@ -545,6 +547,7 @@ export class DifferentialApp {
         this.onExecuteDirectCommandCallback = options?.onExecuteDirectCommand
         this.onUndoCallback = options?.onUndo
         this.onSettingChangeCallback = options?.onSettingChange
+        this.onKillTaskCallback = options?.onKillTask
         this.authRequiredNotice = options?.authRequiredNotice
         this.workspaceFiles = options?.workspaceFiles ? [...options.workspaceFiles] : []
         this.recentFiles = options?.recentFiles ? new Set(options.recentFiles) : new Set<string>()
@@ -1365,6 +1368,14 @@ export class DifferentialApp {
             this.state.activeOverlay = 'tool_permission'
             this.render()
         })
+    }
+
+    updateTasks(tasks: TaskItem[]): void {
+        this.state.tasks = tasks
+        if (this.state.tasksSelectedIndex >= tasks.length) {
+            this.state.tasksSelectedIndex = Math.max(0, tasks.length - 1)
+        }
+        this.render()
     }
 
     setInput(text: string): void {
@@ -3250,8 +3261,27 @@ export class DifferentialApp {
                 return
             }
 
+            // c / C in task log view copies full output to system clipboard
+            if (key === 'c' || key === 'C') {
+                if (
+                    this.state.fileViewReturnOverlay === 'tasks' ||
+                    this.state.fileViewPath?.startsWith('Task Output:')
+                ) {
+                    const fullOutput = this.state.fileViewLines.join('\n')
+                    writeToClipboard(fullOutput, this.terminal)
+                    this.showToast('Copied task output to clipboard.', 'success')
+                    return
+                }
+            }
+
             // Enter / Tab / c: insert context into prompt and return to prompt mode
             if (key === '\r' || key === '\n' || key === '\t' || key === 'c' || key === 'C') {
+                if (
+                    this.state.fileViewReturnOverlay === 'tasks' ||
+                    this.state.fileViewPath?.startsWith('Task Output:')
+                ) {
+                    return
+                }
                 const lineNum = this.state.fileViewCursorLine + 1
                 const filePath = this.state.fileViewPath
                 const mention = lineNum > 1 ? `@${filePath}:${lineNum} ` : `@${filePath} `
@@ -3877,6 +3907,9 @@ export class DifferentialApp {
             if (key === '\x1b[A') {
                 if (this.state.tasksSelectedIndex > 0) {
                     this.state.tasksSelectedIndex -= 1
+                    if (this.state.tasksSelectedIndex < this.state.tasksWindowStart) {
+                        this.state.tasksWindowStart = this.state.tasksSelectedIndex
+                    }
                     this.render()
                 }
                 return
@@ -3884,6 +3917,9 @@ export class DifferentialApp {
             if (key === '\x1b[B' || key === 'j') {
                 if (this.state.tasksSelectedIndex < tasks.length - 1) {
                     this.state.tasksSelectedIndex += 1
+                    if (this.state.tasksSelectedIndex >= this.state.tasksWindowStart + 8) {
+                        this.state.tasksWindowStart = this.state.tasksSelectedIndex - 7
+                    }
                     this.render()
                 }
                 return
@@ -3891,11 +3927,33 @@ export class DifferentialApp {
             if (key === 'k' || key === 'K') {
                 const currentTask = tasks[this.state.tasksSelectedIndex]
                 if (currentTask && currentTask.status === 'running') {
+                    if (this.onKillTaskCallback) {
+                        this.onKillTaskCallback(currentTask.id)
+                    }
                     currentTask.status = 'failed'
-                    this.showToast(`Killed task: ${currentTask.command}`, 'info')
+                    this.showToast(`Terminated task: ${currentTask.command}`, 'info')
+                    this.render()
                 }
                 return
             }
+            if (key === '\r' || key === '\n' || key === ' ') {
+                const currentTask = tasks[this.state.tasksSelectedIndex]
+                if (currentTask) {
+                    const lines = (
+                        currentTask.output || '(no output recorded for this task)'
+                    ).split(/\r?\n/)
+                    this.openFileView(
+                        `Task Output: ${currentTask.id} (${currentTask.command})`,
+                        1,
+                        'tasks',
+                        undefined,
+                        undefined,
+                        lines
+                    )
+                }
+                return
+            }
+            return
         }
 
         if (overlay === 'session') {

@@ -181,17 +181,26 @@ export const FileViewMenuView = {
 
         // 3. Branded Footer
         const footerItems = []
-        if (props.searchQuery && props.matchLines && props.matchLines.length > 1) {
-            footerItems.push({ key: 'n/p', label: 'next/prev match' })
-        }
-        footerItems.push(
-            { key: '↑/↓', label: 'scroll' },
-            { key: 'enter', label: 'insert @file:line' },
-            {
-                key: 'esc',
-                label: props.returnOverlay && props.returnOverlay !== 'none' ? 'back' : 'dismiss',
+        if (props.returnOverlay === 'tasks' || props.filePath?.startsWith('Task Output:')) {
+            footerItems.push(
+                { key: '↑/↓', label: 'scroll' },
+                { key: 'c', label: 'copy log' },
+                { key: 'esc', label: 'back' }
+            )
+        } else {
+            if (props.searchQuery && props.matchLines && props.matchLines.length > 1) {
+                footerItems.push({ key: 'n/p', label: 'next/prev match' })
             }
-        )
+            footerItems.push(
+                { key: '↑/↓', label: 'scroll' },
+                { key: 'enter', label: 'insert @file:line' },
+                {
+                    key: 'esc',
+                    label:
+                        props.returnOverlay && props.returnOverlay !== 'none' ? 'back' : 'dismiss',
+                }
+            )
+        }
 
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,

@@ -660,8 +660,40 @@ async function main() {
         ]
     }
 
+    const { taskManager } = await import('./task-manager')
+    type BackgroundTask = import('./task-manager').BackgroundTask
+
+    const mapBackgroundTasksToTaskItems = (tasks: BackgroundTask[]): TaskItem[] => {
+        return tasks.map((t) => {
+            let duration: string | undefined
+            const end = t.completedAt ? t.completedAt.getTime() : Date.now()
+            const diffMs = Math.max(0, end - t.createdAt.getTime())
+            const secs = Math.floor(diffMs / 1000)
+            if (secs < 60) duration = `${secs}s`
+            else duration = `${Math.floor(secs / 60)}m ${secs % 60}s`
+
+            return {
+                id: t.id,
+                command: t.command,
+                status:
+                    t.status === 'running'
+                        ? 'running'
+                        : t.status === 'completed'
+                          ? 'completed'
+                          : 'failed',
+                duration,
+                exitCode: t.exitCode ?? undefined,
+                output: t.output,
+            }
+        })
+    }
+
     differentialApp = new DifferentialApp({
         settings: buildSettingsFromConfig(config, activeProvider, initialModel),
+        tasks: mapBackgroundTasksToTaskItems(taskManager.getTasks()),
+        onKillTask: (taskId: string) => {
+            taskManager.killTask(taskId)
+        },
         cliVersion: pkg.version,
         userEmail,
         decemberEmail: config.decemberToken ? config.email : undefined,
@@ -1172,6 +1204,11 @@ async function main() {
     const { setupAgentInterceptors } = await import('./store/interceptors')
     setupAgentInterceptors(agent, differentialApp)
 
+    const syncTasks = () => {
+        differentialApp.updateTasks(mapBackgroundTasksToTaskItems(taskManager.getTasks()))
+    }
+    taskManager.on('change', syncTasks)
+
     // Background workspace file and git status indexing for instantaneous @ and /open suggestions
     differentialApp.refreshWorkspaceFiles().catch(() => {
         // Intentionally swallowed: background workspace indexing fallback
@@ -1192,6 +1229,7 @@ async function main() {
         })
 
     const handleExit = () => {
+        taskManager.off('change', syncTasks)
         mcpClientManager.disconnectAll().catch(() => {
             // Intentionally swallowed: ignore disconnect errors on exit
         })
