@@ -57,6 +57,7 @@ describe('convertAgentMessagesToDifferentialMessages', () => {
             toolCall: {
                 id: 'call-1',
                 name: 'bash',
+                input: { command: 'git status' },
                 command: 'Bash(git status)',
                 status: 'success',
                 output: 'On branch main\nclean',

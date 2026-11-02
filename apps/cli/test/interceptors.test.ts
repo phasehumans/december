@@ -40,6 +40,20 @@ describe('setupAgentInterceptors', () => {
         await expect(p).resolves.toBe('answer')
     })
 
+    it('delegates askQuestion directly to storeStateOrApp.askQuestion when available', async () => {
+        const mockApp = {
+            askQuestion: vi.fn().mockResolvedValue({ 'What is your preference?': 'Option A' }),
+        }
+        setupAgentInterceptors(mockAgent, mockApp)
+        const result = await mockAgent.operations.ui.askQuestion([
+            { question: 'What is your preference?', options: ['Option A', 'Option B'] },
+        ])
+        expect(mockApp.askQuestion).toHaveBeenCalledWith([
+            { question: 'What is your preference?', options: ['Option A', 'Option B'] },
+        ])
+        expect(result).toEqual({ 'What is your preference?': 'Option A' })
+    })
+
     describe('requestPermission', () => {
         beforeEach(() => {
             setupAgentInterceptors(mockAgent, mockStoreState)
@@ -250,6 +264,34 @@ describe('setupAgentInterceptors', () => {
             }
             const result = await mockAgent.operations.ui.requestPermission(toolCall)
             expect(result).toEqual({ block: false })
+        })
+
+        it('validates git ls-files when git_tracked or git-tracked permission is selected', async () => {
+            ;(configModule.loadConfig as any).mockResolvedValue({
+                toolPermission: 'always-ask',
+            })
+            const trackedCall = {
+                name: 'write_to_file',
+                input: { TargetFile: 'package.json' },
+            }
+            const trackedPromise = mockAgent.operations.ui.requestPermission(trackedCall)
+            await new Promise((r) => setTimeout(r, 10))
+            const firstCall = mockStoreState.setPendingToolCall.mock.calls[0][0]
+            firstCall.resolve({ gitTrackedOnly: true })
+            const trackedRes = await trackedPromise
+            expect(trackedRes).toEqual({ block: false })
+
+            const untrackedCall = {
+                name: 'write_to_file',
+                input: { TargetFile: 'definitely-untracked-file-12345.xyz' },
+            }
+            const untrackedPromise = mockAgent.operations.ui.requestPermission(untrackedCall)
+            await new Promise((r) => setTimeout(r, 10))
+            const secondCall = mockStoreState.setPendingToolCall.mock.calls[1][0]
+            secondCall.resolve({ gitTrackedOnly: true })
+            const untrackedRes = await untrackedPromise
+            expect(untrackedRes.block).toBe(true)
+            expect(untrackedRes.error).toContain('is not a git-tracked file')
         })
     })
 })

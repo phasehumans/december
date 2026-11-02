@@ -77,7 +77,11 @@ async function computeToolCallDiff(toolCall: any): Promise<string | undefined> {
 export function setupAgentInterceptors(agent: Agent, storeStateOrApp: any) {
     if (!agent.operations.ui) agent.operations.ui = {} as any
 
-    if (storeStateOrApp && typeof storeStateOrApp.requestQuestions === 'function') {
+    if (storeStateOrApp && typeof storeStateOrApp.askQuestion === 'function') {
+        agent.operations.ui.askQuestion = (questions) => {
+            return storeStateOrApp.askQuestion(questions)
+        }
+    } else if (storeStateOrApp && typeof storeStateOrApp.requestQuestions === 'function') {
         agent.operations.ui.askQuestion = (questions) => {
             return storeStateOrApp.requestQuestions(questions)
         }
@@ -231,7 +235,7 @@ export function setupAgentInterceptors(agent: Agent, storeStateOrApp: any) {
             return { block: false }
         }
 
-        if (decision === 'git_tracked') {
+        if (decision === 'git_tracked' || (decision as string) === 'git-tracked') {
             const targetPath =
                 toolCall.input?.TargetFile ||
                 toolCall.input?.AbsolutePath ||

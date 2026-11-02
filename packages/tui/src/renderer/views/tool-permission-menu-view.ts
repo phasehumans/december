@@ -25,7 +25,7 @@ export interface ToolPermissionMenuViewProps {
 export const DEFAULT_PERMISSION_OPTIONS: ToolPermissionOption[] = [
     { label: 'Approve once', value: 'approve', keyHint: 'y' },
     { label: 'Always allow in session', value: 'always', keyHint: 'a' },
-    { label: 'Only git-tracked files', value: 'git-tracked', keyHint: 'g' },
+    { label: 'Only git-tracked files', value: 'git_tracked', keyHint: 'g' },
     { label: 'Deny execution', value: 'deny', keyHint: 'd' },
 ]
 

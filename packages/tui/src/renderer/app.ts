@@ -4428,7 +4428,7 @@ export class DifferentialApp {
             if (key === '\r' || key === '\n' || key === ' ') {
                 const opt = opts[this.state.toolPermissionSelectedIndex]
                 const val = (opt?.value as any) || 'deny'
-                this.resolveToolPermission(val)
+                this.resolveToolPermission(val === 'git-tracked' ? 'git_tracked' : val)
                 return
             }
             return
