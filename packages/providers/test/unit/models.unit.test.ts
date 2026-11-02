@@ -5,6 +5,8 @@ import {
     createProvider,
     MODEL_CONTEXT_WINDOWS,
     supportsModelThinking,
+    isFixedReasoningModel,
+    getReasoningSupportType,
 } from '../../src/models'
 
 describe('Models Utility & Context Windows (Unit)', () => {
