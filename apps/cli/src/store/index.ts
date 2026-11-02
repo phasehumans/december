@@ -131,8 +131,10 @@ export interface CliState {
     setSettingsStreamSpeed: (val: 'smooth' | 'instant') => void
     settingsSelectedIndex: number
     setSettingsSelectedIndex: (val: number) => void
-    settingsThinkingLevel: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
-    setSettingsThinkingLevel: (val: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high') => void
+    settingsThinkingLevel: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    setSettingsThinkingLevel: (
+        val: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    ) => void
     settingsSteeringMode: 'all' | 'one-at-a-time'
     setSettingsSteeringMode: (val: 'all' | 'one-at-a-time') => void
     settingsFollowUpMode: 'all' | 'one-at-a-time'

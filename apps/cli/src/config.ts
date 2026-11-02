@@ -186,7 +186,7 @@ export interface DecemberConfig {
     autoScroll?: boolean
     streamSpeed?: 'smooth' | 'instant'
     approvedTools?: string[]
-    thinkingLevel?: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    thinkingLevel?: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
     steeringMode?: 'all' | 'one-at-a-time'
     followUpMode?: 'all' | 'one-at-a-time'
     pathGuard?: boolean
