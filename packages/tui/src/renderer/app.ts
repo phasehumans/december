@@ -137,6 +137,7 @@ export interface DifferentialAppState {
     scrollOffset?: number
     isReadingMode: boolean
     isStreaming: boolean
+    promptQueue: string[]
     spinnerFrame: number
     statusMessage?: string
     expandTools: boolean
@@ -577,6 +578,7 @@ export class DifferentialApp {
             historyIndex: -1,
             isReadingMode: false,
             isStreaming: false,
+            promptQueue: [],
             spinnerFrame: 0,
             statusMessage: undefined,
             expandTools: false,
@@ -1565,6 +1567,7 @@ export class DifferentialApp {
             if (this.state.isStreaming) {
                 this.stopSpinner()
                 this.state.isStreaming = false
+                this.state.promptQueue = []
                 this.clearStatusMessage()
                 if (this.onAbortCallback) {
                     this.onAbortCallback()
@@ -5278,16 +5281,26 @@ export class DifferentialApp {
             this.state.promptHistory.push(raw)
             this.state.historyIndex = -1
 
-            this.state.messages.push({
-                role: 'user',
-                content: text,
-            })
-
             this.state.input = ''
             this.state.cursorPos = 0
             this.state.scrollOffset = undefined
             this.state.isReadingMode = false
             this.state.isFileAutocompleteVisible = false
+
+            if (this.state.isStreaming) {
+                this.state.promptQueue.push(text)
+                this.showToast(
+                    `Command queued (#${this.state.promptQueue.length}). Will run after turn finishes.`,
+                    'info'
+                )
+                this.render()
+                return
+            }
+
+            this.state.messages.push({
+                role: 'user',
+                content: text,
+            })
             this.render()
 
             if (this.onExecuteDirectCommandCallback) {
@@ -5307,11 +5320,6 @@ export class DifferentialApp {
         this.state.promptHistory.push(raw)
         this.state.historyIndex = -1
 
-        this.state.messages.push({
-            role: 'user',
-            content: text,
-        })
-
         this.state.input = ''
         this.state.cursorPos = 0
         this.state.overlayHistory = []
@@ -5319,11 +5327,58 @@ export class DifferentialApp {
         this.state.isReadingMode = false
         this.state.isFileAutocompleteVisible = false
 
+        if (this.state.isStreaming) {
+            this.state.promptQueue.push(text)
+            this.showToast(
+                `Prompt queued (#${this.state.promptQueue.length}). Will run after turn finishes.`,
+                'info'
+            )
+            this.render()
+            return
+        }
+
+        this.state.messages.push({
+            role: 'user',
+            content: text,
+        })
+
         this.render()
 
         if (this.onSubmitCallback) {
             this.onSubmitCallback(text)
         }
+    }
+
+    drainPromptQueue(): boolean {
+        if (this.state.isStreaming || this.state.promptQueue.length === 0) {
+            return false
+        }
+        const nextPrompt = this.state.promptQueue.shift()
+        if (!nextPrompt) return false
+
+        this.state.messages.push({
+            role: 'user',
+            content: nextPrompt,
+        })
+        this.state.scrollOffset = undefined
+        this.state.isReadingMode = false
+        this.render()
+
+        if (nextPrompt.startsWith('!') && this.onExecuteDirectCommandCallback) {
+            const rawCmd = nextPrompt.slice(1).trim()
+            this.onExecuteDirectCommandCallback(rawCmd)
+        } else if (this.onSubmitCallback) {
+            this.onSubmitCallback(nextPrompt)
+        }
+        return true
+    }
+
+    finishStream(): void {
+        this.clearStatusMessage()
+        this.stopSpinner()
+        this.state.isStreaming = false
+        this.render()
+        this.drainPromptQueue()
     }
 
     appendStreamDelta(delta: string): void {
@@ -5726,6 +5781,7 @@ export class DifferentialApp {
                 maxContextTokens: this.state.maxContextTokens,
                 tasksCount: this.state.tasks.length,
                 runningTasksCount: this.state.tasks.filter((t) => t.status === 'running').length,
+                queuedPromptsCount: this.state.promptQueue.length,
                 showExitConfirm: this.state.showExitConfirm,
                 toast: this.state.toast,
             })

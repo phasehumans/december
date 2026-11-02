@@ -588,6 +588,9 @@ async function main() {
             differentialApp.refreshWorkspaceFiles().catch(() => {
                 // Intentionally swallowed: refresh workspace files after agent turn
             })
+            setTimeout(() => {
+                differentialApp.drainPromptQueue()
+            }, 0)
         }
 
         return streamedResponse
@@ -1037,6 +1040,9 @@ async function main() {
             } finally {
                 differentialApp.state.isStreaming = false
                 differentialApp.render()
+                setTimeout(() => {
+                    differentialApp.drainPromptQueue()
+                }, 0)
             }
         },
         onUndo: async () => {
@@ -1152,6 +1158,16 @@ async function main() {
             }
         },
         onSubmit: async (promptText: string) => {
+            if (differentialApp.state.isStreaming) {
+                differentialApp.state.promptQueue.push(promptText)
+                differentialApp.showToast(
+                    `Prompt queued (#${differentialApp.state.promptQueue.length}). Will run after turn finishes.`,
+                    'info'
+                )
+                differentialApp.render()
+                return
+            }
+
             if (!differentialApp.state.isAuthenticated) {
                 differentialApp.state.messages.push({
                     role: 'assistant',

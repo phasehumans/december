@@ -21,6 +21,7 @@ export interface InputBarViewProps {
     tasksCount?: number
     runningTasksCount?: number
     mcpServersCount?: number
+    queuedPromptsCount?: number
     modeTag?: string
     showExitConfirm?: boolean
     toast?: { message: string; variant?: string } | null
@@ -273,6 +274,18 @@ export const InputBarView = {
                     style: { fg: THEME.colors.muted },
                 })
                 leftX += mcpText.length
+            }
+
+            // Queued prompts indicator
+            const queuedCount = props.queuedPromptsCount ?? 0
+            if (queuedCount > 0) {
+                const queuedText = ` · ${queuedCount} queued`
+                drawText(buffer, queuedText, {
+                    x: leftX,
+                    y: statusY,
+                    style: { fg: THEME.colors.brand },
+                })
+                leftX += queuedText.length
             }
 
             // Toast message if active

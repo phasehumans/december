@@ -129,7 +129,7 @@ export const CodeSearchMenuView = {
                         bold: isSelected,
                     },
                     highlightStyle: {
-                        fg: THEME.colors.warning,
+                        fg: THEME.colors.searchHighlight,
                         bold: true,
                     },
                 })

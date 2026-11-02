@@ -23,6 +23,8 @@ export interface FileViewMenuViewProps {
     searchQuery?: string
     matchLines?: number[]
     currentMatchIndex?: number
+    fileIndex?: number
+    totalFiles?: number
 }
 
 export const FileViewMenuView = {
@@ -46,13 +48,18 @@ export const FileViewMenuView = {
         const contentWidth = Math.max(10, width - x - gutterWidth - 5)
 
         // 1. Header: File path & line count on left, search query & coordinates on right
-        drawText(buffer, props.filePath || '(no file)', {
+        let fileTitle = props.filePath || '(no file)'
+        if (props.totalFiles && props.totalFiles > 1) {
+            const fileIdx = (props.fileIndex ?? 0) + 1
+            fileTitle = `[${fileIdx}/${props.totalFiles} files] ${fileTitle}`
+        }
+        drawText(buffer, fileTitle, {
             x,
             y,
             style: { fg: THEME.colors.text, bold: true },
         })
 
-        let headX = x + (props.filePath || '(no file)').length
+        let headX = x + fileTitle.length
         if (totalLines > 0) {
             const countLabel = ` · ${totalLines} line${totalLines === 1 ? '' : 's'}`
             drawText(buffer, countLabel, {
@@ -69,7 +76,7 @@ export const FileViewMenuView = {
             drawText(buffer, searchBadge, {
                 x: headX,
                 y,
-                style: { fg: THEME.colors.warning, bold: true },
+                style: { fg: THEME.colors.searchHighlight, bold: true },
             })
         }
 
@@ -146,7 +153,7 @@ export const FileViewMenuView = {
                     },
                 })
 
-                // Code text: crisp white for all code, yellow highlight on query, highlighted background for cursor line
+                // Code text: crisp white for all code, amber highlight on query, highlighted background for cursor line
                 const codeX = x + 2 + gutterWidth + 1
                 if (props.searchQuery) {
                     drawHighlightedText(buffer, lineText, props.searchQuery, {
@@ -159,9 +166,10 @@ export const FileViewMenuView = {
                             bold: isCursor,
                         },
                         highlightStyle: {
-                            fg: '#000000',
-                            bg: THEME.colors.warning,
+                            fg: THEME.colors.searchHighlight,
+                            bg: rowBg,
                             bold: true,
+                            underline: isCursor,
                         },
                     })
                 } else {
@@ -190,6 +198,9 @@ export const FileViewMenuView = {
         } else {
             if (props.searchQuery && props.matchLines && props.matchLines.length > 1) {
                 footerItems.push({ key: 'n/p', label: 'next/prev match' })
+            }
+            if (props.totalFiles && props.totalFiles > 1) {
+                footerItems.push({ key: '←/→', label: 'cycle file' })
             }
             footerItems.push(
                 { key: '↑/↓', label: 'scroll' },

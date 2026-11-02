@@ -2473,4 +2473,115 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         app.stop()
     })
+
+    it('enqueues prompts submitted during active streams in FIFO order and executes sequentially', () => {
+        const submittedPrompts: string[] = []
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSubmit: (prompt) => {
+                submittedPrompts.push(prompt)
+            },
+        })
+        app.start()
+
+        // Turn 1: normal submit while idle
+        app.state.input = 'first prompt'
+        app.submitPrompt()
+        expect(submittedPrompts).toEqual(['first prompt'])
+        expect(app.state.promptQueue.length).toBe(0)
+
+        // Turn 1 active: streaming starts
+        app.state.isStreaming = true
+
+        // User submits prompt 2 while streaming is active
+        app.state.input = 'second prompt queued'
+        app.submitPrompt()
+        expect(submittedPrompts).toEqual(['first prompt']) // NOT submitted immediately
+        expect(app.state.promptQueue).toEqual(['second prompt queued'])
+        expect(app.state.input).toBe('')
+        expect(app.state.toast?.message).toContain('Prompt queued (#1)')
+
+        // User submits prompt 3 while streaming is still active
+        app.state.input = 'third prompt queued'
+        app.submitPrompt()
+        expect(submittedPrompts).toEqual(['first prompt'])
+        expect(app.state.promptQueue).toEqual(['second prompt queued', 'third prompt queued'])
+        expect(app.state.input).toBe('')
+        expect(app.state.toast?.message).toContain('Prompt queued (#2)')
+
+        // Turn 1 finishes: stream stops
+        app.state.isStreaming = false
+        const drainedFirst = app.drainPromptQueue()
+        expect(drainedFirst).toBe(true)
+        expect(submittedPrompts).toEqual(['first prompt', 'second prompt queued'])
+        expect(app.state.promptQueue).toEqual(['third prompt queued'])
+
+        // Turn 2 finishes: stream stops
+        const drainedSecond = app.drainPromptQueue()
+        expect(drainedSecond).toBe(true)
+        expect(submittedPrompts).toEqual([
+            'first prompt',
+            'second prompt queued',
+            'third prompt queued',
+        ])
+        expect(app.state.promptQueue.length).toBe(0)
+
+        // No more items to drain
+        expect(app.drainPromptQueue()).toBe(false)
+
+        app.stop()
+    })
+
+    it('clears prompt queue on abort Ctrl+C during streaming', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        app.state.isStreaming = true
+        app.state.promptQueue = ['queued prompt 1', 'queued prompt 2']
+
+        // Ctrl+C aborts active stream and clears pending queued prompts
+        app.handleKey('\x03')
+        expect(app.state.isStreaming).toBe(false)
+        expect(app.state.promptQueue.length).toBe(0)
+        expect(app.state.toast?.message).toBe('Aborted.')
+
+        app.stop()
+    })
+
+    it('handles mouse wheel scrolling sequences without hijacking text selection', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        // Populate messages to allow scrolling
+        for (let i = 0; i < 30; i++) {
+            app.state.messages.push({
+                role: i % 2 === 0 ? 'user' : 'assistant',
+                content: `message line ${i}`,
+            })
+        }
+        app.render()
+
+        // Wheel up twice: \x1b[<64;20;10M
+        app.handleKey('\x1b[<64;20;10M')
+        app.handleKey('\x1b[<64;20;10M')
+        expect(app.state.isReadingMode).toBe(true)
+        const offsetAfterUp = app.state.scrollOffset!
+        expect(typeof offsetAfterUp).toBe('number')
+
+        // Wheel down once: \x1b[<65;20;10M
+        app.handleKey('\x1b[<65;20;10M')
+        expect(app.state.scrollOffset).toBe(offsetAfterUp + 3)
+
+        app.stop()
+    })
 })

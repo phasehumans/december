@@ -497,5 +497,17 @@ describe('Differential 2D Screen Buffer Engine', () => {
             screen.stop()
             expect(isRaw()).toBe(false)
         })
+
+        it('enables mouse wheel and bracketed paste modes without button click hijacking', () => {
+            const { screen, getWritten } = createMockScreen(10, 2)
+            screen.start()
+            const written = getWritten()
+            expect(written).toContain('\x1b[?1006h')
+            expect(written).toContain('\x1b[?1007h')
+            expect(written).toContain('\x1b[?2004h')
+            expect(written).not.toContain('\x1b[?1000h')
+            expect(written).not.toContain('\x1b[?1002h')
+            screen.stop()
+        })
     })
 })
