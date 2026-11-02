@@ -49,6 +49,79 @@ export function parseToolInput(input: any): any {
     return input && typeof input === 'object' ? input : {}
 }
 
+export function getToolActionVerb(name: string, isRunning: boolean): string {
+    const lower = name.toLowerCase()
+    if (isRunning) {
+        if (lower === 'read_file' || lower === 'view_file' || lower === 'read') return 'Reading'
+        if (lower === 'write_file' || lower === 'write_to_file' || lower === 'create_file') {
+            return 'Writing'
+        }
+        if (
+            lower === 'edit_file' ||
+            lower === 'replace_file_content' ||
+            lower === 'edit_diff' ||
+            lower === 'multi_replace_file_content'
+        ) {
+            return 'Editing'
+        }
+        if (
+            lower === 'run_command' ||
+            lower === 'bash' ||
+            lower === 'execute_command' ||
+            lower === 'terminal'
+        ) {
+            return 'Executing'
+        }
+        if (lower === 'search_web' || lower === 'web_search') return 'Searching web'
+        if (
+            lower === 'search' ||
+            lower === 'grep' ||
+            lower === 'code_search' ||
+            lower === 'find_by_name' ||
+            lower === 'grep_search' ||
+            lower === 'find_files'
+        ) {
+            return 'Searching'
+        }
+        if (lower === 'list_dir' || lower === 'ls') return 'Listing'
+        return 'Running'
+    } else {
+        if (lower === 'read_file' || lower === 'view_file' || lower === 'read') return 'Read'
+        if (lower === 'write_file' || lower === 'write_to_file' || lower === 'create_file') {
+            return 'Created'
+        }
+        if (
+            lower === 'edit_file' ||
+            lower === 'replace_file_content' ||
+            lower === 'edit_diff' ||
+            lower === 'multi_replace_file_content'
+        ) {
+            return 'Edited'
+        }
+        if (
+            lower === 'run_command' ||
+            lower === 'bash' ||
+            lower === 'execute_command' ||
+            lower === 'terminal'
+        ) {
+            return 'Executed'
+        }
+        if (lower === 'search_web' || lower === 'web_search') return 'Searched web'
+        if (
+            lower === 'search' ||
+            lower === 'grep' ||
+            lower === 'code_search' ||
+            lower === 'find_by_name' ||
+            lower === 'grep_search' ||
+            lower === 'find_files'
+        ) {
+            return 'Searched'
+        }
+        if (lower === 'list_dir' || lower === 'ls') return 'Listed'
+        return name
+    }
+}
+
 export function getDiscoveryTarget(
     kind: DiscoveryKind,
     tc: { name?: string; command?: string; input?: any }
@@ -128,7 +201,8 @@ export class MessageLineCache {
     private computeContentKey(
         msg: MessageItem,
         expandTools = false,
-        trailingSpacing = true
+        trailingSpacing = true,
+        tip?: string | null
     ): string {
         const text = msg.content || msg.text || ''
         const toolStatus = msg.toolCall?.status || ''
@@ -141,7 +215,8 @@ export class MessageLineCache {
                 : JSON.stringify(msg.toolCall?.input || '')
         const isStreaming = Boolean(msg.isStreaming)
         const isExpanded = Boolean(expandTools)
-        return `${msg.role}|${text}|${toolStatus}|${toolCommand}|${toolDuration}|${toolInput.slice(0, 50)}|${toolOutput.slice(-100)}|${isStreaming}|${isExpanded}|${trailingSpacing}`
+        const tipStr = isStreaming && tip ? tip : ''
+        return `${msg.role}|${text}|${toolStatus}|${toolCommand}|${toolDuration}|${toolInput.slice(0, 50)}|${toolOutput.slice(-100)}|${isStreaming}|${isExpanded}|${trailingSpacing}|${tipStr}`
     }
 
     /**
@@ -176,16 +251,16 @@ export class MessageLineCache {
                     : `${totalDurMs}ms`
                 : ''
 
-        let label = 'Read'
+        let label = isRunning ? 'Reading' : 'Read'
         let unit = 'files'
         if (kind === 'list_dir') {
-            label = 'ListDir'
+            label = isRunning ? 'Listing' : 'ListDir'
             unit = 'directories'
         } else if (kind === 'search') {
-            label = 'Search'
+            label = isRunning ? 'Searching' : 'Search'
             unit = 'queries'
         } else if (kind === 'web_search') {
-            label = 'WebSearch'
+            label = isRunning ? 'Searching web' : 'WebSearch'
             unit = 'queries'
         }
 
@@ -249,9 +324,10 @@ export class MessageLineCache {
         width: number,
         spinnerGlyph = '⠋ ',
         expandTools = false,
-        trailingSpacing = true
+        trailingSpacing = true,
+        tip?: string | null
     ): FormattedLine[] {
-        const contentKey = this.computeContentKey(msg, expandTools, trailingSpacing)
+        const contentKey = this.computeContentKey(msg, expandTools, trailingSpacing, tip)
         const cached = this.messageCache.get(msg)
 
         // For non-streaming messages or stable tools, return from cache if key and width match
@@ -342,9 +418,10 @@ export class MessageLineCache {
                     if (parts.length > 0) stats = ` (${parts.join(', ')})`
                 }
 
+                const editVerb = isRunning ? 'Editing ' : 'Edited '
                 lines.push([
                     { text: glyph, style: { fg: glyphColor } },
-                    { text: 'Edited ', style: { fg: THEME.colors.warning, bold: true } },
+                    { text: editVerb, style: { fg: THEME.colors.warning, bold: true } },
                     { text: cleanPath, style: { fg: THEME.colors.text } },
                     ...(stats ? [{ text: stats, style: { fg: THEME.colors.muted } }] : []),
                     ...(durStr
@@ -450,9 +527,10 @@ export class MessageLineCache {
                 const lineCount = content ? content.split(/\r?\n/).length : 0
                 const stats = lineCount > 0 ? ` (${lineCount} lines)` : ''
 
+                const writeVerb = isRunning ? 'Creating ' : 'Created '
                 lines.push([
                     { text: glyph, style: { fg: glyphColor } },
-                    { text: 'Created ', style: { fg: THEME.colors.warning, bold: true } },
+                    { text: writeVerb, style: { fg: THEME.colors.warning, bold: true } },
                     { text: cleanPath, style: { fg: THEME.colors.text } },
                     ...(stats ? [{ text: stats, style: { fg: THEME.colors.muted } }] : []),
                     ...(durStr
@@ -576,20 +654,24 @@ export class MessageLineCache {
                 const cmdStr = tc.command || `${tc.name}()`
                 const match = cmdStr.match(/^([A-Za-z0-9_]+)\(([\s\S]*)\)$/)
                 if (match) {
-                    const fnName = match[1]
+                    const fnName = match[1]!
                     const args = match[2]
+                    const displayLabel = isRunning ? getToolActionVerb(fnName, true) : fnName
                     lines.push([
                         { text: glyph, style: { fg: glyphColor } },
-                        { text: fnName, style: { fg: THEME.colors.warning, bold: true } },
+                        { text: displayLabel, style: { fg: THEME.colors.warning, bold: true } },
                         { text: `(${args})`, style: { fg: THEME.colors.muted } },
                         ...(durStr
                             ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
                             : []),
                     ])
                 } else {
+                    const displayLabel = isRunning
+                        ? getToolActionVerb(tc.name || cmdStr, true)
+                        : cmdStr
                     lines.push([
                         { text: glyph, style: { fg: glyphColor } },
-                        { text: cmdStr, style: { fg: THEME.colors.warning, bold: true } },
+                        { text: displayLabel, style: { fg: THEME.colors.warning, bold: true } },
                         ...(durStr
                             ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
                             : []),
@@ -691,6 +773,13 @@ export class MessageLineCache {
                         text: label,
                         style: { fg: THEME.colors.muted },
                     },
+                    ...(tip
+                        ? [
+                              { text: '  · ', style: { fg: THEME.colors.dim } },
+                              { text: 'tip: ', style: { fg: THEME.colors.dim } },
+                              { text: tip, style: { fg: THEME.colors.muted } },
+                          ]
+                        : []),
                 ])
                 lines.push([{ text: '', style: {} }])
             } else if (msg.content) {
@@ -730,8 +819,46 @@ export class MessageLineCache {
             }
         } else if (msg.role === 'assistant') {
             const text = msg.content || msg.text || ''
-            const formatted = formatMarkdownToLines(text, width - 2)
-            lines.push(...formatted)
+            const interruptMarker = 'Interrupted · What should December do instead?'
+            if (text.includes(interruptMarker)) {
+                const parts = text.split(interruptMarker)
+                const preText = parts[0]?.trimEnd() || ''
+                if (preText) {
+                    const formatted = formatMarkdownToLines(preText, width - 2)
+                    lines.push(...formatted)
+                }
+                lines.push([
+                    {
+                        text: interruptMarker,
+                        style: { fg: THEME.colors.muted, italic: true },
+                    },
+                ])
+                lines.push([{ text: '', style: {} }])
+            } else {
+                const formatted = formatMarkdownToLines(text, width - 2)
+                lines.push(...formatted)
+                lines.push([{ text: '', style: {} }])
+            }
+        } else if (msg.role === 'compaction' || (msg as any).type === 'compaction') {
+            const rawSummary = msg.content || (msg as any).summary || ''
+            const cleanSummary = rawSummary.replace(/^\[COMPACTED HISTORY SUMMARY\]\n?/i, '').trim()
+            lines.push([
+                { text: '⟳ ', style: { fg: THEME.colors.warning } },
+                {
+                    text: 'Context Compacted',
+                    style: { fg: THEME.colors.warning, italic: true, bold: true },
+                },
+            ])
+            if (cleanSummary) {
+                const summaryFormatted = formatMarkdownToLines(cleanSummary, width - 4)
+                for (const l of summaryFormatted) {
+                    l.unshift({ text: '  │ ', style: { fg: THEME.colors.border } })
+                    for (const seg of l) {
+                        if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
+                    }
+                }
+                lines.push(...summaryFormatted)
+            }
             lines.push([{ text: '', style: {} }])
         } else if (msg.role === 'error') {
             const rawText = msg.content || msg.text || ''
@@ -780,43 +907,20 @@ export class MessageLineCache {
     }
 
     /**
-     * Returns the aggregated formatted lines for all messages.
-     * Consolidates consecutive discovery blocks (Read, ListDir, Search, WebSearch)
-     * and stacks adjacent tool calls with compact vertical spacing.
+     * Formats a sequence of messages, grouping consecutive discovery tool calls.
      */
-    getLines(
-        messages: MessageItem[],
+    private formatMessageSequence(
+        msgs: MessageItem[],
         width: number,
-        options?: { spinnerGlyph?: string; expandTools?: boolean }
+        spinner: string,
+        expandTools: boolean,
+        tip?: string | null
     ): FormattedLine[] {
-        const spinner = options?.spinnerGlyph || '⠋ '
-        const expandTools = Boolean(options?.expandTools)
-
-        // Check if any message is actively streaming or running
-        const hasLiveActivity = messages.some(
-            (m) => m.isStreaming || m.toolCall?.status === 'running'
-        )
-
-        const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null
-        const lastKey = lastMsg ? this.computeContentKey(lastMsg, expandTools) : ''
-
-        if (
-            !hasLiveActivity &&
-            this.lastAggregateResult &&
-            this.lastAggregateMessages === messages &&
-            this.lastAggregateLength === messages.length &&
-            this.lastAggregateLastKey === lastKey &&
-            this.lastAggregateWidth === width &&
-            this.lastAggregateExpandTools === expandTools
-        ) {
-            return this.lastAggregateResult
-        }
-
-        const allLines: FormattedLine[] = []
+        const lines: FormattedLine[] = []
         let i = 0
 
-        while (i < messages.length) {
-            const msg = messages[i]
+        while (i < msgs.length) {
+            const msg = msgs[i]
             if (!msg) {
                 i++
                 continue
@@ -830,8 +934,8 @@ export class MessageLineCache {
             if (kind) {
                 // Check for consecutive discovery tools of the same kind
                 let j = i + 1
-                while (j < messages.length) {
-                    const nextMsg = messages[j]
+                while (j < msgs.length) {
+                    const nextMsg = msgs[j]
                     const nextIsTool = Boolean(
                         nextMsg && (nextMsg.role === 'tool' || nextMsg.toolCall)
                     )
@@ -851,17 +955,16 @@ export class MessageLineCache {
                 if (j - i >= 2) {
                     // Group of 2 or more discovery calls
                     const nextAfterGroupIsTool =
-                        j < messages.length &&
-                        Boolean(messages[j]?.role === 'tool' || messages[j]?.toolCall)
+                        j < msgs.length && Boolean(msgs[j]?.role === 'tool' || msgs[j]?.toolCall)
                     const groupLines = this.formatDiscoveryGroup(
                         kind,
-                        messages.slice(i, j),
+                        msgs.slice(i, j),
                         width,
                         spinner,
                         expandTools,
                         !nextAfterGroupIsTool
                     )
-                    allLines.push(...groupLines)
+                    lines.push(...groupLines)
                     i = j
                     continue
                 }
@@ -870,16 +973,152 @@ export class MessageLineCache {
             // Single message (tool or non-tool)
             if (isTool) {
                 const nextIsTool =
-                    i + 1 < messages.length &&
-                    Boolean(messages[i + 1]?.role === 'tool' || messages[i + 1]?.toolCall)
-                allLines.push(
-                    ...this.getMessageLines(msg, width, spinner, expandTools, !nextIsTool)
+                    i + 1 < msgs.length &&
+                    Boolean(msgs[i + 1]?.role === 'tool' || msgs[i + 1]?.toolCall)
+                lines.push(
+                    ...this.getMessageLines(msg, width, spinner, expandTools, !nextIsTool, tip)
                 )
             } else {
-                allLines.push(...this.getMessageLines(msg, width, spinner, expandTools, true))
+                lines.push(...this.getMessageLines(msg, width, spinner, expandTools, true, tip))
             }
 
             i++
+        }
+
+        return lines
+    }
+
+    /**
+     * Returns the aggregated formatted lines for all messages.
+     * Consolidates consecutive discovery blocks (Read, ListDir, Search, WebSearch),
+     * stacks adjacent tool calls with compact vertical spacing, and rolls up
+     * long autonomous turns (> 25 steps) when collapsed.
+     */
+    getLines(
+        messages: MessageItem[],
+        width: number,
+        options?: { spinnerGlyph?: string; expandTools?: boolean; tip?: string | null }
+    ): FormattedLine[] {
+        const spinner = options?.spinnerGlyph || '⠋ '
+        const expandTools = Boolean(options?.expandTools)
+        const tip = options?.tip
+
+        // Check if any message is actively streaming or running
+        const hasLiveActivity = messages.some(
+            (m) => m.isStreaming || m.toolCall?.status === 'running'
+        )
+
+        const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null
+        const lastKey = lastMsg ? this.computeContentKey(lastMsg, expandTools, true, tip) : ''
+
+        if (
+            !hasLiveActivity &&
+            this.lastAggregateResult &&
+            this.lastAggregateMessages === messages &&
+            this.lastAggregateLength === messages.length &&
+            this.lastAggregateLastKey === lastKey &&
+            this.lastAggregateWidth === width &&
+            this.lastAggregateExpandTools === expandTools
+        ) {
+            return this.lastAggregateResult
+        }
+
+        let allLines: FormattedLine[] = []
+
+        if (expandTools) {
+            allLines = this.formatMessageSequence(messages, width, spinner, expandTools, tip)
+        } else {
+            // Partition messages into conversational turns
+            interface Turn {
+                userMsg?: MessageItem
+                botMsgs: MessageItem[]
+            }
+            const turns: Turn[] = []
+            let currentTurn: Turn = { botMsgs: [] }
+
+            for (const msg of messages) {
+                if (msg.role === 'user') {
+                    if (currentTurn.userMsg || currentTurn.botMsgs.length > 0) {
+                        turns.push(currentTurn)
+                    }
+                    currentTurn = { userMsg: msg, botMsgs: [] }
+                } else {
+                    currentTurn.botMsgs.push(msg)
+                }
+            }
+            if (currentTurn.userMsg || currentTurn.botMsgs.length > 0) {
+                turns.push(currentTurn)
+            }
+
+            const MAX_VISIBLE_STEPS = 25
+            for (const turn of turns) {
+                if (turn.userMsg) {
+                    allLines.push(
+                        ...this.getMessageLines(
+                            turn.userMsg,
+                            width,
+                            spinner,
+                            expandTools,
+                            true,
+                            tip
+                        )
+                    )
+                }
+
+                if (turn.botMsgs.length > MAX_VISIBLE_STEPS) {
+                    const hiddenCount = turn.botMsgs.length - MAX_VISIBLE_STEPS
+                    const hasLeadingText =
+                        turn.botMsgs[0]?.role === 'assistant' && Boolean(turn.botMsgs[0]?.content)
+
+                    if (hasLeadingText) {
+                        allLines.push(
+                            ...this.getMessageLines(
+                                turn.botMsgs[0]!,
+                                width,
+                                spinner,
+                                expandTools,
+                                true,
+                                tip
+                            )
+                        )
+                        allLines.push([
+                            {
+                                text: `[+${hiddenCount} earlier steps hidden · press Ctrl+O to expand]`,
+                                style: { fg: THEME.colors.dim },
+                            },
+                        ])
+                        allLines.push([{ text: '', style: {} }])
+                        const tail = turn.botMsgs.slice(
+                            turn.botMsgs.length - (MAX_VISIBLE_STEPS - 1)
+                        )
+                        allLines.push(
+                            ...this.formatMessageSequence(tail, width, spinner, expandTools, tip)
+                        )
+                    } else {
+                        allLines.push([
+                            {
+                                text: `[+${hiddenCount} earlier steps hidden · press Ctrl+O to expand]`,
+                                style: { fg: THEME.colors.dim },
+                            },
+                        ])
+                        allLines.push([{ text: '', style: {} }])
+                        const tail = turn.botMsgs.slice(hiddenCount)
+                        allLines.push(
+                            ...this.formatMessageSequence(tail, width, spinner, expandTools, tip)
+                        )
+                    }
+                } else {
+                    allLines.push(
+                        ...this.formatMessageSequence(
+                            turn.botMsgs,
+                            width,
+                            spinner,
+                            expandTools,
+                            tip
+                        )
+                    )
+                }
+            }
         }
 
         if (!hasLiveActivity) {

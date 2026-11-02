@@ -7,6 +7,8 @@ export {
     MODEL_CONTEXT_WINDOWS,
     getModelContextWindow,
     supportsModelThinking,
+    isFixedReasoningModel,
+    getReasoningSupportType,
 } from './models.ts'
 export * from './providers/openai.ts'
 export * from './providers/anthropic.ts'

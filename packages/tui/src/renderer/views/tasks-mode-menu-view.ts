@@ -124,6 +124,9 @@ export const TasksModeMenuView = {
                 { key: '↑/↓', label: 'navigate' },
                 { key: 'enter', label: 'view log' },
                 { key: 'k', label: 'kill' },
+                { key: 'K', label: 'kill all' },
+                { key: 'c', label: 'copy' },
+                { key: 'x', label: 'clear done' },
                 { key: 'esc', label: 'dismiss' },
             ],
         })

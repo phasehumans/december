@@ -168,4 +168,49 @@ describe('Models Utility & Context Windows (Unit)', () => {
             expect(supportsModelThinking('grok-4.20-0309-reasoning')).toBe(true)
         })
     })
+
+    describe('isFixedReasoningModel', () => {
+        it('identifies fixed reasoning models correctly', () => {
+            expect(isFixedReasoningModel('deepseek-r1')).toBe(true)
+            expect(isFixedReasoningModel('deepseek-reasoner')).toBe(true)
+            expect(isFixedReasoningModel('qwq-32b')).toBe(true)
+            expect(isFixedReasoningModel('DeepSeek R1')).toBe(true)
+            expect(isFixedReasoningModel('r1-1776')).toBe(true)
+
+            expect(isFixedReasoningModel('o3-mini')).toBe(false)
+            expect(isFixedReasoningModel('claude-3-7-sonnet')).toBe(false)
+            expect(isFixedReasoningModel('gemini-2.5-pro')).toBe(false)
+            expect(isFixedReasoningModel('gpt-4o')).toBe(false)
+            expect(isFixedReasoningModel('')).toBe(false)
+            expect(isFixedReasoningModel(undefined)).toBe(false)
+        })
+    })
+
+    describe('getReasoningSupportType', () => {
+        it('categorizes models into controllable, fixed, or none', () => {
+            // Controllable reasoning models
+            expect(getReasoningSupportType('o3-mini')).toBe('controllable')
+            expect(getReasoningSupportType('claude-3-7-sonnet-20250219')).toBe('controllable')
+            expect(getReasoningSupportType('gemini-2.5-pro')).toBe('controllable')
+            expect(getReasoningSupportType('gemini-3.8-flash')).toBe('controllable')
+
+            // Fixed reasoning models
+            expect(getReasoningSupportType('deepseek-r1')).toBe('fixed')
+            expect(getReasoningSupportType('deepseek-reasoner')).toBe('fixed')
+            expect(getReasoningSupportType('qwq-32b')).toBe('fixed')
+
+            // Non-reasoning models
+            expect(getReasoningSupportType('gpt-4o')).toBe('none')
+            expect(getReasoningSupportType('gpt-4o-mini')).toBe('none')
+            expect(getReasoningSupportType('claude-3-5-sonnet-20241022')).toBe('none')
+            expect(getReasoningSupportType('gemini-1.5-pro')).toBe('none')
+            expect(getReasoningSupportType('codestral-2501')).toBe('none')
+
+            // Third-party gateways with deepseek or groq
+            expect(getReasoningSupportType('custom-model', 'https://api.deepseek.com')).toBe('none')
+            expect(getReasoningSupportType('custom-model', 'https://api.groq.com/openai/v1')).toBe(
+                'none'
+            )
+        })
+    })
 })

@@ -48,6 +48,7 @@ export interface MessageListViewProps {
     headerProps?: HeaderViewProps
     lineCache?: MessageLineCache
     expandTools?: boolean
+    tip?: string | null
 }
 
 export const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
@@ -79,6 +80,7 @@ export const MessageListView = {
             ...cache.getLines(messages, width, {
                 spinnerGlyph,
                 expandTools: props.expandTools,
+                tip: props.tip,
             })
         )
 
@@ -88,6 +90,13 @@ export const MessageListView = {
                 allLines.push([
                     { text: spinnerGlyph, style: { fg: THEME.colors.warning } },
                     { text: props.statusMessage, style: { fg: THEME.colors.muted } },
+                    ...(props.tip
+                        ? [
+                              { text: '  · ', style: { fg: THEME.colors.dim } },
+                              { text: 'tip: ', style: { fg: THEME.colors.dim } },
+                              { text: props.tip, style: { fg: THEME.colors.muted } },
+                          ]
+                        : []),
                 ])
                 allLines.push([{ text: '', style: {} }])
             } else {
@@ -100,6 +109,13 @@ export const MessageListView = {
                     allLines.push([
                         { text: spinnerGlyph, style: { fg: THEME.colors.brand } },
                         { text: 'Thinking...', style: { fg: THEME.colors.muted } },
+                        ...(props.tip
+                            ? [
+                                  { text: '  · ', style: { fg: THEME.colors.dim } },
+                                  { text: 'tip: ', style: { fg: THEME.colors.dim } },
+                                  { text: props.tip, style: { fg: THEME.colors.muted } },
+                              ]
+                            : []),
                     ])
                     allLines.push([{ text: '', style: {} }])
                 }

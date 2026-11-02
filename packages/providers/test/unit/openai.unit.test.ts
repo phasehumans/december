@@ -105,8 +105,10 @@ describe('OpenAI Provider Adapter (Unit)', () => {
         const testCases = [
             { thinkingLevel: 'minimal', expected: 'low' },
             { thinkingLevel: 'low', expected: 'low' },
+            { thinkingLevel: 'fast', expected: 'low' },
             { thinkingLevel: 'medium', expected: 'medium' },
             { thinkingLevel: 'high', expected: 'high' },
+            { thinkingLevel: 'deep', expected: 'high' },
             { thinkingLevel: 'auto', expected: undefined },
             { thinkingLevel: 'off', expected: undefined },
         ]

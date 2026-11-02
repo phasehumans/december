@@ -208,6 +208,44 @@ describe('Gemini Provider Adapter (Unit)', () => {
             thinkingBudget: 0,
         })
 
+        // 2b. Fast thinking level sets thinkingBudget to 0
+        const streamFast = provider.stream([{ role: 'user', content: 'test' }], [], undefined, {
+            thinkingLevel: 'fast',
+        })
+        for await (const _ of streamFast) {
+            // consume stream
+        }
+        expect(capturedConfig.config.thinkingConfig).toEqual({
+            thinkingBudget: 0,
+        })
+
+        // 2c. Deep thinking level sets thinkingBudget to 8192
+        const streamDeep = provider.stream([{ role: 'user', content: 'test' }], [], undefined, {
+            thinkingLevel: 'deep',
+        })
+        for await (const _ of streamDeep) {
+            // consume stream
+        }
+        expect(capturedConfig.config.thinkingConfig).toEqual({
+            thinkingBudget: 8192,
+            includeThoughts: true,
+        })
+
+        // 2d. Non-reasoning model (gemini-1.5-pro) never sets thinkingConfig
+        const streamNonReasoning = provider.stream(
+            [{ role: 'user', content: 'test' }],
+            [],
+            undefined,
+            {
+                model: 'gemini-1.5-pro',
+                thinkingLevel: 'deep',
+            }
+        )
+        for await (const _ of streamNonReasoning) {
+            // consume stream
+        }
+        expect(capturedConfig.config.thinkingConfig).toBeUndefined()
+
         // 3. Auto thinking level
         const streamAuto = provider.stream([{ role: 'user', content: 'test' }], [], undefined, {
             thinkingLevel: 'auto',

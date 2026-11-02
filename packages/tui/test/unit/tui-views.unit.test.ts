@@ -13,7 +13,7 @@ import { EffortMenuView } from '../../src/renderer/views/effort-menu-view'
 import { FileAutocompleteMenuView } from '../../src/renderer/views/file-autocomplete-menu-view'
 import { FileViewMenuView } from '../../src/renderer/views/file-view-menu-view'
 import { HeaderView } from '../../src/renderer/views/header-view'
-import { HelpMenuView } from '../../src/renderer/views/help-menu-view'
+import { HelpMenuView, SHORTCUTS } from '../../src/renderer/views/help-menu-view'
 import { InputBarView } from '../../src/renderer/views/input-bar-view'
 import { LoginMenuView } from '../../src/renderer/views/login-menu-view'
 import { MemoryViewMenuView } from '../../src/renderer/views/memory-view-menu-view'
@@ -302,37 +302,78 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(4)).toContain('esc')
             expect(buffer.getLine(12)).toContain('navigate')
         })
+
+        it('includes core shortcuts like file mention, tab autocomplete, and line editing in default SHORTCUTS', () => {
+            expect(SHORTCUTS.some((s) => s.key.includes('@'))).toBe(true)
+            expect(SHORTCUTS.some((s) => s.key === 'tab')).toBe(true)
+            expect(SHORTCUTS.some((s) => s.key.includes('alt / shift + enter'))).toBe(true)
+            expect(SHORTCUTS.some((s) => s.key.includes('ctrl+a'))).toBe(true)
+        })
     })
 
     describe('EffortMenuView', () => {
         it('renders reasoning depth options, selection indicator, active level, and footer', () => {
-            const buffer = new ScreenBuffer(70, 9)
+            const buffer = new ScreenBuffer(70, 7)
             EffortMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 70,
-                height: 9,
+                height: 7,
                 modelLabel: 'Claude 3.7 Sonnet',
-                currentLevel: 'medium',
-                selectedIndex: 3,
+                currentLevel: 'deep',
+                selectedIndex: 2,
             })
 
             expect(buffer.getLine(0)).toContain('Reasoning')
             expect(buffer.getLine(0)).toContain('Claude 3.7 Sonnet')
             expect(buffer.getLine(2)).toContain('Auto')
-            expect(buffer.getLine(3)).toContain('Off')
-            expect(buffer.getLine(4)).toContain('Low')
-            expect(buffer.getLine(5)).toContain('❭')
-            expect(buffer.getLine(5)).toContain('Medium')
-            expect(buffer.getLine(5)).toContain('(Current)')
-            expect(buffer.getLine(6)).toContain('High')
-            expect(buffer.getLine(8)).toContain('navigate')
-            expect(buffer.getLine(8)).toContain('enter select')
-            expect(buffer.getLine(8)).toContain('esc close')
+            expect(buffer.getLine(3)).toContain('Fast')
+            expect(buffer.getLine(4)).toContain('❭')
+            expect(buffer.getLine(4)).toContain('Deep')
+            expect(buffer.getLine(4)).toContain('(Current)')
+            expect(buffer.getLine(6)).toContain('navigate')
+            expect(buffer.getLine(6)).toContain('enter select')
+            expect(buffer.getLine(6)).toContain('esc close')
         })
 
         it('computes correct fixed height', () => {
-            expect(EffortMenuView.getHeight()).toBe(9)
+            expect(EffortMenuView.getHeight()).toBe(7)
+            expect(EffortMenuView.getHeight('none')).toBe(6)
+            expect(EffortMenuView.getHeight('fixed')).toBe(6)
+        })
+
+        it('renders message when model does not support reasoning', () => {
+            const buffer = new ScreenBuffer(70, 6)
+            EffortMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 70,
+                height: 6,
+                modelLabel: 'GPT-4o',
+                currentLevel: 'auto',
+                selectedIndex: 0,
+                reasoningSupport: 'none',
+            })
+            expect(buffer.getLine(0)).toContain('Reasoning')
+            expect(buffer.getLine(2)).toContain('does not support')
+            expect(buffer.getLine(5)).toContain('esc close')
+        })
+
+        it('renders message when model has fixed reasoning', () => {
+            const buffer = new ScreenBuffer(70, 6)
+            EffortMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 70,
+                height: 6,
+                modelLabel: 'DeepSeek R1',
+                currentLevel: 'auto',
+                selectedIndex: 0,
+                reasoningSupport: 'fixed',
+            })
+            expect(buffer.getLine(0)).toContain('Reasoning')
+            expect(buffer.getLine(2)).toContain('fixed reasoning')
+            expect(buffer.getLine(5)).toContain('esc close')
         })
     })
 
@@ -523,8 +564,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
             expect(buffer.getLine(0)).toContain('Context · Claude 3.5 Sonnet')
             expect(buffer.getLine(2)).toContain('██████')
-            expect(buffer.getLine(4)).toContain('Base System Prompt')
-            expect(buffer.getLine(4)).toContain('Tool Schemas')
+            expect(buffer.getLine(4)).toContain('Context Used')
+            expect(buffer.getLine(4)).toContain('Messages')
         })
 
         it('renders fullscreen progress bar scaling across terminal width', () => {

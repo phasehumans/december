@@ -16,6 +16,7 @@ describe('FileSessionRepository', () => {
     let mockStat: any
     let mockUnlink: any
     let mockRename: any
+    let mockAccess: any
 
     const sessionDir = path.join(os.tmpdir(), 'december-test-config', '.december', 'sessions')
 
@@ -28,6 +29,7 @@ describe('FileSessionRepository', () => {
         mockStat = spyOn(fs, 'stat')
         mockUnlink = spyOn(fs, 'unlink').mockResolvedValue(undefined as any)
         mockRename = spyOn(fs, 'rename').mockResolvedValue(undefined as any)
+        mockAccess = spyOn(fs, 'access').mockResolvedValue(undefined as any)
     })
 
     afterEach(() => {
@@ -224,13 +226,29 @@ describe('FileSessionRepository', () => {
     })
 
     describe('renameSession', () => {
-        test('renames file correctly', async () => {
+        test('renames file correctly and sanitizes', async () => {
             const repo = new FileSessionRepository()
-            await repo.renameSession('old-1', 'new-1')
+            await repo.renameSession('old-1', 'feature/new-1')
             expect(mockRename).toHaveBeenCalled()
             const call = mockRename.mock.calls[0]
             expect(call[0]).toContain('old-1.jsonl')
-            expect(call[1]).toContain('new-1.jsonl')
+            expect(call[1]).toContain('feature-new-1.jsonl')
+        })
+    })
+
+    describe('hasSession', () => {
+        test('returns true when session file exists', async () => {
+            const repo = new FileSessionRepository()
+            mockAccess.mockResolvedValueOnce(undefined as any)
+            const exists = await repo.hasSession('session-test')
+            expect(exists).toBe(true)
+        })
+
+        test('returns false when session file does not exist', async () => {
+            const repo = new FileSessionRepository()
+            mockAccess.mockRejectedValue(new Error('ENOENT'))
+            const exists = await repo.hasSession('missing-session')
+            expect(exists).toBe(false)
         })
     })
 })

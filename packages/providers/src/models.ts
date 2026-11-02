@@ -1519,7 +1519,7 @@ export function getModelContextWindow(value: string): number {
 
 export function supportsModelThinking(model?: string): boolean {
     if (!model) return false
-    let lower = model.toLowerCase()
+    let lower = model.toLowerCase().replace(/\s+/g, '-')
     if (lower.startsWith('openai/')) {
         lower = lower.slice('openai/'.length)
     }
@@ -1647,6 +1647,37 @@ export function supportsModelThinking(model?: string): boolean {
     }
 
     return false
+}
+
+export function isFixedReasoningModel(model?: string): boolean {
+    if (!model) return false
+    const lower = model.toLowerCase().replace(/\s+/g, '-')
+    return (
+        lower.includes('deepseek-reasoner') ||
+        lower.includes('deepseek-r1') ||
+        lower.includes('r1-1776') ||
+        lower.includes('qwq')
+    )
+}
+
+export function getReasoningSupportType(
+    model?: string,
+    baseURL?: string
+): 'controllable' | 'fixed' | 'none' {
+    if (!model) return 'none'
+    if (!supportsModelThinking(model)) return 'none'
+    if (isFixedReasoningModel(model)) return 'fixed'
+    if (
+        baseURL &&
+        (baseURL.includes('deepseek.com') ||
+            baseURL.includes('groq.com') ||
+            baseURL.includes('mistral.ai') ||
+            baseURL.includes('together.xyz') ||
+            baseURL.includes('hyperbolic.xyz'))
+    ) {
+        return 'none'
+    }
+    return 'controllable'
 }
 
 export interface ProviderConfig<T> {

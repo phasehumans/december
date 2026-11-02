@@ -18,7 +18,7 @@ import type { AgentEvent, AgentMessage, ToolCall, ToolResult } from '@december/s
 export function getAdaptiveThinkingLevel(
     messages: AgentMessage[],
     configuredLevel?: string
-): 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high' {
+): 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'fast' | 'deep' {
     const userMsgs = messages.filter((m) => m.role === 'user' && !m.isUI)
     if (userMsgs.length === 0) return 'off'
     const lastUserMsg = userMsgs[userMsgs.length - 1]
@@ -390,7 +390,10 @@ async function runInnerLoop(
             modelSupportsThinking && agent.thinkingLevel !== 'off'
                 ? getAdaptiveThinkingLevel(agent.messages, agent.thinkingLevel)
                 : 'off'
-        const initialStatus = effectiveThinkingLevel !== 'off' ? 'Thinking...' : 'Working...'
+        const initialStatus =
+            effectiveThinkingLevel !== 'off' && effectiveThinkingLevel !== 'fast'
+                ? 'Thinking...'
+                : 'Working...'
 
         eventQueue.push({ type: 'TurnStart', initialStatus })
 

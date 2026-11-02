@@ -880,34 +880,40 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         })
         app.start()
 
-        // 1. Direct argument invocation: /effort high
-        app.executeCommand('effort high')
-        expect(app.state.thinkingLevel).toBe('high')
-        expect(selectedLevel).toBe('high')
+        // 1. Direct argument invocation: /effort deep
+        app.executeCommand('effort deep')
+        expect(app.state.thinkingLevel).toBe('deep')
+        expect(selectedLevel).toBe('deep')
         expect(app.state.activeOverlay).toBe('none')
-        expect(app.state.toast?.message).toBe('Reasoning set to High.')
+        expect(app.state.toast?.message).toBe('Reasoning set to Deep.')
 
         // 2. Open interactive effort menu: /effort
         app.executeCommand('effort')
         expect(app.state.activeOverlay).toBe('effort')
-        // Pre-selected index should match current 'high' (index 4)
-        expect(app.state.effortSelectedIndex).toBe(4)
+        // Pre-selected index should match current 'deep' (index 2)
+        expect(app.state.effortSelectedIndex).toBe(2)
 
-        // Up arrow navigates to Medium (index 3)
+        // Up arrow navigates to Fast (index 1)
         app.handleKey('\x1b[A')
-        expect(app.state.effortSelectedIndex).toBe(3)
+        expect(app.state.effortSelectedIndex).toBe(1)
 
-        // Enter selects Medium, invokes callback, and closes overlay
+        // Enter selects Fast, invokes callback, and closes overlay
         app.handleKey('\r')
         expect(app.state.activeOverlay).toBe('none')
-        expect(app.state.thinkingLevel).toBe('medium')
-        expect(selectedLevel).toBe('medium')
-        expect(app.state.toast?.message).toBe('Reasoning set to Medium.')
+        expect(app.state.thinkingLevel).toBe('fast')
+        expect(selectedLevel).toBe('fast')
+        expect(app.state.toast?.message).toBe('Reasoning set to Fast.')
 
-        // 3. /reasoning alias with argument
+        // 3. /reasoning alias with argument (backward compatible 'low' normalizes to 'fast')
         app.executeCommand('reasoning low')
-        expect(app.state.thinkingLevel).toBe('low')
-        expect(selectedLevel).toBe('low')
+        expect(app.state.thinkingLevel).toBe('fast')
+        expect(selectedLevel).toBe('fast')
+
+        // 4. Non-reasoning model handling
+        app.state.activeModel = 'gpt-4o'
+        app.executeCommand('effort deep')
+        expect(app.state.thinkingLevel).toBe('deep')
+        expect(app.state.toast?.message).toContain('runs in standard mode')
 
         app.stop()
     })
@@ -944,6 +950,13 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // Left arrow cycles back to commands tab
         app.handleKey('\x1b[D')
         expect(app.state.helpActiveTab).toBe('commands')
+
+        // Verify that commands tab only receives official commands and no skill commands
+        const cmds = app.getAllCommands()
+        expect(cmds.length).toBeGreaterThan(0)
+        expect(cmds.every((c) => !c.name.startsWith('skill:'))).toBe(true)
+        expect(cmds.some((c) => c.name === 'clear')).toBe(true)
+        expect(cmds.some((c) => c.name === 'diff')).toBe(true)
 
         // 'q' closes help overlay
         app.handleKey('q')
@@ -2539,7 +2552,9 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.executeCommand('fork feature-branch')
         expect(forkTarget).toBe('feature-branch')
         expect(app.state.sessionId).toBe('session-forked')
-        expect(app.state.toast?.message).toBe('Forked conversation into a new branch.')
+        expect(app.state.toast?.message).toBe(
+            'Forked conversation into a new branch: session-forked.'
+        )
 
         app.stop()
     })
@@ -2785,6 +2800,150 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         const asstMsg = app.state.messages.find((m) => m.role === 'assistant')
         expect(asstMsg).toBeDefined()
         expect(asstMsg?.content).toBe('Answer token 1 Answer token 2 Answer token 3')
+
+        app.stop()
+    })
+
+    it('immediately aborts agent streaming on Escape key and triggers onAbort callback', () => {
+        let abortCalled = false
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onAbort: () => {
+                abortCalled = true
+            },
+        })
+        app.start()
+
+        app.state.isStreaming = true
+        app.state.statusMessage = 'Thinking...'
+        app.state.promptQueue = ['queued prompt']
+
+        // Press Escape (\x1b)
+        app.handleKey('\x1b')
+
+        expect(abortCalled).toBe(true)
+        expect(app.state.isStreaming).toBe(false)
+        expect(app.state.promptQueue.length).toBe(0)
+        expect(app.state.statusMessage).toBeUndefined()
+        expect(app.state.toast?.message).toBe('Aborted.')
+
+        app.stop()
+    })
+
+    it('supports full readline editing keybindings (Ctrl+A, Ctrl+E, Ctrl+K, Ctrl+U, Ctrl+W, Alt+B, Alt+F, Ctrl+P, Ctrl+N, Ctrl+L, Ctrl+H, Ctrl+Y)', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        app.state.promptHistory = ['first prompt', 'second prompt']
+
+        // Type input
+        app.setInput('hello brave new world')
+        expect(app.state.cursorPos).toBe(21)
+
+        // Ctrl+A: start of line
+        app.handleKey('\x01')
+        expect(app.state.cursorPos).toBe(0)
+
+        // Ctrl+E: end of line
+        app.handleKey('\x05')
+        expect(app.state.cursorPos).toBe(21)
+
+        // Alt+B / Ctrl+Left: word jump backward
+        app.handleKey('\x1bb')
+        expect(app.state.cursorPos).toBe(16) // before 'world'
+
+        // Alt+F / Ctrl+Right: word jump forward
+        app.handleKey('\x1bf')
+        expect(app.state.cursorPos).toBe(21)
+
+        // Ctrl+W: word delete backward
+        app.handleKey('\x17')
+        expect(app.state.input).toBe('hello brave new ')
+        expect(app.state.cursorPos).toBe(16)
+
+        // Ctrl+K: delete to end
+        app.state.cursorPos = 6 // after 'hello '
+        app.handleKey('\x0b')
+        expect(app.state.input).toBe('hello ')
+
+        // Ctrl+U: delete to start
+        app.handleKey('\x15')
+        expect(app.state.input).toBe('')
+        expect(app.state.cursorPos).toBe(0)
+
+        // Ctrl+P: history previous
+        app.handleKey('\x10')
+        expect(app.state.input).toBe('second prompt')
+
+        app.handleKey('\x10')
+        expect(app.state.input).toBe('first prompt')
+
+        // Ctrl+N: history next
+        app.handleKey('\x0e')
+        expect(app.state.input).toBe('second prompt')
+
+        // Ctrl+L: toggle command menu
+        app.state.input = ''
+        app.handleKey('\x0c')
+        expect(app.state.input).toBe('/')
+
+        app.handleKey('\x0c')
+        expect(app.state.input).toBe('')
+
+        // Ctrl+H: open sessions overlay when prompt is empty
+        app.handleKey('\x08')
+        expect(app.state.activeOverlay as string).toBe('session')
+        app.state.activeOverlay = 'none'
+
+        // Ctrl+Y: quick copy last response
+        app.state.messages.push({ role: 'assistant', content: 'test response content' })
+        app.handleKey('\x19')
+        expect(app.state.toast?.message).toBe('Copied last response to clipboard.')
+
+        app.stop()
+    })
+
+    it('supports tasks mode batch shortcuts: K (kill all), x (clear completed), c (copy log)', () => {
+        const killed: string[] = []
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            tasks: [
+                { id: 'task-1', command: 'bun test', status: 'running', output: 'log 1' },
+                { id: 'task-2', command: 'npm build', status: 'running', output: 'log 2' },
+                { id: 'task-3', command: 'git fetch', status: 'completed', output: 'log 3' },
+            ],
+            onKillTask: (id) => {
+                killed.push(id)
+            },
+        })
+        app.start()
+
+        app.state.activeOverlay = 'tasks'
+        app.state.tasksSelectedIndex = 0
+
+        // Press 'c' to copy task-1 log
+        app.handleKey('c')
+        expect(app.state.toast?.message).toBe('Copied task log to clipboard.')
+
+        // Press 'K' to kill all running tasks
+        app.handleKey('K')
+        expect(killed).toEqual(['task-1', 'task-2'])
+        expect(app.state.tasks[0]?.status).toBe('failed')
+        expect(app.state.tasks[1]?.status).toBe('failed')
+        expect(app.state.toast?.message).toBe('Terminated 2 running tasks.')
+
+        // Press 'x' to clear completed/failed tasks
+        app.handleKey('x')
+        expect(app.state.tasks.length).toBe(0)
+        expect(app.state.toast?.message).toBe('Cleared 3 finished tasks.')
 
         app.stop()
     })

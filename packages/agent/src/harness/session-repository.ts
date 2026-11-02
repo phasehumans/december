@@ -5,4 +5,6 @@ export interface SessionRepository {
     loadContext(sessionId: string): Promise<AgentMessage[]>
     deleteSession?(sessionId: string): Promise<void>
     renameSession?(oldSessionId: string, newSessionId: string): Promise<void>
+    hasSession?(sessionId: string): Promise<boolean>
+    listSessions?(): Promise<any[]>
 }

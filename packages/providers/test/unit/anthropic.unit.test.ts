@@ -68,6 +68,7 @@ describe('Anthropic Provider Adapter (Unit)', () => {
             { thinkingLevel: 'low', expectedBudget: 2048, expectedMaxTokens: 4096 },
             { thinkingLevel: 'medium', expectedBudget: 4096, expectedMaxTokens: 5120 },
             { thinkingLevel: 'high', expectedBudget: 8192, expectedMaxTokens: 9216 },
+            { thinkingLevel: 'deep', expectedBudget: 8192, expectedMaxTokens: 9216 },
         ]
 
         for (const { thinkingLevel, expectedBudget, expectedMaxTokens } of testCases) {
@@ -122,6 +123,49 @@ describe('Anthropic Provider Adapter (Unit)', () => {
             // Intentionally empty: consuming stream generator to capture payload
         }
         expect(capturedPayload.thinking).toEqual({ type: 'adaptive' })
+    })
+
+    it('disables thinking when thinkingLevel is fast or model is non-reasoning', async () => {
+        let capturedPayload: any = null
+        const mockClient: any = {
+            messages: {
+                create: async (payload: any) => {
+                    capturedPayload = payload
+                    return (async function* () {})()
+                },
+            },
+        }
+
+        const provider = anthropicProvider(undefined, undefined, mockClient)
+
+        // 1. Fast thinking level disables thinking
+        const streamFast = provider.stream(
+            [{ role: 'user', content: 'test' }],
+            undefined,
+            undefined,
+            {
+                thinkingLevel: 'fast',
+            }
+        )
+        for await (const _ of streamFast) {
+            // consume stream
+        }
+        expect(capturedPayload.thinking).toBeUndefined()
+
+        // 2. Non-reasoning model (claude-3-5-sonnet) never sets thinking
+        const streamNonReasoning = provider.stream(
+            [{ role: 'user', content: 'test' }],
+            undefined,
+            undefined,
+            {
+                model: 'claude-3-5-sonnet-20241022',
+                thinkingLevel: 'deep',
+            }
+        )
+        for await (const _ of streamNonReasoning) {
+            // consume stream
+        }
+        expect(capturedPayload.thinking).toBeUndefined()
     })
 
     it('streams text deltas, thinking deltas, tool_use blocks, and usage metadata', async () => {

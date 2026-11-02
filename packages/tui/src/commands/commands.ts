@@ -127,7 +127,8 @@ export const COMMANDS: Command[] = [
         value: '/fork',
         action: async (ctx) => {
             if (ctx.agent) {
-                const newId = await ctx.agent.forkContext()
+                const target = ctx.args ? ctx.args.trim() : undefined
+                const newId = await ctx.agent.forkContext(target)
                 ctx.toast.show({ variant: 'success', message: `Forked to new session: ${newId}` })
             }
         },

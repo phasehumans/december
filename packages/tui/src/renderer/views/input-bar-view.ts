@@ -319,6 +319,8 @@ export const InputBarView = {
             if (props.contextTokens !== undefined) {
                 const tokensFormatted = formatTokenCount(props.contextTokens)
                 let tokenLabel: string
+                let tokenFg: string = THEME.colors.muted
+                let tokenBold = false
                 if (props.maxContextTokens && props.maxContextTokens > 0) {
                     const maxFormatted = formatTokenCount(props.maxContextTokens)
                     const pct = Math.min(
@@ -326,6 +328,12 @@ export const InputBarView = {
                         Math.round((props.contextTokens / props.maxContextTokens) * 100)
                     )
                     tokenLabel = `${tokensFormatted} / ${maxFormatted} (${pct}%)`
+                    if (pct >= 90) {
+                        tokenFg = THEME.colors.error
+                        tokenBold = true
+                    } else if (pct >= 70) {
+                        tokenFg = THEME.colors.warning
+                    }
                 } else {
                     tokenLabel = `${tokensFormatted} tokens`
                 }
@@ -334,7 +342,7 @@ export const InputBarView = {
                 drawText(buffer, tokenLabel, {
                     x: rightX,
                     y: statusY,
-                    style: { fg: THEME.colors.muted },
+                    style: { fg: tokenFg, bold: tokenBold },
                 })
             }
         }

@@ -380,4 +380,146 @@ describe('MessageLineCache', () => {
         expect(expandedText).toContain('log line 25')
         expect(expandedText).not.toContain('more lines · Ctrl+O to toggle')
     })
+
+    it('renders Context Compacted banner and summary correctly', () => {
+        const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            {
+                role: 'compaction' as any,
+                content:
+                    '[COMPACTED HISTORY SUMMARY]\nUser asked to refactor auth and add jwt verification.',
+            },
+        ]
+
+        const lines = cache.getLines(messages, 100)
+        const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(text).toContain('Context Compacted')
+        expect(text).toContain('User asked to refactor auth and add jwt verification.')
+    })
+
+    it('formats stream interrupt notice with muted styling', () => {
+        const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            {
+                role: 'assistant',
+                content:
+                    'I will start by reading the config file.\n\nInterrupted · What should December do instead?',
+            },
+        ]
+
+        const lines = cache.getLines(messages, 100)
+        const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(text).toContain('I will start by reading the config file.')
+        expect(text).toContain('Interrupted · What should December do instead?')
+
+        const interruptLine = lines.find((l) =>
+            l.some((s) => s.text.includes('Interrupted · What should December do instead?'))
+        )
+        expect(interruptLine).toBeDefined()
+        const seg = interruptLine?.find((s) => s.text.includes('Interrupted'))
+        expect(seg?.style.italic).toBe(true)
+    })
+
+    it('displays active contextual verbs when tools are running and past tense when completed', () => {
+        const cache = new MessageLineCache()
+        const runningMessages: MessageItem[] = [
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 't-edit',
+                    name: 'edit_file',
+                    input: { TargetFile: 'src/auth.ts', Target: 'a', Replacement: 'b' },
+                    status: 'running',
+                },
+            },
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 't-write',
+                    name: 'write_file',
+                    input: { TargetFile: 'src/new.ts', Content: 'code' },
+                    status: 'running',
+                },
+            },
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 't-sh',
+                    name: 'run_command',
+                    command: 'run_command(npm test)',
+                    status: 'running',
+                },
+            },
+        ]
+
+        const runningText = cache
+            .getLines(runningMessages, 100)
+            .map((l) => l.map((s) => s.text).join(''))
+            .join('\n')
+        expect(runningText).toContain('Editing src/auth.ts')
+        expect(runningText).toContain('Creating src/new.ts')
+        expect(runningText).toContain('Executing(npm test)')
+
+        const completedMessages: MessageItem[] = [
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 't-edit',
+                    name: 'edit_file',
+                    input: { TargetFile: 'src/auth.ts', Target: 'a', Replacement: 'b' },
+                    status: 'success',
+                },
+            },
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 't-write',
+                    name: 'write_file',
+                    input: { TargetFile: 'src/new.ts', Content: 'code' },
+                    status: 'success',
+                },
+            },
+        ]
+
+        const completedText = cache
+            .getLines(completedMessages, 100)
+            .map((l) => l.map((s) => s.text).join(''))
+            .join('\n')
+        expect(completedText).toContain('Edited src/auth.ts')
+        expect(completedText).toContain('Created src/new.ts')
+    })
+
+    it('rolls up long turns exceeding 25 steps into a collapsed banner and expands on expandTools: true', () => {
+        const cache = new MessageLineCache()
+        const toolMessages: MessageItem[] = Array.from({ length: 30 }, (_, i) => ({
+            role: 'tool',
+            toolCall: {
+                id: `tool-${i}`,
+                name: 'run_command',
+                command: `cmd_${i}()`,
+                status: 'success' as const,
+            },
+        }))
+
+        const messages: MessageItem[] = [
+            { role: 'user', content: 'Run long workflow' },
+            ...toolMessages,
+        ]
+
+        // Collapsed (default)
+        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
+        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(collapsedText).toContain('[+5 earlier steps hidden · press Ctrl+O to expand]')
+        // Earlier steps (cmd_0) should be hidden
+        expect(collapsedText).not.toContain('cmd_0()')
+        // Latest step (cmd_29) should be visible
+        expect(collapsedText).toContain('cmd_29()')
+
+        // Expanded (expandTools: true)
+        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
+        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(expandedText).not.toContain('earlier steps hidden')
+        expect(expandedText).toContain('cmd_0()')
+        expect(expandedText).toContain('cmd_29()')
+    })
 })

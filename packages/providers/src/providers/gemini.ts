@@ -104,7 +104,7 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
             const thinkingLevel = modelOptions?.thinkingLevel
             let thinkingConfig: { thinkingBudget?: number; includeThoughts?: boolean } | undefined
             if (supportsThinking) {
-                if (thinkingLevel === 'off') {
+                if (thinkingLevel === 'off' || thinkingLevel === 'fast') {
                     thinkingConfig = { thinkingBudget: 0 }
                 } else if (thinkingLevel && thinkingLevel !== 'auto') {
                     const budgetMap: Record<string, number> = {
@@ -112,6 +112,7 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
                         low: 2048,
                         medium: 4096,
                         high: 8192,
+                        deep: 8192,
                     }
                     const budget = budgetMap[thinkingLevel]
                     if (budget !== undefined) {

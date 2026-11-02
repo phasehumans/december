@@ -188,6 +188,36 @@ describe('Agent core functionality (Unit)', () => {
         expect(agent.messages[1]!.content).toBe('msg 1')
     })
 
+    test('forkContext sanitizes illegal path characters and prevents collisions', async () => {
+        const existing = new Set<string>(['existing-session', 'existing-session-1'])
+        const store: Record<string, any[]> = {}
+        const repo = {
+            saveContext: async (id: string, msgs: any[]) => {
+                store[id] = [...msgs]
+            },
+            loadContext: async (id: string) => store[id] || [],
+            hasSession: async (id: string) => existing.has(id),
+        }
+
+        const agent = new Agent({
+            sessionId: 'orig-session',
+            llm: new MockLLM('mock'),
+            tools: [],
+            operations: mockOperations,
+            sessionRepository: repo,
+        })
+
+        // Sanitization of slashes and special characters
+        const sanitized = await agent.forkContext('feature/login:v2')
+        expect(sanitized).toBe('feature-login-v2')
+        expect(agent.sessionId).toBe('feature-login-v2')
+
+        // Collision avoidance when session already exists
+        const collisionResolved = await agent.forkContext('existing-session')
+        expect(collisionResolved).toBe('existing-session-2')
+        expect(agent.sessionId).toBe('existing-session-2')
+    })
+
     test('setLLM updates the llm provider', () => {
         const agent = new Agent({
             llm: new MockLLM('mock1'),

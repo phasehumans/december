@@ -154,10 +154,10 @@ export function codexResponsesProvider(
             }
 
             const thinkingLevel = modelOptions?.thinkingLevel
-            if (thinkingLevel && thinkingLevel !== 'off') {
+            if (thinkingLevel && thinkingLevel !== 'off' && thinkingLevel !== 'fast') {
                 requestBody.reasoning = {
                     effort:
-                        thinkingLevel === 'high'
+                        thinkingLevel === 'high' || thinkingLevel === 'deep'
                             ? 'high'
                             : thinkingLevel === 'minimal' || thinkingLevel === 'low'
                               ? 'low'

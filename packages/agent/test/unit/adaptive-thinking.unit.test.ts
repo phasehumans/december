@@ -111,7 +111,15 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix typo' }], 'high')).toBe(
             'high'
         )
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix typo' }], 'deep')).toBe(
+            'deep'
+        )
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix typo' }], 'fast')).toBe(
+            'fast'
+        )
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hi' }], 'high')).toBe('off')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hi' }], 'deep')).toBe('off')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hi' }], 'fast')).toBe('off')
     })
 
     it('handles non-string user message content safely', () => {

@@ -226,9 +226,29 @@ export class FileSessionRepository implements SessionRepository {
         }
     }
 
+    async hasSession(sessionId: string): Promise<boolean> {
+        const sanitized = sessionId.replace(/[\\/:\*\?"<>\|]/g, '-').replace(/\.+/g, '-')
+        const historyPath = path.join(this.sessionDir, `${sanitized}.jsonl`)
+        try {
+            await fs.access(historyPath)
+            return true
+        } catch {
+            if (this.legacySessionDir) {
+                try {
+                    await fs.access(path.join(this.legacySessionDir, `${sanitized}.jsonl`))
+                    return true
+                } catch {
+                    return false
+                }
+            }
+            return false
+        }
+    }
+
     async renameSession(oldSessionId: string, newSessionId: string): Promise<void> {
+        const sanitizedNew = newSessionId.replace(/[\\/:\*\?"<>\|]/g, '-').replace(/\.+/g, '-')
         const oldPath = path.join(this.sessionDir, `${oldSessionId}.jsonl`)
-        const newPath = path.join(this.sessionDir, `${newSessionId}.jsonl`)
+        const newPath = path.join(this.sessionDir, `${sanitizedNew}.jsonl`)
         await fs.rename(oldPath, newPath)
     }
 }

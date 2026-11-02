@@ -30,7 +30,7 @@ export interface AgentConfig {
     sessionRepository?: SessionRepository
     hooks?: AgentHooks
     convertToLlm?: (messages: AgentMessage[]) => Message[]
-    thinkingLevel?: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    thinkingLevel?: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
     steeringMode?: 'all' | 'one-at-a-time'
     followUpMode?: 'all' | 'one-at-a-time'
     workspaceDir?: string
@@ -70,6 +70,17 @@ class PendingMessageQueue {
     }
 }
 
+export function sanitizeSessionId(rawName: string): string {
+    const cleaned = rawName
+        .trim()
+        .replace(/[\\/:\*\?"<>\|]/g, '-')
+        .replace(/\.+/g, '-')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '')
+    return cleaned || `session-${Date.now()}`
+}
+
 export class Agent {
     public conversation: ConversationManager
     public tools: Map<string, Tool> = new Map()
@@ -81,7 +92,7 @@ export class Agent {
     public operations: PlatformAdapter
     public env: Map<string, string>
     public modelOptions?: Record<string, any>
-    public thinkingLevel?: 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    public thinkingLevel?: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
     public steeringQueue: PendingMessageQueue
     public followUpQueue: PendingMessageQueue
     public activeAbortController?: AbortController
@@ -303,7 +314,16 @@ export class Agent {
     }
 
     public async forkContext(newSessionId?: string) {
-        this.sessionId = newSessionId || `session-${Date.now()}`
+        let targetId = newSessionId ? sanitizeSessionId(newSessionId) : `session-${Date.now()}`
+        if (this.sessionRepository?.hasSession) {
+            let uniqueId = targetId
+            let counter = 1
+            while (await this.sessionRepository.hasSession(uniqueId)) {
+                uniqueId = `${targetId}-${counter++}`
+            }
+            targetId = uniqueId
+        }
+        this.sessionId = targetId
         await this.saveContext()
         return this.sessionId
     }

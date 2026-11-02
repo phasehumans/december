@@ -3,9 +3,10 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 
+import { getReasoningSupportType } from '@december/providers'
 import { PROVIDER_BILLING_LINKS } from '@december/shared'
 
-import { getAllAvailableCommands } from '../commands/filter-commands'
+import { COMMANDS } from '../commands/commands'
 import {
     UNIFIED_PROVIDER_MENU_ITEMS,
     SUBSCRIPTION_PROVIDER_ITEMS,
@@ -14,6 +15,7 @@ import {
     PROVIDER_KEY_NOTES,
     formatProviderName,
 } from '../constants/providers'
+import { getNextTip } from '../constants/tips'
 import { writeToClipboard } from '../utils/clipboard'
 import {
     groupCodeSearchResults,
@@ -51,7 +53,12 @@ import { CodeSearchMenuView, CODE_SEARCH_WINDOW_SIZE } from './views/code-search
 import { CommandMenuView, WINDOW_SIZE as CMD_WINDOW_SIZE } from './views/command-menu-view'
 import { ContextMenuView } from './views/context-menu-view'
 import { DiffViewMenuView, DIFF_WINDOW_SIZE } from './views/diff-view-menu-view'
-import { EffortMenuView, type ReasoningLevel, REASONING_OPTIONS } from './views/effort-menu-view'
+import {
+    EffortMenuView,
+    type ReasoningLevel,
+    REASONING_OPTIONS,
+    normalizeReasoningLevel,
+} from './views/effort-menu-view'
 import { FileAutocompleteMenuView, FILE_WINDOW_SIZE } from './views/file-autocomplete-menu-view'
 import { FileViewMenuView } from './views/file-view-menu-view'
 import { HeaderView, type HeaderViewProps } from './views/header-view'
@@ -140,6 +147,7 @@ export interface DifferentialAppState {
     promptQueue: string[]
     spinnerFrame: number
     statusMessage?: string
+    activeTip?: string | null
     expandTools: boolean
     activeModel?: string
     modelLabel?: string
@@ -465,6 +473,7 @@ export class DifferentialApp {
     private exitTimer: any = null
     private toastTimer: any = null
     private spinnerTimer: any = null
+    private streamStartTime = 0
     private onSettingChangeCallback?: (settingId: string, newValue: string) => Promise<void> | void
     private onKillTaskCallback?: (taskId: string) => boolean | void
     private onSubmitCallback?: (prompt: string) => void
@@ -587,6 +596,7 @@ export class DifferentialApp {
             promptQueue: [],
             spinnerFrame: 0,
             statusMessage: undefined,
+            activeTip: null,
             expandTools: false,
             cliVersion: options?.cliVersion || '0.4.15',
             latestVersion: options?.latestVersion,
@@ -875,11 +885,10 @@ export class DifferentialApp {
     }
 
     getAllCommands(): { name: string; description: string }[] {
-        try {
-            return getAllAvailableCommands(this.state.cwd || process.cwd())
-        } catch {
-            return []
-        }
+        return COMMANDS.map((c) => ({
+            name: c.name,
+            description: c.description,
+        })).sort((a, b) => a.name.localeCompare(b.name))
     }
 
     showToast(message: string, variant: 'success' | 'error' | 'info' = 'info'): void {
@@ -895,9 +904,19 @@ export class DifferentialApp {
     }
 
     startSpinner(): void {
+        if (this.streamStartTime === 0) {
+            this.streamStartTime = Date.now()
+        }
         if (this.spinnerTimer) return
         this.spinnerTimer = setInterval(() => {
             this.state.spinnerFrame = (this.state.spinnerFrame + 1) % 10
+            if (
+                this.state.isStreaming &&
+                Date.now() - this.streamStartTime >= 2000 &&
+                !this.state.activeTip
+            ) {
+                this.state.activeTip = getNextTip()
+            }
             this.render()
         }, 80)
     }
@@ -1047,6 +1066,31 @@ export class DifferentialApp {
             totalTokens,
             cost,
         }
+    }
+
+    getEffectiveContextTokens(): number {
+        if (this.state.contextTokens && this.state.contextTokens > 0) {
+            return this.state.contextTokens
+        }
+        for (let i = this.state.messages.length - 1; i >= 0; i--) {
+            const m = this.state.messages[i]
+            if (m && m.usage && m.usage.promptTokens) {
+                return (m.usage.promptTokens || 0) + (m.usage.completionTokens || 0)
+            }
+        }
+        if (this.state.usageStats && this.state.usageStats.inputTokens > 0) {
+            return this.state.usageStats.inputTokens
+        }
+        let charCount = 0
+        for (const m of this.state.messages) {
+            if (m && m.content) {
+                charCount += m.content.length
+            }
+        }
+        if (charCount > 0) {
+            return Math.ceil(charCount / 4)
+        }
+        return 0
     }
 
     async loadUsageTrackerData(): Promise<void> {
@@ -1646,15 +1690,7 @@ export class DifferentialApp {
         // Ctrl+C
         if (key === '\x03') {
             if (this.state.isStreaming) {
-                this.stopSpinner()
-                this.state.isStreaming = false
-                this.state.promptQueue = []
-                this.clearStatusMessage()
-                if (this.onAbortCallback) {
-                    this.onAbortCallback()
-                }
-                this.showToast('Aborted.', 'info')
-                this.render()
+                this.handleAbortStream()
                 return
             }
 
@@ -1687,7 +1723,7 @@ export class DifferentialApp {
             return
         }
 
-        // Esc: Close overlay, cancel exit confirm, dismiss btw, or clear input
+        // Esc: Close overlay, cancel exit confirm, dismiss btw, stop streaming, or clear input
         if (key === '\x1b') {
             if (this.state.showExitConfirm) {
                 this.state.showExitConfirm = false
@@ -1709,6 +1745,11 @@ export class DifferentialApp {
             if (this.state.isFileAutocompleteVisible) {
                 this.state.isFileAutocompleteVisible = false
                 this.render()
+                return
+            }
+
+            if (this.state.isStreaming) {
+                this.handleAbortStream()
                 return
             }
 
@@ -2102,6 +2143,12 @@ export class DifferentialApp {
             return
         }
 
+        // Ctrl+H: Open session select menu (when input is empty)
+        if (key === '\x08' && this.state.input.length === 0) {
+            this.toggleOverlay('session')
+            return
+        }
+
         // Backspace: \x7f or \b
         if (key === '\x7f' || key === '\b') {
             if (this.state.cursorPos > 0) {
@@ -2142,6 +2189,154 @@ export class DifferentialApp {
                 this.state.cursorPos += 1
                 this.render()
             }
+            return
+        }
+
+        // Ctrl+A: Beginning of input
+        if (key === '\x01') {
+            this.state.cursorPos = 0
+            this.render()
+            return
+        }
+
+        // Ctrl+E: End of input
+        if (key === '\x05') {
+            this.state.cursorPos = this.state.input.length
+            this.render()
+            return
+        }
+
+        // Ctrl+K: Kill forward from cursor to end
+        if (key === '\x0b') {
+            this.state.input = this.state.input.slice(0, this.state.cursorPos)
+            this.resetCommandSelection()
+            this.updateFileAutocomplete()
+            this.render()
+            return
+        }
+
+        // Ctrl+U: Kill backward from cursor to start
+        if (key === '\x15') {
+            this.state.input = this.state.input.slice(this.state.cursorPos)
+            this.state.cursorPos = 0
+            this.resetCommandSelection()
+            this.updateFileAutocomplete()
+            this.render()
+            return
+        }
+
+        // Ctrl+W / Alt+Backspace: Word delete backward
+        if (key === '\x17' || key === '\x1b\x7f' || key === '\x1b\b') {
+            if (this.state.cursorPos > 0) {
+                let pos = this.state.cursorPos
+                while (pos > 0 && /\s/.test(this.state.input[pos - 1] || '')) {
+                    pos--
+                }
+                while (pos > 0 && !/\s/.test(this.state.input[pos - 1] || '')) {
+                    pos--
+                }
+                const before = this.state.input.slice(0, pos)
+                const after = this.state.input.slice(this.state.cursorPos)
+                this.state.input = before + after
+                this.state.cursorPos = pos
+                this.resetCommandSelection()
+                this.updateFileAutocomplete()
+                this.render()
+            }
+            return
+        }
+
+        // Alt+B / Ctrl+Left: Word jump backward
+        if (key === '\x1bb' || key === '\x1bB' || key === '\x1b[1;5D') {
+            if (this.state.cursorPos > 0) {
+                let pos = this.state.cursorPos
+                while (pos > 0 && /\s/.test(this.state.input[pos - 1] || '')) {
+                    pos--
+                }
+                while (pos > 0 && !/\s/.test(this.state.input[pos - 1] || '')) {
+                    pos--
+                }
+                this.state.cursorPos = pos
+                this.render()
+            }
+            return
+        }
+
+        // Alt+F / Ctrl+Right: Word jump forward
+        if (key === '\x1bf' || key === '\x1bF' || key === '\x1b[1;5C') {
+            if (this.state.cursorPos < this.state.input.length) {
+                let pos = this.state.cursorPos
+                const len = this.state.input.length
+                while (pos < len && /\s/.test(this.state.input[pos] || '')) {
+                    pos++
+                }
+                while (pos < len && !/\s/.test(this.state.input[pos] || '')) {
+                    pos++
+                }
+                this.state.cursorPos = pos
+                this.render()
+            }
+            return
+        }
+
+        // Ctrl+P: History previous
+        if (key === '\x10') {
+            if (this.state.promptHistory.length > 0) {
+                const nextIdx =
+                    this.state.historyIndex === -1
+                        ? this.state.promptHistory.length - 1
+                        : Math.max(0, this.state.historyIndex - 1)
+                this.state.historyIndex = nextIdx
+                this.state.input = this.state.promptHistory[nextIdx] || ''
+                this.state.cursorPos = this.state.input.length
+                this.render()
+            }
+            return
+        }
+
+        // Ctrl+N: History next
+        if (key === '\x0e') {
+            if (this.state.historyIndex !== -1) {
+                const nextIdx = this.state.historyIndex + 1
+                if (nextIdx >= this.state.promptHistory.length) {
+                    this.state.historyIndex = -1
+                    this.state.input = ''
+                    this.state.cursorPos = 0
+                } else {
+                    this.state.historyIndex = nextIdx
+                    this.state.input = this.state.promptHistory[nextIdx] || ''
+                    this.state.cursorPos = this.state.input.length
+                }
+                this.render()
+            }
+            return
+        }
+
+        // Ctrl+L: Toggle slash command menu
+        if (key === '\x0c') {
+            if (this.state.input.startsWith('/')) {
+                this.state.input = ''
+                this.state.cursorPos = 0
+            } else {
+                this.state.input = '/'
+                this.state.cursorPos = 1
+                this.resetCommandSelection()
+            }
+            this.render()
+            return
+        }
+
+        // Ctrl+Y: Quick copy last assistant response to clipboard
+        if (key === '\x19') {
+            for (let i = this.state.messages.length - 1; i >= 0; i--) {
+                const m = this.state.messages[i]
+                if (m && m.role === 'assistant' && m.content) {
+                    writeToClipboard(m.content)
+                    this.showToast('Copied last response to clipboard.', 'success')
+                    return
+                }
+            }
+            this.showToast('No assistant response to copy.', 'info')
             return
         }
 
@@ -2256,16 +2451,29 @@ export class DifferentialApp {
                         .then((newSessionId) => {
                             if (newSessionId) {
                                 this.state.sessionId = newSessionId
+                                this.showToast(
+                                    `Forked conversation into a new branch: ${newSessionId}.`,
+                                    'success'
+                                )
                                 this.render()
                             }
                         })
-                        .catch(() => {})
+                        .catch((err) => {
+                            this.showToast(
+                                `Failed to fork conversation: ${err?.message || err}`,
+                                'error'
+                            )
+                            this.render()
+                        })
                 } else if (typeof res === 'string') {
                     this.state.sessionId = res
+                    this.showToast(`Forked conversation into a new branch: ${res}.`, 'success')
+                    this.render()
                 }
+            } else {
+                this.showToast('Forked conversation into a new branch.', 'success')
+                this.render()
             }
-            this.showToast('Forked conversation into a new branch.', 'success')
-            this.render()
             return
         }
 
@@ -2331,11 +2539,23 @@ export class DifferentialApp {
         }
 
         if (cmd === 'effort' || cmd === 'reasoning') {
+            const rawModel = this.state.activeModel || this.state.modelLabel
+            const support = getReasoningSupportType(rawModel)
+
             if (args) {
-                const normalized = (
-                    args === 'minimal' ? 'low' : args
-                ).toLowerCase() as ReasoningLevel
-                if (['auto', 'off', 'low', 'medium', 'high'].includes(normalized)) {
+                const lower = args.toLowerCase().trim()
+                const validArgs = [
+                    'auto',
+                    'fast',
+                    'deep',
+                    'off',
+                    'low',
+                    'medium',
+                    'high',
+                    'minimal',
+                ]
+                if (validArgs.includes(lower)) {
+                    const normalized = normalizeReasoningLevel(lower)
                     this.state.thinkingLevel = normalized
                     const idx = REASONING_OPTIONS.findIndex((opt) => opt.value === normalized)
                     if (idx >= 0) this.state.effortSelectedIndex = idx
@@ -2345,11 +2565,23 @@ export class DifferentialApp {
                         this.onEffortSelectCallback(normalized)
                     }
                     const label = normalized.charAt(0).toUpperCase() + normalized.slice(1)
-                    this.showToast(`Reasoning set to ${label}.`, 'success')
+                    if (support === 'none') {
+                        this.showToast(
+                            `Reasoning set to ${label} (${rawModel || 'Active model'} runs in standard mode).`,
+                            'info'
+                        )
+                    } else if (support === 'fixed') {
+                        this.showToast(
+                            `Reasoning set to ${label} (${rawModel || 'Active model'} uses fixed provider reasoning).`,
+                            'info'
+                        )
+                    } else {
+                        this.showToast(`Reasoning set to ${label}.`, 'success')
+                    }
                     return
                 } else {
                     this.showToast(
-                        'Invalid reasoning level. Valid options: auto, off, low, medium, high',
+                        'Invalid reasoning level. Valid options: auto, fast, deep (or off, low, high)',
                         'error'
                     )
                     return
@@ -2357,7 +2589,8 @@ export class DifferentialApp {
             }
 
             this.state.activeOverlay = 'effort'
-            const idx = REASONING_OPTIONS.findIndex((opt) => opt.value === this.state.thinkingLevel)
+            const normalized = normalizeReasoningLevel(this.state.thinkingLevel)
+            const idx = REASONING_OPTIONS.findIndex((opt) => opt.value === normalized)
             this.state.effortSelectedIndex = idx >= 0 ? idx : 0
             this.render()
             return
@@ -2390,6 +2623,7 @@ export class DifferentialApp {
 
         if (cmd === 'context') {
             this.state.activeOverlay = 'context'
+            this.refreshUsageStats()
             this.render()
             return
         }
@@ -2595,8 +2829,10 @@ export class DifferentialApp {
                     return
                 }
             } catch {
-                this.showToast(`File not found: ${targetPath}`, 'error')
-                return
+                if (!this.workspaceFiles.includes(targetPath)) {
+                    this.showToast(`File not found: ${targetPath}`, 'error')
+                    return
+                }
             }
 
             this.openFileView(targetPath, targetLine, 'none')
@@ -3107,6 +3343,16 @@ export class DifferentialApp {
         }
 
         if (overlay === 'effort') {
+            const rawModel = this.state.activeModel || this.state.modelLabel
+            const support = getReasoningSupportType(rawModel)
+            if (support === 'none' || support === 'fixed') {
+                if (key === '\x1b' || key === '\r' || key === '\n' || key === ' ') {
+                    this.state.activeOverlay = 'none'
+                    this.render()
+                }
+                return
+            }
+
             if (key === '\x1b[A' || key === 'k') {
                 this.state.effortSelectedIndex =
                     (this.state.effortSelectedIndex - 1 + REASONING_OPTIONS.length) %
@@ -4266,7 +4512,23 @@ export class DifferentialApp {
                 }
                 return
             }
-            if (key === 'k' || key === 'K') {
+            if (key === 'K') {
+                const running = tasks.filter((t) => t.status === 'running')
+                if (running.length > 0) {
+                    for (const t of running) {
+                        if (this.onKillTaskCallback) {
+                            this.onKillTaskCallback(t.id)
+                        }
+                        t.status = 'failed'
+                    }
+                    this.showToast(`Terminated ${running.length} running tasks.`, 'info')
+                    this.render()
+                } else {
+                    this.showToast('No running tasks to terminate.', 'info')
+                }
+                return
+            }
+            if (key === 'k') {
                 const currentTask = tasks[this.state.tasksSelectedIndex]
                 if (currentTask && currentTask.status === 'running') {
                     if (this.onKillTaskCallback) {
@@ -4275,6 +4537,31 @@ export class DifferentialApp {
                     currentTask.status = 'failed'
                     this.showToast(`Terminated task: ${currentTask.command}`, 'info')
                     this.render()
+                }
+                return
+            }
+            if (key === 'x' || key === 'X') {
+                const remaining = tasks.filter((t) => t.status === 'running')
+                const cleared = tasks.length - remaining.length
+                this.state.tasks = remaining
+                this.state.tasksSelectedIndex = Math.min(
+                    this.state.tasksSelectedIndex,
+                    Math.max(0, remaining.length - 1)
+                )
+                this.showToast(
+                    `Cleared ${cleared} finished task${cleared === 1 ? '' : 's'}.`,
+                    'info'
+                )
+                this.render()
+                return
+            }
+            if (key === 'c' || key === 'C') {
+                const currentTask = tasks[this.state.tasksSelectedIndex]
+                if (currentTask && currentTask.output) {
+                    writeToClipboard(currentTask.output)
+                    this.showToast('Copied task log to clipboard.', 'success')
+                } else {
+                    this.showToast('No task log to copy.', 'info')
                 }
                 return
             }
@@ -5547,8 +5834,28 @@ export class DifferentialApp {
         this.clearStatusMessage()
         this.stopSpinner()
         this.state.isStreaming = false
+        this.streamStartTime = 0
+        this.state.activeTip = null
+        this.refreshUsageStats()
         this.render()
         this.drainPromptQueue()
+    }
+
+    handleAbortStream(): void {
+        this.flushStream()
+        this.stopSpinner()
+        this.state.isStreaming = false
+        this.streamStartTime = 0
+        this.state.activeTip = null
+        this.state.promptQueue = []
+        this.clearStatusMessage()
+        if (this.onAbortCallback) {
+            this.onAbortCallback()
+        } else {
+            this.appendStreamDelta('\n\nInterrupted · What should December do instead?')
+        }
+        this.showToast('Aborted.', 'info')
+        this.render()
     }
 
     appendStreamDelta(delta: string): void {
@@ -5897,6 +6204,7 @@ export class DifferentialApp {
                 headerProps,
                 lineCache: this.lineCache,
                 expandTools: this.state.expandTools,
+                tip: this.state.activeTip,
             })
             this.maxScroll = maxScroll
 
@@ -5968,7 +6276,7 @@ export class DifferentialApp {
                 modelLabel: this.state.modelLabel,
                 isAuthenticated: this.state.isAuthenticated,
                 authMethod: this.state.authMethod,
-                contextTokens: this.state.contextTokens,
+                contextTokens: this.getEffectiveContextTokens(),
                 maxContextTokens: this.state.maxContextTokens,
                 tasksCount: this.state.tasks.length,
                 runningTasksCount: this.state.tasks.filter((t) => t.status === 'running').length,
@@ -6012,7 +6320,10 @@ export class DifferentialApp {
             } else if (overlay === 'diff') {
                 naturalHeight = DiffViewMenuView.getHeight(this.state.diffFiles.length)
             } else if (overlay === 'effort') {
-                naturalHeight = EffortMenuView.getHeight()
+                const support = getReasoningSupportType(
+                    this.state.activeModel || this.state.modelLabel
+                )
+                naturalHeight = EffortMenuView.getHeight(support)
             } else if (overlay === 'login') {
                 naturalHeight = LoginMenuView.getHeight(this.state.loginConfirmSwitch)
             } else if (overlay === 'session') {
@@ -6066,6 +6377,7 @@ export class DifferentialApp {
                     headerProps,
                     lineCache: this.lineCache,
                     expandTools: this.state.expandTools,
+                    tip: this.state.activeTip,
                 })
                 this.maxScroll = maxScroll
 
@@ -6114,9 +6426,10 @@ export class DifferentialApp {
                     height: clampedOverlayHeight,
                     activeModel: this.state.activeModel,
                     modelLabel: this.state.modelLabel,
-                    contextTokens: this.state.contextTokens,
+                    contextTokens: this.getEffectiveContextTokens(),
                     maxContextTokens: this.state.maxContextTokens,
                     messageCount: this.state.messages.length,
+                    usageStats: this.state.usageStats,
                 })
             } else if (overlay === 'settings') {
                 SettingsMenuView.render(this.screen.backBuffer, {
@@ -6193,10 +6506,14 @@ export class DifferentialApp {
                     files: this.state.diffFiles,
                     selectedFileIndex: this.state.diffSelectedIndex,
                     windowStart: this.state.diffWindowStart,
-                    isDetailView: false,
-                    detailScrollOffset: 0,
+                    isDetailView: this.state.isDiffDetailView,
+                    detailScrollOffset: this.state.diffScrollOffset,
+                    cursorLineIndex: this.state.diffCursorLineIndex,
                 })
             } else if (overlay === 'effort') {
+                const support = getReasoningSupportType(
+                    this.state.activeModel || this.state.modelLabel
+                )
                 EffortMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: overlayY,
@@ -6205,6 +6522,7 @@ export class DifferentialApp {
                     modelLabel: this.state.modelLabel || this.state.activeModel,
                     currentLevel: this.state.thinkingLevel,
                     selectedIndex: this.state.effortSelectedIndex,
+                    reasoningSupport: support,
                 })
             } else if (overlay === 'login') {
                 LoginMenuView.render(this.screen.backBuffer, {

@@ -190,11 +190,15 @@ export function openaiProvider(
             const thinkingLevel = modelOptions?.thinkingLevel
             let reasoningEffort: 'low' | 'medium' | 'high' | undefined
             if (thinkingLevel && thinkingLevel !== 'off' && thinkingLevel !== 'auto') {
-                if (thinkingLevel === 'minimal' || thinkingLevel === 'low') {
+                if (
+                    thinkingLevel === 'fast' ||
+                    thinkingLevel === 'minimal' ||
+                    thinkingLevel === 'low'
+                ) {
                     reasoningEffort = 'low'
                 } else if (thinkingLevel === 'medium') {
                     reasoningEffort = 'medium'
-                } else if (thinkingLevel === 'high') {
+                } else if (thinkingLevel === 'deep' || thinkingLevel === 'high') {
                     reasoningEffort = 'high'
                 }
             }

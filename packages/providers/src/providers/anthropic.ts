@@ -116,12 +116,15 @@ export function anthropicProvider(
             if (supportsThinking) {
                 if (thinkingLevel === 'auto') {
                     thinking = { type: 'adaptive' }
+                } else if (thinkingLevel === 'fast' || thinkingLevel === 'off') {
+                    thinking = undefined
                 } else if (thinkingLevel && thinkingLevel !== 'off') {
                     const budgetMap: Record<string, number> = {
                         minimal: 1024,
                         low: 2048,
                         medium: 4096,
                         high: 8192,
+                        deep: 8192,
                     }
                     const budget = budgetMap[thinkingLevel]
                     if (budget) {
