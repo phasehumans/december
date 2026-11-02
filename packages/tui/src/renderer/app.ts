@@ -295,6 +295,7 @@ export interface DifferentialAppState {
     // Plan approve interactive state
     pendingPlan: {
         summary: string
+        fullPlan?: string
         resolve: (action: any) => void
     } | null
     planApproveSelectedIndex: number
@@ -857,16 +858,17 @@ export class DifferentialApp {
         targetLine = 1,
         returnOverlay: OverlayType = 'none',
         searchQuery?: string,
-        matchLines?: number[]
+        matchLines?: number[],
+        contentLines?: string[]
     ): Promise<void> {
         this.state.activeOverlay = 'fileview'
         this.state.fileViewPath = filePath
         this.state.fileViewReturnOverlay = returnOverlay
         this.state.fileViewSearchQuery = searchQuery
         this.state.fileViewMatchLines = matchLines || []
-        this.state.fileViewIsLoading = true
+        this.state.fileViewIsLoading = !contentLines
         this.state.fileViewError = null
-        this.state.fileViewLines = []
+        this.state.fileViewLines = contentLines || []
         const line0 = Math.max(0, targetLine - 1)
         this.state.fileViewCursorLine = line0
         this.state.fileViewScrollOffset = Math.max(0, line0 - 5)
@@ -879,6 +881,10 @@ export class DifferentialApp {
         }
 
         this.render()
+
+        if (contentLines) {
+            return
+        }
 
         try {
             const { lines } = await FileViewMenuView.loadFile(
@@ -1356,12 +1362,20 @@ export class DifferentialApp {
         })
     }
 
+    setInput(text: string): void {
+        this.state.input = text
+        this.state.cursorPos = text.length
+        this.render()
+    }
+
     requestPlanApproval(plan: {
         summary: string
+        fullPlan?: string
     }): Promise<'approve' | 'refine' | 'view' | 'reject'> {
         return new Promise((resolve) => {
             this.state.pendingPlan = {
                 summary: plan.summary,
+                fullPlan: plan.fullPlan,
                 resolve,
             }
             this.state.planApproveSelectedIndex = 0
@@ -1405,6 +1419,20 @@ export class DifferentialApp {
     }
 
     private resolvePlanApproval(decision: 'approve' | 'refine' | 'view' | 'reject'): void {
+        const plan = this.state.pendingPlan
+        if (decision === 'view') {
+            const fullPlan =
+                plan?.fullPlan || plan?.summary || 'Plan details ready for execution review.'
+            const summary = plan?.summary || 'Implementation Plan'
+            const lines = fullPlan.split(/\r?\n/)
+            this.openFileView('Plan: ' + summary, 1, 'none', undefined, undefined, lines)
+            const res = this.pendingPlanApprovalResolver || plan?.resolve
+            this.pendingPlanApprovalResolver = undefined
+            this.state.pendingPlan = null
+            res?.('view')
+            return
+        }
+
         const res = this.pendingPlanApprovalResolver || this.state.pendingPlan?.resolve
         this.pendingPlanApprovalResolver = undefined
         this.state.pendingPlan = null

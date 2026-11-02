@@ -1220,6 +1220,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         const planPromise = app.requestPlanApproval({
             summary: 'Migrate CLI architecture from Ink to 2D differential buffer',
+            fullPlan: '### Implementation Plan\n1. Replace Ink\n2. Differential rendering',
         })
 
         expect(app.state.activeOverlay).toBe('plan_approve')
@@ -1232,6 +1233,26 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(result).toBe('approve')
         expect(app.state.activeOverlay).toBe('none')
         expect(app.state.pendingPlan).toBeNull()
+
+        // Test viewing plan opens fileview
+        const viewPromise = app.requestPlanApproval({
+            summary: 'Review plan in full',
+            fullPlan: 'Line 1\nLine 2\nLine 3',
+        })
+        app.handleKey('v')
+        const viewResult = await viewPromise
+        expect(viewResult).toBe('view')
+        expect(app.state.activeOverlay).toBe('fileview')
+        expect(app.state.fileViewLines).toEqual(['Line 1', 'Line 2', 'Line 3'])
+
+        // Press Esc to exit fileview
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // Test setInput
+        app.setInput('/plan refine: ')
+        expect(app.state.input).toBe('/plan refine: ')
+        expect(app.state.cursorPos).toBe('/plan refine: '.length)
 
         app.stop()
     })

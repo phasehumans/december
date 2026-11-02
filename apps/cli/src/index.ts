@@ -499,7 +499,126 @@ async function main() {
         ? config.email
         : providerConfig?.subscription?.email || config.email || undefined
 
-    const differentialApp = new DifferentialApp({
+    let differentialApp: DifferentialApp
+
+    let activePlanGoal: string | null = null
+    let activePlanText: string | null = null
+
+    const runAgentExecution = async (promptText: string): Promise<string> => {
+        let streamedResponse = ''
+        differentialApp.state.isStreaming = true
+        differentialApp.startSpinner()
+        differentialApp.render()
+
+        try {
+            let executionPrompt = promptText
+
+            if (executionPrompt.includes('@') && !executionPrompt.includes('<context_file')) {
+                try {
+                    const { resolveContextMentions } = await import('@december/shared')
+                    const resolved = await resolveContextMentions(executionPrompt, process.cwd())
+                    executionPrompt = resolved.expandedPrompt
+                } catch {
+                    // Intentionally swallowed: keep executionPrompt on resolution error
+                }
+            }
+
+            const { getToolSummary } = await import('./utils/formatters')
+            const stream = runAgentLoop(agent, executionPrompt)
+            for await (const event of stream) {
+                if (event.type === 'StreamChunk') {
+                    differentialApp.clearStatusMessage()
+                    differentialApp.appendStreamDelta(event.content)
+                    streamedResponse += event.content
+                } else if (event.type === 'ThinkingChunk') {
+                    differentialApp.appendThinkingChunk(event.content)
+                } else if (event.type === 'AgentStatus') {
+                    if (event.message && event.message.trim().length > 0) {
+                        differentialApp.setStatusMessage(event.message.trim())
+                    } else {
+                        differentialApp.clearStatusMessage()
+                    }
+                } else if (event.type === 'AgentError') {
+                    differentialApp.clearStatusMessage()
+                    differentialApp.state.messages.push({
+                        role: 'error',
+                        content: event.error,
+                    })
+                    differentialApp.render()
+                } else if (event.type === 'AgentInterrupt') {
+                    differentialApp.clearStatusMessage()
+                    differentialApp.appendStreamDelta(
+                        '\n\nInterrupted · What should December do instead?'
+                    )
+                } else if (event.type === 'ToolCallStart') {
+                    differentialApp.clearStatusMessage()
+                    const inputStr =
+                        typeof event.toolCall.input === 'string'
+                            ? event.toolCall.input
+                            : JSON.stringify(event.toolCall.input || {})
+                    differentialApp.appendToolCall({
+                        id: event.toolCall.id,
+                        name: event.toolCall.name,
+                        input: event.toolCall.input,
+                        command: getToolSummary(event.toolCall.name, inputStr),
+                    })
+                } else if (event.type === 'ToolExecutionUpdate') {
+                    differentialApp.updateToolExecution(event.toolCallId, event.chunk)
+                } else if (event.type === 'ToolCallResult') {
+                    differentialApp.updateToolResult(event.result.toolCallId, {
+                        output: event.result.error || event.result.result,
+                        isError: Boolean(event.result.error),
+                    })
+                } else if (event.type === 'AgentUsage') {
+                    differentialApp.state.contextTokens =
+                        event.promptTokens + event.completionTokens
+                    differentialApp.render()
+                }
+            }
+        } catch (err: any) {
+            differentialApp.state.messages.push({
+                role: 'error',
+                content: err.message || 'Execution error',
+            })
+        } finally {
+            differentialApp.clearStatusMessage()
+            differentialApp.stopSpinner()
+            differentialApp.state.isStreaming = false
+            differentialApp.render()
+            differentialApp.refreshWorkspaceFiles().catch(() => {
+                // Intentionally swallowed: refresh workspace files after agent turn
+            })
+        }
+
+        return streamedResponse
+    }
+
+    const handlePlanApprovalCycle = async (goal: string, planText: string) => {
+        const decision = await differentialApp.requestPlanApproval({
+            summary: goal,
+            fullPlan: planText,
+        })
+
+        if (decision === 'approve') {
+            differentialApp.showToast('Plan approved. Launching autonomous execution...', 'success')
+            const { getPlanExecutionPrompt } = await import('./constants/prompts')
+            const executionPrompt = getPlanExecutionPrompt(goal, planText)
+            activePlanGoal = null
+            activePlanText = null
+            await runAgentExecution(executionPrompt)
+        } else if (decision === 'refine') {
+            differentialApp.setInput('/plan refine: ')
+            differentialApp.showToast('Enter feedback to refine the plan', 'info')
+        } else if (decision === 'view') {
+            // Full plan opened in scrollable file viewer
+        } else if (decision === 'reject') {
+            activePlanGoal = null
+            activePlanText = null
+            differentialApp.showToast('Plan discarded.', 'info')
+        }
+    }
+
+    differentialApp = new DifferentialApp({
         cliVersion: pkg.version,
         userEmail,
         decemberEmail: config.decemberToken ? config.email : undefined,
@@ -831,99 +950,69 @@ async function main() {
                 return
             }
 
-            differentialApp.state.isStreaming = true
-            differentialApp.startSpinner()
-            differentialApp.render()
+            const isPlanRefine = promptText.startsWith('/plan refine')
+            const isPlanApprove =
+                promptText === '/plan approve' || promptText.startsWith('/plan approve')
+            const isPlanReject =
+                promptText === '/plan reject' || promptText.startsWith('/plan reject')
+            const isPlanStart =
+                (promptText.startsWith('/plan ') || promptText === '/plan') &&
+                !isPlanRefine &&
+                !isPlanApprove &&
+                !isPlanReject
 
-            try {
-                let executionPrompt = promptText
-
-                if (promptText.startsWith('/plan ') || promptText === '/plan') {
-                    const goal = promptText.replace(/^\/plan\s*/, '').trim()
-                    if (goal) {
-                        const { getPlanPrompt } = await import('./constants/prompts')
-                        executionPrompt = getPlanPrompt(goal, [])
-                    }
-                }
-
-                if (executionPrompt.includes('@') && !executionPrompt.includes('<context_file')) {
-                    try {
-                        const { resolveContextMentions } = await import('@december/shared')
-                        const resolved = await resolveContextMentions(
-                            executionPrompt,
-                            process.cwd()
-                        )
-                        executionPrompt = resolved.expandedPrompt
-                    } catch {
-                        // Intentionally swallowed: keep executionPrompt on resolution error
-                    }
-                }
-
-                const { getToolSummary } = await import('./utils/formatters')
-                const stream = runAgentLoop(agent, executionPrompt)
-                for await (const event of stream) {
-                    if (event.type === 'StreamChunk') {
-                        differentialApp.clearStatusMessage()
-                        differentialApp.appendStreamDelta(event.content)
-                    } else if (event.type === 'ThinkingChunk') {
-                        differentialApp.appendThinkingChunk(event.content)
-                    } else if (event.type === 'AgentStatus') {
-                        if (event.message && event.message.trim().length > 0) {
-                            differentialApp.setStatusMessage(event.message.trim())
-                        } else {
-                            differentialApp.clearStatusMessage()
-                        }
-                    } else if (event.type === 'AgentError') {
-                        differentialApp.clearStatusMessage()
-                        differentialApp.state.messages.push({
-                            role: 'error',
-                            content: event.error,
-                        })
-                        differentialApp.render()
-                    } else if (event.type === 'AgentInterrupt') {
-                        differentialApp.clearStatusMessage()
-                        differentialApp.appendStreamDelta(
-                            '\n\nInterrupted · What should December do instead?'
-                        )
-                    } else if (event.type === 'ToolCallStart') {
-                        differentialApp.clearStatusMessage()
-                        const inputStr =
-                            typeof event.toolCall.input === 'string'
-                                ? event.toolCall.input
-                                : JSON.stringify(event.toolCall.input || {})
-                        differentialApp.appendToolCall({
-                            id: event.toolCall.id,
-                            name: event.toolCall.name,
-                            input: event.toolCall.input,
-                            command: getToolSummary(event.toolCall.name, inputStr),
-                        })
-                    } else if (event.type === 'ToolExecutionUpdate') {
-                        differentialApp.updateToolExecution(event.toolCallId, event.chunk)
-                    } else if (event.type === 'ToolCallResult') {
-                        differentialApp.updateToolResult(event.result.toolCallId, {
-                            output: event.result.error || event.result.result,
-                            isError: Boolean(event.result.error),
-                        })
-                    } else if (event.type === 'AgentUsage') {
-                        differentialApp.state.contextTokens =
-                            event.promptTokens + event.completionTokens
-                        differentialApp.render()
-                    }
-                }
-            } catch (err: any) {
-                differentialApp.state.messages.push({
-                    role: 'error',
-                    content: err.message || 'Execution error',
-                })
-            } finally {
-                differentialApp.clearStatusMessage()
-                differentialApp.stopSpinner()
-                differentialApp.state.isStreaming = false
-                differentialApp.render()
-                differentialApp.refreshWorkspaceFiles().catch(() => {
-                    // Intentionally swallowed: refresh workspace files after agent turn
-                })
+            if (isPlanReject) {
+                activePlanGoal = null
+                activePlanText = null
+                differentialApp.showToast('Plan discarded.', 'info')
+                return
             }
+
+            if (isPlanApprove) {
+                if (!activePlanGoal || !activePlanText) {
+                    differentialApp.showToast('No active plan to approve.', 'info')
+                    return
+                }
+                differentialApp.showToast(
+                    'Plan approved. Launching autonomous execution...',
+                    'success'
+                )
+                const { getPlanExecutionPrompt } = await import('./constants/prompts')
+                const executionPrompt = getPlanExecutionPrompt(activePlanGoal, activePlanText)
+                activePlanGoal = null
+                activePlanText = null
+                await runAgentExecution(executionPrompt)
+                return
+            }
+
+            if (isPlanStart) {
+                const goal = promptText.replace(/^\/plan\s*/, '').trim()
+                if (goal) {
+                    activePlanGoal = goal
+                    const { getPlanPrompt } = await import('./constants/prompts')
+                    const planPrompt = getPlanPrompt(goal, [])
+                    const planResult = await runAgentExecution(planPrompt)
+                    activePlanText = planResult
+                    await handlePlanApprovalCycle(goal, planResult)
+                }
+                return
+            }
+
+            if (isPlanRefine) {
+                const feedback = promptText.replace(/^\/plan\s+refine:?\s*/i, '').trim()
+                const { getPlanRefinePrompt } = await import('./constants/prompts')
+                const refinePrompt = getPlanRefinePrompt(
+                    activePlanGoal || 'implementation plan',
+                    activePlanText || '',
+                    feedback
+                )
+                const planResult = await runAgentExecution(refinePrompt)
+                activePlanText = planResult
+                await handlePlanApprovalCycle(activePlanGoal || 'implementation plan', planResult)
+                return
+            }
+
+            await runAgentExecution(promptText)
         },
         onExit: () => {
             handleExit()
