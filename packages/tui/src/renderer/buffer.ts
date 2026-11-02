@@ -169,6 +169,20 @@ export class ScreenBuffer {
         }
     }
 
+    dimRegion(startX: number, startY: number, width: number, height: number): void {
+        const endX = Math.min(this.width, startX + width)
+        const endY = Math.min(this.height, startY + height)
+        for (let y = Math.max(0, startY); y < endY; y++) {
+            for (let x = Math.max(0, startX); x < endX; x++) {
+                const cell = this.cells[this.getIndex(x, y)]
+                if (cell && cell.char && cell.char !== ' ') {
+                    cell.dim = true
+                    cell.bold = false
+                }
+            }
+        }
+    }
+
     clone(): ScreenBuffer {
         const copy = new ScreenBuffer(this.width, this.height)
         copy.copyFrom(this)

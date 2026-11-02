@@ -13,6 +13,7 @@ export interface MessageToolCall {
     input?: any
     status: 'running' | 'success' | 'error'
     output?: string
+    durationMs?: number
 }
 
 export interface MessageItem {
@@ -23,6 +24,7 @@ export interface MessageItem {
     content?: string
     text?: string
     toolCall?: MessageToolCall
+    durationMs?: number
     isStreaming?: boolean
     usage?: {
         promptTokens?: number
@@ -44,6 +46,7 @@ export interface MessageListViewProps {
     statusMessage?: string
     headerProps?: HeaderViewProps
     lineCache?: MessageLineCache
+    expandTools?: boolean
 }
 
 export const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
@@ -71,7 +74,12 @@ export const MessageListView = {
         }
 
         const cache = props.lineCache ?? defaultLineCache
-        allLines.push(...cache.getLines(messages, width, { spinnerGlyph }))
+        allLines.push(
+            ...cache.getLines(messages, width, {
+                spinnerGlyph,
+                expandTools: props.expandTools,
+            })
+        )
 
         // 1b. If streaming is active, render active status message or waiting loader
         if (props.isStreaming) {

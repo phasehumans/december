@@ -39,8 +39,11 @@ export function formatTokenCount(n: number): string {
 }
 
 export const InputBarView = {
-    getHeight(): number {
-        return 4 // Top separator, Prompt row, Bottom separator, Status row
+    getHeight(input = ''): number {
+        if (!input) return 4
+        const lines = input.split('\n')
+        const promptRows = Math.min(6, Math.max(1, lines.length))
+        return promptRows + 3 // Top separator, prompt rows, bottom separator, status row
     },
 
     render(buffer: ScreenBuffer, props: InputBarViewProps): CursorPosition {
@@ -53,6 +56,35 @@ export const InputBarView = {
         const paddingRight = THEME.padding.paddingRight ?? 4
         const sepWidth = Math.max(10, width - paddingLeft - paddingRight)
 
+        const promptLines = input ? input.split('\n') : ['']
+        const promptRows = Math.min(6, Math.max(1, promptLines.length))
+
+        // Determine cursor line and column inside multiline prompt
+        let cursorLine = 0
+        let cursorCol = 0
+        let charCount = 0
+        let found = false
+        for (let i = 0; i < promptLines.length; i++) {
+            const lineLen = promptLines[i]!.length
+            if (cursorPos <= charCount + lineLen) {
+                cursorLine = i
+                cursorCol = cursorPos - charCount
+                found = true
+                break
+            }
+            charCount += lineLen + 1 // +1 for the newline
+        }
+        if (!found && promptLines.length > 0) {
+            cursorLine = promptLines.length - 1
+            cursorCol = promptLines[cursorLine]!.length
+        }
+
+        // Vertical windowing if lines exceed max visible prompt rows
+        let windowStart = 0
+        if (cursorLine >= promptRows) {
+            windowStart = cursorLine - promptRows + 1
+        }
+
         // 1. Top separator
         drawDivider(buffer, {
             x: x + paddingLeft,
@@ -62,51 +94,122 @@ export const InputBarView = {
             style: { fg: THEME.colors.border },
         })
 
-        // 2. Prompt row
-        const promptY = y + 1
+        // 2. Prompt rows
         const promptGlyph = `${THEME.glyphs.prompt} `
-        drawText(buffer, promptGlyph, {
-            x: x + paddingLeft,
-            y: promptY,
-            style: {
-                fg: props.isStreaming ? THEME.colors.muted : THEME.colors.brand,
-            },
-        })
-
-        let textOffsetX = x + paddingLeft + promptGlyph.length
+        const promptGlyphLen = promptGlyph.length
+        let tagPrefixLen = 0
         if (props.modeTag) {
-            const tagStr = `[${props.modeTag}] `
-            drawText(buffer, tagStr, {
-                x: textOffsetX,
-                y: promptY,
-                style: { fg: THEME.colors.brand, bold: true },
-            })
-            textOffsetX += tagStr.length
+            tagPrefixLen = `[${props.modeTag}] `.length
         }
-
+        const textOffsetX = x + paddingLeft + promptGlyphLen + tagPrefixLen
         const maxInputWidth = Math.max(10, width - textOffsetX - 2)
 
-        if (!input) {
-            const placeholder =
-                props.placeholder ??
-                'Ask December to build features, fix bugs, or work on your code...'
-            drawText(buffer, placeholder, {
-                x: textOffsetX,
-                y: promptY,
-                maxWidth: maxInputWidth,
-                style: { fg: THEME.colors.dim },
-            })
-        } else {
-            drawText(buffer, input, {
-                x: textOffsetX,
-                y: promptY,
-                maxWidth: maxInputWidth,
-                style: { fg: THEME.colors.text },
-            })
+        let activeCursorX = textOffsetX + cursorCol
+        let activeCursorY = y + 1
+
+        for (let r = 0; r < promptRows; r++) {
+            const lineIdx = windowStart + r
+            const currentY = y + 1 + r
+            const lineText = promptLines[lineIdx] ?? ''
+
+            if (lineIdx === 0) {
+                drawText(buffer, promptGlyph, {
+                    x: x + paddingLeft,
+                    y: currentY,
+                    style: {
+                        fg: props.isStreaming ? THEME.colors.muted : THEME.colors.brand,
+                    },
+                })
+                if (props.modeTag) {
+                    const tagStr = `[${props.modeTag}] `
+                    drawText(buffer, tagStr, {
+                        x: x + paddingLeft + promptGlyphLen,
+                        y: currentY,
+                        style: { fg: THEME.colors.brand, bold: true },
+                    })
+                }
+            } else {
+                // Continuation glyph on subsequent multiline rows
+                drawText(buffer, '· ', {
+                    x: x + paddingLeft,
+                    y: currentY,
+                    style: { fg: THEME.colors.muted },
+                })
+            }
+
+            if (!input && lineIdx === 0) {
+                const placeholder =
+                    props.placeholder ??
+                    'Ask December to build features, fix bugs, or work on your code...'
+                drawText(buffer, placeholder, {
+                    x: textOffsetX,
+                    y: currentY,
+                    maxWidth: maxInputWidth,
+                    style: { fg: THEME.colors.dim },
+                })
+            } else {
+                let hScroll = 0
+                if (cursorLine === lineIdx && cursorCol >= maxInputWidth) {
+                    hScroll = cursorCol - maxInputWidth + 1
+                }
+                const visibleLineText = lineText.slice(hScroll)
+
+                // Highlight paste tokens e.g. [Pasted 42 lines]
+                const pasteRegex = /(\[Pasted \d+ lines(?: #\d+)?\])/g
+                if (pasteRegex.test(visibleLineText)) {
+                    let curX = textOffsetX
+                    let lastIdx = 0
+                    pasteRegex.lastIndex = 0
+                    let match: RegExpExecArray | null
+                    while ((match = pasteRegex.exec(visibleLineText)) !== null) {
+                        const matchIdx = match.index
+                        if (matchIdx > lastIdx) {
+                            const plain = visibleLineText.slice(lastIdx, matchIdx)
+                            drawText(buffer, plain, {
+                                x: curX,
+                                y: currentY,
+                                maxWidth: Math.max(0, width - curX - paddingRight),
+                                style: { fg: THEME.colors.text },
+                            })
+                            curX += plain.length
+                        }
+                        const token = match[1]!
+                        drawText(buffer, token, {
+                            x: curX,
+                            y: currentY,
+                            maxWidth: Math.max(0, width - curX - paddingRight),
+                            style: { fg: THEME.colors.brand, bold: true },
+                        })
+                        curX += token.length
+                        lastIdx = matchIdx + token.length
+                    }
+                    if (lastIdx < visibleLineText.length) {
+                        const tail = visibleLineText.slice(lastIdx)
+                        drawText(buffer, tail, {
+                            x: curX,
+                            y: currentY,
+                            maxWidth: Math.max(0, width - curX - paddingRight),
+                            style: { fg: THEME.colors.text },
+                        })
+                    }
+                } else {
+                    drawText(buffer, visibleLineText, {
+                        x: textOffsetX,
+                        y: currentY,
+                        maxWidth: maxInputWidth,
+                        style: { fg: THEME.colors.text },
+                    })
+                }
+
+                if (cursorLine === lineIdx) {
+                    activeCursorX = textOffsetX + (cursorCol - hScroll)
+                    activeCursorY = currentY
+                }
+            }
         }
 
         // 3. Bottom separator
-        const bottomDividerY = y + 2
+        const bottomDividerY = y + 1 + promptRows
         drawDivider(buffer, {
             x: x + paddingLeft,
             y: bottomDividerY,
@@ -116,7 +219,7 @@ export const InputBarView = {
         })
 
         // 4. Status row
-        const statusY = y + 3
+        const statusY = bottomDividerY + 1
         if (props.showExitConfirm) {
             drawText(buffer, '· Press Ctrl+C again to exit', {
                 x: x + paddingLeft,
@@ -215,8 +318,8 @@ export const InputBarView = {
 
         // Return terminal cursor position
         return {
-            x: textOffsetX + cursorPos,
-            y: promptY,
+            x: activeCursorX,
+            y: activeCursorY,
             visible: !props.isStreaming || input.length > 0,
         }
     },

@@ -49,4 +49,11 @@ describe('Input Lexer (splitInputSequences)', () => {
         const chunk = '\x1b[1;2A\x1b[1;5B'
         expect(splitInputSequences(chunk)).toEqual(['\x1b[1;2A', '\x1b[1;5B'])
     })
+
+    it('extracts bracketed paste block as an atomic sequence', () => {
+        const chunk = '\x1b[200~const foo = 1;\nconst bar = 2;\x1b[201~'
+        expect(splitInputSequences(chunk)).toEqual([
+            '\x1b[200~const foo = 1;\nconst bar = 2;\x1b[201~',
+        ])
+    })
 })

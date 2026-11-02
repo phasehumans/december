@@ -33,7 +33,7 @@ export class MessageLineCache {
         this.lastAggregateResult = null
     }
 
-    private computeContentKey(msg: MessageItem): string {
+    private computeContentKey(msg: MessageItem, expandTools = false): string {
         const text = msg.content || msg.text || ''
         const toolStatus = msg.toolCall?.status || ''
         const toolOutput = msg.toolCall?.output || ''
@@ -43,14 +43,20 @@ export class MessageLineCache {
                 ? msg.toolCall?.input
                 : JSON.stringify(msg.toolCall?.input || '')
         const isStreaming = Boolean(msg.isStreaming)
-        return `${msg.role}|${text}|${toolStatus}|${toolCommand}|${toolInput.slice(0, 50)}|${toolOutput.slice(-100)}|${isStreaming}`
+        const isExpanded = Boolean(expandTools)
+        return `${msg.role}|${text}|${toolStatus}|${toolCommand}|${toolInput.slice(0, 50)}|${toolOutput.slice(-100)}|${isStreaming}|${isExpanded}`
     }
 
     /**
      * Formats and caches lines for a single message.
      */
-    getMessageLines(msg: MessageItem, width: number, spinnerGlyph = '⠋ '): FormattedLine[] {
-        const contentKey = this.computeContentKey(msg)
+    getMessageLines(
+        msg: MessageItem,
+        width: number,
+        spinnerGlyph = '⠋ ',
+        expandTools = false
+    ): FormattedLine[] {
+        const contentKey = this.computeContentKey(msg, expandTools)
         const cached = this.messageCache.get(msg)
 
         // For non-streaming messages or stable tools, return from cache if key and width match
@@ -104,6 +110,14 @@ export class MessageLineCache {
                 toolNameLower === 'multi_replace_file_content'
             const isWriteTool = toolNameLower === 'write_file' || toolNameLower === 'write_to_file'
 
+            const durationMs = tc.durationMs ?? (msg as any).durationMs
+            const durStr =
+                durationMs !== undefined && durationMs > 0
+                    ? durationMs >= 1000
+                        ? `${(durationMs / 1000).toFixed(1)}s`
+                        : `${durationMs}ms`
+                    : ''
+
             if (isEditTool || tc.command?.startsWith('Edit(')) {
                 const rawPath =
                     parsedInput.TargetFile ||
@@ -143,6 +157,9 @@ export class MessageLineCache {
                     { text: 'Edited ', style: { fg: THEME.colors.warning, bold: true } },
                     { text: cleanPath, style: { fg: THEME.colors.text } },
                     ...(stats ? [{ text: stats, style: { fg: THEME.colors.muted } }] : []),
+                    ...(durStr
+                        ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
+                        : []),
                 ])
             } else if (isWriteTool || tc.command?.startsWith('Create(')) {
                 const rawPath =
@@ -164,6 +181,9 @@ export class MessageLineCache {
                     { text: 'Created ', style: { fg: THEME.colors.warning, bold: true } },
                     { text: cleanPath, style: { fg: THEME.colors.text } },
                     ...(stats ? [{ text: stats, style: { fg: THEME.colors.muted } }] : []),
+                    ...(durStr
+                        ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
+                        : []),
                 ])
             } else {
                 const cmdStr = tc.command || `${tc.name}()`
@@ -175,11 +195,17 @@ export class MessageLineCache {
                         { text: glyph, style: { fg: glyphColor } },
                         { text: fnName, style: { fg: THEME.colors.warning, bold: true } },
                         { text: `(${args})`, style: { fg: THEME.colors.muted } },
+                        ...(durStr
+                            ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
+                            : []),
                     ])
                 } else {
                     lines.push([
                         { text: glyph, style: { fg: glyphColor } },
                         { text: cmdStr, style: { fg: THEME.colors.warning, bold: true } },
+                        ...(durStr
+                            ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
+                            : []),
                     ])
                 }
             }
@@ -187,7 +213,7 @@ export class MessageLineCache {
             // Command / Tool Output Gutter
             if (isError && tc.output) {
                 const toolErrLines = tc.output.trim().split(/\r?\n/)
-                const maxLines = 5
+                const maxLines = expandTools ? 30 : 5
                 for (let l = 0; l < Math.min(toolErrLines.length, maxLines); l++) {
                     lines.push([
                         { text: '  │ ', style: { fg: THEME.colors.error } },
@@ -198,7 +224,7 @@ export class MessageLineCache {
                     lines.push([
                         { text: '  │ ', style: { fg: THEME.colors.error } },
                         {
-                            text: `... (${toolErrLines.length - maxLines} more lines)`,
+                            text: `... (${toolErrLines.length - maxLines} more lines · Ctrl+O to expand)`,
                             style: { fg: THEME.colors.dim },
                         },
                     ])
@@ -221,7 +247,7 @@ export class MessageLineCache {
                 if (!isNoOutputTool) {
                     const outLines = tc.output.trim().split(/\r?\n/)
                     if (outLines.length > 0 && outLines[0]) {
-                        const maxLines = isRunning ? 3 : 12
+                        const maxLines = isRunning ? 3 : expandTools ? 35 : 5
                         const displayLines = isRunning
                             ? outLines.slice(-maxLines)
                             : outLines.slice(0, maxLines)
@@ -235,7 +261,7 @@ export class MessageLineCache {
                             lines.push([
                                 { text: '  │ ', style: { fg: THEME.colors.border } },
                                 {
-                                    text: `... (${outLines.length - maxLines} more lines)`,
+                                    text: `... (${outLines.length - maxLines} more lines · Ctrl+O to toggle)`,
                                     style: { fg: THEME.colors.dim },
                                 },
                             ])
@@ -315,9 +341,10 @@ export class MessageLineCache {
     getLines(
         messages: MessageItem[],
         width: number,
-        options?: { spinnerGlyph?: string }
+        options?: { spinnerGlyph?: string; expandTools?: boolean }
     ): FormattedLine[] {
         const spinner = options?.spinnerGlyph || '⠋ '
+        const expandTools = Boolean(options?.expandTools)
 
         // Check if any message is actively streaming or running
         const hasLiveActivity = messages.some(
@@ -325,7 +352,7 @@ export class MessageLineCache {
         )
 
         const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null
-        const lastKey = lastMsg ? this.computeContentKey(lastMsg) : ''
+        const lastKey = lastMsg ? this.computeContentKey(lastMsg, expandTools) : ''
 
         if (
             !hasLiveActivity &&
@@ -340,7 +367,7 @@ export class MessageLineCache {
 
         const allLines: FormattedLine[] = []
         for (const msg of messages) {
-            allLines.push(...this.getMessageLines(msg, width, spinner))
+            allLines.push(...this.getMessageLines(msg, width, spinner, expandTools))
         }
 
         if (!hasLiveActivity) {

@@ -146,6 +146,41 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
             expect(buffer.getLine(3)).toContain('Press Ctrl+C again to exit')
         })
+
+        it('dynamically computes height and renders multiline prompt with continuation glyphs', () => {
+            const multilineInput = 'line 1\nline 2\nline 3'
+            const height = InputBarView.getHeight(multilineInput)
+            expect(height).toBe(6) // 1 top sep + 3 lines + 1 bottom sep + 1 status = 6
+
+            const buffer = new ScreenBuffer(60, height)
+            const cursor = InputBarView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 60,
+                input: multilineInput,
+                cursorPos: 7 + 2, // 'line 1\nli' -> line 2, col 2
+            })
+
+            expect(buffer.getLine(1)).toContain('❭ line 1')
+            expect(buffer.getLine(2)).toContain('· line 2')
+            expect(buffer.getLine(3)).toContain('· line 3')
+            expect(cursor.y).toBe(2)
+            expect(cursor.x).toBe(6) // paddingLeft(2) + glyph(2) + 2 = 6
+        })
+
+        it('renders collapsed paste token badge with highlighted styling', () => {
+            const pasteInput = 'check this: [Pasted 42 lines]'
+            const buffer = new ScreenBuffer(60, 4)
+            InputBarView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 60,
+                input: pasteInput,
+                cursorPos: pasteInput.length,
+            })
+
+            expect(buffer.getLine(1)).toContain('[Pasted 42 lines]')
+        })
     })
 
     describe('CommandMenuView', () => {

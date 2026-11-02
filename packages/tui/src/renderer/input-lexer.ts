@@ -51,6 +51,16 @@ export function splitInputSequences(raw: string): string[] {
 
             // 1. CSI sequence: \x1b[...
             if (next === '[') {
+                // Bracketed paste: \x1b[200~ <pasted text> \x1b[201~
+                if (raw.slice(i, i + 6) === '\x1b[200~') {
+                    const pasteEnd = raw.indexOf('\x1b[201~', i + 6)
+                    if (pasteEnd !== -1) {
+                        sequences.push(raw.slice(i, pasteEnd + 6))
+                        i = pasteEnd + 6
+                        continue
+                    }
+                }
+
                 // SGR Mouse: \x1b[<digits;digits;digits[Mm]
                 if (raw[i + 2] === '<') {
                     let endIdx = i + 3

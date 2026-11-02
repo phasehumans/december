@@ -26,6 +26,7 @@ export const SHORTCUTS = [
     { key: 'ctrl+y', desc: 'Quick copy (yank)' },
     { key: 'ctrl+c', desc: 'Exit / Graceful interrupt' },
     { key: 'ctrl+t', desc: 'Tasks mode' },
+    { key: 'ctrl+o', desc: 'Toggle tool execution outputs (expand / collapse)' },
     { key: 'alt+enter', desc: 'Insert newline' },
     { key: 'esc', desc: 'Cancel / Return to bottom' },
 ]

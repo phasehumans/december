@@ -28,6 +28,7 @@ import {
     parseUnifiedDiffToRows,
 } from '../utils/diff'
 import { getFileQueryMatch, scoreAndSortFiles, type ScoredFile } from '../utils/fuzzy'
+import { expandPastes, storePaste } from '../utils/paste-manager'
 
 import { splitInputSequences } from './input-lexer'
 import { DifferentialScreen } from './screen'
@@ -138,6 +139,7 @@ export interface DifferentialAppState {
     isStreaming: boolean
     spinnerFrame: number
     statusMessage?: string
+    expandTools: boolean
     activeModel?: string
     modelLabel?: string
     authMethod?: string
@@ -565,6 +567,7 @@ export class DifferentialApp {
             isStreaming: false,
             spinnerFrame: 0,
             statusMessage: undefined,
+            expandTools: false,
             cliVersion: options?.cliVersion || '0.4.15',
             latestVersion: options?.latestVersion,
             modelLabel: options?.modelLabel || 'Gemini 3.7 Flash',
@@ -1485,7 +1488,49 @@ export class DifferentialApp {
         this.state.fileAutocompleteItems = []
     }
 
+    handlePaste(text: string): void {
+        const cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+        if (!cleaned) return
+        const lines = cleaned.split('\n')
+        if (lines.length >= 2 || cleaned.length >= 80) {
+            const token = storePaste(cleaned)
+            const before = this.state.input.slice(0, this.state.cursorPos)
+            const after = this.state.input.slice(this.state.cursorPos)
+            this.state.input = before + token + after
+            this.state.cursorPos += token.length
+        } else {
+            const before = this.state.input.slice(0, this.state.cursorPos)
+            const after = this.state.input.slice(this.state.cursorPos)
+            this.state.input = before + cleaned + after
+            this.state.cursorPos += cleaned.length
+        }
+        this.resetCommandSelection()
+        this.updateFileAutocomplete()
+        this.render()
+    }
+
     handleKey(key: string): void {
+        // Bracketed paste: \x1b[200~ <pasted text> \x1b[201~
+        if (key.startsWith('\x1b[200~') && key.endsWith('\x1b[201~')) {
+            const pastedContent = key.slice(6, -6)
+            this.handlePaste(pastedContent)
+            return
+        }
+
+        // Ctrl+O: Toggle tool execution details / command logs
+        if (key === '\x0f') {
+            this.state.expandTools = !this.state.expandTools
+            this.lineCache.clear()
+            this.showToast(
+                this.state.expandTools
+                    ? 'Tool outputs expanded (Ctrl+O to collapse)'
+                    : 'Tool outputs collapsed (Ctrl+O to expand)',
+                'info'
+            )
+            this.render()
+            return
+        }
+
         // Ctrl+C
         if (key === '\x03') {
             if (this.state.isStreaming) {
@@ -1807,8 +1852,22 @@ export class DifferentialApp {
             return
         }
 
-        // Arrow Up: Prompt history or scroll message history
+        // Arrow Up: Multiline prompt line up, prompt history, or scroll message history
         if (key === '\x1b[A' || key === '\x1bOA') {
+            if (this.state.input.includes('\n')) {
+                const pre = this.state.input.slice(0, this.state.cursorPos)
+                const lines = pre.split('\n')
+                if (lines.length > 1) {
+                    const curLineLen = lines[lines.length - 1]!.length
+                    const prevLineLen = lines[lines.length - 2]!.length
+                    const targetCol = Math.min(curLineLen, prevLineLen)
+                    const newPos = this.state.cursorPos - curLineLen - 1 - (prevLineLen - targetCol)
+                    this.state.cursorPos = Math.max(0, newPos)
+                    this.render()
+                    return
+                }
+            }
+
             if (!this.state.input && this.state.messages.length > 0) {
                 this.scrollUp(2)
             } else if (this.state.promptHistory.length > 0) {
@@ -1824,8 +1883,25 @@ export class DifferentialApp {
             return
         }
 
-        // Arrow Down: Prompt history or scroll message history
+        // Arrow Down: Multiline prompt line down, prompt history, or scroll message history
         if (key === '\x1b[B' || key === '\x1bOB') {
+            if (this.state.input.includes('\n')) {
+                const post = this.state.input.slice(this.state.cursorPos)
+                const postLines = post.split('\n')
+                if (postLines.length > 1) {
+                    const pre = this.state.input.slice(0, this.state.cursorPos)
+                    const preLines = pre.split('\n')
+                    const curLineLen = preLines[preLines.length - 1]!.length
+                    const nextLineLen = postLines[1]!.length
+                    const targetCol = Math.min(curLineLen, nextLineLen)
+                    const postLine0Len = postLines[0]!.length
+                    const newPos = this.state.cursorPos + postLine0Len + 1 + targetCol
+                    this.state.cursorPos = Math.min(this.state.input.length, newPos)
+                    this.render()
+                    return
+                }
+            }
+
             if (!this.state.input && this.state.messages.length > 0) {
                 this.scrollDown(2)
             } else if (this.state.historyIndex !== -1) {
@@ -1880,6 +1956,22 @@ export class DifferentialApp {
             return
         }
 
+        // Alt+Enter / Shift+Enter / Ctrl+J: Insert newline in prompt
+        if (
+            key === '\x1b\r' ||
+            key === '\x1b\n' ||
+            key === '\x1b[13;2u' ||
+            key === '\x1b[27;2;13~' ||
+            key === '\x1b[1;2B'
+        ) {
+            const before = this.state.input.slice(0, this.state.cursorPos)
+            const after = this.state.input.slice(this.state.cursorPos)
+            this.state.input = before + '\n' + after
+            this.state.cursorPos += 1
+            this.render()
+            return
+        }
+
         // Enter: Submit prompt or execute slash command
         if (key === '\r' || key === '\n') {
             const trimmed = this.state.input.trim()
@@ -1896,9 +1988,20 @@ export class DifferentialApp {
         // Backspace: \x7f or \b
         if (key === '\x7f' || key === '\b') {
             if (this.state.cursorPos > 0) {
-                const before = this.state.input.slice(0, this.state.cursorPos - 1)
+                const before = this.state.input.slice(0, this.state.cursorPos)
+                const tokenMatch = before.match(/(\[Pasted \d+ lines(?: #\d+)?\])$/)
+                if (tokenMatch && tokenMatch[1]) {
+                    const tokenLen = tokenMatch[1].length
+                    const after = this.state.input.slice(this.state.cursorPos)
+                    this.state.input = before.slice(0, -tokenLen) + after
+                    this.state.cursorPos -= tokenLen
+                    this.resetCommandSelection()
+                    this.updateFileAutocomplete()
+                    this.render()
+                    return
+                }
                 const after = this.state.input.slice(this.state.cursorPos)
-                this.state.input = before + after
+                this.state.input = before.slice(0, -1) + after
                 this.state.cursorPos -= 1
                 this.resetCommandSelection()
                 this.updateFileAutocomplete()
@@ -2035,7 +2138,7 @@ export class DifferentialApp {
         }
 
         if (cmd === 'feedback') {
-            const url = 'https://github.com/phasehumans/december/issues/new'
+            const url = 'https://github.com/phasehumans/december/issues/new/choose'
             openBrowserUrl(url)
             this.showToast('Opened feedback in browser.', 'success')
             return
@@ -5046,8 +5149,9 @@ export class DifferentialApp {
     }
 
     submitPrompt(overridePrompt?: string): void {
-        const text = (overridePrompt ?? this.state.input).trim()
-        if (!text) return
+        const raw = (overridePrompt ?? this.state.input).trim()
+        if (!raw) return
+        const text = expandPastes(raw)
 
         // Direct shell command (!<command>)
         if (text.startsWith('!')) {
@@ -5057,7 +5161,7 @@ export class DifferentialApp {
                 return
             }
 
-            this.state.promptHistory.push(text)
+            this.state.promptHistory.push(raw)
             this.state.historyIndex = -1
 
             this.state.messages.push({
@@ -5086,7 +5190,7 @@ export class DifferentialApp {
             return
         }
 
-        this.state.promptHistory.push(text)
+        this.state.promptHistory.push(raw)
         this.state.historyIndex = -1
 
         this.state.messages.push({
@@ -5383,8 +5487,8 @@ export class DifferentialApp {
 
         if (!isOverlayActive) {
             // PROMPT MODE:
-            // 2. Input Bar (4 rows at bottom)
-            const inputHeight = InputBarView.getHeight()
+            // 2. Input Bar (dynamically scales 4 to 9 rows based on prompt multiline content)
+            const inputHeight = InputBarView.getHeight(this.state.input)
             const inputY = Math.max(0, height - inputHeight)
 
             // 3. Compute floating overlay heights
@@ -5432,8 +5536,20 @@ export class DifferentialApp {
                 statusMessage: this.state.statusMessage,
                 headerProps,
                 lineCache: this.lineCache,
+                expandTools: this.state.expandTools,
             })
             this.maxScroll = maxScroll
+
+            // Apply subtle backdrop dimming to messages above floating command/file menu
+            if (
+                isCommandMenuVisible ||
+                (this.state.isFileAutocompleteVisible &&
+                    this.state.fileAutocompleteItems.length > 0)
+            ) {
+                if (bodyHeight > 0) {
+                    this.screen.backBuffer.dimRegion(0, 0, width, bodyHeight)
+                }
+            }
 
             // Clear the 1-row separator line so chat text does not bleed into the gap
             if (interactiveGap > 0 && topOfInteractive >= 0 && topOfInteractive < height) {
@@ -5587,8 +5703,13 @@ export class DifferentialApp {
                     spinnerFrame: this.state.spinnerFrame,
                     statusMessage: this.state.statusMessage,
                     headerProps,
+                    lineCache: this.lineCache,
+                    expandTools: this.state.expandTools,
                 })
                 this.maxScroll = maxScroll
+
+                // Apply backdrop dimming to background chat while overlay card is active
+                this.screen.backBuffer.dimRegion(0, 0, width, chatHeight)
             }
 
             // Clear the 1-line separation gap so no residual chat cells remain in the gap

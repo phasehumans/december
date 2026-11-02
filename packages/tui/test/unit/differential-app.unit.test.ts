@@ -2189,4 +2189,145 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         app.stop()
     })
+
+    it('collapses multiline pasted text into token badge and expands on submit', () => {
+        let submittedPrompt = ''
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSubmit: (prompt) => {
+                submittedPrompt = prompt
+            },
+        })
+        app.start()
+
+        // Paste multiline code block via bracketed paste sequence
+        const rawCode = 'function calculate() {\n    return 42 * 10;\n}'
+        app.handleKey(`\x1b[200~${rawCode}\x1b[201~`)
+
+        // Input contains collapsed token badge
+        expect(app.state.input).toMatch(/^\[Pasted 3 lines(?: #\d+)?\]$/)
+
+        // Backspace deletes the entire badge in one hit
+        app.handleKey('\x7f')
+        expect(app.state.input).toBe('')
+        expect(app.state.cursorPos).toBe(0)
+
+        // Type prefix and paste again
+        app.handleKey('check this: ')
+        app.handleKey(`\x1b[200~${rawCode}\x1b[201~`)
+        expect(app.state.input).toMatch(/^check this: \[Pasted 3 lines(?: #\d+)?\]$/)
+
+        // Enter submits the fully expanded code
+        app.handleKey('\r')
+        expect(submittedPrompt).toBe(`check this: ${rawCode}`)
+
+        app.stop()
+    })
+
+    it('toggles tool execution output details with Ctrl+O', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        expect(app.state.expandTools).toBe(false)
+
+        // Ctrl+O toggles expansion on
+        app.handleKey('\x0f')
+        expect(app.state.expandTools).toBe(true)
+        expect(app.state.toast?.message).toContain('Tool outputs expanded')
+
+        // Ctrl+O toggles expansion off
+        app.handleKey('\x0f')
+        expect(app.state.expandTools).toBe(false)
+        expect(app.state.toast?.message).toContain('Tool outputs collapsed')
+
+        app.stop()
+    })
+
+    it('navigates multiline prompt vertically with Up and Down arrows', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        app.state.input = 'first line\nsecond line'
+        // Place cursor at 'second line' col 3
+        app.state.cursorPos = 'first line\n'.length + 3
+
+        // Up arrow moves to first line col 3
+        app.handleKey('\x1b[A')
+        expect(app.state.cursorPos).toBe(3)
+
+        // Down arrow moves back to second line col 3
+        app.handleKey('\x1b[B')
+        expect(app.state.cursorPos).toBe('first line\n'.length + 3)
+
+        app.stop()
+    })
+
+    it('applies subtle backdrop dimming to background chat cells when overlay is active', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        app.state.messages = [
+            {
+                role: 'user',
+                content: 'build a server',
+            },
+            {
+                role: 'assistant',
+                content: 'Sure! Let me start by generating the routes.',
+            },
+        ]
+        app.render()
+
+        // Open help overlay
+        app.executeCommand('help')
+        expect(app.state.activeOverlay).toBe('help')
+
+        // Chat cells above the overlay card should be dimmed
+        let hasDimmedCell = false
+        for (let y = 0; y < 5; y++) {
+            for (let x = 0; x < 40; x++) {
+                const cell = app.screen.backBuffer.get(x, y)
+                if (cell && cell.char && cell.char !== ' ' && cell.dim) {
+                    hasDimmedCell = true
+                    break
+                }
+            }
+            if (hasDimmedCell) break
+        }
+        expect(hasDimmedCell).toBe(true)
+
+        // Dismiss help overlay with Esc
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('none')
+
+        // In prompt mode, chat cells are no longer dimmed
+        let nonDimmedCellFound = false
+        for (let y = 0; y < 5; y++) {
+            for (let x = 0; x < 40; x++) {
+                const cell = app.screen.backBuffer.get(x, y)
+                if (cell && cell.char && cell.char !== ' ' && !cell.dim) {
+                    nonDimmedCellFound = true
+                    break
+                }
+            }
+            if (nonDimmedCellFound) break
+        }
+        expect(nonDimmedCellFound).toBe(true)
+
+        app.stop()
+    })
 })
