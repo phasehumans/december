@@ -1,3 +1,58 @@
+## [0.4.16] - 2026-11-02
+
+### Features
+
+- _(githubapp,worker)_ Automated bot issue comment trigger and pr flow (#568)
+- _(worker)_ Run autonomous agent loop for issue fixes and remove footers
+- _(docs,install)_ Add video section to landing page and improve installer reliability
+- _(agent)_ Pi prompt formula, ndjson rpc default, and remove artifacts and grill-me
+- _(tui)_ Differential 2d screen buffer rendering engine (closes #598)
+- _(providers)_ Cross-provider context migration engine (#599)
+- _(cli)_ Unix pipe and quiet print mode (closes #600)
+- _(tui)_ Add release highlights announcement banner to header view
+- _(tui)_ Add settings, context, skills overlays and fix command execution routing
+- _(tui,cli)_ Eliminate react and ink, migrate all menus to 2d differential screen buffer
+- _(cli,tui)_ Wire interactive cli to differential tui and eliminate ink
+- _(cli,tui)_ Re-wire plan approval and autonomous execution state machine
+- _(cli,tui)_ Connect settings overlay to configuration persistence and live agent sync
+- _(cli,tui)_ Wire task manager, process termination, and log inspection to /tasks
+- _(tui)_ Add multiline navigation, paste badge, ctrl+o toggle, and update feedback url
+- _(cli,tui)_ Wire /rewind turn rollback and agent context lifecycle for /clear, /new, /fork
+- _(tui,cli)_ Restore native terminal mouse selection and fifo prompt queuing during streams
+- _(tui)_ Dynamic multi-line input bar and bracketed paste token collapsing
+- _(tui)_ Restore chat micro-interactions and polish
+- _(tui)_ Collapsed thought summaries, tool output expansion, and 30fps stream throttler
+- _(tui)_ Restore chat micro-interactions, escape stream abort, and readline shortcuts
+- _(tui)_ Clean auth badges, memory view spacing, and forget confirmation
+
+### Bug Fixes
+
+- _(githubapp,worker)_ Support trydecember mention and fix sandbox permissions
+- _(worker)_ Invoke provider.stream for ai issue explanation generation
+- _(worker)_ Register ephemeral sandbox and route issue bot to gemini-3.6-flash
+- _(cli,tui)_ Prevent slash commands from parsing as file paths and clean up first launch auth
+- _(providers)_ Sanitize tool call ids and handle gemini thought signatures
+- _(cli,tui)_ Resolve hitl ask_question deadlock and tool permission git_tracked guard
+- _(providers)_ Preserve thought signatures on gemini tools and use daily gateway
+- _(tui)_ Add optional args property to commandcontext
+- _(models)_ Improve live model matching and preserve curated labels
+- _(cli)_ Align reasoning level types with fast and deep options
+
+### Refactor
+
+- _(cli,tui)_ Wire interactive cli to differential tui and eliminate ink (closes #601)
+- _(tui)_ Bring full visual and interactive parity to differential tui
+- _(cli)_ Collapse provider stubs and prune binary bundle to under 2mb
+
+### Performance
+
+- _(tui,cli)_ Optimize streaming markdown, ripgrep search, and layout windowing
+- _(tui)_ Optimize scrolling with input sequence lexer and message line cache
+
+### Testing
+
+- _(providers)_ Import reasoning support helpers in models test
+
 ## [0.4.15] - 2026-10-26
 
 ### Features
@@ -35,6 +90,7 @@
 ### Miscellaneous Tasks
 
 - _(scripts)_ Add announcement email engine and agent marketing standards
+- _(release)_ V0.4.15
 
 ## [0.4.14] - 2026-10-19
 

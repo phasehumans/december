@@ -1,9 +1,9 @@
 {
-    "version": "0.4.15",
-    "title": "What's New in v0.4.15",
+    "version": "0.4.16",
+    "title": "What's New in v0.4.16",
     "bullets": [
-        "Add token login, refine device activation flow, and add context doc",
-        "Durable step checkpointing and optimistic epoch fencing"
+        "Automated bot issue comment trigger and pr flow",
+        "Run autonomous agent loop for issue fixes and remove footers"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }
