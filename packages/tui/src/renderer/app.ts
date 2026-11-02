@@ -412,8 +412,8 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     onSettingChange?: (settingId: string, newValue: string) => Promise<void> | void
     onKillTask?: (taskId: string) => boolean | void
     onClearContext?: () => Promise<void> | void
-    onNewContext?: () => Promise<string | void> | void
-    onForkContext?: (newSessionId?: string) => Promise<string | void> | void
+    onNewContext?: () => Promise<string | void> | string | void
+    onForkContext?: (newSessionId?: string) => Promise<string | void> | string | void
     onLoadRewindTurns?: () => Promise<RewindTurnEntry[]> | RewindTurnEntry[]
 }
 
@@ -518,11 +518,16 @@ export class DifferentialApp {
     private onExecuteDirectCommandCallback?: (command: string) => Promise<void> | void
     private onUndoCallback?: () => Promise<void> | void
     private onClearContextCallback?: () => Promise<void> | void
-    private onNewContextCallback?: () => Promise<string | void> | void
-    private onForkContextCallback?: (newSessionId?: string) => Promise<string | void> | void
+    private onNewContextCallback?: () => Promise<string | void> | string | void
+    private onForkContextCallback?: (
+        newSessionId?: string
+    ) => Promise<string | void> | string | void
     private onLoadRewindTurnsCallback?: () => Promise<RewindTurnEntry[]> | RewindTurnEntry[]
     private authRequiredNotice?: string
     private pasteBuffer: string | null = null
+    private streamRenderTimer: ReturnType<typeof setTimeout> | null = null
+    private lastStreamRenderTime = 0
+    private static readonly STREAM_THROTTLE_MS = 33 // ~30fps throttle window
 
     constructor(options?: DifferentialAppOptions) {
         this.terminal = options?.terminal ?? new TerminalController()
@@ -852,6 +857,10 @@ export class DifferentialApp {
             clearTimeout(this.toastTimer)
             this.toastTimer = null
         }
+        if (this.streamRenderTimer) {
+            clearTimeout(this.streamRenderTimer)
+            this.streamRenderTimer = null
+        }
 
         if (
             this.stdinListener &&
@@ -931,8 +940,24 @@ export class DifferentialApp {
         this.state.fileViewCursorLine = line0
         this.state.fileViewScrollOffset = Math.max(0, line0 - 5)
 
-        if (matchLines && matchLines.length > 0) {
-            const foundIdx = matchLines.indexOf(targetLine)
+        // Index case-insensitive search matches from in-memory content if provided
+        if (contentLines && searchQuery && searchQuery.trim()) {
+            const lowerQ = searchQuery.trim().toLowerCase()
+            const dynamicMatches: number[] = []
+            for (let i = 0; i < contentLines.length; i++) {
+                const line = contentLines[i]
+                if (line && line.toLowerCase().includes(lowerQ)) {
+                    dynamicMatches.push(i + 1)
+                }
+            }
+            if (dynamicMatches.length > 0) {
+                this.state.fileViewMatchLines = dynamicMatches
+            }
+        }
+
+        const effectiveMatches = this.state.fileViewMatchLines || []
+        if (effectiveMatches.length > 0) {
+            const foundIdx = effectiveMatches.indexOf(targetLine)
             this.state.fileViewCurrentMatchIndex = foundIdx !== -1 ? foundIdx : 0
         } else {
             this.state.fileViewCurrentMatchIndex = 0
@@ -958,6 +983,29 @@ export class DifferentialApp {
                 0,
                 clampedLine - Math.floor(visibleLineCount / 2)
             )
+
+            // Dynamic case-insensitive match line indexing from loaded file content
+            if (searchQuery && searchQuery.trim()) {
+                const lowerQ = searchQuery.trim().toLowerCase()
+                const dynamicMatches: number[] = []
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i]
+                    if (line && line.toLowerCase().includes(lowerQ)) {
+                        dynamicMatches.push(i + 1)
+                    }
+                }
+                if (dynamicMatches.length > 0) {
+                    this.state.fileViewMatchLines = dynamicMatches
+                    const target1 = clampedLine + 1
+                    const foundIdx = dynamicMatches.indexOf(target1)
+                    if (foundIdx !== -1) {
+                        this.state.fileViewCurrentMatchIndex = foundIdx
+                    } else {
+                        const closestIdx = dynamicMatches.findIndex((m) => m >= target1)
+                        this.state.fileViewCurrentMatchIndex = closestIdx !== -1 ? closestIdx : 0
+                    }
+                }
+            }
         } catch (err: any) {
             this.state.fileViewIsLoading = false
             this.state.fileViewError = err?.message || 'Failed to read file'
@@ -3562,7 +3610,7 @@ export class DifferentialApp {
                     this.state.fileViewPath?.startsWith('Task Output:')
                 ) {
                     const fullOutput = this.state.fileViewLines.join('\n')
-                    writeToClipboard(fullOutput, this.terminal)
+                    writeToClipboard(fullOutput)
                     this.showToast('Copied task output to clipboard.', 'success')
                     return
                 }
@@ -5455,7 +5503,47 @@ export class DifferentialApp {
         return true
     }
 
+    scheduleStreamRender(): void {
+        const now = performance.now()
+        const elapsed = now - this.lastStreamRenderTime
+
+        if (elapsed >= DifferentialApp.STREAM_THROTTLE_MS) {
+            if (this.streamRenderTimer) {
+                clearTimeout(this.streamRenderTimer)
+                this.streamRenderTimer = null
+            }
+            this.lastStreamRenderTime = now
+            this.render()
+        } else if (!this.streamRenderTimer) {
+            const waitTime = Math.max(1, DifferentialApp.STREAM_THROTTLE_MS - elapsed)
+            this.streamRenderTimer = setTimeout(() => {
+                this.streamRenderTimer = null
+                this.lastStreamRenderTime = performance.now()
+                this.render()
+            }, waitTime)
+        }
+    }
+
+    flushStream(): void {
+        if (this.streamRenderTimer) {
+            clearTimeout(this.streamRenderTimer)
+            this.streamRenderTimer = null
+        }
+        for (let i = this.state.messages.length - 1; i >= 0; i--) {
+            const m = this.state.messages[i]
+            if (m && m.role === 'thinking' && m.isStreaming) {
+                m.isStreaming = false
+                if (m.timestamp) {
+                    m.durationMs = Math.max(100, Date.now() - m.timestamp)
+                }
+                break
+            }
+        }
+        this.render()
+    }
+
     finishStream(): void {
+        this.flushStream()
         this.clearStatusMessage()
         this.stopSpinner()
         this.state.isStreaming = false
@@ -5471,6 +5559,9 @@ export class DifferentialApp {
             const m = this.state.messages[i]
             if (m && m.role === 'thinking' && m.isStreaming) {
                 m.isStreaming = false
+                if (m.timestamp) {
+                    m.durationMs = Math.max(100, Date.now() - m.timestamp)
+                }
                 break
             }
         }
@@ -5489,7 +5580,7 @@ export class DifferentialApp {
             this.state.scrollOffset = undefined
         }
 
-        this.render()
+        this.scheduleStreamRender()
     }
 
     appendThinkingChunk(chunk: string): void {
@@ -5503,6 +5594,7 @@ export class DifferentialApp {
                 role: 'thinking',
                 content: chunk,
                 isStreaming: true,
+                timestamp: Date.now(),
             })
         }
 
@@ -5510,7 +5602,7 @@ export class DifferentialApp {
             this.state.scrollOffset = undefined
         }
 
-        this.render()
+        this.scheduleStreamRender()
     }
 
     appendMessage(message: MessageItem): void {

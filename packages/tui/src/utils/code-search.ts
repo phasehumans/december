@@ -74,18 +74,18 @@ export async function searchWorkspaceCode(
     const escapedQuery = cleanQuery.replace(/"/g, '\\"')
 
     try {
-        // Fast git grep across tracked and untracked workspace files
-        const { stdout } = await execAsync(`git grep -n -I --untracked "${escapedQuery}"`, {
+        // Fast git grep across tracked and untracked workspace files (case-insensitive)
+        const { stdout } = await execAsync(`git grep -n -i -I --untracked "${escapedQuery}"`, {
             cwd: workspaceDir,
             timeout: 5000,
             maxBuffer: 2 * 1024 * 1024,
         })
         return parseGrepOutput(stdout, workspaceDir)
     } catch {
-        // Fallback to standard recursive grep excluding common build directories
+        // Fallback to standard recursive grep excluding common build directories (case-insensitive)
         try {
             const { stdout } = await execAsync(
-                `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist "${escapedQuery}" .`,
+                `grep -rnIi --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist "${escapedQuery}" .`,
                 {
                     cwd: workspaceDir,
                     timeout: 5000,

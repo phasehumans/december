@@ -133,6 +133,18 @@ export class AgentHarness {
         return this.refreshSystemPrompt()
     }
 
+    public updateThinkingLevel(thinkingLevel: string): string {
+        this.config.thinkingLevel = thinkingLevel as any
+        if (this.config.modelOptions) {
+            this.config.modelOptions.thinkingLevel = thinkingLevel
+        }
+        this.agent.thinkingLevel = thinkingLevel as any
+        if (this.agent.modelOptions) {
+            this.agent.modelOptions.thinkingLevel = thinkingLevel
+        }
+        return this.refreshSystemPrompt()
+    }
+
     public getDiscoveredSkills(): DiscoveredSkill[] {
         return this.skills
     }

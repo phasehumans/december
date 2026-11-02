@@ -39,7 +39,7 @@
     "scripts": {
         "build": "bun build ./src/index.ts --target=node --minify --splitting --outdir=./dist --entry-naming=december.js --chunk-naming=\"chunk-[hash].js\"",
         "prepublishOnly": "bun run build",
-        "typecheck": "tsc --noEmit",
+        "typecheck": "NODE_OPTIONS=\"--max-old-space-size=4096\" tsc --noEmit",
         "test": "bun test",
         "test:unit": "bun test test/unit test/*.test.ts",
         "test:integration": "bun test test/integration"

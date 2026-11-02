@@ -321,4 +321,63 @@ describe('MessageLineCache', () => {
         expect(text).toContain('npm run dev')
         expect(text).toContain('↳ Moved to background task: task_dev_123 · Use /tasks to inspect')
     })
+
+    it('renders collapsed thinking banner when generation finishes or on session reload, and expands with formatted content on expandTools', () => {
+        const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            {
+                role: 'thinking',
+                content:
+                    '## Plan\nWe need to refactor the database schema and add indexes to optimize query performance.',
+                isStreaming: false,
+                durationMs: 2300,
+            },
+        ]
+
+        // Collapsed (default)
+        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
+        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(collapsedText).toContain('Thought for 2.3s')
+        expect(collapsedText).toContain('ctrl+o to expand')
+        expect(collapsedText).not.toContain('We need to refactor the database schema')
+
+        // Expanded (expandTools: true)
+        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
+        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(expandedText).toContain('Thought for 2.3s')
+        expect(expandedText).toContain('ctrl+o to collapse')
+        expect(expandedText).toContain('We need to refactor the database schema')
+    })
+
+    it('expands truncated tool command outputs beyond the default 5-line limit when expandTools is enabled', () => {
+        const cache = new MessageLineCache()
+        const outputLines = Array.from({ length: 25 }, (_, i) => `log line ${i + 1}`)
+        const messages: MessageItem[] = [
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 'sh-2',
+                    name: 'execute_command',
+                    command: 'pytest tests/',
+                    status: 'success',
+                    output: outputLines.join('\n'),
+                },
+            },
+        ]
+
+        // Collapsed (default 5 lines)
+        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
+        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(collapsedText).toContain('log line 1')
+        expect(collapsedText).toContain('log line 5')
+        expect(collapsedText).not.toContain('log line 6')
+        expect(collapsedText).toContain('... (20 more lines · Ctrl+O to toggle)')
+
+        // Expanded (shows up to 35 lines, so all 25 lines are visible)
+        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
+        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(expandedText).toContain('log line 1')
+        expect(expandedText).toContain('log line 25')
+        expect(expandedText).not.toContain('more lines · Ctrl+O to toggle')
+    })
 })

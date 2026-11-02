@@ -693,6 +693,40 @@ export class MessageLineCache {
                     },
                 ])
                 lines.push([{ text: '', style: {} }])
+            } else if (msg.content) {
+                const durationMs = msg.durationMs
+                const durationStr = durationMs
+                    ? durationMs >= 1000
+                        ? `${(durationMs / 1000).toFixed(1)}s`
+                        : `${durationMs}ms`
+                    : null
+                const topic = extractThoughtTopic(msg.content)
+                const thoughtTitle = durationStr ? `Thought for ${durationStr}` : 'Thought'
+                const bannerLabel = topic ? `${thoughtTitle} · ${topic}` : thoughtTitle
+
+                if (expandTools) {
+                    lines.push([
+                        { text: '❭ ', style: { fg: THEME.colors.brand } },
+                        { text: bannerLabel, style: { fg: THEME.colors.brand, bold: true } },
+                        { text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } },
+                    ])
+                    const formatted = formatMarkdownToLines(msg.content, width - 4)
+                    for (const l of formatted) {
+                        l.unshift({ text: '  ', style: {} })
+                        for (const seg of l) {
+                            if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
+                        }
+                    }
+                    lines.push(...formatted)
+                    lines.push([{ text: '', style: {} }])
+                } else {
+                    lines.push([
+                        { text: '❭ ', style: { fg: THEME.colors.muted } },
+                        { text: bannerLabel, style: { fg: THEME.colors.muted } },
+                        { text: ' (ctrl+o to expand)', style: { fg: THEME.colors.dim } },
+                    ])
+                    lines.push([{ text: '', style: {} }])
+                }
             }
         } else if (msg.role === 'assistant') {
             const text = msg.content || msg.text || ''

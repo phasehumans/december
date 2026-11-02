@@ -132,7 +132,7 @@ function streamRipgrepGrep(
     root: string
 ): Promise<string> {
     return new Promise((resolve, reject) => {
-        const args = ['-n', '-H', '--no-heading', '--color=never', '--hidden']
+        const args = ['-n', '-H', '--no-heading', '--color=never', '--hidden', '-i']
         for (const ig of ignores) {
             if (ig.includes('!')) continue
             args.push('-g', `!${ig}`)
@@ -206,7 +206,7 @@ function streamFallbackGrep(
     root: string
 ): Promise<string> {
     return new Promise((resolve, reject) => {
-        const child = spawn('git', ['grep', '-nI', query, '--', targetDir], {
+        const child = spawn('git', ['grep', '-nIi', query, '--', targetDir], {
             cwd: root,
             stdio: ['ignore', 'pipe', 'pipe'],
         })
@@ -249,7 +249,7 @@ function streamFallbackGrep(
                         const fallback = spawn(
                             'grep',
                             [
-                                '-rnI',
+                                '-rnIi',
                                 '--exclude-dir=node_modules',
                                 '--exclude-dir=.git',
                                 query,

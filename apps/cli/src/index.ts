@@ -15,6 +15,9 @@ import { AUTH_REQUIRED_NOTICE } from './constants/messages'
 import releaseHighlights from './constants/release-highlights.json' with { type: 'json' }
 import { purgeProjectEnvApiKeys } from './utils/env-sanitizer'
 
+import type { DecemberConfig } from './config'
+import type { DifferentialApp, TaskItem } from '@december/tui'
+
 // Ensure no API keys or tokens from project .env files are loaded into CLI process
 purgeProjectEnvApiKeys()
 
@@ -551,6 +554,7 @@ async function main() {
                         '\n\nInterrupted · What should December do instead?'
                     )
                 } else if (event.type === 'ToolCallStart') {
+                    differentialApp.flushStream()
                     differentialApp.clearStatusMessage()
                     const inputStr =
                         typeof event.toolCall.input === 'string'
@@ -581,10 +585,7 @@ async function main() {
                 content: err.message || 'Execution error',
             })
         } finally {
-            differentialApp.clearStatusMessage()
-            differentialApp.stopSpinner()
-            differentialApp.state.isStreaming = false
-            differentialApp.render()
+            differentialApp.finishStream()
             differentialApp.refreshWorkspaceFiles().catch(() => {
                 // Intentionally swallowed: refresh workspace files after agent turn
             })
@@ -621,7 +622,7 @@ async function main() {
         }
     }
 
-    const buildSettingsFromConfig = (cfg: Config, prov?: string, mod?: string) => {
+    const buildSettingsFromConfig = (cfg: DecemberConfig, prov?: string, mod?: string) => {
         return [
             {
                 id: 'provider',
@@ -760,10 +761,7 @@ async function main() {
                 }
             }
             if (harness) {
-                harness.config.thinkingLevel = level
-                if (harness.config.modelOptions) {
-                    harness.config.modelOptions.thinkingLevel = level
-                }
+                harness.updateThinkingLevel(level)
             }
             try {
                 const cfg = await loadConfig()
@@ -790,10 +788,7 @@ async function main() {
                         }
                     }
                     if (harness) {
-                        harness.config.thinkingLevel = newValue as any
-                        if (harness.config.modelOptions) {
-                            harness.config.modelOptions.thinkingLevel = newValue
-                        }
+                        harness.updateThinkingLevel(newValue)
                     }
                 } else if (settingId === 'steering_mode') {
                     cfg.steeringMode = newValue as 'all' | 'one-at-a-time'

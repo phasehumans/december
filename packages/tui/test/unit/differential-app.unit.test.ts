@@ -648,6 +648,58 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('navigates case-insensitively across uppercase and lowercase matches with n and p in fileview', async () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onCodeSearch: async () => [
+                { file: 'email.ts', line: 1, content: 'import resend from "resend"' },
+            ],
+        })
+        app.start()
+
+        app.state.input = '/codesearch resend'
+        app.handleKey('\r')
+        await new Promise((r) => setTimeout(r, 10))
+
+        expect(app.state.activeOverlay).toBe('codesearch')
+
+        // Open fileview with in-memory content containing uppercase and mixed-case lines
+        await app.openFileView(
+            'email.ts',
+            1,
+            'codesearch',
+            'resend',
+            [1],
+            [
+                'import resend from "resend"',
+                'const apiKey = process.env.RESEND_API_KEY',
+                'const client = new Resend()',
+            ]
+        )
+
+        expect(app.state.activeOverlay).toBe('fileview')
+        expect(app.state.fileViewMatchLines).toEqual([1, 2, 3])
+        expect(app.state.fileViewCursorLine).toBe(0) // line 1
+
+        // Press 'n' - jumps to line 2 (uppercase RESEND_API_KEY)
+        app.handleKey('n')
+        expect(app.state.fileViewCursorLine).toBe(1)
+        expect(app.state.toast?.message).toContain('Match 2/3 (line 2)')
+
+        // Press 'n' - jumps to line 3 (TitleCase Resend)
+        app.handleKey('n')
+        expect(app.state.fileViewCursorLine).toBe(2)
+        expect(app.state.toast?.message).toContain('Match 3/3 (line 3)')
+
+        // Press 'p' - jumps back to line 2
+        app.handleKey('p')
+        expect(app.state.fileViewCursorLine).toBe(1)
+
+        app.stop()
+    })
+
     it('executes /btw side question and allows ephemeral review without history pollution', async () => {
         let submittedToChat: string | null = null
         const app = new DifferentialApp({
@@ -2691,6 +2743,48 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // Wheel down once: \x1b[<65;20;10M
         app.handleKey('\x1b[<65;20;10M')
         expect(app.state.scrollOffset).toBe(offsetAfterUp + 3)
+
+        app.stop()
+    })
+
+    it('batches rapid streaming updates within 33ms throttle window and flushes on flushStream', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        let renderCount = 0
+        const origRender = app.render.bind(app)
+        app.render = () => {
+            renderCount++
+            origRender()
+        }
+
+        renderCount = 0
+        // Rapidly push multiple streaming chunks within microseconds (high-speed token burst)
+        app.appendThinkingChunk('Planning step 1...')
+        app.appendThinkingChunk(' Planning step 2...')
+        app.appendStreamDelta('Answer token 1')
+        app.appendStreamDelta(' Answer token 2')
+        app.appendStreamDelta(' Answer token 3')
+
+        // First call triggers immediate render, subsequent calls in burst are throttled
+        expect(renderCount).toBe(1)
+
+        // flushStream flushes pending buffer, finalizes thinking message, and renders immediately
+        app.flushStream()
+        expect(renderCount).toBe(2)
+
+        const thinkingMsg = app.state.messages.find((m) => m.role === 'thinking')
+        expect(thinkingMsg).toBeDefined()
+        expect(thinkingMsg?.isStreaming).toBe(false)
+        expect(typeof thinkingMsg?.durationMs).toBe('number')
+
+        const asstMsg = app.state.messages.find((m) => m.role === 'assistant')
+        expect(asstMsg).toBeDefined()
+        expect(asstMsg?.content).toBe('Answer token 1 Answer token 2 Answer token 3')
 
         app.stop()
     })
