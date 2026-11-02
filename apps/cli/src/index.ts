@@ -618,7 +618,50 @@ async function main() {
         }
     }
 
+    const buildSettingsFromConfig = (cfg: Config, prov?: string, mod?: string) => {
+        return [
+            {
+                id: 'provider',
+                title: 'Active Provider',
+                value: prov || cfg.activeProvider || 'Claude',
+            },
+            {
+                id: 'model',
+                title: 'Active Model',
+                value: mod
+                    ? getModelLabel(mod)
+                    : cfg.activeModel
+                      ? getModelLabel(cfg.activeModel)
+                      : 'Claude 3.5 Sonnet',
+            },
+            {
+                id: 'tool_permission',
+                title: 'Tool Permission',
+                value: cfg.toolPermission || 'always-proceed',
+            },
+            {
+                id: 'pathguard',
+                title: 'PathGuard Protection',
+                value: cfg.pathGuard === false ? 'off' : 'on',
+            },
+            {
+                id: 'non_workspace',
+                title: 'Non-Workspace Access',
+                value: cfg.nonWorkspaceAccess ? 'on' : 'off',
+            },
+            { id: 'thinking_level', title: 'Thinking Level', value: cfg.thinkingLevel || 'auto' },
+            { id: 'steering_mode', title: 'Steering Mode', value: cfg.steeringMode || 'all' },
+            { id: 'follow_up_mode', title: 'Follow-Up Mode', value: cfg.followUpMode || 'all' },
+            {
+                id: 'browser_visible',
+                title: 'Browser Visible',
+                value: cfg.browserVisible ? 'on' : 'off',
+            },
+        ]
+    }
+
     differentialApp = new DifferentialApp({
+        settings: buildSettingsFromConfig(config, activeProvider, initialModel),
         cliVersion: pkg.version,
         userEmail,
         decemberEmail: config.decemberToken ? config.email : undefined,
@@ -681,11 +724,58 @@ async function main() {
                     agent.modelOptions.thinkingLevel = level
                 }
             }
+            if (harness) {
+                harness.config.thinkingLevel = level
+                if (harness.config.modelOptions) {
+                    harness.config.modelOptions.thinkingLevel = level
+                }
+            }
             try {
                 const cfg = await loadConfig()
                 await saveConfig({ ...cfg, thinkingLevel: level })
             } catch {
                 // Intentionally swallowed: ignore thinking level config save error
+            }
+        },
+        onSettingChange: async (settingId: string, newValue: string) => {
+            try {
+                const cfg = await loadConfig()
+                if (settingId === 'pathguard') {
+                    cfg.pathGuard = newValue === 'on'
+                } else if (settingId === 'non_workspace') {
+                    cfg.nonWorkspaceAccess = newValue === 'on'
+                } else if (settingId === 'tool_permission') {
+                    cfg.toolPermission = newValue as 'always-proceed' | 'always-ask'
+                } else if (settingId === 'thinking_level') {
+                    cfg.thinkingLevel = newValue as any
+                    if (agent) {
+                        agent.thinkingLevel = newValue as any
+                        if (agent.modelOptions) {
+                            agent.modelOptions.thinkingLevel = newValue
+                        }
+                    }
+                    if (harness) {
+                        harness.config.thinkingLevel = newValue as any
+                        if (harness.config.modelOptions) {
+                            harness.config.modelOptions.thinkingLevel = newValue
+                        }
+                    }
+                } else if (settingId === 'steering_mode') {
+                    cfg.steeringMode = newValue as 'all' | 'one-at-a-time'
+                    if (agent && agent.steeringQueue) {
+                        agent.steeringQueue.mode = newValue as 'all' | 'one-at-a-time'
+                    }
+                } else if (settingId === 'follow_up_mode') {
+                    cfg.followUpMode = newValue as 'all' | 'one-at-a-time'
+                    if (agent && agent.followUpQueue) {
+                        agent.followUpQueue.mode = newValue as 'all' | 'one-at-a-time'
+                    }
+                } else if (settingId === 'browser_visible') {
+                    cfg.browserVisible = newValue === 'on'
+                }
+                await saveConfig(cfg)
+            } catch {
+                // Intentionally swallowed: ignore setting config save error
             }
         },
         onModelSelect: async (selected) => {

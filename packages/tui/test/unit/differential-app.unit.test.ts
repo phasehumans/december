@@ -2087,4 +2087,50 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         app.stop()
     })
+
+    it('handles settings toggling and fires onSettingChange for pathguard, permissions, steering, and browser', () => {
+        const changes: { id: string; value: string }[] = []
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSettingChange: (id, value) => {
+                changes.push({ id, value })
+            },
+        })
+        app.start()
+
+        app.executeCommand('settings')
+        expect(app.state.activeOverlay).toBe('settings')
+
+        // Find tool_permission and toggle it
+        const toolPermIdx = app.state.settings.findIndex((s) => s.id === 'tool_permission')
+        app.state.settingsSelectedIndex = toolPermIdx
+        app.handleKey(' ')
+        expect(app.state.settings[toolPermIdx].value).toBe('always-ask')
+        expect(changes).toContainEqual({ id: 'tool_permission', value: 'always-ask' })
+
+        // Find pathguard and toggle it
+        const pathGuardIdx = app.state.settings.findIndex((s) => s.id === 'pathguard')
+        app.state.settingsSelectedIndex = pathGuardIdx
+        app.handleKey('\r')
+        expect(app.state.settings[pathGuardIdx].value).toBe('off')
+        expect(changes).toContainEqual({ id: 'pathguard', value: 'off' })
+
+        // Find steering_mode and toggle it
+        const steeringIdx = app.state.settings.findIndex((s) => s.id === 'steering_mode')
+        app.state.settingsSelectedIndex = steeringIdx
+        app.handleKey(' ')
+        expect(app.state.settings[steeringIdx].value).toBe('one-at-a-time')
+        expect(changes).toContainEqual({ id: 'steering_mode', value: 'one-at-a-time' })
+
+        // Find browser_visible and toggle it
+        const browserIdx = app.state.settings.findIndex((s) => s.id === 'browser_visible')
+        app.state.settingsSelectedIndex = browserIdx
+        app.handleKey('\r')
+        expect(app.state.settings[browserIdx].value).toBe('on')
+        expect(changes).toContainEqual({ id: 'browser_visible', value: 'on' })
+
+        app.stop()
+    })
 })

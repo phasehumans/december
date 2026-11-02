@@ -405,6 +405,8 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     onExecuteDirectCommand?: (command: string) => Promise<void> | void
     onUndo?: () => Promise<void> | void
     authRequiredNotice?: string
+    settings?: SettingItem[]
+    onSettingChange?: (settingId: string, newValue: string) => Promise<void> | void
 }
 
 export function openBrowserUrl(url: string): void {
@@ -439,6 +441,7 @@ export const DEFAULT_SETTINGS: SettingItem[] = [
     { id: 'thinking_level', title: 'Thinking Level', value: 'auto' },
     { id: 'steering_mode', title: 'Steering Mode', value: 'all' },
     { id: 'follow_up_mode', title: 'Follow-Up Mode', value: 'all' },
+    { id: 'browser_visible', title: 'Browser Visible', value: 'off' },
 ]
 
 export class DifferentialApp {
@@ -454,6 +457,7 @@ export class DifferentialApp {
     private exitTimer: any = null
     private toastTimer: any = null
     private spinnerTimer: any = null
+    private onSettingChangeCallback?: (settingId: string, newValue: string) => Promise<void> | void
     private onSubmitCallback?: (prompt: string) => void
     private onAbortCallback?: () => void
     private onExitCallback?: () => void
@@ -540,6 +544,7 @@ export class DifferentialApp {
         this.onOpenEditorCallback = options?.onOpenEditor
         this.onExecuteDirectCommandCallback = options?.onExecuteDirectCommand
         this.onUndoCallback = options?.onUndo
+        this.onSettingChangeCallback = options?.onSettingChange
         this.authRequiredNotice = options?.authRequiredNotice
         this.workspaceFiles = options?.workspaceFiles ? [...options.workspaceFiles] : []
         this.recentFiles = options?.recentFiles ? new Set(options.recentFiles) : new Set<string>()
@@ -688,7 +693,7 @@ export class DifferentialApp {
             tasksWindowStart: 0,
 
             settingsSelectedIndex: 0,
-            settings: DEFAULT_SETTINGS,
+            settings: options?.settings ? [...options.settings] : [...DEFAULT_SETTINGS],
 
             skillsSelectedIndex: 0,
             skillsWindowStart: 0,
@@ -2997,7 +3002,20 @@ export class DifferentialApp {
                     else if (current.value === 'off') current.value = 'on'
                     else if (current.value === 'always-proceed') current.value = 'always-ask'
                     else if (current.value === 'always-ask') current.value = 'always-proceed'
+                    else if (current.value === 'all') current.value = 'one-at-a-time'
+                    else if (current.value === 'one-at-a-time') current.value = 'all'
                     this.showToast(`Updated ${current.title}: [${current.value}]`, 'success')
+                    if (this.onSettingChangeCallback) {
+                        try {
+                            const res = this.onSettingChangeCallback(current.id, current.value)
+                            if (res && typeof (res as any).catch === 'function') {
+                                ;(res as any).catch(() => {})
+                            }
+                        } catch {
+                            // Intentionally swallowed: ignore setting callback error
+                        }
+                    }
+                    this.render()
                 }
                 return
             }
