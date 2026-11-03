@@ -387,14 +387,14 @@ const youtubeVideoId = rawVideo.includes('youtu')
 
     <!-- Video Section -->
     <section class="mb-10 sm:mb-12">
-      <div class="relative w-full aspect-video overflow-hidden bg-black">
+      <div class="relative w-full aspect-video overflow-hidden bg-white border border-[#e2e8f0]">
         <iframe
           class="w-full h-full border-0"
           src={`https://www.youtube-nocookie.com/embed/${youtubeVideoId}?rel=0&cc_load_policy=3&iv_load_policy=3&loop=1&playlist=${youtubeVideoId}`}
           title="December Video"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowfullscreen
-          loading="lazy"
+          loading="eager"
         ></iframe>
       </div>
     </section>

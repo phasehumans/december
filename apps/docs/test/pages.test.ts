@@ -23,12 +23,11 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('npm install -g @trydecember/cli')
         })
 
-        it('includes package manager switch options for npm, bun, and pnpm', () => {
+        it('includes install command switch options for bash, powershell, npm, and bun', () => {
             const html = getLandingHtml()
 
             expect(html).toContain('data-pm="npm"')
             expect(html).toContain('data-pm="bun"')
-            expect(html).toContain('data-pm="pnpm"')
             expect(html).toContain('data-pm="bash"')
             expect(html).toContain('data-pm="powershell"')
         })
@@ -51,10 +50,18 @@ describe('apps/docs page content & layout tests', () => {
                 /<a[^>]*href="\/me"[^>]*target="_blank"[^>]*>@chaitanya<\/a>/
             )
             expect(footerHtml).toContain('href="/privacy"')
+            expect(footerHtml).toMatch(
+                /<a[^>]*href="\/privacy"[^>]*target="_blank"[^>]*>privacy<\/a>/
+            )
             expect(footerHtml).toContain('href="/terms"')
+            expect(footerHtml).toMatch(/<a[^>]*href="\/terms"[^>]*target="_blank"[^>]*>terms<\/a>/)
+            expect(footerHtml).toContain('href="/docs/changelog"')
+            expect(footerHtml).toMatch(
+                /<a[^>]*href="\/docs\/changelog"[^>]*target="_blank"[^>]*>changelog<\/a>/
+            )
             expect(footerHtml).toContain('mailto:team@trydecember.com')
             expect(footerHtml).toContain('https://github.com/phasehumans')
-            expect(footerHtml).not.toContain('https://x.com/phasehumans')
+            expect(footerHtml).toContain('https://x.com/phasehumans')
             expect(footerHtml).not.toContain('https://www.linkedin.com/in/phasehumans/')
             expect(footerHtml).not.toContain('https://github.com/phasehumans/december')
             expect(footerHtml).not.toContain('https://www.npmjs.com/package/@trydecember/cli')
@@ -161,9 +168,9 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('https://www.youtube.com/@phasehumans')
             expect(html).toContain('https://x.com/phasehumans')
             expect(html).toContain('https://www.linkedin.com/in/phasehumans/')
-            expect(html).toContain('https://www.npmjs.com/~phasehumans')
+            expect(html).not.toContain('href="https://www.npmjs.com/~phasehumans"')
             expect(html).toContain('https://codeforces.com/profile/phasehumans')
-            expect(html).toContain('href="/blog"')
+            expect(html).not.toContain('href="/blog"')
             expect(html).toContain('mailto:chetan@trydecember.com')
             // Minimal: Header and footer should be hidden
             expect(html).not.toContain('<footer')

@@ -140,7 +140,22 @@ try {
     Expand-Archive -Path $ZipPath -DestinationPath $TempDir -Force
 
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-    Move-Item -Path (Join-Path $TempDir $BinaryName) -Destination (Join-Path $InstallDir $BinaryName) -Force
+    $DestBin = Join-Path $InstallDir $BinaryName
+    $SourceBin = Join-Path $TempDir $BinaryName
+    if (Test-Path $DestBin) {
+        try {
+            Move-Item -Path $SourceBin -Destination $DestBin -Force
+        } catch {
+            # On Windows, running binaries cannot be overwritten directly due to file locking.
+            # Renaming a running .exe is permitted by Windows NT, allowing atomic placement of new binary.
+            $OldBin = Join-Path $InstallDir "$BinaryName.old-$((Get-Random))"
+            Move-Item -Path $DestBin -Destination $OldBin -Force
+            Move-Item -Path $SourceBin -Destination $DestBin -Force
+            Remove-Item -Path $OldBin -Force -ErrorAction SilentlyContinue
+        }
+    } else {
+        Move-Item -Path $SourceBin -Destination $DestBin -Force
+    }
     Log-Success "installed binary to ${White}$InstallDir\$BinaryName$Reset"
 
     # Verify binary execution
@@ -149,10 +164,12 @@ try {
         if ($VerOutput) {
             $CleanVer = ($VerOutput -split '\r?\n')[0].Trim().TrimStart('v')
             Log-Success "verified binary execution (v$CleanVer)"
+        } else {
+            Log-Warn "binary installed, but execution verification returned empty output"
         }
     }
     catch {
-        # Intentionally swallowed: continue if verification output cannot be captured
+        Log-Warn "binary installed, but execution verification threw an error"
     }
 
     $ConfigDir = Join-Path $env:USERPROFILE ".december"
