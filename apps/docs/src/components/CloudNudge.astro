@@ -47,13 +47,11 @@ const loginUrl = `${appUrl}/login`;
       <a
         id="cloud-nudge-cta-btn"
         href={loginUrl}
-        class="corner-brackets relative h-7 w-full inline-flex items-center justify-center gap-1 border border-[#e2e8f0] bg-[#edf4fe] px-2.5 font-mono text-[11px] uppercase tracking-wider text-[#1e293b] font-medium hover:border-[#87b2f4] transition-all active:scale-[0.98]"
+        class="group w-full h-8 inline-flex items-center justify-center gap-1.5 bg-[#090a0f] text-white hover:bg-[#27272a] text-xs font-mono font-medium px-3.5 py-1.5 rounded-[3px] transition-colors active:scale-[0.98]"
       >
-        <span class="corner-brackets-tr"></span>
-        <span class="corner-brackets-bl"></span>
         <span>Get started</span>
-        <svg class="w-3 h-3 text-[#64748b] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
-          <path d="M7 17L17 7M17 7H7M17 7V17" />
+        <svg class="w-3 h-3 text-white/70 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M12 5l7 7-7 7" />
         </svg>
       </a>
     </div>
@@ -62,51 +60,12 @@ const loginUrl = `${appUrl}/login`;
 
 <script is:inline>
   (function () {
-    var STORAGE_KEY = 'december_cloud_nudge_suppressed_until';
-    var ONE_DAY_MS = 24 * 60 * 60 * 1000;
     var timerId = null;
     var isDisplayed = false;
 
-    function hasNudgeOverride() {
-      try {
-        return window.location.search.indexOf('nudge') !== -1;
-      } catch (_e) {
-        return false;
-      }
-    }
-
-    function isSuppressed() {
-      // Allow ?nudge URL param to force-test anytime
-      if (hasNudgeOverride()) {
-        return false;
-      }
-
-      try {
-        var suppressedUntil = window.localStorage.getItem(STORAGE_KEY);
-        if (!suppressedUntil) {
-          return false;
-        }
-        var expiry = parseInt(suppressedUntil, 10);
-        return !isNaN(expiry) && Date.now() < expiry;
-      } catch (_e) {
-        // Intentionally swallowed: storage quota or private browsing mode
-        return false;
-      }
-    }
-
-    function markDismissed() {
-      try {
-        var expiryTimestamp = Date.now() + ONE_DAY_MS;
-        window.localStorage.setItem(STORAGE_KEY, expiryTimestamp.toString());
-      } catch (_e) {
-        // Intentionally swallowed: storage quota or private browsing mode
-      }
-    }
-
-    function isLoggedIn() {
-      return document.cookie.split(';').some(function (cookieStr) {
-        return cookieStr.trim().startsWith('december_logged_in=1');
-      });
+    function isMainPage() {
+      var p = window.location.pathname;
+      return p === '/' || p === '' || p === '/index.html';
     }
 
     function cleanupListeners() {
@@ -128,7 +87,7 @@ const loginUrl = `${appUrl}/login`;
     }
 
     function showPopup() {
-      if (isDisplayed || isSuppressed() || isLoggedIn()) {
+      if (isDisplayed || !isMainPage()) {
         cleanupListeners();
         return;
       }
@@ -156,7 +115,7 @@ const loginUrl = `${appUrl}/login`;
 
       if (scrollableHeight > 0) {
         var scrollRatio = (window.scrollY || window.pageYOffset || 0) / scrollableHeight;
-        if (scrollRatio >= 0.3) {
+        if (scrollRatio >= 0.75) {
           showPopup();
         }
       }
@@ -166,14 +125,15 @@ const loginUrl = `${appUrl}/login`;
       isDisplayed = false;
       cleanupListeners();
 
-      if (isSuppressed() || isLoggedIn()) {
+      // Only show on the main landing page
+      if (!isMainPage()) {
+        hidePopup();
         return;
       }
 
       var closeBtn = document.getElementById('cloud-nudge-close-btn');
       if (closeBtn) {
         closeBtn.onclick = function () {
-          markDismissed();
           hidePopup();
         };
       }
@@ -181,18 +141,17 @@ const loginUrl = `${appUrl}/login`;
       var ctaBtn = document.getElementById('cloud-nudge-cta-btn');
       if (ctaBtn) {
         ctaBtn.onclick = function () {
-          markDismissed();
           hidePopup();
         };
       }
 
-      // 5-second timer trigger (or instant if ?nudge is present in URL)
-      var delayMs = window.location.search.indexOf('nudge') !== -1 ? 0 : 5000;
+      // 7-second timer trigger (or instant with ?nudge)
+      var delayMs = window.location.search.indexOf('nudge') !== -1 ? 0 : 7000;
       timerId = window.setTimeout(function () {
         showPopup();
       }, delayMs);
 
-      // Scroll depth trigger (30%)
+      // Scroll depth trigger (75% of page)
       window.addEventListener('scroll', onScroll, { passive: true });
     }
 

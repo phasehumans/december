@@ -259,6 +259,47 @@
     background: repeating-linear-gradient(45deg, #f5f7fa, #f5f7fa 5px, #ffffff 5px, #ffffff 10px);
 }
 
+/* Chassis side gutter diagonal hatching pattern with edge fade */
+.side-gutter-hatch {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 6px,
+        rgba(135, 178, 244, 0.35) 6px,
+        rgba(135, 178, 244, 0.35) 7px
+    );
+}
+
+.side-gutter-mask-left {
+    mask-image: linear-gradient(
+        to right,
+        transparent 0%,
+        rgba(0, 0, 0, 0.3) 35%,
+        rgba(0, 0, 0, 1) 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0%,
+        rgba(0, 0, 0, 0.3) 35%,
+        rgba(0, 0, 0, 1) 100%
+    );
+}
+
+.side-gutter-mask-right {
+    mask-image: linear-gradient(
+        to left,
+        transparent 0%,
+        rgba(0, 0, 0, 0.3) 35%,
+        rgba(0, 0, 0, 1) 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to left,
+        transparent 0%,
+        rgba(0, 0, 0, 0.3) 35%,
+        rgba(0, 0, 0, 1) 100%
+    );
+}
+
 /* Glass and subtle card utilities */
 .card-clean {
     background: #ffffff;

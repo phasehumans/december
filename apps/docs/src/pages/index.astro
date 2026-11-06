@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import CloudNudge from '../components/CloudNudge.astro';
+import { version } from '../lib/version';
 
 const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
@@ -12,16 +12,80 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
   hideHeader={false}
   hideFooter={false}
 >
-  <!-- Page Container: Generous left & right margins with compact vertical rhythm -->
-  <div class="mx-auto max-w-[940px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-1 sm:pt-12 sm:pb-2">
-    
-    <!-- Hero Section -->
-    <section class="mb-16 sm:mb-20">
-      <!-- Centered Hero Header & CLI Script -->
-      <div class="text-center max-w-3xl mx-auto flex flex-col items-center">
+  <!-- Page Blueprint Chassis: 1120px wide flanked by cross blue line side gutters on desktop -->
+  <div class="relative w-full overflow-hidden">
+    <!-- Left Side Gutter: Cross Blue Hatching Pattern (visible on lg+ screens) -->
+    <div
+      class="hidden lg:block absolute top-0 bottom-0 left-0 right-[calc(50%+560px)] side-gutter-hatch side-gutter-mask-left pointer-events-none z-0 border-r border-[#e2e8f0]"
+      aria-hidden="true"
+    />
+
+    <!-- Right Side Gutter: Cross Blue Hatching Pattern (visible on lg+ screens) -->
+    <div
+      class="hidden lg:block absolute top-0 bottom-0 left-[calc(50%+560px)] right-0 side-gutter-hatch side-gutter-mask-right pointer-events-none z-0 border-l border-[#e2e8f0]"
+      aria-hidden="true"
+    />
+
+    <!-- Center Chassis (1120px wide, framed with clean line borders) -->
+    <div class="relative z-10 mx-auto max-w-[1120px] border-x border-transparent lg:border-[#e2e8f0] bg-white">
+      
+      <!-- Hero Section -->
+      <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-12 sm:pt-12 sm:pb-16">
+        <!-- Telemetry Indicators in Side Gutters (Hero) -->
+        <div class="hidden xl:flex absolute top-12 right-[calc(100%+20px)] 2xl:right-[calc(100%+32px)] flex-col items-end gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-right pointer-events-none whitespace-nowrap">
+          <div class="flex items-center gap-1.5 text-[#090a0f] font-medium">
+            <span class="text-[#87b2f4] font-semibold">//</span>
+            <span>DEC ENGINE</span>
+          </div>
+          <span class="text-[9px] text-[#94a3b8]">AUTONOMOUS RUNTIME</span>
+        </div>
+        <div class="hidden xl:flex absolute top-12 left-[calc(100%+20px)] 2xl:left-[calc(100%+32px)] flex-col items-start gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-left pointer-events-none whitespace-nowrap">
+          <span class="text-[#090a0f] font-medium">TERMINAL &amp; CLOUD</span>
+          <span class="text-[9px] text-[#87b2f4]">BYOK ARCHITECTURE</span>
+        </div>
+        <!-- Centered Hero Header & CLI Script -->
+        <div class="text-center max-w-3xl mx-auto flex flex-col items-center">
+          <!-- Release Changelog Badge with Signature Corner Brackets -->
+          <a
+            href="/docs/changelog"
+            class="corner-brackets group mb-5 sm:mb-6 inline-flex items-center gap-2.5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:bg-[#fafbfc] px-2.5 py-1 font-mono text-xs transition-all duration-150 rounded-none active:scale-[0.98]"
+            title="View latest release changelog"
+          >
+            <span class="corner-brackets-tr"></span>
+            <span class="corner-brackets-bl"></span>
+            <span class="font-semibold text-[#090a0f]">{version}</span>
+            <span class="text-[#cbd5e1] font-normal">/</span>
+            <span class="text-[#52525b] group-hover:text-[#090a0f] transition-colors text-[11px] sm:text-xs font-normal">
+              Autonomous agent loop &amp; bot PR flow
+            </span>
+            <svg class="w-3 h-3 text-[#64748b] group-hover:text-[#87b2f4] transition-transform duration-150 ease-out group-hover:translate-x-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </a>
+
         <!-- Headline -->
-        <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-medium tracking-[-0.035em] text-[#090a0f] leading-[1.12] sm:leading-[1.08] text-center">
-          december, a (so much) better<br class="hidden sm:inline" />coding agent.
+        <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-medium tracking-[-0.035em] text-[#090a0f] leading-[1.12] sm:leading-[1.08] text-center select-none">
+          december, a (so much) better<br class="hidden sm:inline" />
+          <span class="inline-flex items-baseline justify-center">
+            <span
+              id="hero-flip-container"
+              class="font-medium relative inline-grid overflow-hidden py-1 text-center select-none align-baseline"
+              aria-label="coding agent."
+            >
+              <!-- Step 0: coding agent. (black) -->
+              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-100 translate-y-0 text-[#090a0f]" data-index="0">coding agent.</span>
+              <!-- Step 1: planning agent. (blue #0066f5) -->
+              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#0066f5]" data-index="1">planning agent.</span>
+              <!-- Step 2: building agent. (blue #0066f5) -->
+              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#0066f5]" data-index="2">building agent.</span>
+              <!-- Step 3: debugging agent. (blue #0066f5) -->
+              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#0066f5]" data-index="3">debugging agent.</span>
+              <!-- Step 4: shipping agent. (blue #0066f5) -->
+              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#0066f5]" data-index="4">shipping agent.</span>
+              <!-- Step 5: coding agent. (black landing phrase) -->
+              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#090a0f]" data-index="5">coding agent.</span>
+            </span>
+          </span>
         </h1>
 
         <!-- Subtitle -->
@@ -43,8 +107,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 class="flex-1 min-w-0 flex items-center gap-2 font-mono text-xs sm:text-[13px] text-[#1e293b] text-left cursor-pointer focus:outline-none overflow-hidden"
                 title="Click to copy command"
               >
-                <span class="text-[#87b2f4] select-none font-semibold shrink-0">$</span>
-                <span id="hero-display-cmd" data-cmd="curl -fsSL https://trydecember.com/install.sh | bash" class="font-normal text-[#0f172a] truncate">curl -fsSL https://trydecember.com/install.sh <span class="text-[#87b2f4] font-semibold">|</span> bash</span>
+                <span class="text-[#090a0f] select-none font-semibold shrink-0">$</span>
+                <span id="hero-display-cmd" data-cmd="curl -fsSL https://trydecember.com/install.sh | bash" class="font-normal text-[#0f172a] truncate">curl -fsSL https://trydecember.com/install.sh <span class="text-[#64748b] font-semibold">|</span> bash</span>
               </button>
 
               <!-- Actions: Copy Button + Dropdown Toggle -->
@@ -105,7 +169,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                   <path fill="#4fa847" d="m101.614 92.619-10.066 6.018c-.268.16-.46.332-.46.653v2.635c0 .32.214.46.481.3l10.216-6.212c.268-.16.31-.45.31-.77v-2.324c0-.322-.213-.45-.481-.3z"/>
                 </svg>
                 <span>bash</span>
-                <svg class="pm-check w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="pm-check w-3.5 h-3.5 text-[#090a0f] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </button>
@@ -137,7 +201,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                   <path fill="#FFF" fill-rule="evenodd" d="M77.6 65.5c-.4.8-1.2 1.6-2.6 2.6L33.6 97.9c-2.3 1.6-5.5 1-7.3-1.4-1.7-2.4-1.3-5.7.9-7.3l37.4-27.1v-.6l-23.5-25c-1.9-2-1.7-5.3.4-7.4 2.2-2 5.5-2 7.4 0l28.2 30c1.7 1.8 1.8 4.4.5 6.4zM63.5 87.8h22.3c2.6 0 4.7 2.1 4.7 4.6 0 2.6-2.1 4.6-4.7 4.6H63.5c-2.6 0-4.7-2.1-4.7-4.6 0-2.6 2.1-4.6 4.7-4.6z" clip-rule="evenodd"/>
                 </svg>
                 <span>powershell</span>
-                <svg class="pm-check hidden w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="pm-check hidden w-3.5 h-3.5 text-[#090a0f] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </button>
@@ -153,7 +217,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                   <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
                 </svg>
                 <span>npm</span>
-                <svg class="pm-check hidden w-3.5 h-3.5 text-[#87b2f4] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="pm-check hidden w-3.5 h-3.5 text-[#090a0f] ml-auto shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </button>
@@ -288,7 +352,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       <!-- Hero Video Area (Below Install & API Keys Strip) -->
       <div
         id="hero-media-placeholder"
-        class="corner-brackets relative w-full mt-6 sm:mt-8 border border-[#e2e8f0] bg-[#090a0f] shadow-xs aspect-video"
+        class="corner-brackets relative w-full max-w-[1024px] mx-auto mt-6 sm:mt-8 border border-[#e2e8f0] bg-[#090a0f] shadow-xs aspect-video"
       >
         <span class="corner-brackets-tr"></span>
         <span class="corner-brackets-bl"></span>
@@ -303,8 +367,29 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       </div>
     </section>
 
+    <!-- Section Divider: 01 How It Works -->
+    <div class="border-y border-[#e2e8f0] bg-[#fafbfc] px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 flex items-center justify-between font-mono text-xs select-none">
+      <div class="flex items-center gap-2">
+        <span class="text-[#87b2f4] font-semibold">// 01</span>
+        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">How it works</span>
+      </div>
+      <span class="text-[10px] font-mono text-[#94a3b8] uppercase tracking-wider hidden sm:inline">Execution Engine &amp; Loop</span>
+    </div>
+
     <!-- How It Works Section -->
-    <section class="mb-16 sm:mb-20">
+    <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-12 sm:py-16">
+      <!-- Telemetry Indicators in Side Gutters (01 How It Works) -->
+      <div class="hidden xl:flex absolute top-12 sm:top-16 right-[calc(100%+20px)] 2xl:right-[calc(100%+32px)] flex-col items-end gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-right pointer-events-none whitespace-nowrap">
+        <div class="flex items-center gap-1.5 text-[#090a0f] font-medium">
+          <span class="text-[#87b2f4] font-semibold">//</span>
+          <span>SPEC: ARCH 01</span>
+        </div>
+        <span class="text-[9px] text-[#94a3b8]">DUAL-ENGINE CORE</span>
+      </div>
+      <div class="hidden xl:flex absolute top-12 sm:top-16 left-[calc(100%+20px)] 2xl:left-[calc(100%+32px)] flex-col items-start gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-left pointer-events-none whitespace-nowrap">
+        <span class="text-[#090a0f] font-medium">ISOLATED PTY</span>
+        <span class="text-[9px] text-[#87b2f4]">STREAM PROTOCOL</span>
+      </div>
       <div class="w-full mb-6 sm:mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           How it works
@@ -324,9 +409,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
         <!-- 01 Writes code & runs commands -->
-        <a
-          href="/docs/agent-loop"
-          class="group block p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col justify-between"
+        <div
+          class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
         >
           <div>
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
@@ -342,7 +426,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-[#f8fafc]/50 border border-[#f1f5f9] overflow-hidden">
+          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -358,12 +442,11 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               decoding="async"
             />
           </div>
-        </a>
+        </div>
 
         <!-- 02 Cloud Sandboxes -->
-        <a
-          href="/docs/architecture"
-          class="group block p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col justify-between"
+        <div
+          class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
         >
           <div>
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
@@ -379,7 +462,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-[#f8fafc]/50 border border-[#f1f5f9] overflow-hidden">
+          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -395,12 +478,11 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               decoding="async"
             />
           </div>
-        </a>
+        </div>
 
         <!-- 03 Bring your own AI -->
-        <a
-          href="/docs/integrations"
-          class="group block p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col justify-between"
+        <div
+          class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
         >
           <div>
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
@@ -416,7 +498,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-[#f8fafc]/50 border border-[#f1f5f9] overflow-hidden">
+          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -432,12 +514,11 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               decoding="async"
             />
           </div>
-        </a>
+        </div>
 
         <!-- 04 Persistent Workspace Memory -->
-        <a
-          href="/docs/memory"
-          class="group block p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col justify-between"
+        <div
+          class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
         >
           <div>
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
@@ -453,7 +534,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-[#f8fafc]/50 border border-[#f1f5f9] overflow-hidden">
+          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -469,12 +550,11 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               decoding="async"
             />
           </div>
-        </a>
+        </div>
 
         <!-- 05 Autonomous Multi-Agent Teams -->
-        <a
-          href="/docs/agent-loop"
-          class="group block p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col justify-between"
+        <div
+          class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
         >
           <div>
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
@@ -490,7 +570,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-[#f8fafc]/50 border border-[#f1f5f9] overflow-hidden">
+          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -506,12 +586,11 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               decoding="async"
             />
           </div>
-        </a>
+        </div>
 
         <!-- 06 Extensible Skills & MCP -->
-        <a
-          href="/docs/skills"
-          class="group block p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col justify-between"
+        <div
+          class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
         >
           <div>
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
@@ -527,7 +606,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-[#f8fafc]/50 border border-[#f1f5f9] overflow-hidden">
+          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -543,12 +622,33 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               decoding="async"
             />
           </div>
-        </a>
+        </div>
       </div>
     </section>
 
+    <!-- Section Divider: 02 Benchmarks & Adoption -->
+    <div class="border-y border-[#e2e8f0] bg-[#fafbfc] px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 flex items-center justify-between font-mono text-xs select-none">
+      <div class="flex items-center gap-2">
+        <span class="text-[#87b2f4] font-semibold">// 02</span>
+        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">Benchmarks &amp; Adoption</span>
+      </div>
+      <span class="text-[10px] font-mono text-[#94a3b8] uppercase tracking-wider hidden sm:inline">TerminalBench #42 Evaluation</span>
+    </div>
+
     <!-- Benchmarks & Adoption Section -->
-    <section class="mb-16 sm:mb-20">
+    <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-12 sm:py-16">
+      <!-- Telemetry Indicators in Side Gutters (02 Benchmarks & Adoption) -->
+      <div class="hidden xl:flex absolute top-12 sm:top-16 right-[calc(100%+20px)] 2xl:right-[calc(100%+32px)] flex-col items-end gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-right pointer-events-none whitespace-nowrap">
+        <div class="flex items-center gap-1.5 text-[#090a0f] font-medium">
+          <span class="text-[#87b2f4] font-semibold">//</span>
+          <span>METRICS: BENCHMARKS</span>
+        </div>
+        <span class="text-[9px] text-[#94a3b8]">SWE-BENCH VERIFIED</span>
+      </div>
+      <div class="hidden xl:flex absolute top-12 sm:top-16 left-[calc(100%+20px)] 2xl:left-[calc(100%+32px)] flex-col items-start gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-left pointer-events-none whitespace-nowrap">
+        <span class="text-[#090a0f] font-medium">LATENCY &lt; 250MS</span>
+        <span class="text-[9px] text-[#87b2f4]">ZERO RETENTION</span>
+      </div>
       <div class="w-full mb-6 sm:mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           Benchmarks & Adoption
@@ -797,10 +897,32 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </div>
           </div>
         </div>
+      </div>
     </section>
 
+    <!-- Section Divider: 03 Environments -->
+    <div class="border-y border-[#e2e8f0] bg-[#fafbfc] px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 flex items-center justify-between font-mono text-xs select-none">
+      <div class="flex items-center gap-2">
+        <span class="text-[#87b2f4] font-semibold">// 03</span>
+        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">Environments</span>
+      </div>
+      <span class="text-[10px] font-mono text-[#94a3b8] uppercase tracking-wider hidden sm:inline">Terminal &amp; Cloud Sandboxes</span>
+    </div>
+
     <!-- Environments Section -->
-    <section class="mb-16 sm:mb-20">
+    <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-12 sm:py-16">
+      <!-- Telemetry Indicators in Side Gutters (03 Environments) -->
+      <div class="hidden xl:flex absolute top-12 sm:top-16 right-[calc(100%+20px)] 2xl:right-[calc(100%+32px)] flex-col items-end gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-right pointer-events-none whitespace-nowrap">
+        <div class="flex items-center gap-1.5 text-[#090a0f] font-medium">
+          <span class="text-[#87b2f4] font-semibold">//</span>
+          <span>RUNTIMES: MULTI-HOST</span>
+        </div>
+        <span class="text-[9px] text-[#94a3b8]">LOCAL + HOSTED</span>
+      </div>
+      <div class="hidden xl:flex absolute top-12 sm:top-16 left-[calc(100%+20px)] 2xl:left-[calc(100%+32px)] flex-col items-start gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-left pointer-events-none whitespace-nowrap">
+        <span class="text-[#090a0f] font-medium">BOT DISPATCH</span>
+        <span class="text-[9px] text-[#87b2f4]">PR AUTOMATION</span>
+      </div>
       <div class="w-full mb-6 sm:mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           Environments
@@ -908,8 +1030,29 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       </div>
     </section>
 
+    <!-- Section Divider: 04 FAQ -->
+    <div class="border-y border-[#e2e8f0] bg-[#fafbfc] px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 flex items-center justify-between font-mono text-xs select-none">
+      <div class="flex items-center gap-2">
+        <span class="text-[#87b2f4] font-semibold">// 04</span>
+        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">FAQ</span>
+      </div>
+      <span class="text-[10px] font-mono text-[#94a3b8] uppercase tracking-wider hidden sm:inline">Frequently Asked Questions</span>
+    </div>
+
     <!-- FAQ Section -->
-    <section id="faq" class="mb-8 sm:mb-10">
+    <section id="faq" class="relative px-6 sm:px-8 md:px-10 lg:px-12 pt-12 sm:pt-16 pb-8 sm:pb-10">
+      <!-- Telemetry Indicators in Side Gutters (04 FAQ) -->
+      <div class="hidden xl:flex absolute top-12 sm:top-16 right-[calc(100%+20px)] 2xl:right-[calc(100%+32px)] flex-col items-end gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-right pointer-events-none whitespace-nowrap">
+        <div class="flex items-center gap-1.5 text-[#090a0f] font-medium">
+          <span class="text-[#87b2f4] font-semibold">//</span>
+          <span>PROTOCOL: TRUST</span>
+        </div>
+        <span class="text-[9px] text-[#94a3b8]">CLIENT-SIDE KEYS</span>
+      </div>
+      <div class="hidden xl:flex absolute top-12 sm:top-16 left-[calc(100%+20px)] 2xl:left-[calc(100%+32px)] flex-col items-start gap-1 font-mono text-[10px] text-[#94a3b8] tracking-widest uppercase select-none text-left pointer-events-none whitespace-nowrap">
+        <span class="text-[#090a0f] font-medium">ENCRYPTED TLS</span>
+        <span class="text-[9px] text-[#87b2f4]">AUDITABLE RUNS</span>
+      </div>
       <div class="w-full mb-6 sm:mb-8">
         <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
           FAQ
@@ -1046,9 +1189,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
 
       </div>
     </section>
+    </div>
   </div>
-
-  <CloudNudge appUrl={appUrl} />
 </BaseLayout>
 
 <script>
@@ -1233,6 +1375,95 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           // Intentionally swallowed: clipboard fallback handled
         }
       };
+    }
+
+    // 4. Hero Word Flip Animation (matching apps/web/src/features/home/components/HomeHero.tsx)
+    const flipContainer = document.getElementById('hero-flip-container');
+    if (flipContainer) {
+      if ((window as any).__heroFlipTimers) {
+        ((window as any).__heroFlipTimers as number[]).forEach(clearTimeout);
+      }
+      (window as any).__heroFlipTimers = [];
+
+      const words = Array.from(flipContainer.querySelectorAll<HTMLElement>('.hero-flip-word'));
+      if (words.length >= 2) {
+        let isAnimating = false;
+
+        const clearTimers = () => {
+          if ((window as any).__heroFlipTimers) {
+            ((window as any).__heroFlipTimers as number[]).forEach(clearTimeout);
+            (window as any).__heroFlipTimers = [];
+          }
+        };
+
+        const setStep = (stepIndex: number) => {
+          words.forEach((w, idx) => {
+            if (idx === stepIndex) {
+              w.classList.remove('opacity-0', 'translate-y-4', '-translate-y-4', 'pointer-events-none');
+              w.classList.add('opacity-100', 'translate-y-0');
+            } else if (idx < stepIndex) {
+              w.classList.remove('opacity-100', 'translate-y-0', 'translate-y-4');
+              w.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+            } else {
+              w.classList.remove('opacity-100', 'translate-y-0', '-translate-y-4');
+              w.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+            }
+          });
+        };
+
+        const runCycle = () => {
+          if (isAnimating) return;
+          isAnimating = true;
+          clearTimers();
+
+          // Instantly reset: word 0 active, others below without transition
+          words.forEach((w, idx) => {
+            w.classList.add('transition-none');
+            if (idx === 0) {
+              w.classList.remove('opacity-0', 'translate-y-4', '-translate-y-4', 'pointer-events-none');
+              w.classList.add('opacity-100', 'translate-y-0');
+            } else {
+              w.classList.remove('opacity-100', 'translate-y-0', '-translate-y-4');
+              w.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+            }
+          });
+
+          // Force reflow so transition-none applies instantly before animating
+          void flipContainer.offsetHeight;
+
+          // Re-enable smooth CSS transitions
+          words.forEach((w) => w.classList.remove('transition-none'));
+
+          // Explicit cadence (300ms transition + 300ms readability rest per phrase)
+          const timers: number[] = [
+            window.setTimeout(() => setStep(1), 30),     // planning agent.
+            window.setTimeout(() => setStep(2), 630),    // building agent.
+            window.setTimeout(() => setStep(3), 1230),   // debugging agent.
+            window.setTimeout(() => setStep(4), 1830),   // shipping agent.
+            window.setTimeout(() => setStep(5), 2430),   // coding agent. (landing phrase)
+            window.setTimeout(() => {
+              isAnimating = false;
+              // Option A: Stop permanently on coding agent. Do not schedule auto-loop.
+            }, 2800),
+          ];
+
+          (window as any).__heroFlipTimers = timers;
+        };
+
+        // Option A: Quick entrance delay on arrival (350ms) so user sees the initial intro sequence
+        (window as any).__heroFlipTimers.push(window.setTimeout(runCycle, 350));
+
+        // Hover trigger: trigger cycle immediately when hovering headline if resting
+        const parentH1 = flipContainer.closest('h1');
+        if (parentH1) {
+          parentH1.addEventListener('mouseenter', () => {
+            if (!isAnimating) {
+              clearTimers();
+              runCycle();
+            }
+          });
+        }
+      }
     }
   }
 

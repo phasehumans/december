@@ -4,6 +4,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import CustomScrollbar from '../components/CustomScrollbar.astro';
 import PageLoader from '../components/PageLoader.astro';
+import CloudNudge from '../components/CloudNudge.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -224,12 +225,31 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     </script>
   </head>
   <body class="min-h-screen flex flex-col bg-white text-[#090a0f] selection:bg-[#87b2f4] selection:text-[#0a1128] overflow-x-hidden w-full max-w-[100vw]">
-    {showLoader && <PageLoader />}
-    <CustomScrollbar />
-    {!hideHeader && <Header activePath={activePath} />}
-    <main class="flex-1 w-full max-w-[100vw] overflow-x-hidden">
-      <slot />
-    </main>
-    {!hideFooter && <Footer />}
+    <div class="relative min-h-screen w-full flex flex-col flex-1">
+      {!hideHeader && !hideFooter && (
+        <>
+          <!-- Continuous Full-Page Left Side Gutter: Single unbroken element from top to bottom -->
+          <div
+            class="hidden lg:block absolute top-0 bottom-0 left-0 right-[calc(50%+560px)] side-gutter-hatch side-gutter-mask-left pointer-events-none z-0 border-r border-[#e2e8f0]"
+            aria-hidden="true"
+          />
+
+          <!-- Continuous Full-Page Right Side Gutter: Single unbroken element from top to bottom -->
+          <div
+            class="hidden lg:block absolute top-0 bottom-0 left-[calc(50%+560px)] right-0 side-gutter-hatch side-gutter-mask-right pointer-events-none z-0 border-l border-[#e2e8f0]"
+            aria-hidden="true"
+          />
+        </>
+      )}
+
+      {showLoader && <PageLoader />}
+      <CustomScrollbar />
+      {!hideHeader && <Header activePath={activePath} />}
+      <main class="flex-1 w-full max-w-[100vw] overflow-x-hidden relative z-10 flex flex-col">
+        <slot />
+      </main>
+      {!hideFooter && <Footer />}
+      {!hideHeader && !hideFooter && activePath === '/' && <CloudNudge appUrl={appUrl} />}
+    </div>
   </body>
 </html>
