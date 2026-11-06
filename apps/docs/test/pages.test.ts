@@ -19,17 +19,18 @@ describe('apps/docs page content & layout tests', () => {
         it('renders hero title, description, and install command', () => {
             const html = getLandingHtml()
 
-            expect(html).toContain('december, a (so much) better coding agent.')
+            expect(html).toContain('december, a (so much) better')
+            expect(html).toContain('coding agent.')
             expect(html).toContain('npm install -g @trydecember/cli')
         })
 
-        it('includes install command switch options for bash, powershell, npm, and bun', () => {
+        it('includes install command switch options for bash, powershell, and npm', () => {
             const html = getLandingHtml()
 
             expect(html).toContain('data-pm="npm"')
-            expect(html).toContain('data-pm="bun"')
             expect(html).toContain('data-pm="bash"')
             expect(html).toContain('data-pm="powershell"')
+            expect(html).not.toContain('data-pm="bun"')
         })
 
         it('includes instant authenticated redirect check for logged-in sessions', () => {
@@ -71,6 +72,22 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('faq-content hidden')
             expect(html).not.toContain('or bun / pnpm')
             expect(html).not.toContain('id="back-to-top-btn"')
+        })
+
+        it('renders hero video player with privacy-enhanced YouTube embed', () => {
+            const html = getLandingHtml()
+
+            expect(html).toContain('id="hero-media-placeholder"')
+            expect(html).toContain('https://www.youtube-nocookie.com/embed/n1gXOdLLTz4')
+            expect(html).toContain('title="December Demo Video"')
+        })
+
+        it('renders environments card and cloud nudge auth links to /login', () => {
+            const html = getLandingHtml()
+
+            expect(html).toContain('Start December in Web')
+            expect(html).toContain('Get started')
+            expect(html).toContain('/login')
         })
     })
 
