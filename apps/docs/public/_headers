@@ -1,6 +1,6 @@
-# Cache static illustrations for 1 year immutable
+# Cache static illustrations with 1-day TTL and stale-while-revalidate
 /illustrations/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
 # Cache compiled Astro assets for 1 year immutable
 /_astro/*
