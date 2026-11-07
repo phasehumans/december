@@ -1,9 +1,9 @@
 {
-    "version": "0.4.16",
-    "title": "What's New in v0.4.16",
+    "version": "0.4.17",
+    "title": "What's New in v0.4.17",
     "bullets": [
-        "Automated bot issue comment trigger and pr flow",
-        "Run autonomous agent loop for issue fixes and remove footers"
+        "Add intelligence section to landing page",
+        "Add parallel workflows and comparison sections"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

@@ -23,7 +23,7 @@
         "fast-glob": "3.3.3",
         "marked": "18.0.5"
     },
-    "version": "0.4.16",
+    "version": "0.4.17",
     "author": "Chaitanya Sonawane",
     "license": "MIT"
 }

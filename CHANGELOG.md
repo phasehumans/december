@@ -1,3 +1,20 @@
+## [0.4.17] - 2026-11-07
+
+### Features
+
+- _(docs)_ Add intelligence section to landing page
+- _(docs)_ Add parallel workflows and comparison sections
+- _(docs)_ Update footer links, video frame styling, and me email tooltip
+- _(docs)_ Embed hero demo video, align web ctas, update mobile providers, and clean assets
+- _(docs)_ Add blueprint side pattern to all pages, refine hero flip and add navbar logo
+- _(docs)_ Update terminal copy feedback, mobile header nav, footer links, and hero headline layout
+- _(docs)_ Hide announcement badge on mobile and add cache busters for illustrations
+
+### Miscellaneous Tasks
+
+- _(docs)_ Remove workflows and comparison sections
+- _(docs)_ Remove intelligence section and clean /me social icons
+
 ## [0.4.16] - 2026-11-02
 
 ### Features
@@ -52,6 +69,10 @@
 ### Testing
 
 - _(providers)_ Import reasoning support helpers in models test
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.16
 
 ## [0.4.15] - 2026-10-26
 
