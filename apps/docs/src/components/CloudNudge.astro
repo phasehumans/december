@@ -115,7 +115,7 @@ const loginUrl = `${appUrl}/login`;
 
       if (scrollableHeight > 0) {
         var scrollRatio = (window.scrollY || window.pageYOffset || 0) / scrollableHeight;
-        if (scrollRatio >= 0.75) {
+        if (scrollRatio >= 0.90) {
           showPopup();
         }
       }
@@ -145,13 +145,13 @@ const loginUrl = `${appUrl}/login`;
         };
       }
 
-      // 7-second timer trigger (or instant with ?nudge)
-      var delayMs = window.location.search.indexOf('nudge') !== -1 ? 0 : 7000;
+      // 20-second timer trigger (or instant with ?nudge)
+      var delayMs = window.location.search.indexOf('nudge') !== -1 ? 0 : 20000;
       timerId = window.setTimeout(function () {
         showPopup();
       }, delayMs);
 
-      // Scroll depth trigger (75% of page)
+      // Scroll depth trigger (90% of page)
       window.addEventListener('scroll', onScroll, { passive: true });
     }
 
