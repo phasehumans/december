@@ -264,9 +264,9 @@
     background-image: repeating-linear-gradient(
         -45deg,
         transparent,
-        transparent 6px,
-        rgba(135, 178, 244, 0.35) 6px,
-        rgba(135, 178, 244, 0.35) 7px
+        transparent 3.5px,
+        rgba(135, 178, 244, 0.18) 3.5px,
+        rgba(135, 178, 244, 0.18) 4.5px
     );
 }
 

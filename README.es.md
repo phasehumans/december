@@ -15,7 +15,11 @@ December es un (so much) better agente de programación. Te ayuda a desarrollar 
 </p>
 
 - **Escribe código y ejecuta comandos:** Pídele que cree funciones, corrija errores o ejecute pruebas. Él hace el trabajo por ti.
+- **Sandboxes en la nube:** Despliega entornos remotos y previsualizaciones en vivo.
 - **Trae tu propia IA:** Usa claves de API para OpenAI, Anthropic, Gemini y más de 100 proveedores, o inicia sesión a través de December para usar créditos de December.
+- **Memoria persistente del espacio de trabajo:** Aprende las convenciones del proyecto y las reglas del equipo en múltiples sesiones sin degradación de contexto.
+- **Equipos autónomos multi-agente:** Genera sub-agentes en paralelo en segundo plano para investigar documentación, depurar y ejecutar pruebas.
+- **Skills extensibles y MCP:** Conecta skills personalizadas e intégrate con herramientas de desarrollo externas o APIs mediante MCP.
 
 ### Primeros pasos
 

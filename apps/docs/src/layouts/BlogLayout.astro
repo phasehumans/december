@@ -59,18 +59,6 @@ const nextPost = Astro.props.nextPost || (currentIdx >= 0 && currentIdx < blogPo
 >
   <!-- Page Blueprint Chassis: 1120px wide flanked by cross blue line side gutters on desktop -->
   <div class="relative w-full overflow-hidden flex-1 flex flex-col">
-    <!-- Left Side Gutter: Cross Blue Hatching Pattern (visible on lg+ screens) -->
-    <div
-      class="hidden lg:block absolute top-0 bottom-0 left-0 right-[calc(50%+560px)] side-gutter-hatch side-gutter-mask-left pointer-events-none z-0 border-r border-[#e2e8f0]"
-      aria-hidden="true"
-    />
-
-    <!-- Right Side Gutter: Cross Blue Hatching Pattern (visible on lg+ screens) -->
-    <div
-      class="hidden lg:block absolute top-0 bottom-0 left-[calc(50%+560px)] right-0 side-gutter-hatch side-gutter-mask-right pointer-events-none z-0 border-l border-[#e2e8f0]"
-      aria-hidden="true"
-    />
-
     <!-- Main Container: 1120px wide centered content -->
     <div class="relative z-10 mx-auto max-w-[1120px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24 min-w-0 bg-white border-x border-transparent lg:border-[#e2e8f0] flex-1 w-full">
     <!-- Breadcrumb Navigation Bar -->

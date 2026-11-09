@@ -8,10 +8,10 @@ const { appUrl = defaultAppUrl } = Astro.props;
 const loginUrl = `${appUrl}/login`;
 ---
 
-<!-- Floating Side Popup / Cloud Nudge -->
+<!-- Floating Side Popup / Cloud Nudge (Desktop Only) -->
 <aside
   id="december-cloud-nudge"
-  class="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 w-[calc(100vw-2rem)] sm:w-[280px] opacity-0 translate-y-4 pointer-events-none transition-all duration-300 ease-out"
+  class="hidden sm:block fixed sm:bottom-5 sm:right-5 z-50 sm:w-[280px] opacity-0 translate-y-4 pointer-events-none transition-all duration-300 ease-out"
   aria-hidden="true"
   aria-label="Try December Cloud notification"
 >
@@ -62,10 +62,63 @@ const loginUrl = `${appUrl}/login`;
   (function () {
     var timerId = null;
     var isDisplayed = false;
+    var footerObserver = null;
+    var isFooterVisible = false;
 
     function isMainPage() {
       var p = window.location.pathname;
       return p === '/' || p === '' || p === '/index.html';
+    }
+
+    function isDesktop() {
+      return typeof window !== 'undefined' && window.innerWidth >= 640;
+    }
+
+    var TTL_MS = 24 * 60 * 60 * 1000; // 24 hours TTL
+
+    function isDismissed() {
+      if (window.location.search.indexOf('nudge') !== -1) {
+        return false;
+      }
+      try {
+        if (window.localStorage) {
+          var val = window.localStorage.getItem('december_cloud_nudge_dismissed');
+          if (val) {
+            var dismissedAt = parseInt(val, 10);
+            if (!isNaN(dismissedAt)) {
+              if (Date.now() - dismissedAt < TTL_MS) {
+                return true;
+              }
+            } else if (val === 'true') {
+              // Legacy flag without timestamp: migrate to current timestamp
+              window.localStorage.setItem('december_cloud_nudge_dismissed', String(Date.now()));
+              return true;
+            }
+          }
+        }
+      } catch (e) {
+        // Intentionally swallowed: localStorage access in restricted sandboxes
+      }
+      if (document.cookie.indexOf('december_logged_in=1') !== -1) {
+        return true;
+      }
+      return false;
+    }
+
+    function setPopupVisible(visible) {
+      var nudgeEl = document.getElementById('december-cloud-nudge');
+      if (!nudgeEl) {
+        return;
+      }
+      if (visible) {
+        nudgeEl.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+        nudgeEl.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+        nudgeEl.setAttribute('aria-hidden', 'false');
+      } else {
+        nudgeEl.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+        nudgeEl.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+        nudgeEl.setAttribute('aria-hidden', 'true');
+      }
     }
 
     function cleanupListeners() {
@@ -74,20 +127,30 @@ const loginUrl = `${appUrl}/login`;
         timerId = null;
       }
       window.removeEventListener('scroll', onScroll);
+      if (footerObserver) {
+        footerObserver.disconnect();
+        footerObserver = null;
+      }
     }
 
     function hidePopup() {
-      var nudgeEl = document.getElementById('december-cloud-nudge');
-      if (nudgeEl) {
-        nudgeEl.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
-        nudgeEl.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
-        nudgeEl.setAttribute('aria-hidden', 'true');
-      }
+      setPopupVisible(false);
       cleanupListeners();
     }
 
+    function dismissPopup() {
+      try {
+        if (window.localStorage) {
+          window.localStorage.setItem('december_cloud_nudge_dismissed', String(Date.now()));
+        }
+      } catch (e) {
+        // Intentionally swallowed: localStorage access in restricted sandboxes
+      }
+      hidePopup();
+    }
+
     function showPopup() {
-      if (isDisplayed || !isMainPage()) {
+      if (isDisplayed || isDismissed() || !isMainPage() || !isDesktop()) {
         cleanupListeners();
         return;
       }
@@ -100,9 +163,9 @@ const loginUrl = `${appUrl}/login`;
       isDisplayed = true;
       cleanupListeners();
 
-      nudgeEl.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
-      nudgeEl.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
-      nudgeEl.setAttribute('aria-hidden', 'false');
+      if (!isFooterVisible) {
+        setPopupVisible(true);
+      }
     }
 
     function onScroll() {
@@ -115,18 +178,47 @@ const loginUrl = `${appUrl}/login`;
 
       if (scrollableHeight > 0) {
         var scrollRatio = (window.scrollY || window.pageYOffset || 0) / scrollableHeight;
-        if (scrollRatio >= 0.90) {
+        if (scrollRatio >= 0.40) {
           showPopup();
         }
       }
     }
 
+    function setupFooterObserver() {
+      if (typeof IntersectionObserver === 'undefined') {
+        return;
+      }
+      var footerEl = document.querySelector('footer');
+      if (!footerEl) {
+        return;
+      }
+
+      footerObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            isFooterVisible = true;
+            if (isDisplayed) {
+              setPopupVisible(false);
+            }
+          } else {
+            isFooterVisible = false;
+            if (isDisplayed && !isDismissed()) {
+              setPopupVisible(true);
+            }
+          }
+        });
+      }, { threshold: 0.05 });
+
+      footerObserver.observe(footerEl);
+    }
+
     function setupNudge() {
       isDisplayed = false;
+      isFooterVisible = false;
       cleanupListeners();
 
-      // Only show on the main landing page
-      if (!isMainPage()) {
+      // Only show on the main landing page in desktop view (>= 640px)
+      if (!isMainPage() || isDismissed() || !isDesktop()) {
         hidePopup();
         return;
       }
@@ -134,24 +226,26 @@ const loginUrl = `${appUrl}/login`;
       var closeBtn = document.getElementById('cloud-nudge-close-btn');
       if (closeBtn) {
         closeBtn.onclick = function () {
-          hidePopup();
+          dismissPopup();
         };
       }
 
       var ctaBtn = document.getElementById('cloud-nudge-cta-btn');
       if (ctaBtn) {
         ctaBtn.onclick = function () {
-          hidePopup();
+          dismissPopup();
         };
       }
 
-      // 20-second timer trigger (or instant with ?nudge)
-      var delayMs = window.location.search.indexOf('nudge') !== -1 ? 0 : 20000;
+      setupFooterObserver();
+
+      // 7-second timer trigger (or instant with ?nudge)
+      var delayMs = window.location.search.indexOf('nudge') !== -1 ? 0 : 7000;
       timerId = window.setTimeout(function () {
         showPopup();
       }, delayMs);
 
-      // Scroll depth trigger (90% of page)
+      // Scroll depth trigger (40% of page)
       window.addEventListener('scroll', onScroll, { passive: true });
     }
 

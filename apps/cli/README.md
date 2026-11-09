@@ -9,7 +9,11 @@ December is a (so much) better coding agent. It understands your codebase and he
 </p>
 
 - **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
+- **Cloud Sandboxes:** Spin up remote environments and live previews.
 - **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 100+ others, or log in via December to use December credits.
+- **Persistent Workspace Memory:** Learns project conventions and team rules across sessions without context rot.
+- **Autonomous Multi-Agent Teams:** Spawns parallel background subagents to research docs, debug, and run tests.
+- **Extensible Skills & MCP:** Plug in custom skills and connect external developer tools or APIs via MCP.
 
 ### Get Started
 

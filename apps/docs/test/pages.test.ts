@@ -19,7 +19,8 @@ describe('apps/docs page content & layout tests', () => {
         it('renders hero title, description, and install command', () => {
             const html = getLandingHtml()
 
-            expect(html).toContain('december, a (so much) better')
+            expect(html).toContain('december')
+            expect(html).toContain('a (so much) better')
             expect(html).toContain('coding agent.')
             expect(html).toContain('npm install -g @trydecember/cli')
         })
@@ -88,6 +89,60 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('Start December in Web')
             expect(html).toContain('Get started')
             expect(html).toContain('/login')
+            expect(html).toContain('7000')
+            expect(html).toContain('0.40')
+            expect(html).toContain('december_cloud_nudge_dismissed')
+            expect(html).toContain('TTL_MS')
+            expect(html).toContain('isDesktop')
+            expect(html).toContain('hidden sm:block fixed')
+            expect(html).toContain('connect external developer tools or APIs via MCP')
+        })
+
+        it('renders mobile github icon in header and two-line mobile footer', () => {
+            const html = getLandingHtml()
+            const headerHtml = html.slice(html.indexOf('<header'), html.indexOf('</header>'))
+            const footerHtml = html.slice(html.indexOf('<footer'))
+
+            expect(headerHtml).toContain('https://github.com/phasehumans/december')
+            expect(headerHtml).toContain('aria-label="GitHub Repository"')
+            expect(headerHtml).toContain('h-7 rounded-[3px]')
+            expect(footerHtml).toContain('href="/docs"')
+            expect(footerHtml).toContain('href="/blog"')
+            expect(footerHtml).toContain('blogs')
+            expect(footerHtml).toContain('href="/privacy"')
+            expect(footerHtml).toContain('href="/terms"')
+            expect(footerHtml).toContain('href="/docs/changelog"')
+        })
+
+        it('renders mobile sticky navbar, mobile sticky section dividers, and minimal bottom action bar', () => {
+            const html = getLandingHtml()
+            const headerHtml = html.slice(html.indexOf('<header'), html.indexOf('</header>'))
+
+            expect(headerHtml).toContain('sticky top-0')
+            expect(headerHtml).toContain('sm:relative')
+            expect(headerHtml).toContain('sm:border-b-0')
+            expect(html).toContain('sticky top-14')
+            expect(html).toContain('Try in Web')
+            expect(html).not.toContain('Try in Cloud Sandbox')
+            expect(html).not.toContain('Launch Cloud Sandbox')
+            expect(html).not.toContain('or install CLI on your workstation')
+            expect(html).toContain('Start building with December')
+            expect(html).toContain('id="bottom-install-cli-btn"')
+            expect(html).not.toContain('bottom-copy-tooltip')
+            expect(html).not.toContain('Zero Source Retention')
+        })
+
+        it('renders gutter telemetry indicators across landing page sections', () => {
+            const html = getLandingHtml()
+
+            expect(html).toContain('DEC ENGINE')
+            expect(html).toContain('AUTONOMOUS RUNTIME')
+            expect(html).toContain('SPEC: ARCH 01')
+            expect(html).toContain('DUAL-ENGINE CORE')
+            expect(html).toContain('METRICS: BENCHMARKS')
+            expect(html).toContain('SWE-BENCH VERIFIED')
+            expect(html).toContain('RUNTIMES: MULTI-HOST')
+            expect(html).toContain('PROTOCOL: TRUST')
         })
     })
 
