@@ -98,30 +98,44 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('connect external developer tools or APIs via MCP')
         })
 
-        it('renders mobile github icon in header and two-line mobile footer', () => {
+        it('renders mobile github icon in header without x icon and single-line mobile footer with built-by and docs/blog', () => {
             const html = getLandingHtml()
             const headerHtml = html.slice(html.indexOf('<header'), html.indexOf('</header>'))
             const footerHtml = html.slice(html.indexOf('<footer'))
 
+            // Header mobile icons: GitHub only (no X icon on mobile)
+            expect(headerHtml).not.toContain('https://x.com/phasehumans')
             expect(headerHtml).toContain('https://github.com/phasehumans/december')
             expect(headerHtml).toContain('aria-label="GitHub Repository"')
-            expect(headerHtml).toContain('h-7 rounded-[3px]')
-            expect(footerHtml).toContain('href="/docs"')
-            expect(footerHtml).toContain('href="/blog"')
-            expect(footerHtml).toContain('blogs')
-            expect(footerHtml).toContain('href="/privacy"')
-            expect(footerHtml).toContain('href="/terms"')
-            expect(footerHtml).toContain('href="/docs/changelog"')
+
+            // Mobile Footer: single line with built by on left and docs & blog on right
+            const mobileFooterHtml = footerHtml.slice(
+                footerHtml.indexOf('Mobile View'),
+                footerHtml.indexOf('Desktop View')
+            )
+            expect(mobileFooterHtml).toContain('built by')
+            expect(mobileFooterHtml).toContain('@chaitanya')
+            expect(mobileFooterHtml).toContain('href="/docs"')
+            expect(mobileFooterHtml).toContain('href="/blog"')
+            expect(mobileFooterHtml.indexOf('@chaitanya')).toBeLessThan(
+                mobileFooterHtml.indexOf('href="/docs"')
+            )
+            expect(mobileFooterHtml.indexOf('href="/docs"')).toBeLessThan(
+                mobileFooterHtml.indexOf('href="/blog"')
+            )
         })
 
-        it('renders mobile sticky navbar, mobile sticky section dividers, and minimal bottom action bar', () => {
+        it('renders non-sticky navbar without divider line, mobile hidden sign-in, and Try December Cloud button', () => {
             const html = getLandingHtml()
             const headerHtml = html.slice(html.indexOf('<header'), html.indexOf('</header>'))
 
-            expect(headerHtml).toContain('sticky top-0')
-            expect(headerHtml).toContain('sm:relative')
-            expect(headerHtml).toContain('sm:border-b-0')
+            expect(headerHtml).not.toContain('sticky top-0')
+            expect(headerHtml).toContain('relative')
+            expect(headerHtml).not.toContain('border-b')
+            expect(headerHtml).toContain('hidden sm:inline-flex')
+            expect(headerHtml).toContain('Sign in')
             expect(html).toContain('sticky top-14')
+            expect(html).toContain('Try December Cloud')
             expect(html).toContain('Try in Web')
             expect(html).not.toContain('Try in Cloud Sandbox')
             expect(html).not.toContain('Launch Cloud Sandbox')
