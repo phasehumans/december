@@ -246,8 +246,8 @@ describe('Differential 2D Screen Buffer Engine', () => {
             back.setChar(0, 0, 'X')
 
             const delta = computeDiff(front, back, { synchronized: true })
-            expect(delta.startsWith('\x1b[?2025h')).toBe(true)
-            expect(delta.endsWith('\x1b[?2025l')).toBe(true)
+            expect(delta.startsWith('\x1b[?2026h')).toBe(true)
+            expect(delta.endsWith('\x1b[?2026l')).toBe(true)
             expect(delta).toContain('\x1b[1;1HX')
         })
 

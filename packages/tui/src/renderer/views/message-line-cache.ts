@@ -49,6 +49,74 @@ export function parseToolInput(input: any): any {
     return input && typeof input === 'object' ? input : {}
 }
 
+/**
+ * Formats a single git diff line with unified gutter and theme background styling,
+ * matching the visual design language of the `/diff` command view.
+ */
+export function formatDiffRow(
+    type: 'add' | 'delete' | 'context' | 'hunk',
+    content: string,
+    width: number
+): FormattedLine {
+    const sign =
+        type === 'add' ? '  + ' : type === 'delete' ? '  - ' : type === 'hunk' ? '  ~ ' : '    '
+    const signColor =
+        type === 'add'
+            ? THEME.colors.success
+            : type === 'delete'
+              ? THEME.colors.error
+              : type === 'hunk'
+                ? THEME.colors.brand
+                : THEME.colors.dim
+    const textColor =
+        type === 'add'
+            ? THEME.colors.success
+            : type === 'delete'
+              ? THEME.colors.error
+              : type === 'hunk'
+                ? THEME.colors.dim
+                : THEME.colors.muted
+    const bgColor =
+        type === 'add'
+            ? THEME.colors.diffAddBg
+            : type === 'delete'
+              ? THEME.colors.diffDeleteBg
+              : undefined
+
+    const maxContentLen = Math.max(0, width - 5)
+    const displayContent =
+        content.length > maxContentLen ? content.slice(0, maxContentLen) : content
+    const usedLen = sign.length + displayContent.length
+    const padLen = bgColor ? Math.max(0, width - 1 - usedLen) : 0
+
+    const tokens: FormattedLine = [
+        {
+            text: sign,
+            style: {
+                fg: signColor,
+                bg: bgColor,
+                bold: type === 'add' || type === 'delete',
+            },
+        },
+        {
+            text: displayContent,
+            style: {
+                fg: textColor,
+                bg: bgColor,
+            },
+        },
+    ]
+
+    if (padLen > 0) {
+        tokens.push({
+            text: ' '.repeat(padLen),
+            style: { bg: bgColor },
+        })
+    }
+
+    return tokens
+}
+
 export function getToolActionVerb(name: string, isRunning: boolean): string {
     const lower = name.toLowerCase()
     if (isRunning) {
@@ -442,24 +510,18 @@ export class MessageLineCache {
 
                         for (const tLine of targetLines) {
                             if (displayed >= maxDiff) break
-                            lines.push([
-                                { text: '  - │ ', style: { fg: THEME.colors.error } },
-                                { text: tLine, style: { fg: THEME.colors.error } },
-                            ])
+                            lines.push(formatDiffRow('delete', tLine, width))
                             displayed++
                         }
                         for (const rLine of replacementLines) {
                             if (displayed >= maxDiff) break
-                            lines.push([
-                                { text: '  + │ ', style: { fg: THEME.colors.success } },
-                                { text: rLine, style: { fg: THEME.colors.success } },
-                            ])
+                            lines.push(formatDiffRow('add', rLine, width))
                             displayed++
                         }
                         const totalDiffLines = targetLines.length + replacementLines.length
                         if (totalDiffLines > maxDiff) {
                             lines.push([
-                                { text: '    │ ', style: { fg: THEME.colors.border } },
+                                { text: '    ', style: { fg: THEME.colors.dim } },
                                 {
                                     text: `... (${totalDiffLines - maxDiff} more lines · Ctrl+O to collapse)`,
                                     style: { fg: THEME.colors.dim },
@@ -477,33 +539,19 @@ export class MessageLineCache {
                         for (let l = 0; l < Math.min(outLines.length, maxDiff); l++) {
                             const line = outLines[l] || ''
                             if (line.startsWith('+') && !line.startsWith('+++')) {
-                                lines.push([
-                                    { text: '  + │ ', style: { fg: THEME.colors.success } },
-                                    { text: line.slice(1), style: { fg: THEME.colors.success } },
-                                ])
+                                lines.push(formatDiffRow('add', line.slice(1), width))
                             } else if (line.startsWith('-') && !line.startsWith('---')) {
-                                lines.push([
-                                    { text: '  - │ ', style: { fg: THEME.colors.error } },
-                                    { text: line.slice(1), style: { fg: THEME.colors.error } },
-                                ])
+                                lines.push(formatDiffRow('delete', line.slice(1), width))
                             } else if (line.startsWith('@@')) {
-                                lines.push([
-                                    { text: '  ~ │ ', style: { fg: THEME.colors.dim } },
-                                    { text: line, style: { fg: THEME.colors.dim } },
-                                ])
+                                lines.push(formatDiffRow('hunk', line, width))
                             } else {
-                                lines.push([
-                                    { text: '    │ ', style: { fg: THEME.colors.border } },
-                                    {
-                                        text: line.startsWith(' ') ? line.slice(1) : line,
-                                        style: { fg: THEME.colors.muted },
-                                    },
-                                ])
+                                const cleanContext = line.startsWith(' ') ? line.slice(1) : line
+                                lines.push(formatDiffRow('context', cleanContext, width))
                             }
                         }
                         if (outLines.length > maxDiff) {
                             lines.push([
-                                { text: '    │ ', style: { fg: THEME.colors.border } },
+                                { text: '    ', style: { fg: THEME.colors.dim } },
                                 {
                                     text: `... (${outLines.length - maxDiff} more lines · Ctrl+O to collapse)`,
                                     style: { fg: THEME.colors.dim },
@@ -545,14 +593,11 @@ export class MessageLineCache {
                     const contentLines = content.split(/\r?\n/)
                     const maxLines = 30
                     for (let l = 0; l < Math.min(contentLines.length, maxLines); l++) {
-                        lines.push([
-                            { text: '  + │ ', style: { fg: THEME.colors.success } },
-                            { text: contentLines[l] || '', style: { fg: THEME.colors.success } },
-                        ])
+                        lines.push(formatDiffRow('add', contentLines[l] || '', width))
                     }
                     if (contentLines.length > maxLines) {
                         lines.push([
-                            { text: '    │ ', style: { fg: THEME.colors.border } },
+                            { text: '    ', style: { fg: THEME.colors.dim } },
                             {
                                 text: `... (${contentLines.length - maxLines} more lines · Ctrl+O to collapse)`,
                                 style: { fg: THEME.colors.dim },
@@ -767,21 +812,38 @@ export class MessageLineCache {
             if (msg.isStreaming && msg.content) {
                 const topic = extractThoughtTopic(msg.content)
                 const label = topic ? `Thinking... ${topic}` : 'Thinking...'
-                lines.push([
-                    { text: spinnerGlyph, style: { fg: THEME.colors.muted } },
-                    {
-                        text: label,
-                        style: { fg: THEME.colors.muted },
-                    },
-                    ...(tip
-                        ? [
-                              { text: '  · ', style: { fg: THEME.colors.dim } },
-                              { text: 'tip: ', style: { fg: THEME.colors.dim } },
-                              { text: tip, style: { fg: THEME.colors.muted } },
-                          ]
-                        : []),
-                ])
-                lines.push([{ text: '', style: {} }])
+                if (expandTools) {
+                    lines.push([
+                        { text: spinnerGlyph, style: { fg: THEME.colors.brand } },
+                        { text: label, style: { fg: THEME.colors.brand, bold: true } },
+                        { text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } },
+                    ])
+                    const formatted = formatMarkdownToLines(msg.content, width - 4)
+                    for (const l of formatted) {
+                        l.unshift({ text: '  ', style: {} })
+                        for (const seg of l) {
+                            if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
+                        }
+                    }
+                    lines.push(...formatted)
+                    lines.push([{ text: '', style: {} }])
+                } else {
+                    lines.push([
+                        { text: spinnerGlyph, style: { fg: THEME.colors.muted } },
+                        {
+                            text: label,
+                            style: { fg: THEME.colors.muted },
+                        },
+                        ...(tip
+                            ? [
+                                  { text: '  · ', style: { fg: THEME.colors.dim } },
+                                  { text: 'tip: ', style: { fg: THEME.colors.dim } },
+                                  { text: tip, style: { fg: THEME.colors.muted } },
+                              ]
+                            : []),
+                    ])
+                    lines.push([{ text: '', style: {} }])
+                }
             } else if (msg.content) {
                 const durationMs = msg.durationMs
                 const durationStr = durationMs

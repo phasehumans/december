@@ -72,7 +72,7 @@ export interface CursorPosition {
 export interface DiffOptions {
     /** Force redrawing every cell regardless of front buffer contents */
     forceFullRedraw?: boolean
-    /** Wrap output in synchronized update escape sequences (\x1b[?2025h ... \x1b[?2025l) */
+    /** Wrap output in synchronized update escape sequences (\x1b[?2026h ... \x1b[?2026l) */
     synchronized?: boolean
     /** Position and show/hide cursor at the end of the frame */
     cursor?: CursorPosition

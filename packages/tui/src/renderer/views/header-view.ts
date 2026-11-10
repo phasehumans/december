@@ -28,8 +28,16 @@ export interface HeaderViewProps {
     announcement?: ReleaseAnnouncement | null
 }
 
+let lastHeaderKey = ''
+let lastHeaderLines: FormattedLine[] = []
+
 export const HeaderView = {
     toLines(props: HeaderViewProps, _maxWidth?: number): FormattedLine[] {
+        const key = `${props.width}|${props.x}|${props.cliVersion}|${props.latestVersion}|${props.userEmail}|${props.activeModel}|${props.modelLabel}|${props.authMethod}|${props.selectedProvider}|${props.isAuthenticated}|${props.branch}|${props.cwd}|${props.announcement?.version}`
+        if (key === lastHeaderKey && lastHeaderLines.length > 0) {
+            return lastHeaderLines
+        }
+
         const lines: FormattedLine[] = []
         const pad = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         const prefix = ' '.repeat(pad)
@@ -126,6 +134,9 @@ export const HeaderView = {
 
         // Trailing blank line for separation from first user message
         lines.push([{ text: '', style: {} }])
+
+        lastHeaderKey = key
+        lastHeaderLines = lines
 
         return lines
     },

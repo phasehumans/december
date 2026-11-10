@@ -919,7 +919,23 @@ export class DifferentialApp {
             ) {
                 this.state.activeTip = getNextTip()
             }
-            this.render()
+            // Only force an independent spinner redraw if a spinner glyph is actually rendered on screen
+            const lastMsg = this.state.messages[this.state.messages.length - 1]
+            const isWaitingForFirstToken =
+                !lastMsg ||
+                lastMsg.role === 'user' ||
+                (lastMsg.role === 'assistant' && !lastMsg.content)
+            const hasVisibleSpinner =
+                Boolean(this.state.statusMessage) ||
+                isWaitingForFirstToken ||
+                this.state.messages.some(
+                    (m) =>
+                        (m.role === 'thinking' && m.isStreaming) || m.toolCall?.status === 'running'
+                )
+
+            if (hasVisibleSpinner) {
+                this.render()
+            }
         }, 80)
     }
 
@@ -932,11 +948,13 @@ export class DifferentialApp {
     }
 
     setStatusMessage(msg?: string): void {
+        if (this.state.statusMessage === msg) return
         this.state.statusMessage = msg
         this.render()
     }
 
     clearStatusMessage(): void {
+        if (this.state.statusMessage === undefined) return
         this.state.statusMessage = undefined
         this.render()
     }
@@ -1751,27 +1769,30 @@ export class DifferentialApp {
                 return
             }
 
-            if (this.state.isStreaming) {
-                this.handleAbortStream()
-                return
-            }
-
             if (this.state.input.startsWith('/')) {
                 this.state.input = ''
                 this.state.cursorPos = 0
+                this.resetCommandSelection()
                 this.render()
-                return
-            }
-
-            if (this.state.isReadingMode) {
-                this.scrollToBottom()
                 return
             }
 
             if (this.state.input.length > 0) {
                 this.state.input = ''
                 this.state.cursorPos = 0
+                this.resetCommandSelection()
+                this.updateFileAutocomplete()
                 this.render()
+                return
+            }
+
+            if (this.state.isStreaming) {
+                this.handleAbortStream()
+                return
+            }
+
+            if (this.state.isReadingMode) {
+                this.scrollToBottom()
                 return
             }
             return
@@ -5852,6 +5873,9 @@ export class DifferentialApp {
                 }
                 break
             }
+            if (m && m.role === 'assistant' && m.isStreaming) {
+                m.isStreaming = false
+            }
         }
         this.render()
     }
@@ -5903,10 +5927,12 @@ export class DifferentialApp {
         const lastMsg = this.state.messages[this.state.messages.length - 1]
         if (lastMsg && lastMsg.role === 'assistant') {
             lastMsg.content = (lastMsg.content || '') + delta
+            lastMsg.isStreaming = true
         } else {
             this.state.messages.push({
                 role: 'assistant',
                 content: delta,
+                isStreaming: true,
             })
         }
 

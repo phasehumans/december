@@ -26,9 +26,12 @@ export function writeToClipboard(text: string) {
         } else if (isWsl) {
             spawnSync('clip.exe', { input: text })
         } else if (platform === 'linux') {
-            const xclip = spawnSync('xclip', ['-selection', 'clipboard', '-in'], { input: text })
+            const xclip = spawnSync('xclip', ['-selection', 'clipboard', '-in'], {
+                input: text,
+                timeout: 500,
+            })
             if (xclip.error) {
-                spawnSync('xsel', ['--clipboard', '--input'], { input: text })
+                spawnSync('xsel', ['--clipboard', '--input'], { input: text, timeout: 500 })
             }
         }
     } catch {

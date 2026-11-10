@@ -165,5 +165,13 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         const lines4 = formatMarkdownToLines('Visit http://', 80)
         expect(lines4.length).toBeGreaterThan(0)
         expect(lines4[0].map((s) => s.text).join('')).toContain('Visit http://')
+
+        // Live streaming unclosed fenced code block
+        const unclosedCode = '```typescript\nconst x = 1\nconst y = 2'
+        const codeLines = formatMarkdownToLines(unclosedCode, 80)
+        expect(codeLines.length).toBeGreaterThanOrEqual(2)
+        const combinedCode = codeLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(combinedCode).toContain('const x = 1')
+        expect(combinedCode).toContain('const y = 2')
     })
 })

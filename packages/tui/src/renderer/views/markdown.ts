@@ -525,5 +525,21 @@ export function formatMarkdownToLines(markdown: string, maxWidth: number): Forma
 
     flushTable()
 
+    // Flush any in-progress fenced code block lines during active streaming
+    if (inCodeBlock && codeBlockBuffer.length > 0) {
+        if (codeLanguage === 'mermaid') {
+            outputLines.push([
+                {
+                    text: '  [Generating diagram...]',
+                    style: { fg: THEME.colors.dim, italic: true },
+                },
+            ])
+        } else {
+            for (const codeLine of codeBlockBuffer) {
+                outputLines.push(highlightCodeLine(codeLine, codeLanguage))
+            }
+        }
+    }
+
     return outputLines
 }

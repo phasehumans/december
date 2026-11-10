@@ -349,6 +349,29 @@ describe('MessageLineCache', () => {
         expect(expandedText).toContain('We need to refactor the database schema')
     })
 
+    it('renders live streaming thinking with formatted thought text when expandTools is enabled', () => {
+        const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            {
+                role: 'thinking',
+                content: 'Analyzing repository structure\nFound 15 modules',
+                isStreaming: true,
+            },
+        ]
+
+        // Collapsed (default)
+        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
+        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(collapsedText).toContain('Thinking...')
+        expect(collapsedText).not.toContain('Found 15 modules')
+
+        // Expanded (expandTools: true)
+        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
+        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(expandedText).toContain('Thinking...')
+        expect(expandedText).toContain('Found 15 modules')
+    })
+
     it('expands truncated tool command outputs beyond the default 5-line limit when expandTools is enabled', () => {
         const cache = new MessageLineCache()
         const outputLines = Array.from({ length: 25 }, (_, i) => `log line ${i + 1}`)

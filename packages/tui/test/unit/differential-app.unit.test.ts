@@ -92,6 +92,67 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('avoids redundant renders when setting or clearing status messages with identical content', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        let renderCount = 0
+        const origRender = app.render.bind(app)
+        app.render = () => {
+            renderCount++
+            origRender()
+        }
+
+        // Initially statusMessage is undefined: clearing it should be a no-op and NOT call render
+        renderCount = 0
+        app.clearStatusMessage()
+        expect(renderCount).toBe(0)
+
+        // Setting a status message triggers 1 render
+        app.setStatusMessage('Working...')
+        expect(renderCount).toBe(1)
+
+        // Setting the exact same status message should be a no-op and NOT call render
+        app.setStatusMessage('Working...')
+        expect(renderCount).toBe(1)
+
+        // Clearing an active status message triggers 1 render
+        app.clearStatusMessage()
+        expect(renderCount).toBe(2)
+
+        // Second clear should be a no-op
+        app.clearStatusMessage()
+        expect(renderCount).toBe(2)
+
+        app.stop()
+    })
+
+    it('tracks isStreaming state on assistant message during live stream and clears on finishStream', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        app.state.input = 'test stream'
+        app.submitPrompt()
+
+        app.appendStreamDelta('streaming chunk')
+        const assistantMsg = app.state.messages[app.state.messages.length - 1]
+        expect(assistantMsg.role).toBe('assistant')
+        expect(assistantMsg.isStreaming).toBe(true)
+
+        app.finishStream()
+        expect(assistantMsg.isStreaming).toBe(false)
+
+        app.stop()
+    })
+
     it('supports scrolling through message history and reading mode navigation', () => {
         const app = new DifferentialApp({
             terminal,
@@ -2842,6 +2903,41 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.promptQueue.length).toBe(0)
         expect(app.state.statusMessage).toBeUndefined()
         expect(app.state.toast?.message).toBe('Aborted.')
+
+        app.stop()
+    })
+
+    it('closes command menu on Escape key during streaming without aborting agent streaming', () => {
+        let abortCalled = false
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onAbort: () => {
+                abortCalled = true
+            },
+        })
+        app.start()
+
+        app.state.isStreaming = true
+        app.state.statusMessage = 'Thinking...'
+        app.state.input = '/model'
+        app.state.cursorPos = 6
+
+        // Press Escape (\x1b) while command menu is open during streaming
+        app.handleKey('\x1b')
+
+        // Command menu input should be cleared, but streaming and status should remain active
+        expect(abortCalled).toBe(false)
+        expect(app.state.isStreaming).toBe(true)
+        expect(app.state.statusMessage).toBe('Thinking...')
+        expect(app.state.input).toBe('')
+        expect(app.state.cursorPos).toBe(0)
+
+        // Press Escape a second time when input is now empty -> should abort
+        app.handleKey('\x1b')
+        expect(abortCalled).toBe(true)
+        expect(app.state.isStreaming).toBe(false)
 
         app.stop()
     })

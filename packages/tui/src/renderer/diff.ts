@@ -93,7 +93,7 @@ export function computeDiff(
     }
 
     if (options?.synchronized) {
-        return `\x1b[?2025h${body}\x1b[?2025l`
+        return `\x1b[?2026h${body}\x1b[?2026l`
     }
 
     return body
