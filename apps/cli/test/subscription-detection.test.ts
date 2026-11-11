@@ -9,6 +9,7 @@ import { codexAdapter } from '../src/auth/subscriptions/adapters/codex'
 import { copilotAdapter } from '../src/auth/subscriptions/adapters/copilot'
 import { geminiAdapter } from '../src/auth/subscriptions/adapters/gemini'
 import {
+    getSubscriptionAdapter,
     detectAllSubscriptions,
     importLocalSubscriptions,
 } from '../src/auth/subscriptions/subscription-manager'
@@ -246,6 +247,20 @@ describe('Subscription Detection & Local Import (Unit)', () => {
             const summary = await importLocalSubscriptions()
             expect(summary.imported).toContain('codex')
             expect(summary.bundles.codex.accessToken).toBe('codex-tok')
+        })
+
+        it('resolves subscription adapters for amazon-q, gitlab, cursor and their aliases', () => {
+            expect(getSubscriptionAdapter('amazon-q')?.provider).toBe('amazon-q')
+            expect(getSubscriptionAdapter('aws')?.provider).toBe('amazon-q')
+            expect(getSubscriptionAdapter('codewhisperer')?.provider).toBe('amazon-q')
+
+            expect(getSubscriptionAdapter('gitlab')?.provider).toBe('gitlab')
+            expect(getSubscriptionAdapter('duo')?.provider).toBe('gitlab')
+            expect(getSubscriptionAdapter('gitlab-duo')?.provider).toBe('gitlab')
+
+            expect(getSubscriptionAdapter('cursor')?.provider).toBe('cursor')
+            expect(getSubscriptionAdapter('cursor-pro')?.provider).toBe('cursor')
+            expect(getSubscriptionAdapter('cursor-ai')?.provider).toBe('cursor')
         })
     })
 })

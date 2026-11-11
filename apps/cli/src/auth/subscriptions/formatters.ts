@@ -18,6 +18,19 @@ export function formatSubscriptionDisplayName(provider?: string): string {
         case 'google':
         case 'antigravity':
             return 'Google Gemini'
+        case 'amazon-q':
+        case 'amazonq':
+        case 'aws':
+        case 'codewhisperer':
+            return 'Amazon Q Developer'
+        case 'gitlab':
+        case 'duo':
+        case 'gitlab-duo':
+            return 'GitLab Duo'
+        case 'cursor':
+        case 'cursor-pro':
+        case 'cursor-ai':
+            return 'Cursor Pro'
         default:
             return provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : 'AI'
     }
@@ -52,6 +65,26 @@ export function formatSubscriptionPlan(bundle: Partial<SubscriptionTokenBundle>)
             return 'Google One AI Premium'
         if (rawType.includes('cloud_code')) return 'Google Cloud Code'
         return 'Gemini Advanced'
+    }
+
+    if (
+        provider === 'amazon-q' ||
+        provider === 'amazonq' ||
+        provider === 'aws' ||
+        provider === 'codewhisperer'
+    ) {
+        if (rawType.includes('free')) return 'Amazon Q Free'
+        return 'Amazon Q Pro'
+    }
+
+    if (provider === 'gitlab' || provider === 'duo' || provider === 'gitlab-duo') {
+        if (rawType.includes('enterprise')) return 'GitLab Duo Enterprise'
+        return 'GitLab Duo Pro'
+    }
+
+    if (provider === 'cursor' || provider === 'cursor-pro' || provider === 'cursor-ai') {
+        if (rawType.includes('business')) return 'Cursor Business'
+        return 'Cursor Pro'
     }
 
     if (rawType) {

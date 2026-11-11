@@ -1,9 +1,12 @@
 import { loadConfig, saveConfig } from '../../config'
 
+import { amazonQAdapter } from './adapters/amazon-q'
 import { claudeAdapter } from './adapters/claude'
 import { codexAdapter } from './adapters/codex'
 import { copilotAdapter } from './adapters/copilot'
+import { cursorAdapter } from './adapters/cursor'
 import { geminiAdapter } from './adapters/gemini'
+import { gitlabAdapter } from './adapters/gitlab'
 
 import type { SubscriptionAdapter, SubscriptionTokenBundle } from './types'
 
@@ -18,6 +21,16 @@ const ADAPTERS: Record<string, SubscriptionAdapter> = {
     gemini: geminiAdapter,
     google: geminiAdapter,
     antigravity: geminiAdapter,
+    'amazon-q': amazonQAdapter,
+    amazonq: amazonQAdapter,
+    aws: amazonQAdapter,
+    codewhisperer: amazonQAdapter,
+    gitlab: gitlabAdapter,
+    duo: gitlabAdapter,
+    'gitlab-duo': gitlabAdapter,
+    cursor: cursorAdapter,
+    'cursor-pro': cursorAdapter,
+    'cursor-ai': cursorAdapter,
 }
 
 export function getSubscriptionAdapter(provider: string): SubscriptionAdapter | undefined {
@@ -199,7 +212,13 @@ export async function verifyAndResolveSubscription(
                     (unlinked.includes('openai') || unlinked.includes('chatgpt'))) ||
                 (adapter.provider === 'gemini' &&
                     (unlinked.includes('google') || unlinked.includes('antigravity'))) ||
-                (adapter.provider === 'copilot' && unlinked.includes('github'))
+                (adapter.provider === 'copilot' && unlinked.includes('github')) ||
+                (adapter.provider === 'amazon-q' &&
+                    (unlinked.includes('aws') || unlinked.includes('codewhisperer'))) ||
+                (adapter.provider === 'gitlab' &&
+                    (unlinked.includes('duo') || unlinked.includes('gitlab-duo'))) ||
+                (adapter.provider === 'cursor' &&
+                    (unlinked.includes('cursor-pro') || unlinked.includes('cursor-ai')))
 
             if (isUnlinked) {
                 return null
