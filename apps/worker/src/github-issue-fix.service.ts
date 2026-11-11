@@ -246,7 +246,7 @@ export const processGithubIssueFix = async (
                         runtime: 'cloud',
                         modelOptions: {
                             model: process.env.GITHUB_BOT_MODEL || 'gemini-3.6-flash',
-                            thinkingLevel: 'auto',
+                            thinkingLevel: 'fast',
                         },
                     })
 

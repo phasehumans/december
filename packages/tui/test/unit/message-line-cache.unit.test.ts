@@ -144,7 +144,8 @@ describe('MessageLineCache', () => {
         const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
         expect(expandedText).toContain('Read(3 files)')
         expect(expandedText).toContain('ctrl+o to collapse')
-        expect(expandedText).toContain('src/a.ts')
+        expect(expandedText).not.toContain('  ● src/a.ts')
+        expect(expandedText).toContain('    src/a.ts')
         expect(expandedText).toContain('(40ms)')
         expect(expandedText).toContain('src/b.ts')
         expect(expandedText).toContain('(60ms)')
@@ -307,6 +308,9 @@ describe('MessageLineCache', () => {
         const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
         expect(collapsedText).toContain('Subagent: codebase-researcher (4 turns, 7 tools, 2.3s)')
         expect(collapsedText).toContain('ctrl+o to expand')
+        expect(collapsedText).toContain(
+            '↳ Identified AuthGuard middleware mounted in routes/auth.ts.'
+        )
         expect(collapsedText).not.toContain('### [SubAgent') // Cleaned up header
 
         // Expanded shows rollup findings

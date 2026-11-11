@@ -117,7 +117,7 @@ export class Agent {
         this.operations = config.operations
         this.env = new Map<string, string>()
         this.modelOptions = config.modelOptions
-        this.thinkingLevel = config.thinkingLevel || 'auto'
+        this.thinkingLevel = config.thinkingLevel || 'fast'
         this.convertToLlm = config.convertToLlm || this.defaultConvertToLlm
         this.steeringQueue = new PendingMessageQueue(config.steeringMode || 'all')
         this.followUpQueue = new PendingMessageQueue(config.followUpMode || 'all')

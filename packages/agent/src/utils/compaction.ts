@@ -316,9 +316,9 @@ export async function compactContextIfNeeded(
     const minTokens = options?.minTokens ?? 0
     const exceedsTurnThreshold =
         typeof maxTurns === 'number' && userTurnCount > maxTurns && currentTokens >= minTokens
-    const exceedsTokenThreshold = currentTokens >= limit * 0.75
+    const exceedsTokenThreshold = currentTokens >= limit * 0.8 && currentTokens >= minTokens
 
-    // trigger at 75% capacity or when exceeding maxTurns threshold
+    // trigger at 80% capacity or when exceeding maxTurns threshold (if explicitly configured)
     if (!exceedsTokenThreshold && !exceedsTurnThreshold) {
         return messages
     }
@@ -475,7 +475,7 @@ Keep each section concise. You MUST preserve exact file paths, function names, l
     ]
     let summary = ''
 
-    options?.onStatus?.('Compacting context...')
+    options?.onStatus?.('Compacting memory...')
     const stream = llm.stream(compactionMessages as any, undefined, undefined, modelOptions, signal)
     for await (const chunk of stream) {
         if (signal?.aborted) throw new Error('Aborted')

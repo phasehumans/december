@@ -951,12 +951,12 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // 2. Open interactive effort menu: /effort
         app.executeCommand('effort')
         expect(app.state.activeOverlay).toBe('effort')
-        // Pre-selected index should match current 'deep' (index 2)
-        expect(app.state.effortSelectedIndex).toBe(2)
-
-        // Up arrow navigates to Fast (index 1)
-        app.handleKey('\x1b[A')
+        // Pre-selected index should match current 'deep' (index 1)
         expect(app.state.effortSelectedIndex).toBe(1)
+
+        // Up arrow navigates to Fast (index 0)
+        app.handleKey('\x1b[A')
+        expect(app.state.effortSelectedIndex).toBe(0)
 
         // Enter selects Fast, invokes callback, and closes overlay
         app.handleKey('\r')

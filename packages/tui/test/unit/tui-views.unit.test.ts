@@ -313,31 +313,30 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
     describe('EffortMenuView', () => {
         it('renders reasoning depth options, selection indicator, active level, and footer', () => {
-            const buffer = new ScreenBuffer(70, 7)
+            const buffer = new ScreenBuffer(70, 6)
             EffortMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 70,
-                height: 7,
+                height: 6,
                 modelLabel: 'Claude 3.7 Sonnet',
                 currentLevel: 'deep',
-                selectedIndex: 2,
+                selectedIndex: 1,
             })
 
             expect(buffer.getLine(0)).toContain('Reasoning')
             expect(buffer.getLine(0)).toContain('Claude 3.7 Sonnet')
-            expect(buffer.getLine(2)).toContain('Auto')
-            expect(buffer.getLine(3)).toContain('Fast')
-            expect(buffer.getLine(4)).toContain('❭')
-            expect(buffer.getLine(4)).toContain('Deep')
-            expect(buffer.getLine(4)).toContain('(Current)')
-            expect(buffer.getLine(6)).toContain('navigate')
-            expect(buffer.getLine(6)).toContain('enter select')
-            expect(buffer.getLine(6)).toContain('esc close')
+            expect(buffer.getLine(2)).toContain('Fast')
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('Deep')
+            expect(buffer.getLine(3)).toContain('(Current)')
+            expect(buffer.getLine(5)).toContain('navigate')
+            expect(buffer.getLine(5)).toContain('enter select')
+            expect(buffer.getLine(5)).toContain('esc close')
         })
 
         it('computes correct fixed height', () => {
-            expect(EffortMenuView.getHeight()).toBe(7)
+            expect(EffortMenuView.getHeight()).toBe(6)
             expect(EffortMenuView.getHeight('none')).toBe(6)
             expect(EffortMenuView.getHeight('fixed')).toBe(6)
         })

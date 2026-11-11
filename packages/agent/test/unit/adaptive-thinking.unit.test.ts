@@ -20,7 +20,7 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
             { role: 'user', content: 'please refactor the entire authentication service' },
             { role: 'user', content: 'UI message', isUI: true },
         ]
-        expect(getAdaptiveThinkingLevel(messages)).toBe('high')
+        expect(getAdaptiveThinkingLevel(messages)).toBe('fast')
     })
 
     it('returns off for slash commands', () => {
@@ -30,7 +30,38 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/model gpt-4' }])).toBe('off')
     })
 
-    it('returns off for simple greetings and short conversational queries', () => {
+    it('defaults to fast for prompts without auto-escalating on refactor, debug, or length keywords', () => {
+        const heavyQueries = [
+            'please refactor the auth middleware to support oauth2 and jwt',
+            'debug the memory leak in the websocket connection handler',
+            'architect a new distributed caching layer with redis cluster',
+            'rewrite the sql query generator with full type safety',
+            'migrate from prisma to drizzle orm across all services',
+            'fix tests in packages/providers that are failing on macos',
+            'fix error ECONNRESET when streaming responses',
+        ]
+
+        for (const query of heavyQueries) {
+            expect(getAdaptiveThinkingLevel([{ role: 'user', content: query }])).toBe('fast')
+        }
+
+        const longPrompt = 'a'.repeat(500)
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: longPrompt }])).toBe('fast')
+    })
+
+    it('honors explicitly configured reasoning levels', () => {
+        const prompt = 'fix tests in packages/agent'
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'deep')).toBe('deep')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'high')).toBe('high')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'fast')).toBe('fast')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'off')).toBe('off')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'auto')).toBe('fast')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'medium')).toBe(
+            'medium'
+        )
+    })
+
+    it('identifies simple conversational greetings for dynamic tool masking', () => {
         const greetings = [
             'hi',
             'hello',
@@ -46,80 +77,21 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
             'help',
         ]
         for (const greeting of greetings) {
-            expect(getAdaptiveThinkingLevel([{ role: 'user', content: greeting }])).toBe('off')
             expect(isSimpleConversationalTurn([{ role: 'user', content: greeting }])).toBe(true)
         }
 
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'what can you do' }])).toBe('off')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'who are you' }])).toBe('off')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'short query' }])).toBe('off')
-    })
-
-    it('returns minimal for simple read-only lookup queries without refactor or fix keywords', () => {
-        const lookupQueries = [
-            'read the config file',
-            'view the auth routes',
-            'show me the error in logs',
-            'find the user controller',
-            'search for database pool settings',
-            'list the files in packages/agent',
-            'check if package.json has jest',
-            'where is the entry point defined',
-            'what is the port number',
-            'how to run the dev script',
-        ]
-
-        for (const query of lookupQueries) {
-            expect(getAdaptiveThinkingLevel([{ role: 'user', content: query }])).toBe('minimal')
-            expect(isSimpleConversationalTurn([{ role: 'user', content: query }])).toBe(false)
-        }
-    })
-
-    it('returns high for queries containing heavy refactoring, debugging, or architecture keywords', () => {
-        const heavyQueries = [
-            'please refactor the auth middleware to support oauth2 and jwt',
-            'debug the memory leak in the websocket connection handler',
-            'architect a new distributed caching layer with redis cluster',
-            'rewrite the sql query generator with full type safety',
-            'migrate from prisma to drizzle orm across all services',
-            'fix tests in packages/providers that are failing on macos',
-            'fix error ECONNRESET when streaming responses',
-        ]
-
-        for (const query of heavyQueries) {
-            expect(getAdaptiveThinkingLevel([{ role: 'user', content: query }])).toBe('high')
-        }
-    })
-
-    it('returns high for prompt text exceeding 300 characters', () => {
-        const longPrompt = 'a'.repeat(301)
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: longPrompt }])).toBe('high')
-    })
-
-    it('returns configured level or auto for standard code prompts that do not match edge tiers', () => {
-        const standardPrompt = 'add a helper function to format timestamps as ISO strings in UTC'
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: standardPrompt }])).toBe('auto')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: standardPrompt }], 'low')).toBe(
-            'low'
+        expect(isSimpleConversationalTurn([{ role: 'user', content: 'what can you do' }])).toBe(
+            true
+        )
+        expect(isSimpleConversationalTurn([{ role: 'user', content: 'who are you' }])).toBe(true)
+        expect(isSimpleConversationalTurn([{ role: 'user', content: 'read package.json' }])).toBe(
+            false
         )
         expect(
-            getAdaptiveThinkingLevel([{ role: 'user', content: standardPrompt }], 'medium')
-        ).toBe('medium')
-    })
-
-    it('honors explicitly configured level for short non-greeting prompts', () => {
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix typo' }], 'high')).toBe(
-            'high'
-        )
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix typo' }], 'deep')).toBe(
-            'deep'
-        )
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'fix typo' }], 'fast')).toBe(
-            'fast'
-        )
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hi' }], 'high')).toBe('off')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hi' }], 'deep')).toBe('off')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hi' }], 'fast')).toBe('off')
+            isSimpleConversationalTurn([
+                { role: 'user', content: 'fix tests in packages/providers' },
+            ])
+        ).toBe(false)
     })
 
     it('handles non-string user message content safely', () => {

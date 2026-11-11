@@ -27,8 +27,36 @@ export function getAdaptiveThinkingLevel(
     const text = lastUserMsg.content.trim()
     if (!text) return 'off'
 
-    // Tier 1: Off for Slash commands and simple greetings
+    // Slash commands do not require reasoning
     if (text.startsWith('/')) return 'off'
+
+    if (configuredLevel === 'off') {
+        return 'off'
+    }
+    if (configuredLevel === 'deep' || configuredLevel === 'high') {
+        return configuredLevel as any
+    }
+    if (
+        configuredLevel === 'medium' ||
+        configuredLevel === 'low' ||
+        configuredLevel === 'minimal'
+    ) {
+        return configuredLevel as any
+    }
+
+    // User-managed reasoning: default to fast without prompt inspection overhead
+    return 'fast'
+}
+
+export function isSimpleConversationalTurn(messages: AgentMessage[]): boolean {
+    const userMsgs = messages.filter((m) => m.role === 'user' && !m.isUI)
+    if (userMsgs.length === 0) return true
+    const lastUserMsg = userMsgs[userMsgs.length - 1]
+    if (!lastUserMsg || typeof lastUserMsg.content !== 'string') return true
+
+    const text = lastUserMsg.content.trim()
+    if (!text) return true
+    if (text.startsWith('/')) return true
 
     const lower = text.toLowerCase()
     const simpleGreetings = [
@@ -49,45 +77,10 @@ export function getAdaptiveThinkingLevel(
         'help',
     ]
 
-    if (simpleGreetings.includes(lower)) {
-        return 'off'
-    }
-
-    // If configuredLevel is explicitly provided and not 'auto' or 'off', respect user preference
-    if (configuredLevel && configuredLevel !== 'auto' && configuredLevel !== 'off') {
-        return configuredLevel as any
-    }
-
-    if (text.length < 15 && !text.includes('```') && !text.includes('\n')) {
-        return 'off'
-    }
-
-    // Tier 2: Minimal for simple lookups / read-only questions without code edits
-    const isLookup = /^(read|view|show|find|search|list|check|where|what is|how to)\b/i.test(text)
-    if (
-        isLookup &&
-        text.length < 100 &&
-        !text.includes('```') &&
-        !text.includes('fix') &&
-        !text.includes('refactor')
-    ) {
-        return 'minimal'
-    }
-
-    // Tier 4: High for explicit refactoring, multi-file changes, or complex debugging
-    const isHeavy = /\b(refactor|debug|architect|rewrite|migrate|fix tests?|fix error)\b/i.test(
-        text
+    return (
+        simpleGreetings.includes(lower) ||
+        (text.length < 15 && !text.includes('```') && !text.includes('\n'))
     )
-    if (isHeavy || text.length > 300) {
-        return 'high'
-    }
-
-    // Tier 3: Auto (or configured default) for standard code edits
-    return (configuredLevel as any) || 'auto'
-}
-
-export function isSimpleConversationalTurn(messages: AgentMessage[]): boolean {
-    return getAdaptiveThinkingLevel(messages) === 'off'
 }
 
 export function getModelStreamTimeouts(
@@ -584,7 +577,7 @@ async function streamAssistantResponse(
                     agent.modelOptions,
                     signal,
                     {
-                        minTokens: 2000,
+                        minTokens: 4000,
                         onStatus: (status) => {
                             eventQueue.push({ type: 'AgentStatus', message: status })
                         },
@@ -668,7 +661,9 @@ async function streamAssistantResponse(
 
                 if (attemptCount === 1) {
                     const initialStatus =
-                        effectiveThinkingLevel !== 'off' ? 'Thinking...' : 'Working...'
+                        effectiveThinkingLevel === 'deep' || effectiveThinkingLevel === 'high'
+                            ? 'Thinking...'
+                            : 'Working...'
                     eventQueue.push({ type: 'AgentStatus', message: initialStatus })
                 } else {
                     eventQueue.push({

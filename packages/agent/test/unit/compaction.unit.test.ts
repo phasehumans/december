@@ -158,7 +158,7 @@ describe('compactContextIfNeeded (Unit)', () => {
         })
 
         expect(result.length).toBeLessThan(33)
-        expect(statusEmitted).toBe('Compacting context...')
+        expect(statusEmitted).toBe('Compacting memory...')
     })
 
     test('throws abort error if signal is aborted during compaction', async () => {

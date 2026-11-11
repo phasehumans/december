@@ -325,13 +325,13 @@ async function main() {
             operations: localOperations,
             modelOptions: {
                 model: initialModel,
-                thinkingLevel: config.thinkingLevel || 'auto',
+                thinkingLevel: config.thinkingLevel || 'fast',
             },
             sessionRepository,
             sessionId,
             runtime: 'cli',
             workspaceDir,
-            thinkingLevel: config.thinkingLevel || 'auto',
+            thinkingLevel: config.thinkingLevel || 'fast',
             steeringMode: config.steeringMode || 'all',
             followUpMode: config.followUpMode || 'all',
             lean: true,
@@ -485,13 +485,13 @@ async function main() {
         operations: localOperations,
         modelOptions: {
             model: initialModel,
-            thinkingLevel: config.thinkingLevel || 'auto',
+            thinkingLevel: config.thinkingLevel || 'fast',
         },
         sessionRepository,
         sessionId,
         runtime: 'cli',
         workspaceDir: targetWorkspaceDir,
-        thinkingLevel: config.thinkingLevel || 'auto',
+        thinkingLevel: config.thinkingLevel || 'fast',
         steeringMode: config.steeringMode || 'all',
         followUpMode: config.followUpMode || 'all',
     })
@@ -703,7 +703,7 @@ async function main() {
                 title: 'Non-Workspace Access',
                 value: cfg.nonWorkspaceAccess ? 'on' : 'off',
             },
-            { id: 'thinking_level', title: 'Thinking Level', value: cfg.thinkingLevel || 'auto' },
+            { id: 'thinking_level', title: 'Thinking Level', value: cfg.thinkingLevel || 'fast' },
             { id: 'steering_mode', title: 'Steering Mode', value: cfg.steeringMode || 'all' },
             { id: 'follow_up_mode', title: 'Follow-Up Mode', value: cfg.followUpMode || 'all' },
             {
@@ -763,7 +763,7 @@ async function main() {
         contextTokens: 0,
         maxContextTokens: getModelContextWindow(initialModel),
         sessionId,
-        thinkingLevel: config.thinkingLevel || 'auto',
+        thinkingLevel: config.thinkingLevel || 'fast',
         onAbort: () => {
             if (agent?.activeAbortController) {
                 agent.activeAbortController.abort()

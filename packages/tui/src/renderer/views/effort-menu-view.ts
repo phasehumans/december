@@ -8,11 +8,10 @@ import type { ScreenBuffer } from '../buffer'
 export type ReasoningLevel = 'auto' | 'fast' | 'deep' | 'off' | 'low' | 'medium' | 'high'
 
 export const REASONING_OPTIONS: { label: string; value: ReasoningLevel; desc: string }[] = [
-    { label: 'Auto', value: 'auto', desc: 'Dynamically scale reasoning based on task complexity' },
     {
         label: 'Fast',
         value: 'fast',
-        desc: 'Minimal reflection, fastest response, lowest token cost',
+        desc: 'Minimal reflection, fastest response, lowest token cost (default)',
     },
     {
         label: 'Deep',
@@ -22,12 +21,12 @@ export const REASONING_OPTIONS: { label: string; value: ReasoningLevel; desc: st
 ]
 
 export function normalizeReasoningLevel(level?: string): ReasoningLevel {
-    if (!level) return 'auto'
+    if (!level) return 'fast'
     const l = level.toLowerCase().trim()
     if (l === 'deep' || l === 'high' || l === 'medium') return 'deep'
     if (l === 'fast' || l === 'off' || l === 'low' || l === 'minimal') return 'fast'
-    if (l === 'auto') return 'auto'
-    return 'auto'
+    if (l === 'auto') return 'fast'
+    return 'fast'
 }
 
 export function getReasoningSupportType(model?: string): 'controllable' | 'fixed' | 'none' {
@@ -83,8 +82,8 @@ export const EffortMenuView = {
         if (reasoningSupport === 'none' || reasoningSupport === 'fixed') {
             return 6
         }
-        // Title (1) + margin (1) + 3 options (3) + margin (1) + footer (1) = 7
-        return 7
+        // Title (1) + margin (1) + options + margin (1) + footer (1)
+        return 4 + REASONING_OPTIONS.length
     },
 
     render(buffer: ScreenBuffer, props: EffortMenuViewProps): void {

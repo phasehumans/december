@@ -811,7 +811,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         availableSecrets: secretKeys,
         modelOptions: {
             model: model || process.env.DEFAULT_MODEL || 'gemini-3.6-flash',
-            thinkingLevel: 'auto',
+            thinkingLevel: 'fast',
         },
     })
 

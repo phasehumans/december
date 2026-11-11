@@ -600,7 +600,7 @@ export class DifferentialApp {
         this.workspaceFiles = options?.workspaceFiles ? [...options.workspaceFiles] : []
         this.recentFiles = options?.recentFiles ? new Set(options.recentFiles) : new Set<string>()
 
-        const initialThinking = options?.thinkingLevel || 'auto'
+        const initialThinking = options?.thinkingLevel || 'fast'
         const initialEffortIdx = REASONING_OPTIONS.findIndex((opt) => opt.value === initialThinking)
 
         this.state = {
@@ -2698,7 +2698,7 @@ export class DifferentialApp {
                     return
                 } else {
                     this.showToast(
-                        'Invalid reasoning level. Valid options: auto, fast, deep (or off, low, high)',
+                        'Invalid reasoning level. Valid options: fast, deep (or auto, off)',
                         'error'
                     )
                     return

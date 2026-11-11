@@ -297,9 +297,9 @@ export class ConversationManager {
         const originalLength = this._messages.length
 
         // Tier 2: LLM Context Summarization
-        // Multi-turn sessions exceeding 15 turns automatically trigger structured context summarization
+        // Compacts when context window reaches >= 80% capacity (or if explicit maxTurns is configured)
         const effectiveOptions = {
-            maxTurns: options?.maxTurns ?? 15,
+            maxTurns: options?.maxTurns,
             minTokens: options?.minTokens,
             onStatus: options?.onStatus,
         }

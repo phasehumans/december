@@ -27,7 +27,7 @@ describe('Agent core functionality (Unit)', () => {
         expect(agent.tools.size).toBe(2)
         expect(agent.tools.get('tool_a')).toBe(tool1)
         expect(agent.tools.get('tool_b')).toBe(tool2)
-        expect(agent.thinkingLevel).toBe('auto')
+        expect(agent.thinkingLevel).toBe('fast')
     })
 
     test('initializes queues based on mode', () => {

@@ -23,32 +23,34 @@ describe('Performance & Schema Trimming (Unit)', () => {
         expect(trimmed.properties.filePath.$comment).toBeUndefined()
     })
 
-    test('getAdaptiveThinkingLevel routes task complexity to 4 distinct tiers', () => {
-        // Tier 1: Off
+    test('getAdaptiveThinkingLevel respects user configuration and defaults to fast', () => {
+        // Slash commands are off
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '/login' }])).toBe('off')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hi' }])).toBe('off')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'hello' }])).toBe('off')
 
-        // Tier 2: Minimal for simple lookups
+        // Default is fast for standard and complex prompts
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'read package.json' }])).toBe(
-            'minimal'
+            'fast'
         )
-        expect(
-            getAdaptiveThinkingLevel([{ role: 'user', content: 'find function main in index.ts' }])
-        ).toBe('minimal')
-
-        // Tier 3: Auto (default for code edits)
         expect(
             getAdaptiveThinkingLevel([
                 { role: 'user', content: 'Add a new utility function to file' },
             ])
-        ).toBe('auto')
-
-        // Tier 4: High for refactoring/debugging/multi-file prompts
+        ).toBe('fast')
         expect(
             getAdaptiveThinkingLevel([
                 { role: 'user', content: 'refactor the module architecture and fix broken tests' },
             ])
-        ).toBe('high')
+        ).toBe('fast')
+
+        // Explicit user settings are honored
+        expect(
+            getAdaptiveThinkingLevel(
+                [{ role: 'user', content: 'refactor the module architecture' }],
+                'deep'
+            )
+        ).toBe('deep')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: 'test prompt' }], 'off')).toBe(
+            'off'
+        )
     })
 })

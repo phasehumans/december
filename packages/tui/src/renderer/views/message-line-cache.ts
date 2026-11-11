@@ -384,8 +384,9 @@ export class MessageLineCache {
                 const itemError =
                     item.toolCall?.status === 'error' || (item.toolCall as any)?.status === 'failed'
                 const itemGlyphColor = itemError ? THEME.colors.error : THEME.colors.warning
+                const itemGlyph = itemError ? '  ✖ ' : '    '
                 lines.push([
-                    { text: '  ● ', style: { fg: itemGlyphColor } },
+                    { text: itemGlyph, style: { fg: itemGlyphColor } },
                     { text: itemTarget, style: { fg: THEME.colors.muted } },
                     ...(itemDur
                         ? [{ text: ` (${itemDur})`, style: { fg: THEME.colors.dim } }]
@@ -706,6 +707,28 @@ export class MessageLineCache {
                             : [{ text: ' (ctrl+o to expand)', style: { fg: THEME.colors.dim } }]),
                     ])
 
+                    if (!expandTools && outText) {
+                        const findingsMatch = outText.match(
+                            /#### Rollup Summary & Findings:\s*([\s\S]*)$/i
+                        )
+                        const summaryText = findingsMatch ? findingsMatch[1].trim() : ''
+                        if (summaryText) {
+                            const firstFinding = summaryText
+                                .split(/\r?\n/)
+                                .map((s) => s.trim().replace(/^[-•*]\s*/, ''))
+                                .filter(Boolean)[0]
+                            if (firstFinding) {
+                                lines.push([
+                                    { text: '  ↳ ', style: { fg: THEME.colors.border } },
+                                    {
+                                        text: firstFinding.slice(0, Math.max(30, width - 8)),
+                                        style: { fg: THEME.colors.muted },
+                                    },
+                                ])
+                            }
+                        }
+                    }
+
                     if (expandTools) {
                         const findingsMatch = outText.match(
                             /#### Rollup Summary & Findings:\s*([\s\S]*)$/i
@@ -905,7 +928,7 @@ export class MessageLineCache {
 
                 if (expandTools) {
                     lines.push([
-                        { text: '❭ ', style: { fg: THEME.colors.brand } },
+                        { text: '● ', style: { fg: THEME.colors.brand } },
                         { text: bannerLabel, style: { fg: THEME.colors.brand, bold: true } },
                         { text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } },
                     ])
@@ -928,7 +951,7 @@ export class MessageLineCache {
                     lines.push([{ text: '', style: {} }])
                 } else {
                     lines.push([
-                        { text: '❭ ', style: { fg: THEME.colors.muted } },
+                        { text: '● ', style: { fg: THEME.colors.muted } },
                         { text: bannerLabel, style: { fg: THEME.colors.muted } },
                         { text: ' (ctrl+o to expand)', style: { fg: THEME.colors.dim } },
                     ])

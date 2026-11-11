@@ -319,7 +319,7 @@ describe('ConversationManager (Unit)', () => {
             expect(prompt).toContain('strictly lowercase commit messages')
         })
 
-        test('compactIfNeeded triggers when multi-turn session exceeds 15 user turns without exceeding token budget', async () => {
+        test('compactIfNeeded does not trigger on turn 16 by default when token capacity is below 80%', async () => {
             const manager = new ConversationManager()
             manager.addMessage({ role: 'system', content: 'You are an agent' })
             // Add 16 user-assistant turns with short messages (far below token limit)
@@ -333,10 +333,22 @@ describe('ConversationManager (Unit)', () => {
             const llm = new MockLLM()
             llm.pushResponse('Structured Checkpoint: Completed turns 1 to 8')
 
-            const result = await manager.compactIfNeeded(llm)
+            // Default compactIfNeeded does not compact based on turns alone
+            const resultDefault = await manager.compactIfNeeded(llm)
+            expect(resultDefault.compacted).toBe(false)
 
-            expect(result.compacted).toBe(true)
-            expect(result.summary).toContain('Structured Checkpoint')
+            // When explicit maxTurns is provided in options, it triggers compaction
+            const resultExplicit = await manager.compactIfNeeded(
+                llm,
+                undefined,
+                undefined,
+                undefined,
+                {
+                    maxTurns: 15,
+                }
+            )
+            expect(resultExplicit.compacted).toBe(true)
+            expect(resultExplicit.summary).toContain('Structured Checkpoint')
             expect(manager.messages[1]!.content).toContain('[COMPACTED HISTORY SUMMARY]')
             expect(manager.messages[1]!.content).toContain('Completed turns 1 to 8')
             expect(manager.messages.length).toBeLessThan(33)
