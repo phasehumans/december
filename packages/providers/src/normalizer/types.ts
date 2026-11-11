@@ -24,6 +24,7 @@ export interface CanonicalMessage {
     role: CanonicalRole
     content?: string
     thinking?: CanonicalThinking
+    thoughtSignature?: string
     toolCalls?: CanonicalToolCall[]
     toolResults?: CanonicalToolResult[]
     toolCallId?: string

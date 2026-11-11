@@ -25,20 +25,6 @@ December 是一个 (so much) better 编程智能体。它通过编写代码、�
 
 1. 安装 December：
 
-Bash (macOS 与 Linux)：
-
-```bash
-curl -fsSL https://trydecember.com/install.sh | bash
-```
-
-PowerShell (Windows)：
-
-```powershell
-irm https://trydecember.com/install.ps1 | iex
-```
-
-NPM：
-
 ```bash
 npm install -g @trydecember/cli
 ```

@@ -35,6 +35,7 @@ export interface ToolCall {
     id: string
     name: string
     input: string // the raw json string or parsed object
+    thoughtSignature?: string
 }
 
 export interface ToolResult {

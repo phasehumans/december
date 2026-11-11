@@ -25,20 +25,6 @@ December is a (so much) better coding agent. It helps you build faster by writin
 
 1. Install December:
 
-Bash (macOS & Linux):
-
-```bash
-curl -fsSL https://trydecember.com/install.sh | bash
-```
-
-PowerShell (Windows):
-
-```powershell
-irm https://trydecember.com/install.ps1 | iex
-```
-
-NPM:
-
 ```bash
 npm install -g @trydecember/cli
 ```

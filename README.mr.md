@@ -25,20 +25,6 @@ December हा एक (so much) better कोडिंग एजंट आह�
 
 1. December इन्स्टॉल करा:
 
-Bash (macOS आणि Linux):
-
-```bash
-curl -fsSL https://trydecember.com/install.sh | bash
-```
-
-PowerShell (Windows):
-
-```powershell
-irm https://trydecember.com/install.ps1 | iex
-```
-
-NPM:
-
 ```bash
 npm install -g @trydecember/cli
 ```

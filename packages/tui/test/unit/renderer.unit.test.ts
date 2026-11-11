@@ -56,6 +56,15 @@ describe('Differential 2D Screen Buffer Engine', () => {
 
             // Transitioning back to unstyled
             expect(computeSgrTransition({ bold: true, fg: 'red' }, {})).toBe('\x1b[0m')
+
+            // Transitioning from dim to bold clears dim intensity
+            const dimToBold = computeSgrTransition({ dim: true }, { bold: true })
+            expect(dimToBold.includes('22') || dimToBold.startsWith('\x1b[0;')).toBe(true)
+            expect(dimToBold.includes('1')).toBe(true)
+
+            // Transitioning from dim to normal clears dim intensity
+            expect(computeSgrTransition({ dim: true }, {})).toBe('\x1b[0m')
+            expect(computeSgrTransition({ dim: true, fg: 'red' }, { fg: 'red' })).toBe('\x1b[22m')
         })
     })
 

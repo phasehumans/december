@@ -6,19 +6,26 @@ import { normalizeForAnthropic } from '../normalizer/index.ts'
 import type { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
 export function resolveAnthropicModel(model?: string): string {
-    let name = model || 'claude-sonnet-5'
+    let name = model || 'claude-3-7-sonnet-latest'
     if (name.startsWith('anthropic/')) {
         name = name.slice('anthropic/'.length)
     }
     const aliasMap: Record<string, string> = {
-        'claude-fable-5.1': 'claude-fable-5-1',
-        'claude-opus-4.8': 'claude-opus-4-8',
-        'claude-opus-4.7': 'claude-opus-4-7',
-        'claude-sonnet-4.6': 'claude-sonnet-4-6',
-        'claude-opus-4.6': 'claude-opus-4-6',
-        'claude-opus-4.5': 'claude-opus-4-5',
-        'claude-sonnet-4.5': 'claude-sonnet-4-5',
-        'claude-haiku-4.5': 'claude-haiku-4-5',
+        'claude-opus-5': 'claude-3-7-sonnet-latest',
+        'claude-sonnet-5': 'claude-3-7-sonnet-latest',
+        'claude-fable-5-1': 'claude-3-7-sonnet-latest',
+        'claude-fable-5.1': 'claude-3-7-sonnet-latest',
+        'claude-opus-4.8': 'claude-3-7-sonnet-latest',
+        'claude-opus-4.7': 'claude-3-7-sonnet-latest',
+        'claude-sonnet-4.6': 'claude-3-7-sonnet-latest',
+        'claude-opus-4.6': 'claude-3-7-sonnet-latest',
+        'claude-opus-4.5': 'claude-3-7-sonnet-latest',
+        'claude-sonnet-4.5': 'claude-3-7-sonnet-latest',
+        'claude-haiku-4.5': 'claude-3-5-haiku-latest',
+        'claude-3-7-sonnet': 'claude-3-7-sonnet-20250219',
+        'claude-3-5-sonnet': 'claude-3-5-sonnet-20241022',
+        'claude-3-5-haiku': 'claude-3-5-haiku-20241022',
+        'claude-3-opus': 'claude-3-opus-20240229',
         'claude-3-7-sonnet-latest': 'claude-3-7-sonnet-20250219',
         'claude-3-5-sonnet-latest': 'claude-3-5-sonnet-20241022',
         'claude-3-5-haiku-latest': 'claude-3-5-haiku-20241022',

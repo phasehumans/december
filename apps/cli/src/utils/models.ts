@@ -100,6 +100,7 @@ export function clearProviderModelsCache(provider?: string): void {
 export const getCuratedProviderModels = (provider: string): { label: string; value: string }[] => {
     const normalized = (provider || '').toLowerCase().trim()
     const canonical = MODEL_CATALOG.aliases[normalized] || normalized
+
     const entry = MODEL_CATALOG.providers[canonical]
     if (entry && Array.isArray(entry.models) && entry.models.length > 0) {
         return entry.models.map((m) => ({ label: m.label, value: m.id }))
@@ -472,15 +473,18 @@ export async function fetchLiveProviderModels(
         const seen = new Set<string>()
         const merged: { label: string; value: string }[] = []
 
-        for (const m of curated) {
-            seen.add(m.value)
-            merged.push(m)
-        }
-
+        // Live models directly returned from the provider API take precedence
         for (const item of liveItems) {
             if (!seen.has(item.value)) {
                 seen.add(item.value)
                 merged.push(item)
+            }
+        }
+
+        for (const m of curated) {
+            if (!seen.has(m.value)) {
+                seen.add(m.value)
+                merged.push(m)
             }
         }
 

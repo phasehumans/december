@@ -1668,6 +1668,76 @@ export class DifferentialApp {
     handlePaste(text: string): void {
         const cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
         if (!cleaned) return
+
+        if (this.state.activeOverlay !== 'none') {
+            const overlay = this.state.activeOverlay
+
+            if (overlay === 'auth') {
+                if (this.state.authViewMode === 'byok_key') {
+                    const keyChunk = cleaned.replace(/[\r\n]+/g, '').trim()
+                    if (keyChunk) {
+                        this.state.authApiKeyInput += keyChunk
+                        this.state.authKeyError = null
+                        this.render()
+                    }
+                    return
+                }
+                if (this.state.isSearchingAuthProviders) {
+                    const searchChunk = cleaned.replace(/[\r\n]+/g, ' ')
+                    this.state.authProviderSearchQuery += searchChunk
+                    this.state.authProviderSelectedIndex = 0
+                    this.state.authProviderWindowStart = 0
+                    this.render()
+                    return
+                }
+            }
+
+            if (overlay === 'model' && this.state.isModelSearching) {
+                const searchChunk = cleaned.replace(/[\r\n]+/g, ' ')
+                this.state.modelSearchQuery += searchChunk
+                this.state.modelSelectedIndex = 0
+                this.state.modelWindowStart = 0
+                this.render()
+                return
+            }
+
+            if (overlay === 'session') {
+                if (this.state.sessionRenameMode) {
+                    const renameChunk = cleaned.replace(/[\r\n]+/g, ' ')
+                    this.state.sessionRenameValue += renameChunk
+                    this.render()
+                    return
+                }
+                if (this.state.isSessionSearching) {
+                    const searchChunk = cleaned.replace(/[\r\n]+/g, ' ')
+                    this.state.sessionSearchQuery += searchChunk
+                    this.state.sessionSelectedIndex = 0
+                    this.state.sessionWindowStart = 0
+                    this.render()
+                    return
+                }
+            }
+
+            if (overlay === 'memory' && this.state.isAddingMemory) {
+                const entryChunk = cleaned.replace(/[\r\n]+/g, ' ')
+                this.state.memoryNewEntryText += entryChunk
+                this.render()
+                return
+            }
+
+            if (overlay === 'skills' && this.state.skillsIsSearching) {
+                const searchChunk = cleaned.replace(/[\r\n]+/g, ' ')
+                this.state.skillsSearchQuery += searchChunk
+                this.state.skillsSelectedIndex = 0
+                this.state.skillsWindowStart = 0
+                this.render()
+                return
+            }
+
+            // Overlay is active but not in a text-input mode: ignore paste to prevent leaking into prompt input
+            return
+        }
+
         const lines = cleaned.split('\n')
         if (lines.length > 5) {
             const token = storePaste(cleaned)

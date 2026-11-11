@@ -44,7 +44,6 @@ const NPM_PACKAGE_URL = 'https://www.npmjs.com/package/@trydecember/cli'
 const server = serve({
     port: Number(process.env.APP_PORT || process.env.WEB_PORT || 3000),
     routes: {
-        '/install.sh': () => Response.redirect(NPM_PACKAGE_URL, 302),
         '/install': () => Response.redirect(NPM_PACKAGE_URL, 302),
         '/docs': () => {
             const targetBase =

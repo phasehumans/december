@@ -25,13 +25,13 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('npm install -g @trydecember/cli')
         })
 
-        it('includes install command switch options for bash, powershell, and npm', () => {
+        it('renders npm install command without bash, powershell, or dropdown switches', () => {
             const html = getLandingHtml()
 
-            expect(html).toContain('data-pm="npm"')
-            expect(html).toContain('data-pm="bash"')
-            expect(html).toContain('data-pm="powershell"')
-            expect(html).not.toContain('data-pm="bun"')
+            expect(html).toContain('npm install -g @trydecember/cli')
+            expect(html).not.toContain('data-pm="bash"')
+            expect(html).not.toContain('data-pm="powershell"')
+            expect(html).not.toContain('id="pm-dropdown-toggle"')
         })
 
         it('includes instant authenticated redirect check for logged-in sessions', () => {
@@ -146,17 +146,31 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).not.toContain('Zero Source Retention')
         })
 
-        it('renders gutter telemetry indicators across landing page sections', () => {
+        it('does not render telemetry indicators in side gutters', () => {
             const html = getLandingHtml()
 
-            expect(html).toContain('DEC ENGINE')
-            expect(html).toContain('AUTONOMOUS RUNTIME')
-            expect(html).toContain('SPEC: ARCH 01')
-            expect(html).toContain('DUAL-ENGINE CORE')
-            expect(html).toContain('METRICS: BENCHMARKS')
-            expect(html).toContain('SWE-BENCH VERIFIED')
-            expect(html).toContain('RUNTIMES: MULTI-HOST')
-            expect(html).toContain('PROTOCOL: TRUST')
+            expect(html).not.toContain('DEC ENGINE')
+            expect(html).not.toContain('AUTONOMOUS RUNTIME')
+            expect(html).not.toContain('SPEC: ARCH 01')
+            expect(html).not.toContain('DUAL-ENGINE CORE')
+            expect(html).not.toContain('METRICS: BENCHMARKS')
+            expect(html).not.toContain('SWE-BENCH VERIFIED')
+            expect(html).not.toContain('RUNTIMES: MULTI-HOST')
+            expect(html).not.toContain('PROTOCOL: TRUST')
+        })
+
+        it('renders upper-fold infinite model tickers in desktop side gutters', () => {
+            const html = getLandingHtml()
+
+            expect(html).toContain('gutter-ticker-container')
+            expect(html).toContain('gutter-ticker-track-up')
+            expect(html).toContain('gutter-ticker-track-down')
+            expect(html).toContain('claude-3-7-sonnet')
+            expect(html).toContain('gemini-2.5-pro')
+            expect(html).toContain('deepseek-r1')
+            expect(html).toContain('gpt-4o')
+            expect(html).toContain('llama-3.3-70b')
+            expect(html).toContain('qwen-2.5-coder')
         })
     })
 

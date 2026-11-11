@@ -358,4 +358,41 @@ describe('Antigravity Provider Adapter (Unit)', () => {
         expect(thrownError).not.toBeNull()
         expect(thrownError.message).toContain('Gemini output blocked due to safety settings')
     })
+
+    it('extracts snake_case thought_signature from parts and candidate', async () => {
+        const sseData = [
+            'data: {"candidates":[{"content":{"parts":[{"functionCall":{"name":"bash","args":{"command":"ls"}},"thought_signature":"sig_snake_123"}]}}]}\n\n',
+        ].join('')
+
+        const mockFetch: typeof fetch = async () => {
+            const encoder = new TextEncoder()
+            const stream = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseData))
+                    controller.close()
+                },
+            })
+            return new Response(stream, {
+                status: 200,
+                headers: { 'Content-Type': 'text/event-stream' },
+            })
+        }
+
+        const provider = antigravityProvider('ya29.test-token', { fetchFn: mockFetch })
+        const chunks: any[] = []
+        for await (const chunk of provider.stream([{ role: 'user', content: 'test' }])) {
+            chunks.push(chunk)
+        }
+
+        expect(chunks).toEqual([
+            { type: 'thought_signature', signature: 'sig_snake_123' },
+            {
+                type: 'tool_call_delta',
+                id: expect.any(String),
+                name: 'bash',
+                inputDelta: '{"command":"ls"}',
+                thoughtSignature: 'sig_snake_123',
+            },
+        ])
+    })
 })

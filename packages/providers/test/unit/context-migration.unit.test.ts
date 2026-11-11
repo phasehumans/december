@@ -405,6 +405,41 @@ describe('Cross-Provider Context Migration Normalizer (Unit)', () => {
             expect(modelParts).toHaveLength(1)
             expect(modelParts[0].functionCall?.name).toBe('list_dir')
             expect((modelParts[0] as any).thoughtSignature).toBe('sig_crypto_test_123')
+            expect((modelParts[0] as any).thought_signature).toBe('sig_crypto_test_123')
+        })
+
+        test('preserves thoughtSignature on functionCall parts from clean toolCall ids with msg.thoughtSignature', () => {
+            const raw: Message[] = [
+                { role: 'user', content: 'check directory' },
+                {
+                    role: 'assistant',
+                    content: '',
+                    thinking: 'let me check',
+                    thoughtSignature: 'sig_clean_456',
+                    toolCalls: [
+                        {
+                            id: 'call_clean_1',
+                            name: 'bash',
+                            input: '{"command":"ls"}',
+                        },
+                    ],
+                },
+                {
+                    role: 'tool',
+                    toolCallId: 'call_clean_1',
+                    content: 'total 10',
+                },
+            ]
+
+            const geminiMessages = normalizeForGemini(raw, {
+                model: 'gemini-3.8-flash',
+            })
+
+            expect(geminiMessages).toHaveLength(3)
+            const modelParts = geminiMessages[1].parts
+            expect(modelParts[0].functionCall?.name).toBe('bash')
+            expect((modelParts[0] as any).thoughtSignature).toBe('sig_clean_456')
+            expect((modelParts[0] as any).thought_signature).toBe('sig_clean_456')
         })
 
         test('omits thinking parts to prevent Gemini schema errors', () => {

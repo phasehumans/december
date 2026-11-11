@@ -46,43 +46,18 @@ describe('apps/docs astro configuration', () => {
         expect(rawConfig.redirects['/changelog']).toBe('/docs/changelog')
     })
 
-    it('configures static install scripts and /install redirect', async () => {
-        expect(rawConfig.redirects['/install']).toBe('/install.sh')
+    it('configures npm package redirect for /install', async () => {
+        const npmUrl = 'https://www.npmjs.com/package/@trydecember/cli'
+        expect(rawConfig.redirects['/install']).toBe(npmUrl)
+        expect(rawConfig.redirects['/install.sh']).toBeUndefined()
+        expect(rawConfig.redirects['/install.ps1']).toBeUndefined()
 
         const redirectsPath = new URL('../public/_redirects', import.meta.url).pathname
         const redirectsContent = await Bun.file(redirectsPath).text()
-        expect(redirectsContent).toContain('/install')
-        expect(redirectsContent).toContain('/install.sh')
-
-        const installShPath = new URL('../public/install.sh', import.meta.url).pathname
-        const installShContent = await Bun.file(installShPath).text()
-        expect(installShContent).toContain('REPO="phasehumans/december"')
-        expect(installShContent).toContain('detect_target()')
-
-        const installPs1Path = new URL('../public/install.ps1', import.meta.url).pathname
-        const installPs1Content = await Bun.file(installPs1Path).text()
-        expect(installPs1Content).toContain('$Repo = "phasehumans/december"')
-        expect(installPs1Content).toContain('$ProgressPreference = "SilentlyContinue"')
-        expect(installPs1Content).toContain('$Target = "x86_64-pc-windows-msvc"')
-        expect(installPs1Content).toContain('december-$Target.zip')
-        expect(installPs1Content).toContain('Log-Success')
-        expect(installPs1Content).toContain('SHASUMS256.txt')
-        expect(installPs1Content).toContain('Get-FileHash')
-        expect(installPs1Content).toContain('curl.exe')
-
-        // Ensure install.ps1 uses pure ASCII to avoid encoding corruption in PowerShell 5.1
-        // eslint-disable-next-line no-control-regex
-        expect(/[^\x00-\x7F]/.test(installPs1Content)).toBe(false)
-
-        // Ensure root install.ps1 and public/install.ps1 are in sync
-        const rootInstallPs1Path = new URL('../../../install.ps1', import.meta.url).pathname
-        const rootInstallPs1Content = await Bun.file(rootInstallPs1Path).text()
-        expect(installPs1Content).toBe(rootInstallPs1Content)
-
-        // Verify _headers configures UTF-8 content-type for installer scripts
-        const headersPath = new URL('../public/_headers', import.meta.url).pathname
-        const headersContent = await Bun.file(headersPath).text()
-        expect(headersContent).toContain('/install.ps1')
-        expect(headersContent).toContain('Content-Type: text/plain; charset=utf-8')
+        expect(redirectsContent).toContain(
+            '/install             https://www.npmjs.com/package/@trydecember/cli'
+        )
+        expect(redirectsContent).not.toContain('/install.sh')
+        expect(redirectsContent).not.toContain('/install.ps1')
     })
 })

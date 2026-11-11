@@ -25,20 +25,6 @@ December は (so much) better なコーディングエージェントです。�
 
 1. December をインストール:
 
-Bash (macOS & Linux):
-
-```bash
-curl -fsSL https://trydecember.com/install.sh | bash
-```
-
-PowerShell (Windows):
-
-```powershell
-irm https://trydecember.com/install.ps1 | iex
-```
-
-NPM:
-
 ```bash
 npm install -g @trydecember/cli
 ```

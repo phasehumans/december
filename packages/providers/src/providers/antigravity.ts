@@ -349,23 +349,61 @@ export function antigravityProvider(
                             yield { type: 'text', text: chunkText }
                         }
 
+                        let chunkThoughtSignature: string | undefined = undefined
+                        const rawCandidateSig =
+                            (candidate as any)?.thoughtSignature ||
+                            (candidate as any)?.thought_signature
+                        if (rawCandidateSig) {
+                            chunkThoughtSignature =
+                                typeof rawCandidateSig === 'string'
+                                    ? rawCandidateSig
+                                    : JSON.stringify(rawCandidateSig)
+                        }
+
+                        for (const part of parts) {
+                            const rawSig =
+                                (part as any).thoughtSignature ||
+                                (part as any).thought_signature ||
+                                (part.functionCall as any)?.thoughtSignature ||
+                                (part.functionCall as any)?.thought_signature
+                            if (rawSig) {
+                                chunkThoughtSignature =
+                                    typeof rawSig === 'string' ? rawSig : JSON.stringify(rawSig)
+                                break
+                            }
+                        }
+
+                        if (chunkThoughtSignature) {
+                            yield {
+                                type: 'thought_signature',
+                                signature: chunkThoughtSignature,
+                            }
+                        }
+
                         for (const part of parts) {
                             if (part.functionCall) {
                                 const fc = part.functionCall
                                 const toolCallId = (fc as any).id || uuidv4()
-
-                                if ((part as any).thoughtSignature) {
-                                    yield {
-                                        type: 'thought_signature',
-                                        signature: (part as any).thoughtSignature,
-                                    }
-                                }
+                                const fcSig =
+                                    (part as any).thoughtSignature ||
+                                    (part as any).thought_signature ||
+                                    (fc as any).thoughtSignature ||
+                                    (fc as any).thought_signature ||
+                                    chunkThoughtSignature
 
                                 yield {
                                     type: 'tool_call_delta',
                                     id: toolCallId,
                                     name: fc.name,
                                     inputDelta: JSON.stringify(fc.args || {}),
+                                    ...(fcSig
+                                        ? {
+                                              thoughtSignature:
+                                                  typeof fcSig === 'string'
+                                                      ? fcSig
+                                                      : JSON.stringify(fcSig),
+                                          }
+                                        : {}),
                                 }
                             }
                         }

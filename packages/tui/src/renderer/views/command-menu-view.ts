@@ -74,6 +74,7 @@ export const CommandMenuView = {
                 y: rowY,
                 style: {
                     fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
+                    bold: isSelected,
                 },
             })
 
@@ -85,6 +86,7 @@ export const CommandMenuView = {
                 maxWidth: CMD_COL_WIDTH,
                 style: {
                     fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
+                    bold: isSelected,
                 },
             })
 

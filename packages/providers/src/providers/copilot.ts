@@ -9,16 +9,17 @@ export function resolveCopilotModel(model?: string): string {
     if (name.startsWith('copilot/')) {
         name = name.slice('copilot/'.length)
     }
-    if (
-        !name ||
-        name.startsWith('claude') ||
-        name.startsWith('gemini') ||
-        name.startsWith('o1') ||
-        name.startsWith('o3') ||
-        name.startsWith('glm') ||
-        name.startsWith('deepseek')
-    ) {
+    if (!name) {
         return 'gpt-4o'
+    }
+    if (name.includes('claude-3.7') || name.includes('claude-3-7')) {
+        return 'claude-3.7-sonnet'
+    }
+    if (name.includes('claude-3.5') || name.includes('claude-3-5')) {
+        return 'claude-3.5-sonnet'
+    }
+    if (name.includes('o3-mini') || name.includes('o3')) {
+        return 'o3-mini'
     }
     if (name.includes('mini')) {
         return 'gpt-4o-mini'

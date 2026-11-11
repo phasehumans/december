@@ -1799,6 +1799,91 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('handles bracketed paste in overlays including auth byok_key without polluting chat input', () => {
+        let savedKey: { provider: string; key: string } | null = null
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSaveApiKey: (provider, key) => {
+                savedKey = { provider, key }
+            },
+        })
+        app.start()
+
+        // 1. Byok key paste
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'byok_key'
+        app.state.authProviders = [{ label: 'Anthropic', value: 'anthropic' }]
+        app.state.authProviderSelectedIndex = 0
+        app.state.input = ''
+
+        // Paste an Anthropic API key with trailing newline and whitespace
+        const rawApiKey = '  sk-ant-api03-samplekey1234567890\n  '
+        app.handleKey(`\x1b[200~${rawApiKey}\x1b[201~`)
+
+        // Verifies authApiKeyInput gets the clean key and chat input is untouched
+        expect(app.state.authApiKeyInput).toBe('sk-ant-api03-samplekey1234567890')
+        expect(app.state.input).toBe('')
+
+        // Press Enter saves key
+        app.handleKey('\r')
+        expect(savedKey).toEqual({
+            provider: 'anthropic',
+            key: 'sk-ant-api03-samplekey1234567890',
+        })
+        expect(app.state.activeOverlay as string).toBe('none')
+
+        // 2. Auth provider search paste
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'byok_provider'
+        app.state.isSearchingAuthProviders = true
+        app.handleKey('\x1b[200~anthro\x1b[201~')
+        expect(app.state.authProviderSearchQuery).toBe('anthro')
+        expect(app.state.input).toBe('')
+
+        // 3. Model search paste
+        app.state.activeOverlay = 'model'
+        app.state.isModelSearching = true
+        app.handleKey('\x1b[200~claude-3-7\x1b[201~')
+        expect(app.state.modelSearchQuery).toBe('claude-3-7')
+        expect(app.state.input).toBe('')
+
+        // 4. Session rename and search paste
+        app.state.activeOverlay = 'session'
+        app.state.sessionRenameMode = true
+        app.handleKey('\x1b[200~my new session\x1b[201~')
+        expect(app.state.sessionRenameValue).toBe('my new session')
+        expect(app.state.input).toBe('')
+
+        app.state.sessionRenameMode = false
+        app.state.isSessionSearching = true
+        app.handleKey('\x1b[200~search-session\x1b[201~')
+        expect(app.state.sessionSearchQuery).toBe('search-session')
+        expect(app.state.input).toBe('')
+
+        // 5. Memory new entry paste
+        app.state.activeOverlay = 'memory'
+        app.state.isAddingMemory = true
+        app.handleKey('\x1b[200~remember this project architecture\x1b[201~')
+        expect(app.state.memoryNewEntryText).toBe('remember this project architecture')
+        expect(app.state.input).toBe('')
+
+        // 6. Skills search paste
+        app.state.activeOverlay = 'skills'
+        app.state.skillsIsSearching = true
+        app.handleKey('\x1b[200~typescript\x1b[201~')
+        expect(app.state.skillsSearchQuery).toBe('typescript')
+        expect(app.state.input).toBe('')
+
+        // 7. Non-text overlay (e.g. help) ignores paste and does not leak to chat input
+        app.state.activeOverlay = 'help'
+        app.handleKey('\x1b[200~leaked text\x1b[201~')
+        expect(app.state.input).toBe('')
+
+        app.stop()
+    })
+
     it('dynamically scopes /model list to active provider and supports search and selection', () => {
         let selectedModel: any = null
         const mockProviderModels: Record<string, { label: string; value: string }[]> = {

@@ -80,6 +80,9 @@ export function resolveOpenAIModel(model?: string): string {
     if (name.startsWith('openai/')) {
         name = name.slice('openai/'.length)
     }
+    if (name.startsWith('gpt-5') || name.includes('gpt-5')) {
+        return 'gpt-4o'
+    }
     return name
 }
 

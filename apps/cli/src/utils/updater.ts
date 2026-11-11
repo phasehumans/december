@@ -150,16 +150,10 @@ export function getUpdateCommand(
 ): UpdateCommandInfo {
     switch (method) {
         case 'curl': {
-            const isWin = _platform === 'win32' || process.platform === 'win32'
-            const cmd = isWin
-                ? 'powershell -c "irm https://trydecember.com/install.ps1 | iex"'
-                : 'curl -fsSL https://trydecember.com/install.sh | bash'
             return {
-                command: cmd,
-                manualCmd: cmd,
-                description: isWin
-                    ? 'Standalone binary via PowerShell installer'
-                    : 'Standalone binary via curl installer',
+                command: 'npm install -g @trydecember/cli@latest',
+                manualCmd: 'npm install -g @trydecember/cli@latest',
+                description: 'NPM global package (standalone installer retired)',
             }
         }
 

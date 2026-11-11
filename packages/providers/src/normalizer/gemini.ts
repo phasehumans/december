@@ -61,11 +61,15 @@ export function normalizeForGemini(
                     }
                     const thoughtSig =
                         tc.thoughtSignature ||
+                        (tc as any).thought_signature ||
+                        (msg as any).thoughtSignature ||
+                        (msg as any).thinkingSignature ||
                         (msg.thinking && typeof msg.thinking === 'object'
                             ? msg.thinking.signature
                             : undefined)
                     if (thoughtSig) {
                         part.thoughtSignature = thoughtSig
+                        part.thought_signature = thoughtSig
                     }
 
                     parts.push(part)

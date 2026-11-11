@@ -20,7 +20,7 @@ export default defineConfig({
         port: 2000,
     },
     redirects: {
-        '/install': '/install.sh',
+        '/install': 'https://www.npmjs.com/package/@trydecember/cli',
         '/pricing': 'https://app.trydecember.com/settings/billing',
         '/settings/billing': 'https://app.trydecember.com/settings/billing',
         '/settings/usage': 'https://app.trydecember.com/settings/usage',

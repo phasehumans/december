@@ -99,18 +99,10 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
             expect(info.command).toBe('npx @trydecember/cli@latest')
         })
 
-        test('returns curl update command for standalone binary on unix', () => {
+        test('returns npm update command for legacy standalone binary', () => {
             const info = getUpdateCommand('curl', 'linux')
-            expect(info.command).toBe('curl -fsSL https://trydecember.com/install.sh | bash')
-            expect(info.description).toContain('curl')
-        })
-
-        test('returns powershell update command for standalone binary on windows', () => {
-            const info = getUpdateCommand('curl', 'win32')
-            expect(info.command).toBe(
-                'powershell -c "irm https://trydecember.com/install.ps1 | iex"'
-            )
-            expect(info.description).toContain('PowerShell')
+            expect(info.command).toBe('npm install -g @trydecember/cli@latest')
+            expect(info.description).toContain('NPM')
         })
 
         test('returns git pull command for source development', () => {
@@ -120,7 +112,7 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
     })
 
     describe('performCliUpdate', () => {
-        test('executes curl installer update command', async () => {
+        test('executes legacy installer update command via npm', async () => {
             let executedCommand = ''
             const mockExec: any = (cmd: string, opts: any, callback: any) => {
                 executedCommand = cmd
@@ -146,7 +138,7 @@ describe('CLI Updater & Install Method Detection (Unit)', () => {
 
             expect(result.success).toBe(true)
             expect(result.method).toBe('curl')
-            expect(executedCommand).toContain('trydecember.com')
+            expect(executedCommand).toContain('@trydecember/cli')
             expect(progressCalled).toBe(true)
             expect(successCalled).toBe(true)
         })

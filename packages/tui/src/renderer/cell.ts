@@ -138,11 +138,16 @@ export function computeSgrTransition(from: CellStyle, to: CellStyle): string {
     // Delta candidate: only emit modifications
     const deltaCodes: string[] = []
 
-    if (from.bold && !to.bold) deltaCodes.push('22')
-    if (!from.bold && to.bold) deltaCodes.push('1')
+    const needsClearIntensity = (from.bold && !to.bold) || (from.dim && !to.dim)
 
-    if (from.dim && !to.dim && !to.bold) deltaCodes.push('22')
-    if (!from.dim && to.dim) deltaCodes.push('2')
+    if (needsClearIntensity) {
+        deltaCodes.push('22')
+        if (to.bold) deltaCodes.push('1')
+        if (to.dim) deltaCodes.push('2')
+    } else {
+        if (!from.bold && to.bold) deltaCodes.push('1')
+        if (!from.dim && to.dim) deltaCodes.push('2')
+    }
 
     if (from.italic && !to.italic) deltaCodes.push('23')
     if (!from.italic && to.italic) deltaCodes.push('3')

@@ -81,6 +81,12 @@ export function toCanonicalMessages(
             }
         }
 
+        if (msg.thoughtSignature || msg.thinkingSignature) {
+            canonical.thoughtSignature = msg.thoughtSignature || msg.thinkingSignature
+        } else if (canonical.thinking?.signature) {
+            canonical.thoughtSignature = canonical.thinking.signature
+        }
+
         // Tool calls normalization
         if (msg.toolCalls && Array.isArray(msg.toolCalls)) {
             const canonicalCalls: CanonicalToolCall[] = []
@@ -98,8 +104,10 @@ export function toCanonicalMessages(
                 const thoughtSig =
                     unwrapped.thoughtSignature ||
                     tc.thoughtSignature ||
+                    (tc as any).thought_signature ||
                     msg.thoughtSignature ||
                     msg.thinkingSignature ||
+                    canonical.thoughtSignature ||
                     (typeof msg.thinking === 'object' ? msg.thinking?.signature : undefined)
 
                 canonicalCalls.push({
@@ -114,6 +122,9 @@ export function toCanonicalMessages(
                     } else {
                         canonical.thinking.signature = thoughtSig
                     }
+                }
+                if (thoughtSig && !canonical.thoughtSignature) {
+                    canonical.thoughtSignature = thoughtSig
                 }
                 if (cleanId && tc.name) {
                     toolCallNameMap.set(cleanId, tc.name)

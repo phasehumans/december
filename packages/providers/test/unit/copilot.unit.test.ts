@@ -6,7 +6,7 @@ describe('Copilot Provider (Unit)', () => {
     it('resolves model aliases correctly', () => {
         expect(resolveCopilotModel('copilot/gpt-4o')).toBe('gpt-4o')
         expect(resolveCopilotModel('gpt-4o-mini')).toBe('gpt-4o-mini')
-        expect(resolveCopilotModel('claude-3.5-sonnet')).toBe('gpt-4o')
+        expect(resolveCopilotModel('claude-3.5-sonnet')).toBe('claude-3.5-sonnet')
         expect(resolveCopilotModel()).toBe('gpt-4o')
     })
 

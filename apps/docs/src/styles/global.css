@@ -316,3 +316,48 @@
 .brand-glow {
     box-shadow: 0 0 35px -5px rgba(135, 178, 244, 0.35);
 }
+
+/* Side Gutter Vertical Model Ticker */
+.gutter-ticker-mask {
+    mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        black 8%,
+        black 92%,
+        transparent 100%
+    );
+}
+
+.gutter-ticker-track-up {
+    animation: gutterTickerUp 44s linear infinite;
+    will-change: transform;
+}
+
+.gutter-ticker-track-down {
+    animation: gutterTickerDown 48s linear infinite;
+    will-change: transform;
+}
+
+.gutter-ticker-container:hover .gutter-ticker-track-up,
+.gutter-ticker-container:hover .gutter-ticker-track-down {
+    animation-play-state: paused;
+}
+
+@keyframes gutterTickerUp {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-50%);
+    }
+}
+
+@keyframes gutterTickerDown {
+    0% {
+        transform: translateY(-50%);
+    }
+    100% {
+        transform: translateY(0);
+    }
+}

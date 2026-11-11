@@ -4,6 +4,7 @@ export interface ToolCall {
     id: string
     name: string
     input: string
+    thoughtSignature?: string
 }
 
 export interface Message {
@@ -28,7 +29,13 @@ export type ProviderStreamChunk =
     | { type: 'thinking_delta'; text: string }
     | { type: 'thought_signature'; signature: string }
     | { type: 'tool_call'; toolCall: ToolCall }
-    | { type: 'tool_call_delta'; id: string; name?: string; inputDelta: string }
+    | {
+          type: 'tool_call_delta'
+          id: string
+          name?: string
+          inputDelta: string
+          thoughtSignature?: string
+      }
     | {
           type: 'usage'
           promptTokens: number

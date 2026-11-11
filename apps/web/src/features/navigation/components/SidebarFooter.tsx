@@ -85,17 +85,11 @@ export const SidebarFooter: React.FC<
         }, 300)
     }
 
-    const CLI_INSTALL_COMMANDS: Record<'npm' | 'bun' | 'pnpm', string> = {
-        npm: 'npm install -g @trydecember/cli',
-        bun: 'bun add -g @trydecember/cli',
-        pnpm: 'pnpm add -g @trydecember/cli',
-    }
-
-    const [cliMethod, setCliMethod] = useState<'npm' | 'bun' | 'pnpm'>('npm')
+    const CLI_INSTALL_COMMAND = 'npm install -g @trydecember/cli'
 
     const handleCopy = (e: React.MouseEvent) => {
         e.stopPropagation()
-        navigator.clipboard.writeText(CLI_INSTALL_COMMANDS[cliMethod])
+        navigator.clipboard.writeText(CLI_INSTALL_COMMAND)
         setIsCopied(true)
         setTimeout(() => setIsCopied(false), 2000)
     }
@@ -162,7 +156,7 @@ export const SidebarFooter: React.FC<
                             </a>
                         </div>
                         <div className="flex flex-col px-2.5 pt-2 pb-2.5 bg-[#1E1E1E] gap-2">
-                            {/* CLI title and method pills */}
+                            {/* CLI title */}
                             <div className="flex items-center justify-between px-0.5">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <span className="text-[14px] text-[#CBCACA] select-none leading-none">
@@ -171,28 +165,6 @@ export const SidebarFooter: React.FC<
                                     <span className="text-[12.5px] font-medium text-[#EDEDED] truncate">
                                         December CLI
                                     </span>
-                                </div>
-
-                                <div className="flex items-center gap-2.5 shrink-0">
-                                    {(['npm', 'bun', 'pnpm'] as const).map((method) => (
-                                        <button
-                                            key={method}
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                setCliMethod(method)
-                                                setIsCopied(false)
-                                            }}
-                                            className={cn(
-                                                'text-[11.5px] transition-colors cursor-pointer outline-none',
-                                                cliMethod === method
-                                                    ? 'text-white font-medium'
-                                                    : 'text-[#7B7A79] hover:text-[#D6D5D4]'
-                                            )}
-                                        >
-                                            {method}
-                                        </button>
-                                    ))}
                                 </div>
                             </div>
 
@@ -203,7 +175,7 @@ export const SidebarFooter: React.FC<
                                         $
                                     </span>
                                     <span className="text-[#D6D5C9] text-[11px] font-mono truncate tracking-tight">
-                                        {CLI_INSTALL_COMMANDS[cliMethod]}
+                                        {CLI_INSTALL_COMMAND}
                                     </span>
                                 </div>
                                 <button

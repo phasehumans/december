@@ -38,40 +38,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const navigate = useNavigate()
     const [prompt, setPrompt] = React.useState('')
     const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-    const WORDS = ['Agent', 'Plan', 'Build', 'Agent'] as const
-    const [cycleKey, setCycleKey] = useState(0)
-    const [stepIndex, setStepIndex] = useState(0)
-    const animationTimersRef = React.useRef<ReturnType<typeof setTimeout>[]>([])
-    const isAnimatingRef = React.useRef(false)
-
-    const clearAnimationTimers = React.useCallback(() => {
-        animationTimersRef.current.forEach(clearTimeout)
-        animationTimersRef.current = []
-        isAnimatingRef.current = false
-    }, [])
-
-    const triggerWordAnimation = React.useCallback(() => {
-        if (isAnimatingRef.current) return
-        isAnimatingRef.current = true
-        clearAnimationTimers()
-        isAnimatingRef.current = true
-        setCycleKey((prev) => prev + 1)
-        setStepIndex(0)
-        animationTimersRef.current = [
-            setTimeout(() => setStepIndex(1), 30),
-            setTimeout(() => setStepIndex(2), 630),
-            setTimeout(() => setStepIndex(3), 1230),
-            setTimeout(() => {
-                isAnimatingRef.current = false
-            }, 1550),
-        ]
-    }, [clearAnimationTimers])
-
-    useEffect(() => {
-        return () => {
-            clearAnimationTimers()
-        }
-    }, [clearAnimationTimers])
 
     const queryClient = useQueryClient()
     const { data: profile } = useQuery({
@@ -168,7 +134,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     useEffect(() => {
         const handleNewSession = () => {
             setPrompt('')
-            triggerWordAnimation()
             const textarea = document.getElementById(
                 'home-prompt-textarea'
             ) as HTMLTextAreaElement | null
@@ -179,7 +144,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         }
         window.addEventListener('december:new-session', handleNewSession)
         return () => window.removeEventListener('december:new-session', handleNewSession)
-    }, [triggerWordAnimation])
+    }, [])
 
     return (
         <main
@@ -212,30 +177,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                                 strokeWidth={1}
                             />
                             <h2 className="text-[20px] md:text-[23px] font-sans font-normal tracking-[-0.025em] text-white flex items-center gap-1.5 leading-none">
-                                December
-                                <span
-                                    key={cycleKey}
-                                    className="text-[#87B2F4] font-normal relative inline-grid overflow-hidden py-1"
-                                >
-                                    {WORDS.map((word, idx) => {
-                                        const isCurrent = stepIndex === idx
-                                        const isPast = stepIndex > idx
-                                        return (
-                                            <span
-                                                key={`${word}-${idx}`}
-                                                className={`col-start-1 row-start-1 transition-all duration-300 ease-out ${
-                                                    isCurrent
-                                                        ? 'opacity-100 translate-y-0'
-                                                        : isPast
-                                                          ? 'opacity-0 -translate-y-4 pointer-events-none'
-                                                          : 'opacity-0 translate-y-4 pointer-events-none'
-                                                }`}
-                                            >
-                                                {word}
-                                            </span>
-                                        )
-                                    })}
-                                </span>
+                                December <span className="text-[#87B2F4]">Agent</span>
                             </h2>
                         </div>
                     </div>
@@ -257,7 +199,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         onUpload={() => {}}
                         isAuthenticated={isAuthenticated}
                         onOpenAuth={onOpenAuth}
-                        onFocus={triggerWordAnimation}
                         mode="agent"
                     />
 

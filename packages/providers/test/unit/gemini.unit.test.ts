@@ -4,14 +4,14 @@ import { geminiProvider, GeminiProvider, resolveGeminiModel } from '../../src/pr
 
 describe('Gemini Provider Adapter (Unit)', () => {
     it('resolves model aliases and strips google/ prefix correctly', () => {
-        expect(resolveGeminiModel('gemini-3.7-flash')).toBe('gemini-3.7-flash')
-        expect(resolveGeminiModel('google/gemini-3.7-flash')).toBe('gemini-3.7-flash')
-        expect(resolveGeminiModel('gemini-3.6-flash')).toBe('gemini-3.6-flash')
-        expect(resolveGeminiModel('google/gemini-3.6-flash')).toBe('gemini-3.6-flash')
+        expect(resolveGeminiModel('gemini-3.7-flash')).toBe('gemini-2.5-flash')
+        expect(resolveGeminiModel('google/gemini-3.7-flash')).toBe('gemini-2.5-flash')
+        expect(resolveGeminiModel('gemini-3.6-flash')).toBe('gemini-2.5-flash')
+        expect(resolveGeminiModel('google/gemini-3.6-flash')).toBe('gemini-2.5-flash')
         expect(resolveGeminiModel('google/gemini-2.5-flash')).toBe('gemini-2.5-flash')
         expect(resolveGeminiModel('gemini-2.0-flash')).toBe('gemini-2.0-flash')
-        expect(resolveGeminiModel('gemini-3.1-pro')).toBe('gemini-3-pro-preview')
-        expect(resolveGeminiModel('google/gemini-3.1-pro')).toBe('gemini-3-pro-preview')
+        expect(resolveGeminiModel('gemini-3.1-pro')).toBe('gemini-2.5-pro')
+        expect(resolveGeminiModel('google/gemini-3.1-pro')).toBe('gemini-2.5-pro')
     })
 
     it('instantiates GeminiProvider class wrapper correctly', () => {
@@ -165,6 +165,7 @@ describe('Gemini Provider Adapter (Unit)', () => {
                 id: 'call_sig_1',
                 name: 'bash',
                 inputDelta: '{"command":"ls"}',
+                thoughtSignature: 'sig_crypto_abc123',
             },
         ])
     })

@@ -123,7 +123,10 @@ export const ModelSelectMenuView = {
                 drawText(buffer, selector, {
                     x,
                     y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted },
+                    style: {
+                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
+                        bold: isSelected,
+                    },
                 })
 
                 // Model label

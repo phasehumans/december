@@ -25,20 +25,6 @@ December es un (so much) better agente de programación. Te ayuda a desarrollar 
 
 1. Instala December:
 
-Bash (macOS y Linux):
-
-```bash
-curl -fsSL https://trydecember.com/install.sh | bash
-```
-
-PowerShell (Windows):
-
-```powershell
-irm https://trydecember.com/install.ps1 | iex
-```
-
-NPM:
-
 ```bash
 npm install -g @trydecember/cli
 ```

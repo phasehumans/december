@@ -25,20 +25,6 @@ December - это (so much) better агент для написания кода
 
 1. Установите December:
 
-Bash (macOS и Linux):
-
-```bash
-curl -fsSL https://trydecember.com/install.sh | bash
-```
-
-PowerShell (Windows):
-
-```powershell
-irm https://trydecember.com/install.ps1 | iex
-```
-
-NPM:
-
 ```bash
 npm install -g @trydecember/cli
 ```

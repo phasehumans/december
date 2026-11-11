@@ -142,7 +142,10 @@ export const AuthMenuView = {
                 drawText(buffer, selector, {
                     x,
                     y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted },
+                    style: {
+                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
+                        bold: isSelected,
+                    },
                 })
 
                 drawText(buffer, opt.label, {
@@ -221,7 +224,10 @@ export const AuthMenuView = {
                 drawText(buffer, selector, {
                     x,
                     y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted },
+                    style: {
+                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
+                        bold: isSelected,
+                    },
                 })
 
                 const labelText = item.label
@@ -521,7 +527,10 @@ export const AuthMenuView = {
                 drawText(buffer, selector, {
                     x,
                     y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted },
+                    style: {
+                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
+                        bold: isSelected,
+                    },
                 })
 
                 const labelText = item.label
