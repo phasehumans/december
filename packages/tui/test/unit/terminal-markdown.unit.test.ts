@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 
-import { formatMarkdownToLines } from '../../src/renderer/views/markdown'
+import {
+    createStreamingMarkdownCache,
+    formatMarkdownToLines,
+} from '../../src/renderer/views/markdown'
 
 describe('Terminal Markdown Formatter (Renderer)', () => {
     it('formats plain text lines with word wrapping', () => {
@@ -173,5 +176,52 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         const combinedCode = codeLines.map((l) => l.map((s) => s.text).join('')).join('\n')
         expect(combinedCode).toContain('const x = 1')
         expect(combinedCode).toContain('const y = 2')
+    })
+
+    it('incrementally caches completed lines during streaming with identical results', () => {
+        const cache = createStreamingMarkdownCache()
+
+        // Frame 1: partial line
+        const f1 = formatMarkdownToLines('Step 1: Planning', 80, cache)
+        expect(f1.map((l) => l.map((s) => s.text).join('')).join('\n')).toBe('Step 1: Planning')
+        expect(cache.committedRawCount).toBe(0)
+
+        // Frame 2: line completed with newline + partial second line
+        const f2 = formatMarkdownToLines('Step 1: Planning\nStep 2: Exec', 80, cache)
+        expect(f2.map((l) => l.map((s) => s.text).join('')).join('\n')).toBe(
+            'Step 1: Planning\nStep 2: Exec'
+        )
+        expect(cache.committedRawCount).toBe(1)
+        expect(cache.committedOutputLines.length).toBe(1)
+
+        // Frame 3: second line completed and code block begins
+        const f3 = formatMarkdownToLines(
+            'Step 1: Planning\nStep 2: Executing\n```ts\nconst val = 42\n',
+            80,
+            cache
+        )
+        const f3Combined = f3.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(f3Combined).toContain('Step 1: Planning')
+        expect(f3Combined).toContain('Step 2: Executing')
+        expect(f3Combined).toContain('const val = 42')
+
+        // Verify incremental cache output matches non-cached full parse exactly
+        const nonCached = formatMarkdownToLines(
+            'Step 1: Planning\nStep 2: Executing\n```ts\nconst val = 42\n',
+            80
+        )
+        expect(f3).toEqual(nonCached)
+    })
+
+    it('stabilizes inline markdown delimiter flicker during active streaming when enabled', () => {
+        const cache = createStreamingMarkdownCache({ stabilizeInline: true })
+
+        // Partial trailing bold delimiter
+        const lines = formatMarkdownToLines('Here is **bold start', 80, cache)
+        const text = lines[0].map((s) => s.text).join('')
+        // Raw ** delimiter is suppressed from visible text to avoid 4-column snap on closure
+        expect(text).toBe('Here is bold start')
+        const boldSeg = lines[0].find((s) => s.text === 'bold start')
+        expect(boldSeg?.style?.bold).toBe(true)
     })
 })

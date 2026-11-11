@@ -3,7 +3,12 @@ import { parseTuiError } from '../../utils/error-parser'
 import { toRelativePath } from '../../utils/terminal-link'
 import { extractThoughtTopic } from '../../utils/thought'
 
-import { formatMarkdownToLines, type FormattedLine } from './markdown'
+import {
+    createStreamingMarkdownCache,
+    formatMarkdownToLines,
+    type FormattedLine,
+    type StreamingMarkdownCache,
+} from './markdown'
 
 import type { MessageItem } from './message-list-view'
 
@@ -246,6 +251,7 @@ interface CacheEntry {
 
 export class MessageLineCache {
     private messageCache = new WeakMap<MessageItem, CacheEntry>()
+    private streamMarkdownCaches = new WeakMap<MessageItem, StreamingMarkdownCache>()
     private lastAggregateMessages: MessageItem[] | null = null
     private lastAggregateLength = 0
     private lastAggregateLastKey = ''
@@ -253,17 +259,28 @@ export class MessageLineCache {
     private lastAggregateSpinner = ''
     private lastAggregateExpandTools = false
     private lastAggregateResult: FormattedLine[] | null = null
+    private lastPriorMessages: MessageItem[] | null = null
+    private lastPriorLength = 0
+    private lastPriorWidth = 0
+    private lastPriorExpandTools = false
+    private lastPriorResult: FormattedLine[] | null = null
 
     /**
      * Clears all cached lines.
      */
     clear(): void {
         this.messageCache = new WeakMap<MessageItem, CacheEntry>()
+        this.streamMarkdownCaches = new WeakMap<MessageItem, StreamingMarkdownCache>()
         this.lastAggregateMessages = null
         this.lastAggregateLength = 0
         this.lastAggregateLastKey = ''
         this.lastAggregateExpandTools = false
         this.lastAggregateResult = null
+        this.lastPriorMessages = null
+        this.lastPriorLength = 0
+        this.lastPriorWidth = 0
+        this.lastPriorExpandTools = false
+        this.lastPriorResult = null
     }
 
     private computeContentKey(
@@ -841,7 +858,15 @@ export class MessageLineCache {
                         { text: label, style: { fg: THEME.colors.brand, bold: true } },
                         { text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } },
                     ])
-                    const formatted = formatMarkdownToLines(msg.content, width - 4)
+                    let streamCache: StreamingMarkdownCache | undefined
+                    if (msg.isStreaming) {
+                        streamCache = this.streamMarkdownCaches.get(msg)
+                        if (!streamCache) {
+                            streamCache = createStreamingMarkdownCache({ stabilizeInline: true })
+                            this.streamMarkdownCaches.set(msg, streamCache)
+                        }
+                    }
+                    const formatted = formatMarkdownToLines(msg.content, width - 4, streamCache)
                     for (const l of formatted) {
                         l.unshift({ text: '  ', style: {} })
                         for (const seg of l) {
@@ -884,7 +909,15 @@ export class MessageLineCache {
                         { text: bannerLabel, style: { fg: THEME.colors.brand, bold: true } },
                         { text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } },
                     ])
-                    const formatted = formatMarkdownToLines(msg.content, width - 4)
+                    let streamCache: StreamingMarkdownCache | undefined
+                    if (msg.isStreaming) {
+                        streamCache = this.streamMarkdownCaches.get(msg)
+                        if (!streamCache) {
+                            streamCache = createStreamingMarkdownCache({ stabilizeInline: true })
+                            this.streamMarkdownCaches.set(msg, streamCache)
+                        }
+                    }
+                    const formatted = formatMarkdownToLines(msg.content, width - 4, streamCache)
                     for (const l of formatted) {
                         l.unshift({ text: '  ', style: {} })
                         for (const seg of l) {
@@ -920,7 +953,15 @@ export class MessageLineCache {
                 ])
                 lines.push([{ text: '', style: {} }])
             } else {
-                const formatted = formatMarkdownToLines(text, width - 2)
+                let streamCache: StreamingMarkdownCache | undefined
+                if (msg.isStreaming) {
+                    streamCache = this.streamMarkdownCaches.get(msg)
+                    if (!streamCache) {
+                        streamCache = createStreamingMarkdownCache({ stabilizeInline: true })
+                        this.streamMarkdownCaches.set(msg, streamCache)
+                    }
+                }
+                const formatted = formatMarkdownToLines(text, width - 2, streamCache)
                 lines.push(...formatted)
                 lines.push([{ text: '', style: {} }])
             }
@@ -1109,6 +1150,51 @@ export class MessageLineCache {
             this.lastAggregateExpandTools === expandTools
         ) {
             return this.lastAggregateResult
+        }
+
+        // Streaming performance fast-path: if only the latest trailing message is actively streaming
+        // or running, reuse the cached prior lines without re-partitioning or re-traversing history
+        const lastIdx = messages.length - 1
+        const onlyLastIsActive =
+            hasLiveActivity &&
+            messages.length > 1 &&
+            Boolean(lastMsg && (lastMsg.isStreaming || lastMsg.toolCall?.status === 'running')) &&
+            !messages
+                .slice(0, lastIdx)
+                .some((m) => m.isStreaming || m.toolCall?.status === 'running')
+
+        if (onlyLastIsActive && lastMsg) {
+            if (
+                this.lastPriorResult &&
+                this.lastPriorMessages === messages &&
+                this.lastPriorLength === lastIdx &&
+                this.lastPriorWidth === width &&
+                this.lastPriorExpandTools === expandTools
+            ) {
+                const lastLines = this.getMessageLines(
+                    lastMsg,
+                    width,
+                    spinner,
+                    expandTools,
+                    true,
+                    tip
+                )
+                return [...this.lastPriorResult, ...lastLines]
+            }
+
+            const priorMsgs = messages.slice(0, lastIdx)
+            const priorLines = this.getLines(priorMsgs, width, {
+                spinnerGlyph: spinner,
+                expandTools,
+                tip,
+            })
+            this.lastPriorResult = priorLines
+            this.lastPriorMessages = messages
+            this.lastPriorLength = lastIdx
+            this.lastPriorWidth = width
+            this.lastPriorExpandTools = expandTools
+            const lastLines = this.getMessageLines(lastMsg, width, spinner, expandTools, true, tip)
+            return [...priorLines, ...lastLines]
         }
 
         let allLines: FormattedLine[] = []

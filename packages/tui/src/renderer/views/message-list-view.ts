@@ -147,6 +147,19 @@ export const MessageListView = {
             currY += 1
         }
 
+        // 3. Unseen content indicator pill when user is scrolled up
+        const unseenCount = maxScroll - scroll
+        if (unseenCount > 0 && props.scrollOffset !== undefined && height > 2) {
+            const pillText = ` ↓ ${unseenCount} new line${unseenCount === 1 ? '' : 's'} · Esc `
+            const pillX = Math.max(x + 2, x + width - pillText.length - 3)
+            const pillY = y + height - 1
+            buffer.write(pillX, pillY, pillText, {
+                fg: THEME.colors.text,
+                bg: THEME.colors.border,
+                bold: true,
+            })
+        }
+
         return { totalLines, maxScroll }
     },
 }

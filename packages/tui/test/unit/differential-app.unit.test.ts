@@ -3142,4 +3142,73 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         app.stop()
     })
+
+    it('integrates butterflow queue for fluid token pacing and flushes instantly on finishStream', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            butterflow: true,
+        })
+        app.start()
+
+        app.state.input = 'test prompt'
+        app.submitPrompt()
+
+        // Enqueue a burst of characters
+        app.appendStreamDelta('The quick brown fox jumps over the lazy dog')
+
+        const queue = (app as any).butterflowQueue
+        expect(queue).toBeDefined()
+        expect(queue.enabled).toBe(true)
+
+        // flushStream should immediately advance all remaining characters
+        app.flushStream()
+        const lastMsg = app.state.messages[app.state.messages.length - 1]
+        expect(lastMsg?.content).toBe('The quick brown fox jumps over the lazy dog')
+
+        app.stop()
+    })
+
+    it('resets butterflow pending text on stream abort', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            butterflow: true,
+        })
+        app.start()
+
+        app.state.input = 'test prompt'
+        app.submitPrompt()
+
+        app.appendStreamDelta('Some pending text that will be cancelled')
+        app.handleAbortStream()
+
+        expect((app as any).butterflowQueue.hasPending()).toBe(false)
+        app.stop()
+    })
+
+    it('provides requestRender for non-blocking frame scheduling', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+        })
+        app.start()
+
+        let renderCount = 0
+        const origRender = app.render.bind(app)
+        app.render = () => {
+            renderCount++
+            origRender()
+        }
+
+        renderCount = 0
+        app.requestRender()
+        // In test mode requestRender delegates synchronously to render
+        expect(renderCount).toBe(1)
+
+        app.stop()
+    })
 })

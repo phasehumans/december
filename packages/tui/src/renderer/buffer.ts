@@ -1,4 +1,4 @@
-import { cloneCell, createCell, EMPTY_CELL, getCharWidth } from './cell'
+import { copyCell, getCharWidth, resetCell } from './cell'
 
 import type { Cell, CellStyle } from './types'
 
@@ -10,8 +10,11 @@ export class ScreenBuffer {
     constructor(width: number, height: number) {
         this.width = Math.max(1, Math.floor(width))
         this.height = Math.max(1, Math.floor(height))
-        this.cells = new Array<Cell>(this.width * this.height)
-        this.clear()
+        const total = this.width * this.height
+        this.cells = new Array<Cell>(total)
+        for (let i = 0; i < total; i++) {
+            this.cells[i] = { char: ' ', width: 1 }
+        }
     }
 
     private getIndex(x: number, y: number): number {
@@ -33,14 +36,14 @@ export class ScreenBuffer {
         if (!this.isInBounds(x, y)) {
             return
         }
-        this.cells[this.getIndex(x, y)] = cloneCell(cell)
+        copyCell(this.cells[this.getIndex(x, y)]!, cell)
     }
 
     setChar(x: number, y: number, char: string, style?: CellStyle): void {
         if (!this.isInBounds(x, y)) {
             return
         }
-        this.cells[this.getIndex(x, y)] = createCell(char, style)
+        resetCell(this.cells[this.getIndex(x, y)]!, char, style)
     }
 
     write(
@@ -87,25 +90,30 @@ export class ScreenBuffer {
                     if (y >= this.height) break
                 }
                 if (this.isInBounds(x, y)) {
-                    this.cells[this.getIndex(x, y)] = {
-                        char,
-                        width: 2,
-                        fg: style?.fg,
-                        bg: style?.bg,
-                        bold: style?.bold,
-                        dim: style?.dim,
-                        italic: style?.italic,
-                        underline: style?.underline,
-                        inverse: style?.inverse,
-                        strikethrough: style?.strikethrough,
-                    }
+                    const cell = this.cells[this.getIndex(x, y)]!
+                    cell.char = char
+                    cell.width = 2
+                    cell.fg = style?.fg
+                    cell.bg = style?.bg
+                    cell.bold = style?.bold
+                    cell.dim = style?.dim
+                    cell.italic = style?.italic
+                    cell.underline = style?.underline
+                    cell.inverse = style?.inverse
+                    cell.strikethrough = style?.strikethrough
+
                     if (this.isInBounds(x + 1, y)) {
-                        this.cells[this.getIndex(x + 1, y)] = {
-                            char: '',
-                            width: 0,
-                            fg: style?.fg,
-                            bg: style?.bg,
-                        }
+                        const contCell = this.cells[this.getIndex(x + 1, y)]!
+                        contCell.char = ''
+                        contCell.width = 0
+                        contCell.fg = style?.fg
+                        contCell.bg = style?.bg
+                        contCell.bold = undefined
+                        contCell.dim = undefined
+                        contCell.italic = undefined
+                        contCell.underline = undefined
+                        contCell.inverse = undefined
+                        contCell.strikethrough = undefined
                     }
                 }
                 x += 2
@@ -116,18 +124,17 @@ export class ScreenBuffer {
                     if (y >= this.height) break
                 }
                 if (this.isInBounds(x, y)) {
-                    this.cells[this.getIndex(x, y)] = {
-                        char,
-                        width: 1,
-                        fg: style?.fg,
-                        bg: style?.bg,
-                        bold: style?.bold,
-                        dim: style?.dim,
-                        italic: style?.italic,
-                        underline: style?.underline,
-                        inverse: style?.inverse,
-                        strikethrough: style?.strikethrough,
-                    }
+                    const cell = this.cells[this.getIndex(x, y)]!
+                    cell.char = char
+                    cell.width = 1
+                    cell.fg = style?.fg
+                    cell.bg = style?.bg
+                    cell.bold = style?.bold
+                    cell.dim = style?.dim
+                    cell.italic = style?.italic
+                    cell.underline = style?.underline
+                    cell.inverse = style?.inverse
+                    cell.strikethrough = style?.strikethrough
                 }
                 x += 1
             }
@@ -137,16 +144,18 @@ export class ScreenBuffer {
     }
 
     fill(cell?: Cell): void {
-        const fillCell = cell ? cloneCell(cell) : cloneCell(EMPTY_CELL as Cell)
-        for (let i = 0; i < this.cells.length; i++) {
-            this.cells[i] = cloneCell(fillCell)
+        if (cell) {
+            for (let i = 0; i < this.cells.length; i++) {
+                copyCell(this.cells[i]!, cell)
+            }
+        } else {
+            this.clear()
         }
     }
 
     clear(style?: CellStyle): void {
-        const cell = style ? createCell(' ', style) : cloneCell(EMPTY_CELL as Cell)
         for (let i = 0; i < this.cells.length; i++) {
-            this.cells[i] = cloneCell(cell)
+            resetCell(this.cells[i]!, ' ', style)
         }
     }
 
@@ -157,14 +166,13 @@ export class ScreenBuffer {
         height: number,
         style?: CellStyle
     ): void {
-        const cell = style ? createCell(' ', style) : cloneCell(EMPTY_CELL as Cell)
         for (let row = 0; row < height; row++) {
             const y = startY + row
             if (y < 0 || y >= this.height) continue
             for (let col = 0; col < width; col++) {
                 const x = startX + col
                 if (x < 0 || x >= this.width) continue
-                this.cells[this.getIndex(x, y)] = cloneCell(cell)
+                resetCell(this.cells[this.getIndex(x, y)]!, ' ', style)
             }
         }
     }
@@ -197,7 +205,7 @@ export class ScreenBuffer {
             for (let x = 0; x < copyWidth; x++) {
                 const cell = source.get(x, y)
                 if (cell) {
-                    this.cells[this.getIndex(x, y)] = cloneCell(cell)
+                    copyCell(this.cells[this.getIndex(x, y)]!, cell)
                 }
             }
         }

@@ -152,6 +152,28 @@ describe('Differential 2D Screen Buffer Engine', () => {
 
             expect(dst.getLine(0)).toBe('Hello')
         })
+
+        it('mutates cells in place on clear and copyFrom to eliminate GC object churn', () => {
+            const buffer = new ScreenBuffer(3, 2)
+            const cellRefBefore = buffer.get(0, 0)
+            expect(cellRefBefore).toBeDefined()
+
+            buffer.write(0, 0, 'Hi', { bold: true, fg: 'red' })
+            expect(buffer.get(0, 0)).toBe(cellRefBefore)
+            expect(cellRefBefore?.char).toBe('H')
+            expect(cellRefBefore?.bold).toBe(true)
+
+            buffer.clear()
+            expect(buffer.get(0, 0)).toBe(cellRefBefore)
+            expect(cellRefBefore?.char).toBe(' ')
+            expect(cellRefBefore?.bold).toBeUndefined()
+
+            const src = new ScreenBuffer(3, 2)
+            src.write(0, 0, 'AB')
+            buffer.copyFrom(src)
+            expect(buffer.get(0, 0)).toBe(cellRefBefore)
+            expect(cellRefBefore?.char).toBe('A')
+        })
     })
 
     describe('Differential Diff Engine (computeDiff)', () => {
@@ -278,6 +300,21 @@ describe('Differential 2D Screen Buffer Engine', () => {
 
             // row 3, col 4, show cursor
             expect(delta).toBe('\x1b[3;4H\x1b[?25h')
+        })
+
+        it('hides cursor during active redraw when cursor is visible to eliminate cursor flicker', () => {
+            const front = new ScreenBuffer(10, 5)
+            const back = new ScreenBuffer(10, 5)
+            back.setChar(0, 0, 'A')
+
+            const delta = computeDiff(front, back, {
+                cursor: { x: 3, y: 2, visible: true },
+            })
+
+            // Starts by hiding cursor, writes char, positions cursor, and unhides cursor
+            expect(delta.startsWith('\x1b[?25l')).toBe(true)
+            expect(delta).toContain('\x1b[1;1HA')
+            expect(delta.endsWith('\x1b[3;4H\x1b[?25h')).toBe(true)
         })
 
         it('forces full redraw of all cells when forceFullRedraw is true', () => {

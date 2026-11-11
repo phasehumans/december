@@ -73,6 +73,8 @@ export function computeDiff(
         }
     }
 
+    const hasCellChanges = body.length > 0
+
     // Reset style at end of frame if any active styles were applied
     if (hasActiveStyle(activeStyle)) {
         body += '\x1b[0m'
@@ -92,9 +94,14 @@ export function computeDiff(
         return ''
     }
 
+    // When cells are actively redrawn and cursor will be made visible at the end,
+    // hide cursor during the redraw to prevent visible cursor jumps and flicker
+    const hideCursorDuringPaint = Boolean(options?.cursor?.visible && hasCellChanges)
+    const content = hideCursorDuringPaint ? `\x1b[?25l${body}` : body
+
     if (options?.synchronized) {
-        return `\x1b[?2026h${body}\x1b[?2026l`
+        return `\x1b[?2026h${content}\x1b[?2026l`
     }
 
-    return body
+    return content
 }

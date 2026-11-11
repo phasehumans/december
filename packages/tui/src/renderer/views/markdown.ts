@@ -1,4 +1,5 @@
 import { THEME } from '../../theme'
+import { areStylesEqual } from '../cell'
 
 import type { CellStyle } from '../types'
 
@@ -13,7 +14,10 @@ export type FormattedLine = TextSegment[]
  * Formats a single line containing inline markdown like **bold**, *italic*, and `code`
  * into styled text segments.
  */
-function parseInlineMarkdown(lineText: string): FormattedLine {
+function parseInlineMarkdown(
+    lineText: string,
+    options?: { streamingTail?: boolean }
+): FormattedLine {
     const segments: TextSegment[] = []
     let i = 0
 
@@ -33,6 +37,18 @@ function parseInlineMarkdown(lineText: string): FormattedLine {
                 })
                 i = closing + 1
                 continue
+            } else if (options?.streamingTail && i + 1 < lineText.length) {
+                // Stabilize trailing unclosed code span during active streaming: apply style without raw backtick
+                const remaining = lineText.slice(i + 1)
+                segments.push({
+                    text: remaining,
+                    style: {
+                        fg: THEME.colors.brand,
+                        bg: THEME.colors.codespanBg,
+                        bold: true,
+                    },
+                })
+                break
             }
         }
 
@@ -50,6 +66,17 @@ function parseInlineMarkdown(lineText: string): FormattedLine {
                 })
                 i = closing + 2
                 continue
+            } else if (options?.streamingTail && i + 2 < lineText.length) {
+                // Stabilize trailing unclosed bold during active streaming: apply style without raw asterisks
+                const remaining = lineText.slice(i + 2)
+                segments.push({
+                    text: remaining,
+                    style: {
+                        fg: THEME.colors.text,
+                        bold: true,
+                    },
+                })
+                break
             }
         }
 
@@ -182,7 +209,12 @@ function wrapSegments(segments: FormattedLine, maxWidth: number): FormattedLine[
                 continue
             }
 
-            currentLine.push({ text: token, style: seg.style })
+            const lastSeg = currentLine[currentLine.length - 1]
+            if (lastSeg && areStylesEqual(lastSeg.style ?? {}, seg.style ?? {})) {
+                lastSeg.text += token
+            } else {
+                currentLine.push({ text: token, style: seg.style })
+            }
             currentLen += token.length
         }
     }
@@ -431,33 +463,101 @@ function formatMermaidDiagram(code: string): FormattedLine[] {
 }
 
 /**
- * Parses markdown string and converts it into a list of formatted lines with ANSI styles.
+ * Incremental state cache for active streaming markdown parsing.
+ * Preserves completed lines and parser state so appending tokens is O(1) per frame.
  */
-export function formatMarkdownToLines(markdown: string, maxWidth: number): FormattedLine[] {
+export interface StreamingMarkdownCache {
+    lastText?: string
+    lastWidth?: number
+    stabilizeInline?: boolean
+    committedOutputLines: FormattedLine[]
+    committedRawCount: number
+    inCodeBlock: boolean
+    codeLanguage: string
+    codeBlockBuffer: string[]
+    inTable: boolean
+    tableBuffer: string[]
+}
+
+export function createStreamingMarkdownCache(options?: {
+    stabilizeInline?: boolean
+}): StreamingMarkdownCache {
+    return {
+        stabilizeInline: options?.stabilizeInline ?? false,
+        committedOutputLines: [],
+        committedRawCount: 0,
+        inCodeBlock: false,
+        codeLanguage: '',
+        codeBlockBuffer: [],
+        inTable: false,
+        tableBuffer: [],
+    }
+}
+
+/**
+ * Parses markdown string and converts it into a list of formatted lines with ANSI styles.
+ * Supports an optional StreamingMarkdownCache for O(1) incremental frame rendering.
+ */
+export function formatMarkdownToLines(
+    markdown: string,
+    maxWidth: number,
+    cache?: StreamingMarkdownCache
+): FormattedLine[] {
     const rawLines = markdown.split(/\r?\n/)
     const outputLines: FormattedLine[] = []
+
     let inCodeBlock = false
     let codeLanguage = ''
     let codeBlockBuffer: string[] = []
-
     let inTable = false
     let tableBuffer: string[] = []
+    let startIdx = 0
 
-    const flushTable = () => {
+    // Try resuming from cache if available and input text is an extension of prior text
+    if (
+        cache &&
+        cache.lastWidth === maxWidth &&
+        cache.lastText &&
+        markdown.startsWith(cache.lastText) &&
+        cache.committedRawCount <= rawLines.length
+    ) {
+        outputLines.push(...cache.committedOutputLines)
+        startIdx = cache.committedRawCount
+        inCodeBlock = cache.inCodeBlock
+        codeLanguage = cache.codeLanguage
+        codeBlockBuffer = [...cache.codeBlockBuffer]
+        inTable = cache.inTable
+        tableBuffer = [...cache.tableBuffer]
+    } else if (cache) {
+        cache.committedOutputLines = []
+        cache.committedRawCount = 0
+        cache.inCodeBlock = false
+        cache.codeLanguage = ''
+        cache.codeBlockBuffer = []
+        cache.inTable = false
+        cache.tableBuffer = []
+    }
+
+    const flushTable = (isCommit = false) => {
         if (tableBuffer.length > 0) {
-            outputLines.push(...formatMarkdownTable(tableBuffer, maxWidth))
+            const tableLines = formatMarkdownTable(tableBuffer, maxWidth)
+            outputLines.push(...tableLines)
+            if (isCommit && cache) {
+                cache.committedOutputLines.push(...tableLines)
+            }
             tableBuffer = []
             inTable = false
         }
     }
 
-    for (let r = 0; r < rawLines.length; r++) {
+    for (let r = startIdx; r < rawLines.length; r++) {
         const rawLine = rawLines[r]
         const trimmed = rawLine.trim()
+        const isTrailingLine = r === rawLines.length - 1 && !markdown.endsWith('\n')
 
         // Handle fenced code block boundary ```
         if (trimmed.startsWith('```')) {
-            flushTable()
+            flushTable(!isTrailingLine)
             if (!inCodeBlock) {
                 inCodeBlock = true
                 codeLanguage = trimmed.slice(3).trim().toLowerCase()
@@ -465,21 +565,45 @@ export function formatMarkdownToLines(markdown: string, maxWidth: number): Forma
             } else {
                 inCodeBlock = false
                 if (codeLanguage === 'mermaid') {
-                    outputLines.push(...formatMermaidDiagram(codeBlockBuffer.join('\n')))
+                    const mermaidLines = formatMermaidDiagram(codeBlockBuffer.join('\n'))
+                    outputLines.push(...mermaidLines)
+                    if (!isTrailingLine && cache) {
+                        cache.committedOutputLines.push(...mermaidLines)
+                    }
                 } else {
                     for (const codeLine of codeBlockBuffer) {
-                        outputLines.push(highlightCodeLine(codeLine, codeLanguage))
+                        const hl = highlightCodeLine(codeLine, codeLanguage)
+                        outputLines.push(hl)
+                        if (!isTrailingLine && cache) {
+                            cache.committedOutputLines.push(hl)
+                        }
                     }
                 }
                 codeBlockBuffer = []
                 codeLanguage = ''
+            }
+            if (!isTrailingLine && cache) {
+                cache.committedRawCount = r + 1
             }
             continue
         }
 
         // Inside fenced code block
         if (inCodeBlock) {
-            codeBlockBuffer.push(rawLine)
+            if (codeLanguage === 'mermaid') {
+                codeBlockBuffer.push(rawLine)
+            } else if (!isTrailingLine) {
+                // Completed line in code block: highlight and commit immediately
+                const hl = highlightCodeLine(rawLine, codeLanguage)
+                outputLines.push(hl)
+                if (cache) {
+                    cache.committedOutputLines.push(hl)
+                    cache.committedRawCount = r + 1
+                }
+            } else {
+                // Trailing incomplete line in code block
+                codeBlockBuffer.push(rawLine)
+            }
             continue
         }
 
@@ -489,12 +613,12 @@ export function formatMarkdownToLines(markdown: string, maxWidth: number): Forma
             tableBuffer.push(trimmed)
             continue
         } else if (inTable) {
-            flushTable()
+            flushTable(!isTrailingLine)
         }
 
         // Heading lines (# Heading)
         if (rawLine.startsWith('#')) {
-            outputLines.push([
+            const hLine: FormattedLine = [
                 {
                     text: rawLine,
                     style: {
@@ -502,28 +626,47 @@ export function formatMarkdownToLines(markdown: string, maxWidth: number): Forma
                         bold: true,
                     },
                 },
-            ])
+            ]
+            outputLines.push(hLine)
+            if (!isTrailingLine && cache) {
+                cache.committedOutputLines.push(hLine)
+                cache.committedRawCount = r + 1
+            }
             continue
         }
 
         // Bullet lists (- item or * item)
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
             const bulletContent = trimmed.slice(2)
-            const inlineParsed = parseInlineMarkdown(bulletContent)
+            const inlineParsed = parseInlineMarkdown(bulletContent, {
+                streamingTail: isTrailingLine && Boolean(cache?.stabilizeInline),
+            })
             const formattedBullet: FormattedLine = [
                 { text: '• ', style: { fg: THEME.colors.brand, bold: true } },
                 ...inlineParsed,
             ]
-            outputLines.push(...wrapSegments(formattedBullet, maxWidth))
+            const wrapped = wrapSegments(formattedBullet, maxWidth)
+            outputLines.push(...wrapped)
+            if (!isTrailingLine && cache) {
+                cache.committedOutputLines.push(...wrapped)
+                cache.committedRawCount = r + 1
+            }
             continue
         }
 
         // Plain paragraph / text line
-        const inlineSegments = parseInlineMarkdown(rawLine)
-        outputLines.push(...wrapSegments(inlineSegments, maxWidth))
+        const inlineSegments = parseInlineMarkdown(rawLine, {
+            streamingTail: isTrailingLine && Boolean(cache?.stabilizeInline),
+        })
+        const wrapped = wrapSegments(inlineSegments, maxWidth)
+        outputLines.push(...wrapped)
+        if (!isTrailingLine && cache) {
+            cache.committedOutputLines.push(...wrapped)
+            cache.committedRawCount = r + 1
+        }
     }
 
-    flushTable()
+    flushTable(false)
 
     // Flush any in-progress fenced code block lines during active streaming
     if (inCodeBlock && codeBlockBuffer.length > 0) {
@@ -539,6 +682,16 @@ export function formatMarkdownToLines(markdown: string, maxWidth: number): Forma
                 outputLines.push(highlightCodeLine(codeLine, codeLanguage))
             }
         }
+    }
+
+    if (cache) {
+        cache.lastText = markdown
+        cache.lastWidth = maxWidth
+        cache.inCodeBlock = inCodeBlock
+        cache.codeLanguage = codeLanguage
+        cache.codeBlockBuffer = [...codeBlockBuffer]
+        cache.inTable = inTable
+        cache.tableBuffer = [...tableBuffer]
     }
 
     return outputLines

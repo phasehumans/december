@@ -627,4 +627,40 @@ describe('MessageLineCache', () => {
         expect(text).toContain('target content not found')
         expect(text).toContain('EACCES permission denied')
     })
+
+    it('reuses cached prior turn lines across consecutive stream ticks of the active message', () => {
+        const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            { role: 'user', content: 'Design an interface' },
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 'r-1',
+                    name: 'read_file',
+                    status: 'success',
+                    output: 'interface Foo {}',
+                },
+            },
+            { role: 'assistant', content: 'Here is the ', isStreaming: true },
+        ]
+
+        // Stream tick 1
+        const t1 = cache.getLines(messages, 80)
+        const t1Text = t1.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(t1Text).toContain('Design an interface')
+        expect(t1Text).toContain('Here is the')
+
+        // Stream tick 2: assistant content expands
+        messages[2].content = 'Here is the updated design for the interface.'
+        const t2 = cache.getLines(messages, 80)
+        const t2Text = t2.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(t2Text).toContain('Design an interface')
+        expect(t2Text).toContain('Here is the updated design for the interface.')
+
+        // Stream tick 3: stream completes
+        messages[2].isStreaming = false
+        const t3 = cache.getLines(messages, 80)
+        const t3Text = t3.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(t3Text).toContain('Here is the updated design for the interface.')
+    })
 })

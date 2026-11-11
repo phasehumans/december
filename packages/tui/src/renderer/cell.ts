@@ -42,6 +42,32 @@ export function cloneCell(cell: Cell): Cell {
     }
 }
 
+export function resetCell(target: Cell, char = ' ', style?: CellStyle): void {
+    target.char = char
+    target.width = getCharWidth(char)
+    target.fg = style?.fg
+    target.bg = style?.bg
+    target.bold = style?.bold
+    target.dim = style?.dim
+    target.italic = style?.italic
+    target.underline = style?.underline
+    target.inverse = style?.inverse
+    target.strikethrough = style?.strikethrough
+}
+
+export function copyCell(dest: Cell, src: Cell): void {
+    dest.char = src.char
+    dest.width = src.width
+    dest.fg = src.fg
+    dest.bg = src.bg
+    dest.bold = src.bold
+    dest.dim = src.dim
+    dest.italic = src.italic
+    dest.underline = src.underline
+    dest.inverse = src.inverse
+    dest.strikethrough = src.strikethrough
+}
+
 export function areCellsEqual(a: Cell, b: Cell): boolean {
     if (a === b) return true
     if (a.char !== b.char) return false
