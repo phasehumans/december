@@ -94,7 +94,7 @@ export const AuthMenuView = {
             return 7
         }
         if (mode === 'subscription') {
-            return 8
+            return Math.max(8, SUBSCRIPTION_PROVIDER_ITEMS.length + 4)
         }
         if (mode === 'byok_key') {
             return 7
@@ -207,6 +207,7 @@ export const AuthMenuView = {
             const safeIdx = Math.min(props.providerSelectedIndex || 0, Math.max(0, subs.length - 1))
             const selectedItem = subs[safeIdx]
             const isSelectedConfigured = selectedItem && configuredSubs.includes(selectedItem.value)
+            const footerY = props.y + (props.height ?? this.getHeight('subscription')) - 1
 
             for (let i = 0; i < subs.length; i++) {
                 const item = subs[i]
@@ -219,6 +220,9 @@ export const AuthMenuView = {
                     props.confirmDeleteValue === `subscription:${item.value}` ||
                     props.confirmDeleteValue === item.value
                 const rowY = y + i
+                if (rowY >= footerY) {
+                    break
+                }
 
                 const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
                 drawText(buffer, selector, {
@@ -270,7 +274,6 @@ export const AuthMenuView = {
                 }
             }
 
-            const footerY = props.y + (props.height ?? this.getHeight('subscription')) - 1
             const footerItems = props.confirmDeleteValue
                 ? [
                       { key: 'y', label: 'confirm' },

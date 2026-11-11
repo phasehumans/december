@@ -14,7 +14,11 @@ import { FileAutocompleteMenuView } from '../../src/renderer/views/file-autocomp
 import { FileViewMenuView } from '../../src/renderer/views/file-view-menu-view'
 import { HeaderView } from '../../src/renderer/views/header-view'
 import { HelpMenuView, SHORTCUTS } from '../../src/renderer/views/help-menu-view'
-import { InputBarView } from '../../src/renderer/views/input-bar-view'
+import {
+    InputBarView,
+    wrapInputText,
+    getWrappedCursorPosition,
+} from '../../src/renderer/views/input-bar-view'
 import { LoginMenuView } from '../../src/renderer/views/login-menu-view'
 import { MemoryViewMenuView } from '../../src/renderer/views/memory-view-menu-view'
 import { MessageListView } from '../../src/renderer/views/message-list-view'
@@ -180,6 +184,51 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(1)).toContain('[Pasted 42 lines]')
+        })
+
+        it('wraps long prompt across multiple lines at word boundaries without shifting horizontally', () => {
+            // Buffer width = 40. Prompt glyph + padding consumes 4 cols. maxInputWidth = 32.
+            const longPrompt =
+                'please refactor the auth service to use session repository and remove dead code'
+            const height = InputBarView.getHeight(longPrompt, 40)
+            expect(height).toBeGreaterThan(4)
+
+            const buffer = new ScreenBuffer(40, height)
+            const cursor = InputBarView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 40,
+                input: longPrompt,
+                cursorPos: longPrompt.length,
+            })
+
+            // Line 1 should start with prompt glyph '❭ ' and contain first chunk without shifting
+            const line1 = buffer.getLine(1)
+            expect(line1).toContain('❭ please refactor the auth service')
+            // Line 2 should start with continuation glyph '· ' and contain second chunk
+            const line2 = buffer.getLine(2)
+            expect(line2).toContain('· to use session repository and')
+            // Line 3 should contain third chunk
+            const line3 = buffer.getLine(3)
+            expect(line3).toContain('· remove dead code')
+
+            // Cursor should be on the last line at the end of the text
+            expect(cursor.visible).toBe(true)
+            expect(cursor.y).toBe(3) // y + 1 + lineIndex (2) = 3
+        })
+
+        it('wrapInputText and getWrappedCursorPosition accurately track multiline cursor coordinates', () => {
+            const input = 'hello world this is a test'
+            const wrapped = wrapInputText(input, 12)
+            expect(wrapped.length).toBeGreaterThanOrEqual(3)
+
+            // Index 0 -> line 0, col 0
+            expect(getWrappedCursorPosition(wrapped, 0)).toEqual({ line: 0, col: 0 })
+            // Index 5 ('o' in hello) -> line 0, col 5
+            expect(getWrappedCursorPosition(wrapped, 5)).toEqual({ line: 0, col: 5 })
+            // Index at end of input -> last line
+            const lastPos = getWrappedCursorPosition(wrapped, input.length)
+            expect(lastPos.line).toBe(wrapped.length - 1)
         })
     })
 
@@ -1536,7 +1585,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
         })
 
         it('renders dedicated AI subscriptions menu', () => {
-            const buffer = new ScreenBuffer(80, 8)
+            const buffer = new ScreenBuffer(80, 11)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,
@@ -1550,8 +1599,11 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(3)).toContain('GitHub (Copilot)')
             expect(buffer.getLine(4)).toContain('Google (Antigravity)')
             expect(buffer.getLine(5)).toContain('OpenAI (ChatGPT)')
-            expect(buffer.getLine(7)).toContain('enter connect')
-            expect(buffer.getLine(7)).toContain('esc back')
+            expect(buffer.getLine(6)).toContain('Amazon (Q Developer)')
+            expect(buffer.getLine(7)).toContain('GitLab (GitLab Duo)')
+            expect(buffer.getLine(8)).toContain('Cursor (Cursor Pro)')
+            expect(buffer.getLine(10)).toContain('enter connect')
+            expect(buffer.getLine(10)).toContain('esc back')
         })
 
         it('renders provider selection with search and active indicator', () => {
@@ -1621,7 +1673,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
         })
 
         it('renders connected badges, disconnect shortcut, and delete confirmation for subscriptions', () => {
-            const buffer = new ScreenBuffer(80, 8)
+            const buffer = new ScreenBuffer(80, 11)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,

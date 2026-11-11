@@ -1067,7 +1067,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.handleKey('\r')
         expect(app.state.activeOverlay).toBe('auth')
         expect(app.state.authViewMode).toBe('subscription')
-        expect(app.state.authProviders.length).toBe(4)
+        expect(app.state.authProviders.length).toBe(7)
 
         // Esc returns to login menu
         app.handleKey('\x1b')
