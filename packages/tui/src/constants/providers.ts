@@ -52,21 +52,20 @@ export interface ProviderMenuItem {
 }
 
 export const SUBSCRIPTION_PROVIDER_ITEMS: ProviderMenuItem[] = [
-    { label: 'Anthropic (Claude)', value: 'claude', isSubscription: true, section: 'subscription' },
-    { label: 'GitHub (Copilot)', value: 'copilot', isSubscription: true, section: 'subscription' },
-    {
-        label: 'Google (Antigravity)',
-        value: 'gemini',
-        isSubscription: true,
-        section: 'subscription',
-    },
-    { label: 'OpenAI (ChatGPT)', value: 'codex', isSubscription: true, section: 'subscription' },
     {
         label: 'Amazon (Q Developer)',
         value: 'amazon-q',
         isSubscription: true,
         section: 'subscription',
     },
+    { label: 'Anthropic (Claude)', value: 'claude', isSubscription: true, section: 'subscription' },
+    {
+        label: 'Cursor (Cursor Pro)',
+        value: 'cursor',
+        isSubscription: true,
+        section: 'subscription',
+    },
+    { label: 'GitHub (Copilot)', value: 'copilot', isSubscription: true, section: 'subscription' },
     {
         label: 'GitLab (GitLab Duo)',
         value: 'gitlab',
@@ -74,11 +73,12 @@ export const SUBSCRIPTION_PROVIDER_ITEMS: ProviderMenuItem[] = [
         section: 'subscription',
     },
     {
-        label: 'Cursor (Cursor Pro)',
-        value: 'cursor',
+        label: 'Google (Antigravity)',
+        value: 'gemini',
         isSubscription: true,
         section: 'subscription',
     },
+    { label: 'OpenAI (ChatGPT)', value: 'codex', isSubscription: true, section: 'subscription' },
 ]
 
 export const BYOK_PROVIDER_ITEMS: ProviderMenuItem[] = PROVIDER_MENU_ITEMS.map((item) => ({

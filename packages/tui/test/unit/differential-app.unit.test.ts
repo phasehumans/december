@@ -1588,7 +1588,8 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.handleKey('\r')
         expect(app.state.activeOverlay).toBe('auth')
         expect(app.state.authViewMode).toBe('subscription')
-        expect(app.state.authProviderSelectedIndex).toBe(0) // Claude
+        app.handleKey('\x1b[B') // Down to Claude (index 1)
+        expect(app.state.authProviderSelectedIndex).toBe(1) // Claude
 
         // Press 'd' triggers disconnect confirmation
         app.handleKey('d')
@@ -1625,7 +1626,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // Open subscription menu
         app.state.activeOverlay = 'auth'
         app.state.authViewMode = 'subscription'
-        app.state.authProviderSelectedIndex = 0 // Claude
+        app.state.authProviderSelectedIndex = 1 // Claude
 
         // Press Enter on already configured subscription
         app.handleKey('\r')
@@ -1659,7 +1660,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // Open subscription menu
         app.state.activeOverlay = 'auth'
         app.state.authViewMode = 'subscription'
-        app.state.authProviderSelectedIndex = 0 // Claude
+        app.state.authProviderSelectedIndex = 1 // Claude
 
         // Press Enter on already configured subscription
         app.handleKey('\r')

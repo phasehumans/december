@@ -1595,13 +1595,13 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(0)).toContain('AI Subscriptions')
-            expect(buffer.getLine(2)).toContain('❭ Anthropic (Claude)')
-            expect(buffer.getLine(3)).toContain('GitHub (Copilot)')
-            expect(buffer.getLine(4)).toContain('Google (Antigravity)')
-            expect(buffer.getLine(5)).toContain('OpenAI (ChatGPT)')
-            expect(buffer.getLine(6)).toContain('Amazon (Q Developer)')
-            expect(buffer.getLine(7)).toContain('GitLab (GitLab Duo)')
-            expect(buffer.getLine(8)).toContain('Cursor (Cursor Pro)')
+            expect(buffer.getLine(2)).toContain('❭ Amazon (Q Developer)')
+            expect(buffer.getLine(3)).toContain('Anthropic (Claude)')
+            expect(buffer.getLine(4)).toContain('Cursor (Cursor Pro)')
+            expect(buffer.getLine(5)).toContain('GitHub (Copilot)')
+            expect(buffer.getLine(6)).toContain('GitLab (GitLab Duo)')
+            expect(buffer.getLine(7)).toContain('Google (Antigravity)')
+            expect(buffer.getLine(8)).toContain('OpenAI (ChatGPT)')
             expect(buffer.getLine(10)).toContain('enter connect')
             expect(buffer.getLine(10)).toContain('esc back')
         })
@@ -1686,17 +1686,17 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 confirmDeleteValue: 'subscription:claude',
             })
 
-            expect(buffer.getLine(2)).toContain('Anthropic (Claude)')
-            expect(buffer.getLine(2)).toContain('active')
-            expect(buffer.getLine(2)).toContain('[Disconnect? (y/n)]')
-            expect(buffer.getLine(4)).toContain('Google (Antigravity)')
-            expect(buffer.getLine(4)).toContain('✓')
+            expect(buffer.getLine(3)).toContain('Anthropic (Claude)')
+            expect(buffer.getLine(3)).toContain('active')
+            expect(buffer.getLine(3)).toContain('[Disconnect? (y/n)]')
+            expect(buffer.getLine(7)).toContain('Google (Antigravity)')
+            expect(buffer.getLine(7)).toContain('✓')
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
             expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
         })
 
         it('renders active badge in green and label in standard text color, and connected badge in muted color', () => {
-            const buffer = new ScreenBuffer(80, 8)
+            const buffer = new ScreenBuffer(80, 11)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,
@@ -1708,23 +1708,23 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 authMethod: 'subscription',
             })
 
-            expect(buffer.getLine(2)).toContain('Anthropic (Claude)')
-            expect(buffer.getLine(3)).toContain('GitHub (Copilot) ✓')
-            expect(buffer.getLine(4)).toContain('Google (Antigravity) active')
+            expect(buffer.getLine(3)).toContain('Anthropic (Claude)')
+            expect(buffer.getLine(5)).toContain('GitHub (Copilot) ✓')
+            expect(buffer.getLine(7)).toContain('Google (Antigravity) active')
 
-            const labelCell = buffer.get(4, 4)
+            const labelCell = buffer.get(4, 7)
             expect(labelCell?.char).toBe('G')
             expect(labelCell?.fg).toBe(THEME.colors.text)
 
-            const activeLine = buffer.getLine(4)
+            const activeLine = buffer.getLine(7)
             const activeIdx = activeLine.indexOf('active')
-            const activeBadgeCell = buffer.get(activeIdx, 4)
+            const activeBadgeCell = buffer.get(activeIdx, 7)
             expect(activeBadgeCell?.char).toBe('a')
             expect(activeBadgeCell?.fg).toBe(THEME.colors.success)
 
-            const connectedLine = buffer.getLine(3)
+            const connectedLine = buffer.getLine(5)
             const connectedIdx = connectedLine.indexOf('✓')
-            const connectedBadgeCell = buffer.get(connectedIdx, 3)
+            const connectedBadgeCell = buffer.get(connectedIdx, 5)
             expect(connectedBadgeCell?.char).toBe('✓')
             expect(connectedBadgeCell?.fg).toBe(THEME.colors.muted)
         })
