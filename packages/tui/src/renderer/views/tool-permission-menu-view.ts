@@ -87,15 +87,28 @@ export const ToolPermissionMenuView = {
                 const line = visibleDiff[i]
                 const rowY = y + i
                 let color: string = THEME.colors.muted
-                if (line.startsWith('+')) color = THEME.colors.success
-                else if (line.startsWith('-')) color = THEME.colors.error
-                else if (line.startsWith('@')) color = THEME.colors.brand
+                let bgColor: string | undefined
+                if (line.startsWith('+')) {
+                    color = THEME.colors.success
+                    bgColor = THEME.colors.diffAddBg
+                } else if (line.startsWith('-')) {
+                    color = THEME.colors.error
+                    bgColor = THEME.colors.diffDeleteBg
+                } else if (line.startsWith('@')) {
+                    color = THEME.colors.brand
+                }
+
+                if (bgColor) {
+                    for (let c = 0; c < width - 4; c++) {
+                        buffer.setChar(x + 2 + c, rowY, ' ', { bg: bgColor })
+                    }
+                }
 
                 drawText(buffer, line, {
                     x: x + 2,
                     y: rowY,
                     maxWidth: width - 4,
-                    style: { fg: color },
+                    style: { fg: color, bg: bgColor },
                 })
             }
             y += visibleDiff.length

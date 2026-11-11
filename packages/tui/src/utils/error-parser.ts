@@ -5,9 +5,9 @@ export type FormattedTuiError = {
 }
 
 export function parseTuiError(message: string, cause?: string, hint?: string): FormattedTuiError {
-    const cleanCause = (c?: string) => c?.replace(/^Cause:\s*/i, '').trim()
+    const cleanCause = (c?: string) => c?.replace(/^(?:Cause|Details):\s*/i, '').trim()
     const cleanMessage = (m: string) => m.replace(/^Error:\s*/i, '').trim()
-    const cleanHint = (h?: string) => h?.replace(/^Hint:\s*/i, '').trim()
+    const cleanHint = (h?: string) => h?.replace(/^(?:Hint|Action):\s*/i, '').trim()
 
     if (hint) {
         return {
@@ -105,6 +105,64 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
         }
     }
 
+    // Model not available or not supported on provider
+    if (
+        clean.includes('is not available or not supported on') ||
+        clean.includes('is not supported by your active provider')
+    ) {
+        const lines = clean
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean)
+        const firstLine = lines[0] || ''
+        const hintLine =
+            lines.find((l) => l.startsWith('Please select an available model')) ||
+            'Please select an available model using /model or switch providers using /switch.'
+        const restLines = lines.filter((l) => l !== firstLine && l !== hintLine)
+        return {
+            message: firstLine,
+            hint: hintLine,
+            cause: restLines.length > 0 ? restLines.join('\n') : cleanCause(cause),
+        }
+    }
+
+    // Timeout
+    if (clean.includes('timed out') || clean.includes('ETIMEDOUT')) {
+        const lines = clean
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean)
+        const firstLine = lines[0] || clean
+        const hintLine =
+            lines.find((l) => l.startsWith('The model took too long to respond')) ||
+            lines.find((l) => /Please (?:try again|switch).*$/i.test(l)) ||
+            'The request timed out. Please try again or switch to a faster model using /model.'
+        const restLines = lines.filter((l) => l !== firstLine && l !== hintLine)
+        return {
+            message: firstLine,
+            hint: hintLine,
+            cause: restLines.length > 0 ? restLines.join('\n') : cleanCause(cause),
+        }
+    }
+
+    // High demand / capacity limits
+    if (clean.includes('high demand or capacity limits')) {
+        const lines = clean
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean)
+        const firstLine = lines[0] || clean
+        const hintLine =
+            lines.find((l) => /Please (?:try again|switch).*$/i.test(l)) ||
+            'Please try again in a few moments or switch models using /model.'
+        const restLines = lines.filter((l) => l !== firstLine && l !== hintLine)
+        return {
+            message: firstLine,
+            hint: hintLine,
+            cause: restLines.length > 0 ? restLines.join('\n') : cleanCause(cause),
+        }
+    }
+
     // If message is multi-line, separate notice from cause/hint
     if (clean.includes('\n')) {
         const lines = clean
@@ -118,12 +176,12 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
             firstLine.startsWith('Unable to connect') ||
             firstLine.includes('Connection error') ||
             firstLine.includes('Connection refused') ||
-            firstLine.includes('timed out') ||
             clean.includes('Endpoint:')
         ) {
             return {
                 message: clean,
                 cause: cleanCause(cause),
+                hint: 'Check your internet connection or verify provider credentials using /switch.',
             }
         }
 
@@ -178,6 +236,19 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
             }
         }
 
+        const hintLineIdx = lines.findIndex(
+            (l, idx) => idx > 0 && /^(?:Please\s|Action:\s|Try\s|Run\s)/i.test(l)
+        )
+        if (hintLineIdx !== -1) {
+            const hintLine = lines[hintLineIdx]!
+            const remaining = lines.filter((_, idx) => idx !== 0 && idx !== hintLineIdx)
+            return {
+                message: firstLine,
+                hint: cleanHint(hintLine),
+                cause: remaining.length > 0 ? cleanCause(remaining.join('\n')) : cleanCause(cause),
+            }
+        }
+
         const genericHintMatch = firstLine.match(
             /Please (?:add credits|top up|check|upgrade|run|switch).*$/i
         )
@@ -195,6 +266,7 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
         return {
             message: firstLine,
             cause: rest,
+            hint: 'Please check the details above or switch models using /model.',
         }
     }
 
@@ -207,17 +279,20 @@ export function parseTuiError(message: string, cause?: string, hint?: string): F
         return {
             message: 'Unable to connect to LLM provider (Connection error).',
             cause: cleanCause(cause),
-            hint: cleanHint(hint),
+            hint: 'Check your internet connection or verify provider credentials using /switch.',
         }
     }
     if (clean.startsWith('Unable to connect to ') && !hint) {
         return {
             message: clean,
             cause: cleanCause(cause),
+            hint: 'Check your internet connection or verify provider credentials using /switch.',
         }
     }
 
     return {
         message: clean,
+        cause: cleanCause(cause),
+        hint: 'Please check your configuration or switch models using /model.',
     }
 }

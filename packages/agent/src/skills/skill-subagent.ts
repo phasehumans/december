@@ -141,19 +141,29 @@ export async function executeSkillInSubagent(
             )
         }
 
+        let agentError: string | undefined
+
         for await (const event of runAgentLoop(childAgent, promptText)) {
             onEvent?.(event)
             if (event.type === 'TurnEnd') {
                 totalTurns++
+            } else if (event.type === 'AgentError') {
+                agentError = event.error
             }
         }
 
-        const assistantMsgs = childAgent.messages.filter(
-            (m) => m.role === 'assistant' && typeof m.content === 'string' && m.content.trim()
-        )
-        const lastAssistant = assistantMsgs[assistantMsgs.length - 1]
-        summary = lastAssistant?.content || `Skill '${skill.name}' completed successfully.`
-        success = true
+        if (agentError) {
+            success = false
+            error = agentError
+            summary = `Skill '${skill.name}' failed: ${agentError}`
+        } else {
+            const assistantMsgs = childAgent.messages.filter(
+                (m) => m.role === 'assistant' && typeof m.content === 'string' && m.content.trim()
+            )
+            const lastAssistant = assistantMsgs[assistantMsgs.length - 1]
+            summary = lastAssistant?.content || `Skill '${skill.name}' completed successfully.`
+            success = true
+        }
     } catch (err: any) {
         success = false
         summary = `Error during subagent execution of '${skill.name}': ${err.message}`

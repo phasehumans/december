@@ -514,6 +514,32 @@ async function main() {
         differentialApp.render()
 
         try {
+            const { getProviderConfig, loadConfig } = await import('./config')
+            const cfg = await loadConfig()
+            const providerCfg = await getProviderConfig()
+            const activeProv = providerCfg?.provider || cfg.activeProvider || 'gemini'
+            const activeMod = agent.modelOptions?.model || cfg.activeModel
+            const { isValidModelForProvider } = await import('./utils/models')
+            const { getCleanProviderDisplayName } = await import('@december/shared')
+            if (activeMod && !isValidModelForProvider(activeProv, activeMod)) {
+                const displayName = getCleanProviderDisplayName(activeProv, activeMod)
+                const errorMsg =
+                    `Model '${activeMod}' is not available or not supported on ${displayName}.\n` +
+                    `Please select an available model using \`/model\` or switch providers using \`/switch\`.`
+                differentialApp.clearStatusMessage()
+                differentialApp.state.messages.push({
+                    role: 'error',
+                    content: errorMsg,
+                })
+                differentialApp.state.scrollOffset = undefined
+                differentialApp.showToast(
+                    `Model '${activeMod}' not supported on ${displayName}`,
+                    'error'
+                )
+                differentialApp.render()
+                return ''
+            }
+
             let executionPrompt = promptText
 
             if (executionPrompt.includes('@') && !executionPrompt.includes('<context_file')) {
@@ -543,10 +569,21 @@ async function main() {
                     }
                 } else if (event.type === 'AgentError') {
                     differentialApp.clearStatusMessage()
+                    differentialApp.stopSpinner()
+                    differentialApp.state.isStreaming = false
                     differentialApp.state.messages.push({
                         role: 'error',
                         content: event.error,
                     })
+                    differentialApp.state.scrollOffset = undefined
+                    differentialApp.state.isReadingMode = false
+                    const cleanError = event.error
+                        .replace(/^Error:\s*/i, '')
+                        .split('\n')[0]
+                        ?.trim()
+                    if (cleanError) {
+                        differentialApp.showToast(cleanError.slice(0, 80), 'error')
+                    }
                     differentialApp.render()
                 } else if (event.type === 'AgentInterrupt') {
                     differentialApp.clearStatusMessage()
@@ -580,10 +617,14 @@ async function main() {
                 }
             }
         } catch (err: any) {
+            differentialApp.clearStatusMessage()
             differentialApp.state.messages.push({
                 role: 'error',
                 content: err.message || 'Execution error',
             })
+            differentialApp.state.scrollOffset = undefined
+            differentialApp.showToast(`Execution error: ${err.message || 'Error'}`, 'error')
+            differentialApp.render()
         } finally {
             differentialApp.finishStream()
             differentialApp.refreshWorkspaceFiles().catch(() => {
@@ -811,17 +852,48 @@ async function main() {
         onModelSelect: async (selected) => {
             try {
                 const cfg = await loadConfig()
+                const { getProviderConfig } = await import('./config')
+                const providerConfig = await getProviderConfig()
+                const activeProv = providerConfig?.provider || cfg.activeProvider || 'gemini'
+                const { isValidModelForProvider } = await import('./utils/models')
+                if (!isValidModelForProvider(activeProv, selected.value)) {
+                    const { getCleanProviderDisplayName } = await import('@december/shared')
+                    const displayName = getCleanProviderDisplayName(activeProv, selected.value)
+                    differentialApp.showToast(
+                        `Model '${selected.label}' is not supported on ${displayName}. Use /switch to change provider.`,
+                        'error'
+                    )
+                    return
+                }
                 cfg.activeModel = selected.value
                 await saveConfig(cfg)
                 if (agent && agent.modelOptions) {
                     agent.modelOptions.model = selected.value
                 }
+                if (providerConfig && agent) {
+                    const { instantiateProvider } = await import('./utils/provider-factory')
+                    const llm = instantiateProvider(
+                        providerConfig.provider,
+                        providerConfig.apiKey,
+                        {
+                            authMethod: providerConfig.authMethod,
+                            subscription: providerConfig.subscription,
+                            headers: providerConfig.headers,
+                            baseURL: providerConfig.baseURL,
+                        }
+                    )
+                    agent.setLLM(llm)
+                }
                 differentialApp.state.activeModel = selected.value
                 differentialApp.state.modelLabel = selected.label
                 differentialApp.state.maxContextTokens = getModelContextWindow(selected.value)
+                differentialApp.showToast(`Switched model to ${selected.label}`, 'success')
                 differentialApp.render()
-            } catch {
-                // Intentionally swallowed: ignore model config save error
+            } catch (err: any) {
+                differentialApp.showToast(
+                    `Failed to select model: ${err?.message || 'Error'}`,
+                    'error'
+                )
             }
         },
         onLogin: async (onCode, signal) => {
@@ -836,8 +908,26 @@ async function main() {
                     authPriority: 'december',
                     activeModel: 'december-auto',
                 })
-            } catch {
-                // Intentionally swallowed: ignore login config save error
+                differentialApp.state.selectedProvider = 'december'
+                differentialApp.state.authMethod = 'december'
+                differentialApp.state.activeModel = 'december-auto'
+                differentialApp.state.modelLabel = getModelLabel('december-auto')
+                differentialApp.state.isAuthenticated = true
+                differentialApp.state.switchItems = getConfiguredProviders(await loadConfig())
+                differentialApp.refreshModelsForProvider('december')
+                if (agent) {
+                    const { instantiateProvider } = await import('./utils/provider-factory')
+                    const llm = instantiateProvider('december_proxy', result.token, {
+                        authMethod: 'december',
+                    })
+                    agent.setLLM(llm)
+                    if (agent.modelOptions) {
+                        agent.modelOptions.model = 'december-auto'
+                    }
+                }
+                differentialApp.render()
+            } catch (err: any) {
+                differentialApp.showToast(`Login setup failed: ${err?.message || 'Error'}`, 'error')
             }
             return result
         },
@@ -882,11 +972,21 @@ async function main() {
                     bundle.provider || provider,
                     bundle.accessToken,
                     bundle.endpoint
-                ).catch(() => {
-                    // Intentionally swallowed: background live model fetch failure
-                })
-            } catch {
-                // Intentionally swallowed: ignore subscription config save error
+                )
+                    .then((liveModels) => {
+                        if (liveModels && liveModels.length > 0) {
+                            differentialApp.refreshModelsForProvider(targetProvider)
+                            differentialApp.render()
+                        }
+                    })
+                    .catch(() => {
+                        // Intentionally swallowed: background live model fetch failure
+                    })
+            } catch (err: any) {
+                differentialApp.showToast(
+                    `Subscription login failed: ${err?.message || 'Error'}`,
+                    'error'
+                )
             }
             return bundle
         },
@@ -907,12 +1007,34 @@ async function main() {
                 differentialApp.state.activeModel = targetModel
                 differentialApp.state.modelLabel = getModelLabel(targetModel)
                 differentialApp.state.switchItems = getConfiguredProviders(cfg)
+                differentialApp.state.isAuthenticated = true
                 differentialApp.refreshModelsForProvider(provider)
-                fetchLiveProviderModels(provider, apiKey).catch(() => {
-                    // Intentionally swallowed: background live model fetch failure
-                })
-            } catch {
-                // Intentionally swallowed: ignore config save failure
+                if (agent) {
+                    const { instantiateProvider } = await import('./utils/provider-factory')
+                    const llm = instantiateProvider(provider, apiKey, {
+                        authMethod: 'byok',
+                    })
+                    agent.setLLM(llm)
+                    if (agent.modelOptions) {
+                        agent.modelOptions.model = targetModel
+                    }
+                }
+                differentialApp.render()
+                fetchLiveProviderModels(provider, apiKey)
+                    .then((liveModels) => {
+                        if (liveModels && liveModels.length > 0) {
+                            differentialApp.refreshModelsForProvider(provider)
+                            differentialApp.render()
+                        }
+                    })
+                    .catch(() => {
+                        // Intentionally swallowed: background live model fetch failure
+                    })
+            } catch (err: any) {
+                differentialApp.showToast(
+                    `Failed to save API key: ${err?.message || 'Error'}`,
+                    'error'
+                )
             }
         },
         switchItems: getConfiguredProviders(config),

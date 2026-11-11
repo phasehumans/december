@@ -19,6 +19,7 @@ export interface ModelSelectMenuViewProps {
     height: number
     models: ModelItem[]
     activeModel?: string
+    providerName?: string
     selectedIndex: number
     windowStart: number
     searchQuery: string
@@ -65,7 +66,8 @@ export const ModelSelectMenuView = {
         const windowSize = MODEL_WINDOW_SIZE
 
         // Title
-        drawText(buffer, 'Models', {
+        const titleText = props.providerName ? `Models (${props.providerName})` : 'Models'
+        drawText(buffer, titleText, {
             x,
             y,
             style: { fg: THEME.colors.text, bold: true },
@@ -183,6 +185,7 @@ export const ModelSelectMenuView = {
                   { key: '↑/↓', label: 'navigate' },
                   { key: 'enter', label: 'select' },
                   { key: '/', label: 'search' },
+                  { key: '/switch', label: 'provider' },
                   { key: 'esc', label: 'close' },
               ]
 

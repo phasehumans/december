@@ -433,10 +433,12 @@ export async function executeDynamicSubagent(
     )
     const lastAssistant = assistantMsgs[assistantMsgs.length - 1]
     const summary =
-        lastAssistant?.content ||
-        (status === 'completed'
-            ? `Subagent '${role}' executed task successfully.`
-            : `Subagent '${role}' ${status}.`)
+        status === 'failed' && error
+            ? `Subagent failed: ${error}`
+            : lastAssistant?.content ||
+              (status === 'completed'
+                  ? `Subagent '${role}' executed task successfully.`
+                  : `Subagent '${role}' ${status}.`)
 
     const rollup: Omit<SubagentRollupSummary, 'formattedReport'> = {
         subagentId,

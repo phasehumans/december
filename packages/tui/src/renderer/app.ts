@@ -6029,6 +6029,9 @@ export class DifferentialApp {
             } else if (msg.toolCall.startTime && msg.toolCall.durationMs === undefined) {
                 msg.toolCall.durationMs = Date.now() - msg.toolCall.startTime
             }
+            if (result.isError && !this.state.isReadingMode) {
+                this.state.scrollOffset = undefined
+            }
             this.render()
         }
     }
@@ -6262,17 +6265,6 @@ export class DifferentialApp {
             })
             this.maxScroll = maxScroll
 
-            // Apply subtle backdrop dimming to messages above floating command/file menu
-            if (
-                isCommandMenuVisible ||
-                (this.state.isFileAutocompleteVisible &&
-                    this.state.fileAutocompleteItems.length > 0)
-            ) {
-                if (bodyHeight > 0) {
-                    this.screen.backBuffer.dimRegion(0, 0, width, bodyHeight)
-                }
-            }
-
             // Clear the 1-row separator line so chat text does not bleed into the gap
             if (interactiveGap > 0 && topOfInteractive >= 0 && topOfInteractive < height) {
                 this.screen.backBuffer.clearArea(0, topOfInteractive, width, 1)
@@ -6495,6 +6487,9 @@ export class DifferentialApp {
                     settings: this.state.settings,
                 })
             } else if (overlay === 'model') {
+                const providerLabel = this.state.selectedProvider
+                    ? formatProviderName(this.state.selectedProvider)
+                    : undefined
                 ModelSelectMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: overlayY,
@@ -6502,6 +6497,7 @@ export class DifferentialApp {
                     height: clampedOverlayHeight,
                     models: this.state.models,
                     activeModel: this.state.activeModel,
+                    providerName: providerLabel,
                     selectedIndex: this.state.modelSelectedIndex,
                     windowStart: this.state.modelWindowStart,
                     searchQuery: this.state.modelSearchQuery,

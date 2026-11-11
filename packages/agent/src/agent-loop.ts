@@ -90,6 +90,24 @@ export function isSimpleConversationalTurn(messages: AgentMessage[]): boolean {
     return getAdaptiveThinkingLevel(messages) === 'off'
 }
 
+export function getModelStreamTimeoutMs(modelName?: string, thinkingLevel?: string): number {
+    if (!modelName) return 15000
+    const lower = modelName.toLowerCase()
+    const isReasoningModel =
+        lower.includes('reasoner') ||
+        lower.includes('r1') ||
+        lower.includes('o1') ||
+        lower.includes('o3') ||
+        lower.includes('o4') ||
+        lower.includes('pro') ||
+        lower.includes('opus') ||
+        lower.includes('thinking') ||
+        (thinkingLevel !== undefined && thinkingLevel !== 'off' && thinkingLevel !== 'fast') ||
+        supportsModelThinking(modelName)
+
+    return isReasoningModel ? 25000 : 15000
+}
+
 class AsyncQueue<T> {
     private queue: T[] = []
     private resolvers: ((value: IteratorResult<T>) => void)[] = []
@@ -474,6 +492,40 @@ function getToolStatusMessage(toolName: string): string {
     return 'Working...'
 }
 
+async function* withStreamTimeout<T>(
+    generator: AsyncGenerator<T, void, unknown>,
+    timeoutMs: number,
+    providerName: string
+): AsyncGenerator<T, void, unknown> {
+    const iterator = generator[Symbol.asyncIterator]()
+    while (true) {
+        let timer: ReturnType<typeof setTimeout> | null = null
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timer = setTimeout(() => {
+                reject(
+                    new Error(
+                        `Request to ${providerName} timed out after ${Math.round(timeoutMs / 1000)}s without response. The model may be unavailable or overloaded.`
+                    )
+                )
+            }, timeoutMs)
+        })
+
+        try {
+            const nextPromise = iterator.next()
+            const result = await Promise.race([nextPromise, timeoutPromise])
+            if (timer) clearTimeout(timer)
+            if (!result.done) {
+                yield (result as IteratorYieldResult<T>).value
+            } else {
+                break
+            }
+        } catch (err) {
+            if (timer) clearTimeout(timer)
+            throw err
+        }
+    }
+}
+
 async function streamAssistantResponse(
     agent: Agent,
     eventQueue: AsyncQueue<AgentEvent>,
@@ -497,11 +549,13 @@ async function streamAssistantResponse(
     let loggedTools: any[] = []
     let loggedMessages: any[] = []
     let loggedModel = agent.modelOptions?.model
+    let attemptCount = 0
     const startTime = Date.now()
 
     try {
         const retryPromise = pRetry(
             async () => {
+                attemptCount++
                 assistantMessage = ''
                 toolCalls = []
                 thinkingText = ''
@@ -586,9 +640,21 @@ async function streamAssistantResponse(
                 loggedMessages = dialogueMessages
                 loggedModel = (providerModelOptions as any).model || agent.modelOptions?.model
 
-                const initialStatus =
-                    effectiveThinkingLevel !== 'off' ? 'Thinking...' : 'Working...'
-                eventQueue.push({ type: 'AgentStatus', message: initialStatus })
+                const providerName = getCleanProviderDisplayName(
+                    agent.llm?.id,
+                    (providerModelOptions as any).model || agent.modelOptions?.model
+                )
+
+                if (attemptCount === 1) {
+                    const initialStatus =
+                        effectiveThinkingLevel !== 'off' ? 'Thinking...' : 'Working...'
+                    eventQueue.push({ type: 'AgentStatus', message: initialStatus })
+                } else {
+                    eventQueue.push({
+                        type: 'AgentStatus',
+                        message: `Connecting to ${providerName}... (attempt ${attemptCount})`,
+                    })
+                }
 
                 const generator = agent.llm.stream(
                     dialogueMessages,
@@ -598,12 +664,24 @@ async function streamAssistantResponse(
                     signal
                 )
 
+                const activeModelName =
+                    (providerModelOptions as any).model || agent.modelOptions?.model
+                const streamTimeoutMs = getModelStreamTimeoutMs(
+                    activeModelName,
+                    effectiveThinkingLevel
+                )
+                const streamWithTimeout = withStreamTimeout(
+                    generator,
+                    streamTimeoutMs,
+                    providerName
+                )
+
                 const activeToolCalls = new Map<
                     string,
-                    { id: string; name: string; input: string }
+                    { id: string; name: string; input: string; thoughtSignature?: string }
                 >()
 
-                for await (const chunk of generator) {
+                for await (const chunk of streamWithTimeout) {
                     if (signal.aborted) throw new AbortError(new Error('Aborted'))
                     if (chunk.type === 'text') {
                         assistantMessage += chunk.text
@@ -613,15 +691,26 @@ async function streamAssistantResponse(
                         eventQueue.push({ type: 'ThinkingChunk', content: chunk.text })
                     } else if (chunk.type === 'thought_signature') {
                         thoughtSignature += chunk.signature
+                        for (const tc of activeToolCalls.values()) {
+                            if (!tc.thoughtSignature) {
+                                tc.thoughtSignature = chunk.signature
+                            }
+                        }
                     } else if (chunk.type === 'tool_call_delta') {
+                        const deltaSig =
+                            (chunk as any).thoughtSignature || thoughtSignature || undefined
                         if (!activeToolCalls.has(chunk.id)) {
                             activeToolCalls.set(chunk.id, {
                                 id: chunk.id,
                                 name: chunk.name || '',
                                 input: '',
+                                thoughtSignature: deltaSig,
                             })
                         }
                         const tc = activeToolCalls.get(chunk.id)!
+                        if ((chunk as any).thoughtSignature && !tc.thoughtSignature) {
+                            tc.thoughtSignature = (chunk as any).thoughtSignature
+                        }
                         if (chunk.name && !tc.name) {
                             tc.name = chunk.name
                             eventQueue.push({
@@ -633,11 +722,16 @@ async function streamAssistantResponse(
                             tc.input += chunk.inputDelta
                         }
                     } else if (chunk.type === 'tool_call') {
-                        activeToolCalls.set(chunk.toolCall.id, chunk.toolCall)
-                        if (chunk.toolCall.name) {
+                        const call = {
+                            ...chunk.toolCall,
+                            thoughtSignature:
+                                chunk.toolCall.thoughtSignature || thoughtSignature || undefined,
+                        }
+                        activeToolCalls.set(call.id, call)
+                        if (call.name) {
                             eventQueue.push({
                                 type: 'AgentStatus',
-                                message: getToolStatusMessage(chunk.toolCall.name),
+                                message: getToolStatusMessage(call.name),
                             })
                         }
                     } else if (chunk.type === 'usage') {
@@ -656,7 +750,10 @@ async function streamAssistantResponse(
                         })
                     }
                 }
-                toolCalls = Array.from(activeToolCalls.values())
+                toolCalls = Array.from(activeToolCalls.values()).map((tc) => ({
+                    ...tc,
+                    thoughtSignature: tc.thoughtSignature || thoughtSignature || undefined,
+                }))
                 return {
                     assistantMessage,
                     toolCalls,
@@ -668,7 +765,7 @@ async function streamAssistantResponse(
                 retries: 5,
                 factor: 2,
                 minTimeout: 2000,
-                maxTimeout: 30000,
+                maxTimeout: 10000,
                 signal,
                 onFailedAttempt: (error: any) => {
                     const actualError = error.error || error.originalError || error
@@ -678,6 +775,21 @@ async function streamAssistantResponse(
                         error.message ||
                         String(actualError)
                     ).toLowerCase()
+                    const isPermanentQuotaError =
+                        msg.includes('insufficient_quota') ||
+                        msg.includes('insufficient credits') ||
+                        msg.includes('exceeded your current quota') ||
+                        msg.includes('quota exceeded') ||
+                        msg.includes('resource has been exhausted') ||
+                        msg.includes('credit balance') ||
+                        msg.includes('billing details') ||
+                        msg.includes('balance is too low') ||
+                        msg.includes('credit_exhausted') ||
+                        msg.includes('out of credits') ||
+                        msg.includes('free tier limit') ||
+                        msg.includes('free tier accounts are limited') ||
+                        msg.includes('plan and billing')
+
                     const isHighDemand =
                         status === 503 ||
                         status === 529 ||
@@ -688,11 +800,13 @@ async function streamAssistantResponse(
                         msg.includes('capacity')
 
                     const isRateLimit =
-                        status === 429 ||
-                        msg.includes('429') ||
-                        msg.includes('quota') ||
-                        msg.includes('rate limit') ||
-                        msg.includes('rate_limit')
+                        !isPermanentQuotaError &&
+                        (status === 429 ||
+                            msg.includes('429') ||
+                            msg.includes('quota') ||
+                            msg.includes('rate limit') ||
+                            msg.includes('rate_limit') ||
+                            msg.includes('too many requests'))
 
                     if (isHighDemand || isRateLimit) {
                         const delaySeconds = Math.round(Math.pow(2, error.attemptNumber - 1) * 2)
@@ -848,12 +962,26 @@ async function streamAssistantResponse(
                 errorMsg = `${notice}\n${errorMsg}`
             }
         } else if (
+            errorMsg.includes('404') ||
+            errorMsg.toLowerCase().includes('not found') ||
+            errorMsg.toLowerCase().includes('does not exist') ||
+            errorMsg.toLowerCase().includes('is not supported') ||
+            errorMsg.toLowerCase().includes('invalid model') ||
+            errorMsg.toLowerCase().includes('model_not_found') ||
+            errorMsg.toLowerCase().includes('invalid_argument') ||
+            errorMsg.toLowerCase().includes('invalid argument') ||
+            errorMsg.toLowerCase().includes('unsupported_model') ||
+            errorMsg.toLowerCase().includes('unknown model') ||
+            errorMsg.toLowerCase().includes('model is not recognized') ||
             errorMsg.includes('无可用渠道') ||
             errorMsg.toLowerCase().includes('no available channel') ||
             errorMsg.toLowerCase().includes('channel not found')
         ) {
+            const currentModel = (agent.modelOptions as any)?.model || 'the selected model'
+            const providerName = getCleanProviderDisplayName(agent.llm?.id, currentModel)
             errorMsg =
-                'The selected model is not available or not enabled for your token group on this provider. Please switch models using `/model` (e.g. glm-5.2, gpt-5.5, claude-opus-4-6, glm-4-plus).\n' +
+                `Model '${currentModel}' is not available or not supported on ${providerName}.\n` +
+                `Please select an available model using \`/model\` or switch providers using \`/switch\`.\n\n` +
                 errorMsg
         } else if (
             errorMsg.includes('401') ||
@@ -885,6 +1013,13 @@ async function streamAssistantResponse(
             errorMsg =
                 'This model is currently experiencing high demand or capacity limits from the provider. Spikes in demand are usually temporary. Please try again in a few moments or switch to a different model at https://app.trydecember.com/settings/billing\n' +
                 errorMsg
+        } else if (
+            errorMsg.toLowerCase().includes('timed out') ||
+            errorMsg.toLowerCase().includes('etimedout')
+        ) {
+            errorMsg =
+                `${errorMsg}\n` +
+                'The model took too long to respond. Please try again or switch to a faster model using `/model`.'
         }
 
         eventQueue.push({ type: 'AgentError', error: errorMsg })
@@ -1045,11 +1180,17 @@ async function executeSingleTool(
                 },
             })
         } catch (e: any) {
-            errorStr = `Error executing tool: ${e.message}\n`
+            errorStr = `Error executing tool: ${e?.message || String(e)}\n`
         }
     }
 
-    const toolResult = { toolCallId: toolCall.id, result: resultStr, error: errorStr }
+    const toolDuration = Date.now() - toolStartTime
+    const toolResult = {
+        toolCallId: toolCall.id,
+        result: resultStr,
+        error: errorStr,
+        durationMs: toolDuration,
+    }
 
     if (agent.hooks?.afterToolCall) {
         const afterRes = await agent.hooks.afterToolCall(toolCall, toolResult)
@@ -1059,7 +1200,6 @@ async function executeSingleTool(
         }
     }
 
-    const toolDuration = Date.now() - toolStartTime
     try {
         agent.tracer?.recordToolExecution({
             toolCallId: toolCall.id,

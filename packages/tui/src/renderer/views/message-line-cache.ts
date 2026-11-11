@@ -377,6 +377,25 @@ export class MessageLineCache {
             }
         }
 
+        if (isError) {
+            for (const item of group) {
+                const itemError =
+                    item.toolCall?.status === 'error' || (item.toolCall as any)?.status === 'failed'
+                if (itemError && item.toolCall?.output) {
+                    const itemTarget = getDiscoveryTarget(kind, item.toolCall || {})
+                    const outLines = item.toolCall.output.trim().split(/\r?\n/)
+                    const firstLine = outLines[0] || 'Execution failed'
+                    lines.push([
+                        { text: '  │ ', style: { fg: THEME.colors.error } },
+                        {
+                            text: itemTarget ? `${itemTarget}: ${firstLine}` : firstLine,
+                            style: { fg: THEME.colors.error },
+                        },
+                    ])
+                }
+            }
+        }
+
         if (trailingSpacing) {
             lines.push([{ text: '', style: {} }])
         }
@@ -486,7 +505,7 @@ export class MessageLineCache {
                     if (parts.length > 0) stats = ` (${parts.join(', ')})`
                 }
 
-                const editVerb = isRunning ? 'Editing ' : 'Edited '
+                const editVerb = isRunning ? 'Editing ' : isError ? 'Failed editing ' : 'Edited '
                 lines.push([
                     { text: glyph, style: { fg: glyphColor } },
                     { text: editVerb, style: { fg: THEME.colors.warning, bold: true } },
@@ -575,7 +594,11 @@ export class MessageLineCache {
                 const lineCount = content ? content.split(/\r?\n/).length : 0
                 const stats = lineCount > 0 ? ` (${lineCount} lines)` : ''
 
-                const writeVerb = isRunning ? 'Creating ' : 'Created '
+                const writeVerb = isRunning
+                    ? 'Creating '
+                    : isError
+                      ? 'Failed creating '
+                      : 'Created '
                 lines.push([
                     { text: glyph, style: { fg: glyphColor } },
                     { text: writeVerb, style: { fg: THEME.colors.warning, bold: true } },
@@ -934,8 +957,22 @@ export class MessageLineCache {
             }
             lines.push(...errorFormatted)
 
+            if (parsed.hint) {
+                const hintFormatted = formatMarkdownToLines(`**Action:** ${parsed.hint}`, width - 2)
+                for (const line of hintFormatted) {
+                    for (const seg of line) {
+                        if (seg.text.startsWith('Action:') || seg.text.startsWith('**Action:**')) {
+                            seg.style = { ...seg.style, fg: THEME.colors.warning, bold: true }
+                        } else {
+                            seg.style = { ...seg.style, fg: THEME.colors.text, bold: false }
+                        }
+                    }
+                }
+                lines.push(...hintFormatted)
+            }
+
             if (parsed.cause) {
-                const causeFormatted = formatMarkdownToLines(`Cause: ${parsed.cause}`, width - 4)
+                const causeFormatted = formatMarkdownToLines(`Details: ${parsed.cause}`, width - 4)
                 for (const line of causeFormatted) {
                     line.unshift({ text: '  ', style: {} })
                     for (const seg of line) {
@@ -943,17 +980,6 @@ export class MessageLineCache {
                     }
                 }
                 lines.push(...causeFormatted)
-            }
-
-            if (parsed.hint) {
-                const hintFormatted = formatMarkdownToLines(parsed.hint, width - 4)
-                for (const line of hintFormatted) {
-                    line.unshift({ text: '  ', style: {} })
-                    for (const seg of line) {
-                        if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
-                    }
-                }
-                lines.push(...hintFormatted)
             }
 
             lines.push([{ text: '', style: {} }])

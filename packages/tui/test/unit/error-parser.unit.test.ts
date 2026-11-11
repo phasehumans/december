@@ -45,4 +45,26 @@ describe('parseTuiError Utility (Unit)', () => {
         expect(parsed.cause).toBe('Network failure')
         expect(parsed.hint).toBe('Try again')
     })
+
+    it('parses model not available error with actionable model and switch CTA', () => {
+        const raw =
+            "Model 'gpt-4o' is not available or not supported on Gemini.\nPlease select an available model using `/model` or switch providers using `/switch`.\n\n404 Not Found"
+        const parsed = parseTuiError(raw)
+
+        expect(parsed.message).toContain(
+            "Model 'gpt-4o' is not available or not supported on Gemini."
+        )
+        expect(parsed.hint).toContain('/model')
+        expect(parsed.hint).toContain('/switch')
+        expect(parsed.cause).toContain('404 Not Found')
+    })
+
+    it('parses request timeout errors with actionable CTA', () => {
+        const raw =
+            'Request to Gemini timed out after 25s without response. The model may be unavailable or overloaded.'
+        const parsed = parseTuiError(raw)
+
+        expect(parsed.message).toContain('timed out')
+        expect(parsed.hint).toContain('/model')
+    })
 })

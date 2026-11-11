@@ -92,4 +92,36 @@ describe('SkillSubagentRunner (Unit)', () => {
         // Crucial: Verify parent agent conversation history was NOT polluted by subagent turns
         expect(parentAgent.messages.length).toBe(1) // Only parent's system prompt!
     })
+
+    it('should fail and propagate error message when subagent encounters AgentError', async () => {
+        const mockFailingLlm: LLMProvider = {
+            id: 'mock-fail',
+            stream: async function* () {
+                yield* []
+                throw new Error('LLM Provider connection failed')
+            },
+        }
+
+        const parentAgent = new Agent({
+            tools: [readFileTool, bashTool],
+            llm: mockFailingLlm,
+            operations: {} as any,
+        })
+
+        const skillWithBody = {
+            ...dummySkill,
+            content: '# Test Runner\nRun tests.',
+        }
+
+        const result = await executeSkillInSubagent({
+            skill: skillWithBody as any,
+            args: [],
+            task: 'Run failing skill',
+            parentAgent,
+        })
+
+        expect(result.success).toBe(false)
+        expect(result.error).toContain('LLM Provider connection failed')
+        expect(result.summary).toContain('failed')
+    })
 })

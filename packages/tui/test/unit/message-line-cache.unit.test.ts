@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import { MessageLineCache } from '../../src/renderer/views/message-line-cache'
+import { THEME } from '../../src/theme'
 
 import type { MessageItem } from '../../src/renderer/views/message-list-view'
 
@@ -234,13 +235,26 @@ describe('MessageLineCache', () => {
         expect(collapsedText).toContain('Edited src/config.ts (+3, -2)')
         expect(collapsedText).not.toContain('const port = 8080')
 
-        // Expanded: diff lines with + │ and - │
+        // Expanded: diff lines with unified + and - gutter and theme background
         const expandedLines = cache.getLines(messages, 100, { expandTools: true })
         const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
         expect(expandedText).toContain('Edited src/config.ts (+3, -2)')
-        expect(expandedText).toContain('- │ const port = 3000;')
-        expect(expandedText).toContain('+ │ const port = 8080;')
-        expect(expandedText).toContain('+ │ const debug = true;')
+        expect(expandedText).toContain('- const port = 3000;')
+        expect(expandedText).toContain('+ const port = 8080;')
+        expect(expandedText).toContain('+ const debug = true;')
+
+        // Theme background tokens matching /diff command view
+        const deleteLine = expandedLines.find((l) =>
+            l.some((t) => t.text.includes('const port = 3000;'))
+        )
+        expect(deleteLine?.[0]?.style?.bg).toBe(THEME.colors.diffDeleteBg)
+        expect(deleteLine?.[1]?.style?.bg).toBe(THEME.colors.diffDeleteBg)
+
+        const addLine = expandedLines.find((l) =>
+            l.some((t) => t.text.includes('const port = 8080;'))
+        )
+        expect(addLine?.[0]?.style?.bg).toBe(THEME.colors.diffAddBg)
+        expect(addLine?.[1]?.style?.bg).toBe(THEME.colors.diffAddBg)
     })
 
     it('renders subagent ticker during execution and rollup summary on completion', () => {
@@ -544,5 +558,73 @@ describe('MessageLineCache', () => {
         expect(expandedText).not.toContain('earlier steps hidden')
         expect(expandedText).toContain('cmd_0()')
         expect(expandedText).toContain('cmd_29()')
+    })
+
+    it('renders error lines for failed discovery tools even when collapsed', () => {
+        const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 'rf-1',
+                    name: 'read_file',
+                    command: 'Read(missing.ts)',
+                    input: { path: 'missing.ts' },
+                    status: 'error',
+                    output: 'Error: ENOENT: no such file or directory, open missing.ts',
+                },
+            },
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 'rf-2',
+                    name: 'read_file',
+                    command: 'Read(config.ts)',
+                    input: { path: 'config.ts' },
+                    status: 'success',
+                    output: 'const x = 1',
+                },
+            },
+        ]
+
+        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
+        const text = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(text).toContain('Read(missing.ts, config.ts)')
+        expect(text).toContain('missing.ts: Error: ENOENT: no such file or directory')
+    })
+
+    it('renders Failed editing and Failed creating labels when tool status is error', () => {
+        const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 'edit-1',
+                    name: 'edit_file',
+                    command: 'Edit(src/auth.ts)',
+                    input: { TargetFile: 'src/auth.ts', Target: 'old', Replacement: 'new' },
+                    status: 'error',
+                    output: 'Error executing tool: target content not found in file',
+                },
+            },
+            {
+                role: 'tool',
+                toolCall: {
+                    id: 'write-1',
+                    name: 'write_file',
+                    command: 'Create(src/read-only.ts)',
+                    input: { TargetFile: 'src/read-only.ts', Content: 'code' },
+                    status: 'error',
+                    output: 'Error executing tool: EACCES permission denied',
+                },
+            },
+        ]
+
+        const lines = cache.getLines(messages, 100, { expandTools: false })
+        const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        expect(text).toContain('Failed editing src/auth.ts')
+        expect(text).toContain('Failed creating src/read-only.ts')
+        expect(text).toContain('target content not found')
+        expect(text).toContain('EACCES permission denied')
     })
 })

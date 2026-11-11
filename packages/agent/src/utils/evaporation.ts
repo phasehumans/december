@@ -115,8 +115,11 @@ export function evaporateStaleToolOutputs(
             role: msg.role,
             content: msg.content,
             thinking: msg.thinking,
+            thoughtSignature: msg.thoughtSignature,
+            thoughtProvider: msg.thoughtProvider,
             toolCalls: msg.toolCalls,
             toolCallId: msg.toolCallId,
+            toolName: msg.toolName,
         }
 
         if (msg.role !== 'tool') {
