@@ -115,6 +115,52 @@ describe('compactContextIfNeeded (Unit)', () => {
         expect(result[1]!.content).toContain('Structured Checkpoint')
     })
 
+    test('does not compact when user turns exceed maxTurns if minTokens is not reached', async () => {
+        const messages: Message[] = [{ role: 'system', content: 'You are an agent' }]
+        for (let i = 1; i <= 16; i++) {
+            messages.push({ role: 'user', content: `q${i}` })
+            messages.push({ role: 'assistant', content: `a${i}` })
+        }
+
+        const llm = new MockLLM()
+        llm.pushResponse('Structured Checkpoint')
+
+        let statusEmitted = ''
+        const result = await compactContextIfNeeded(messages, llm, 100000, undefined, undefined, {
+            maxTurns: 15,
+            minTokens: 5000,
+            onStatus: (s) => {
+                statusEmitted = s
+            },
+        })
+
+        // Did not compact because estimated tokens is way below 5000
+        expect(result.length).toBe(33)
+        expect(statusEmitted).toBe('')
+    })
+
+    test('emits onStatus callback when compaction runs', async () => {
+        const messages: Message[] = [{ role: 'system', content: 'You are an agent' }]
+        for (let i = 1; i <= 16; i++) {
+            messages.push({ role: 'user', content: `q${i}` })
+            messages.push({ role: 'assistant', content: `a${i}` })
+        }
+
+        const llm = new MockLLM()
+        llm.pushResponse('Structured Checkpoint')
+
+        let statusEmitted = ''
+        const result = await compactContextIfNeeded(messages, llm, 100000, undefined, undefined, {
+            maxTurns: 15,
+            onStatus: (s) => {
+                statusEmitted = s
+            },
+        })
+
+        expect(result.length).toBeLessThan(33)
+        expect(statusEmitted).toBe('Compacting context...')
+    })
+
     test('throws abort error if signal is aborted during compaction', async () => {
         const messages: Message[] = [{ role: 'system', content: 'You are an agent' }]
         for (let i = 0; i < 25; i++) {

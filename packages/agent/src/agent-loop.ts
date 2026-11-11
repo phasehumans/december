@@ -90,8 +90,11 @@ export function isSimpleConversationalTurn(messages: AgentMessage[]): boolean {
     return getAdaptiveThinkingLevel(messages) === 'off'
 }
 
-export function getModelStreamTimeoutMs(modelName?: string, thinkingLevel?: string): number {
-    if (!modelName) return 15000
+export function getModelStreamTimeouts(
+    modelName?: string,
+    thinkingLevel?: string
+): { firstTokenTimeoutMs: number; interTokenTimeoutMs: number } {
+    if (!modelName) return { firstTokenTimeoutMs: 20000, interTokenTimeoutMs: 15000 }
     const lower = modelName.toLowerCase()
     const isReasoningModel =
         lower.includes('reasoner') ||
@@ -105,7 +108,13 @@ export function getModelStreamTimeoutMs(modelName?: string, thinkingLevel?: stri
         (thinkingLevel !== undefined && thinkingLevel !== 'off' && thinkingLevel !== 'fast') ||
         supportsModelThinking(modelName)
 
-    return isReasoningModel ? 25000 : 15000
+    return isReasoningModel
+        ? { firstTokenTimeoutMs: 30000, interTokenTimeoutMs: 15000 }
+        : { firstTokenTimeoutMs: 20000, interTokenTimeoutMs: 15000 }
+}
+
+export function getModelStreamTimeoutMs(modelName?: string, thinkingLevel?: string): number {
+    return getModelStreamTimeouts(modelName, thinkingLevel).firstTokenTimeoutMs
 }
 
 class AsyncQueue<T> {
@@ -494,17 +503,22 @@ function getToolStatusMessage(toolName: string): string {
 
 async function* withStreamTimeout<T>(
     generator: AsyncGenerator<T, void, unknown>,
-    timeoutMs: number,
+    timeouts: { firstTokenTimeoutMs: number; interTokenTimeoutMs: number } | number,
     providerName: string
 ): AsyncGenerator<T, void, unknown> {
+    const firstTimeoutMs = typeof timeouts === 'number' ? timeouts : timeouts.firstTokenTimeoutMs
+    const interTimeoutMs = typeof timeouts === 'number' ? timeouts : timeouts.interTokenTimeoutMs
+    let isFirstChunk = true
+
     const iterator = generator[Symbol.asyncIterator]()
     while (true) {
+        const timeoutMs = isFirstChunk ? firstTimeoutMs : interTimeoutMs
         let timer: ReturnType<typeof setTimeout> | null = null
         const timeoutPromise = new Promise<never>((_, reject) => {
             timer = setTimeout(() => {
                 reject(
                     new Error(
-                        `Request to ${providerName} timed out after ${Math.round(timeoutMs / 1000)}s without response. The model may be unavailable or overloaded.`
+                        `Request to ${providerName} timed out after ${Math.round(timeoutMs / 1000)}s without response.`
                     )
                 )
             }, timeoutMs)
@@ -515,6 +529,7 @@ async function* withStreamTimeout<T>(
             const result = await Promise.race([nextPromise, timeoutPromise])
             if (timer) clearTimeout(timer)
             if (!result.done) {
+                isFirstChunk = false
                 yield (result as IteratorYieldResult<T>).value
             } else {
                 break
@@ -567,7 +582,13 @@ async function streamAssistantResponse(
                     agent.llm,
                     undefined,
                     agent.modelOptions,
-                    signal
+                    signal,
+                    {
+                        minTokens: 2000,
+                        onStatus: (status) => {
+                            eventQueue.push({ type: 'AgentStatus', message: status })
+                        },
+                    }
                 )
 
                 if (compactionResult.compacted) {
@@ -666,15 +687,11 @@ async function streamAssistantResponse(
 
                 const activeModelName =
                     (providerModelOptions as any).model || agent.modelOptions?.model
-                const streamTimeoutMs = getModelStreamTimeoutMs(
+                const streamTimeouts = getModelStreamTimeouts(
                     activeModelName,
                     effectiveThinkingLevel
                 )
-                const streamWithTimeout = withStreamTimeout(
-                    generator,
-                    streamTimeoutMs,
-                    providerName
-                )
+                const streamWithTimeout = withStreamTimeout(generator, streamTimeouts, providerName)
 
                 const activeToolCalls = new Map<
                     string,
@@ -754,6 +771,16 @@ async function streamAssistantResponse(
                     ...tc,
                     thoughtSignature: tc.thoughtSignature || thoughtSignature || undefined,
                 }))
+                if (
+                    !signal.aborted &&
+                    assistantMessage.trim().length === 0 &&
+                    toolCalls.length === 0 &&
+                    !thinkingText
+                ) {
+                    throw new Error(
+                        `The model completed the request without returning any content or tool calls. The connection may have closed prematurely.`
+                    )
+                }
                 return {
                     assistantMessage,
                     toolCalls,
@@ -807,6 +834,24 @@ async function streamAssistantResponse(
                             msg.includes('rate limit') ||
                             msg.includes('rate_limit') ||
                             msg.includes('too many requests'))
+
+                    const isTimeoutOrDrop =
+                        msg.includes('timed out') ||
+                        msg.includes('etimedout') ||
+                        msg.includes('connection may have closed') ||
+                        msg.includes('without returning any content')
+
+                    if (isTimeoutOrDrop && error.attemptNumber <= 1) {
+                        const providerName = getCleanProviderDisplayName(
+                            agent.llm?.id,
+                            (agent.modelOptions as any)?.model
+                        )
+                        eventQueue.push({
+                            type: 'AgentStatus',
+                            message: `${providerName} connection timed out or closed early. Retrying once... (attempt 1/2)\n`,
+                        })
+                        return
+                    }
 
                     if (isHighDemand || isRateLimit) {
                         const delaySeconds = Math.round(Math.pow(2, error.attemptNumber - 1) * 2)

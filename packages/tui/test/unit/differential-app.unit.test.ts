@@ -2607,7 +2607,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('applies subtle backdrop dimming to background chat cells when overlay is active', () => {
+    it('keeps background chat and header cells crisp and undimmed when overlay is active', () => {
         const app = new DifferentialApp({
             terminal,
             width: 80,
@@ -2631,25 +2631,30 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.executeCommand('help')
         expect(app.state.activeOverlay).toBe('help')
 
-        // Chat cells above the overlay card should be dimmed
+        // Chat and header cells above the overlay card should remain crisp (not dimmed)
         let hasDimmedCell = false
+        let hasNonEmptyCell = false
         for (let y = 0; y < 5; y++) {
             for (let x = 0; x < 40; x++) {
                 const cell = app.screen.backBuffer.get(x, y)
-                if (cell && cell.char && cell.char !== ' ' && cell.dim) {
-                    hasDimmedCell = true
-                    break
+                if (cell && cell.char && cell.char !== ' ') {
+                    hasNonEmptyCell = true
+                    if (cell.dim) {
+                        hasDimmedCell = true
+                        break
+                    }
                 }
             }
             if (hasDimmedCell) break
         }
-        expect(hasDimmedCell).toBe(true)
+        expect(hasNonEmptyCell).toBe(true)
+        expect(hasDimmedCell).toBe(false)
 
         // Dismiss help overlay with Esc
         app.handleKey('\x1b')
         expect(app.state.activeOverlay).toBe('none')
 
-        // In prompt mode, chat cells are no longer dimmed
+        // In prompt mode, cells continue to be non-dimmed
         let nonDimmedCellFound = false
         for (let y = 0; y < 5; y++) {
             for (let x = 0; x < 40; x++) {

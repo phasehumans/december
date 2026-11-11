@@ -395,4 +395,67 @@ describe('Antigravity Provider Adapter (Unit)', () => {
             },
         ])
     })
+
+    it('throws descriptive error when SSE chunk contains HTML gateway error instead of JSON', async () => {
+        const sseData = 'data: <html><body>502 Bad Gateway</body></html>\n\n'
+
+        const mockFetch: typeof fetch = async () => {
+            const encoder = new TextEncoder()
+            const stream = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode(sseData))
+                    controller.close()
+                },
+            })
+            return new Response(stream, {
+                status: 200,
+                headers: { 'Content-Type': 'text/event-stream' },
+            })
+        }
+
+        const provider = antigravityProvider('ya29.test-token', { fetchFn: mockFetch })
+        let thrownError: any = null
+        try {
+            for await (const _ of provider.stream([{ role: 'user', content: 'test' }])) {
+                // consume
+            }
+        } catch (err) {
+            thrownError = err
+        }
+
+        expect(thrownError).not.toBeNull()
+        expect(thrownError.message).toContain('Upstream gateway error')
+        expect(thrownError.message).toContain('502 Bad Gateway')
+    })
+
+    it('throws descriptive error when stream finishes with 0 valid chunks and unparsed buffer data', async () => {
+        const mockFetch: typeof fetch = async () => {
+            const encoder = new TextEncoder()
+            const stream = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode('Internal Server Error without SSE format'))
+                    controller.close()
+                },
+            })
+            return new Response(stream, {
+                status: 200,
+                headers: { 'Content-Type': 'text/event-stream' },
+            })
+        }
+
+        const provider = antigravityProvider('ya29.test-token', { fetchFn: mockFetch })
+        let thrownError: any = null
+        try {
+            for await (const _ of provider.stream([{ role: 'user', content: 'test' }])) {
+                // consume
+            }
+        } catch (err) {
+            thrownError = err
+        }
+
+        expect(thrownError).not.toBeNull()
+        expect(thrownError.message).toContain(
+            'Upstream connection closed without valid stream data'
+        )
+    })
 })

@@ -6561,9 +6561,6 @@ export class DifferentialApp {
                     tip: this.state.activeTip,
                 })
                 this.maxScroll = maxScroll
-
-                // Apply backdrop dimming to background chat while overlay card is active
-                this.screen.backBuffer.dimRegion(0, 0, width, chatHeight)
             }
 
             // Clear the 1-line separation gap so no residual chat cells remain in the gap

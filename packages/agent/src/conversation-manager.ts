@@ -289,7 +289,7 @@ export class ConversationManager {
         maxTokens?: number,
         modelOptions?: Record<string, any>,
         signal?: AbortSignal,
-        options?: { maxTurns?: number }
+        options?: { maxTurns?: number; minTokens?: number; onStatus?: (status: string) => void }
     ): Promise<{ compacted: boolean; summary?: string; pruned?: boolean; tokensSaved?: number }> {
         // Tier 1: Zero-LLM Tool Result Pruning
         const pruneResult = pruneToolResults(this._messages)
@@ -300,6 +300,8 @@ export class ConversationManager {
         // Multi-turn sessions exceeding 15 turns automatically trigger structured context summarization
         const effectiveOptions = {
             maxTurns: options?.maxTurns ?? 15,
+            minTokens: options?.minTokens,
+            onStatus: options?.onStatus,
         }
 
         const newMessages = (await compactContextIfNeeded(

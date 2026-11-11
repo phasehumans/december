@@ -547,8 +547,12 @@ async function main() {
                     const { resolveContextMentions } = await import('@december/shared')
                     const resolved = await resolveContextMentions(executionPrompt, process.cwd())
                     executionPrompt = resolved.expandedPrompt
-                } catch {
-                    // Intentionally swallowed: keep executionPrompt on resolution error
+                } catch (mentionErr: any) {
+                    // Intentionally swallowed: keep executionPrompt on resolution error, but toast warning
+                    differentialApp.showToast(
+                        `Context mention warning: ${mentionErr?.message || 'could not resolve file'}`,
+                        'info'
+                    )
                 }
             }
 
@@ -614,6 +618,11 @@ async function main() {
                     differentialApp.state.contextTokens =
                         event.promptTokens + event.completionTokens
                     differentialApp.render()
+                } else if (event.type === 'ContextCompacted') {
+                    differentialApp.showToast(
+                        'Context memory compacted to optimize latency',
+                        'info'
+                    )
                 }
             }
         } catch (err: any) {

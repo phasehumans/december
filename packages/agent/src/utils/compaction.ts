@@ -288,6 +288,8 @@ export function findSafeCompactionBoundary(
 
 export interface CompactionOptions {
     maxTurns?: number
+    minTokens?: number
+    onStatus?: (status: string) => void
 }
 
 export async function compactContextIfNeeded(
@@ -311,7 +313,9 @@ export async function compactContextIfNeeded(
     const currentTokens = estimateTokens(messages)
     const userTurnCount = messages.filter((m) => m.role === 'user' && !(m as any).isUI).length
     const maxTurns = options?.maxTurns
-    const exceedsTurnThreshold = typeof maxTurns === 'number' && userTurnCount > maxTurns
+    const minTokens = options?.minTokens ?? 0
+    const exceedsTurnThreshold =
+        typeof maxTurns === 'number' && userTurnCount > maxTurns && currentTokens >= minTokens
     const exceedsTokenThreshold = currentTokens >= limit * 0.75
 
     // trigger at 75% capacity or when exceeding maxTurns threshold
@@ -471,6 +475,7 @@ Keep each section concise. You MUST preserve exact file paths, function names, l
     ]
     let summary = ''
 
+    options?.onStatus?.('Compacting context...')
     const stream = llm.stream(compactionMessages as any, undefined, undefined, modelOptions, signal)
     for await (const chunk of stream) {
         if (signal?.aborted) throw new Error('Aborted')

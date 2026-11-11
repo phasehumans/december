@@ -266,6 +266,7 @@ export function antigravityProvider(
 
             let totalPromptTokens = 0
             let totalCompletionTokens = 0
+            let validChunksCount = 0
 
             if (!response.body) {
                 return
@@ -294,7 +295,18 @@ export function antigravityProvider(
                         let chunk: any
                         try {
                             chunk = JSON.parse(jsonStr)
+                            validChunksCount++
                         } catch {
+                            const lowerStr = jsonStr.toLowerCase()
+                            if (
+                                lowerStr.includes('<html') ||
+                                lowerStr.includes('502 bad gateway') ||
+                                lowerStr.includes('503 service unavailable') ||
+                                lowerStr.includes('504 gateway') ||
+                                lowerStr.startsWith('error:')
+                            ) {
+                                throw new Error(`Upstream gateway error: ${jsonStr.slice(0, 150)}`)
+                            }
                             // Intentionally swallowed: ignore malformed SSE line chunk
                             continue
                         }
@@ -411,6 +423,11 @@ export function antigravityProvider(
                 }
             } finally {
                 reader.releaseLock()
+            }
+
+            if (validChunksCount === 0 && buffer.trim().length > 0) {
+                const preview = buffer.trim().slice(0, 150)
+                throw new Error(`Upstream connection closed without valid stream data: ${preview}`)
             }
 
             if (totalPromptTokens > 0 || totalCompletionTokens > 0) {
