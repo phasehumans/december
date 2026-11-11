@@ -1950,10 +1950,36 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(text).toContain('src/app.ts')
             expect(text).toContain('(+4, -2)')
 
-            // Two-tone bash command and output gutter
+            // Two-tone bash command in collapsed mode (zero output lines)
             expect(text).toContain('Bash(git status)')
-            expect(text).toContain('│ On branch main')
-            expect(text).toContain('│ nothing to commit')
+            expect(text).not.toContain('On branch main')
+
+            // Expanded mode reveals output indented without pipe
+            const expandedBuffer = new ScreenBuffer(80, 10)
+            MessageListView.render(expandedBuffer, {
+                width: 80,
+                height: 10,
+                expandTools: true,
+                messages: [
+                    {
+                        role: 'tool',
+                        toolCall: {
+                            id: 'tc-bash',
+                            name: 'run_command',
+                            command: 'Bash(git status)',
+                            status: 'success',
+                            output: 'On branch main\nnothing to commit',
+                        },
+                    },
+                ],
+            })
+            const expandedText = Array.from({ length: expandedBuffer.height }, (_, i) =>
+                expandedBuffer.getLine(i)
+            ).join('\n')
+            expect(expandedText).toContain('Bash(git status)')
+            expect(expandedText).toContain('On branch main')
+            expect(expandedText).toContain('nothing to commit')
+            expect(expandedText).not.toContain('│ On branch main')
         })
     })
 })

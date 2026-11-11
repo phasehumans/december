@@ -408,20 +408,20 @@ describe('MessageLineCache', () => {
             },
         ]
 
-        // Collapsed (default 5 lines)
+        // Collapsed (0 lines of output for clean minimal view)
         const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
         const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('log line 1')
-        expect(collapsedText).toContain('log line 5')
-        expect(collapsedText).not.toContain('log line 6')
-        expect(collapsedText).toContain('... (20 more lines · Ctrl+O to toggle)')
+        expect(collapsedText).toContain('pytest tests/')
+        expect(collapsedText).not.toContain('log line 1')
 
-        // Expanded (shows up to 35 lines, so all 25 lines are visible)
+        // Expanded (shows first 10 lines with indentation, no pipe, and truncation)
         const expandedLines = cache.getLines(messages, 100, { expandTools: true })
         const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
         expect(expandedText).toContain('log line 1')
-        expect(expandedText).toContain('log line 25')
-        expect(expandedText).not.toContain('more lines · Ctrl+O to toggle')
+        expect(expandedText).toContain('log line 10')
+        expect(expandedText).not.toContain('log line 11')
+        expect(expandedText).toContain('... (15 more lines)')
+        expect(expandedText).not.toContain('│')
     })
 
     it('renders Context Compacted banner and summary correctly', () => {

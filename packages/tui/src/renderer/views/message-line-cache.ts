@@ -404,7 +404,7 @@ export class MessageLineCache {
                     const outLines = item.toolCall.output.trim().split(/\r?\n/)
                     const firstLine = outLines[0] || 'Execution failed'
                     lines.push([
-                        { text: '  │ ', style: { fg: THEME.colors.error } },
+                        { text: '    ', style: {} },
                         {
                             text: itemTarget ? `${itemTarget}: ${firstLine}` : firstLine,
                             style: { fg: THEME.colors.error },
@@ -560,7 +560,7 @@ export class MessageLineCache {
                             lines.push([
                                 { text: '    ', style: { fg: THEME.colors.dim } },
                                 {
-                                    text: `... (${totalDiffLines - maxDiff} more lines · Ctrl+O to collapse)`,
+                                    text: `... (${totalDiffLines - maxDiff} more lines)`,
                                     style: { fg: THEME.colors.dim },
                                 },
                             ])
@@ -590,7 +590,7 @@ export class MessageLineCache {
                             lines.push([
                                 { text: '    ', style: { fg: THEME.colors.dim } },
                                 {
-                                    text: `... (${outLines.length - maxDiff} more lines · Ctrl+O to collapse)`,
+                                    text: `... (${outLines.length - maxDiff} more lines)`,
                                     style: { fg: THEME.colors.dim },
                                 },
                             ])
@@ -640,7 +640,7 @@ export class MessageLineCache {
                         lines.push([
                             { text: '    ', style: { fg: THEME.colors.dim } },
                             {
-                                text: `... (${contentLines.length - maxLines} more lines · Ctrl+O to collapse)`,
+                                text: `... (${contentLines.length - maxLines} more lines)`,
                                 style: { fg: THEME.colors.dim },
                             },
                         ])
@@ -736,10 +736,10 @@ export class MessageLineCache {
                         const summaryText = findingsMatch ? findingsMatch[1].trim() : outText.trim()
                         if (summaryText) {
                             const summaryLines = summaryText.split(/\r?\n/)
-                            const maxLines = 30
+                            const maxLines = 10
                             for (let l = 0; l < Math.min(summaryLines.length, maxLines); l++) {
                                 lines.push([
-                                    { text: '  │ ', style: { fg: THEME.colors.border } },
+                                    { text: '    ', style: {} },
                                     {
                                         text: summaryLines[l] || '',
                                         style: { fg: THEME.colors.muted },
@@ -748,9 +748,9 @@ export class MessageLineCache {
                             }
                             if (summaryLines.length > maxLines) {
                                 lines.push([
-                                    { text: '  │ ', style: { fg: THEME.colors.border } },
+                                    { text: '    ', style: {} },
                                     {
-                                        text: `... (${summaryLines.length - maxLines} more lines · Ctrl+O to collapse)`,
+                                        text: `... (${summaryLines.length - maxLines} more lines)`,
                                         style: { fg: THEME.colors.dim },
                                     },
                                 ])
@@ -809,18 +809,18 @@ export class MessageLineCache {
             // Command / Tool Output Gutter
             if (isError && tc.output) {
                 const toolErrLines = tc.output.trim().split(/\r?\n/)
-                const maxLines = expandTools ? 30 : 5
+                const maxLines = expandTools ? 15 : 5
                 for (let l = 0; l < Math.min(toolErrLines.length, maxLines); l++) {
                     lines.push([
-                        { text: '  │ ', style: { fg: THEME.colors.error } },
+                        { text: '    ', style: {} },
                         { text: toolErrLines[l] || '', style: { fg: THEME.colors.error } },
                     ])
                 }
                 if (toolErrLines.length > maxLines) {
                     lines.push([
-                        { text: '  │ ', style: { fg: THEME.colors.error } },
+                        { text: '    ', style: {} },
                         {
-                            text: `... (${toolErrLines.length - maxLines} more lines · Ctrl+O to expand)`,
+                            text: `... (${toolErrLines.length - maxLines} more lines)`,
                             style: { fg: THEME.colors.dim },
                         },
                     ])
@@ -845,24 +845,32 @@ export class MessageLineCache {
                 if (!isNoOutputTool) {
                     const outLines = tc.output.trim().split(/\r?\n/)
                     if (outLines.length > 0 && outLines[0]) {
-                        const maxLines = isRunning ? 3 : expandTools ? 35 : 5
-                        const displayLines = isRunning
-                            ? outLines.slice(-maxLines)
-                            : outLines.slice(0, maxLines)
-                        for (const line of displayLines) {
-                            lines.push([
-                                { text: '  │ ', style: { fg: THEME.colors.border } },
-                                { text: line, style: { fg: THEME.colors.muted } },
-                            ])
-                        }
-                        if (!isRunning && outLines.length > maxLines) {
-                            lines.push([
-                                { text: '  │ ', style: { fg: THEME.colors.border } },
-                                {
-                                    text: `... (${outLines.length - maxLines} more lines · Ctrl+O to toggle)`,
-                                    style: { fg: THEME.colors.dim },
-                                },
-                            ])
+                        if (isRunning) {
+                            const displayLines = outLines.slice(-3)
+                            for (const line of displayLines) {
+                                lines.push([
+                                    { text: '    ', style: {} },
+                                    { text: line, style: { fg: THEME.colors.muted } },
+                                ])
+                            }
+                        } else if (expandTools) {
+                            const maxLines = 10
+                            const displayLines = outLines.slice(0, maxLines)
+                            for (const line of displayLines) {
+                                lines.push([
+                                    { text: '    ', style: {} },
+                                    { text: line, style: { fg: THEME.colors.muted } },
+                                ])
+                            }
+                            if (outLines.length > maxLines) {
+                                lines.push([
+                                    { text: '    ', style: {} },
+                                    {
+                                        text: `... (${outLines.length - maxLines} more lines)`,
+                                        style: { fg: THEME.colors.dim },
+                                    },
+                                ])
+                            }
                         }
                     }
                 }
@@ -1001,7 +1009,7 @@ export class MessageLineCache {
             if (cleanSummary) {
                 const summaryFormatted = formatMarkdownToLines(cleanSummary, width - 4)
                 for (const l of summaryFormatted) {
-                    l.unshift({ text: '  │ ', style: { fg: THEME.colors.border } })
+                    l.unshift({ text: '    ', style: {} })
                     for (const seg of l) {
                         if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
                     }
