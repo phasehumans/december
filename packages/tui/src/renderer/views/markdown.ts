@@ -483,7 +483,7 @@ export function createStreamingMarkdownCache(options?: {
     stabilizeInline?: boolean
 }): StreamingMarkdownCache {
     return {
-        stabilizeInline: options?.stabilizeInline ?? false,
+        stabilizeInline: options?.stabilizeInline ?? true,
         committedOutputLines: [],
         committedRawCount: 0,
         inCodeBlock: false,

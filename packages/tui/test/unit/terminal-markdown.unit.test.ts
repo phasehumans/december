@@ -4,6 +4,7 @@ import {
     createStreamingMarkdownCache,
     formatMarkdownToLines,
 } from '../../src/renderer/views/markdown'
+import { THEME } from '../../src/theme'
 
 describe('Terminal Markdown Formatter (Renderer)', () => {
     it('formats plain text lines with word wrapping', () => {
@@ -223,5 +224,15 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         expect(text).toBe('Here is bold start')
         const boldSeg = lines[0].find((s) => s.text === 'bold start')
         expect(boldSeg?.style?.bold).toBe(true)
+    })
+
+    it('defaults to stabilizing inline markdown delimiter flicker when options are omitted', () => {
+        const cache = createStreamingMarkdownCache()
+        expect(cache.stabilizeInline).toBe(true)
+        const lines = formatMarkdownToLines('Here is `streaming code', 80, cache)
+        const text = lines[0].map((s) => s.text).join('')
+        expect(text).toBe('Here is streaming code')
+        const codeSeg = lines[0].find((s) => s.text === 'streaming code')
+        expect(codeSeg?.style?.bg).toBe(THEME.colors.codespanBg)
     })
 })
