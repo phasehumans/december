@@ -154,14 +154,14 @@ export function codexResponsesProvider(
             }
 
             const thinkingLevel = modelOptions?.thinkingLevel
-            if (thinkingLevel && thinkingLevel !== 'off' && thinkingLevel !== 'fast') {
+            if (thinkingLevel && thinkingLevel !== 'off') {
                 requestBody.reasoning = {
                     effort:
-                        thinkingLevel === 'high' || thinkingLevel === 'deep'
+                        thinkingLevel === 'high' ||
+                        thinkingLevel === 'deep' ||
+                        thinkingLevel === 'medium'
                             ? 'high'
-                            : thinkingLevel === 'minimal' || thinkingLevel === 'low'
-                              ? 'low'
-                              : 'medium',
+                            : 'low',
                     summary: 'auto',
                 }
             }

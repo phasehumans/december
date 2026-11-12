@@ -100,4 +100,5 @@ export interface BtwState {
     status: 'loading' | 'streaming' | 'complete' | 'error'
     error?: string
     isExpanded?: boolean
+    isFocused?: boolean
 }

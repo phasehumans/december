@@ -7,13 +7,7 @@ import {
     resolveThinkingMachinesModel,
     XiaomiProvider,
     ZhipuAIProvider,
-    AbliterationProvider,
-    AgnesProvider,
-    AIAndProvider,
-    AKIProvider,
-    AmbientProvider,
-    AurikoProvider,
-    BasetenProvider,
+    WaferAiProvider,
 } from '@december/providers'
 import { describe, expect, it } from 'bun:test'
 
@@ -73,39 +67,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(provider.id).toBe('zai')
         })
 
-        it('instantiates AbliterationProvider with proper OpenAI endpoint and credentials', () => {
-            const provider = new AbliterationProvider('test-abliteration-key')
-            expect(provider.id).toBe('abliteration')
-        })
-
-        it('instantiates AgnesProvider with proper OpenAI endpoint and credentials', () => {
-            const provider = new AgnesProvider('test-agnes-key')
-            expect(provider.id).toBe('agnes')
-        })
-
-        it('instantiates AIAndProvider with proper OpenAI endpoint and credentials', () => {
-            const provider = new AIAndProvider('test-aiand-key')
-            expect(provider.id).toBe('aiand')
-        })
-
-        it('instantiates AKIProvider with proper OpenAI endpoint and credentials', () => {
-            const provider = new AKIProvider('test-aki-key')
-            expect(provider.id).toBe('aki')
-        })
-
-        it('instantiates AmbientProvider with proper OpenAI endpoint and credentials', () => {
-            const provider = new AmbientProvider('test-ambient-key')
-            expect(provider.id).toBe('ambient')
-        })
-
-        it('instantiates AurikoProvider with proper OpenAI endpoint and credentials', () => {
-            const provider = new AurikoProvider('test-auriko-key')
-            expect(provider.id).toBe('auriko')
-        })
-
-        it('instantiates BasetenProvider with proper OpenAI endpoint and credentials', () => {
-            const provider = new BasetenProvider('test-baseten-key')
-            expect(provider.id).toBe('baseten')
+        it('instantiates WaferAiProvider with proper endpoint and credentials', () => {
+            const provider = new WaferAiProvider('test-wafer-key')
+            expect(provider.id).toBe('wafer.ai')
         })
     })
 
@@ -134,25 +98,8 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getModelContextWindow('grok-4.3')).toBe(1000000)
             expect(getModelContextWindow('grok-4.1-fast')).toBe(2000000)
             expect(getModelContextWindow('glm-5.1')).toBe(200000)
-            expect(getModelContextWindow('abliterated-model-large-v2')).toBe(1000000)
-            expect(getModelContextWindow('abliterated-model-large')).toBe(1000000)
-            expect(getModelContextWindow('abliterated-model')).toBe(262144)
-            expect(getModelContextWindow('agnes-3.0-flash')).toBe(512000)
-            expect(getModelContextWindow('agnes-2.5-pro')).toBe(1000000)
-            expect(getModelContextWindow('agnes-2.5-flash')).toBe(512000)
-            expect(getModelContextWindow('agnes-2.5-pro-beta')).toBe(1000000)
-            expect(getModelContextWindow('gpt-5.6-luna')).toBe(1050000)
-            expect(getModelContextWindow('deepseek-ai/deepseek-v4-flash')).toBe(1050000)
-            expect(getModelContextWindow('aiand/deepseek-ai/deepseek-v4-flash')).toBe(1050000)
-            expect(getModelContextWindow('deepseek-v4-flash-0731-284b')).toBe(1050000)
-            expect(getModelContextWindow('aki/deepseek-v4-flash-0731-284b')).toBe(1050000)
-            expect(getModelContextWindow('ambient/large')).toBe(202000)
-            expect(getModelContextWindow('ambient/z-ai/glm-5.2')).toBe(202000)
-            expect(getModelContextWindow('ambient/qwen/qwen3.6-27b')).toBe(32768)
-            expect(getModelContextWindow('auriko/claude-sonnet-4-6')).toBe(1000000)
-            expect(getModelContextWindow('auriko/deepseek-v4-flash')).toBe(1000000)
-            expect(getModelContextWindow('baseten/deepseek-ai/DeepSeek-V4.1-Flash')).toBe(1048576)
-            expect(getModelContextWindow('baseten/zai-org/GLM-5.3')).toBe(1048576)
+            expect(getModelContextWindow('wafer.ai/glm5.2-fast')).toBe(1048576)
+            expect(getModelContextWindow('wafer.ai/Kimi-K2.6')).toBe(262144)
         })
     })
 
@@ -192,114 +139,20 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 'mimo-v2-pro',
             ])
 
+            const waferModels = getProviderModels('wafer.ai')
+            expect(waferModels.map((m) => m.value)).toEqual([
+                'glm5.2-fast',
+                'GLM-5.2',
+                'MiniMax-M3',
+                'Kimi-K2.6',
+                'GLM-5.1',
+            ])
+
             // Test aliases
             expect(getProviderModels('solar')).toEqual(upstageModels)
             expect(getProviderModels('tinker')).toEqual(tinkerModels)
             expect(getProviderModels('inkling')).toEqual(tinkerModels)
             expect(getProviderModels('mimo')).toEqual(xiaomiModels)
-
-            const abliterationModels = getProviderModels('abliteration')
-            expect(abliterationModels.map((m) => m.value)).toEqual([
-                'abliterated-model-large-v2',
-                'abliterated-model-large',
-                'abliterated-model',
-            ])
-            expect(getProviderModels('abliterationai')).toEqual(abliterationModels)
-            expect(getProviderModels('abliteration-ai')).toEqual(abliterationModels)
-
-            const agnesModels = getProviderModels('agnes')
-            expect(agnesModels.map((m) => m.value)).toEqual([
-                'agnes-3.0-flash',
-                'agnes-2.5-pro',
-                'agnes-2.5-flash',
-                'agnes-2.5-pro-beta',
-            ])
-            expect(getProviderModels('agnesai')).toEqual(agnesModels)
-            expect(getProviderModels('agnes-ai')).toEqual(agnesModels)
-
-            const aiandModels = getProviderModels('aiand')
-            expect(aiandModels.map((m) => m.value)).toEqual([
-                'deepseek-ai/deepseek-v4-flash',
-                'deepseek-ai/deepseek-v4-pro',
-                'zai-org/glm-5.3',
-                'zai-org/glm-5.2',
-                'moonshotai/kimi-k2.7-code',
-                'moonshotai/kimi-k3',
-                'google/gemma-4-31b-it',
-                'openai/gpt-oss-120b',
-                'motif-technologies/motif-3',
-                'qwen/qwen3.8-27b',
-            ])
-
-            const akiModels = getProviderModels('aki')
-            expect(akiModels.map((m) => m.value)).toEqual([
-                'deepseek-v4-flash-0731-284b',
-                'glm5.3-754b',
-                'gemma4-26b',
-                'gpt-oss-120b',
-                'mistral4-119b',
-                'qwen3.8-27b',
-                'qwen3.6-35b',
-            ])
-            expect(getProviderModels('aki-io')).toEqual(akiModels)
-            expect(getProviderModels('akiio')).toEqual(akiModels)
-
-            const ambientModels = getProviderModels('ambient')
-            expect(ambientModels.map((m) => m.value)).toEqual([
-                'ambient/large',
-                'z-ai/glm-5.2',
-                'qwen/qwen3.6-27b',
-                'qwen/qwen3.8-27b',
-            ])
-
-            const aurikoModels = getProviderModels('auriko')
-            expect(aurikoModels.map((m) => m.value)).toEqual([
-                'deepseek-v4-flash',
-                'gemini-2.5-flash',
-                'claude-sonnet-4-6',
-                'claude-opus-4-6',
-                'claude-opus-4-7',
-                'deepseek-v4-pro',
-                'gemini-2.5-pro',
-                'gemini-3.1-pro-preview',
-                'glm-5.1',
-                'grok-4.3',
-                'kimi-k2.5',
-                'kimi-k2.6',
-                'minimax-m2-7',
-                'minimax-m2-7-highspeed',
-                'qwen-3.6-plus',
-            ])
-            expect(getProviderModels('aurikoai')).toEqual(aurikoModels)
-            expect(getProviderModels('auriko-ai')).toEqual(aurikoModels)
-
-            const basetenModels = getProviderModels('baseten')
-            expect(basetenModels.map((m) => m.value)).toEqual([
-                'deepseek-ai/DeepSeek-V4.1-Flash',
-                'deepseek-ai/DeepSeek-V4-Flash-0731',
-                'deepseek-ai/DeepSeek-V4-Pro',
-                'deepseek-ai/DeepSeek-V4-Pro-0813',
-                'deepseek-ai/DeepSeek-V3.1',
-                'zai-org/GLM-5.3',
-                'zai-org/GLM-5.3-Fast',
-                'zai-org/GLM-5.3-Flash',
-                'zai-org/GLM-5.2',
-                'zai-org/GLM-5.2-Fast',
-                'zai-org/GLM-5.1',
-                'zai-org/GLM-5',
-                'zai-org/GLM-4.7',
-                'moonshotai/Kimi-K2.7-Code',
-                'moonshotai/Kimi-K3',
-                'moonshotai/Kimi-K2.6',
-                'moonshotai/Kimi-K2.5',
-                'thinkingmachines/inkling',
-                'thinkingmachines/inkling-small',
-                'nvidia/Nemotron-120B-A12B',
-                'nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B',
-                'openai/gpt-oss-120b',
-            ])
-            expect(getProviderModels('basetenco')).toEqual(basetenModels)
-            expect(getProviderModels('baseten-co')).toEqual(basetenModels)
         })
 
         it('returns correct default models for providers', () => {
@@ -313,22 +166,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getDefaultModelForProvider('mimo')).toBe('mimo-v2.5')
             expect(getDefaultModelForProvider('zai')).toBe('glm-5.3-flash')
             expect(getDefaultModelForProvider('zhipuai')).toBe('glm-5.3-flash')
-            expect(getDefaultModelForProvider('abliteration')).toBe('abliterated-model-large-v2')
-            expect(getDefaultModelForProvider('abliterationai')).toBe('abliterated-model-large-v2')
-            expect(getDefaultModelForProvider('abliteration-ai')).toBe('abliterated-model-large-v2')
-            expect(getDefaultModelForProvider('agnes')).toBe('agnes-3.0-flash')
-            expect(getDefaultModelForProvider('agnesai')).toBe('agnes-3.0-flash')
-            expect(getDefaultModelForProvider('agnes-ai')).toBe('agnes-3.0-flash')
-            expect(getDefaultModelForProvider('aiand')).toBe('deepseek-ai/deepseek-v4-flash')
-            expect(getDefaultModelForProvider('aki')).toBe('deepseek-v4-flash-0731-284b')
-            expect(getDefaultModelForProvider('aki-io')).toBe('deepseek-v4-flash-0731-284b')
-            expect(getDefaultModelForProvider('ambient')).toBe('ambient/large')
-            expect(getDefaultModelForProvider('auriko')).toBe('deepseek-v4-flash')
-            expect(getDefaultModelForProvider('aurikoai')).toBe('deepseek-v4-flash')
-            expect(getDefaultModelForProvider('auriko-ai')).toBe('deepseek-v4-flash')
-            expect(getDefaultModelForProvider('baseten')).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
-            expect(getDefaultModelForProvider('basetenco')).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
-            expect(getDefaultModelForProvider('baseten-co')).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
+            expect(getDefaultModelForProvider('wafer.ai')).toBe('glm5.2-fast')
         })
 
         it('validates and normalizes models correctly', () => {
@@ -338,50 +176,15 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(isValidModelForProvider('thinkingmachines', 'thinkingmachines/Inkling')).toBe(
                 true
             )
-            expect(isValidModelForProvider('thinkingmachines', 'inkling')).toBe(true)
-            expect(isValidModelForProvider('xiaomi', 'mimo-v2.5')).toBe(true)
-            expect(isValidModelForProvider('mimo', 'mimo-v2.5')).toBe(true)
-            expect(isValidModelForProvider('zai', 'glm-5.3-flash')).toBe(true)
-            expect(isValidModelForProvider('zhipuai', 'glm-5.3-flash')).toBe(true)
-            expect(isValidModelForProvider('abliteration', 'abliterated-model-large-v2')).toBe(true)
-            expect(isValidModelForProvider('abliterationai', 'abliterated-model')).toBe(true)
-            expect(isValidModelForProvider('agnes', 'agnes-3.0-flash')).toBe(true)
-            expect(isValidModelForProvider('agnesai', 'agnes-2.5-pro')).toBe(true)
-            expect(isValidModelForProvider('aiand', 'deepseek-ai/deepseek-v4-flash')).toBe(true)
-            expect(isValidModelForProvider('aki', 'deepseek-v4-flash-0731-284b')).toBe(true)
-            expect(isValidModelForProvider('aki-io', 'glm5.3-754b')).toBe(true)
-            expect(isValidModelForProvider('ambient', 'ambient/large')).toBe(true)
-            expect(isValidModelForProvider('ambient', 'z-ai/glm-5.2')).toBe(true)
-            expect(isValidModelForProvider('auriko', 'claude-sonnet-4-6')).toBe(true)
-            expect(isValidModelForProvider('aurikoai', 'deepseek-v4-flash')).toBe(true)
-            expect(isValidModelForProvider('baseten', 'deepseek-ai/DeepSeek-V4.1-Flash')).toBe(true)
-            expect(isValidModelForProvider('basetenco', 'zai-org/GLM-5.3')).toBe(true)
+            expect(isValidModelForProvider('wafer.ai', 'glm5.2-fast')).toBe(true)
+        })
 
+        it('normalizes fallback models properly', () => {
+            expect(ensureValidModelForProvider('sarvam', 'sarvam-105b')).toBe('sarvam-105b')
+            expect(ensureValidModelForProvider('stepfun', 'step-3.7-flash')).toBe('step-3.7-flash')
+            expect(ensureValidModelForProvider('upstage', 'solar-pro4')).toBe('solar-pro4')
             expect(ensureValidModelForProvider('thinkingmachines', 'inkling')).toBe(
                 'thinkingmachines/Inkling'
-            )
-            expect(ensureValidModelForProvider('tinker', 'inkling')).toBe(
-                'thinkingmachines/Inkling'
-            )
-            expect(ensureValidModelForProvider('upstage', 'solar-pro4')).toBe('solar-pro4')
-            expect(ensureValidModelForProvider('xiaomi', 'mimo-v2.5')).toBe('mimo-v2.5')
-            expect(ensureValidModelForProvider('mimo', 'mimo-v2.5')).toBe('mimo-v2.5')
-            expect(ensureValidModelForProvider('abliteration', 'abliterated-model-large-v2')).toBe(
-                'abliterated-model-large-v2'
-            )
-            expect(ensureValidModelForProvider('agnes', 'agnes-3.0-flash')).toBe('agnes-3.0-flash')
-            expect(ensureValidModelForProvider('aiand', 'deepseek-ai/deepseek-v4-flash')).toBe(
-                'deepseek-ai/deepseek-v4-flash'
-            )
-            expect(ensureValidModelForProvider('aki', 'deepseek-v4-flash-0731-284b')).toBe(
-                'deepseek-v4-flash-0731-284b'
-            )
-            expect(ensureValidModelForProvider('ambient', 'ambient/large')).toBe('ambient/large')
-            expect(ensureValidModelForProvider('auriko', 'claude-sonnet-4-6')).toBe(
-                'claude-sonnet-4-6'
-            )
-            expect(ensureValidModelForProvider('baseten', 'deepseek-ai/DeepSeek-V4.1-Flash')).toBe(
-                'deepseek-ai/DeepSeek-V4.1-Flash'
             )
         })
     })
@@ -389,148 +192,57 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
     describe('Provider Name Formatting', () => {
         it('formats names properly for each provider and alias', () => {
             expect(formatProviderName('sarvam')).toBe('Sarvam AI')
-            expect(formatProviderName('sarvamai')).toBe('Sarvam AI')
+            expect(formatProviderName('sarvam-ai')).toBe('Sarvam AI')
             expect(formatProviderName('stepfun')).toBe('StepFun (Global)')
-            expect(formatProviderName('stepfunai')).toBe('StepFun (Global)')
+            expect(formatProviderName('stepfun-ai')).toBe('StepFun (Global)')
             expect(formatProviderName('upstage')).toBe('Upstage Solar')
             expect(formatProviderName('solar')).toBe('Upstage Solar')
             expect(formatProviderName('thinkingmachines')).toBe('Thinking Machines (Tinker)')
+            expect(formatProviderName('tinker')).toBe('Thinking Machines (Tinker)')
             expect(formatProviderName('xiaomi')).toBe('Xiaomi')
             expect(formatProviderName('mimo')).toBe('Xiaomi')
-            expect(formatProviderName('xai')).toBe('xAI')
-            expect(formatProviderName('zhipuai')).toBe('Zhipu AI')
-            expect(formatProviderName('zhipu')).toBe('Zhipu AI')
-            expect(formatProviderName('tinker')).toBe('Thinking Machines (Tinker)')
-            expect(formatProviderName('inkling')).toBe('Thinking Machines (Tinker)')
-            expect(formatProviderName('abliteration')).toBe('Abliteration AI')
-            expect(formatProviderName('abliterationai')).toBe('Abliteration AI')
-            expect(formatProviderName('abliteration-ai')).toBe('Abliteration AI')
-            expect(formatProviderName('agnes')).toBe('Agnes AI')
-            expect(formatProviderName('agnesai')).toBe('Agnes AI')
-            expect(formatProviderName('agnes-ai')).toBe('Agnes AI')
-            expect(formatProviderName('aiand')).toBe('AI&')
-            expect(formatProviderName('aki')).toBe('AKI.IO')
-            expect(formatProviderName('aki-io')).toBe('AKI.IO')
-            expect(formatProviderName('akiio')).toBe('AKI.IO')
-            expect(formatProviderName('ambient')).toBe('Ambient')
-            expect(formatProviderName('auriko')).toBe('Auriko')
-            expect(formatProviderName('aurikoai')).toBe('Auriko')
-            expect(formatProviderName('auriko-ai')).toBe('Auriko')
-            expect(formatProviderName('baseten')).toBe('Baseten')
-            expect(formatProviderName('basetenco')).toBe('Baseten')
-            expect(formatProviderName('baseten-co')).toBe('Baseten')
+            expect(formatProviderName('zai')).toBe('Zhipu AI')
+            expect(formatProviderName('wafer.ai')).toBe('Wafer')
         })
     })
 
     describe('Cost Calculation & In-Terminal Cards', () => {
-        it('calculates accurate usage costs for all 4 new providers', () => {
+        it('calculates accurate usage costs for new providers', () => {
             const sarvamCost = calculateUsageCost({
                 model: 'sarvam-105b',
-                promptTokens: 100_000,
-                completionTokens: 50_000,
+                promptTokens: 1_000_000,
+                completionTokens: 1_000_000,
             })
-            // 100k * 0.75/1M = $0.075, 50k * 3.0/1M = $0.15 => total $0.225
-            expect(sarvamCost.totalCost).toBeCloseTo(0.225, 3)
+            expect(sarvamCost.totalCost).toBeCloseTo(3.75, 2)
 
             const stepfunCost = calculateUsageCost({
                 model: 'step-3.7-flash',
                 promptTokens: 1_000_000,
-                completionTokens: 500_000,
+                completionTokens: 1_000_000,
             })
-            // 1M * 0.14 = $0.14, 500k * 0.56 = $0.28 => total $0.42
-            expect(stepfunCost.totalCost).toBeCloseTo(0.42, 2)
+            expect(stepfunCost.totalCost).toBeCloseTo(0.7, 2)
 
-            const solarCost = calculateUsageCost({
+            const upstageCost = calculateUsageCost({
                 model: 'solar-pro4',
                 promptTokens: 1_000_000,
                 completionTokens: 1_000_000,
             })
-            // 1M * 0.25 = $0.25, 1M * 0.25 = $0.25 => total $0.50
-            expect(solarCost.totalCost).toBeCloseTo(0.5, 2)
+            expect(upstageCost.totalCost).toBeCloseTo(0.5, 2)
 
             const tinkerCost = calculateUsageCost({
                 model: 'thinkingmachines/Inkling',
-                promptTokens: 500_000,
-                completionTokens: 100_000,
-            })
-            // 500k * 2.0 = $1.00, 100k * 6.0 = $0.60 => total $1.60
-            expect(tinkerCost.totalCost).toBeCloseTo(1.6, 2)
-
-            const abliterationCost = calculateUsageCost({
-                model: 'abliterated-model-large-v2',
-                promptTokens: 100_000,
-                completionTokens: 100_000,
-            })
-            // 100k * 5.0/1M = $0.50, 100k * 5.0/1M = $0.50 => total $1.00
-            expect(abliterationCost.totalCost).toBeCloseTo(1.0, 2)
-
-            const agnesCost = calculateUsageCost({
-                model: 'agnes-2.5-pro',
                 promptTokens: 1_000_000,
                 completionTokens: 1_000_000,
             })
-            // 1M * 0.45 = $0.45, 1M * 0.90 = $0.90 => total $1.35
-            expect(agnesCost.totalCost).toBeCloseTo(1.35, 2)
-
-            const aiandCost = calculateUsageCost({
-                model: 'deepseek-ai/deepseek-v4-flash',
-                promptTokens: 1_000_000,
-                completionTokens: 1_000_000,
-            })
-            // 1M * 0.15 = $0.15, 1M * 0.25 = $0.25 => total $0.40
-            expect(aiandCost.totalCost).toBeCloseTo(0.4, 2)
-
-            const akiCost = calculateUsageCost({
-                model: 'deepseek-v4-flash-0731-284b',
-                promptTokens: 1_000_000,
-                completionTokens: 1_000_000,
-            })
-            // 1M * 0.20 = $0.20, 1M * 0.50 = $0.50 => total $0.70
-            expect(akiCost.totalCost).toBeCloseTo(0.7, 2)
-
-            const ambientCost = calculateUsageCost({
-                model: 'ambient/large',
-                promptTokens: 1_000_000,
-                completionTokens: 500_000,
-            })
-            // 1M * 0.60 = $0.60, 500k * 2.0 = $1.00 => total $1.60
-            expect(ambientCost.totalCost).toBeCloseTo(1.6, 2)
-
-            const aurikoCost = calculateUsageCost({
-                model: 'auriko/claude-sonnet-4-6',
-                promptTokens: 100_000,
-                completionTokens: 100_000,
-            })
-            // 100k * 3.0/1M = $0.30, 100k * 15.0/1M = $1.50 => total $1.80
-            expect(aurikoCost.totalCost).toBeCloseTo(1.8, 2)
-
-            const basetenCost = calculateUsageCost({
-                model: 'baseten/deepseek-ai/DeepSeek-V4.1-Flash',
-                promptTokens: 1_000_000,
-                completionTokens: 500_000,
-            })
-            // 1M * 0.30 = $0.30, 500k * 1.20 = $0.60 => total $0.90
-            expect(basetenCost.totalCost).toBeCloseTo(0.9, 2)
+            expect(tinkerCost.totalCost).toBeCloseTo(8.0, 2)
         })
 
         it('infers providers from models correctly', () => {
-            expect(inferProviderFromModel('sarvam-30b')).toBe('sarvam')
-            expect(inferProviderFromModel('step-3.5-flash')).toBe('stepfun')
-            expect(inferProviderFromModel('solar-mini')).toBe('upstage')
-            expect(inferProviderFromModel('thinkingmachines/Inkling:peft:262144')).toBe(
-                'thinkingmachines'
-            )
-            expect(inferProviderFromModel('abliterated-model-large-v2')).toBe('abliteration')
-            expect(inferProviderFromModel('abliteration/abliterated-model')).toBe('abliteration')
-            expect(inferProviderFromModel('agnes-3.0-flash')).toBe('agnes')
-            expect(inferProviderFromModel('agnes/agnes-2.5-pro')).toBe('agnes')
-            expect(inferProviderFromModel('aiand/deepseek-ai/deepseek-v4-flash')).toBe('aiand')
-            expect(inferProviderFromModel('aki/glm5.3-754b')).toBe('aki')
-            expect(inferProviderFromModel('ambient/large')).toBe('ambient')
-            expect(inferProviderFromModel('auriko/claude-sonnet-4-6')).toBe('auriko')
-            expect(inferProviderFromModel('baseten/deepseek-ai/DeepSeek-V4.1-Flash')).toBe(
-                'baseten'
-            )
+            expect(inferProviderFromModel('sarvam-105b')).toBe('sarvam')
+            expect(inferProviderFromModel('step-3.7-flash')).toBe('stepfun')
+            expect(inferProviderFromModel('solar-pro4')).toBe('upstage')
+            expect(inferProviderFromModel('thinkingmachines/Inkling')).toBe('thinkingmachines')
+            expect(inferProviderFromModel('wafer.ai/glm5.2-fast')).toBe('wafer.ai')
         })
 
         it('generates usage cards with legitimate console/portal URLs', () => {
@@ -566,61 +278,13 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             })
             expect(tinkerCard).toContain('https://tinker.thinkingmachines.ai/')
 
-            const abliterationCard = formatUsageCard({
-                model: 'abliterated-model-large-v2',
+            const waferCard = formatUsageCard({
+                model: 'glm5.2-fast',
                 authMethod: 'byok',
-                provider: 'abliteration',
+                provider: 'wafer.ai',
                 isAuthenticated: true,
             })
-            expect(abliterationCard).toContain('https://abliteration.ai/console')
-
-            const agnesCard = formatUsageCard({
-                model: 'agnes-3.0-flash',
-                authMethod: 'byok',
-                provider: 'agnes',
-                isAuthenticated: true,
-            })
-            expect(agnesCard).toContain('https://platform.agnes-ai.com/settings/apiKeys')
-
-            const aiandCard = formatUsageCard({
-                model: 'deepseek-ai/deepseek-v4-flash',
-                authMethod: 'byok',
-                provider: 'aiand',
-                isAuthenticated: true,
-            })
-            expect(aiandCard).toContain('https://console.aiand.com/api-keys')
-
-            const akiCard = formatUsageCard({
-                model: 'deepseek-v4-flash-0731-284b',
-                authMethod: 'byok',
-                provider: 'aki',
-                isAuthenticated: true,
-            })
-            expect(akiCard).toContain('https://aki.io/admin/user-dashboard')
-
-            const ambientCard = formatUsageCard({
-                model: 'ambient/large',
-                authMethod: 'byok',
-                provider: 'ambient',
-                isAuthenticated: true,
-            })
-            expect(ambientCard).toContain('https://app.ambient.xyz/keys')
-
-            const aurikoCard = formatUsageCard({
-                model: 'claude-sonnet-4-6',
-                authMethod: 'byok',
-                provider: 'auriko',
-                isAuthenticated: true,
-            })
-            expect(aurikoCard).toContain('https://www.auriko.ai/dashboard')
-
-            const basetenCard = formatUsageCard({
-                model: 'deepseek-ai/DeepSeek-V4.1-Flash',
-                authMethod: 'byok',
-                provider: 'baseten',
-                isAuthenticated: true,
-            })
-            expect(basetenCard).toContain('https://app.baseten.co/settings/api_keys')
+            expect(waferCard).toContain('https://wafer.ai/')
         })
     })
 
@@ -635,13 +299,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                     stepfun: 'sk-stepfun-live',
                     upstage: 'sk-upstage-live',
                     thinkingmachines: 'sk-tinker-live',
-                    abliteration: 'sk-abliteration-live',
-                    agnes: 'sk-agnes-live',
-                    aiand: 'sk-aiand-live',
-                    aki: 'sk-aki-live',
-                    ambient: 'sk-ambient-live',
-                    auriko: 'sk-auriko-live',
-                    baseten: 'sk-baseten-live',
+                    xiaomi: 'sk-xiaomi-live',
+                    zai: 'sk-zai-live',
+                    'wafer.ai': 'sk-wafer-live',
                 },
             }
 
@@ -650,13 +310,9 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(configured.some((p) => p.value === 'provider:stepfun')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:upstage')).toBe(true)
             expect(configured.some((p) => p.value === 'provider:thinkingmachines')).toBe(true)
-            expect(configured.some((p) => p.value === 'provider:abliteration')).toBe(true)
-            expect(configured.some((p) => p.value === 'provider:agnes')).toBe(true)
-            expect(configured.some((p) => p.value === 'provider:aiand')).toBe(true)
-            expect(configured.some((p) => p.value === 'provider:aki')).toBe(true)
-            expect(configured.some((p) => p.value === 'provider:ambient')).toBe(true)
-            expect(configured.some((p) => p.value === 'provider:auriko')).toBe(true)
-            expect(configured.some((p) => p.value === 'provider:baseten')).toBe(true)
+            expect(configured.some((p) => p.value === 'provider:xiaomi')).toBe(true)
+            expect(configured.some((p) => p.value === 'provider:zai')).toBe(true)
+            expect(configured.some((p) => p.value === 'provider:wafer.ai')).toBe(true)
 
             // Switch: sarvam -> stepfun
             const targetStepfun = resolveSwitchTarget(initialConfig, 'stepfun')
@@ -679,61 +335,26 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(switched3.config.activeProvider).toBe('thinkingmachines')
             expect(switched3.config.activeModel).toBe('thinkingmachines/Inkling')
 
-            // Switch: thinkingmachines -> abliteration via alias abliteration-ai
-            const targetAblit = resolveSwitchTarget(switched3.config, 'abliteration-ai')
-            expect(targetAblit).toBeDefined()
-            const switched4 = applyProviderSwitch(switched3.config, targetAblit!)
-            expect(switched4.config.activeProvider).toBe('abliteration')
-            expect(switched4.config.activeModel).toBe('abliterated-model-large-v2')
+            // Switch: thinkingmachines -> xiaomi via alias mimo
+            const targetXiaomi = resolveSwitchTarget(switched3.config, 'mimo')
+            expect(targetXiaomi).toBeDefined()
+            const switched4 = applyProviderSwitch(switched3.config, targetXiaomi!)
+            expect(switched4.config.activeProvider).toBe('xiaomi')
+            expect(switched4.config.activeModel).toBe('mimo-v2.5')
 
-            // Switch: abliteration -> agnes via alias agnes-ai
-            const targetAgnes = resolveSwitchTarget(switched4.config, 'agnes-ai')
-            expect(targetAgnes).toBeDefined()
-            const switched5 = applyProviderSwitch(switched4.config, targetAgnes!)
-            expect(switched5.config.activeProvider).toBe('agnes')
-            expect(switched5.config.activeModel).toBe('agnes-3.0-flash')
+            // Switch: xiaomi -> wafer.ai
+            const targetWafer = resolveSwitchTarget(switched4.config, 'wafer.ai')
+            expect(targetWafer).toBeDefined()
+            const switched5 = applyProviderSwitch(switched4.config, targetWafer!)
+            expect(switched5.config.activeProvider).toBe('wafer.ai')
+            expect(switched5.config.activeModel).toBe('glm5.2-fast')
 
-            // Switch: agnes -> aiand
-            const targetAIAnd = resolveSwitchTarget(switched5.config, 'aiand')
-            expect(targetAIAnd).toBeDefined()
-            const switched6 = applyProviderSwitch(switched5.config, targetAIAnd!)
-            expect(switched6.config.activeProvider).toBe('aiand')
-            expect(switched6.config.activeModel).toBe('deepseek-ai/deepseek-v4-flash')
-
-            // Switch: aiand -> aki via alias aki-io
-            const targetAKI = resolveSwitchTarget(switched6.config, 'aki-io')
-            expect(targetAKI).toBeDefined()
-            const switched7 = applyProviderSwitch(switched6.config, targetAKI!)
-            expect(switched7.config.activeProvider).toBe('aki')
-            expect(switched7.config.activeModel).toBe('deepseek-v4-flash-0731-284b')
-
-            // Switch: aki -> ambient
-            const targetAmbient = resolveSwitchTarget(switched7.config, 'ambient')
-            expect(targetAmbient).toBeDefined()
-            const switched8 = applyProviderSwitch(switched7.config, targetAmbient!)
-            expect(switched8.config.activeProvider).toBe('ambient')
-            expect(switched8.config.activeModel).toBe('ambient/large')
-
-            // Switch: ambient -> auriko via alias auriko-ai
-            const targetAuriko = resolveSwitchTarget(switched8.config, 'auriko-ai')
-            expect(targetAuriko).toBeDefined()
-            const switched9 = applyProviderSwitch(switched8.config, targetAuriko!)
-            expect(switched9.config.activeProvider).toBe('auriko')
-            expect(switched9.config.activeModel).toBe('deepseek-v4-flash')
-
-            // Switch: auriko -> baseten via alias baseten-co
-            const targetBaseten = resolveSwitchTarget(switched9.config, 'baseten-co')
-            expect(targetBaseten).toBeDefined()
-            const switched10 = applyProviderSwitch(switched9.config, targetBaseten!)
-            expect(switched10.config.activeProvider).toBe('baseten')
-            expect(switched10.config.activeModel).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
-
-            // Switch: baseten -> sarvam
-            const targetSarvam = resolveSwitchTarget(switched10.config, 'sarvam')
+            // Switch: wafer.ai -> sarvam
+            const targetSarvam = resolveSwitchTarget(switched5.config, 'sarvam')
             expect(targetSarvam).toBeDefined()
-            const switched11 = applyProviderSwitch(switched10.config, targetSarvam!)
-            expect(switched11.config.activeProvider).toBe('sarvam')
-            expect(switched11.config.activeModel).toBe('sarvam-105b')
+            const switched6 = applyProviderSwitch(switched5.config, targetSarvam!)
+            expect(switched6.config.activeProvider).toBe('sarvam')
+            expect(switched6.config.activeModel).toBe('sarvam-105b')
         })
     })
 })

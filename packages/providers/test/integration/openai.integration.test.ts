@@ -133,14 +133,15 @@ describe('OpenAI Provider (Integration)', () => {
     test('should map thinkingLevel to reasoning_effort', async () => {
         const provider = openaiProvider('test-key')
         const gen = provider.stream([{ role: 'user', content: 'hello' }], undefined, undefined, {
-            thinkingLevel: 'medium',
+            model: 'o3-mini',
+            thinkingLevel: 'deep',
         })
 
         const it = gen[Symbol.asyncIterator]()
         await it.next()
 
         expect(capturedOptions).not.toBeNull()
-        expect(capturedOptions.reasoning_effort).toBe('medium')
+        expect(capturedOptions.reasoning_effort).toBe('high')
     })
 
     test('should yield thinking_delta when choice.delta contains reasoning_content', async () => {

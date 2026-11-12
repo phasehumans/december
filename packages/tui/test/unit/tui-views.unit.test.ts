@@ -949,7 +949,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(line0).toContain('[btw]')
             expect(line0).toContain('what port is redis?')
             expect(line1).toContain('Redis default port is 6379.')
-            expect(footer).toContain('copy')
+            expect(footer).toContain('tab')
+            expect(footer).toContain('focus')
             expect(footer).toContain('dismiss')
         })
 
@@ -968,10 +969,34 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(0)).toContain('[btw]')
-            expect(buffer.getLine(1)).toContain('Looking up cached context...')
+            expect(buffer.getLine(1)).toContain('Thinking...')
         })
 
-        it('renders expanded mode with collapse label and higher visible lines', () => {
+        it('soft-wraps long paragraphs and bullets across multiple lines without truncating', () => {
+            const buffer = new ScreenBuffer(40, 10)
+            const longBullet =
+                '- **Unidirectional Streaming**: Unlike WebSockets, SSE is one-way streaming from server to client.'
+            BtwOverlayView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 40,
+                state: {
+                    question: 'explain sse',
+                    answer: longBullet,
+                    status: 'complete',
+                    isExpanded: true,
+                    isFocused: true,
+                },
+                scrollOffset: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('[btw]')
+            expect(buffer.getLine(1)).toContain('- **Unidirectional')
+            // Second wrapped line should contain remaining text indented
+            expect(buffer.getLine(2)).toContain('Unlike WebSockets, SSE is')
+        })
+
+        it('renders expanded mode with higher visible lines and focused footer', () => {
             const buffer = new ScreenBuffer(80, 18)
             const answer = Array.from({ length: 12 }, (_, i) => `Point ${i + 1}`).join('\n')
             BtwOverlayView.render(buffer, {
@@ -983,6 +1008,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                     answer,
                     status: 'complete',
                     isExpanded: true,
+                    isFocused: true,
                 },
                 scrollOffset: 0,
             })
@@ -991,9 +1017,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(1)).toContain('Point 1')
             expect(buffer.getLine(12)).toContain('Point 12')
             const footer = buffer.getLine(13)
-            expect(footer).toContain('collapse')
-            expect(footer).toContain('copy')
-            expect(footer).toContain('dismiss')
+            expect(footer).toContain('esc')
+            expect(footer).toContain('back')
         })
 
         it('renders 401 error state with structured helpful guidance', () => {
@@ -1585,7 +1610,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
         })
 
         it('renders dedicated AI subscriptions menu', () => {
-            const buffer = new ScreenBuffer(80, 11)
+            const buffer = new ScreenBuffer(80, 9)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,
@@ -1597,13 +1622,11 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(0)).toContain('AI Subscriptions')
             expect(buffer.getLine(2)).toContain('❭ Amazon (Q Developer)')
             expect(buffer.getLine(3)).toContain('Anthropic (Claude)')
-            expect(buffer.getLine(4)).toContain('Cursor (Cursor Pro)')
-            expect(buffer.getLine(5)).toContain('GitHub (Copilot)')
-            expect(buffer.getLine(6)).toContain('GitLab (GitLab Duo)')
-            expect(buffer.getLine(7)).toContain('Google (Antigravity)')
-            expect(buffer.getLine(8)).toContain('OpenAI (ChatGPT)')
-            expect(buffer.getLine(10)).toContain('enter connect')
-            expect(buffer.getLine(10)).toContain('esc back')
+            expect(buffer.getLine(4)).toContain('GitHub (Copilot)')
+            expect(buffer.getLine(5)).toContain('Google (Antigravity)')
+            expect(buffer.getLine(6)).toContain('OpenAI (ChatGPT)')
+            expect(buffer.getLine(8)).toContain('enter connect')
+            expect(buffer.getLine(8)).toContain('esc back')
         })
 
         it('renders provider selection with search and active indicator', () => {
@@ -1673,7 +1696,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
         })
 
         it('renders connected badges, disconnect shortcut, and delete confirmation for subscriptions', () => {
-            const buffer = new ScreenBuffer(80, 11)
+            const buffer = new ScreenBuffer(80, 9)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,
@@ -1689,14 +1712,14 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(3)).toContain('Anthropic (Claude)')
             expect(buffer.getLine(3)).toContain('active')
             expect(buffer.getLine(3)).toContain('[Disconnect? (y/n)]')
-            expect(buffer.getLine(7)).toContain('Google (Antigravity)')
-            expect(buffer.getLine(7)).toContain('✓')
+            expect(buffer.getLine(5)).toContain('Google (Antigravity)')
+            expect(buffer.getLine(5)).toContain('✓')
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
             expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
         })
 
         it('renders active badge in green and label in standard text color, and connected badge in muted color', () => {
-            const buffer = new ScreenBuffer(80, 11)
+            const buffer = new ScreenBuffer(80, 9)
             AuthMenuView.render(buffer, {
                 x: 0,
                 y: 0,
@@ -1709,22 +1732,22 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(3)).toContain('Anthropic (Claude)')
-            expect(buffer.getLine(5)).toContain('GitHub (Copilot) ✓')
-            expect(buffer.getLine(7)).toContain('Google (Antigravity) active')
+            expect(buffer.getLine(4)).toContain('GitHub (Copilot) ✓')
+            expect(buffer.getLine(5)).toContain('Google (Antigravity) active')
 
-            const labelCell = buffer.get(4, 7)
+            const labelCell = buffer.get(4, 5)
             expect(labelCell?.char).toBe('G')
             expect(labelCell?.fg).toBe(THEME.colors.text)
 
-            const activeLine = buffer.getLine(7)
+            const activeLine = buffer.getLine(5)
             const activeIdx = activeLine.indexOf('active')
-            const activeBadgeCell = buffer.get(activeIdx, 7)
+            const activeBadgeCell = buffer.get(activeIdx, 5)
             expect(activeBadgeCell?.char).toBe('a')
             expect(activeBadgeCell?.fg).toBe(THEME.colors.success)
 
-            const connectedLine = buffer.getLine(5)
+            const connectedLine = buffer.getLine(4)
             const connectedIdx = connectedLine.indexOf('✓')
-            const connectedBadgeCell = buffer.get(connectedIdx, 5)
+            const connectedBadgeCell = buffer.get(connectedIdx, 4)
             expect(connectedBadgeCell?.char).toBe('✓')
             expect(connectedBadgeCell?.fg).toBe(THEME.colors.muted)
         })

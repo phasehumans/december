@@ -4,8 +4,45 @@ import { drawText } from '../ui'
 import type { BtwState } from '../../types'
 import type { ScreenBuffer } from '../buffer'
 
-export const BTW_MAX_VISIBLE_LINES = 6
+export const BTW_COLLAPSED_MAX_VISIBLE_LINES = 3
 export const BTW_EXPANDED_MAX_VISIBLE_LINES = 16
+export const BTW_MAX_VISIBLE_LINES = BTW_COLLAPSED_MAX_VISIBLE_LINES
+
+export function wrapBtwLines(rawText: string, maxWidth: number): string[] {
+    if (!rawText) return ['']
+    const paragraphs = rawText.split(/\r?\n/)
+    const wrapped: string[] = []
+
+    for (const paragraph of paragraphs) {
+        if (!paragraph || paragraph.length <= maxWidth) {
+            wrapped.push(paragraph)
+            continue
+        }
+
+        const bulletMatch = paragraph.match(/^(\s*[-*•]\s+|\s*\d+\.\s+)/)
+        const indent = bulletMatch ? ' '.repeat(bulletMatch[0].length) : ''
+
+        const words = paragraph.split(/\s+/)
+        let current = ''
+
+        for (const word of words) {
+            if (!word) continue
+            if (!current) {
+                current = word
+            } else if (current.length + 1 + word.length <= maxWidth) {
+                current += ' ' + word
+            } else {
+                wrapped.push(current)
+                current = indent ? indent + word : word
+            }
+        }
+        if (current) {
+            wrapped.push(current)
+        }
+    }
+
+    return wrapped.length > 0 ? wrapped : ['']
+}
 
 export interface BtwOverlayViewProps {
     x?: number
@@ -17,16 +54,18 @@ export interface BtwOverlayViewProps {
 }
 
 export const BtwOverlayView = {
-    getHeight(state: BtwState, maxVisible?: number): number {
+    getHeight(state: BtwState, maxVisible?: number, contentWidth?: number): number {
         if (!state) return 0
         const limit =
             maxVisible ??
-            (state.isExpanded ? BTW_EXPANDED_MAX_VISIBLE_LINES : BTW_MAX_VISIBLE_LINES)
+            (state.isExpanded ? BTW_EXPANDED_MAX_VISIBLE_LINES : BTW_COLLAPSED_MAX_VISIBLE_LINES)
         let bodyLines = 1
         let hasOverflow = false
 
         if (state.status === 'streaming' || state.status === 'complete') {
-            const lines = (state.answer || '').split(/\r?\n/)
+            const lines = contentWidth
+                ? wrapBtwLines(state.answer || '', contentWidth)
+                : (state.answer || '').split(/\r?\n/)
             bodyLines = Math.min(limit, Math.max(1, lines.length))
             hasOverflow = lines.length > limit
         } else if (state.status === 'error') {
@@ -46,7 +85,7 @@ export const BtwOverlayView = {
         const state = props.state
         const maxVisible =
             props.maxVisibleLines ??
-            (state.isExpanded ? BTW_EXPANDED_MAX_VISIBLE_LINES : BTW_MAX_VISIBLE_LINES)
+            (state.isExpanded ? BTW_EXPANDED_MAX_VISIBLE_LINES : BTW_COLLAPSED_MAX_VISIBLE_LINES)
 
         const borderGlyph = '▎ '
 
@@ -76,7 +115,7 @@ export const BtwOverlayView = {
                 y,
                 style: { fg: THEME.colors.brand },
             })
-            drawText(buffer, 'Looking up cached context...', {
+            drawText(buffer, 'Thinking...', {
                 x: x + 2,
                 y,
                 style: { fg: THEME.colors.muted },
@@ -109,7 +148,8 @@ export const BtwOverlayView = {
                 y += 1
             }
         } else {
-            const allLines = (state.answer || '').split(/\r?\n/)
+            const contentWidth = Math.max(10, width - x - 4)
+            const allLines = wrapBtwLines(state.answer || '', contentWidth)
             const totalLines = allLines.length
             const offset = Math.max(
                 0,
@@ -128,7 +168,7 @@ export const BtwOverlayView = {
                 drawText(buffer, line, {
                     x: x + 2,
                     y: rowY,
-                    maxWidth: Math.max(10, width - x - 4),
+                    maxWidth: contentWidth,
                     style: { fg: THEME.colors.text },
                 })
             }
@@ -170,7 +210,11 @@ export const BtwOverlayView = {
         })
         let footerX = x + 2
 
-        if (state.status !== 'loading') {
+        if (state.status === 'loading') {
+            drawText(buffer, 'esc', { x: footerX, y, style: { fg: THEME.colors.brand } })
+            footerX += 4
+            drawText(buffer, 'cancel', { x: footerX, y, style: { fg: THEME.colors.muted } })
+        } else if (state.isFocused) {
             const allLines = (state.answer || '').split(/\r?\n/)
             if (allLines.length > maxVisible) {
                 drawText(buffer, '↑/↓', { x: footerX, y, style: { fg: THEME.colors.brand } })
@@ -180,35 +224,20 @@ export const BtwOverlayView = {
                 drawText(buffer, '· ', { x: footerX, y, style: { fg: THEME.colors.muted } })
                 footerX += 2
             }
-
-            drawText(buffer, 'e', { x: footerX, y, style: { fg: THEME.colors.brand } })
-            footerX += 2
-            const expandLabel = state.isExpanded ? 'collapse' : 'expand'
-            drawText(buffer, expandLabel, { x: footerX, y, style: { fg: THEME.colors.muted } })
-            footerX += expandLabel.length + 1
+            drawText(buffer, 'esc', { x: footerX, y, style: { fg: THEME.colors.brand } })
+            footerX += 4
+            drawText(buffer, 'back', { x: footerX, y, style: { fg: THEME.colors.muted } })
+        } else {
+            drawText(buffer, 'tab', { x: footerX, y, style: { fg: THEME.colors.brand } })
+            footerX += 4
+            drawText(buffer, 'focus', { x: footerX, y, style: { fg: THEME.colors.muted } })
+            footerX += 6
             drawText(buffer, '· ', { x: footerX, y, style: { fg: THEME.colors.muted } })
             footerX += 2
 
-            if (state.status === 'complete' && state.answer) {
-                drawText(buffer, 'p', { x: footerX, y, style: { fg: THEME.colors.brand } })
-                footerX += 2
-                drawText(buffer, 'promote', { x: footerX, y, style: { fg: THEME.colors.muted } })
-                footerX += 8
-                drawText(buffer, '· ', { x: footerX, y, style: { fg: THEME.colors.muted } })
-                footerX += 2
-            }
-
-            drawText(buffer, 'c', { x: footerX, y, style: { fg: THEME.colors.brand } })
-            footerX += 2
-            drawText(buffer, 'copy', { x: footerX, y, style: { fg: THEME.colors.muted } })
-            footerX += 5
-            drawText(buffer, '· ', { x: footerX, y, style: { fg: THEME.colors.muted } })
-            footerX += 2
+            drawText(buffer, 'esc', { x: footerX, y, style: { fg: THEME.colors.brand } })
+            footerX += 4
+            drawText(buffer, 'dismiss', { x: footerX, y, style: { fg: THEME.colors.muted } })
         }
-
-        drawText(buffer, 'esc', { x: footerX, y, style: { fg: THEME.colors.brand } })
-        footerX += 4
-        const closeLabel = state.status === 'loading' ? 'cancel' : 'dismiss'
-        drawText(buffer, closeLabel, { x: footerX, y, style: { fg: THEME.colors.muted } })
     },
 }

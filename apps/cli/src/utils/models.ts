@@ -559,6 +559,21 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     if (!model) return false
     const normalized = (provider || '').toLowerCase().trim()
     if (normalized === 'openrouter' && (model.includes('/') || model.includes(':'))) return true
+    if (
+        (normalized === 'kimi' ||
+            normalized === 'moonshot' ||
+            normalized === 'moonshoot' ||
+            normalized === 'kimi-code-plan' ||
+            normalized === 'kimi-code' ||
+            normalized === 'kimi-code-plan-cn' ||
+            normalized === 'kimi-code-plan-global' ||
+            normalized === 'moonshot-code-plan') &&
+        (model.includes('/') ||
+            model.startsWith('kimi') ||
+            model.startsWith('k3') ||
+            model === 'k3')
+    )
+        return true
     if (normalized === 'agentrouter' && (model.includes('/') || model.includes(':'))) return true
     if (normalized === 'arcee' && (model.includes('/') || model.includes(':'))) return true
     if (normalized === 'meta' && (model.includes('/') || model.includes(':'))) return true
@@ -638,6 +653,7 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
             model.startsWith('glm') ||
             model.startsWith('moonshot') ||
             model.startsWith('kimi') ||
+            model.startsWith('k3') ||
             model.startsWith('thinkingmachines') ||
             model.startsWith('inkling') ||
             model.startsWith('nvidia') ||
@@ -662,13 +678,14 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     }
 
     const models = getProviderModels(normalized)
-    if (models.some((m) => m.value === model)) return true
+    const lower = model.toLowerCase().trim()
+    if (models.some((m) => m.value.toLowerCase() === lower)) return true
 
     // Check cached live models for dynamic additions within 48h TTL
     const now = Date.now()
     for (const [key, entry] of liveModelCache.entries()) {
         if (key.startsWith(`${normalized}:`) && now - entry.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
-            if (entry.models.some((m) => m.value === model)) return true
+            if (entry.models.some((m) => m.value.toLowerCase() === lower)) return true
         }
     }
 

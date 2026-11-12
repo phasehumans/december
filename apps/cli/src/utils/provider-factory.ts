@@ -184,45 +184,6 @@ export function instantiateProvider(
                 'amazon-q'
             )
         }
-        case 'gitlab':
-        case 'duo':
-        case 'gitlab-duo': {
-            const host = options?.subscription?.extra?.host || 'https://gitlab.com'
-            const endpoint =
-                options?.baseURL ||
-                options?.subscription?.endpoint ||
-                `${host.replace(/\/+$/, '')}/api/v4`
-            return withProviderId(
-                openaiProvider(endpoint, apiKey, {
-                    ...options?.headers,
-                    Authorization: `Bearer ${apiKey}`,
-                    'PRIVATE-TOKEN': apiKey,
-                }),
-                'gitlab'
-            )
-        }
-        case 'cursor':
-        case 'cursor-pro':
-        case 'cursor-ai': {
-            const endpoint =
-                options?.baseURL || options?.subscription?.endpoint || 'https://api2.cursor.sh'
-            return withProviderId(
-                openaiProvider(endpoint, apiKey, {
-                    ...options?.headers,
-                    Authorization: `Bearer ${apiKey}`,
-                }),
-                'cursor'
-            )
-        }
-        case 'custom': {
-            const baseURL = options?.baseURL || 'http://localhost:11434/v1'
-            return withProviderId(
-                options?.headers
-                    ? openaiProvider(baseURL, apiKey, options.headers)
-                    : openaiProvider(baseURL, apiKey),
-                'custom'
-            )
-        }
         default: {
             const dynamicEndpoint = getDynamicEndpoint(normalized)
             if (dynamicEndpoint) {

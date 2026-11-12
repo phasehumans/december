@@ -186,7 +186,7 @@ export interface DecemberConfig {
     autoScroll?: boolean
     streamSpeed?: 'smooth' | 'instant'
     approvedTools?: string[]
-    thinkingLevel?: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    thinkingLevel?: 'fast' | 'deep' | 'off' | string
     steeringMode?: 'all' | 'one-at-a-time'
     followUpMode?: 'all' | 'one-at-a-time'
     pathGuard?: boolean
@@ -202,6 +202,8 @@ export interface DecemberConfig {
     showChangelogBanner?: boolean
     browserVisible?: boolean
     mcpServers?: Record<string, any>
+    customBaseUrl?: string
+    providerBaseUrls?: Record<string, string>
 }
 
 export function getLegacyConfigDir(): string {
@@ -342,6 +344,18 @@ export async function loadConfig(): Promise<DecemberConfig> {
                 if (!config.authPriority) {
                     config.authPriority = 'subscription'
                 }
+            }
+        }
+
+        // Auto-migrate legacy thinkingLevel
+        if (config.thinkingLevel) {
+            const tl = String(config.thinkingLevel).toLowerCase()
+            if (tl === 'deep' || tl === 'high' || tl === 'medium') {
+                config.thinkingLevel = 'deep'
+            } else if (tl === 'off') {
+                config.thinkingLevel = 'off'
+            } else {
+                config.thinkingLevel = 'fast'
             }
         }
 
@@ -500,11 +514,13 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
         hasByokConfig
     ) {
         const model = ensureValidModelForProvider(config.activeProvider!, config.activeModel)
+        const customUrl = config.providerBaseUrls?.[config.activeProvider!]
         return {
             provider: config.activeProvider as any,
             apiKey: config.providers[config.activeProvider!],
             model,
             authMethod: 'byok',
+            baseURL: customUrl,
         }
     }
 
@@ -534,11 +550,13 @@ export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
     // 4. BYOK in config takes precedence over December proxy fallback
     if (hasByokConfig) {
         const model = ensureValidModelForProvider(config.activeProvider!, config.activeModel)
+        const customUrl = config.providerBaseUrls?.[config.activeProvider!]
         return {
             provider: config.activeProvider as any,
             apiKey: config.providers[config.activeProvider!],
             model,
             authMethod: 'byok',
+            baseURL: customUrl,
         }
     }
 
@@ -774,10 +792,11 @@ export function formatProviderName(provider: string): string {
             return 'IteraCompute'
         case 'kilo':
             return 'Kilo Gateway'
+        case 'kimi-code-plan':
+        case 'kimi-code':
         case 'kimi-code-plan-cn':
-            return 'Kimi For Coding (kimi.com)'
         case 'kimi-code-plan-global':
-            return 'Kimi For Coding (kimi.ai)'
+            return 'Kimi Code Plan'
         case 'kosmik':
             return 'Kosmik Compute'
         case 'llmgateway':

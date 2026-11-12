@@ -5,11 +5,12 @@ import {
     PROVIDER_KEY_URLS,
     PROVIDER_NAMES,
     PROVIDER_MENU_ITEMS,
+    SUBSCRIPTION_PROVIDER_ITEMS,
 } from '../../src/constants/providers'
 
 describe('BYOK Provider URLs & Names Audit (Unit)', () => {
     it('ensures all BYOK providers have corresponding key URLs starting with https://', () => {
-        expect(PROVIDER_MENU_ITEMS.length).toBe(112)
+        expect(PROVIDER_MENU_ITEMS.length).toBe(42)
 
         for (const item of PROVIDER_MENU_ITEMS) {
             const url = PROVIDER_KEY_URLS[item.value]
@@ -30,15 +31,10 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
     })
 
     it('validates specific exact destination URLs for major providers', () => {
-        expect(PROVIDER_KEY_URLS['abliteration']).toBe('https://abliteration.ai/console')
-        expect(PROVIDER_KEY_URLS['agnes']).toBe('https://platform.agnes-ai.com/settings/apiKeys')
-        expect(PROVIDER_KEY_URLS['aiand']).toBe('https://console.aiand.com/api-keys')
-        expect(PROVIDER_KEY_URLS['aki']).toBe('https://aki.io/admin/user-dashboard')
-        expect(PROVIDER_KEY_URLS['ambient']).toBe('https://app.ambient.xyz/keys')
+        expect(PROVIDER_KEY_URLS['ai21']).toBe('https://studio.ai21.com/account/account')
         expect(PROVIDER_KEY_URLS['anthropic']).toBe('https://console.anthropic.com/settings/keys')
         expect(PROVIDER_KEY_URLS['arcee']).toBe('https://platform.arcee.ai/api/api-keys')
-        expect(PROVIDER_KEY_URLS['auriko']).toBe('https://www.auriko.ai/dashboard')
-        expect(PROVIDER_KEY_URLS['baseten']).toBe('https://app.baseten.co/settings/api_keys')
+        expect(PROVIDER_KEY_URLS['cohere']).toBe('https://dashboard.cohere.com/api-keys')
         expect(PROVIDER_KEY_URLS['meta']).toBe('https://dev.meta.ai/')
         expect(PROVIDER_KEY_URLS['mistral']).toBe('https://console.mistral.ai/api-keys/')
         expect(PROVIDER_KEY_URLS['moonshot']).toBe('https://platform.moonshot.ai/console/api-keys')
@@ -58,5 +54,22 @@ describe('BYOK Provider URLs & Names Audit (Unit)', () => {
         expect(PROVIDER_KEY_URLS['xiaomi']).toBe('https://platform.xiaomimimo.com/console/api-keys')
         expect(PROVIDER_KEY_URLS['xai']).toBe('https://console.x.ai/')
         expect(PROVIDER_KEY_URLS['zai']).toBe('https://z.ai/manage-apikey/apikey-list')
+        expect(PROVIDER_KEY_URLS['wafer.ai']).toBe('https://wafer.ai/')
+    })
+
+    it('ensures all subscription providers are defined, valid, and sorted alphabetically', () => {
+        expect(SUBSCRIPTION_PROVIDER_ITEMS.length).toBe(5)
+
+        const labels = SUBSCRIPTION_PROVIDER_ITEMS.map((item) => item.label)
+        const sortedLabels = [...labels].sort((a, b) => a.localeCompare(b))
+        expect(labels).toEqual(sortedLabels)
+
+        expect(SUBSCRIPTION_PROVIDER_ITEMS.map((item) => item.value)).toEqual([
+            'amazon-q',
+            'claude',
+            'copilot',
+            'gemini',
+            'codex',
+        ])
     })
 })

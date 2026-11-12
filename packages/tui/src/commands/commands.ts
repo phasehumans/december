@@ -99,7 +99,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'effort',
-        description: 'Set model reasoning depth (auto, off, low, medium, high)',
+        description: 'Set model reasoning depth (fast, deep)',
         value: '/effort',
         action: () => {
             // forwarded to differential screen

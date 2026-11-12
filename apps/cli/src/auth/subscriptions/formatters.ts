@@ -23,14 +23,6 @@ export function formatSubscriptionDisplayName(provider?: string): string {
         case 'aws':
         case 'codewhisperer':
             return 'Amazon Q Developer'
-        case 'gitlab':
-        case 'duo':
-        case 'gitlab-duo':
-            return 'GitLab Duo'
-        case 'cursor':
-        case 'cursor-pro':
-        case 'cursor-ai':
-            return 'Cursor Pro'
         default:
             return provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : 'AI'
     }
@@ -75,16 +67,6 @@ export function formatSubscriptionPlan(bundle: Partial<SubscriptionTokenBundle>)
     ) {
         if (rawType.includes('free')) return 'Amazon Q Free'
         return 'Amazon Q Pro'
-    }
-
-    if (provider === 'gitlab' || provider === 'duo' || provider === 'gitlab-duo') {
-        if (rawType.includes('enterprise')) return 'GitLab Duo Enterprise'
-        return 'GitLab Duo Pro'
-    }
-
-    if (provider === 'cursor' || provider === 'cursor-pro' || provider === 'cursor-ai') {
-        if (rawType.includes('business')) return 'Cursor Business'
-        return 'Cursor Pro'
     }
 
     if (rawType) {

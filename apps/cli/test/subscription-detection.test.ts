@@ -249,18 +249,10 @@ describe('Subscription Detection & Local Import (Unit)', () => {
             expect(summary.bundles.codex.accessToken).toBe('codex-tok')
         })
 
-        it('resolves subscription adapters for amazon-q, gitlab, cursor and their aliases', () => {
+        it('resolves subscription adapter for amazon-q and its aliases', () => {
             expect(getSubscriptionAdapter('amazon-q')?.provider).toBe('amazon-q')
             expect(getSubscriptionAdapter('aws')?.provider).toBe('amazon-q')
             expect(getSubscriptionAdapter('codewhisperer')?.provider).toBe('amazon-q')
-
-            expect(getSubscriptionAdapter('gitlab')?.provider).toBe('gitlab')
-            expect(getSubscriptionAdapter('duo')?.provider).toBe('gitlab')
-            expect(getSubscriptionAdapter('gitlab-duo')?.provider).toBe('gitlab')
-
-            expect(getSubscriptionAdapter('cursor')?.provider).toBe('cursor')
-            expect(getSubscriptionAdapter('cursor-pro')?.provider).toBe('cursor')
-            expect(getSubscriptionAdapter('cursor-ai')?.provider).toBe('cursor')
         })
     })
 })

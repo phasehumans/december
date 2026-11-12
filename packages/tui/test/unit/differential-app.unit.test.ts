@@ -797,13 +797,13 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('supports expand mode and clipboard copying in /btw', async () => {
+    it('supports tab focus, expand, arrow scroll navigation, and esc collapse/dismiss cycle in /btw', async () => {
         const app = new DifferentialApp({
             terminal,
             width: 80,
             height: 24,
             onSideQuestion: async (question, handlers) => {
-                handlers.onChunk('Detailed technical answer for side question.')
+                handlers.onChunk('Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7')
                 handlers.onComplete()
             },
         })
@@ -816,20 +816,52 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         await new Promise((r) => setTimeout(r, 10))
         expect(app.state.btwState?.status).toBe('complete')
         expect(app.state.btwState?.isExpanded).toBeFalsy()
+        expect(app.state.btwState?.isFocused).toBeFalsy()
 
-        // Press 'e' to toggle expand mode
+        // While collapsed, regular letters type into the prompt and Up/Down arrows do not scroll btw
         app.handleKey('e')
+        expect(app.state.input).toBe('e')
+        expect(app.state.btwScrollOffset).toBe(0)
+        app.handleKey('\x1b[B')
+        expect(app.state.btwScrollOffset).toBe(0)
+
+        // Clear input
+        app.state.input = ''
+        app.state.cursorPos = 0
+
+        // Press Tab to enter btw section, expand it, and enable arrow scroll
+        app.handleKey('\t')
+        expect(app.state.btwState?.isFocused).toBe(true)
         expect(app.state.btwState?.isExpanded).toBe(true)
 
-        // Press 'e' again to toggle collapse
-        app.handleKey('e')
+        // Up and Down arrows now scroll btw content
+        app.handleKey('\x1b[B')
+        expect(app.state.btwScrollOffset).toBe(1)
+        app.handleKey('\x1b[A')
+        expect(app.state.btwScrollOffset).toBe(0)
+
+        // 1st Esc: Returns to normal area, btw collapses to preview, scroll offset resets to 0
+        app.handleKey('\x1b')
+        expect(app.state.btwState).not.toBeNull()
+        expect(app.state.btwState?.isFocused).toBe(false)
+        expect(app.state.btwState?.isExpanded).toBe(false)
+        expect(app.state.btwScrollOffset).toBe(0)
+
+        // While collapsed again, Up/Down arrow does not scroll btw
+        app.handleKey('\x1b[B')
+        expect(app.state.btwScrollOffset).toBe(0)
+
+        // Tab enters again
+        app.handleKey('\t')
+        expect(app.state.btwState?.isFocused).toBe(true)
+        expect(app.state.btwState?.isExpanded).toBe(true)
+
+        // 1st Esc collapses again
+        app.handleKey('\x1b')
+        expect(app.state.btwState?.isFocused).toBe(false)
         expect(app.state.btwState?.isExpanded).toBe(false)
 
-        // Press 'c' to copy answer
-        app.handleKey('c')
-        expect(app.state.toast?.message).toContain('Copied')
-
-        // Esc dismisses
+        // 2nd Esc dismisses btw section completely from chat
         app.handleKey('\x1b')
         expect(app.state.btwState).toBeNull()
 
@@ -970,11 +1002,20 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.thinkingLevel).toBe('fast')
         expect(selectedLevel).toBe('fast')
 
-        // 4. Non-reasoning model handling
-        app.state.activeModel = 'gpt-4o'
+        // 4. Non-reasoning model handling (including provider-prefixed names)
+        app.state.activeModel = 'openai/gpt-4o'
         app.executeCommand('effort deep')
         expect(app.state.thinkingLevel).toBe('deep')
         expect(app.state.toast?.message).toContain('runs in standard mode')
+
+        // 5. Switching model to controllable reasoning model auto-initializes reasoning to fast if unset/off
+        app.state.thinkingLevel = 'off'
+        app.state.activeOverlay = 'model'
+        app.state.models = [{ label: 'Claude 3.7 Sonnet', value: 'anthropic/claude-3-7-sonnet' }]
+        app.state.modelSelectedIndex = 0
+        app.handleKey('\r')
+        expect(app.state.activeModel).toBe('anthropic/claude-3-7-sonnet')
+        expect(app.state.thinkingLevel).toBe('fast')
 
         app.stop()
     })
@@ -1067,7 +1108,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.handleKey('\r')
         expect(app.state.activeOverlay).toBe('auth')
         expect(app.state.authViewMode).toBe('subscription')
-        expect(app.state.authProviders.length).toBe(7)
+        expect(app.state.authProviders.length).toBe(5)
 
         // Esc returns to login menu
         app.handleKey('\x1b')

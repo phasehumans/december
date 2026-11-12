@@ -140,18 +140,29 @@ describe('Antigravity Provider Adapter (Unit)', () => {
 
         const provider = antigravityProvider('token', { fetchFn: mockFetch })
 
-        // 1. Medium thinking level
+        // 1. Fast thinking level
         for await (const _ of provider.stream([{ role: 'user', content: 'test' }], [], undefined, {
-            thinkingLevel: 'medium',
+            thinkingLevel: 'fast',
         })) {
             // consume
         }
         expect(capturedBody.request.generationConfig.thinkingConfig).toEqual({
-            thinkingBudget: 4096,
+            thinkingBudget: 1024,
             includeThoughts: true,
         })
 
-        // 2. Off thinking level
+        // 2. Deep thinking level
+        for await (const _ of provider.stream([{ role: 'user', content: 'test' }], [], undefined, {
+            thinkingLevel: 'deep',
+        })) {
+            // consume
+        }
+        expect(capturedBody.request.generationConfig.thinkingConfig).toEqual({
+            thinkingBudget: 8192,
+            includeThoughts: true,
+        })
+
+        // 3. Off thinking level
         for await (const _ of provider.stream([{ role: 'user', content: 'test' }], [], undefined, {
             thinkingLevel: 'off',
         })) {
@@ -159,16 +170,6 @@ describe('Antigravity Provider Adapter (Unit)', () => {
         }
         expect(capturedBody.request.generationConfig.thinkingConfig).toEqual({
             thinkingBudget: 0,
-        })
-
-        // 3. Auto / default thinking level
-        for await (const _ of provider.stream([{ role: 'user', content: 'test' }], [], undefined, {
-            thinkingLevel: 'auto',
-        })) {
-            // consume
-        }
-        expect(capturedBody.request.generationConfig.thinkingConfig).toEqual({
-            includeThoughts: true,
         })
     })
 

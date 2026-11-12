@@ -141,20 +141,23 @@ export class ButterflowQueue {
             return
         }
 
-        // Adaptive pacing:
-        // - Small lag (1-10 chars): drip 1 char per frame (~60 chars/sec) for a smooth typewriter effect
-        // - Medium lag (11-40 chars): drip 2-3 chars per frame (~120-180 chars/sec)
-        // - Large lag (> 40 chars): scale step proportionally so we catch up within 100-200ms
+        // Dynamic adaptive pacing curve:
+        // - High lag (> 150 chars): catch up in ~50ms without jerky snaps
+        // - Medium-high lag (61-150 chars): catch up in ~70-100ms
+        // - Medium lag (26-60 chars): drip 5-15 chars per frame
+        // - Low lag (11-25 chars): drip 3-5 chars per frame
+        // - Tiny lag (5-10 chars): drip 2 chars per frame
+        // - Typewriter baseline (1-4 chars): drip 1 char per frame (~60 chars/sec)
         let step = 1
-        if (lag > 250) {
+        if (lag > 150) {
+            step = Math.ceil(lag / 3)
+        } else if (lag > 60) {
             step = Math.ceil(lag / 4)
-        } else if (lag > 100) {
-            step = Math.ceil(lag / 6)
-        } else if (lag > 40) {
-            step = Math.ceil(lag / 10)
-        } else if (lag > 15) {
+        } else if (lag > 25) {
+            step = Math.ceil(lag / 5)
+        } else if (lag > 10) {
             step = 3
-        } else if (lag > 6) {
+        } else if (lag > 4) {
             step = 2
         } else {
             step = 1

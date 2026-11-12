@@ -23,9 +23,6 @@ describe('Subscription Formatters (Unit)', () => {
             expect(formatSubscriptionDisplayName('antigravity')).toBe('Google Gemini')
             expect(formatSubscriptionDisplayName('amazon-q')).toBe('Amazon Q Developer')
             expect(formatSubscriptionDisplayName('aws')).toBe('Amazon Q Developer')
-            expect(formatSubscriptionDisplayName('gitlab')).toBe('GitLab Duo')
-            expect(formatSubscriptionDisplayName('duo')).toBe('GitLab Duo')
-            expect(formatSubscriptionDisplayName('cursor')).toBe('Cursor Pro')
         })
     })
 
@@ -95,29 +92,6 @@ describe('Subscription Formatters (Unit)', () => {
                 formatSubscriptionPlan({ provider: 'aws', subscriptionType: 'amazon_q_free' })
             ).toBe('Amazon Q Free')
             expect(formatSubscriptionPlan({ provider: 'amazon-q' })).toBe('Amazon Q Pro')
-        })
-
-        it('formats GitLab Duo plans correctly', () => {
-            expect(
-                formatSubscriptionPlan({ provider: 'gitlab', subscriptionType: 'gitlab_duo_pro' })
-            ).toBe('GitLab Duo Pro')
-            expect(
-                formatSubscriptionPlan({
-                    provider: 'duo',
-                    subscriptionType: 'gitlab_duo_enterprise',
-                })
-            ).toBe('GitLab Duo Enterprise')
-            expect(formatSubscriptionPlan({ provider: 'gitlab' })).toBe('GitLab Duo Pro')
-        })
-
-        it('formats Cursor plans correctly', () => {
-            expect(
-                formatSubscriptionPlan({ provider: 'cursor', subscriptionType: 'cursor_pro' })
-            ).toBe('Cursor Pro')
-            expect(
-                formatSubscriptionPlan({ provider: 'cursor', subscriptionType: 'cursor_business' })
-            ).toBe('Cursor Business')
-            expect(formatSubscriptionPlan({ provider: 'cursor' })).toBe('Cursor Pro')
         })
     })
 

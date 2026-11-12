@@ -16,6 +16,7 @@ import {
     formatProviderName,
 } from '../constants/providers'
 import { getNextTip } from '../constants/tips'
+import { THEME } from '../theme'
 import { writeToClipboard } from '../utils/clipboard'
 import {
     groupCodeSearchResults,
@@ -45,11 +46,7 @@ import {
     DEFAULT_AUTH_PROVIDERS,
     AUTH_PROVIDER_WINDOW_SIZE,
 } from './views/auth-menu-view'
-import {
-    BtwOverlayView,
-    BTW_MAX_VISIBLE_LINES,
-    BTW_EXPANDED_MAX_VISIBLE_LINES,
-} from './views/btw-overlay-view'
+import { BtwOverlayView, BTW_EXPANDED_MAX_VISIBLE_LINES } from './views/btw-overlay-view'
 import { CodeSearchMenuView, CODE_SEARCH_WINDOW_SIZE } from './views/code-search-menu-view'
 import { CommandMenuView, WINDOW_SIZE as CMD_WINDOW_SIZE } from './views/command-menu-view'
 import { ContextMenuView } from './views/context-menu-view'
@@ -64,7 +61,7 @@ import { FileAutocompleteMenuView, FILE_WINDOW_SIZE } from './views/file-autocom
 import { FileViewMenuView } from './views/file-view-menu-view'
 import { HeaderView, type HeaderViewProps } from './views/header-view'
 import { HelpMenuView, type HelpTab, SHORTCUTS } from './views/help-menu-view'
-import { InputBarView } from './views/input-bar-view'
+import { InputBarView, wrapInputText, getWrappedCursorPosition } from './views/input-bar-view'
 import { LoginMenuView, LOGIN_OPTIONS } from './views/login-menu-view'
 import {
     MemoryViewMenuView,
@@ -164,6 +161,7 @@ export interface DifferentialAppState {
     cwd?: string
     branch?: string
     latestVersion?: string
+    mcpServersCount?: number
     announcement?: ReleaseAnnouncement | null
     showExitConfirm: boolean
     toast: { message: string; variant?: 'success' | 'error' | 'info' } | null
@@ -357,6 +355,7 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     branch?: string
     contextTokens?: number
     maxContextTokens?: number
+    mcpServersCount?: number
     announcement?: ReleaseAnnouncement | null
     models?: ModelItem[]
     tasks?: TaskItem[]
@@ -540,7 +539,10 @@ export class DifferentialApp {
     private pasteBuffer: string | null = null
     private streamRenderTimer: ReturnType<typeof setTimeout> | null = null
     private lastStreamRenderTime = 0
-    private static readonly STREAM_THROTTLE_MS = 33 // ~30fps throttle window
+    private static readonly STREAM_THROTTLE_MS = 16 // 60fps streaming throttle window
+    private toolRenderTimer: ReturnType<typeof setTimeout> | null = null
+    private lastToolRenderTime = 0
+    private static readonly TOOL_THROTTLE_MS = 33 // ~30fps max for tool output updates
     private readonly butterflowQueue: ButterflowQueue
     private renderScheduled = false
 
@@ -630,6 +632,7 @@ export class DifferentialApp {
             branch: options?.branch,
             contextTokens: options?.contextTokens || 0,
             maxContextTokens: options?.maxContextTokens,
+            mcpServersCount: options?.mcpServersCount ?? 0,
             announcement: options?.announcement,
             showExitConfirm: false,
             toast: null,
@@ -1804,6 +1807,16 @@ export class DifferentialApp {
                 return
             }
 
+            // If input is non-empty, clear current input draft (standard Unix ^C behavior)
+            if (this.state.input.length > 0) {
+                this.state.input = ''
+                this.state.cursorPos = 0
+                this.resetCommandSelection()
+                this.updateFileAutocomplete()
+                this.render()
+                return
+            }
+
             if (this.state.showExitConfirm) {
                 if (this.exitTimer) {
                     clearTimeout(this.exitTimer)
@@ -1841,12 +1854,6 @@ export class DifferentialApp {
                 return
             }
 
-            if (this.state.btwState) {
-                this.state.btwState = null
-                this.render()
-                return
-            }
-
             if (this.state.activeOverlay !== 'none') {
                 this.handleOverlayEsc()
                 return
@@ -1854,6 +1861,19 @@ export class DifferentialApp {
 
             if (this.state.isFileAutocompleteVisible) {
                 this.state.isFileAutocompleteVisible = false
+                this.render()
+                return
+            }
+
+            if (this.state.btwState) {
+                if (this.state.btwState.isFocused) {
+                    this.state.btwState.isFocused = false
+                    this.state.btwState.isExpanded = false
+                    this.state.btwScrollOffset = 0
+                    this.render()
+                    return
+                }
+                this.state.btwState = null
                 this.render()
                 return
             }
@@ -1897,16 +1917,14 @@ export class DifferentialApp {
             return
         }
 
-        // Handle Btw Side Question navigation & copy when active in prompt mode
-        if (this.state.btwState) {
-            if ((key === 'e' || key === 'E') && this.state.btwState.status !== 'loading') {
-                this.state.btwState.isExpanded = !this.state.btwState.isExpanded
+        // Handle Btw Side Question navigation when focused in reading mode
+        if (this.state.btwState?.isFocused) {
+            // Tab while focused: unfocus and collapse back to normal area
+            if (key === '\t') {
+                this.state.btwState.isFocused = false
+                this.state.btwState.isExpanded = false
+                this.state.btwScrollOffset = 0
                 this.render()
-                return
-            }
-            if ((key === 'c' || key === 'C' || key === 'y') && this.state.btwState.answer) {
-                writeToClipboard(this.state.btwState.answer)
-                this.showToast('Copied answer to clipboard.', 'success')
                 return
             }
             if (key === '\x1b[A' || key === 'k') {
@@ -1920,21 +1938,19 @@ export class DifferentialApp {
                 return
             }
             if (key === '\x1b[5~') {
-                const pageSize = this.state.btwState.isExpanded
-                    ? BTW_EXPANDED_MAX_VISIBLE_LINES
-                    : BTW_MAX_VISIBLE_LINES
+                const pageSize = BTW_EXPANDED_MAX_VISIBLE_LINES
                 this.state.btwScrollOffset = Math.max(0, this.state.btwScrollOffset - pageSize)
                 this.render()
                 return
             }
             if (key === '\x1b[6~') {
-                const pageSize = this.state.btwState.isExpanded
-                    ? BTW_EXPANDED_MAX_VISIBLE_LINES
-                    : BTW_MAX_VISIBLE_LINES
+                const pageSize = BTW_EXPANDED_MAX_VISIBLE_LINES
                 this.state.btwScrollOffset += pageSize
                 this.render()
                 return
             }
+            // Swallow all other keys while focused in btw so they are not typed into prompt
+            return
         }
 
         // Handle File Autocomplete Navigation when @ or /open query is active
@@ -2079,6 +2095,19 @@ export class DifferentialApp {
             }
         }
 
+        // Tab: Focus Btw Side Question if active and not already consumed by file or command autocomplete
+        if (
+            this.state.btwState &&
+            !this.state.btwState.isFocused &&
+            this.state.btwState.status !== 'loading' &&
+            key === '\t'
+        ) {
+            this.state.btwState.isFocused = true
+            this.state.btwState.isExpanded = true
+            this.render()
+            return
+        }
+
         // Mouse wheel / trackpad scrolling:
         // Wheel up: \x1b[<64;... or \x1b[<64M
         // Wheel down: \x1b[<65;... or \x1b[<65M
@@ -2125,15 +2154,18 @@ export class DifferentialApp {
 
         // Arrow Up: Multiline prompt line up, prompt history, or scroll message history
         if (key === '\x1b[A' || key === '\x1bOA') {
-            if (this.state.input.includes('\n')) {
-                const pre = this.state.input.slice(0, this.state.cursorPos)
-                const lines = pre.split('\n')
-                if (lines.length > 1) {
-                    const curLineLen = lines[lines.length - 1]!.length
-                    const prevLineLen = lines[lines.length - 2]!.length
-                    const targetCol = Math.min(curLineLen, prevLineLen)
-                    const newPos = this.state.cursorPos - curLineLen - 1 - (prevLineLen - targetCol)
-                    this.state.cursorPos = Math.max(0, newPos)
+            const paddingLeft = THEME.padding.paddingLeft ?? 2
+            const paddingRight = THEME.padding.paddingRight ?? 4
+            const textOffsetX = paddingLeft + `${THEME.glyphs.prompt} `.length
+            const maxInputWidth = Math.max(10, this.screen.columns - textOffsetX - paddingRight)
+            const wrapped = wrapInputText(this.state.input, maxInputWidth)
+
+            if (wrapped.length > 1) {
+                const { line, col } = getWrappedCursorPosition(wrapped, this.state.cursorPos)
+                if (line > 0) {
+                    const prevLine = wrapped[line - 1]!
+                    const targetCol = Math.min(col, prevLine.text.length)
+                    this.state.cursorPos = prevLine.startIndex + targetCol
                     this.render()
                     return
                 }
@@ -2156,18 +2188,18 @@ export class DifferentialApp {
 
         // Arrow Down: Multiline prompt line down, prompt history, or scroll message history
         if (key === '\x1b[B' || key === '\x1bOB') {
-            if (this.state.input.includes('\n')) {
-                const post = this.state.input.slice(this.state.cursorPos)
-                const postLines = post.split('\n')
-                if (postLines.length > 1) {
-                    const pre = this.state.input.slice(0, this.state.cursorPos)
-                    const preLines = pre.split('\n')
-                    const curLineLen = preLines[preLines.length - 1]!.length
-                    const nextLineLen = postLines[1]!.length
-                    const targetCol = Math.min(curLineLen, nextLineLen)
-                    const postLine0Len = postLines[0]!.length
-                    const newPos = this.state.cursorPos + postLine0Len + 1 + targetCol
-                    this.state.cursorPos = Math.min(this.state.input.length, newPos)
+            const paddingLeft = THEME.padding.paddingLeft ?? 2
+            const paddingRight = THEME.padding.paddingRight ?? 4
+            const textOffsetX = paddingLeft + `${THEME.glyphs.prompt} `.length
+            const maxInputWidth = Math.max(10, this.screen.columns - textOffsetX - paddingRight)
+            const wrapped = wrapInputText(this.state.input, maxInputWidth)
+
+            if (wrapped.length > 1) {
+                const { line, col } = getWrappedCursorPosition(wrapped, this.state.cursorPos)
+                if (line < wrapped.length - 1) {
+                    const nextLine = wrapped[line + 1]!
+                    const targetCol = Math.min(col, nextLine.text.length)
+                    this.state.cursorPos = nextLine.startIndex + targetCol
                     this.render()
                     return
                 }
@@ -2266,6 +2298,40 @@ export class DifferentialApp {
             return
         }
 
+        // Delete: \x1b[3~
+        if (key === '\x1b[3~') {
+            if (this.state.cursorPos < this.state.input.length) {
+                const before = this.state.input.slice(0, this.state.cursorPos)
+                const after = this.state.input.slice(this.state.cursorPos + 1)
+                this.state.input = before + after
+                this.resetCommandSelection()
+                this.updateFileAutocomplete()
+                this.render()
+            }
+            return
+        }
+
+        // Alt+D / Alt+Delete: Word delete forward
+        if (key === '\x1bd' || key === '\x1bD' || key === '\x1b[3;3~' || key === '\x1b[3;5~') {
+            if (this.state.cursorPos < this.state.input.length) {
+                let pos = this.state.cursorPos
+                const len = this.state.input.length
+                while (pos < len && /\s/.test(this.state.input[pos] || '')) {
+                    pos++
+                }
+                while (pos < len && !/\s/.test(this.state.input[pos] || '')) {
+                    pos++
+                }
+                const before = this.state.input.slice(0, this.state.cursorPos)
+                const after = this.state.input.slice(pos)
+                this.state.input = before + after
+                this.resetCommandSelection()
+                this.updateFileAutocomplete()
+                this.render()
+            }
+            return
+        }
+
         // Backspace: \x7f or \b
         if (key === '\x7f' || key === '\b') {
             if (this.state.cursorPos > 0) {
@@ -2343,7 +2409,13 @@ export class DifferentialApp {
         }
 
         // Ctrl+W / Alt+Backspace: Word delete backward
-        if (key === '\x17' || key === '\x1b\x7f' || key === '\x1b\b') {
+        if (
+            key === '\x17' ||
+            key === '\x1b\x7f' ||
+            key === '\x1b\b' ||
+            key === '\x1b[1;5H' ||
+            key === '\x1b[1;3H'
+        ) {
             if (this.state.cursorPos > 0) {
                 let pos = this.state.cursorPos
                 while (pos > 0 && /\s/.test(this.state.input[pos - 1] || '')) {
@@ -2363,8 +2435,15 @@ export class DifferentialApp {
             return
         }
 
-        // Alt+B / Ctrl+Left: Word jump backward
-        if (key === '\x1bb' || key === '\x1bB' || key === '\x1b[1;5D') {
+        // Alt+B / Alt+Left / Ctrl+Left: Word jump backward
+        if (
+            key === '\x1bb' ||
+            key === '\x1bB' ||
+            key === '\x1b[1;5D' ||
+            key === '\x1b[1;3D' ||
+            key === '\x1b[5D' ||
+            key === '\x1b\x1b[D'
+        ) {
             if (this.state.cursorPos > 0) {
                 let pos = this.state.cursorPos
                 while (pos > 0 && /\s/.test(this.state.input[pos - 1] || '')) {
@@ -2379,8 +2458,15 @@ export class DifferentialApp {
             return
         }
 
-        // Alt+F / Ctrl+Right: Word jump forward
-        if (key === '\x1bf' || key === '\x1bF' || key === '\x1b[1;5C') {
+        // Alt+F / Alt+Right / Ctrl+Right: Word jump forward
+        if (
+            key === '\x1bf' ||
+            key === '\x1bF' ||
+            key === '\x1b[1;5C' ||
+            key === '\x1b[1;3C' ||
+            key === '\x1b[5C' ||
+            key === '\x1b\x1b[C'
+        ) {
             if (this.state.cursorPos < this.state.input.length) {
                 let pos = this.state.cursorPos
                 const len = this.state.input.length
@@ -2697,10 +2783,7 @@ export class DifferentialApp {
                     }
                     return
                 } else {
-                    this.showToast(
-                        'Invalid reasoning level. Valid options: fast, deep (or auto, off)',
-                        'error'
-                    )
+                    this.showToast('Invalid reasoning level. Valid options: fast, deep', 'error')
                     return
                 }
             }
@@ -3000,6 +3083,8 @@ export class DifferentialApp {
                 question: args,
                 answer: '',
                 status: 'loading',
+                isExpanded: false,
+                isFocused: false,
             }
             this.state.btwScrollOffset = 0
             this.render()
@@ -3036,9 +3121,9 @@ export class DifferentialApp {
                         this.state.btwState.answer = [
                             `Cached answer for "${args}":`,
                             `• Ephemeral side answers provide context without polluting your active conversation history.`,
-                            `• Answers can be scrolled using the arrow keys or j/k navigation.`,
-                            `• Press "e" to toggle expand mode for viewing longer technical responses.`,
-                            `• Press "c" to copy the answer to your clipboard.`,
+                            `• Press Tab to enter the btw section and expand it.`,
+                            `• When focused, scroll using Up and Down arrow keys.`,
+                            `• Press Esc to return to the prompt or dismiss when collapsed.`,
                         ].join('\n')
                         this.render()
                     }
@@ -3495,6 +3580,7 @@ export class DifferentialApp {
                         this.onEffortSelectCallback(selected.value)
                     }
                     this.state.activeOverlay = 'none'
+                    this.state.overlayHistory = []
                     this.showToast(`Reasoning set to ${selected.label}.`, 'success')
                 }
                 return
@@ -3633,9 +3719,8 @@ export class DifferentialApp {
                     if (current.id === 'thinking_level') {
                         this.state.overlayHistory.push('settings')
                         this.state.activeOverlay = 'effort'
-                        const idx = REASONING_OPTIONS.findIndex(
-                            (opt) => opt.value === this.state.thinkingLevel
-                        )
+                        const normalized = normalizeReasoningLevel(this.state.thinkingLevel)
+                        const idx = REASONING_OPTIONS.findIndex((opt) => opt.value === normalized)
                         this.state.effortSelectedIndex = idx >= 0 ? idx : 0
                         this.render()
                         return
@@ -4352,6 +4437,25 @@ export class DifferentialApp {
                     this.state.activeModel = selected.value
                     this.state.modelLabel = selected.label
                     this.state.activeOverlay = 'none'
+                    this.state.overlayHistory = []
+
+                    // Auto-adjust reasoning support on model switch
+                    const support = getReasoningSupportType(selected.value)
+                    if (support === 'controllable') {
+                        if (!this.state.thinkingLevel || this.state.thinkingLevel === 'off') {
+                            this.state.thinkingLevel = 'fast'
+                            const idx = REASONING_OPTIONS.findIndex((opt) => opt.value === 'fast')
+                            if (idx >= 0) this.state.effortSelectedIndex = idx
+                            const setting = this.state.settings.find(
+                                (s) => s.id === 'thinking_level'
+                            )
+                            if (setting) setting.value = 'fast'
+                            if (this.onEffortSelectCallback) {
+                                this.onEffortSelectCallback('fast')
+                            }
+                        }
+                    }
+
                     this.showToast(`Switched active model to ${selected.label}.`, 'success')
                     if (this.onModelSelectCallback) {
                         this.onModelSelectCallback(selected)
@@ -5990,6 +6094,10 @@ export class DifferentialApp {
     }
 
     handleAbortStream(): void {
+        if (this.toolRenderTimer) {
+            clearTimeout(this.toolRenderTimer)
+            this.toolRenderTimer = null
+        }
         this.butterflowQueue.reset()
         this.flushStream()
         this.stopSpinner()
@@ -6111,8 +6219,30 @@ export class DifferentialApp {
             (m) => m.role === 'tool' && m.toolCall?.id === toolCallId
         )
         if (msg && msg.toolCall) {
-            msg.toolCall.output = (msg.toolCall.output || '') + chunk
-            this.render()
+            const prev = msg.toolCall.output || ''
+            if (prev.length > 200_000) {
+                msg.toolCall.output = prev.slice(-100_000) + chunk
+            } else {
+                msg.toolCall.output = prev + chunk
+            }
+
+            const now = performance.now()
+            const elapsed = now - this.lastToolRenderTime
+            if (elapsed >= DifferentialApp.TOOL_THROTTLE_MS) {
+                if (this.toolRenderTimer) {
+                    clearTimeout(this.toolRenderTimer)
+                    this.toolRenderTimer = null
+                }
+                this.lastToolRenderTime = now
+                this.render()
+            } else if (!this.toolRenderTimer) {
+                const waitTime = Math.max(1, DifferentialApp.TOOL_THROTTLE_MS - elapsed)
+                this.toolRenderTimer = setTimeout(() => {
+                    this.toolRenderTimer = null
+                    this.lastToolRenderTime = performance.now()
+                    this.render()
+                }, waitTime)
+            }
         }
     }
 
@@ -6120,6 +6250,10 @@ export class DifferentialApp {
         toolCallId: string,
         result: { output?: string; isError?: boolean; durationMs?: number }
     ): void {
+        if (this.toolRenderTimer) {
+            clearTimeout(this.toolRenderTimer)
+            this.toolRenderTimer = null
+        }
         const msg = this.state.messages.find(
             (m) => m.role === 'tool' && m.toolCall?.id === toolCallId
         )
@@ -6373,7 +6507,8 @@ export class DifferentialApp {
 
             let btwHeight = 0
             if (this.state.btwState) {
-                btwHeight = BtwOverlayView.getHeight(this.state.btwState)
+                const contentWidth = Math.max(10, width - (THEME.padding.paddingLeft ?? 2) - 4)
+                btwHeight = BtwOverlayView.getHeight(this.state.btwState, undefined, contentWidth)
             }
 
             // 4. Message List View (full height above interactive area)

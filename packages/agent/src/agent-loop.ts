@@ -18,7 +18,7 @@ import type { AgentEvent, AgentMessage, ToolCall, ToolResult } from '@december/s
 export function getAdaptiveThinkingLevel(
     messages: AgentMessage[],
     configuredLevel?: string
-): 'auto' | 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'fast' | 'deep' {
+): 'off' | 'fast' | 'deep' {
     const userMsgs = messages.filter((m) => m.role === 'user' && !m.isUI)
     if (userMsgs.length === 0) return 'off'
     const lastUserMsg = userMsgs[userMsgs.length - 1]
@@ -33,18 +33,11 @@ export function getAdaptiveThinkingLevel(
     if (configuredLevel === 'off') {
         return 'off'
     }
-    if (configuredLevel === 'deep' || configuredLevel === 'high') {
-        return configuredLevel as any
-    }
-    if (
-        configuredLevel === 'medium' ||
-        configuredLevel === 'low' ||
-        configuredLevel === 'minimal'
-    ) {
-        return configuredLevel as any
+    if (configuredLevel === 'deep' || configuredLevel === 'high' || configuredLevel === 'medium') {
+        return 'deep'
     }
 
-    // User-managed reasoning: default to fast without prompt inspection overhead
+    // Default to fast
     return 'fast'
 }
 
@@ -661,9 +654,7 @@ async function streamAssistantResponse(
 
                 if (attemptCount === 1) {
                     const initialStatus =
-                        effectiveThinkingLevel === 'deep' || effectiveThinkingLevel === 'high'
-                            ? 'Thinking...'
-                            : 'Working...'
+                        effectiveThinkingLevel === 'deep' ? 'Thinking...' : 'Working...'
                     eventQueue.push({ type: 'AgentStatus', message: initialStatus })
                 } else {
                     eventQueue.push({

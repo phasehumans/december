@@ -1,15 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
-    AbliterationProvider,
-    AgentRouterProvider,
-    AgnesProvider,
-    AIAndProvider,
-    AKIProvider,
-    AmbientProvider,
     ArceeProvider,
-    AurikoProvider,
-    BasetenProvider,
     CerebrasProvider,
     CohereProvider,
     DashScopeProvider,
@@ -33,6 +25,7 @@ import {
     ThinkingMachinesProvider,
     TogetherProvider,
     UpstageProvider,
+    WaferAiProvider,
     XAIProvider,
     XiaomiProvider,
     ZAIProvider,
@@ -126,11 +119,6 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
         expect(provider.id).toBe('cohere')
     })
 
-    test('instantiates AgentRouterProvider with correct ID', () => {
-        const provider = new AgentRouterProvider('dummy-key')
-        expect(provider.id).toBe('agentrouter')
-    })
-
     test('instantiates DashScopeProvider with correct ID', () => {
         const provider = new DashScopeProvider('dummy-key')
         expect(provider.id).toBe('dashscope')
@@ -191,38 +179,8 @@ describe('OpenAI-compatible Subproviders (Unit)', () => {
         expect(provider.id).toBe('zai')
     })
 
-    test('instantiates AbliterationProvider with correct ID', () => {
-        const provider = new AbliterationProvider('dummy-key')
-        expect(provider.id).toBe('abliteration')
-    })
-
-    test('instantiates AgnesProvider with correct ID', () => {
-        const provider = new AgnesProvider('dummy-key')
-        expect(provider.id).toBe('agnes')
-    })
-
-    test('instantiates AIAndProvider with correct ID', () => {
-        const provider = new AIAndProvider('dummy-key')
-        expect(provider.id).toBe('aiand')
-    })
-
-    test('instantiates AKIProvider with correct ID', () => {
-        const provider = new AKIProvider('dummy-key')
-        expect(provider.id).toBe('aki')
-    })
-
-    test('instantiates AmbientProvider with correct ID', () => {
-        const provider = new AmbientProvider('dummy-key')
-        expect(provider.id).toBe('ambient')
-    })
-
-    test('instantiates AurikoProvider with correct ID', () => {
-        const provider = new AurikoProvider('dummy-key')
-        expect(provider.id).toBe('auriko')
-    })
-
-    test('instantiates BasetenProvider with correct ID', () => {
-        const provider = new BasetenProvider('dummy-key')
-        expect(provider.id).toBe('baseten')
+    test('instantiates WaferAiProvider with correct ID', () => {
+        const provider = new WaferAiProvider('dummy-key')
+        expect(provider.id).toBe('wafer.ai')
     })
 })

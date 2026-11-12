@@ -106,7 +106,7 @@ describe('OpenAI Provider Adapter (Unit)', () => {
             { thinkingLevel: 'minimal', expected: 'low' },
             { thinkingLevel: 'low', expected: 'low' },
             { thinkingLevel: 'fast', expected: 'low' },
-            { thinkingLevel: 'medium', expected: 'medium' },
+            { thinkingLevel: 'medium', expected: 'high' },
             { thinkingLevel: 'high', expected: 'high' },
             { thinkingLevel: 'deep', expected: 'high' },
             { thinkingLevel: 'auto', expected: undefined },
@@ -133,6 +133,7 @@ describe('OpenAI Provider Adapter (Unit)', () => {
                 undefined,
                 undefined,
                 {
+                    model: 'o3-mini',
                     thinkingLevel,
                 }
             )

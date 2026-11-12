@@ -242,6 +242,7 @@ export async function handleLinkCommand(options?: { provider?: string }): Promis
         )
         console.log(`\nUsage: ${GREEN}december link <provider>${RESET}`)
         console.log(`\nSupported Providers:`)
+        console.log(`  • ${WHITE}amazon-q${RESET}  - Amazon (Q Developer)`)
         console.log(`  • ${WHITE}claude${RESET}    - Anthropic (Claude)`)
         console.log(`  • ${WHITE}copilot${RESET}   - GitHub (Copilot)`)
         console.log(`  • ${WHITE}gemini${RESET}    - Google (Antigravity)`)
@@ -255,9 +256,11 @@ export async function handleLinkCommand(options?: { provider?: string }): Promis
 export async function handleKeyCommand(options?: {
     provider?: string
     key?: string
+    baseUrl?: string
 }): Promise<void> {
     const provider = (options?.provider || '').toLowerCase().trim()
     const key = options?.key?.trim()
+    const baseUrl = options?.baseUrl?.trim()
     const BLUE = '\x1b[38;2;135;178;244m'
     const GREEN = '\x1b[38;2;110;231;183m'
     const WHITE = '\x1b[38;2;244;244;245m'
@@ -267,7 +270,7 @@ export async function handleKeyCommand(options?: {
         console.log(
             `\n${BLUE}✱${RESET}  ${WHITE}Save a BYOK (Bring Your Own Key) API Provider${RESET}`
         )
-        console.log(`\nUsage: ${GREEN}december key <provider> [api-key]${RESET}`)
+        console.log(`\nUsage: ${GREEN}december key <provider> [api-key] [--base-url <url>]${RESET}`)
         console.log(`\nExamples:`)
         console.log(`  december key openai sk-...`)
         console.log(`  december key anthropic sk-ant-...`)
@@ -275,7 +278,8 @@ export async function handleKeyCommand(options?: {
         console.log(`  december key deepseek sk-...`)
         console.log(`  december key groq gsk_...`)
         console.log(`  december key cerebras csk_...`)
-        console.log(`  december key sakana sk_...\n`)
+        console.log(`  december key wafer.ai sk-...`)
+        console.log(`  december key openai sk-... --base-url https://my-proxy.internal/v1\n`)
         return
     }
 
@@ -298,6 +302,11 @@ export async function handleKeyCommand(options?: {
     config.providers = config.providers || {}
     config.providers[provider] = finalKey
 
+    if (baseUrl) {
+        config.providerBaseUrls = config.providerBaseUrls || {}
+        config.providerBaseUrls[provider] = baseUrl
+    }
+
     if (!isSTTProvider) {
         const { getDefaultModelForProvider } = await import('../utils/models')
         const defaultModel = getDefaultModelForProvider(provider)
@@ -307,7 +316,7 @@ export async function handleKeyCommand(options?: {
         await saveConfig(config)
 
         const { fetchLiveProviderModels } = await import('../utils/models')
-        fetchLiveProviderModels(provider, finalKey).catch(() => {
+        fetchLiveProviderModels(provider, finalKey, baseUrl).catch(() => {
             // Intentionally swallowed: background live model fetch failure
         })
 
@@ -360,17 +369,10 @@ export async function handleLoginCommand(options?: {
 
     const targetProvider = (options?.provider || 'december').toLowerCase().trim()
 
-    if (
-        targetProvider === 'copilot' ||
-        targetProvider === 'github' ||
-        targetProvider === 'claude' ||
-        targetProvider === 'codex' ||
-        targetProvider === 'chatgpt' ||
-        targetProvider === 'openai' ||
-        targetProvider === 'gemini' ||
-        targetProvider === 'google' ||
-        targetProvider === 'antigravity'
-    ) {
+    const { getSubscriptionAdapter } = await import('../auth/subscriptions')
+    const adapter = getSubscriptionAdapter(targetProvider)
+
+    if (adapter) {
         const {
             loginSubscription,
             formatSubscriptionDisplayName,

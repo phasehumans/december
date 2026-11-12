@@ -113,7 +113,7 @@ async function main() {
         const targetProvider = parsedArgs.positionals[1]
         const key = parsedArgs.positionals[2]
         const { handleKeyCommand } = await import('./commands')
-        await handleKeyCommand({ provider: targetProvider, key })
+        await handleKeyCommand({ provider: targetProvider, key, baseUrl: parsedArgs.baseUrl })
         process.exit(0)
     }
 
@@ -415,13 +415,14 @@ async function main() {
 
     const isAuthenticated = !!providerConfig
     const sessionRepository = new FileSessionRepository()
-    const allSessions = await sessionRepository.listSessions()
+    let allSessions: any[] = []
     let targetSessionId = parsedArgs.sessionId
     const isExplicitResumeCmd = parsedArgs.command === 'resume'
     const isResumeFlag = Boolean(parsedArgs.resume)
     let shouldOpenSessionMenuOnBoot = false
 
     if (isExplicitResumeCmd || isResumeFlag) {
+        allSessions = await sessionRepository.listSessions()
         if (!targetSessionId && parsedArgs.positionals[1]) {
             targetSessionId = parsedArgs.positionals[1]
         }
@@ -437,6 +438,23 @@ async function main() {
                 }
             }
         }
+    } else {
+        // Hydrate session list in background to achieve sub-50ms cold boot
+        sessionRepository
+            .listSessions()
+            .then((sessions) => {
+                if (differentialApp) {
+                    differentialApp.state.sessions = sessions.map((s) => ({
+                        id: s.id,
+                        preview: s.preview || s.id,
+                        updatedAt: s.updatedAt || Date.now(),
+                        messageCount: s.messageCount,
+                    }))
+                }
+            })
+            .catch(() => {
+                // Intentionally swallowed: background session list load failure
+            })
     }
     const sessionId = targetSessionId || `session-${Date.now()}`
     const config = await loadConfig()
@@ -470,12 +488,23 @@ async function main() {
         ? path.resolve(process.cwd(), parsedArgs.scope)
         : process.cwd()
     const mcpClientManager = new toolsModule.McpClientManager({ workspaceDir: targetWorkspaceDir })
-    const mcpConfigs = await toolsModule.loadMcpConfig({ workspaceDir: targetWorkspaceDir })
-    if (Object.keys(mcpConfigs).length > 0) {
-        await mcpClientManager.connectAll(mcpConfigs).catch(() => {
-            // Intentionally swallowed: ignore MCP connection errors on startup
+    toolsModule
+        .loadMcpConfig({ workspaceDir: targetWorkspaceDir })
+        .then(async (mcpConfigs) => {
+            const mcpCount = Object.keys(mcpConfigs).length
+            if (mcpCount > 0) {
+                await mcpClientManager.connectAll(mcpConfigs).catch(() => {
+                    // Intentionally swallowed: ignore MCP connection errors on startup
+                })
+                if (differentialApp) {
+                    differentialApp.state.mcpServersCount = mcpCount
+                    differentialApp.render()
+                }
+            }
         })
-    }
+        .catch(() => {
+            // Intentionally swallowed: ignore MCP config loading errors
+        })
 
     const harness = new AgentHarness({
         llm: llm,
@@ -591,9 +620,11 @@ async function main() {
                     differentialApp.render()
                 } else if (event.type === 'AgentInterrupt') {
                     differentialApp.clearStatusMessage()
-                    differentialApp.appendStreamDelta(
-                        '\n\nInterrupted · What should December do instead?'
-                    )
+                    if (differentialApp.state.isStreaming) {
+                        differentialApp.appendStreamDelta(
+                            '\n\nInterrupted · What should December do instead?'
+                        )
+                    }
                 } else if (event.type === 'ToolCallStart') {
                     differentialApp.flushStream()
                     differentialApp.clearStatusMessage()

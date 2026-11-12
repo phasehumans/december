@@ -64,9 +64,9 @@ describe('Anthropic Provider Adapter (Unit)', () => {
 
     it('calculates thinking budget tokens correctly for thinking levels', async () => {
         const testCases = [
-            { thinkingLevel: 'minimal', expectedBudget: 1024, expectedMaxTokens: 4096 },
+            { thinkingLevel: 'fast', expectedBudget: 2048, expectedMaxTokens: 4096 },
             { thinkingLevel: 'low', expectedBudget: 2048, expectedMaxTokens: 4096 },
-            { thinkingLevel: 'medium', expectedBudget: 4096, expectedMaxTokens: 5120 },
+            { thinkingLevel: 'medium', expectedBudget: 8192, expectedMaxTokens: 9216 },
             { thinkingLevel: 'high', expectedBudget: 8192, expectedMaxTokens: 9216 },
             { thinkingLevel: 'deep', expectedBudget: 8192, expectedMaxTokens: 9216 },
         ]
@@ -103,29 +103,9 @@ describe('Anthropic Provider Adapter (Unit)', () => {
             })
             expect(capturedPayload.max_tokens).toBe(expectedMaxTokens)
         }
-
-        // Test 'auto' thinking level
-        let capturedPayload: any = null
-        const mockClient: any = {
-            messages: {
-                create: async (payload: any) => {
-                    capturedPayload = payload
-                    return (async function* () {})()
-                },
-            },
-        }
-
-        const provider = anthropicProvider(undefined, undefined, mockClient)
-        const stream = provider.stream([{ role: 'user', content: 'hello' }], undefined, undefined, {
-            thinkingLevel: 'auto',
-        })
-        for await (const _chunk of stream) {
-            // Intentionally empty: consuming stream generator to capture payload
-        }
-        expect(capturedPayload.thinking).toEqual({ type: 'adaptive' })
     })
 
-    it('disables thinking when thinkingLevel is fast or model is non-reasoning', async () => {
+    it('disables thinking when thinkingLevel is off or model is non-reasoning', async () => {
         let capturedPayload: any = null
         const mockClient: any = {
             messages: {
@@ -138,16 +118,16 @@ describe('Anthropic Provider Adapter (Unit)', () => {
 
         const provider = anthropicProvider(undefined, undefined, mockClient)
 
-        // 1. Fast thinking level disables thinking
-        const streamFast = provider.stream(
+        // 1. Off thinking level disables thinking
+        const streamOff = provider.stream(
             [{ role: 'user', content: 'test' }],
             undefined,
             undefined,
             {
-                thinkingLevel: 'fast',
+                thinkingLevel: 'off',
             }
         )
-        for await (const _ of streamFast) {
+        for await (const _ of streamOff) {
             // consume stream
         }
         expect(capturedPayload.thinking).toBeUndefined()

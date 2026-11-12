@@ -6,7 +6,10 @@ import { normalizeForOpenAI } from '../normalizer/index.ts'
 import type { LLMProvider, Message, ProviderStreamChunk, ProviderTool } from '../types.ts'
 
 export function supportsReasoningEffort(model?: string, baseURL?: string): boolean {
-    const name = (model || '').toLowerCase()
+    let name = (model || '').toLowerCase().trim()
+    if (name.includes('/')) {
+        name = name.split('/').pop() || name
+    }
 
     // Explicit non-reasoning OpenAI models
     if (
@@ -191,23 +194,27 @@ export function openaiProvider(
                     : undefined
 
             const thinkingLevel = modelOptions?.thinkingLevel
-            let reasoningEffort: 'low' | 'medium' | 'high' | undefined
-            if (thinkingLevel && thinkingLevel !== 'off' && thinkingLevel !== 'auto') {
+            let reasoningEffort: 'low' | 'high' | undefined
+            if (thinkingLevel && thinkingLevel !== 'off') {
                 if (
                     thinkingLevel === 'fast' ||
                     thinkingLevel === 'minimal' ||
                     thinkingLevel === 'low'
                 ) {
                     reasoningEffort = 'low'
-                } else if (thinkingLevel === 'medium') {
-                    reasoningEffort = 'medium'
-                } else if (thinkingLevel === 'deep' || thinkingLevel === 'high') {
+                } else if (
+                    thinkingLevel === 'deep' ||
+                    thinkingLevel === 'high' ||
+                    thinkingLevel === 'medium'
+                ) {
                     reasoningEffort = 'high'
                 }
             }
 
             const shouldSendReasoningEffort =
-                reasoningEffort && supportsReasoningEffort(modelOptions?.model, baseURL)
+                reasoningEffort &&
+                supportsModelThinking(resolvedModel) &&
+                supportsReasoningEffort(modelOptions?.model, baseURL)
 
             const createParams: any = {
                 model: resolvedModel,

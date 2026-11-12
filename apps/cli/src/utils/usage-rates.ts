@@ -554,6 +554,8 @@ export const PROVIDER_BILLING_LINKS: Record<string, string> = {
     thinkingmachines: 'https://tinker.thinkingmachines.ai/',
     tinker: 'https://tinker.thinkingmachines.ai/',
     inkling: 'https://tinker.thinkingmachines.ai/',
+    'wafer.ai': 'https://wafer.ai/',
+    wafer: 'https://wafer.ai/',
     abliteration: 'https://abliteration.ai/console',
     'abliteration-ai': 'https://abliteration.ai/console',
     abliterationai: 'https://abliteration.ai/console',
@@ -623,6 +625,8 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
     thinkingmachines: 'Thinking Machines (Tinker)',
     tinker: 'Thinking Machines (Tinker)',
     inkling: 'Thinking Machines (Tinker)',
+    'wafer.ai': 'Wafer',
+    wafer: 'Wafer',
     abliteration: 'Abliteration AI',
     'abliteration-ai': 'Abliteration AI',
     abliterationai: 'Abliteration AI',
@@ -694,6 +698,7 @@ export function inferProviderFromModel(modelName: string): string {
     if (lower.startsWith('together')) return 'together'
     if (lower.startsWith('hyperbolic')) return 'hyperbolic'
     if (lower.startsWith('fireworks') || lower.startsWith('accounts/fireworks/')) return 'fireworks'
+    if (lower.startsWith('wafer') || lower.startsWith('wafer.ai/')) return 'wafer.ai'
     if (lower.startsWith('agentrouter') || lower.startsWith('agentrouter/')) return 'agentrouter'
     if (lower.startsWith('abliterated') || lower.startsWith('abliteration/')) return 'abliteration'
     if (lower.startsWith('agnes-') || lower.startsWith('agnes/')) return 'agnes'

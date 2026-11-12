@@ -19,6 +19,7 @@ export interface ParsedCliArgs {
     model?: string
     provider?: string
     sessionId?: string
+    baseUrl?: string
     scope?: string
     cwd?: string
     turn?: number
@@ -45,6 +46,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 resume: { type: 'boolean', short: 'r' },
                 model: { type: 'string', short: 'm' },
                 provider: { type: 'string', short: 'p' },
+                'base-url': { type: 'string' },
                 'session-id': { type: 'string' },
                 scope: { type: 'string' },
                 cwd: { type: 'string' },
@@ -70,6 +72,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const isInline = false
         const model = values.model as string | undefined
         const provider = values.provider as string | undefined
+        const baseUrl = values['base-url'] as string | undefined
         const sessionId = values['session-id'] as string | undefined
         const scope = values.scope as string | undefined
         const cwd = values.cwd as string | undefined
@@ -127,6 +130,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             isInline,
             model,
             provider,
+            baseUrl,
             sessionId,
             scope,
             cwd,
@@ -184,8 +188,8 @@ Usage:
   december ask "<question>"         Ask a question about the codebase (read-only Q&A mode)
   december resume [session-id]      Resume the most recent session or specified session ID
   december auth [status|import]     Inspect active subscriptions and authentication status
-  december link <provider>          Link AI subscription (copilot, claude, chatgpt, gemini)
-  december key <provider> [key]     Save BYOK API key (openai, anthropic, openrouter, etc.)
+  december link <provider>          Link AI subscription (copilot, claude, chatgpt, gemini, etc.)
+  december key <provider> [key]     Save BYOK API key (openai, anthropic, deepseek, etc.) [--base-url <url>]
   december login [provider]         Log in to December Cloud or subscription
   december logout [provider]        Remove saved authentication credentials
   december switch [provider]        Switch active provider and restore remembered model

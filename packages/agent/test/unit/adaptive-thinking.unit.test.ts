@@ -52,13 +52,11 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
     it('honors explicitly configured reasoning levels', () => {
         const prompt = 'fix tests in packages/agent'
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'deep')).toBe('deep')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'high')).toBe('high')
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'high')).toBe('deep')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'fast')).toBe('fast')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'off')).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'auto')).toBe('fast')
-        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'medium')).toBe(
-            'medium'
-        )
+        expect(getAdaptiveThinkingLevel([{ role: 'user', content: prompt }], 'medium')).toBe('deep')
     })
 
     it('identifies simple conversational greetings for dynamic tool masking', () => {

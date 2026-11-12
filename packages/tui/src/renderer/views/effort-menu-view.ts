@@ -5,9 +5,9 @@ import { MenuFooterView } from './menu-footer-view'
 
 import type { ScreenBuffer } from '../buffer'
 
-export type ReasoningLevel = 'auto' | 'fast' | 'deep' | 'off' | 'low' | 'medium' | 'high'
+export type ReasoningLevel = 'fast' | 'deep' | 'off'
 
-export const REASONING_OPTIONS: { label: string; value: ReasoningLevel; desc: string }[] = [
+export const REASONING_OPTIONS: { label: string; value: 'fast' | 'deep'; desc: string }[] = [
     {
         label: 'Fast',
         value: 'fast',
@@ -20,18 +20,19 @@ export const REASONING_OPTIONS: { label: string; value: ReasoningLevel; desc: st
     },
 ]
 
-export function normalizeReasoningLevel(level?: string): ReasoningLevel {
+export function normalizeReasoningLevel(level?: string): 'fast' | 'deep' {
     if (!level) return 'fast'
     const l = level.toLowerCase().trim()
     if (l === 'deep' || l === 'high' || l === 'medium') return 'deep'
-    if (l === 'fast' || l === 'off' || l === 'low' || l === 'minimal') return 'fast'
-    if (l === 'auto') return 'fast'
     return 'fast'
 }
 
 export function getReasoningSupportType(model?: string): 'controllable' | 'fixed' | 'none' {
     if (!model) return 'controllable'
-    const lower = model.toLowerCase().replace(/\s+/g, '-').trim()
+    let lower = model.toLowerCase().replace(/\s+/g, '-').trim()
+    if (lower.includes('/')) {
+        lower = lower.split('/').pop() || lower
+    }
 
     // Fixed reasoning models (reasoning is built into model weights)
     if (
@@ -55,6 +56,8 @@ export function getReasoningSupportType(model?: string): 'controllable' | 'fixed
         lower.startsWith('gpt-3.5') ||
         lower.includes('gemini-1.5') ||
         lower.includes('gemini-1.0') ||
+        lower === 'gemini-pro' ||
+        lower === 'gemini-flash' ||
         (lower.includes('gemini-2.0-flash') && !lower.includes('thinking')) ||
         lower.includes('llama') ||
         lower.includes('mistral') ||

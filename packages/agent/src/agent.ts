@@ -30,7 +30,7 @@ export interface AgentConfig {
     sessionRepository?: SessionRepository
     hooks?: AgentHooks
     convertToLlm?: (messages: AgentMessage[]) => Message[]
-    thinkingLevel?: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    thinkingLevel?: 'fast' | 'deep' | 'off' | string
     steeringMode?: 'all' | 'one-at-a-time'
     followUpMode?: 'all' | 'one-at-a-time'
     workspaceDir?: string
@@ -92,7 +92,7 @@ export class Agent {
     public operations: PlatformAdapter
     public env: Map<string, string>
     public modelOptions?: Record<string, any>
-    public thinkingLevel?: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
+    public thinkingLevel?: 'fast' | 'deep' | 'off' | string
     public steeringQueue: PendingMessageQueue
     public followUpQueue: PendingMessageQueue
     public activeAbortController?: AbortController

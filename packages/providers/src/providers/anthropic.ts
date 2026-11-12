@@ -115,37 +115,27 @@ export function anthropicProvider(
                 systemPrompt || (messages[0]?.role === 'system' ? messages[0].content : undefined)
             const resolvedModel = resolveAnthropicModel(modelOptions?.model)
             const thinkingLevel = modelOptions?.thinkingLevel
-            let thinking: { type: 'enabled' | 'adaptive'; budget_tokens?: number } | undefined
+            let thinking: { type: 'enabled'; budget_tokens: number } | undefined
             let maxTokens = modelOptions?.max_tokens || 4096
 
             const supportsThinking = supportsModelThinking(resolvedModel)
 
-            if (supportsThinking) {
-                if (thinkingLevel === 'auto') {
-                    thinking = { type: 'adaptive' }
-                } else if (thinkingLevel === 'fast' || thinkingLevel === 'off') {
-                    thinking = undefined
-                } else if (thinkingLevel && thinkingLevel !== 'off') {
-                    const budgetMap: Record<string, number> = {
-                        minimal: 1024,
-                        low: 2048,
-                        medium: 4096,
-                        high: 8192,
-                        deep: 8192,
-                    }
-                    const budget = budgetMap[thinkingLevel]
-                    if (budget) {
-                        thinking = { type: 'enabled', budget_tokens: budget }
-                        maxTokens = Math.max(maxTokens, budget + 1024)
-                    }
-                }
+            if (supportsThinking && thinkingLevel !== 'off') {
+                const budget =
+                    thinkingLevel === 'deep' ||
+                    thinkingLevel === 'high' ||
+                    thinkingLevel === 'medium'
+                        ? 8192
+                        : 2048
+                thinking = { type: 'enabled', budget_tokens: budget }
+                maxTokens = Math.max(maxTokens, budget + 1024)
             }
 
             // Cross-provider message normalization
             const antMessages = normalizeForAnthropic(messages, {
                 model: resolvedModel,
                 systemPrompt: resolvedSystemPrompt,
-                thinkingEnabled: supportsThinking && thinkingLevel !== 'off',
+                thinkingEnabled: supportsThinking && thinking !== undefined,
             })
 
             // Tier 3 Prompt Caching: Mark history prefix (2 turns back) and last message
