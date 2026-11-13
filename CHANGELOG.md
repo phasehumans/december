@@ -1,3 +1,30 @@
+## [0.4.18] - 2026-11-13
+
+### Features
+
+- _(docs)_ Update landing chassis borders, restore gutter telemetry, and clean mobile layout
+- _(docs)_ Update mobile navbar, hero cta, and footer layout
+- _(docs)_ Align mobile header and footer padding and add mistral to mobile providers
+- _(tui)_ Optimize renderer with zero-allocation buffers and butterflow
+- _(agent,cli)_ Compact at 80% context capacity and default reasoning to fast
+- _(tui)_ Collapse successful command output to single line and remove pipe from expanded view
+- _(tui)_ Enable inline markdown tail stabilization by default in streaming cache
+- _(cli)_ Add amazon q, gitlab duo, and cursor pro subscription adapters
+- _(tui)_ Expose amazon q, gitlab duo, and cursor pro in ai subscriptions menu
+- _(tui)_ Sort ai subscriptions menu alphabetically from a to z
+- _(cli,tui)_ Add custom byok base url, cold boot hydration, and multiline cursor navigation
+
+### Bug Fixes
+
+- _(tui)_ Smooth continuous agent streaming and resolve block rendering lag
+- _(agent,tui)_ Prevent swallowed errors, display tool failures, and fix stuck spinner
+- _(tui)_ Fix ansi dim transition and unfade initial menu selection
+- _(agent,providers,cli)_ Prevent swallowed errors, slash ttft latency, and resolve stream freeze
+
+### Testing
+
+- _(tui)_ Update thought indicator assertion in message line cache
+
 ## [0.4.17] - 2026-11-07
 
 ### Features
@@ -14,6 +41,7 @@
 
 - _(docs)_ Remove workflows and comparison sections
 - _(docs)_ Remove intelligence section and clean /me social icons
+- _(release)_ V0.4.17
 
 ## [0.4.16] - 2026-11-02
 
