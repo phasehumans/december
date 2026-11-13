@@ -254,11 +254,11 @@ describe('models utils', () => {
             expect(models).toEqual(getProviderModels('deepseek'))
         })
 
-        it('LIVE_MODEL_CACHE_TTL_MS is configured to 48 hours', () => {
-            expect(LIVE_MODEL_CACHE_TTL_MS).toBe(48 * 60 * 60 * 1000)
+        it('LIVE_MODEL_CACHE_TTL_MS is configured to 24 hours', () => {
+            expect(LIVE_MODEL_CACHE_TTL_MS).toBe(24 * 60 * 60 * 1000)
         })
 
-        it('caches fetched models for 48 hours and avoids re-fetching within TTL', async () => {
+        it('caches fetched models for 24 hours and avoids re-fetching within TTL', async () => {
             clearProviderModelsCache()
 
             let fetchCalls = 0

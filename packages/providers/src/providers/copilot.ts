@@ -24,10 +24,16 @@ export function resolveCopilotModel(model?: string): string {
     if (name.includes('mini')) {
         return 'gpt-4o-mini'
     }
+    if (name.includes('gemini-2') || name.includes('gemini-2.0')) {
+        return 'gemini-2.0-flash'
+    }
+    if (name.includes('o1')) {
+        return 'o1'
+    }
     if (name.startsWith('gpt-4')) {
         return name
     }
-    return 'gpt-4o'
+    return name || 'gpt-4o'
 }
 
 export interface CopilotProviderOptions {

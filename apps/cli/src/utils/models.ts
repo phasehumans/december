@@ -3,9 +3,9 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { getModelContextWindow, MODEL_CATALOG } from '@december/providers'
+import { getModelContextWindow, MODEL_CATALOG, DYNAMIC_ENDPOINTS } from '@december/providers'
 
-export const LIVE_MODEL_CACHE_TTL_MS = 48 * 60 * 60 * 1000 // 48 hours
+export const LIVE_MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 export interface LiveModelCacheEntry {
     timestamp: number
@@ -134,9 +134,22 @@ function formatModelLabel(id: string): string {
 function isChatModel(id: string): boolean {
     if (!id || typeof id !== 'string') return false
     const lower = id.toLowerCase()
-    if (lower.includes('embedding')) return false
-    if (lower.startsWith('copilot-search') || lower.startsWith('exec-agent')) return false
-    if (lower.includes('compaction')) return false
+    if (
+        lower.includes('embedding') ||
+        lower.includes('bge-') ||
+        lower.includes('whisper') ||
+        lower.includes('tts-') ||
+        lower.includes('flux') ||
+        lower.includes('sdxl') ||
+        lower.includes('stable-diffusion') ||
+        lower.includes('dall-e') ||
+        lower.includes('rerank') ||
+        lower.includes('compaction') ||
+        lower.startsWith('copilot-search') ||
+        lower.startsWith('exec-agent')
+    ) {
+        return false
+    }
     return true
 }
 
@@ -185,13 +198,23 @@ export async function fetchLiveProviderModels(
         let endpoint = ''
         const headers: Record<string, string> = { Accept: 'application/json' }
 
-        if (normalized === 'google' || normalized === 'gemini') {
-            const isOAuth =
+        const isAntigravity = normalized === 'antigravity'
+        let isPostRpc = false
+        let requestBody: any = undefined
+
+        if (isAntigravity) {
+            endpoint = 'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels'
+            headers['Authorization'] = apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`
+            headers['Content-Type'] = 'application/json'
+            headers['User-Agent'] = 'google-antigravity-cli/1.0'
+            isPostRpc = true
+            requestBody = JSON.stringify({ project: 'aicode-consumers' })
+        } else if (normalized === 'google' || normalized === 'gemini') {
+            if (
                 apiKey.startsWith('ya29.') ||
                 apiKey.startsWith('Bearer ') ||
-                apiKey.includes('.') ||
-                normalized === 'gemini'
-            if (isOAuth && !apiKey.startsWith('AIza')) {
+                apiKey.includes('.')
+            ) {
                 endpoint = 'https://generativelanguage.googleapis.com/v1beta/models'
                 headers['Authorization'] = apiKey.startsWith('Bearer ')
                     ? apiKey
@@ -218,11 +241,17 @@ export async function fetchLiveProviderModels(
             headers['Authorization'] = `Bearer ${apiKey}`
             switch (normalized) {
                 case 'openai':
-                case 'codex':
-                case 'chatgpt':
                     endpoint = baseUrl
                         ? `${baseUrl.replace(/\/+$/, '')}/models`
                         : 'https://api.openai.com/v1/models'
+                    break
+                case 'codex':
+                case 'chatgpt':
+                    if (baseUrl) {
+                        endpoint = `${baseUrl.replace(/\/+$/, '')}/models`
+                    } else {
+                        return curated
+                    }
                     break
                 case 'deepseek':
                     endpoint = 'https://api.deepseek.com/models'
@@ -294,11 +323,6 @@ export async function fetchLiveProviderModels(
                 case 'moonshot-ai':
                     endpoint = 'https://api.moonshot.ai/v1/models'
                     break
-                case 'agentrouter':
-                case 'agentrouter.org':
-                    endpoint = 'https://agentrouter.org/v1/models'
-                    headers['User-Agent'] = 'claude-cli/2.1.0 (external, sdk-cli)'
-                    break
                 case 'huggingface':
                     endpoint = 'https://router.huggingface.co/v1/models'
                     break
@@ -335,55 +359,6 @@ export async function fetchLiveProviderModels(
                 case 'solar':
                     endpoint = 'https://api.upstage.ai/v1/solar/models'
                     break
-                case 'abliteration':
-                case 'abliterationai':
-                case 'abliteration-ai':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://api.abliteration.ai/v1/models'
-                    break
-                case 'agnes':
-                case 'agnesai':
-                case 'agnes-ai':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://apihub.agnes-ai.com/v1/models'
-                    break
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://api.ai-router.dev/v1/models'
-                    break
-                case 'aiand':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://api.aiand.com/v1/models'
-                    break
-                case 'aki':
-                case 'aki-io':
-                case 'akiio':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://aki.io/v1/models'
-                    break
-                case 'ambient':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://api.ambient.xyz/v1/models'
-                    break
-                case 'auriko':
-                case 'aurikoai':
-                case 'auriko-ai':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://api.auriko.ai/v1/models'
-                    break
-                case 'baseten':
-                case 'basetenco':
-                case 'baseten-co':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://inference.baseten.co/v1/models'
-                    break
                 case 'december':
                 case 'december_proxy': {
                     const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
@@ -398,12 +373,23 @@ export async function fetchLiveProviderModels(
                     headers['Editor-Plugin-Version'] = 'copilot/1.240.0'
                     headers['User-Agent'] = 'GithubCopilot/1.240.0'
                     break
-                default:
-                    if (baseUrl) {
+                default: {
+                    const dynamic =
+                        DYNAMIC_ENDPOINTS[normalized] ||
+                        DYNAMIC_ENDPOINTS[MODEL_CATALOG.aliases[normalized] || '']
+                    if (dynamic) {
+                        endpoint = baseUrl
+                            ? `${baseUrl.replace(/\/+$/, '')}/models`
+                            : `${dynamic.baseURL.replace(/\/+$/, '')}/models`
+                        if (dynamic.defaultHeaders) {
+                            Object.assign(headers, dynamic.defaultHeaders)
+                        }
+                    } else if (baseUrl) {
                         const clean = baseUrl.replace(/\/+$/, '')
                         endpoint = clean.endsWith('/v1') ? `${clean}/models` : `${clean}/v1/models`
                     }
                     break
+                }
             }
         }
 
@@ -411,10 +397,16 @@ export async function fetchLiveProviderModels(
             return curated
         }
 
-        const res = await fetchFn(endpoint, {
+        const fetchOptions: RequestInit = {
             headers,
-            signal: AbortSignal.timeout(3500),
-        })
+            signal: AbortSignal.timeout(4000),
+        }
+        if (isPostRpc) {
+            fetchOptions.method = 'POST'
+            fetchOptions.body = requestBody
+        }
+
+        const res = await fetchFn(endpoint, fetchOptions)
 
         if (!res.ok) {
             return curated
@@ -423,11 +415,30 @@ export async function fetchLiveProviderModels(
         const json = (await res.json()) as any
         const liveItems: { label: string; value: string }[] = []
 
-        if (normalized === 'google' || normalized === 'gemini') {
+        if (isAntigravity && json.models) {
+            for (const [id, m] of Object.entries(json.models as Record<string, any>)) {
+                if (!id || id.startsWith('tab_') || id.startsWith('chat_2')) continue
+                let label = m?.displayName || formatModelLabel(id)
+                let value = id
+                if (id === 'gemini-3.8-flash-tiered') {
+                    value = 'gemini-3.8-flash'
+                    label = 'Gemini 3.8 Flash (High)'
+                }
+                liveItems.push({ label, value })
+            }
+        } else if (normalized === 'google' || normalized === 'gemini') {
             const rawModels = json.models || []
             for (const m of rawModels) {
                 const id = (m.name || '').replace(/^models\//, '')
-                if (id && (id.includes('gemini') || id.includes('gemma'))) {
+                if (
+                    id &&
+                    (id.includes('gemini') || id.includes('gemma')) &&
+                    !id.includes('image') &&
+                    !id.includes('banana') &&
+                    !id.includes('deep-research') &&
+                    !id.includes('embedding') &&
+                    !id.includes('aqa')
+                ) {
                     liveItems.push({
                         label: m.displayName || formatModelLabel(id),
                         value: id,
@@ -525,7 +536,6 @@ export const getModelLabel = (value: string) => {
         'fireworks',
         'perplexity',
         'cohere',
-        'agentrouter',
         'copilot',
         'claude',
         'codex',
@@ -538,13 +548,18 @@ export const getModelLabel = (value: string) => {
         'stepfun',
         'upstage',
         'thinkingmachines',
-        'abliteration',
-        'agnes',
-        'aiand',
-        'aki',
-        'ambient',
-        'auriko',
-        'baseten',
+        'abacus',
+        'ai21',
+        'deepinfra',
+        'inception',
+        'morph',
+        'nebius',
+        'novita-ai',
+        'tencent-tokenhub',
+        'volcengine',
+        'wafer.ai',
+        'watsonx',
+        'amazon-q',
         'december_proxy',
     ]
     for (const p of allProviders) {
@@ -558,11 +573,16 @@ export const getModelLabel = (value: string) => {
 export const isValidModelForProvider = (provider: string, model?: string): boolean => {
     if (!model) return false
     const normalized = (provider || '').toLowerCase().trim()
+    if (normalized === 'december' || normalized === 'december_proxy') {
+        return model.toLowerCase() === 'december-auto'
+    }
+
+    const canonical = MODEL_CATALOG.aliases[normalized] || normalized
+
     if (normalized === 'openrouter' && (model.includes('/') || model.includes(':'))) return true
     if (
-        (normalized === 'kimi' ||
-            normalized === 'moonshot' ||
-            normalized === 'moonshoot' ||
+        (canonical === 'kimi' ||
+            canonical === 'moonshot' ||
             normalized === 'kimi-code-plan' ||
             normalized === 'kimi-code' ||
             normalized === 'kimi-code-plan-cn' ||
@@ -571,117 +591,96 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
         (model.includes('/') ||
             model.startsWith('kimi') ||
             model.startsWith('k3') ||
+            model.startsWith('moonshot') ||
             model === 'k3')
     )
         return true
-    if (normalized === 'agentrouter' && (model.includes('/') || model.includes(':'))) return true
-    if (normalized === 'arcee' && (model.includes('/') || model.includes(':'))) return true
-    if (normalized === 'meta' && (model.includes('/') || model.includes(':'))) return true
+    if (canonical === 'arcee' && (model.includes('/') || model.includes(':'))) return true
     if (
-        (normalized === 'xiaomi' || normalized === 'mimo') &&
+        canonical === 'meta' &&
+        (model.includes('/') || model.includes(':') || model.startsWith('llama'))
+    )
+        return true
+    if (
+        (canonical === 'xiaomi' || normalized === 'mimo') &&
         (model.includes('/') || model.startsWith('mimo'))
     )
         return true
     if (
-        (normalized === 'zai' || normalized === 'zhipu' || normalized === 'zhipuai') &&
+        (canonical === 'zai' || normalized === 'zhipu' || normalized === 'zhipuai') &&
         (model.includes('/') || model.startsWith('glm'))
     )
         return true
     if (
-        (normalized === 'abliteration' ||
-            normalized === 'abliterationai' ||
-            normalized === 'abliteration-ai') &&
-        (model.includes('/') || model.startsWith('abliterated'))
-    )
-        return true
-    if (
-        (normalized === 'agnes' || normalized === 'agnesai' || normalized === 'agnes-ai') &&
-        (model.includes('/') || model.startsWith('agnes'))
-    )
-        return true
-
-    if (
-        normalized === 'aiand' &&
-        (model.includes('/') ||
-            model.startsWith('deepseek') ||
-            model.startsWith('glm') ||
-            model.startsWith('kimi') ||
-            model.startsWith('gemma') ||
-            model.startsWith('gpt') ||
-            model.startsWith('motif') ||
-            model.startsWith('qwen'))
-    )
-        return true
-    if (
-        (normalized === 'aki' || normalized === 'aki-io' || normalized === 'akiio') &&
-        (model.includes('/') ||
-            model.startsWith('deepseek') ||
-            model.startsWith('glm') ||
-            model.startsWith('gemma') ||
-            model.startsWith('gpt') ||
-            model.startsWith('mistral') ||
-            model.startsWith('qwen'))
-    )
-        return true
-    if (
-        normalized === 'ambient' &&
-        (model.includes('/') ||
-            model.startsWith('ambient') ||
-            model.startsWith('glm') ||
-            model.startsWith('qwen') ||
-            model.startsWith('z-ai'))
-    )
-        return true
-    if (
-        (normalized === 'auriko' || normalized === 'aurikoai' || normalized === 'auriko-ai') &&
-        (model.includes('/') ||
-            model.startsWith('claude') ||
-            model.startsWith('deepseek') ||
-            model.startsWith('gemini') ||
-            model.startsWith('glm') ||
-            model.startsWith('grok') ||
-            model.startsWith('kimi') ||
-            model.startsWith('minimax') ||
-            model.startsWith('qwen'))
-    )
-        return true
-    if (
-        (normalized === 'baseten' || normalized === 'basetenco' || normalized === 'baseten-co') &&
-        (model.includes('/') ||
-            model.startsWith('deepseek') ||
-            model.startsWith('zai') ||
-            model.startsWith('glm') ||
-            model.startsWith('moonshot') ||
-            model.startsWith('kimi') ||
-            model.startsWith('k3') ||
-            model.startsWith('thinkingmachines') ||
-            model.startsWith('inkling') ||
-            model.startsWith('nvidia') ||
-            model.startsWith('nemotron') ||
-            model.startsWith('gpt'))
-    )
-        return true
-    if (
-        normalized === 'sakana' &&
+        canonical === 'sakana' &&
         (model.includes('/') || model.startsWith('fugu') || model.startsWith('sakana'))
     )
         return true
     if (
-        (normalized === 'thinkingmachines' ||
-            normalized === 'tinker' ||
-            normalized === 'inkling') &&
-        (model.includes('/') || model.startsWith('inkling'))
+        (canonical === 'thinkingmachines' || normalized === 'tinker' || normalized === 'inkling') &&
+        (model.includes('/') ||
+            model.startsWith('inkling') ||
+            model.startsWith('trinity') ||
+            model.startsWith('thinkingmachines'))
     )
         return true
-    if (normalized === 'december' || normalized === 'december_proxy') {
-        return model.toLowerCase() === 'december-auto'
-    }
+    if (
+        canonical === 'anthropic' &&
+        (model.startsWith('claude') ||
+            model.includes('sonnet') ||
+            model.includes('opus') ||
+            model.includes('haiku'))
+    )
+        return true
+    if (
+        canonical === 'openai' &&
+        (model.startsWith('gpt') ||
+            model.startsWith('o1') ||
+            model.startsWith('o3') ||
+            model.startsWith('o4'))
+    )
+        return true
+    if (
+        (canonical === 'google' || canonical === 'antigravity') &&
+        (model.startsWith('gemini') ||
+            model.startsWith('gemma') ||
+            model.startsWith('claude') ||
+            model.startsWith('gpt-oss'))
+    )
+        return true
+    if (canonical === 'deepseek' && model.startsWith('deepseek')) return true
+    if (
+        canonical === 'groq' &&
+        (model.startsWith('llama') ||
+            model.startsWith('qwen') ||
+            model.startsWith('deepseek') ||
+            model.startsWith('mixtral'))
+    )
+        return true
+    if (
+        canonical === 'mistral' &&
+        (model.startsWith('mistral') ||
+            model.startsWith('codestral') ||
+            model.startsWith('pixtral') ||
+            model.startsWith('ministral'))
+    )
+        return true
+    if (canonical === 'xai' && model.startsWith('grok')) return true
+    if (canonical === 'dashscope' && (model.startsWith('qwen') || model.includes('qwen')))
+        return true
+    if (canonical === 'minimax' && (model.startsWith('MiniMax') || model.startsWith('minimax')))
+        return true
+    if (canonical === 'cohere' && model.startsWith('command')) return true
+    if (canonical === 'amazon-q') return true
 
-    const models = getProviderModels(normalized)
     const lower = model.toLowerCase().trim()
+    const models = getProviderModels(provider)
     if (models.some((m) => m.value.toLowerCase() === lower)) return true
 
-    // Check cached live models for dynamic additions within 48h TTL
+    const canonicalModels = getProviderModels(canonical)
+    if (canonicalModels.some((m) => m.value.toLowerCase() === lower)) return true
+
+    // Check cached live models for dynamic additions within 24h TTL
     const now = Date.now()
     for (const [key, entry] of liveModelCache.entries()) {
         if (key.startsWith(`${normalized}:`) && now - entry.timestamp < LIVE_MODEL_CACHE_TTL_MS) {

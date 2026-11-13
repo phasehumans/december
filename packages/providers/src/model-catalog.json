@@ -1,7 +1,7 @@
 {
     "version": 1,
     "aliases": {
-        "gemini": "google",
+        "gemini": "antigravity",
         "claude": "anthropic",
         "chatgpt": "codex",
         "moonshot": "kimi",
@@ -37,7 +37,10 @@
         "github_copilot": "copilot",
         "github": "copilot",
         "kimi-code-plan": "kimi-code-plan-cn",
-        "kimi-code": "kimi-code-plan-cn"
+        "kimi-code": "kimi-code-plan-cn",
+        "amazonq": "amazon-q",
+        "aws": "amazon-q",
+        "codewhisperer": "amazon-q"
     },
     "providers": {
         "anthropic": {
@@ -231,11 +234,6 @@
                     "thinking": true
                 },
                 {
-                    "id": "gemini-2.5-flash-image",
-                    "label": "Nano Banana",
-                    "contextWindow": 32768
-                },
-                {
                     "id": "gemini-3-flash-preview",
                     "label": "Gemini 3 Flash Preview",
                     "contextWindow": 1048576,
@@ -272,32 +270,8 @@
                     "thinking": true
                 },
                 {
-                    "id": "nano-banana-pro-preview",
-                    "label": "Nano Banana Pro",
-                    "contextWindow": 131072,
-                    "thinking": true
-                },
-                {
-                    "id": "gemini-3.1-flash-image-preview",
-                    "label": "Nano Banana 2",
-                    "contextWindow": 65536,
-                    "thinking": true
-                },
-                {
-                    "id": "gemini-3.1-flash-image",
-                    "label": "Nano Banana 2",
-                    "contextWindow": 131072,
-                    "thinking": true
-                },
-                {
                     "id": "gemini-3.1-flash-lite-image",
                     "label": "Nano Banana 2 Lite",
-                    "contextWindow": 65536,
-                    "thinking": true
-                },
-                {
-                    "id": "gemini-nano-banana-2.1",
-                    "label": "Nano Banana 2.1",
                     "contextWindow": 65536,
                     "thinking": true
                 },
@@ -339,24 +313,6 @@
                     "id": "antigravity-preview-latest",
                     "label": "Antigravity Agent Preview Latest",
                     "contextWindow": 1048576
-                },
-                {
-                    "id": "deep-research-max-preview-04-2026",
-                    "label": "Deep Research Max Preview (Apr-21-2026)",
-                    "contextWindow": 131072,
-                    "thinking": true
-                },
-                {
-                    "id": "deep-research-preview-04-2026",
-                    "label": "Deep Research Preview (Apr-21-2026)",
-                    "contextWindow": 131072,
-                    "thinking": true
-                },
-                {
-                    "id": "deep-research-pro-preview-12-2025",
-                    "label": "Deep Research Pro Preview (Dec-12-2025) [Rerouted]",
-                    "contextWindow": 131072,
-                    "thinking": true
                 }
             ]
         },
@@ -1456,9 +1412,19 @@
         },
         "copilot": {
             "id": "copilot",
-            "name": "Copilot",
+            "name": "GitHub Copilot",
             "defaultModel": "gpt-4o",
             "models": [
+                {
+                    "id": "claude-3.7-sonnet",
+                    "label": "Claude 3.7 Sonnet",
+                    "contextWindow": 200000
+                },
+                {
+                    "id": "claude-3.5-sonnet",
+                    "label": "Claude 3.5 Sonnet",
+                    "contextWindow": 200000
+                },
                 {
                     "id": "gpt-4o",
                     "label": "GPT-4o",
@@ -1468,6 +1434,21 @@
                     "id": "gpt-4o-mini",
                     "label": "GPT-4o-mini",
                     "contextWindow": 128000
+                },
+                {
+                    "id": "o3-mini",
+                    "label": "o3-mini",
+                    "contextWindow": 200000
+                },
+                {
+                    "id": "o1",
+                    "label": "o1",
+                    "contextWindow": 200000
+                },
+                {
+                    "id": "gemini-2.0-flash",
+                    "label": "Gemini 2.0 Flash",
+                    "contextWindow": 1048576
                 },
                 {
                     "id": "gpt-4.1",
@@ -1509,30 +1490,48 @@
         },
         "antigravity": {
             "id": "antigravity",
-            "name": "Antigravity",
+            "name": "Google Antigravity",
             "defaultModel": "gemini-3.8-flash",
             "models": [
                 {
                     "id": "gemini-3.8-flash",
-                    "label": "Gemini 3.8 Flash",
+                    "label": "Gemini 3.8 Flash (High)",
                     "contextWindow": 1048576,
                     "thinking": true
                 },
                 {
-                    "id": "gemini-3.7-flash",
-                    "label": "Gemini 3.7 Flash",
+                    "id": "claude-sonnet-4-6",
+                    "label": "Claude Sonnet 4.6 (Thinking)",
+                    "contextWindow": 250000,
+                    "thinking": true
+                },
+                {
+                    "id": "claude-opus-4-6-thinking",
+                    "label": "Claude Opus 4.6 (Thinking)",
+                    "contextWindow": 250000,
+                    "thinking": true
+                },
+                {
+                    "id": "gpt-oss-120b-medium",
+                    "label": "GPT-OSS 120B (Medium)",
+                    "contextWindow": 131072,
+                    "thinking": true
+                },
+                {
+                    "id": "gemini-4-carbon",
+                    "label": "Gemini 4 Carbon",
                     "contextWindow": 1048576,
                     "thinking": true
                 },
                 {
-                    "id": "gemini-3.6-flash",
-                    "label": "Gemini 3.6 Flash",
+                    "id": "gemini-4-argon",
+                    "label": "Gemini 4 Argon",
                     "contextWindow": 1048576,
                     "thinking": true
                 },
                 {
-                    "id": "gemini-3.5-flash",
-                    "label": "Gemini 3.5 Flash",
+                    "id": "gemini-4-hydrogen",
+                    "label": "Gemini 4 Hydrogen",
                     "contextWindow": 1048576,
                     "thinking": true
                 },
@@ -1543,38 +1542,16 @@
                     "thinking": true
                 },
                 {
-                    "id": "gemini-3.1-pro-preview",
-                    "label": "Gemini 3.1 Pro Preview",
-                    "contextWindow": 1048576,
-                    "thinking": true
-                },
-                {
                     "id": "gemini-2.5-pro",
                     "label": "Gemini 2.5 Pro",
                     "contextWindow": 1048576,
                     "thinking": true
                 },
                 {
-                    "id": "gemini-2.5-flash",
-                    "label": "Gemini 2.5 Flash",
+                    "id": "gemini-3-flash",
+                    "label": "Gemini 3 Flash",
                     "contextWindow": 1048576,
                     "thinking": true
-                },
-                {
-                    "id": "gemini-2.5-flash-lite",
-                    "label": "Gemini 2.5 Flash Lite",
-                    "contextWindow": 1048576,
-                    "thinking": true
-                },
-                {
-                    "id": "gemini-1.5-pro",
-                    "label": "Gemini 1.5 Pro",
-                    "contextWindow": 1000000
-                },
-                {
-                    "id": "gemini-1.5-flash",
-                    "label": "Gemini 1.5 Flash",
-                    "contextWindow": 1000000
                 }
             ]
         },
@@ -2411,6 +2388,18 @@
                     "id": "qwen2.5-coder-7b-instruct",
                     "label": "Qwen 2.5 Coder 7B",
                     "contextWindow": 32768
+                }
+            ]
+        },
+        "amazon-q": {
+            "id": "amazon-q",
+            "name": "Amazon Q Developer",
+            "defaultModel": "amazon-q-developer",
+            "models": [
+                {
+                    "id": "amazon-q-developer",
+                    "label": "Amazon Q Developer",
+                    "contextWindow": 200000
                 }
             ]
         }

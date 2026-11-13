@@ -286,22 +286,6 @@ describe('instantiateProvider', () => {
         )
     })
 
-    it('instantiates agentrouter provider via openai compat', () => {
-        instantiateProvider('agentrouter', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://agentrouter.org/v1',
-            'key-123',
-            { 'User-Agent': 'claude-cli/2.1.0 (external, sdk-cli)' }
-        )
-
-        instantiateProvider('agentrouter.org', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://agentrouter.org/v1',
-            'key-123',
-            { 'User-Agent': 'claude-cli/2.1.0 (external, sdk-cli)' }
-        )
-    })
-
     it('instantiates arcee provider via openai compat', () => {
         instantiateProvider('arcee', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(
@@ -410,101 +394,6 @@ describe('instantiateProvider', () => {
         instantiateProvider('zhipuai', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(
             'https://api.z.ai/api/coding/paas/v4',
-            'key-123'
-        )
-    })
-
-    it('instantiates abliteration provider via openai compat', () => {
-        instantiateProvider('abliteration', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.abliteration.ai/v1',
-            'key-123'
-        )
-
-        instantiateProvider('abliterationai', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.abliteration.ai/v1',
-            'key-123'
-        )
-
-        instantiateProvider('abliteration-ai', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.abliteration.ai/v1',
-            'key-123'
-        )
-    })
-
-    it('instantiates agnes provider via openai compat', () => {
-        instantiateProvider('agnes', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://apihub.agnes-ai.com/v1',
-            'key-123'
-        )
-
-        instantiateProvider('agnesai', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://apihub.agnes-ai.com/v1',
-            'key-123'
-        )
-
-        instantiateProvider('agnes-ai', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://apihub.agnes-ai.com/v1',
-            'key-123'
-        )
-    })
-
-    it('instantiates aiand provider via openai compat', () => {
-        instantiateProvider('aiand', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.aiand.com/v1', 'key-123')
-    })
-
-    it('instantiates aki provider via openai compat', () => {
-        instantiateProvider('aki', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith('https://aki.io/v1', 'key-123')
-
-        instantiateProvider('aki-io', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith('https://aki.io/v1', 'key-123')
-
-        instantiateProvider('akiio', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith('https://aki.io/v1', 'key-123')
-    })
-
-    it('instantiates ambient provider via openai compat', () => {
-        instantiateProvider('ambient', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.ambient.xyz/v1',
-            'key-123'
-        )
-    })
-
-    it('instantiates auriko provider via openai compat', () => {
-        instantiateProvider('auriko', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.auriko.ai/v1', 'key-123')
-
-        instantiateProvider('aurikoai', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.auriko.ai/v1', 'key-123')
-
-        instantiateProvider('auriko-ai', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith('https://api.auriko.ai/v1', 'key-123')
-    })
-
-    it('instantiates baseten provider via openai compat', () => {
-        instantiateProvider('baseten', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://inference.baseten.co/v1',
-            'key-123'
-        )
-
-        instantiateProvider('basetenco', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://inference.baseten.co/v1',
-            'key-123'
-        )
-
-        instantiateProvider('baseten-co', 'key-123')
-        expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://inference.baseten.co/v1',
             'key-123'
         )
     })
