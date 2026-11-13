@@ -24,6 +24,8 @@ export interface MessageItem {
     timestamp?: number
     content?: string
     text?: string
+    cause?: string
+    hint?: string
     toolCall?: MessageToolCall
     durationMs?: number
     isStreaming?: boolean

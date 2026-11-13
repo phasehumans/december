@@ -215,6 +215,21 @@ describe('error-parser', () => {
             expect(JSON.stringify(parsed)).not.toContain('ℹ')
         })
 
+        test('strips Error, Action, Details, and markdown prefixes from parseError', () => {
+            const raw = '**Error:** System failure\nDetails: disk full\n**Action:** Free space'
+            const parsed = parseError(raw)
+            expect(parsed.message).not.toContain('**Error:**')
+            expect(parsed.message).not.toContain('Error:')
+            if (parsed.cause) {
+                expect(parsed.cause).not.toContain('Details:')
+                expect(parsed.cause).not.toContain('**Details:**')
+            }
+            if (parsed.hint) {
+                expect(parsed.hint).not.toContain('**Action:**')
+                expect(parsed.hint).not.toContain('Action:')
+            }
+        })
+
         test('extracts cause from originalError property', () => {
             const customErr = {
                 message: 'Failed to run tool',

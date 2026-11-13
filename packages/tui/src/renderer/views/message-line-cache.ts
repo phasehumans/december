@@ -1021,7 +1021,7 @@ export class MessageLineCache {
             const rawText = msg.content || msg.text || ''
             const parsed = parseTuiError(rawText, (msg as any).cause, (msg as any).hint)
 
-            const errorFormatted = formatMarkdownToLines(`**Error:** ${parsed.message}`, width - 2)
+            const errorFormatted = formatMarkdownToLines(parsed.message, width - 2)
             for (const line of errorFormatted) {
                 for (const seg of line) {
                     seg.style = { ...seg.style, fg: THEME.colors.error, bold: true }
@@ -1030,13 +1030,11 @@ export class MessageLineCache {
             lines.push(...errorFormatted)
 
             if (parsed.hint) {
-                const hintFormatted = formatMarkdownToLines(`**Action:** ${parsed.hint}`, width - 2)
+                const hintFormatted = formatMarkdownToLines(parsed.hint, width - 2)
                 for (const line of hintFormatted) {
                     for (const seg of line) {
-                        if (seg.text.startsWith('Action:') || seg.text.startsWith('**Action:**')) {
-                            seg.style = { ...seg.style, fg: THEME.colors.warning, bold: true }
-                        } else {
-                            seg.style = { ...seg.style, fg: THEME.colors.text, bold: false }
+                        if (!seg.style?.fg) {
+                            seg.style = { ...seg.style, fg: THEME.colors.text }
                         }
                     }
                 }
@@ -1044,7 +1042,7 @@ export class MessageLineCache {
             }
 
             if (parsed.cause) {
-                const causeFormatted = formatMarkdownToLines(`Details: ${parsed.cause}`, width - 4)
+                const causeFormatted = formatMarkdownToLines(parsed.cause, width - 4)
                 for (const line of causeFormatted) {
                     line.unshift({ text: '  ', style: {} })
                     for (const seg of line) {

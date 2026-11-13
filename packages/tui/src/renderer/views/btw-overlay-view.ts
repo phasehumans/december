@@ -123,14 +123,15 @@ export const BtwOverlayView = {
             y += 1
         } else if (state.status === 'error') {
             const rawError = state.error || 'Failed to answer side question'
-            const is401 = rawError.includes('401')
+            const cleanErr = rawError.replace(/^Error:\s*/i, '').trim()
+            const is401 = cleanErr.includes('401')
             const errLines = is401
                 ? [
-                      `Error: ${rawError}`,
+                      cleanErr,
                       'Authentication Failed: Invalid or missing API key.',
-                      'Tip: Configure your key via /login or set API keys in your environment.',
+                      'Configure your key via /login or set API keys in your environment.',
                   ]
-                : rawError.split(/\r?\n/).map((l) => (l.startsWith('Error:') ? l : `Error: ${l}`))
+                : cleanErr.split(/\r?\n/).map((l) => l.replace(/^Error:\s*/i, '').trim())
 
             for (let i = 0; i < errLines.length; i++) {
                 const errLine = errLines[i] || ''

@@ -1037,9 +1037,11 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(0)).toContain('[btw]')
-            expect(buffer.getLine(1)).toContain('Error: 401 Incorrect API key provided')
+            expect(buffer.getLine(1)).toContain('401 Incorrect API key provided')
+            expect(buffer.getLine(1)).not.toContain('Error:')
             expect(buffer.getLine(2)).toContain('Authentication Failed: Invalid or missing API key')
-            expect(buffer.getLine(3)).toContain('Tip: Configure your key via /login')
+            expect(buffer.getLine(3)).toContain('Configure your key via /login')
+            expect(buffer.getLine(3)).not.toContain('Tip:')
         })
     })
 
@@ -1144,7 +1146,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(0)).toContain('missing.ts')
-            expect(buffer.getLine(2)).toContain('Error: ENOENT: no such file or directory')
+            expect(buffer.getLine(2)).toContain('ENOENT: no such file or directory')
+            expect(buffer.getLine(2)).not.toContain('Error:')
         })
     })
 

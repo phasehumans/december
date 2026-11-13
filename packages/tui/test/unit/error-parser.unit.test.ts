@@ -46,6 +46,18 @@ describe('parseTuiError Utility (Unit)', () => {
         expect(parsed.hint).toBe('Try again')
     })
 
+    it('strips Error, Action, Details, and markdown prefixes from parsed messages', () => {
+        const parsed = parseTuiError(
+            '**Error:** Database connection failed',
+            'Details: Connection terminated by peer',
+            '**Action:** Check connection string'
+        )
+
+        expect(parsed.message).toBe('Database connection failed')
+        expect(parsed.cause).toBe('Connection terminated by peer')
+        expect(parsed.hint).toBe('Check connection string')
+    })
+
     it('parses model not available error with actionable model and switch CTA', () => {
         const raw =
             "Model 'gpt-4o' is not available or not supported on Gemini.\nPlease select an available model using `/model` or switch providers using `/switch`.\n\n404 Not Found"

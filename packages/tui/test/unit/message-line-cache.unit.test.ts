@@ -669,4 +669,30 @@ describe('MessageLineCache', () => {
         const t3Text = t3.map((l) => l.map((s) => s.text).join('')).join('\n')
         expect(t3Text).toContain('Here is the updated design for the interface.')
     })
+
+    it('renders error role messages cleanly without Error, Action, or Details prefixes', () => {
+        const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            {
+                role: 'error',
+                content:
+                    '402 Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing',
+                cause: '402 Payment Required: zero balance',
+            } as any,
+        ]
+
+        const lines = cache.getLines(messages, 100, { expandTools: false })
+        const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
+
+        expect(text).toContain('Insufficient credits in December Wallet.')
+        expect(text).toContain('Please add credits at https://app.trydecember.com/settings/billing')
+        expect(text).toContain('402 Payment Required: zero balance')
+
+        // Verify prefixes are stripped
+        expect(text).not.toContain('**Error:**')
+        expect(text).not.toContain('Error:')
+        expect(text).not.toContain('**Action:**')
+        expect(text).not.toContain('Action:')
+        expect(text).not.toContain('Details:')
+    })
 })

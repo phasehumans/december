@@ -607,16 +607,11 @@ async function main() {
                     differentialApp.state.messages.push({
                         role: 'error',
                         content: event.error,
+                        cause: event.cause,
+                        hint: event.hint,
                     })
                     differentialApp.state.scrollOffset = undefined
                     differentialApp.state.isReadingMode = false
-                    const cleanError = event.error
-                        .replace(/^Error:\s*/i, '')
-                        .split('\n')[0]
-                        ?.trim()
-                    if (cleanError) {
-                        differentialApp.showToast(cleanError.slice(0, 80), 'error')
-                    }
                     differentialApp.render()
                 } else if (event.type === 'AgentInterrupt') {
                     differentialApp.clearStatusMessage()
@@ -663,7 +658,6 @@ async function main() {
                 content: err.message || 'Execution error',
             })
             differentialApp.state.scrollOffset = undefined
-            differentialApp.showToast(`Execution error: ${err.message || 'Error'}`, 'error')
             differentialApp.render()
         } finally {
             differentialApp.finishStream()

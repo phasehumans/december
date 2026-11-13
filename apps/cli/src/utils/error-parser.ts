@@ -1394,6 +1394,23 @@ export interface ParsedErrorDetails {
 }
 
 export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDetails {
+    const raw = parseErrorRaw(err, context)
+    const stripPrefixes = (str?: string): string | undefined =>
+        str
+            ?.replace(
+                /^(?:\*\*Error:\*\*|\*\*Action:\*\*|\*\*Details:\*\*|\*\*Cause:\*\*|\*\*Hint:\*\*|Error:|Action:|Details:|Cause:|Hint:|Tip:)\s*/i,
+                ''
+            )
+            .trim()
+
+    return {
+        message: stripPrefixes(raw.message) || raw.message,
+        cause: stripPrefixes(raw.cause),
+        hint: stripPrefixes(raw.hint),
+    }
+}
+
+function parseErrorRaw(err: any, context?: ErrorParseContext): ParsedErrorDetails {
     if (!err) {
         return { message: 'Unknown error occurred.' }
     }

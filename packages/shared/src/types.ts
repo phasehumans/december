@@ -126,6 +126,8 @@ export interface AgentEndEvent {
 export interface AgentErrorEvent {
     type: 'AgentError'
     error: string
+    cause?: string
+    hint?: string
 }
 
 export interface ContextCompactedEvent {

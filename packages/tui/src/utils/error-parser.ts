@@ -5,9 +5,12 @@ export type FormattedTuiError = {
 }
 
 export function parseTuiError(message: string, cause?: string, hint?: string): FormattedTuiError {
-    const cleanCause = (c?: string) => c?.replace(/^(?:Cause|Details):\s*/i, '').trim()
-    const cleanMessage = (m: string) => m.replace(/^Error:\s*/i, '').trim()
-    const cleanHint = (h?: string) => h?.replace(/^(?:Hint|Action):\s*/i, '').trim()
+    const cleanCause = (c?: string) =>
+        c?.replace(/^(?:\*\*Details:\*\*|\*\*Cause:\*\*|Details:|Cause:)\s*/i, '').trim()
+    const cleanMessage = (m: string) =>
+        (m || '').replace(/^(?:\*\*Error:\*\*|Error:)\s*/i, '').trim()
+    const cleanHint = (h?: string) =>
+        h?.replace(/^(?:\*\*Action:\*\*|\*\*Hint:\*\*|Action:|Hint:|Tip:)\s*/i, '').trim()
 
     if (hint) {
         return {

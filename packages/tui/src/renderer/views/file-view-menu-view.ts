@@ -100,7 +100,8 @@ export const FileViewMenuView = {
                 style: { fg: THEME.colors.dim },
             })
         } else if (props.error) {
-            drawText(buffer, `Error: ${props.error}`, {
+            const cleanErr = props.error.replace(/^Error:\s*/i, '').trim()
+            drawText(buffer, cleanErr, {
                 x,
                 y,
                 style: { fg: THEME.colors.error },

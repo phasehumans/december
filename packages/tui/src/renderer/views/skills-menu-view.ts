@@ -164,7 +164,8 @@ export const SkillsMenuView = {
                     style: { fg: THEME.colors.dim },
                 })
             } else if (props.detailError) {
-                drawText(buffer, `Error: ${props.detailError}`, {
+                const cleanErr = props.detailError.replace(/^Error:\s*/i, '').trim()
+                drawText(buffer, cleanErr, {
                     x,
                     y,
                     style: { fg: THEME.colors.error },
