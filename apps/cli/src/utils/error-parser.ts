@@ -1403,8 +1403,12 @@ export function parseError(err: any, context?: ErrorParseContext): ParsedErrorDe
             )
             .trim()
 
+    const cleanedMessage = stripPrefixes(raw.message)
     return {
-        message: stripPrefixes(raw.message) || raw.message,
+        message:
+            cleanedMessage !== undefined && cleanedMessage.length > 0
+                ? cleanedMessage
+                : raw.message,
         cause: stripPrefixes(raw.cause),
         hint: stripPrefixes(raw.hint),
     }

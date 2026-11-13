@@ -216,18 +216,12 @@ describe('error-parser', () => {
         })
 
         test('strips Error, Action, Details, and markdown prefixes from parseError', () => {
-            const raw = '**Error:** System failure\nDetails: disk full\n**Action:** Free space'
+            const raw = new Error('**Error:** System failure', { cause: 'Details: disk full' })
+            ;(raw as any).hint = '**Action:** Free space'
             const parsed = parseError(raw)
-            expect(parsed.message).not.toContain('**Error:**')
-            expect(parsed.message).not.toContain('Error:')
-            if (parsed.cause) {
-                expect(parsed.cause).not.toContain('Details:')
-                expect(parsed.cause).not.toContain('**Details:**')
-            }
-            if (parsed.hint) {
-                expect(parsed.hint).not.toContain('**Action:**')
-                expect(parsed.hint).not.toContain('Action:')
-            }
+            expect(parsed.message).toBe('System failure')
+            expect(parsed.cause).toBe('disk full')
+            expect(parsed.hint).toBe('Free space')
         })
 
         test('extracts cause from originalError property', () => {
