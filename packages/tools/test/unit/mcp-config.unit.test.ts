@@ -4,7 +4,14 @@ import path from 'node:path'
 
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
 
-import { loadMcpConfig, normalizeMcpServerConfig } from '../../src/mcp/config'
+import {
+    loadMcpConfig,
+    normalizeMcpServerConfig,
+    addMcpServerConfig,
+    removeMcpServerConfig,
+    getMcpServerConfig,
+    listMcpServersWithScope,
+} from '../../src/mcp/config'
 
 describe('MCP Config Loader (Unit)', () => {
     let tempDir: string
@@ -190,5 +197,94 @@ describe('MCP Config Loader (Unit)', () => {
 
         const config = await loadMcpConfig({ homeDir, workspaceDir })
         expect(config).toEqual({})
+    })
+
+    describe('addMcpServerConfig and removeMcpServerConfig', () => {
+        it('should add global server by default and preserve existing config keys', async () => {
+            const globalDir = path.join(homeDir, '.december')
+            await fs.mkdir(globalDir, { recursive: true })
+            await fs.writeFile(
+                path.join(globalDir, 'config.json'),
+                JSON.stringify({ otherKey: 'keep-me' }),
+                'utf8'
+            )
+
+            await addMcpServerConfig(
+                'github',
+                {
+                    command: 'npx',
+                    args: ['-y', '@modelcontextprotocol/server-github'],
+                    eager: true,
+                },
+                { homeDir, workspaceDir }
+            )
+
+            const raw = JSON.parse(await fs.readFile(path.join(globalDir, 'config.json'), 'utf8'))
+            expect(raw.otherKey).toBe('keep-me')
+            expect(raw.mcpServers.github).toBeDefined()
+            expect(raw.mcpServers.github.command).toBe('npx')
+            expect(raw.mcpServers.github.eager).toBe(true)
+
+            // Test getMcpServerConfig
+            const found = await getMcpServerConfig('github', { homeDir, workspaceDir })
+            expect(found).not.toBeNull()
+            expect(found?.scope).toBe('global')
+            expect(found?.config.command).toBe('npx')
+        })
+
+        it('should add project server when scope is project', async () => {
+            await addMcpServerConfig(
+                'local-postgres',
+                {
+                    command: 'npx',
+                    args: ['-y', '@modelcontextprotocol/server-postgres'],
+                },
+                { scope: 'project', homeDir, workspaceDir }
+            )
+
+            const projPath = path.join(workspaceDir, '.december', 'mcp.json')
+            const raw = JSON.parse(await fs.readFile(projPath, 'utf8'))
+            expect(raw.mcpServers['local-postgres']).toBeDefined()
+
+            const found = await getMcpServerConfig('local-postgres', { homeDir, workspaceDir })
+            expect(found?.scope).toBe('project')
+        })
+
+        it('should list all servers with their respective scopes', async () => {
+            await addMcpServerConfig(
+                'global-srv',
+                { command: 'global-cmd' },
+                { scope: 'global', homeDir, workspaceDir }
+            )
+            await addMcpServerConfig(
+                'project-srv',
+                { command: 'proj-cmd' },
+                { scope: 'project', homeDir, workspaceDir }
+            )
+
+            const list = await listMcpServersWithScope({ homeDir, workspaceDir })
+            expect(list).toHaveLength(2)
+            const g = list.find((s) => s.name === 'global-srv')
+            const p = list.find((s) => s.name === 'project-srv')
+            expect(g?.scope).toBe('global')
+            expect(p?.scope).toBe('project')
+        })
+
+        it('should remove server from scope correctly', async () => {
+            await addMcpServerConfig(
+                'to-remove',
+                { command: 'cmd' },
+                { scope: 'global', homeDir, workspaceDir }
+            )
+            const removed = await removeMcpServerConfig('to-remove', {
+                scope: 'global',
+                homeDir,
+                workspaceDir,
+            })
+            expect(removed).toBe(true)
+
+            const check = await getMcpServerConfig('to-remove', { homeDir, workspaceDir })
+            expect(check).toBeNull()
+        })
     })
 })

@@ -119,4 +119,81 @@ describe('CLI MCP Integration (Unit)', () => {
             console.log = originalLog
         }
     })
+
+    it('should parse mcp add flags (-e, -H, --scope, --eager)', () => {
+        const parsed = parseCliArgs([
+            'mcp',
+            'add',
+            'my-api',
+            'https://api.example.com/mcp',
+            '-H',
+            'Authorization: Bearer token123',
+            '-e',
+            'FOO=bar',
+            '--eager',
+            '--scope',
+            'project',
+        ])
+        expect(parsed.command).toBe('mcp')
+        expect(parsed.positionals).toEqual(['mcp', 'add', 'my-api', 'https://api.example.com/mcp'])
+        expect(parsed.header).toEqual(['Authorization: Bearer token123'])
+        expect(parsed.env).toEqual(['FOO=bar'])
+        expect(parsed.eager).toBe(true)
+        expect(parsed.scope).toBe('project')
+    })
+
+    it('should handle mcp add, get, and remove actions', async () => {
+        const logged: string[] = []
+        const originalLog = console.log
+        console.log = (...args: any[]) => {
+            logged.push(args.join(' '))
+        }
+
+        try {
+            // 1. Add server
+            await handleMcpCommand({
+                action: 'add',
+                name: 'test-cli-srv',
+                target: 'node',
+                args: ['server.js'],
+                env: ['KEY=VAL'],
+            })
+            expect(logged.join('\n')).toContain('Added MCP server "test-cli-srv"')
+
+            logged.length = 0
+            // 2. Get server details
+            await handleMcpCommand({
+                action: 'get',
+                name: 'test-cli-srv',
+            })
+            expect(logged.join('\n')).toContain('MCP Server: test-cli-srv')
+            expect(logged.join('\n')).toContain('global')
+
+            logged.length = 0
+            // 3. Remove server
+            await handleMcpCommand({
+                action: 'remove',
+                name: 'test-cli-srv',
+            })
+            expect(logged.join('\n')).toContain('Removed MCP server "test-cli-srv"')
+        } finally {
+            console.log = originalLog
+        }
+    })
+
+    it('should correctly parse target command with quoted arguments', () => {
+        const cmdStr =
+            'npx -y @modelcontextprotocol/server-postgres "postgresql://localhost/my test db"'
+        const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g
+        const parts: string[] = []
+        let match
+        while ((match = regex.exec(cmdStr)) !== null) {
+            parts.push(match[1] || match[2] || match[0])
+        }
+
+        expect(parts[0]).toBe('npx')
+        expect(parts[1]).toBe('-y')
+        expect(parts[2]).toBe('@modelcontextprotocol/server-postgres')
+        expect(parts[3]).toBe('postgresql://localhost/my test db')
+    })
 })

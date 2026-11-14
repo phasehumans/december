@@ -1,6 +1,6 @@
 import util from 'util'
 
-import { supportsModelThinking } from '@december/providers'
+import { supportsModelThinking, getDefaultModelForProvider } from '@december/providers'
 import {
     safeParseJson,
     formatInsufficientCreditsNotice,
@@ -226,6 +226,7 @@ export const READ_ONLY_TOOLS = new Set([
     'read_file',
     'read',
     'ls',
+    'list_dir',
     'find_files',
     'grep_search',
     'web_search',
@@ -583,16 +584,10 @@ async function streamAssistantResponse(
                         summary: compactionResult.summary || '',
                     })
                 }
-                const isConversational = isSimpleConversationalTurn(agent.messages)
-
-                // Dynamic Tool Masking: omit heavy tool schemas on simple conversational turns or restrict to read-only tools
+                // In read-only mode, restrict to read-only tools. Otherwise provide all tools.
                 const activeTools = options?.readOnly
                     ? Array.from(agent.tools.values()).filter((t) => READ_ONLY_TOOLS.has(t.name))
-                    : isConversational
-                      ? Array.from(agent.tools.values()).filter((t) =>
-                            ['read_file', 'ls', 'ask_question'].includes(t.name)
-                        )
-                      : Array.from(agent.tools.values())
+                    : Array.from(agent.tools.values())
 
                 // Breakpoint 2: Tools definition array (last tool marked for caching)
                 const toolsArray = activeTools.map((t, idx) => ({
@@ -985,6 +980,12 @@ async function streamAssistantResponse(
             return { assistantMessage, toolCalls, error: 'Aborted' }
         }
 
+        let errorCode: string | undefined
+        let errorModel: string | undefined
+        let errorFallbackModel: string | undefined
+        let errorProvider: string | undefined
+        let errorHint: string | undefined
+
         if (errorMsg.includes('402') || errorMsg.toLowerCase().includes('insufficient credits')) {
             const providerId = (agent.llm?.id || '').toLowerCase().trim()
             const model = agent.modelOptions?.model
@@ -1009,10 +1010,26 @@ async function streamAssistantResponse(
             errorMsg.toLowerCase().includes('channel not found')
         ) {
             const currentModel = (agent.modelOptions as any)?.model || 'the selected model'
+            const providerId = (agent.llm?.id || '').toLowerCase().trim()
             const providerName = getCleanProviderDisplayName(agent.llm?.id, currentModel)
+            const fallback = getDefaultModelForProvider(providerId)
+            const hasFallback = Boolean(
+                fallback &&
+                currentModel !== 'the selected model' &&
+                fallback.toLowerCase() !== currentModel.toLowerCase()
+            )
+
+            errorCode = hasFallback ? 'MODEL_UNAVAILABLE' : undefined
+            errorModel = currentModel
+            errorFallbackModel = hasFallback ? fallback : undefined
+            errorProvider = providerId
+            errorHint = hasFallback
+                ? `Press [Enter] to switch to '${fallback}' & retry · [m] /model · [Esc] dismiss`
+                : 'Please select an available model using `/model` or switch providers using `/switch`.'
+
             errorMsg =
                 `Model '${currentModel}' is not available or not supported on ${providerName}.\n` +
-                `Please select an available model using \`/model\` or switch providers using \`/switch\`.\n\n` +
+                `${errorHint}\n\n` +
                 errorMsg
         } else if (
             errorMsg.includes('401') ||
@@ -1053,7 +1070,15 @@ async function streamAssistantResponse(
                 'The model took too long to respond. Please try again or switch to a faster model using `/model`.'
         }
 
-        eventQueue.push({ type: 'AgentError', error: errorMsg })
+        eventQueue.push({
+            type: 'AgentError',
+            error: errorMsg,
+            code: errorCode,
+            model: errorModel,
+            fallbackModel: errorFallbackModel,
+            provider: errorProvider,
+            hint: errorHint,
+        })
 
         if (!assistantMessage) {
             for (let i = agent.messages.length - 1; i >= 0; i--) {

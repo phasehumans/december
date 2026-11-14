@@ -12,6 +12,8 @@ export function normalizeMcpServerConfig(name: string, raw: any): McpServerConfi
 
     const disabled = Boolean(raw.disabled)
     const description = typeof raw.description === 'string' ? raw.description : undefined
+    const eager = typeof raw.eager === 'boolean' ? raw.eager : undefined
+    const scope = raw.scope === 'global' || raw.scope === 'project' ? raw.scope : undefined
 
     if (typeof raw.command === 'string' && raw.command.trim().length > 0) {
         const args = Array.isArray(raw.args) ? raw.args.map(String) : undefined
@@ -28,6 +30,8 @@ export function normalizeMcpServerConfig(name: string, raw: any): McpServerConfi
             ...(cwd ? { cwd } : {}),
             ...(disabled ? { disabled } : {}),
             ...(description ? { description } : {}),
+            ...(eager !== undefined ? { eager } : {}),
+            ...(scope ? { scope } : {}),
         }
     }
 
@@ -45,6 +49,8 @@ export function normalizeMcpServerConfig(name: string, raw: any): McpServerConfi
             ...(headers ? { headers } : {}),
             ...(disabled ? { disabled } : {}),
             ...(description ? { description } : {}),
+            ...(eager !== undefined ? { eager } : {}),
+            ...(scope ? { scope } : {}),
         }
     }
 
@@ -205,4 +211,157 @@ export function loadMcpConfigSync(options?: LoadMcpConfigOptions): Record<string
     }
 
     return merged
+}
+
+export interface McpConfigMutationOptions extends LoadMcpConfigOptions {
+    scope?: 'global' | 'project'
+}
+
+export async function addMcpServerConfig(
+    name: string,
+    config: McpServerConfig,
+    options?: McpConfigMutationOptions
+): Promise<void> {
+    const scope = options?.scope || 'global'
+    const home = options?.homeDir || process.env.HOME || process.env.USERPROFILE || os.homedir()
+    const workspace = options?.workspaceDir || process.cwd()
+
+    const targetFile =
+        scope === 'global'
+            ? options?.globalConfigPath ||
+              (process.env.DECEMBER_CONFIG_DIR
+                  ? path.join(process.env.DECEMBER_CONFIG_DIR, 'config.json')
+                  : path.join(home, '.december', 'config.json'))
+            : path.join(workspace, '.december', 'mcp.json')
+
+    await fs.mkdir(path.dirname(targetFile), { recursive: true })
+
+    let existingData: Record<string, any> = {}
+    try {
+        const raw = await fs.readFile(targetFile, 'utf8')
+        existingData = JSON.parse(raw)
+        if (!existingData || typeof existingData !== 'object' || Array.isArray(existingData)) {
+            existingData = {}
+        }
+    } catch {
+        // Intentionally swallowed: file does not exist or invalid json, start fresh
+        existingData = {}
+    }
+
+    if (!existingData.mcpServers || typeof existingData.mcpServers !== 'object') {
+        existingData.mcpServers = {}
+    }
+
+    existingData.mcpServers[name] = config
+
+    await fs.writeFile(targetFile, JSON.stringify(existingData, null, 2) + '\n', 'utf8')
+}
+
+async function removeServerFromFile(filePath: string, name: string): Promise<boolean> {
+    try {
+        const raw = await fs.readFile(filePath, 'utf8')
+        const data = JSON.parse(raw)
+        if (data?.mcpServers?.[name]) {
+            delete data.mcpServers[name]
+            await fs.writeFile(filePath, JSON.stringify(data, null, 2) + '\n', 'utf8')
+            return true
+        } else if (data?.[name]) {
+            delete data[name]
+            await fs.writeFile(filePath, JSON.stringify(data, null, 2) + '\n', 'utf8')
+            return true
+        }
+    } catch {
+        // Intentionally swallowed: file does not exist
+    }
+    return false
+}
+
+export async function removeMcpServerConfig(
+    name: string,
+    options?: McpConfigMutationOptions
+): Promise<boolean> {
+    const home = options?.homeDir || process.env.HOME || process.env.USERPROFILE || os.homedir()
+    const workspace = options?.workspaceDir || process.cwd()
+
+    const globalConfigPath =
+        options?.globalConfigPath ||
+        (process.env.DECEMBER_CONFIG_DIR
+            ? path.join(process.env.DECEMBER_CONFIG_DIR, 'config.json')
+            : path.join(home, '.december', 'config.json'))
+    const projectMcpPath = path.join(workspace, '.december', 'mcp.json')
+
+    if (options?.scope === 'global') {
+        return removeServerFromFile(globalConfigPath, name)
+    }
+
+    if (options?.scope === 'project') {
+        return removeServerFromFile(projectMcpPath, name)
+    }
+
+    const removedFromProject = await removeServerFromFile(projectMcpPath, name)
+    if (removedFromProject) return true
+
+    return removeServerFromFile(globalConfigPath, name)
+}
+
+export async function getMcpServerConfig(
+    name: string,
+    options?: LoadMcpConfigOptions
+): Promise<{ name: string; config: McpServerConfig; scope: 'global' | 'project' } | null> {
+    const list = await listMcpServersWithScope(options)
+    const found = list.find((s) => s.name === name)
+    return found || null
+}
+
+export async function listMcpServersWithScope(
+    options?: LoadMcpConfigOptions
+): Promise<Array<{ name: string; config: McpServerConfig; scope: 'global' | 'project' }>> {
+    const home = options?.homeDir || process.env.HOME || process.env.USERPROFILE || os.homedir()
+    const workspace = options?.workspaceDir || process.cwd()
+
+    const results: Array<{ name: string; config: McpServerConfig; scope: 'global' | 'project' }> =
+        []
+
+    // 1. Global config
+    const globalConfigPath =
+        options?.globalConfigPath ||
+        (process.env.DECEMBER_CONFIG_DIR
+            ? path.join(process.env.DECEMBER_CONFIG_DIR, 'config.json')
+            : path.join(home, '.december', 'config.json'))
+
+    try {
+        const globalRaw = await fs.readFile(globalConfigPath, 'utf8')
+        const globalJson = JSON.parse(globalRaw)
+        const globalServers = globalJson?.mcpServers || globalJson?.mcp
+        if (globalServers && typeof globalServers === 'object') {
+            for (const [key, val] of Object.entries(globalServers)) {
+                const norm = normalizeMcpServerConfig(key, val)
+                if (norm) {
+                    results.push({ name: key, config: norm, scope: 'global' })
+                }
+            }
+        }
+    } catch {
+        // Intentionally swallowed: optional
+    }
+
+    // 2. Project config
+    const projectMcpPath = path.join(workspace, '.december', 'mcp.json')
+    try {
+        const projectRaw = await fs.readFile(projectMcpPath, 'utf8')
+        const projectConfigs = parseMcpJsonContent(projectRaw)
+        for (const [key, val] of Object.entries(projectConfigs)) {
+            // If already present in global, project overrides it in final resolution or shows as project
+            const idx = results.findIndex((r) => r.name === key)
+            if (idx >= 0) {
+                results[idx] = { name: key, config: val, scope: 'project' }
+            } else {
+                results.push({ name: key, config: val, scope: 'project' })
+            }
+        }
+    } catch {
+        // Intentionally swallowed: optional
+    }
+
+    return results
 }

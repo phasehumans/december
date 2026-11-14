@@ -2149,6 +2149,140 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('handles /mcp command to open MCP overlay, inspect details, navigate and exit', async () => {
+        const app = new DifferentialApp({
+            onLoadMcpServers: async () => [
+                {
+                    name: 'postgres',
+                    scope: 'project',
+                    transport: 'stdio',
+                    status: 'connected',
+                    target: 'npx server-postgres',
+                    eager: true,
+                    tools: [{ name: 'mcp_postgres_query', description: 'Run query' }],
+                },
+                {
+                    name: 'sentry',
+                    scope: 'global',
+                    transport: 'http',
+                    status: 'connected',
+                    target: 'https://mcp.sentry.io',
+                    tools: [],
+                },
+            ],
+        })
+        app.start()
+
+        // 1. Submit /mcp command
+        app.state.input = '/mcp'
+        app.handleKey('\r')
+        // Wait for async loadMcpServers
+        await new Promise((resolve) => setTimeout(resolve, 20))
+
+        expect(app.state.activeOverlay as string).toBe('mcp')
+        expect(app.state.mcpServersList).toHaveLength(2)
+        expect(app.state.mcpSelectedIndex).toBe(0)
+        expect(app.state.mcpIsDetailView).toBe(false)
+
+        // 2. Down arrow navigates to second server
+        app.handleKey('\x1b[B')
+        expect(app.state.mcpSelectedIndex).toBe(1)
+
+        // 3. Up arrow navigates back to first server
+        app.handleKey('\x1b[A')
+        expect(app.state.mcpSelectedIndex).toBe(0)
+
+        // 4. Enter opens detail view
+        app.handleKey('\r')
+        expect(app.state.mcpIsDetailView).toBe(true)
+
+        // 5. Esc exits detail view back to list
+        app.handleKey('\x1b')
+        expect(app.state.mcpIsDetailView).toBe(false)
+        expect(app.state.activeOverlay as string).toBe('mcp')
+
+        // 6. Esc again closes overlay
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay as string).toBe('none')
+
+        app.stop()
+    })
+
+    it('handles interactive MCP server actions: toggle start/stop, restart, add wizard, and remove', async () => {
+        let toggledServer = ''
+        let restartedServer = ''
+        let removedServer = ''
+        let addedServerData: any = null
+
+        const app = new DifferentialApp({
+            onLoadMcpServers: async () => [
+                {
+                    name: 'postgres',
+                    scope: 'project',
+                    transport: 'stdio',
+                    status: 'connected',
+                    target: 'npx server-postgres',
+                },
+            ],
+            onToggleMcpServer: async (name) => {
+                toggledServer = name
+            },
+            onRestartMcpServer: async (name) => {
+                restartedServer = name
+            },
+            onRemoveMcpServer: async (name, scope) => {
+                removedServer = `${name}:${scope}`
+            },
+            onAddMcpServer: async (data) => {
+                addedServerData = data
+            },
+        })
+        app.start()
+
+        // Open MCP view
+        await app.openMcpView()
+        expect(app.state.activeOverlay as string).toBe('mcp')
+        expect(app.state.mcpServersList).toHaveLength(1)
+
+        // 1. Space toggles start/stop
+        app.handleKey(' ')
+        expect(toggledServer).toBe('postgres')
+
+        // 2. 'r' restarts server
+        app.handleKey('r')
+        expect(restartedServer).toBe('postgres')
+
+        // 3. 'a' opens Add Preset mode
+        app.handleKey('a')
+        expect(app.state.mcpMode).toBe('add_preset')
+        expect(app.state.mcpPresetSelectedIndex).toBe(0)
+
+        // Press Enter on first preset (GitHub) to populate custom form
+        app.handleKey('\r')
+        expect(app.state.mcpMode).toBe('add_custom')
+        expect(app.state.mcpCustomName).toBe('github')
+        expect(app.state.mcpCustomCommand).toContain('server-github')
+
+        // Press Enter on custom form to submit
+        app.handleKey('\r')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(addedServerData).toBeDefined()
+        expect(addedServerData.name).toBe('github')
+        expect(app.state.mcpMode).toBe('list')
+
+        // 4. 'd' triggers delete confirmation prompt
+        app.handleKey('d')
+        expect(app.state.mcpConfirmDeleteName).toBe('postgres')
+
+        // Press 'y' to confirm delete
+        app.handleKey('y')
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(removedServer).toBe('postgres:project')
+        expect(app.state.mcpConfirmDeleteName).toBeNull()
+
+        app.stop()
+    })
+
     it('handles direct shell commands (!<cmd>) and invokes onExecuteDirectCommand', async () => {
         let executedShellCmd = ''
         const app = new DifferentialApp({
@@ -3255,6 +3389,61 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.requestRender()
         // In test mode requestRender delegates synchronously to render
         expect(renderCount).toBe(1)
+
+        app.stop()
+    })
+
+    it('handles 1-keystroke model fallback on Enter, dismissal on Esc, and opening model menu on m', () => {
+        let fallbackResult: { fallbackModel: string; failedModel: string; prompt: string } | null =
+            null
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onModelFallback: (fallbackModel, failedModel, prompt) => {
+                fallbackResult = { fallbackModel, failedModel, prompt }
+            },
+        })
+        app.start()
+
+        // 1. Set pending model fallback
+        app.setPendingModelFallback({
+            provider: 'openai',
+            failedModel: 'gpt-5-preview',
+            fallbackModel: 'gpt-4o',
+            prompt: 'Explain quantum computing',
+        })
+        expect(app.state.pendingModelFallback).toBeDefined()
+
+        // 2. Press Enter with empty input -> triggers fallback callback
+        app.handleKey('\r')
+        expect(fallbackResult).toEqual({
+            fallbackModel: 'gpt-4o',
+            failedModel: 'gpt-5-preview',
+            prompt: 'Explain quantum computing',
+        })
+        expect(app.state.pendingModelFallback).toBeUndefined()
+
+        // 3. Set pending model fallback again and dismiss on Esc
+        app.setPendingModelFallback({
+            provider: 'openai',
+            failedModel: 'gpt-5-preview',
+            fallbackModel: 'gpt-4o',
+            prompt: 'Explain quantum computing',
+        })
+        app.handleKey('\x1b')
+        expect(app.state.pendingModelFallback).toBeUndefined()
+
+        // 4. Set pending model fallback again and press m -> opens /model overlay
+        app.setPendingModelFallback({
+            provider: 'openai',
+            failedModel: 'gpt-5-preview',
+            fallbackModel: 'gpt-4o',
+            prompt: 'Explain quantum computing',
+        })
+        app.handleKey('m')
+        expect(app.state.pendingModelFallback).toBeUndefined()
+        expect(app.state.activeOverlay).toBe('model')
 
         app.stop()
     })

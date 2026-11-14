@@ -301,6 +301,13 @@ function streamFallbackGrep(
 export const localOperations: PlatformAdapter = {
     bash: {
         exec: async (command, cwdOrOnData, options = {}) => {
+            if (!command || typeof command !== 'string' || !command.trim()) {
+                return {
+                    exitCode: 1,
+                    output: 'Error: The command argument must be a non-empty string.',
+                    taskId: undefined,
+                }
+            }
             const targetCwd = typeof cwdOrOnData === 'string' ? cwdOrOnData : getScopedCwd()
             const actualOptions: BashExecOptions =
                 typeof cwdOrOnData === 'function'

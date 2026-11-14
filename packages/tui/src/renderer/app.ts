@@ -64,6 +64,12 @@ import { HelpMenuView, type HelpTab, SHORTCUTS } from './views/help-menu-view'
 import { InputBarView, wrapInputText, getWrappedCursorPosition } from './views/input-bar-view'
 import { LoginMenuView, LOGIN_OPTIONS } from './views/login-menu-view'
 import {
+    McpMenuView,
+    type McpServerMenuItem,
+    type McpViewMode,
+    MCP_PRESET_TEMPLATES,
+} from './views/mcp-menu-view'
+import {
     MemoryViewMenuView,
     MEMORY_CATEGORIES,
     type MemoryTab,
@@ -132,6 +138,14 @@ export type OverlayType =
     | 'plan_approve'
     | 'auth'
     | 'switch'
+    | 'mcp'
+
+export interface PendingModelFallback {
+    provider: string
+    failedModel: string
+    fallbackModel: string
+    prompt: string
+}
 
 export interface DifferentialAppState {
     input: string
@@ -335,6 +349,24 @@ export interface DifferentialAppState {
     switchSelectedIndex: number
     switchConfirmDeleteValue: string | null
 
+    // MCP view state
+    mcpServersList: McpServerMenuItem[]
+    mcpSelectedIndex: number
+    mcpWindowStart: number
+    mcpIsDetailView: boolean
+    mcpScrollOffset: number
+    mcpMode: McpViewMode
+    mcpConfirmDeleteName: string | null
+    mcpPresetSelectedIndex: number
+    mcpCustomName: string
+    mcpCustomCommand: string
+    mcpCustomScope: 'global' | 'project'
+    mcpCustomEager: boolean
+    mcpCustomEnv: string
+    mcpCustomActiveField: number
+
+    pendingModelFallback?: PendingModelFallback
+
     sessionId?: string
     configPath?: string
 }
@@ -356,6 +388,18 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     contextTokens?: number
     maxContextTokens?: number
     mcpServersCount?: number
+    onLoadMcpServers?: () => Promise<McpServerMenuItem[]>
+    onToggleMcpServer?: (name: string) => Promise<void>
+    onRestartMcpServer?: (name: string) => Promise<void>
+    onRemoveMcpServer?: (name: string, scope: 'global' | 'project') => Promise<void>
+    onAddMcpServer?: (data: {
+        name: string
+        target: string
+        scope: 'global' | 'project'
+        eager?: boolean
+        env?: Record<string, string>
+    }) => Promise<void>
+    onModelFallback?: (fallbackModel: string, failedModel: string, prompt: string) => void
     announcement?: ReleaseAnnouncement | null
     models?: ModelItem[]
     tasks?: TaskItem[]
@@ -789,6 +833,21 @@ export class DifferentialApp {
             switchItems: options?.switchItems ? [...options.switchItems] : [],
             switchSelectedIndex: 0,
             switchConfirmDeleteValue: null,
+
+            mcpServersList: [],
+            mcpSelectedIndex: 0,
+            mcpWindowStart: 0,
+            mcpIsDetailView: false,
+            mcpScrollOffset: 0,
+            mcpMode: 'list',
+            mcpConfirmDeleteName: null,
+            mcpPresetSelectedIndex: 0,
+            mcpCustomName: '',
+            mcpCustomCommand: '',
+            mcpCustomScope: 'global',
+            mcpCustomEager: false,
+            mcpCustomEnv: '',
+            mcpCustomActiveField: 0,
         }
 
         this.refreshModelsForProvider(this.state.selectedProvider)
@@ -1257,6 +1316,44 @@ export class DifferentialApp {
             this.state.skillsDetailError = e?.message || 'Failed to read skill documentation file.'
             this.state.skillsDetailLines = []
         }
+        this.render()
+    }
+
+    async openMcpView(): Promise<void> {
+        this.state.activeOverlay = 'mcp'
+        this.state.mcpSelectedIndex = 0
+        this.state.mcpWindowStart = 0
+        this.state.mcpIsDetailView = false
+        this.state.mcpScrollOffset = 0
+        this.state.mcpMode = 'list'
+        this.state.mcpConfirmDeleteName = null
+        this.state.mcpPresetSelectedIndex = 0
+        this.state.mcpCustomName = ''
+        this.state.mcpCustomCommand = ''
+        this.state.mcpCustomScope = 'global'
+        this.state.mcpCustomEager = false
+        this.state.mcpCustomEnv = ''
+        this.state.mcpCustomActiveField = 0
+        this.render()
+        await this.loadMcpServers()
+    }
+
+    async loadMcpServers(): Promise<void> {
+        if (this.options?.onLoadMcpServers) {
+            try {
+                this.state.mcpServersList = await this.options.onLoadMcpServers()
+                this.state.mcpServersCount = this.state.mcpServersList.filter(
+                    (s) => s.status === 'connected'
+                ).length
+                this.render()
+            } catch {
+                // Intentionally swallowed: ignore mcp load error
+            }
+        }
+    }
+
+    setPendingModelFallback(fallback?: PendingModelFallback): void {
+        this.state.pendingModelFallback = fallback
         this.render()
     }
 
@@ -1854,6 +1951,12 @@ export class DifferentialApp {
                 return
             }
 
+            if (this.state.pendingModelFallback) {
+                this.state.pendingModelFallback = undefined
+                this.render()
+                return
+            }
+
             if (this.state.activeOverlay !== 'none') {
                 this.handleOverlayEsc()
                 return
@@ -1909,6 +2012,32 @@ export class DifferentialApp {
                 return
             }
             return
+        }
+
+        // Handle 1-keystroke model fallback retry/cancel/switch
+        if (this.state.pendingModelFallback) {
+            const fallback = this.state.pendingModelFallback
+            if (key === '\r' || key === '\n') {
+                this.state.pendingModelFallback = undefined
+                this.options.onModelFallback?.(
+                    fallback.fallbackModel,
+                    fallback.failedModel,
+                    fallback.prompt
+                )
+                this.render()
+                return
+            }
+            if (key === '\x1b') {
+                this.state.pendingModelFallback = undefined
+                this.render()
+                return
+            }
+            if (key === 'm' || key === 'M') {
+                this.state.pendingModelFallback = undefined
+                this.state.activeOverlay = 'model'
+                this.render()
+                return
+            }
         }
 
         // Handle Active Overlay Key Events
@@ -2970,6 +3099,13 @@ export class DifferentialApp {
             return
         }
 
+        if (cmd === 'mcp') {
+            this.openMcpView().catch(() => {
+                // Intentionally swallowed: openMcpView error
+            })
+            return
+        }
+
         if (cmd === 'undo') {
             if (this.onUndoCallback) {
                 this.onUndoCallback()
@@ -3423,6 +3559,33 @@ export class DifferentialApp {
 
         if (overlay === 'plan_approve') {
             this.resolvePlanApproval('reject')
+            return
+        }
+
+        if (overlay === 'mcp') {
+            if (this.state.mcpConfirmDeleteName) {
+                this.state.mcpConfirmDeleteName = null
+                this.render()
+                return
+            }
+            if (this.state.mcpMode === 'add_custom') {
+                this.state.mcpMode = 'add_preset'
+                this.render()
+                return
+            }
+            if (this.state.mcpMode === 'add_preset') {
+                this.state.mcpMode = 'list'
+                this.render()
+                return
+            }
+            if (this.state.mcpIsDetailView || this.state.mcpMode === 'detail') {
+                this.state.mcpIsDetailView = false
+                this.state.mcpMode = 'list'
+                this.state.mcpScrollOffset = 0
+                this.render()
+                return
+            }
+            this.closeOrPopOverlay()
             return
         }
 
@@ -4352,6 +4515,377 @@ export class DifferentialApp {
                     }
                     this.state.activeOverlay = 'none'
                     this.showToast(`Switched to ${currentItem.label}.`, 'success')
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\x1b') {
+                this.closeOrPopOverlay()
+                return
+            }
+
+            return
+        }
+
+        if (overlay === 'mcp') {
+            const servers = this.state.mcpServersList
+            const curServer = servers[this.state.mcpSelectedIndex]
+
+            // 1. Delete confirmation active
+            if (this.state.mcpConfirmDeleteName) {
+                if (key === 'y' || key === 'Y') {
+                    const toRemove = servers.find((s) => s.name === this.state.mcpConfirmDeleteName)
+                    this.state.mcpConfirmDeleteName = null
+                    if (toRemove && this.options?.onRemoveMcpServer) {
+                        this.options
+                            .onRemoveMcpServer(toRemove.name, toRemove.scope)
+                            .then(async () => {
+                                this.showToast(`Removed MCP server "${toRemove.name}".`, 'info')
+                                this.state.mcpIsDetailView = false
+                                this.state.mcpMode = 'list'
+                                await this.loadMcpServers()
+                            })
+                            .catch((err: any) => {
+                                this.showToast(
+                                    `Failed to remove server: ${err?.message || err}`,
+                                    'error'
+                                )
+                            })
+                    }
+                    this.render()
+                    return
+                }
+                if (key === 'n' || key === 'N' || key === '\x1b') {
+                    this.state.mcpConfirmDeleteName = null
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            // 2. Add Preset mode
+            if (this.state.mcpMode === 'add_preset') {
+                if (key === '\x1b[A' || key === 'k') {
+                    this.state.mcpPresetSelectedIndex = Math.max(
+                        0,
+                        this.state.mcpPresetSelectedIndex - 1
+                    )
+                    this.render()
+                    return
+                }
+                if (key === '\x1b[B' || key === 'j') {
+                    this.state.mcpPresetSelectedIndex = Math.min(
+                        MCP_PRESET_TEMPLATES.length - 1,
+                        this.state.mcpPresetSelectedIndex + 1
+                    )
+                    this.render()
+                    return
+                }
+                if (key === 'c' || key === 'C') {
+                    this.state.mcpMode = 'add_custom'
+                    this.state.mcpCustomName = ''
+                    this.state.mcpCustomCommand = ''
+                    this.state.mcpCustomScope = 'global'
+                    this.state.mcpCustomEager = false
+                    this.state.mcpCustomEnv = ''
+                    this.state.mcpCustomActiveField = 0
+                    this.render()
+                    return
+                }
+                if (key === '\r' || key === '\n') {
+                    const template = MCP_PRESET_TEMPLATES[this.state.mcpPresetSelectedIndex]
+                    if (template) {
+                        this.state.mcpMode = 'add_custom'
+                        this.state.mcpCustomName = template.name
+                        this.state.mcpCustomCommand =
+                            template.command + (template.args ? ' ' + template.args.join(' ') : '')
+                        this.state.mcpCustomScope = template.defaultScope
+                        this.state.mcpCustomEager = false
+                        this.state.mcpCustomEnv = template.envHint ? `${template.envHint}=` : ''
+                        this.state.mcpCustomActiveField = 0
+                        this.render()
+                    }
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.mcpMode = 'list'
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            // 3. Add Custom mode
+            if (this.state.mcpMode === 'add_custom') {
+                if (key === '\t' || key === '\x1b[B') {
+                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField + 1) % 6
+                    this.render()
+                    return
+                }
+                if (key === '\x1b[Z' || key === '\x1b[A') {
+                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField - 1 + 6) % 6
+                    this.render()
+                    return
+                }
+                if (key === ' ') {
+                    if (this.state.mcpCustomActiveField === 2) {
+                        this.state.mcpCustomScope =
+                            this.state.mcpCustomScope === 'global' ? 'project' : 'global'
+                        this.render()
+                        return
+                    }
+                    if (this.state.mcpCustomActiveField === 3) {
+                        this.state.mcpCustomEager = !this.state.mcpCustomEager
+                        this.render()
+                        return
+                    }
+                    if (this.state.mcpCustomActiveField === 0) {
+                        this.state.mcpCustomName += ' '
+                        this.render()
+                        return
+                    }
+                    if (this.state.mcpCustomActiveField === 1) {
+                        this.state.mcpCustomCommand += ' '
+                        this.render()
+                        return
+                    }
+                    if (this.state.mcpCustomActiveField === 4) {
+                        this.state.mcpCustomEnv += ' '
+                        this.render()
+                        return
+                    }
+                    return
+                }
+                if (key === '\r' || key === '\n') {
+                    const name = this.state.mcpCustomName.trim()
+                    const target = this.state.mcpCustomCommand.trim()
+                    if (!name || !target) {
+                        this.showToast('Server name and command/URL are required.', 'error')
+                        return
+                    }
+
+                    let env: Record<string, string> | undefined
+                    if (this.state.mcpCustomEnv.trim()) {
+                        env = {}
+                        const pairs = this.state.mcpCustomEnv.split(',')
+                        for (const pair of pairs) {
+                            const [k, v] = pair.split('=')
+                            if (k && v !== undefined) env[k.trim()] = v.trim()
+                        }
+                    }
+
+                    if (this.options?.onAddMcpServer) {
+                        this.options
+                            .onAddMcpServer({
+                                name,
+                                target,
+                                scope: this.state.mcpCustomScope,
+                                eager: this.state.mcpCustomEager,
+                                env,
+                            })
+                            .then(async () => {
+                                this.showToast(`Added MCP server "${name}".`, 'info')
+                                this.state.mcpMode = 'list'
+                                await this.loadMcpServers()
+                            })
+                            .catch((err: any) => {
+                                this.showToast(
+                                    `Failed to add server: ${err?.message || err}`,
+                                    'error'
+                                )
+                            })
+                    } else {
+                        this.state.mcpMode = 'list'
+                        this.render()
+                    }
+                    return
+                }
+                if (key === '\x7f' || key === '\b') {
+                    if (this.state.mcpCustomActiveField === 0) {
+                        this.state.mcpCustomName = this.state.mcpCustomName.slice(0, -1)
+                    } else if (this.state.mcpCustomActiveField === 1) {
+                        this.state.mcpCustomCommand = this.state.mcpCustomCommand.slice(0, -1)
+                    } else if (this.state.mcpCustomActiveField === 4) {
+                        this.state.mcpCustomEnv = this.state.mcpCustomEnv.slice(0, -1)
+                    }
+                    this.render()
+                    return
+                }
+                if (key.length === 1 && key >= ' ') {
+                    if (this.state.mcpCustomActiveField === 0) {
+                        this.state.mcpCustomName += key
+                    } else if (this.state.mcpCustomActiveField === 1) {
+                        this.state.mcpCustomCommand += key
+                    } else if (this.state.mcpCustomActiveField === 4) {
+                        this.state.mcpCustomEnv += key
+                    }
+                    this.render()
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.mcpMode = 'add_preset'
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            // 4. Detail mode
+            if (this.state.mcpIsDetailView || this.state.mcpMode === 'detail') {
+                if (key === '\x1b[A' || key === 'k') {
+                    this.state.mcpScrollOffset = Math.max(0, this.state.mcpScrollOffset - 1)
+                    this.render()
+                    return
+                }
+                if (key === '\x1b[B' || key === 'j') {
+                    this.state.mcpScrollOffset += 1
+                    this.render()
+                    return
+                }
+                if (key === ' ') {
+                    if (curServer && this.options?.onToggleMcpServer) {
+                        this.options
+                            .onToggleMcpServer(curServer.name)
+                            .then(async () => {
+                                const newAction =
+                                    curServer.status === 'connected' ? 'Stopped' : 'Started'
+                                this.showToast(
+                                    `${newAction} MCP server "${curServer.name}".`,
+                                    'info'
+                                )
+                                await this.loadMcpServers()
+                            })
+                            .catch((err: any) => {
+                                this.showToast(
+                                    `Failed to toggle server: ${err?.message || err}`,
+                                    'error'
+                                )
+                            })
+                    }
+                    return
+                }
+                if (key === 'r' || key === 'R') {
+                    if (curServer && this.options?.onRestartMcpServer) {
+                        this.options
+                            .onRestartMcpServer(curServer.name)
+                            .then(async () => {
+                                this.showToast(`Restarted MCP server "${curServer.name}".`, 'info')
+                                await this.loadMcpServers()
+                            })
+                            .catch((err: any) => {
+                                this.showToast(
+                                    `Failed to restart server: ${err?.message || err}`,
+                                    'error'
+                                )
+                            })
+                    }
+                    return
+                }
+                if (key === 'd' || key === 'D') {
+                    if (curServer) {
+                        this.state.mcpConfirmDeleteName = curServer.name
+                        this.render()
+                    }
+                    return
+                }
+                if (key === '\x1b') {
+                    this.state.mcpIsDetailView = false
+                    this.state.mcpMode = 'list'
+                    this.state.mcpScrollOffset = 0
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            // 5. List mode
+            const total = servers.length
+            if (key === '\x1b[A' || key === 'k') {
+                if (this.state.mcpSelectedIndex > 0) {
+                    this.state.mcpSelectedIndex -= 1
+                    if (this.state.mcpSelectedIndex < this.state.mcpWindowStart) {
+                        this.state.mcpWindowStart = this.state.mcpSelectedIndex
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\x1b[B' || key === 'j') {
+                if (this.state.mcpSelectedIndex < total - 1) {
+                    this.state.mcpSelectedIndex += 1
+                    const maxWin = Math.max(1, (this.screen?.rows ?? 24) - 8)
+                    if (this.state.mcpSelectedIndex >= this.state.mcpWindowStart + maxWin) {
+                        this.state.mcpWindowStart += 1
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            if (key === '\r' || key === '\n') {
+                if (total > 0) {
+                    this.state.mcpIsDetailView = true
+                    this.state.mcpMode = 'detail'
+                    this.state.mcpScrollOffset = 0
+                    this.render()
+                }
+                return
+            }
+
+            if (key === ' ') {
+                if (curServer && this.options?.onToggleMcpServer) {
+                    this.options
+                        .onToggleMcpServer(curServer.name)
+                        .then(async () => {
+                            const newAction =
+                                curServer.status === 'connected' ? 'Stopped' : 'Started'
+                            this.showToast(`${newAction} MCP server "${curServer.name}".`, 'info')
+                            await this.loadMcpServers()
+                        })
+                        .catch((err: any) => {
+                            this.showToast(
+                                `Failed to toggle server: ${err?.message || err}`,
+                                'error'
+                            )
+                        })
+                }
+                return
+            }
+
+            if (key === 'r' || key === 'R') {
+                if (curServer && this.options?.onRestartMcpServer) {
+                    this.options
+                        .onRestartMcpServer(curServer.name)
+                        .then(async () => {
+                            this.showToast(`Restarted MCP server "${curServer.name}".`, 'info')
+                            await this.loadMcpServers()
+                        })
+                        .catch((err: any) => {
+                            this.showToast(
+                                `Failed to restart server: ${err?.message || err}`,
+                                'error'
+                            )
+                        })
+                } else {
+                    this.loadMcpServers().catch(() => {
+                        // Intentionally swallowed: reload error
+                    })
+                }
+                return
+            }
+
+            if (key === 'a' || key === 'A') {
+                this.state.mcpMode = 'add_preset'
+                this.state.mcpPresetSelectedIndex = 0
+                this.render()
+                return
+            }
+
+            if (key === 'd' || key === 'D') {
+                if (curServer) {
+                    this.state.mcpConfirmDeleteName = curServer.name
                     this.render()
                 }
                 return
@@ -6362,7 +6896,12 @@ export class DifferentialApp {
             overlay === 'fileview' ||
             overlay === 'memory' ||
             (overlay === 'diff' && this.state.isDiffDetailView) ||
-            (overlay === 'skills' && this.state.skillsIsDetailView)
+            (overlay === 'skills' && this.state.skillsIsDetailView) ||
+            (overlay === 'mcp' &&
+                (this.state.mcpIsDetailView ||
+                    this.state.mcpMode === 'detail' ||
+                    this.state.mcpMode === 'add_preset' ||
+                    this.state.mcpMode === 'add_custom'))
 
         // 1. TRUE 100% FULL SCREEN PAGER MODE (LESS / VIM STYLE)
         // When viewing actual code (fileview / diff detail / memory / skill detail), take over 100% of the screen from row 0 to bottom,
@@ -6425,6 +6964,33 @@ export class DifferentialApp {
                     scrollOffset: this.state.skillsScrollOffset,
                     isLoadingDetail: this.state.skillsDetailLoading,
                     detailError: this.state.skillsDetailError,
+                })
+            } else if (
+                overlay === 'mcp' &&
+                (this.state.mcpIsDetailView ||
+                    this.state.mcpMode === 'detail' ||
+                    this.state.mcpMode === 'add_preset' ||
+                    this.state.mcpMode === 'add_custom')
+            ) {
+                McpMenuView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: 0,
+                    width,
+                    height,
+                    selectedIndex: this.state.mcpSelectedIndex,
+                    windowStart: this.state.mcpWindowStart,
+                    servers: this.state.mcpServersList,
+                    isDetailView: this.state.mcpIsDetailView,
+                    scrollOffset: this.state.mcpScrollOffset,
+                    mode: this.state.mcpMode,
+                    confirmDeleteName: this.state.mcpConfirmDeleteName,
+                    presetSelectedIndex: this.state.mcpPresetSelectedIndex,
+                    customName: this.state.mcpCustomName,
+                    customCommand: this.state.mcpCustomCommand,
+                    customScope: this.state.mcpCustomScope,
+                    customEager: this.state.mcpCustomEager,
+                    customEnv: this.state.mcpCustomEnv,
+                    customActiveField: this.state.mcpCustomActiveField,
                 })
             } else if (overlay === 'memory') {
                 const currentCat =
@@ -6599,6 +7165,7 @@ export class DifferentialApp {
                 queuedPromptsCount: this.state.promptQueue.length,
                 showExitConfirm: this.state.showExitConfirm,
                 toast: this.state.toast,
+                pendingModelFallback: this.state.pendingModelFallback,
             })
 
             // Position terminal cursor in input box
@@ -6627,6 +7194,8 @@ export class DifferentialApp {
                     6,
                     this.state.skillsIsDetailView
                 )
+            } else if (overlay === 'mcp') {
+                naturalHeight = 16
             } else if (overlay === 'codesearch') {
                 const count =
                     this.state.codeSearchGroups.length > 0
@@ -6797,6 +7366,27 @@ export class DifferentialApp {
                     scrollOffset: this.state.skillsScrollOffset,
                     isLoadingDetail: this.state.skillsDetailLoading,
                     detailError: this.state.skillsDetailError,
+                })
+            } else if (overlay === 'mcp') {
+                McpMenuView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: overlayY,
+                    width,
+                    height: clampedOverlayHeight,
+                    selectedIndex: this.state.mcpSelectedIndex,
+                    windowStart: this.state.mcpWindowStart,
+                    servers: this.state.mcpServersList,
+                    isDetailView: this.state.mcpIsDetailView,
+                    scrollOffset: this.state.mcpScrollOffset,
+                    mode: this.state.mcpMode,
+                    confirmDeleteName: this.state.mcpConfirmDeleteName,
+                    presetSelectedIndex: this.state.mcpPresetSelectedIndex,
+                    customName: this.state.mcpCustomName,
+                    customCommand: this.state.mcpCustomCommand,
+                    customScope: this.state.mcpCustomScope,
+                    customEager: this.state.mcpCustomEager,
+                    customEnv: this.state.mcpCustomEnv,
+                    customActiveField: this.state.mcpCustomActiveField,
                 })
             } else if (overlay === 'codesearch') {
                 const groups =

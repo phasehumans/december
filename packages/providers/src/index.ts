@@ -9,6 +9,7 @@ export {
     supportsModelThinking,
     isFixedReasoningModel,
     getReasoningSupportType,
+    getDefaultModelForProvider,
 } from './models.ts'
 export * from './providers/openai.ts'
 export * from './providers/anthropic.ts'

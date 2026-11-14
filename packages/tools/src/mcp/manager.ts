@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
-import { createMcpTool } from './tool-adapter'
+import { createMcpTool, formatMcpContent } from './tool-adapter'
 
 import type { McpServerConfig, McpServerInfo } from './types'
 import type { DeferredToolRegistry } from '../deferred-registry'
@@ -24,6 +24,7 @@ export class McpClientManager {
     private servers: Map<string, McpServerInfo> = new Map()
     private clients: Map<string, Client> = new Map()
     private transports: Map<string, Transport> = new Map()
+    private eagerTools: Map<string, Tool> = new Map()
     private registry?: DeferredToolRegistry
     private workspaceDir?: string
 
@@ -56,6 +57,10 @@ export class McpClientManager {
             }
         }
         return tools
+    }
+
+    public getEagerTools(): Tool[] {
+        return Array.from(this.eagerTools.values())
     }
 
     public async connectServer(name: string, config: McpServerConfig): Promise<McpServerInfo> {
@@ -149,6 +154,8 @@ export class McpClientManager {
             try {
                 const toolResponse = await client.listTools()
                 const mcpTools = toolResponse.tools || []
+                const isEager =
+                    config.eager === true || (config.eager !== false && mcpTools.length <= 5)
 
                 const convertedTools: Tool[] = []
                 for (const mTool of mcpTools) {
@@ -160,6 +167,10 @@ export class McpClientManager {
                         },
                     })
                     convertedTools.push(decTool)
+
+                    if (isEager) {
+                        this.eagerTools.set(decTool.name, decTool)
+                    }
 
                     if (this.registry) {
                         this.registry.register(decTool, {
@@ -225,11 +236,24 @@ export class McpClientManager {
         )
     }
 
+    public async readResource(serverName: string, uri: string): Promise<string> {
+        const client = this.clients.get(serverName)
+        if (!client) {
+            throw new Error(`MCP server "${serverName}" is not connected`)
+        }
+
+        const res = await client.readResource({ uri })
+        return formatMcpContent(res.contents)
+    }
+
     public async disconnectServer(name: string): Promise<void> {
         const info = this.servers.get(name)
-        if (info && this.registry) {
+        if (info) {
             for (const tool of info.tools) {
-                this.registry.unregister(tool.name)
+                this.eagerTools.delete(tool.name)
+                if (this.registry) {
+                    this.registry.unregister(tool.name)
+                }
             }
         }
 
@@ -257,6 +281,37 @@ export class McpClientManager {
             info.status = 'disconnected'
             info.tools = []
         }
+    }
+
+    public async stopServer(name: string): Promise<void> {
+        await this.disconnectServer(name)
+    }
+
+    public async startServer(
+        name: string,
+        configOverride?: McpServerConfig
+    ): Promise<McpServerInfo> {
+        const info = this.servers.get(name)
+        const config = configOverride || info?.config
+        if (!config) {
+            throw new Error(`No configuration found for MCP server "${name}"`)
+        }
+        return this.connectServer(name, config)
+    }
+
+    public async restartServer(name: string): Promise<McpServerInfo> {
+        const info = this.servers.get(name)
+        const config = info?.config
+        if (!config) {
+            throw new Error(`No configuration found for MCP server "${name}"`)
+        }
+        await this.disconnectServer(name)
+        return this.connectServer(name, config)
+    }
+
+    public async removeServer(name: string): Promise<void> {
+        await this.disconnectServer(name)
+        this.servers.delete(name)
     }
 
     public async disconnectAll(): Promise<void> {

@@ -10,6 +10,7 @@ export const LIVE_MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 export interface LiveModelCacheEntry {
     timestamp: number
     models: { label: string; value: string }[]
+    unavailable?: string[]
 }
 
 const liveModelCache = new Map<string, LiveModelCacheEntry>()
@@ -97,6 +98,46 @@ export function clearProviderModelsCache(provider?: string): void {
     }
 }
 
+export function markModelUnavailable(provider: string, model: string): void {
+    const normalized = (provider || '').toLowerCase().trim()
+    const lowerModel = (model || '').toLowerCase().trim()
+    if (!lowerModel) return
+
+    initDiskCacheSync()
+
+    let modified = false
+    for (const [key, entry] of liveModelCache.entries()) {
+        if (key.startsWith(`${normalized}:`)) {
+            const beforeLen = entry.models.length
+            entry.models = entry.models.filter((m) => m.value.toLowerCase().trim() !== lowerModel)
+            entry.unavailable = entry.unavailable || []
+            if (!entry.unavailable.includes(lowerModel)) {
+                entry.unavailable.push(lowerModel)
+                modified = true
+            }
+            if (entry.models.length !== beforeLen) {
+                modified = true
+            }
+        }
+    }
+
+    if (!modified) {
+        const cacheKey = `${normalized}:default:default`
+        const curated = getCuratedProviderModels(normalized).filter(
+            (m) => m.value.toLowerCase().trim() !== lowerModel
+        )
+        liveModelCache.set(cacheKey, {
+            timestamp: Date.now(),
+            models: curated,
+            unavailable: [lowerModel],
+        })
+    }
+
+    saveDiskCache().catch(() => {
+        // Intentionally swallowed: ignore cache write errors
+    })
+}
+
 export const getCuratedProviderModels = (provider: string): { label: string; value: string }[] => {
     const normalized = (provider || '').toLowerCase().trim()
     const canonical = MODEL_CATALOG.aliases[normalized] || normalized
@@ -115,10 +156,18 @@ export const getProviderModels = (provider: string) => {
     for (const [key, entry] of liveModelCache.entries()) {
         if (key.includes(':test-token:')) continue
         if (key.startsWith(`${normalized}:`) && now - entry.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
-            return entry.models
+            const unavail = new Set((entry.unavailable || []).map((m) => m.toLowerCase()))
+            return entry.models.filter((m) => !unavail.has(m.value.toLowerCase()))
         }
     }
-    return getCuratedProviderModels(normalized)
+    const curated = getCuratedProviderModels(normalized)
+    for (const [key, entry] of liveModelCache.entries()) {
+        if (key.startsWith(`${normalized}:`) && entry.unavailable && entry.unavailable.length > 0) {
+            const unavail = new Set(entry.unavailable.map((m) => m.toLowerCase()))
+            return curated.filter((m) => !unavail.has(m.value.toLowerCase()))
+        }
+    }
+    return curated
 }
 
 function formatModelLabel(id: string): string {

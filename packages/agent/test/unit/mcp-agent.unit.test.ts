@@ -134,4 +134,46 @@ describe('MCP Tools in Agent Loop (Unit)', () => {
         const lastMsg = agent.messages[agent.messages.length - 1]
         expect(lastMsg?.content).toBe('Created ticket LIN-123 in Linear.')
     })
+
+    it('should register eager tools and read_mcp_resource tool upon initMcpServers', async () => {
+        const agent = new Agent({
+            tools: [],
+            deferredTools: [],
+            mcpClientManager: mcpManager,
+            llm: { id: 'mock', stream: async function* () {} } as any,
+            operations: {} as any,
+        })
+
+        // Connect a server with 1 tool (which defaults to eager)
+        await mcpManager.connectWithTransport('linear', { command: 'mock' }, clientTransport)
+
+        for (const eagerTool of mcpManager.getEagerTools()) {
+            agent.registerTool(eagerTool)
+        }
+        const { createReadMcpResourceTool } = await import('@december/tools')
+        agent.registerTool(createReadMcpResourceTool(mcpManager))
+
+        expect(agent.tools.has('mcp_linear_create_issue')).toBe(true)
+        expect(agent.tools.has('read_mcp_resource')).toBe(true)
+    })
+
+    it('should dynamically unregister and re-register server tools', async () => {
+        const agent = new Agent({
+            tools: [],
+            deferredTools: [],
+            mcpClientManager: mcpManager,
+            llm: { id: 'mock', stream: async function* () {} } as any,
+            operations: {} as any,
+        })
+
+        await mcpManager.connectWithTransport('linear', { command: 'mock' }, clientTransport)
+        agent.registerMcpServerTools('linear')
+        expect(agent.tools.has('mcp_linear_create_issue')).toBe(true)
+
+        agent.unregisterMcpServerTools('linear')
+        expect(agent.tools.has('mcp_linear_create_issue')).toBe(false)
+
+        agent.registerMcpServerTools('linear')
+        expect(agent.tools.has('mcp_linear_create_issue')).toBe(true)
+    })
 })

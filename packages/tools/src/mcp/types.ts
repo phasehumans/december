@@ -7,6 +7,8 @@ export interface McpServerStdioConfig {
     cwd?: string
     disabled?: boolean
     description?: string
+    eager?: boolean
+    scope?: 'global' | 'project'
 }
 
 export interface McpServerSseConfig {
@@ -16,6 +18,8 @@ export interface McpServerSseConfig {
     headers?: Record<string, string>
     disabled?: boolean
     description?: string
+    eager?: boolean
+    scope?: 'global' | 'project'
 }
 
 export type McpServerConfig = McpServerStdioConfig | McpServerSseConfig

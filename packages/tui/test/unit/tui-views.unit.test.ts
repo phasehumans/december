@@ -20,6 +20,7 @@ import {
     getWrappedCursorPosition,
 } from '../../src/renderer/views/input-bar-view'
 import { LoginMenuView } from '../../src/renderer/views/login-menu-view'
+import { McpMenuView } from '../../src/renderer/views/mcp-menu-view'
 import { MemoryViewMenuView } from '../../src/renderer/views/memory-view-menu-view'
 import { MessageListView } from '../../src/renderer/views/message-list-view'
 import { ModelSelectMenuView } from '../../src/renderer/views/model-select-menu-view'
@@ -729,6 +730,172 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(3)).toContain('2 Step 1: Write test')
             expect(buffer.getLine(14)).toContain('scroll')
             expect(buffer.getLine(14)).toContain('back')
+        })
+    })
+
+    describe('McpMenuView', () => {
+        it('renders empty servers notice when no MCP servers configured', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            McpMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                selectedIndex: 0,
+                servers: [],
+            })
+
+            expect(buffer.getLine(0)).toContain('Model Context Protocol (MCP) Servers (0)')
+            expect(buffer.getLine(3)).toContain('No MCP servers configured')
+            expect(buffer.getLine(4)).toContain('december mcp add')
+        })
+
+        it('renders list of MCP servers with scope badges, status, and tool counts', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            McpMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                selectedIndex: 0,
+                servers: [
+                    {
+                        name: 'postgres',
+                        scope: 'project',
+                        transport: 'stdio',
+                        status: 'connected',
+                        target: 'npx -y @modelcontextprotocol/server-postgres',
+                        eager: true,
+                        tools: [{ name: 'mcp_postgres_query', description: 'Run SQL query' }],
+                    },
+                    {
+                        name: 'sentry',
+                        scope: 'global',
+                        transport: 'http',
+                        status: 'disconnected',
+                        target: 'https://mcp.sentry.io/mcp',
+                        tools: [],
+                    },
+                ],
+            })
+
+            expect(buffer.getLine(0)).toContain('Model Context Protocol (MCP) Servers (2)')
+            expect(buffer.getLine(0)).toContain('1 connected')
+            expect(buffer.getLine(1)).toContain('1 global (trusted) · 1 project-scoped')
+            expect(buffer.getLine(3)).toContain('❭')
+            expect(buffer.getLine(3)).toContain('[project]')
+            expect(buffer.getLine(3)).toContain('postgres')
+            expect(buffer.getLine(3)).toContain('[stdio]')
+            expect(buffer.getLine(3)).toContain('1 tool (eager)')
+            expect(buffer.getLine(4)).toContain('[global]')
+            expect(buffer.getLine(4)).toContain('sentry')
+            expect(buffer.getLine(11)).toContain('select')
+            expect(buffer.getLine(11)).toContain('inspect tools')
+        })
+
+        it('renders detail view for a server displaying tools and command details', () => {
+            const buffer = new ScreenBuffer(80, 15)
+            McpMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 15,
+                selectedIndex: 0,
+                isDetailView: true,
+                servers: [
+                    {
+                        name: 'github',
+                        scope: 'global',
+                        transport: 'stdio',
+                        status: 'connected',
+                        target: 'npx -y @modelcontextprotocol/server-github',
+                        eager: false,
+                        tools: [
+                            {
+                                name: 'mcp_github_create_issue',
+                                description: 'Create a GitHub issue',
+                            },
+                        ],
+                    },
+                ],
+            })
+
+            expect(buffer.getLine(0)).toContain('MCP Server: github')
+            expect(buffer.getLine(0)).toContain('[global]')
+            expect(buffer.getLine(2)).toContain('● CONNECTED')
+            expect(buffer.getLine(3)).toContain('npx -y @modelcontextprotocol/server-github')
+            expect(buffer.getLine(5)).toContain('Available Tools (1):')
+            expect(buffer.getLine(6)).toContain('• mcp_github_create_issue')
+            expect(buffer.getLine(6)).toContain('Create a GitHub issue')
+            expect(buffer.getLine(14)).toContain('scroll')
+            expect(buffer.getLine(14)).toContain('back')
+        })
+
+        it('renders preset templates mode with templates list and footer', () => {
+            const buffer = new ScreenBuffer(80, 15)
+            McpMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 15,
+                selectedIndex: 0,
+                mode: 'add_preset',
+                presetSelectedIndex: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Add MCP Server · Preset Templates')
+            expect(buffer.getLine(3)).toContain('GitHub')
+            expect(buffer.getLine(3)).toContain('Repository search')
+            expect(buffer.getLine(14)).toContain('use preset')
+            expect(buffer.getLine(14)).toContain('custom command')
+        })
+
+        it('renders custom configuration mode with form fields and footer', () => {
+            const buffer = new ScreenBuffer(80, 20)
+            McpMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 20,
+                selectedIndex: 0,
+                mode: 'add_custom',
+                customName: 'my-server',
+                customCommand: 'npx -y my-mcp',
+                customScope: 'project',
+                customEager: true,
+                customActiveField: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Add MCP Server · Custom Configuration')
+            expect(buffer.getLine(3)).toContain('Server Name:')
+            expect(buffer.getLine(3)).toContain('my-server')
+            expect(buffer.getLine(5)).toContain('Target (Cmd/URL):')
+            expect(buffer.getLine(5)).toContain('npx -y my-mcp')
+            expect(buffer.getLine(19)).toContain('next field')
+            expect(buffer.getLine(19)).toContain('save')
+        })
+
+        it('renders inline delete confirmation message when confirmDeleteName is provided', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            McpMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                selectedIndex: 0,
+                confirmDeleteName: 'github',
+                servers: [
+                    {
+                        name: 'github',
+                        scope: 'global',
+                        transport: 'stdio',
+                        status: 'connected',
+                        target: 'npx -y @modelcontextprotocol/server-github',
+                    },
+                ],
+            })
+
+            expect(buffer.getLine(10)).toContain('Confirm remove "github"')
         })
     })
 
@@ -1933,7 +2100,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 '\n'
             )
             expect(text).toContain('Read(src/index.ts)')
-            expect(text).toContain('Thinking... analyzing token expiration threshold')
+            expect(text).toContain('Thinking · analyzing token expiration threshold')
         })
 
         it('renders user prompt with brand color and bold styling', () => {

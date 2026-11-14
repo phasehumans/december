@@ -249,9 +249,12 @@ interface CacheEntry {
     lines: FormattedLine[]
 }
 
+export const THOUGHT_DWELL_MS = 2500
+
 export class MessageLineCache {
     private messageCache = new WeakMap<MessageItem, CacheEntry>()
     private streamMarkdownCaches = new WeakMap<MessageItem, StreamingMarkdownCache>()
+    private thoughtTopicLatches = new WeakMap<MessageItem, { topic: string; latchedAt: number }>()
     private lastAggregateMessages: MessageItem[] | null = null
     private lastAggregateLength = 0
     private lastAggregateLastKey = ''
@@ -271,6 +274,7 @@ export class MessageLineCache {
     clear(): void {
         this.messageCache = new WeakMap<MessageItem, CacheEntry>()
         this.streamMarkdownCaches = new WeakMap<MessageItem, StreamingMarkdownCache>()
+        this.thoughtTopicLatches = new WeakMap<MessageItem, { topic: string; latchedAt: number }>()
         this.lastAggregateMessages = null
         this.lastAggregateLength = 0
         this.lastAggregateLastKey = ''
@@ -281,6 +285,33 @@ export class MessageLineCache {
         this.lastPriorWidth = 0
         this.lastPriorExpandTools = false
         this.lastPriorResult = null
+    }
+
+    getLatchedThoughtTopic(msg: MessageItem, now = Date.now()): string {
+        if (!msg.content) return ''
+        if (!msg.isStreaming) {
+            return extractThoughtTopic(msg.content)
+        }
+        const candidate = extractThoughtTopic(msg.content)
+        const currentLatch = this.thoughtTopicLatches.get(msg)
+        if (currentLatch) {
+            if (now - currentLatch.latchedAt < THOUGHT_DWELL_MS) {
+                if (!currentLatch.topic && candidate) {
+                    currentLatch.topic = candidate
+                    currentLatch.latchedAt = now
+                }
+                return currentLatch.topic
+            }
+            if (candidate && candidate !== currentLatch.topic) {
+                currentLatch.topic = candidate
+                currentLatch.latchedAt = now
+            }
+            return currentLatch.topic || candidate
+        }
+        if (candidate) {
+            this.thoughtTopicLatches.set(msg, { topic: candidate, latchedAt: now })
+        }
+        return candidate
     }
 
     private computeContentKey(
@@ -881,14 +912,27 @@ export class MessageLineCache {
             }
         } else if (msg.role === 'thinking') {
             if (msg.isStreaming && msg.content) {
-                const topic = extractThoughtTopic(msg.content)
-                const label = topic ? `Thinking... ${topic}` : 'Thinking...'
+                const topic = this.getLatchedThoughtTopic(msg)
+                const headerSegs: FormattedLine = [
+                    { text: spinnerGlyph, style: { fg: THEME.colors.warning } },
+                    {
+                        text: topic ? 'Thinking' : 'Thinking...',
+                        style: { fg: THEME.colors.warning, bold: true },
+                    },
+                    ...(topic
+                        ? [
+                              { text: ' · ', style: { fg: THEME.colors.dim } },
+                              { text: topic, style: { fg: THEME.colors.muted } },
+                          ]
+                        : []),
+                ]
+
                 if (expandTools) {
-                    lines.push([
-                        { text: spinnerGlyph, style: { fg: THEME.colors.brand } },
-                        { text: label, style: { fg: THEME.colors.brand, bold: true } },
-                        { text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } },
-                    ])
+                    headerSegs.push({
+                        text: ' (ctrl+o to collapse)',
+                        style: { fg: THEME.colors.dim },
+                    })
+                    lines.push(headerSegs)
                     let streamCache: StreamingMarkdownCache | undefined
                     if (msg.isStreaming) {
                         streamCache = this.streamMarkdownCaches.get(msg)
@@ -907,39 +951,35 @@ export class MessageLineCache {
                     lines.push(...formatted)
                     lines.push([{ text: '', style: {} }])
                 } else {
-                    lines.push([
-                        { text: spinnerGlyph, style: { fg: THEME.colors.muted } },
-                        {
-                            text: label,
-                            style: { fg: THEME.colors.muted },
-                        },
-                        ...(tip
-                            ? [
-                                  { text: '  · ', style: { fg: THEME.colors.dim } },
-                                  { text: 'tip: ', style: { fg: THEME.colors.dim } },
-                                  { text: tip, style: { fg: THEME.colors.muted } },
-                              ]
-                            : []),
-                    ])
+                    if (tip) {
+                        headerSegs.push(
+                            { text: '  · ', style: { fg: THEME.colors.dim } },
+                            { text: 'tip: ', style: { fg: THEME.colors.dim } },
+                            { text: tip, style: { fg: THEME.colors.muted } }
+                        )
+                    }
+                    lines.push(headerSegs)
                     lines.push([{ text: '', style: {} }])
                 }
             } else if (msg.content) {
-                const durationMs = msg.durationMs
-                const durationStr = durationMs
-                    ? durationMs >= 1000
-                        ? `${(durationMs / 1000).toFixed(1)}s`
-                        : `${durationMs}ms`
-                    : null
                 const topic = extractThoughtTopic(msg.content)
-                const thoughtTitle = durationStr ? `Thought for ${durationStr}` : 'Thought'
-                const bannerLabel = topic ? `${thoughtTitle} · ${topic}` : thoughtTitle
+                const headerSegs: FormattedLine = [
+                    { text: '● ', style: { fg: THEME.colors.warning } },
+                    { text: 'Thought', style: { fg: THEME.colors.warning, bold: true } },
+                    ...(topic
+                        ? [
+                              { text: ' · ', style: { fg: THEME.colors.dim } },
+                              { text: topic, style: { fg: THEME.colors.muted } },
+                          ]
+                        : []),
+                ]
 
                 if (expandTools) {
-                    lines.push([
-                        { text: '● ', style: { fg: THEME.colors.brand } },
-                        { text: bannerLabel, style: { fg: THEME.colors.brand, bold: true } },
-                        { text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } },
-                    ])
+                    headerSegs.push({
+                        text: ' (ctrl+o to collapse)',
+                        style: { fg: THEME.colors.dim },
+                    })
+                    lines.push(headerSegs)
                     let streamCache: StreamingMarkdownCache | undefined
                     if (msg.isStreaming) {
                         streamCache = this.streamMarkdownCaches.get(msg)
@@ -958,11 +998,11 @@ export class MessageLineCache {
                     lines.push(...formatted)
                     lines.push([{ text: '', style: {} }])
                 } else {
-                    lines.push([
-                        { text: '● ', style: { fg: THEME.colors.muted } },
-                        { text: bannerLabel, style: { fg: THEME.colors.muted } },
-                        { text: ' (ctrl+o to expand)', style: { fg: THEME.colors.dim } },
-                    ])
+                    headerSegs.push({
+                        text: ' (ctrl+o to expand)',
+                        style: { fg: THEME.colors.dim },
+                    })
+                    lines.push(headerSegs)
                     lines.push([{ text: '', style: {} }])
                 }
             }

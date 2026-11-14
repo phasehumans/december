@@ -2,7 +2,8 @@ import { Tool, truncateOutput, ToolExecuteContext } from '@december/shared'
 import { Type, Static } from '@sinclair/typebox'
 
 const bashSchema = Type.Object({
-    command: Type.String({ description: 'The bash command to run.' }),
+    command: Type.Optional(Type.String({ description: 'The bash command to run.' })),
+    cmd: Type.Optional(Type.String({ description: 'Alias for command.' })),
     timeout: Type.Optional(
         Type.Number({ description: 'Timeout in seconds (optional, no default timeout)' })
     ),
@@ -15,11 +16,22 @@ export const BashTool: Tool<BashInput> = {
     description:
         'Execute a shell command. Use this tool to run commands on the terminal (e.g., building, testing, or running scripts). Long-running commands (like dev servers) will automatically detach and run in the background.',
     inputSchema: bashSchema,
-    execute: async ({ command, timeout }, context: ToolExecuteContext) => {
+    prepareArguments: (args: any) => {
+        if (!args || typeof args !== 'object') return args
+        if (args.cmd && !args.command) {
+            return { ...args, command: args.cmd }
+        }
+        return args
+    },
+    execute: async (input: BashInput, context: ToolExecuteContext) => {
+        const command = input.command || (input as any)?.cmd
+        if (!command || typeof command !== 'string' || !command.trim()) {
+            return 'Error: The "command" argument is required and must be a non-empty string.'
+        }
         const cwd = context.operations.env.cwd()
 
         const { exitCode, output, taskId } = await context.operations.bash.exec(command, cwd, {
-            timeout,
+            timeout: input.timeout,
             waitMsBeforeAsync: 20_000,
             onData: (chunk: string | Buffer) => {
                 context.onStream(chunk.toString())

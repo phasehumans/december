@@ -247,10 +247,62 @@ export async function handleSkillCommand(options?: {
     }
 }
 
-export async function handleMcpCommand(options?: { action?: string }): Promise<void> {
-    const { loadMcpConfig, McpClientManager } = await import('@december/tools')
-    const config = await loadMcpConfig({ workspaceDir: process.cwd() })
-    const serverKeys = Object.keys(config)
+export interface HandleMcpCommandOptions {
+    action?: string
+    name?: string
+    target?: string
+    args?: string[]
+    scope?: string
+    isGlobal?: boolean
+    env?: string[]
+    headers?: string[]
+    eager?: boolean
+}
+
+function parseEnvList(envList?: string[]): Record<string, string> | undefined {
+    if (!envList || envList.length === 0) return undefined
+    const env: Record<string, string> = {}
+    for (const item of envList) {
+        const idx = item.indexOf('=')
+        if (idx > 0) {
+            const k = item.slice(0, idx).trim()
+            const v = item.slice(idx + 1).trim()
+            if (k) env[k] = v
+        }
+    }
+    return Object.keys(env).length > 0 ? env : undefined
+}
+
+function parseHeaderList(headerList?: string[]): Record<string, string> | undefined {
+    if (!headerList || headerList.length === 0) return undefined
+    const headers: Record<string, string> = {}
+    for (const item of headerList) {
+        const separatorIdx = item.includes(':') ? item.indexOf(':') : item.indexOf('=')
+        if (separatorIdx > 0) {
+            const k = item.slice(0, separatorIdx).trim()
+            const v = item.slice(separatorIdx + 1).trim()
+            if (k) headers[k] = v
+        }
+    }
+    return Object.keys(headers).length > 0 ? headers : undefined
+}
+
+export async function handleMcpCommand(options?: HandleMcpCommandOptions): Promise<void> {
+    const {
+        loadMcpConfig,
+        McpClientManager,
+        addMcpServerConfig,
+        removeMcpServerConfig,
+        getMcpServerConfig,
+        listMcpServersWithScope,
+    } = await import('@december/tools')
+
+    const action = (options?.action || 'list').toLowerCase().trim()
+    const name = options?.name?.trim()
+    const target = options?.target?.trim()
+    const rawScope = (options?.scope || '').toLowerCase().trim()
+    const scope: 'global' | 'project' =
+        rawScope === 'project' || rawScope === 'local' ? 'project' : 'global'
 
     const BOLD = '\x1b[1m'
     const RESET = '\x1b[0m'
@@ -258,84 +310,190 @@ export async function handleMcpCommand(options?: { action?: string }): Promise<v
     const RED = '\x1b[31m'
     const GRAY = '\x1b[90m'
     const BLUE = '\x1b[34m'
+    const CYAN = '\x1b[36m'
 
-    if (serverKeys.length === 0) {
-        console.log(`\n${BOLD}No MCP servers configured.${RESET}\n`)
-        console.log('To configure an MCP server, add an "mcpServers" entry in either:')
-        console.log(`  • Global: ${GRAY}~/.december/config.json${RESET}`)
-        console.log(`  • Project: ${GRAY}.december/mcp.json${RESET}\n`)
-        console.log('Example .december/mcp.json:')
-        console.log(
-            GRAY +
-                JSON.stringify(
-                    {
-                        mcpServers: {
-                            postgres: {
-                                command: 'npx',
-                                args: [
-                                    '-y',
-                                    '@modelcontextprotocol/server-postgres',
-                                    'postgresql://localhost/db',
-                                ],
-                            },
-                            remote: {
-                                url: 'http://localhost:8000/sse',
-                            },
-                        },
-                    },
-                    null,
-                    2
-                ) +
-                RESET +
-                '\n'
-        )
-        return
-    }
-
-    console.log(
-        `\n${BOLD}Model Context Protocol (MCP) Servers (${serverKeys.length} configured)${RESET}\n`
-    )
-
-    const manager = new McpClientManager({ workspaceDir: process.cwd() })
-    const results = await manager.connectAll(config)
-
-    for (const [name, info] of Object.entries(results)) {
-        const typeStr =
-            info.config && 'command' in info.config && info.config.command ? 'stdio' : 'sse'
-        const statusColor =
-            info.status === 'connected' ? GREEN : info.status === 'error' ? RED : GRAY
-        const statusTag = `${statusColor}● ${info.status.toUpperCase()}${RESET}`
-
-        const target =
-            'command' in info.config && info.config.command
-                ? `${info.config.command}${info.config.args ? ' ' + info.config.args.join(' ') : ''}`
-                : (info.config as any)?.url || (info.config as any)?.endpoint || ''
-
-        console.log(`  ${BOLD}${name}${RESET} [${typeStr}] - ${statusTag}`)
-        console.log(`    Target: ${GRAY}${target}${RESET}`)
-
-        if (info.error) {
-            console.log(`    ${RED}Error: ${info.error}${RESET}`)
-        }
-
-        if (info.tools && info.tools.length > 0) {
-            console.log(`    Tools (${info.tools.length}):`)
-            for (const tool of info.tools) {
-                const desc = tool.description
-                    ? ` - ${GRAY}${tool.description.split('\n')[0]}${RESET}`
-                    : ''
-                console.log(`      • ${BLUE}${tool.name}${RESET}${desc}`)
+    switch (action) {
+        case 'add': {
+            if (!name || !target) {
+                console.error(
+                    `\n${RED}Error:${RESET} Please specify server name and target (command or URL).`
+                )
+                console.log('Usage: december mcp add <name> <commandOrUrl> [args...] [options]\n')
+                return
             }
-        } else if (info.status === 'connected') {
-            console.log(`    ${GRAY}(No tools exported by this server)${RESET}`)
+
+            const isUrl = target.startsWith('http://') || target.startsWith('https://')
+            const eager = Boolean(options?.eager)
+            const env = parseEnvList(options?.env)
+            const headers = parseHeaderList(options?.headers)
+
+            const serverConfig = isUrl
+                ? {
+                      url: target,
+                      ...(headers ? { headers } : {}),
+                      ...(eager ? { eager: true } : {}),
+                  }
+                : {
+                      command: target,
+                      ...(options?.args && options.args.length > 0 ? { args: options.args } : {}),
+                      ...(env ? { env } : {}),
+                      ...(eager ? { eager: true } : {}),
+                  }
+
+            await addMcpServerConfig(name, serverConfig as any, { scope })
+            console.log(`\n${GREEN}✓${RESET} Added MCP server "${name}" (${scope} scope).`)
+            console.log(`  Target: ${GRAY}${target}${RESET}\n`)
+            return
         }
 
-        console.log('')
-    }
+        case 'remove': {
+            if (!name) {
+                console.error(
+                    `\n${RED}Error:${RESET} Please specify the MCP server name to remove.`
+                )
+                console.log('Usage: december mcp remove <name> [--scope global|project]\n')
+                return
+            }
 
-    await manager.disconnectAll().catch(() => {
-        // Intentionally swallowed: cleanup error
-    })
+            const removed = await removeMcpServerConfig(name, {
+                scope: options?.scope ? scope : undefined,
+            })
+            if (removed) {
+                console.log(`\n${GREEN}✓${RESET} Removed MCP server "${name}".\n`)
+            } else {
+                console.log(`\n${RED}✗${RESET} MCP server "${name}" not found.\n`)
+            }
+            return
+        }
+
+        case 'get': {
+            if (!name) {
+                console.error(`\n${RED}Error:${RESET} Please specify the MCP server name to get.`)
+                console.log('Usage: december mcp get <name>\n')
+                return
+            }
+
+            const found = await getMcpServerConfig(name)
+            if (!found) {
+                console.log(`\n${RED}✗${RESET} MCP Server: ${BOLD}${name}${RESET} not found.\n`)
+                return
+            }
+
+            console.log(`\n${BOLD}MCP Server: ${name}${RESET}`)
+            console.log(`  Scope: ${CYAN}[${found.scope}]${RESET}`)
+            const stdioCfg =
+                'command' in found.config && found.config.command ? (found.config as any) : null
+            console.log(`  Transport: ${stdioCfg ? 'stdio' : 'sse/http'}`)
+            console.log(
+                `  Target: ${stdioCfg ? stdioCfg.command : (found.config as any).url || ''}`
+            )
+            if (found.config.eager) {
+                console.log(`  Eager: true (injected in turn-1 prompt)`)
+            }
+            console.log('')
+            return
+        }
+
+        case 'list':
+        case 'status':
+        default: {
+            const allServers = await listMcpServersWithScope({ workspaceDir: process.cwd() })
+
+            if (allServers.length === 0) {
+                console.log(`\n${BOLD}No MCP servers configured.${RESET}\n`)
+                console.log('To configure an MCP server, add an "mcpServers" entry in either:')
+                console.log(`  • Global: ${GRAY}~/.december/config.json${RESET}`)
+                console.log(`  • Project: ${GRAY}.december/mcp.json${RESET}\n`)
+                console.log('Or use the CLI:')
+                console.log(
+                    `  december mcp add github npx -y @modelcontextprotocol/server-github -e GITHUB_TOKEN=xxx\n`
+                )
+                console.log('Example .december/mcp.json:')
+                console.log(
+                    GRAY +
+                        JSON.stringify(
+                            {
+                                mcpServers: {
+                                    postgres: {
+                                        command: 'npx',
+                                        args: [
+                                            '-y',
+                                            '@modelcontextprotocol/server-postgres',
+                                            'postgresql://localhost/db',
+                                        ],
+                                    },
+                                    remote: {
+                                        url: 'http://localhost:8000/sse',
+                                    },
+                                },
+                            },
+                            null,
+                            2
+                        ) +
+                        RESET +
+                        '\n'
+                )
+                return
+            }
+
+            console.log(
+                `\n${BOLD}Model Context Protocol (MCP) Servers (${allServers.length} configured)${RESET}\n`
+            )
+
+            const configMap: Record<string, any> = {}
+            for (const s of allServers) {
+                configMap[s.name] = s.config
+            }
+
+            const manager = new McpClientManager({ workspaceDir: process.cwd() })
+            const results = await manager.connectAll(configMap)
+
+            for (const item of allServers) {
+                const info = results[item.name]
+                const typeStr =
+                    item.config && 'command' in item.config && item.config.command
+                        ? 'stdio'
+                        : 'sse/http'
+                const statusColor =
+                    info?.status === 'connected' ? GREEN : info?.status === 'error' ? RED : GRAY
+                const statusTag = `${statusColor}● ${(info?.status || 'disconnected').toUpperCase()}${RESET}`
+                const scopeBadge = `${CYAN}[${item.scope}]${RESET}`
+
+                const target =
+                    'command' in item.config && item.config.command
+                        ? `${item.config.command}${item.config.args ? ' ' + item.config.args.join(' ') : ''}`
+                        : (item.config as any)?.url || (item.config as any)?.endpoint || ''
+
+                console.log(
+                    `  ${scopeBadge} ${BOLD}${item.name}${RESET} [${typeStr}] - ${statusTag}`
+                )
+                console.log(`    Target: ${GRAY}${target}${RESET}`)
+
+                if (info?.error) {
+                    console.log(`    ${RED}Error: ${info.error}${RESET}`)
+                }
+
+                if (info?.tools && info.tools.length > 0) {
+                    console.log(`    Tools (${info.tools.length}):`)
+                    for (const tool of info.tools) {
+                        const desc = tool.description
+                            ? ` - ${GRAY}${tool.description.split('\n')[0]}${RESET}`
+                            : ''
+                        console.log(`      • ${BLUE}${tool.name}${RESET}${desc}`)
+                    }
+                } else if (info?.status === 'connected') {
+                    console.log(`    ${GRAY}(No tools exported by this server)${RESET}`)
+                }
+
+                console.log('')
+            }
+
+            await manager.disconnectAll().catch(() => {
+                // Intentionally swallowed: cleanup error
+            })
+            return
+        }
+    }
 }
 
 export async function handleRewindCommand(options?: {

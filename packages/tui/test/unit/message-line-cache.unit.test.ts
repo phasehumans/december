@@ -355,18 +355,25 @@ describe('MessageLineCache', () => {
         // Collapsed (default)
         const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
         const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('● Thought for 2.3s')
+        expect(collapsedText).toContain('● Thought')
+        expect(collapsedText).not.toContain('2.3s')
         expect(collapsedText).not.toContain('❭ Thought')
         expect(collapsedText).toContain('ctrl+o to expand')
         expect(collapsedText).not.toContain('We need to refactor the database schema')
 
+        // Verify warning yellow color on glyph
+        expect(collapsedLines[0]?.[0]?.style?.fg).toBe('#FDD663')
+
         // Expanded (expandTools: true)
         const expandedLines = cache.getLines(messages, 100, { expandTools: true })
         const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(expandedText).toContain('● Thought for 2.3s')
+        expect(expandedText).toContain('● Thought')
+        expect(expandedText).not.toContain('2.3s')
         expect(expandedText).not.toContain('❭ Thought')
         expect(expandedText).toContain('ctrl+o to collapse')
         expect(expandedText).toContain('We need to refactor the database schema')
+        // Header also uses warning yellow, not brand blue
+        expect(expandedLines[0]?.[0]?.style?.fg).toBe('#FDD663')
     })
 
     it('renders live streaming thinking with formatted thought text when expandTools is enabled', () => {
@@ -382,14 +389,39 @@ describe('MessageLineCache', () => {
         // Collapsed (default)
         const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
         const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('Thinking...')
-        expect(collapsedText).not.toContain('Found 15 modules')
+        expect(collapsedText).toContain('Thinking · found 15 modules')
+        expect(collapsedText).not.toContain('Found 15 modules\n')
+        expect(collapsedLines[0]?.[0]?.style?.fg).toBe('#FDD663')
 
         // Expanded (expandTools: true)
         const expandedLines = cache.getLines(messages, 100, { expandTools: true })
         const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(expandedText).toContain('Thinking...')
+        expect(expandedText).toContain('Thinking · found 15 modules')
         expect(expandedText).toContain('Found 15 modules')
+        expect(expandedLines[0]?.[0]?.style?.fg).toBe('#FDD663')
+    })
+
+    it('stabilizes rapid topic changes via dwell latching during streaming', () => {
+        const cache = new MessageLineCache()
+        const msg: MessageItem = {
+            role: 'thinking',
+            content: 'I need to inspect routes',
+            isStreaming: true,
+        }
+
+        const t0 = 1000000
+        const topic1 = cache.getLatchedThoughtTopic(msg, t0)
+        expect(topic1).toBe('inspect routes')
+
+        // 500ms later (< 2500ms): candidate changes rapidly to "check middleware"
+        msg.content = 'I need to inspect routes\nNext I will check middleware'
+        const topic2 = cache.getLatchedThoughtTopic(msg, t0 + 500)
+        // Topic remains locked to the previous latch to avoid flicker
+        expect(topic2).toBe('inspect routes')
+
+        // 2600ms later (>= 2500ms dwell window): topic updates smoothly to new candidate
+        const topic3 = cache.getLatchedThoughtTopic(msg, t0 + 2600)
+        expect(topic3).toBe('check middleware')
     })
 
     it('expands truncated tool command outputs beyond the default 5-line limit when expandTools is enabled', () => {

@@ -109,8 +109,8 @@ export const MessageListView = {
                     (lastMsg.role === 'assistant' && !lastMsg.content)
                 if (isWaitingForResponse) {
                     allLines.push([
-                        { text: spinnerGlyph, style: { fg: THEME.colors.brand } },
-                        { text: 'Thinking...', style: { fg: THEME.colors.muted } },
+                        { text: spinnerGlyph, style: { fg: THEME.colors.warning } },
+                        { text: 'Thinking...', style: { fg: THEME.colors.warning, bold: true } },
                         ...(props.tip
                             ? [
                                   { text: '  · ', style: { fg: THEME.colors.dim } },

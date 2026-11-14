@@ -25,6 +25,7 @@ export interface InputBarViewProps {
     modeTag?: string
     showExitConfirm?: boolean
     toast?: { message: string; variant?: string } | null
+    pendingModelFallback?: { fallbackModel: string; failedModel: string }
 }
 
 export function formatTokenCount(n: number): string {
@@ -275,15 +276,25 @@ export const InputBarView = {
             }
 
             if (!input && lineIdx === 0) {
-                const placeholder =
-                    props.placeholder ??
-                    'Ask December to build features, fix bugs, or work on your code...'
-                drawText(buffer, placeholder, {
-                    x: textOffsetX,
-                    y: currentY,
-                    maxWidth: maxInputWidth,
-                    style: { fg: THEME.colors.dim },
-                })
+                if (props.pendingModelFallback) {
+                    const fallbackNotice = `Press [Enter] to switch to '${props.pendingModelFallback.fallbackModel}' & retry · [m] /model · [Esc] cancel`
+                    drawText(buffer, fallbackNotice, {
+                        x: textOffsetX,
+                        y: currentY,
+                        maxWidth: maxInputWidth,
+                        style: { fg: THEME.colors.warning, bold: true },
+                    })
+                } else {
+                    const placeholder =
+                        props.placeholder ??
+                        'Ask December to build features, fix bugs, or work on your code...'
+                    drawText(buffer, placeholder, {
+                        x: textOffsetX,
+                        y: currentY,
+                        maxWidth: maxInputWidth,
+                        style: { fg: THEME.colors.dim },
+                    })
+                }
             } else if (lineText) {
                 // Tokenize and highlight prompt text (pastes, commands, @context mentions)
                 const segments = tokenizeInputLine(lineText, lineIdx === 0)

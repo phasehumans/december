@@ -223,6 +223,35 @@ export class Agent {
         this.tools.delete(toolName)
     }
 
+    private getMcpServerPrefix(serverName: string): string {
+        const cleanServer = serverName.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^_+|_+$/g, '')
+        return `mcp_${cleanServer}_`
+    }
+
+    public unregisterMcpServerTools(serverName: string): void {
+        const prefix = this.getMcpServerPrefix(serverName)
+        for (const name of Array.from(this.tools.keys())) {
+            if (name.startsWith(prefix)) {
+                this.tools.delete(name)
+            }
+        }
+        for (const tool of this.deferredRegistry.getAll()) {
+            if (tool.name.startsWith(prefix)) {
+                this.deferredRegistry.unregister(tool.name)
+            }
+        }
+    }
+
+    public registerMcpServerTools(serverName: string): void {
+        if (!this.mcpClientManager) return
+        const prefix = this.getMcpServerPrefix(serverName)
+        for (const tool of this.mcpClientManager.getEagerTools()) {
+            if (tool.name.startsWith(prefix)) {
+                this.registerTool(tool)
+            }
+        }
+    }
+
     public registerDeferredTool(tool: Tool, metadata?: DeferredToolMetadata): void {
         this.deferredRegistry.register(tool, metadata)
     }
@@ -329,7 +358,8 @@ export class Agent {
     }
 
     public async initMcpServers(configs?: Record<string, McpServerConfig>): Promise<void> {
-        const { loadMcpConfig, McpClientManager } = await import('@december/tools')
+        const { loadMcpConfig, McpClientManager, createReadMcpResourceTool } =
+            await import('@december/tools')
         const finalConfigs = configs || (await loadMcpConfig({ workspaceDir: this.workspaceDir }))
         if (Object.keys(finalConfigs).length === 0) return
 
@@ -340,6 +370,14 @@ export class Agent {
             })
         }
         await this.mcpClientManager.connectAll(finalConfigs)
+
+        // Register eager tools directly for immediate turn-1 availability
+        for (const eagerTool of this.mcpClientManager.getEagerTools()) {
+            this.registerTool(eagerTool)
+        }
+
+        // Register resource reading tool so agent can read MCP resources
+        this.registerTool(createReadMcpResourceTool(this.mcpClientManager))
     }
 
     public truncateToTurn(targetTurn: number): void {

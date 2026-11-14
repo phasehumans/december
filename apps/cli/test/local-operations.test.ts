@@ -25,6 +25,16 @@ describe('local-operations', () => {
             expect(typeof localOperations.bash.exec).toBe('function')
         })
 
+        test('exec handles invalid or empty command without throwing', async () => {
+            const resUndefined = await localOperations.bash.exec(undefined as any, process.cwd())
+            expect(resUndefined.exitCode).toBe(1)
+            expect(resUndefined.output).toContain('must be a non-empty string')
+
+            const resEmpty = await localOperations.bash.exec('   ', process.cwd())
+            expect(resEmpty.exitCode).toBe(1)
+            expect(resEmpty.output).toContain('must be a non-empty string')
+        })
+
         test('exec executes short command without adding to taskManager', async () => {
             const initialTaskCount = taskManager.getTasks().length
             const res = await localOperations.bash.exec('echo "short command run"', process.cwd())

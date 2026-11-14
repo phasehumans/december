@@ -83,4 +83,36 @@ describe('BashTool (Unit)', () => {
         expect(capturedOptions).toBeDefined()
         expect(capturedOptions.waitMsBeforeAsync).toBe(20_000)
     })
+
+    test('should normalize cmd alias to command via prepareArguments and execute', async () => {
+        const context = createMockContext()
+        context.operations.bash.exec = mock(async () => ({
+            exitCode: 0,
+            output: 'from cmd alias',
+        }))
+
+        const prepared = BashTool.prepareArguments?.({ cmd: 'echo alias' })
+        expect(prepared).toEqual({ cmd: 'echo alias', command: 'echo alias' })
+
+        const result = await BashTool.execute({ cmd: 'echo alias' } as any, context)
+        expect(context.operations.bash.exec).toHaveBeenCalledWith(
+            'echo alias',
+            '/mock/cwd',
+            expect.any(Object)
+        )
+        expect(result).toBe('from cmd alias')
+    })
+
+    test('should return clean error message when command is missing or empty', async () => {
+        const context = createMockContext()
+        const resultMissing = await BashTool.execute({} as any, context)
+        expect(resultMissing).toBe(
+            'Error: The "command" argument is required and must be a non-empty string.'
+        )
+
+        const resultEmpty = await BashTool.execute({ command: '   ' }, context)
+        expect(resultEmpty).toBe(
+            'Error: The "command" argument is required and must be a non-empty string.'
+        )
+    })
 })

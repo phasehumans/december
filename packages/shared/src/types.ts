@@ -128,6 +128,10 @@ export interface AgentErrorEvent {
     error: string
     cause?: string
     hint?: string
+    code?: string
+    model?: string
+    fallbackModel?: string
+    provider?: string
 }
 
 export interface ContextCompactedEvent {

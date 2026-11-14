@@ -25,6 +25,9 @@ export interface ParsedCliArgs {
     turn?: number
     list?: boolean
     token?: string
+    env?: string[]
+    header?: string[]
+    eager?: boolean
     positionals: string[]
 }
 
@@ -53,6 +56,9 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 turn: { type: 'string', short: 't' },
                 list: { type: 'boolean' },
                 token: { type: 'string' },
+                env: { type: 'string', short: 'e', multiple: true },
+                header: { type: 'string', short: 'H', multiple: true },
+                eager: { type: 'boolean' },
             },
             allowPositionals: true,
             strict: false,
@@ -79,6 +85,17 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const turn = values.turn ? parseInt(values.turn as string, 10) : undefined
         const list = Boolean(values.list)
         const token = values.token as string | undefined
+        const env = values.env
+            ? Array.isArray(values.env)
+                ? (values.env as string[])
+                : [values.env as string]
+            : undefined
+        const header = values.header
+            ? Array.isArray(values.header)
+                ? (values.header as string[])
+                : [values.header as string]
+            : undefined
+        const eager = Boolean(values.eager)
 
         const knownCommands = [
             'login',
@@ -137,6 +154,9 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             turn,
             list,
             token,
+            env,
+            header,
+            eager,
             positionals,
         }
     } catch {

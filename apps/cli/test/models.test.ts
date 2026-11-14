@@ -13,6 +13,7 @@ import {
     ensureValidModelForProvider,
     fetchLiveProviderModels,
     clearProviderModelsCache,
+    markModelUnavailable,
     LIVE_MODEL_CACHE_TTL_MS,
 } from '../src/utils/models'
 
@@ -418,6 +419,16 @@ describe('models utils', () => {
             expect(capturedHeaders['Authorization']).toBeUndefined()
             expect(capturedHeaders['anthropic-beta']).toBeUndefined()
             expect(models.some((m) => m.value === 'claude-sonnet-5')).toBe(true)
+        })
+
+        it('markModelUnavailable removes unavailable model from provider list and future queries', () => {
+            const initialModels = getProviderModels('openai')
+            const targetModel = initialModels[0]?.value
+            expect(targetModel).toBeDefined()
+
+            markModelUnavailable('openai', targetModel!)
+            const updatedModels = getProviderModels('openai')
+            expect(updatedModels.some((m) => m.value === targetModel)).toBe(false)
         })
     })
 })

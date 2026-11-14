@@ -1709,3 +1709,19 @@ export function createProvider<T>(
         stream: streamImpl,
     }
 }
+
+export function getDefaultModelForProvider(provider?: string): string {
+    const normalized = (provider || '').toLowerCase().trim()
+    if (normalized === 'december' || normalized === 'december_proxy') {
+        return 'december-auto'
+    }
+    const canonical = MODEL_CATALOG.aliases[normalized] || normalized
+    const entry = MODEL_CATALOG.providers[canonical]
+    if (entry && entry.defaultModel) {
+        return entry.defaultModel
+    }
+    if (entry && Array.isArray(entry.models) && entry.models.length > 0) {
+        return entry.models[0].id
+    }
+    return 'gemini-3.8-flash'
+}

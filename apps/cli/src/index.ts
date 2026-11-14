@@ -96,9 +96,22 @@ async function main() {
     }
 
     if (parsedArgs.command === 'mcp') {
-        const action = parsedArgs.positionals[1] || 'status'
+        const action = parsedArgs.positionals[1] || 'list'
+        const name = parsedArgs.positionals[2]
+        const target = parsedArgs.positionals[3]
+        const args = parsedArgs.positionals.slice(4)
         const { handleMcpCommand } = await import('./commands')
-        await handleMcpCommand({ action })
+        await handleMcpCommand({
+            action,
+            name,
+            target,
+            args,
+            scope: parsedArgs.scope,
+            isGlobal: parsedArgs.isGlobal,
+            env: parsedArgs.env,
+            headers: parsedArgs.header,
+            eager: parsedArgs.eager,
+        })
         process.exit(0)
     }
 
@@ -552,19 +565,36 @@ async function main() {
             const { getCleanProviderDisplayName } = await import('@december/shared')
             if (activeMod && !isValidModelForProvider(activeProv, activeMod)) {
                 const displayName = getCleanProviderDisplayName(activeProv, activeMod)
+                const { getDefaultModelForProvider } = await import('@december/providers')
+                const fallback = getDefaultModelForProvider(activeProv)
+                const hasFallback = Boolean(
+                    fallback && fallback.toLowerCase() !== activeMod.toLowerCase()
+                )
+                const hintText = hasFallback
+                    ? `Press [Enter] to switch to '${fallback}' & retry · [m] /model · [Esc] dismiss`
+                    : `Please select an available model using \`/model\` or switch providers using \`/switch\`.`
                 const errorMsg =
                     `Model '${activeMod}' is not available or not supported on ${displayName}.\n` +
-                    `Please select an available model using \`/model\` or switch providers using \`/switch\`.`
+                    `${hintText}`
                 differentialApp.clearStatusMessage()
                 differentialApp.state.messages.push({
                     role: 'error',
                     content: errorMsg,
+                    hint: hintText,
                 })
                 differentialApp.state.scrollOffset = undefined
                 differentialApp.showToast(
                     `Model '${activeMod}' not supported on ${displayName}`,
                     'error'
                 )
+                if (hasFallback) {
+                    differentialApp.setPendingModelFallback({
+                        provider: activeProv,
+                        failedModel: activeMod,
+                        fallbackModel: fallback,
+                        prompt: promptText,
+                    })
+                }
                 differentialApp.render()
                 return ''
             }
@@ -610,6 +640,14 @@ async function main() {
                         cause: event.cause,
                         hint: event.hint,
                     })
+                    if (event.code === 'MODEL_UNAVAILABLE' && event.fallbackModel) {
+                        differentialApp.setPendingModelFallback({
+                            provider: event.provider || activeProv,
+                            failedModel: event.model || activeMod || 'unknown',
+                            fallbackModel: event.fallbackModel,
+                            prompt: promptText,
+                        })
+                    }
                     differentialApp.state.scrollOffset = undefined
                     differentialApp.state.isReadingMode = false
                     differentialApp.render()
@@ -926,6 +964,55 @@ async function main() {
             } catch (err: any) {
                 differentialApp.showToast(
                     `Failed to select model: ${err?.message || 'Error'}`,
+                    'error'
+                )
+            }
+        },
+        onModelFallback: async (fallbackModel, failedModel, originalPrompt) => {
+            try {
+                const cfg = await loadConfig()
+                const { getProviderConfig } = await import('./config')
+                const providerConfig = await getProviderConfig()
+                const activeProv = providerConfig?.provider || cfg.activeProvider || 'gemini'
+                const { markModelUnavailable, getModelLabel } = await import('./utils/models')
+                markModelUnavailable(activeProv, failedModel)
+
+                cfg.activeModel = fallbackModel
+                await saveConfig(cfg)
+                if (agent && agent.modelOptions) {
+                    agent.modelOptions.model = fallbackModel
+                }
+                if (providerConfig && agent) {
+                    const { instantiateProvider } = await import('./utils/provider-factory')
+                    const llm = instantiateProvider(
+                        providerConfig.provider,
+                        providerConfig.apiKey,
+                        {
+                            authMethod: providerConfig.authMethod,
+                            subscription: providerConfig.subscription,
+                            headers: providerConfig.headers,
+                            baseURL: providerConfig.baseURL,
+                        }
+                    )
+                    agent.setLLM(llm)
+                }
+                const fallbackLabel = getModelLabel(fallbackModel)
+                differentialApp.state.activeModel = fallbackModel
+                differentialApp.state.modelLabel = fallbackLabel
+                differentialApp.state.maxContextTokens = getModelContextWindow(fallbackModel)
+                differentialApp.refreshModelsForProvider(activeProv)
+                differentialApp.showToast(
+                    `Switched model to ${fallbackLabel} and retrying...`,
+                    'info'
+                )
+                differentialApp.render()
+
+                if (originalPrompt) {
+                    await runAgentExecution(originalPrompt)
+                }
+            } catch (err: any) {
+                differentialApp.showToast(
+                    `Failed to switch model: ${err?.message || 'Error'}`,
                     'error'
                 )
             }
@@ -1411,6 +1498,97 @@ async function main() {
         onLoadMemoryDetails: async () => {
             const { getWorkspaceMemoryDetails } = await import('@december/tools')
             return getWorkspaceMemoryDetails(process.cwd())
+        },
+        onLoadMcpServers: async () => {
+            const { listMcpServersWithScope } = await import('@december/tools')
+            const list = await listMcpServersWithScope({ workspaceDir: targetWorkspaceDir })
+            return list.map((item) => {
+                const info = mcpClientManager.getServer(item.name)
+                const stdioCfg =
+                    item.config && 'command' in item.config && item.config.command
+                        ? (item.config as any)
+                        : null
+                const target = stdioCfg
+                    ? `${stdioCfg.command}${stdioCfg.args ? ' ' + stdioCfg.args.join(' ') : ''}`
+                    : (item.config as any)?.url || (item.config as any)?.endpoint || ''
+                return {
+                    name: item.name,
+                    scope: item.scope,
+                    transport: (stdioCfg ? 'stdio' : 'http') as any,
+                    status: (info?.status || 'disconnected') as any,
+                    target,
+                    eager: item.config.eager,
+                    error: info?.error,
+                    tools:
+                        info?.tools?.map((t) => ({
+                            name: t.name,
+                            description: t.description,
+                        })) || [],
+                }
+            })
+        },
+        onToggleMcpServer: async (name: string) => {
+            const info = mcpClientManager.getServer(name)
+            if (info?.status === 'connected') {
+                await mcpClientManager.stopServer(name)
+                agent?.unregisterMcpServerTools(name)
+            } else {
+                await mcpClientManager.startServer(name)
+                agent?.registerMcpServerTools(name)
+            }
+        },
+        onRestartMcpServer: async (name: string) => {
+            agent?.unregisterMcpServerTools(name)
+            await mcpClientManager.restartServer(name)
+            agent?.registerMcpServerTools(name)
+        },
+        onRemoveMcpServer: async (name: string, scope: 'global' | 'project') => {
+            const { removeMcpServerConfig } = await import('@december/tools')
+            agent?.unregisterMcpServerTools(name)
+            await mcpClientManager.removeServer(name)
+            await removeMcpServerConfig(name, {
+                scope,
+                workspaceDir: targetWorkspaceDir,
+            })
+        },
+        onAddMcpServer: async (data: {
+            name: string
+            target: string
+            scope: 'global' | 'project'
+            eager?: boolean
+            env?: Record<string, string>
+        }) => {
+            const { addMcpServerConfig } = await import('@december/tools')
+            const isUrl = data.target.startsWith('http://') || data.target.startsWith('https://')
+            let config: any
+            if (isUrl) {
+                config = {
+                    url: data.target,
+                    scope: data.scope,
+                    eager: data.eager,
+                    headers: data.env,
+                }
+            } else {
+                const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g
+                const parts: string[] = []
+                let match
+                while ((match = regex.exec(data.target)) !== null) {
+                    parts.push(match[1] || match[2] || match[0])
+                }
+                config = {
+                    command: parts[0] || data.target,
+                    args: parts.length > 1 ? parts.slice(1) : undefined,
+                    scope: data.scope,
+                    eager: data.eager,
+                    env: data.env,
+                }
+            }
+            await addMcpServerConfig(data.name, config, {
+                scope: data.scope,
+                workspaceDir: targetWorkspaceDir,
+            })
+            await mcpClientManager.connectServer(data.name, config)
+            agent?.registerMcpServerTools(data.name)
         },
         onLoadProjectRules: async () => {
             const { discoverProjectRules } = await import('@december/shared')
