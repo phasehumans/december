@@ -341,6 +341,7 @@ export const processGithubIssueFix = async (
                 .run('npm test --if-present', { cwd: '/workspace' })
                 .catch(() => null)
             const testOutput = testRes?.stdout || testRes?.stderr || 'Tests executed.'
+            const isCleanTestExit = testRes === null || testRes.exitCode === 0
 
             // Check if changes exist in workspace
             const statusRes = await sandbox.commands
@@ -354,13 +355,32 @@ export const processGithubIssueFix = async (
                 .filter((line: string) => line.length > 2)
                 .map((line: string) => line.slice(2).trim())
 
+            if (hasChanges && !isCleanTestExit) {
+                await createIssueComment({
+                    token: gitToken,
+                    owner: repoOwner,
+                    repo: repoName,
+                    issueNumber,
+                    body: `Tests failed during verification:\n\`\`\`\n${testOutput.slice(0, 1500)}\n\`\`\``,
+                }).catch(() => {
+                    // Intentionally swallowed: test error reply fallback
+                })
+
+                return {
+                    status: 'FAILED',
+                    error: 'Test suite failed to exit cleanly',
+                    output: executionOutput,
+                }
+            }
+
             if (hasChanges) {
                 await sandbox.commands.run('git add -A', { cwd: '/workspace' }).catch(() => {
                     // Intentionally swallowed: git add fallback
                 })
 
+                const cleanTitle = issueTitle.toLowerCase()
                 await sandbox.commands
-                    .run(`git commit -m "fix: resolve #${issueNumber} - ${issueTitle}"`, {
+                    .run(`git commit -m "fix: resolve #${issueNumber} - ${cleanTitle}"`, {
                         cwd: '/workspace',
                     })
                     .catch(() => {
@@ -453,7 +473,7 @@ export const processGithubIssueFix = async (
                             token: gitToken,
                             owner: repoOwner,
                             repo: repoName,
-                            title: `fix: #${issueNumber} ${issueTitle}`,
+                            title: `fix: #${issueNumber} ${cleanTitle}`,
                             head: branchName,
                             base: defaultBranch,
                             body: prBodyLines.join('\n'),

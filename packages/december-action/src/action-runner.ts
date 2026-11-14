@@ -138,9 +138,67 @@ export async function runDecemberAction(
     // Checkout dedicated task branch
     await runCmd(`git checkout -B ${branchName}`, cwd)
 
+    // Execute agent loop if BYOK provider credentials exist
+    const geminiKey = process.env.GEMINI_API_KEY
+    const openaiKey = process.env.OPENAI_API_KEY
+    const anthropicKey = process.env.ANTHROPIC_API_KEY
+    const openrouterKey = process.env.OPENROUTER_API_KEY
+
+    if (geminiKey || openaiKey || anthropicKey || openrouterKey) {
+        try {
+            let providerInstance: any = null
+            if (geminiKey) {
+                const { geminiProvider } = await import('@december/providers')
+                providerInstance = geminiProvider(geminiKey)
+            } else if (openaiKey) {
+                const { openaiProvider } = await import('@december/providers')
+                providerInstance = openaiProvider(undefined, openaiKey)
+            } else if (anthropicKey) {
+                const { anthropicProvider } = await import('@december/providers')
+                providerInstance = anthropicProvider(anthropicKey)
+            } else if (openrouterKey) {
+                const { openrouterProvider } = await import('@december/providers')
+                providerInstance = openrouterProvider(openrouterKey)
+            }
+
+            if (providerInstance) {
+                const { AgentHarness, runAgentLoop } = await import('@december/agent')
+                const { CORE_TOOLS } = await import('@december/tools')
+                const localOps = {
+                    executeBash: async (cmd: string) => {
+                        const r = await runCmd(cmd, cwd)
+                        return { output: r.stdout || r.stderr, exitCode: r.exitCode }
+                    },
+                    readFile: async (p: string) => fs.promises.readFile(p, 'utf8'),
+                    writeFile: async (p: string, c: string) => fs.promises.writeFile(p, c, 'utf8'),
+                }
+
+                const harness = new AgentHarness({
+                    llm: providerInstance,
+                    tools: CORE_TOOLS,
+                    operations: localOps as any,
+                    workspaceDir: cwd,
+                    sessionId: `action-${Date.now()}`,
+                    runtime: 'cli',
+                    modelOptions: {
+                        model: options.model || process.env.INPUT_MODEL || 'gemini-2.5-flash',
+                    },
+                })
+                const agent = harness.getAgent()
+                for await (const _ of runAgentLoop(agent, prompt)) {
+                    // Intentionally streaming progress
+                }
+            }
+        } catch (agentErr: any) {
+            // Intentionally swallowed: action agent runner fallback
+            console.warn(`[December Action] Agent loop warning: ${agentErr?.message || agentErr}`)
+        }
+    }
+
     // Run tests / linter to verify workspace state
     const testRes = await runCmd('npm test --if-present', cwd)
     const testOutput = testRes.stdout || testRes.stderr || 'Tests executed.'
+    const isCleanTestExit = testRes.exitCode === 0
 
     // Check git status for modified files
     const statusRes = await runCmd('git status --porcelain', cwd)
@@ -152,13 +210,22 @@ export async function runDecemberAction(
         .filter((line: string) => line.length > 2)
         .map((line: string) => line.slice(2).trim())
 
+    if (hasChanges && !isCleanTestExit) {
+        return {
+            success: false,
+            status: 'FAILED',
+            error: 'Test suite failed to exit cleanly',
+        }
+    }
+
     let createdPrNumber: number | undefined
     let createdPrUrl: string | undefined
 
     if (hasChanges) {
+        const cleanTitle = issueTitle.toLowerCase()
         await runCmd('git add -A', cwd)
         await runCmd(
-            `git commit -m "fix: resolve ${issueNumber ? `#${issueNumber} - ` : ''}${issueTitle}"`,
+            `git commit -m "fix: resolve ${issueNumber ? `#${issueNumber} - ` : ''}${cleanTitle}"`,
             cwd
         )
 
@@ -203,8 +270,8 @@ export async function runDecemberAction(
                         owner: repoOwner,
                         repo: repoName,
                         title:
-                            options.prTitle ||
-                            `fix: ${issueNumber ? `#${issueNumber} ` : ''}${issueTitle}`,
+                            options.prTitle?.toLowerCase() ||
+                            `fix: ${issueNumber ? `#${issueNumber} ` : ''}${cleanTitle}`,
                         head: branchName,
                         base: baseBranch,
                         body: prBodyLines.join('\n'),
