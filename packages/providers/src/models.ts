@@ -1720,7 +1720,7 @@ export function getDefaultModelForProvider(provider?: string): string {
     if (entry && entry.defaultModel) {
         return entry.defaultModel
     }
-    if (entry && Array.isArray(entry.models) && entry.models.length > 0) {
+    if (entry && Array.isArray(entry.models) && entry.models.length > 0 && entry.models[0]) {
         return entry.models[0].id
     }
     return 'gemini-3.8-flash'

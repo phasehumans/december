@@ -398,4 +398,133 @@ describe('GitHubApp Service - Unit Tests', () => {
             }
         })
     })
+
+    describe('handlePullRequestOpened', () => {
+        const basePrData = {
+            installationId: 'inst-pr-100',
+            repository: {
+                name: 'test-repo',
+                fullName: 'org/test-repo',
+                owner: { login: 'org' },
+                defaultBranch: 'main',
+                private: false,
+            },
+            pullRequest: {
+                number: 456,
+                title: 'feat: add user sessions',
+                body: 'Here is PR description without bot mention',
+                head: { ref: 'feat/sessions', sha: 'abc123' },
+                base: { ref: 'main' },
+                user: { login: 'contributor', id: 55 },
+                authorAssociation: 'COLLABORATOR',
+            },
+        }
+
+        it('returns handled: false if PR body does not mention @december', async () => {
+            const res = await githubAppService.handlePullRequestOpened(basePrData)
+            expect(res.handled).toBe(false)
+            expect(res.reason).toBe('not_mentioned')
+        })
+
+        it('rejects trigger and posts warning comment if sender is unauthorized', async () => {
+            const originalFetch = globalThis.fetch
+            const originalGetToken = githubAppService.getInstallationAccessToken
+            let postedCommentBody = ''
+
+            githubAppService.getInstallationAccessToken = (async () => ({
+                token: 'ghs_token_mock',
+                expiresAt: '2026-10-30T00:00:00Z',
+            })) as any
+
+            globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
+                if (url.toString().includes('/comments') && options?.method === 'POST') {
+                    postedCommentBody = JSON.parse(options.body).body
+                    return new Response(JSON.stringify({ id: 1 }), { status: 201 })
+                }
+                return new Response(JSON.stringify({}), { status: 200 })
+            }) as any
+
+            try {
+                const res = await githubAppService.handlePullRequestOpened({
+                    ...basePrData,
+                    pullRequest: {
+                        ...basePrData.pullRequest,
+                        body: '@december review this pr',
+                        authorAssociation: 'NONE',
+                    },
+                })
+
+                expect(res.handled).toBe(false)
+                expect(res.reason).toBe('unauthorized_sender')
+                expect(postedCommentBody).toContain('collaborator')
+            } finally {
+                githubAppService.getInstallationAccessToken = originalGetToken
+                globalThis.fetch = originalFetch
+            }
+        })
+
+        it('acknowledges with eyes reaction and enqueues job with PR branch details for authorized mention', async () => {
+            const originalFetch = globalThis.fetch
+            const originalGetToken = githubAppService.getInstallationAccessToken
+            const originalFindByInstallationId = githubAppRepository.findByInstallationId
+            let reactionAdded = ''
+            let reactionTargetUrl = ''
+            let enqueuedJobName = ''
+            let enqueuedJobData: any = null
+
+            setAgentQueue({
+                add: (async (name: string, data: any) => {
+                    enqueuedJobName = name
+                    enqueuedJobData = data
+                    return { id: 'job-pr-456' }
+                }) as any,
+            } as any)
+
+            githubAppService.getInstallationAccessToken = (async () => ({
+                token: 'ghs_token_mock',
+                expiresAt: '2026-10-30T00:00:00Z',
+            })) as any
+
+            githubAppRepository.findByInstallationId = (async () => ({
+                id: 'inst-rec-2',
+                installationId: 'inst-pr-100',
+                userId: null,
+            })) as any
+
+            globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
+                if (url.toString().includes('/reactions') && options?.method === 'POST') {
+                    reactionTargetUrl = url.toString()
+                    reactionAdded = JSON.parse(options.body).content
+                    return new Response(JSON.stringify({ id: 1, content: 'eyes' }), { status: 201 })
+                }
+                return new Response(JSON.stringify({}), { status: 200 })
+            }) as any
+
+            try {
+                const res = await githubAppService.handlePullRequestOpened({
+                    ...basePrData,
+                    pullRequest: {
+                        ...basePrData.pullRequest,
+                        body: '@december review this pr and check for regressions',
+                        authorAssociation: 'COLLABORATOR',
+                    },
+                })
+
+                expect(res.handled).toBe(true)
+                expect(res.pullRequestNumber).toBe(456)
+                expect(res.jobId).toBe('job-pr-456')
+                expect(reactionAdded).toBe('eyes')
+                expect(reactionTargetUrl).toContain('/issues/456/reactions')
+                expect(enqueuedJobName).toBe('github_issue_fix')
+                expect(enqueuedJobData.isPullRequest).toBe(true)
+                expect(enqueuedJobData.pullRequestHead).toBe('feat/sessions')
+                expect(enqueuedJobData.prompt).toBe('review this pr and check for regressions')
+            } finally {
+                setAgentQueue(null)
+                githubAppService.getInstallationAccessToken = originalGetToken
+                githubAppRepository.findByInstallationId = originalFindByInstallationId
+                globalThis.fetch = originalFetch
+            }
+        })
+    })
 })

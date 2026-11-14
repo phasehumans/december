@@ -11,6 +11,14 @@ export interface CommentReactionParams {
     reaction?: string
 }
 
+export interface IssueReactionParams {
+    token: string
+    owner: string
+    repo: string
+    issueNumber: number | string
+    reaction?: string
+}
+
 export interface IssueCommentParams {
     token: string
     owner: string
@@ -83,6 +91,32 @@ export async function createCommentReaction(params: CommentReactionParams): Prom
     if (!response.ok) {
         const errorText = await response.text()
         throw new Error(`Failed to create comment reaction (${response.status}): ${errorText}`)
+    }
+
+    return response.json()
+}
+
+export async function createIssueReaction(params: IssueReactionParams): Promise<any> {
+    const { token, owner, repo, issueNumber, reaction = 'eyes' } = params
+
+    const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/reactions`,
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'User-Agent': 'December-App',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content: reaction }),
+        }
+    )
+
+    if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to create issue reaction (${response.status}): ${errorText}`)
     }
 
     return response.json()

@@ -1,7 +1,7 @@
 import { AgentHarness, runAgentLoop } from '@december/agent'
 import { prisma } from '@december/database'
 import { geminiProvider, openaiProvider } from '@december/providers'
-import { createIssueComment, createPullRequest } from '@december/shared'
+import { createIssueComment, createPullRequest, sendTaskNotification } from '@december/shared'
 import {
     BashTool,
     EditFileTool,
@@ -26,10 +26,15 @@ export interface GithubIssueFixJobData {
     issueNumber: number
     issueTitle: string
     issueBody?: string
-    commentId: number
+    commentId?: number
     commentAuthor: string
     prompt: string
     userId?: string | null
+    isPullRequest?: boolean
+    pullRequestHead?: string
+    pullRequestBase?: string
+    slackWebhookUrl?: string
+    discordWebhookUrl?: string
 }
 
 export interface GithubIssueFixResult {
@@ -110,6 +115,11 @@ export const processGithubIssueFix = async (
         commentAuthor,
         prompt,
         userId,
+        isPullRequest = false,
+        pullRequestHead,
+        pullRequestBase,
+        slackWebhookUrl,
+        discordWebhookUrl,
     } = data
 
     // Verify credits if userId is linked
@@ -134,6 +144,20 @@ export const processGithubIssueFix = async (
             }).catch(() => {
                 // Intentionally swallowed: fallback if warning comment fails to post
             })
+
+            await sendTaskNotification({
+                taskType: 'github_issue_fix',
+                status: 'FAILED',
+                repoFullName,
+                issueNumber,
+                issueTitle,
+                error: 'Insufficient credits',
+                slackWebhookUrl,
+                discordWebhookUrl,
+            }).catch(() => {
+                // Intentionally swallowed: notification fallback
+            })
+
             return {
                 status: 'FAILED',
                 error: 'Insufficient credits',
@@ -141,7 +165,36 @@ export const processGithubIssueFix = async (
         }
     }
 
-    const branchName = `december/issue-${issueNumber}`
+    let targetBranch = defaultBranch
+    let branchName = `december/issue-${issueNumber}`
+
+    if (isPullRequest) {
+        let prHead = pullRequestHead
+        if (!prHead) {
+            try {
+                const prRes = await fetch(
+                    `https://api.github.com/repos/${repoOwner}/${repoName}/pulls/${issueNumber}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${gitToken}`,
+                            Accept: 'application/vnd.github+json',
+                            'User-Agent': 'December-App',
+                        },
+                    }
+                )
+                if (prRes.ok) {
+                    const prData = (await prRes.json()) as any
+                    prHead = prData.head?.ref
+                }
+            } catch {
+                // Intentionally swallowed: PR details fetch fallback
+            }
+        }
+        if (prHead) {
+            branchName = prHead
+            targetBranch = prHead
+        }
+    }
 
     const result = await E2BSandboxService.runEphemeralTask({
         sessionId: `github-issue-${issueNumber}-${Date.now()}`,
@@ -168,7 +221,7 @@ export const processGithubIssueFix = async (
 
             const cloneUrl = `https://x-access-token:${gitToken}@github.com/${repoFullName}.git`
             const cloneRes = await sandbox.commands
-                .run(`git clone --depth 50 --branch ${defaultBranch} ${cloneUrl} /workspace`, {
+                .run(`git clone --depth 50 --branch ${targetBranch} ${cloneUrl} /workspace`, {
                     timeoutMs: 120_000,
                 })
                 .catch(async () => {
@@ -190,11 +243,23 @@ export const processGithubIssueFix = async (
                     // Intentionally swallowed: git config fallback
                 })
 
-            await sandbox.commands
-                .run(`git checkout -B ${branchName}`, { cwd: '/workspace' })
-                .catch(() => {
-                    // Intentionally swallowed: checkout fallback
-                })
+            if (isPullRequest) {
+                await sandbox.commands
+                    .run(`git checkout ${branchName}`, { cwd: '/workspace' })
+                    .catch(async () => {
+                        await sandbox.commands
+                            .run(`git checkout -B ${branchName}`, { cwd: '/workspace' })
+                            .catch(() => {
+                                // Intentionally swallowed: checkout fallback
+                            })
+                    })
+            } else {
+                await sandbox.commands
+                    .run(`git checkout -B ${branchName}`, { cwd: '/workspace' })
+                    .catch(() => {
+                        // Intentionally swallowed: checkout fallback
+                    })
+            }
 
             // Run autonomous agent loop to inspect files, make changes, or answer user query
             let agentResponseText = ''
@@ -281,7 +346,13 @@ export const processGithubIssueFix = async (
             const statusRes = await sandbox.commands
                 .run('git status --porcelain', { cwd: '/workspace' })
                 .catch(() => null)
-            const hasChanges = Boolean(statusRes?.stdout && statusRes.stdout.trim().length > 0)
+            const statusStdout = statusRes?.stdout || ''
+            const hasChanges = Boolean(statusStdout.trim().length > 0)
+            const modifiedFiles = statusStdout
+                .split('\n')
+                .map((line: string) => line.trim())
+                .filter((line: string) => line.length > 2)
+                .map((line: string) => line.slice(2).trim())
 
             if (hasChanges) {
                 await sandbox.commands.run('git add -A', { cwd: '/workspace' }).catch(() => {
@@ -307,52 +378,103 @@ export const processGithubIssueFix = async (
                     }))
 
                 if (pushRes?.exitCode === 0) {
-                    const prBodyLines = [
-                        `Closes #${issueNumber}`,
-                        '',
-                        '### Summary of Changes',
-                        `- Addressed issue #${issueNumber}: ${issueTitle}`,
-                        `- Prompt: ${prompt}`,
-                        '',
-                    ]
+                    if (isPullRequest) {
+                        const prCommentLines = [
+                            'I have updated this pull request with the requested changes.',
+                            '',
+                            '### Summary of Changes',
+                            `- Addressed feedback: ${prompt}`,
+                            '',
+                        ]
 
-                    if (testOutput && testOutput.trim() !== 'Tests executed.') {
-                        prBodyLines.push(
-                            '### Verification & Tests',
-                            '```',
-                            testOutput.slice(0, 1500),
-                            '```',
-                            ''
-                        )
-                    }
+                        if (modifiedFiles.length > 0) {
+                            prCommentLines.push('### Modified Files')
+                            for (const file of modifiedFiles) {
+                                prCommentLines.push(`- \`${file}\``)
+                            }
+                            prCommentLines.push('')
+                        }
 
-                    prBodyLines.push('---', `Triggered by @${commentAuthor} in #${issueNumber}`)
+                        if (testOutput && testOutput.trim() !== 'Tests executed.') {
+                            prCommentLines.push(
+                                '### Verification & Tests',
+                                '```',
+                                testOutput.slice(0, 1500),
+                                '```',
+                                ''
+                            )
+                        }
 
-                    const pr = await createPullRequest({
-                        token: gitToken,
-                        owner: repoOwner,
-                        repo: repoName,
-                        title: `fix: #${issueNumber} ${issueTitle}`,
-                        head: branchName,
-                        base: defaultBranch,
-                        body: prBodyLines.join('\n'),
-                    })
+                        await createIssueComment({
+                            token: gitToken,
+                            owner: repoOwner,
+                            repo: repoName,
+                            issueNumber,
+                            body: prCommentLines.join('\n'),
+                        }).catch(() => {
+                            // Intentionally swallowed: comment reply fallback
+                        })
 
-                    await createIssueComment({
-                        token: gitToken,
-                        owner: repoOwner,
-                        repo: repoName,
-                        issueNumber,
-                        body: `I have opened PR #${pr.number} with the requested changes.`,
-                    }).catch(() => {
-                        // Intentionally swallowed: comment reply fallback
-                    })
+                        return {
+                            status: 'COMPLETED',
+                            output: executionOutput,
+                        }
+                    } else {
+                        const prBodyLines = [
+                            `Closes #${issueNumber}`,
+                            '',
+                            '### Summary of Changes',
+                            `- Addressed issue #${issueNumber}: ${issueTitle}`,
+                            `- Prompt: ${prompt}`,
+                            '',
+                        ]
 
-                    return {
-                        status: 'COMPLETED',
-                        prNumber: pr.number,
-                        prUrl: pr.html_url,
-                        output: executionOutput,
+                        if (modifiedFiles.length > 0) {
+                            prBodyLines.push('### Modified Files')
+                            for (const file of modifiedFiles) {
+                                prBodyLines.push(`- \`${file}\``)
+                            }
+                            prBodyLines.push('')
+                        }
+
+                        if (testOutput && testOutput.trim() !== 'Tests executed.') {
+                            prBodyLines.push(
+                                '### Verification & Tests',
+                                '```',
+                                testOutput.slice(0, 1500),
+                                '```',
+                                ''
+                            )
+                        }
+
+                        prBodyLines.push('---', `Triggered by @${commentAuthor} in #${issueNumber}`)
+
+                        const pr = await createPullRequest({
+                            token: gitToken,
+                            owner: repoOwner,
+                            repo: repoName,
+                            title: `fix: #${issueNumber} ${issueTitle}`,
+                            head: branchName,
+                            base: defaultBranch,
+                            body: prBodyLines.join('\n'),
+                        })
+
+                        await createIssueComment({
+                            token: gitToken,
+                            owner: repoOwner,
+                            repo: repoName,
+                            issueNumber,
+                            body: `I have opened PR #${pr.number} with the requested changes.`,
+                        }).catch(() => {
+                            // Intentionally swallowed: comment reply fallback
+                        })
+
+                        return {
+                            status: 'COMPLETED',
+                            prNumber: pr.number,
+                            prUrl: pr.html_url,
+                            output: executionOutput,
+                        }
                     }
                 }
             }
@@ -389,12 +511,31 @@ export const processGithubIssueFix = async (
         },
     })
 
-    if (!result.success) {
-        return {
-            status: 'FAILED',
-            error: result.error,
-        }
-    }
+    const finalResult: GithubIssueFixResult = result.success
+        ? (result.data as GithubIssueFixResult)
+        : {
+              status: 'FAILED',
+              error: result.error,
+          }
 
-    return result.data as GithubIssueFixResult
+    await sendTaskNotification({
+        taskType: 'github_issue_fix',
+        status: finalResult.status,
+        repoFullName,
+        issueNumber,
+        issueTitle,
+        prNumber: finalResult.prNumber,
+        prUrl: finalResult.prUrl,
+        summary:
+            finalResult.status === 'COMPLETED'
+                ? `Completed task for #${issueNumber}: ${issueTitle}`
+                : undefined,
+        error: finalResult.error,
+        slackWebhookUrl,
+        discordWebhookUrl,
+    }).catch(() => {
+        // Intentionally swallowed: webhook notification fallback
+    })
+
+    return finalResult
 }

@@ -189,6 +189,39 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
                 },
             })
         }
+    } else if (event === 'pull_request' && payload.action === 'opened') {
+        const installationId = payload.installation?.id?.toString()
+        if (installationId) {
+            await githubAppService.handlePullRequestOpened({
+                installationId,
+                repository: {
+                    name: payload.repository?.name,
+                    fullName: payload.repository?.full_name,
+                    owner: {
+                        login: payload.repository?.owner?.login,
+                    },
+                    defaultBranch: payload.repository?.default_branch || 'main',
+                    private: payload.repository?.private ?? false,
+                },
+                pullRequest: {
+                    number: payload.pull_request?.number,
+                    title: payload.pull_request?.title,
+                    body: payload.pull_request?.body,
+                    head: {
+                        ref: payload.pull_request?.head?.ref,
+                        sha: payload.pull_request?.head?.sha,
+                    },
+                    base: {
+                        ref: payload.pull_request?.base?.ref || 'main',
+                    },
+                    user: {
+                        login: payload.pull_request?.user?.login,
+                        id: payload.pull_request?.user?.id,
+                    },
+                    authorAssociation: payload.pull_request?.author_association || 'NONE',
+                },
+            })
+        }
     }
 
     return sendSuccess(res, 'webhook processed successfully', null)

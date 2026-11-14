@@ -220,6 +220,59 @@ describe('GitHubApp Module Integration Tests', () => {
         }
     })
 
+    it('6b. POST /api/v1/githubapp/webhook - processes pull_request opened event (200)', async () => {
+        const { githubAppService } = await import('../../src/modules/githubapp/githubapp.service')
+        let handlePrOpenedCalledWith: any = null
+        const originalHandlePr = githubAppService.handlePullRequestOpened
+        githubAppService.handlePullRequestOpened = (async (data: any) => {
+            handlePrOpenedCalledWith = data
+            return { handled: true, pullRequestNumber: 123 }
+        }) as any
+
+        try {
+            const payloadObj = {
+                action: 'opened',
+                installation: { id: 99999 },
+                repository: {
+                    name: 'my-repo',
+                    full_name: 'test-org/my-repo',
+                    owner: { login: 'test-org' },
+                    default_branch: 'main',
+                },
+                pull_request: {
+                    number: 123,
+                    title: 'test pr',
+                    body: '@december review this pr',
+                    head: { ref: 'feat/test', sha: '111222' },
+                    base: { ref: 'main' },
+                    user: { login: 'tester', id: 44 },
+                    author_association: 'MEMBER',
+                },
+            }
+            const payloadStr = JSON.stringify(payloadObj)
+
+            const secret = env.GITHUB_APP_WEBHOOK_SECRET || 'secret'
+            const hmac = crypto.createHmac('sha256', secret)
+            hmac.update(payloadStr)
+            const signature = `sha256=${hmac.digest('hex')}`
+
+            const res = await request(app)
+                .post('/api/v1/githubapp/webhook')
+                .set('Content-Type', 'application/json')
+                .set('x-hub-signature-256', signature)
+                .set('x-github-event', 'pull_request')
+                .send(payloadStr)
+
+            expect(res.status).toBe(200)
+            expect(res.body.success).toBe(true)
+            expect(handlePrOpenedCalledWith.installationId).toBe('99999')
+            expect(handlePrOpenedCalledWith.pullRequest.number).toBe(123)
+            expect(handlePrOpenedCalledWith.pullRequest.body).toBe('@december review this pr')
+        } finally {
+            githubAppService.handlePullRequestOpened = originalHandlePr
+        }
+    })
+
     it('7. GET /api/v1/githubapp/callback - links installation and redirects (302)', async () => {
         const state = encodeURIComponent(`${testUserId}|/profile/integrations`)
         const res = await request(app)

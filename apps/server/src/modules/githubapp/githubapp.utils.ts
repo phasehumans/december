@@ -57,6 +57,7 @@ export {
     extractBotMention,
     isAuthorizedGithubSender,
     createCommentReaction,
+    createIssueReaction,
     createIssueComment,
     createPullRequest,
 } from '@december/shared'

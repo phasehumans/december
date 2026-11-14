@@ -113,6 +113,43 @@ export type HandleIssueCommentResult = {
     jobId?: string
 }
 
+export type HandlePullRequestOpened = {
+    installationId: string
+    repository: {
+        name: string
+        fullName: string
+        owner: {
+            login: string
+        }
+        defaultBranch?: string
+        private?: boolean
+    }
+    pullRequest: {
+        number: number
+        title: string
+        body?: string | null
+        head: {
+            ref: string
+            sha?: string
+        }
+        base: {
+            ref: string
+        }
+        user: {
+            login: string
+            id?: number
+        }
+        authorAssociation?: string | null
+    }
+}
+
+export type HandlePullRequestOpenedResult = {
+    handled: boolean
+    reason?: string
+    pullRequestNumber?: number
+    jobId?: string
+}
+
 export type GithubIssueJobData = {
     taskType: 'github_issue_fix'
     installationId: string
@@ -124,8 +161,13 @@ export type GithubIssueJobData = {
     issueNumber: number
     issueTitle: string
     issueBody: string
-    commentId: number
+    commentId?: number
     commentAuthor: string
     prompt: string
     userId?: string | null
+    isPullRequest?: boolean
+    pullRequestHead?: string
+    pullRequestBase?: string
+    slackWebhookUrl?: string
+    discordWebhookUrl?: string
 }

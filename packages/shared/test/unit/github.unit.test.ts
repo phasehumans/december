@@ -3,6 +3,7 @@ import { describe, expect, it } from 'bun:test'
 import {
     createCommentReaction,
     createIssueComment,
+    createIssueReaction,
     createPullRequest,
     extractBotMention,
     isAuthorizedGithubSender,
@@ -95,6 +96,40 @@ describe('GitHub Utils - Unit Tests', () => {
                 expect(capturedOptions.headers.Authorization).toBe('Bearer ghs_test123')
                 expect(JSON.parse(capturedOptions.body)).toEqual({ content: 'eyes' })
                 expect(res.content).toBe('eyes')
+            } finally {
+                globalThis.fetch = originalFetch
+            }
+        })
+    })
+
+    describe('createIssueReaction', () => {
+        it('makes POST request to GitHub issue reactions endpoint with eyes or rocket', async () => {
+            const originalFetch = globalThis.fetch
+            let capturedUrl = ''
+            let capturedOptions: any = null
+
+            globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
+                capturedUrl = url.toString()
+                capturedOptions = options
+                return new Response(JSON.stringify({ id: 2, content: 'rocket' }), { status: 201 })
+            }) as any
+
+            try {
+                const res = await createIssueReaction({
+                    token: 'ghs_test123',
+                    owner: 'testorg',
+                    repo: 'testrepo',
+                    issueNumber: 123,
+                    reaction: 'rocket',
+                })
+
+                expect(capturedUrl).toBe(
+                    'https://api.github.com/repos/testorg/testrepo/issues/123/reactions'
+                )
+                expect(capturedOptions.method).toBe('POST')
+                expect(capturedOptions.headers.Authorization).toBe('Bearer ghs_test123')
+                expect(JSON.parse(capturedOptions.body)).toEqual({ content: 'rocket' })
+                expect(res.content).toBe('rocket')
             } finally {
                 globalThis.fetch = originalFetch
             }

@@ -1,0 +1,13 @@
+{
+    "name": "@december/action",
+    "version": "0.1.0",
+    "type": "module",
+    "description": "standalone github action for december autonomous software engineer",
+    "main": "src/index.ts",
+    "scripts": {
+        "test": "bun test"
+    },
+    "dependencies": {
+        "@december/shared": "workspace:*"
+    }
+}
