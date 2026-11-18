@@ -57,6 +57,23 @@ export const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', 
 
 const defaultLineCache = new MessageLineCache()
 
+/** Returns lines [start, end) of the segments joined, without joining them. */
+function sliceSegments(segments: FormattedLine[][], start: number, end: number): FormattedLine[] {
+    const result: FormattedLine[] = []
+    let offset = 0
+    for (const segment of segments) {
+        if (offset >= end) break
+        const segEnd = offset + segment.length
+        if (segEnd > start) {
+            const from = Math.max(0, start - offset)
+            const to = Math.min(segment.length, end - offset)
+            for (let i = from; i < to; i++) result.push(segment[i]!)
+        }
+        offset = segEnd
+    }
+    return result
+}
+
 export const MessageListView = {
     render(
         buffer: ScreenBuffer,
@@ -69,22 +86,27 @@ export const MessageListView = {
         const messages = props.messages
         const spinnerGlyph = SPINNER_FRAMES[(props.spinnerFrame ?? 0) % SPINNER_FRAMES.length] + ' '
 
-        // 1. Build all formatted lines for the message history
-        const allLines: FormattedLine[] = []
+        // 1. Collect the history as ordered segments. Settled history comes back as a shared
+        // cached array, so a frame never copies every line of a long session.
+        const segments: FormattedLine[][] = []
 
         // 0. Prepend non-sticky scrollable header lines if provided
         if (props.headerProps) {
-            allLines.push(...HeaderView.toLines(props.headerProps, width))
+            segments.push(HeaderView.toLines(props.headerProps, width))
         }
 
         const cache = props.lineCache ?? defaultLineCache
-        allLines.push(
-            ...cache.getLines(messages, width, {
+        segments.push(
+            ...cache.getLineSegments(messages, width, {
                 spinnerGlyph,
                 expandTools: props.expandTools,
                 tip: props.tip,
             })
         )
+
+        // Status and loader rows that follow the history
+        const allLines: FormattedLine[] = []
+        segments.push(allLines)
 
         // 1b. If streaming is active, render active status message or waiting loader
         if (props.isStreaming) {
@@ -124,13 +146,14 @@ export const MessageListView = {
             }
         }
 
-        const totalLines = allLines.length
+        let totalLines = 0
+        for (const segment of segments) totalLines += segment.length
         const maxScroll = Math.max(0, totalLines - height)
         const scroll =
             props.scrollOffset !== undefined ? Math.min(props.scrollOffset, maxScroll) : maxScroll
 
         // 2. Slice lines for current visible viewport
-        const visibleLines = allLines.slice(scroll, scroll + height)
+        const visibleLines = sliceSegments(segments, scroll, scroll + height)
 
         let currY = y
         for (let i = 0; i < visibleLines.length && currY < y + height; i++) {

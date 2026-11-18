@@ -251,6 +251,14 @@ interface CacheEntry {
 
 export const THOUGHT_DWELL_MS = 2500
 
+function hasLiveBefore(messages: MessageItem[], end: number): boolean {
+    for (let i = 0; i < end; i++) {
+        const m = messages[i]
+        if (m && (m.isStreaming || m.toolCall?.status === 'running')) return true
+    }
+    return false
+}
+
 export class MessageLineCache {
     private messageCache = new WeakMap<MessageItem, CacheEntry>()
     private streamMarkdownCaches = new WeakMap<MessageItem, StreamingMarkdownCache>()
@@ -267,6 +275,12 @@ export class MessageLineCache {
     private lastPriorWidth = 0
     private lastPriorExpandTools = false
     private lastPriorResult: FormattedLine[] | null = null
+    private settledTurnsMessages: MessageItem[] | null = null
+    private settledTurnsEnd = 0
+    private settledTurnsBoundary: MessageItem | null = null
+    private settledTurnsWidth = 0
+    private settledTurnsExpandTools = false
+    private settledTurnsResult: FormattedLine[] | null = null
 
     /**
      * Clears all cached lines.
@@ -285,6 +299,48 @@ export class MessageLineCache {
         this.lastPriorWidth = 0
         this.lastPriorExpandTools = false
         this.lastPriorResult = null
+        this.settledTurnsMessages = null
+        this.settledTurnsEnd = 0
+        this.settledTurnsBoundary = null
+        this.settledTurnsResult = null
+    }
+
+    /**
+     * Lines for the turns before `end`. They hold no live message, so they cannot change
+     * while a later turn streams or runs tools, and are laid out once instead of per frame.
+     */
+    private getSettledTurnLines(
+        messages: MessageItem[],
+        end: number,
+        width: number,
+        spinner: string,
+        expandTools: boolean,
+        tip?: string | null
+    ): FormattedLine[] {
+        const boundary = messages[end - 1] ?? null
+        if (
+            this.settledTurnsResult &&
+            this.settledTurnsMessages === messages &&
+            this.settledTurnsEnd === end &&
+            this.settledTurnsBoundary === boundary &&
+            this.settledTurnsWidth === width &&
+            this.settledTurnsExpandTools === expandTools
+        ) {
+            return this.settledTurnsResult
+        }
+
+        const lines = this.getLines(messages.slice(0, end), width, {
+            spinnerGlyph: spinner,
+            expandTools,
+            tip,
+        })
+        this.settledTurnsMessages = messages
+        this.settledTurnsEnd = end
+        this.settledTurnsBoundary = boundary
+        this.settledTurnsWidth = width
+        this.settledTurnsExpandTools = expandTools
+        this.settledTurnsResult = lines
+        return lines
     }
 
     getLatchedThoughtTopic(msg: MessageItem, now = Date.now()): string {
@@ -1187,16 +1243,31 @@ export class MessageLineCache {
     }
 
     /**
-     * Returns the aggregated formatted lines for all messages.
-     * Consolidates consecutive discovery blocks (Read, ListDir, Search, WebSearch),
-     * stacks adjacent tool calls with compact vertical spacing, and rolls up
-     * long autonomous turns (> 25 steps) when collapsed.
+     * Returns the aggregated formatted lines for all messages as one array.
+     * Prefer getLineSegments() on hot paths: it avoids copying every line per frame.
      */
     getLines(
         messages: MessageItem[],
         width: number,
         options?: { spinnerGlyph?: string; expandTools?: boolean; tip?: string | null }
     ): FormattedLine[] {
+        const segments = this.getLineSegments(messages, width, options)
+        if (segments.length === 1) return segments[0]!
+        return ([] as FormattedLine[]).concat(...segments)
+    }
+
+    /**
+     * Returns the formatted lines for all messages as ordered segments. Joined, they equal
+     * getLines(). Settled history is returned as a shared cached segment, not copied.
+     * Consolidates consecutive discovery blocks (Read, ListDir, Search, WebSearch),
+     * stacks adjacent tool calls with compact vertical spacing, and rolls up
+     * long autonomous turns (> 25 steps) when collapsed.
+     */
+    getLineSegments(
+        messages: MessageItem[],
+        width: number,
+        options?: { spinnerGlyph?: string; expandTools?: boolean; tip?: string | null }
+    ): FormattedLine[][] {
         const spinner = options?.spinnerGlyph || '⠋ '
         const expandTools = Boolean(options?.expandTools)
         const tip = options?.tip
@@ -1218,7 +1289,7 @@ export class MessageLineCache {
             this.lastAggregateWidth === width &&
             this.lastAggregateExpandTools === expandTools
         ) {
-            return this.lastAggregateResult
+            return [this.lastAggregateResult]
         }
 
         // Streaming performance fast-path: if only the latest trailing message is actively streaming
@@ -1228,9 +1299,7 @@ export class MessageLineCache {
             hasLiveActivity &&
             messages.length > 1 &&
             Boolean(lastMsg && (lastMsg.isStreaming || lastMsg.toolCall?.status === 'running')) &&
-            !messages
-                .slice(0, lastIdx)
-                .some((m) => m.isStreaming || m.toolCall?.status === 'running')
+            !hasLiveBefore(messages, lastIdx)
 
         if (onlyLastIsActive && lastMsg) {
             if (
@@ -1248,7 +1317,7 @@ export class MessageLineCache {
                     true,
                     tip
                 )
-                return [...this.lastPriorResult, ...lastLines]
+                return [this.lastPriorResult, lastLines]
             }
 
             const priorMsgs = messages.slice(0, lastIdx)
@@ -1263,7 +1332,37 @@ export class MessageLineCache {
             this.lastPriorWidth = width
             this.lastPriorExpandTools = expandTools
             const lastLines = this.getMessageLines(lastMsg, width, spinner, expandTools, true, tip)
-            return [...priorLines, ...lastLines]
+            return [priorLines, lastLines]
+        }
+
+        // Several live messages (parallel tools, thinking beside a running tool): lay out only
+        // the turn that holds the first live message and reuse the settled turns before it.
+        // A turn starts at a user message, and both turn rollups and discovery grouping break
+        // there, so splitting at that index gives the same lines as a full layout.
+        if (hasLiveActivity) {
+            const firstLive = messages.findIndex(
+                (m) => m.isStreaming || m.toolCall?.status === 'running'
+            )
+            let turnStart = firstLive
+            while (turnStart > 0 && messages[turnStart]?.role !== 'user') {
+                turnStart--
+            }
+            if (turnStart > 0) {
+                const settledLines = this.getSettledTurnLines(
+                    messages,
+                    turnStart,
+                    width,
+                    spinner,
+                    expandTools,
+                    tip
+                )
+                const liveSegments = this.getLineSegments(messages.slice(turnStart), width, {
+                    spinnerGlyph: spinner,
+                    expandTools,
+                    tip,
+                })
+                return [settledLines, ...liveSegments]
+            }
         }
 
         let allLines: FormattedLine[] = []
@@ -1376,6 +1475,6 @@ export class MessageLineCache {
             this.lastAggregateResult = null
         }
 
-        return allLines
+        return [allLines]
     }
 }
