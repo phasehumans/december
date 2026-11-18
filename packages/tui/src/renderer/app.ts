@@ -388,6 +388,12 @@ export interface DifferentialAppState {
 }
 
 export interface DifferentialAppOptions extends DifferentialScreenOptions {
+    /**
+     * Queues a frame callback. render() coalesces every state change made in the same
+     * tick into one painted frame. Defaults to setImmediate, or synchronous painting
+     * under test so assertions can read the screen right after a state change.
+     */
+    scheduleFrame?: (callback: () => void) => void
     cliVersion?: string
     latestVersion?: string
     modelLabel?: string
@@ -609,6 +615,7 @@ export class DifferentialApp {
     private lastToolRenderTime = 0
     private static readonly TOOL_THROTTLE_MS = 33 // ~30fps max for tool output updates
     private renderScheduled = false
+    private readonly scheduleFrame: ((callback: () => void) => void) | null
 
     constructor(options?: DifferentialAppOptions) {
         this.terminal = options?.terminal ?? new TerminalController()
@@ -620,6 +627,9 @@ export class DifferentialApp {
         })
 
         this.options = options
+        const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.BUN_TEST)
+        this.scheduleFrame =
+            options?.scheduleFrame ?? (isTestEnv ? null : (callback) => setImmediate(callback))
         this.onSubmitCallback = options?.onSubmit
         this.onAbortCallback = options?.onAbort
         this.onExitCallback = options?.onExit
@@ -7134,21 +7144,7 @@ export class DifferentialApp {
     }
 
     requestRender(): void {
-        if (this.renderScheduled || !this.isRunning) return
-        this.renderScheduled = true
-
-        if (process.env.NODE_ENV === 'test' || process.env.BUN_TEST) {
-            this.renderScheduled = false
-            this.render()
-            return
-        }
-
-        setImmediate(() => {
-            this.renderScheduled = false
-            if (this.isRunning) {
-                this.render()
-            }
-        })
+        this.render()
     }
 
     scrollUp(delta = 1): void {
@@ -7195,10 +7191,29 @@ export class DifferentialApp {
         })
     }
 
+    /**
+     * Requests a frame. All calls in the same tick are coalesced into one paint, so
+     * call sites can mark the UI dirty freely without each one costing a full frame.
+     */
     render(): void {
-        this.renderScheduled = false
         if (this.isBatchingInput) return
 
+        if (!this.scheduleFrame) {
+            this.paint()
+            return
+        }
+
+        if (this.renderScheduled || !this.isRunning) return
+        this.renderScheduled = true
+        this.scheduleFrame(() => {
+            this.renderScheduled = false
+            if (this.isRunning) {
+                this.paint()
+            }
+        })
+    }
+
+    private paint(): void {
         const width = this.screen.columns
         const height = this.screen.rows
 

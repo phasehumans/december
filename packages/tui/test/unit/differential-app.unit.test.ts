@@ -3391,6 +3391,67 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('coalesces a burst of state changes into a single terminal frame', () => {
+        const pendingFrames: Array<() => void> = []
+        const runFrames = () => pendingFrames.splice(0).forEach((cb) => cb())
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            scheduleFrame: (cb) => {
+                pendingFrames.push(cb)
+            },
+        })
+        app.start()
+        runFrames()
+
+        let written = ''
+        terminal.write = (data: string) => {
+            written += data
+        }
+
+        app.appendMessage({ role: 'user', content: 'hi' })
+        app.setStatusMessage('Working')
+        app.appendToolCall({ id: 't1', name: 'read_file', command: 'Read(a.ts)' })
+        app.updateToolResult('t1', { output: 'ok' })
+        app.appendMessage({ role: 'assistant', content: 'all done' })
+
+        // Nothing is painted synchronously; exactly one frame is queued
+        expect(written).toBe('')
+        expect(pendingFrames).toHaveLength(1)
+
+        runFrames()
+        const frameCount = written.split('\x1b[?2026h').length - 1
+        expect(frameCount).toBe(1)
+        expect(written).toContain('all done')
+
+        app.stop()
+    })
+
+    it('drops a queued frame when the app stops before it runs', () => {
+        const pendingFrames: Array<() => void> = []
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            scheduleFrame: (cb) => {
+                pendingFrames.push(cb)
+            },
+        })
+        app.start()
+        pendingFrames.splice(0).forEach((cb) => cb())
+
+        app.appendMessage({ role: 'assistant', content: 'late' })
+        app.stop()
+
+        let written = ''
+        terminal.write = (data: string) => {
+            written += data
+        }
+        pendingFrames.splice(0).forEach((cb) => cb())
+        expect(written).toBe('')
+    })
+
     it('provides requestRender for non-blocking frame scheduling', () => {
         const app = new DifferentialApp({
             terminal,
