@@ -1,74 +1,74 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Workspace Memory & Rules
-description: Learn how December remembers project quirks, tracks learned conventions, and enforces team rules across sessions.
+description: Give December your project rules and notes that it reads in every session.
 currentSlug: 'memory'
 ---
 
+This page helps you give December rules and notes that it reads in every session.
+
 ## Overview
 
-Coding agents often suffer from amnesia: they forget your preferred build flags, repeatedly make the same linting mistakes, and lose context as soon as a session ends.
+December reads two types of files when a session starts:
 
-December solves this with a two-part memory architecture:
+1. Rules: files that you write, such as `AGENTS.md`. Rules tell December your coding standards and team conventions.
+2. Memory: a short list of notes in `.december/memory.md`. Memory holds facts about your project, such as the test command.
 
-1. **Deterministic Team Rules** (`AGENTS.md`): Explicit guidelines written by humans that dictate coding standards, forbidden patterns, and PR rules.
-2. **Autonomous Workspace Memory** (`.december/memory.md`): A compact, persistent ledger where December automatically records learned quirks, test commands, and architectural conventions.
+December adds both to its instructions for the session. You do not need to repeat them in each prompt.
 
----
+## Workspace memory (`.december/memory.md`)
 
-## Autonomous Workspace Memory (`.december/memory.md`)
-
-When you correct December during a session (for example: _"Always run tests with bun test --bail, not jest"_), December uses its `manage_memory` tool to commit this knowledge to `.december/memory.md`:
+Memory is a Markdown file with one section for each category. Each entry is one bullet:
 
 ```markdown
-# Project Memory
+## build_and_test
 
-- Build command: `bun --cwd packages/web build`
-- Unit tests: `bun test --filter web`
-- Database: run `bun db:migrate:test` before executing integration tests
-- React guidelines: all custom hooks must be co-located with their feature folder
+- Run unit tests with `bun test`
+- Run `bun db:migrate:test` before integration tests
+
+## conventions
+
+- Put custom hooks in the feature folder that uses them
 ```
 
-### Memory Budgeting (2KB Limit)
+The categories are `conventions`, `build_and_test`, `architecture`, `quirks`, `rules`, and `general`.
 
-To prevent context bloat and degraded model reasoning ("context rot"), December enforces a strict **2KB budget** on workspace memory. As new knowledge is acquired, December summarizes, consolidates, and removes stale entries, keeping only high-signal operational details in active memory.
+December can also add and remove entries itself with the `manage_memory` tool, in the terminal and in December Cloud.
 
----
+### Memory size limit (2 KB)
 
-## Interactive Memory Manager (`/memory` or `/rules`)
+December adds at most 2,048 bytes of memory to its instructions. If your memory files are larger, December cuts the text at 2 KB. Keep each entry short, and remove entries that are out of date.
 
-Inside any active December session, type `/memory` or `/rules` to open the interactive memory manager:
+The `/memory` view shows a warning when memory is at 85% of the limit or more.
 
-```text
-╭─ Workspace Memory & Rules ──────────────────────────────────────────────╮
-│ Memory (.december/memory.md)                                            │
-│   • Build: bun --cwd packages/web build                                 │
-│   • Tests: bun test packages/web                                        │
-│                                                                         │
-│ Project Guidelines (AGENTS.md)                                          │
-│   • No em dashes in documentation or UI copy                            │
-│   • Lowercase commit messages                                           │
-╰─────────────────────────────────────────────────────────────────────────╯
- [a] Add entry   [d] Forget entry   [e] Edit in editor   [r] Reload rules   [c] Scaffold AGENTS.md   [esc] Close
-```
+## Manage memory with `/memory`
 
-### Interactive Keyboard Actions
+Type `/memory` to open the memory view. The view has two tabs: `memory` and `rules`. Press Tab to switch between them.
 
-- `[a]` **Add entry**: Prompt for a key fact to save immediately to persistent memory.
-- `[d]` **Forget entry**: Remove outdated or obsolete conventions from memory.
-- `[e]` **Edit in editor**: Open `.december/memory.md` directly in your `$EDITOR` (VS Code, Neovim, Nano).
-- `[x]` **Clear memory**: Reset learned memory back to a fresh state.
-- `[c]` **Scaffold AGENTS.md**: Automatically generate a starter `AGENTS.md` file tailored to your repository.
-- `[r]` **Reload rules**: Hot-reload modified `AGENTS.md` and guideline files without restarting your session.
+On the `memory` tab:
 
----
+- Press `a` to add an entry. Type the text, press Tab to select a category, then press Enter.
+- Press `d` to remove the selected entry. Press `y` to confirm.
+- Press `↑` and `↓` to select an entry.
 
-## Rules Discovery Hierarchy
+On the `rules` tab:
 
-December automatically scans for project rules in the following order of precedence:
+- Press `↑` and `↓` to scroll the rule file.
+- Press `[` and `]` to switch between rule files, if you have more than one.
+- Press `c` to make a starter `AGENTS.md` file. This key shows only when December finds no rule files.
 
-1. **Workspace Root**: `AGENTS.md` (recommended team standard)
-2. **Alternative Agent Files**: `CLAUDE.md` or `.december/rules.md`
-3. **Global Machine Rules**: `~/.december/rules.md` (applied across all repos on your computer)
+Press Esc to close the view.
 
-Rules are injected at the start of every session, guaranteeing that December adheres to your repository standards on every task.
+## Where December looks for rules
+
+December looks for rule files in your current folder. Then it looks in each parent folder, up to the root of your file system. In each folder, it reads these files:
+
+- `AGENTS.override.md`
+- `AGENTS.md`
+- `CLAUDE.md`
+- `.december/rules.md`
+- `.december/AGENTS.md`
+
+December also reads global rules from `~/.december/rules.md` or `~/.december/AGENTS.md`. Global rules apply to every project on your computer.
+
+December adds the files in this order: global rules first, then rules from the top folder down to your current folder. December reads rule files when the CLI starts. If you change a rule file, exit and start `december` again.

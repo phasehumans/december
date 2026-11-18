@@ -1,29 +1,23 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
-const posts = [
-  {
-    slug: 'self-improving-agents',
-    title: 'Building Self-Improving Agents: From One-Shot Prompts to Closed Reasoning Loops',
-    desc: 'How coding agents evolve from brittle single-pass code generators into self-correcting systems using iterative refinement and environment feedback.',
-    date: '29 Sept 2026',
-    timestamp: new Date('2026-09-29').getTime(),
-  },
-  {
-    slug: 'how-to-build-tools-for-ai-agents',
-    title: 'Building Tools for AI Agents',
-    desc: 'Field guide on tool atomicity, schema validation, and actionable error feedback for agents.',
-    date: '3 Sept 2026',
-    timestamp: new Date('2026-09-03').getTime(),
-  },
-  {
-    slug: 'context-rot',
-    title: 'Context Rot in Long-Context LLMs',
-    desc: 'Why expanding token budgets degrades retrieval accuracy and how coding agents avoid distractors.',
-    date: '20 Aug 2026',
-    timestamp: new Date('2026-08-20').getTime(),
-  },
-].sort((a, b) => b.timestamp - a.timestamp);
+interface BlogFrontmatter {
+  title: string;
+  publishDate: string;
+  currentSlug: string;
+}
+
+// Read title, date, and slug from each post's frontmatter so this list always matches the posts
+const parsePublishDate = (date: string) => Date.parse(date.replace('Sept', 'Sep'));
+const postModules = import.meta.glob<{ frontmatter: BlogFrontmatter }>('./*.mdx', { eager: true });
+const posts = Object.values(postModules)
+  .map(({ frontmatter }) => ({
+    slug: frontmatter.currentSlug,
+    title: frontmatter.title,
+    date: frontmatter.publishDate,
+    timestamp: parsePublishDate(frontmatter.publishDate),
+  }))
+  .sort((a, b) => b.timestamp - a.timestamp);
 ---
 
 <BaseLayout

@@ -1,4 +1,4 @@
-import { runDecemberAction } from '../../../packages/december-action/src/action-runner'
+import { runDecemberAction } from '../../../packages/action/src/action-runner'
 
 runDecemberAction({})
     .then((result) => {

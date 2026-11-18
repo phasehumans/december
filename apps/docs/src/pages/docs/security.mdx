@@ -1,27 +1,30 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Security & Isolation
-description: How your code, API keys, and local files are protected when using December.
+description: Learn how December protects your code, files, and API keys.
 currentSlug: 'security'
 ---
 
+This page tells you how December protects your code, your files, and your API keys.
+
 ## Security & Privacy Model
 
-Keeping your source code and API keys private is our top priority:
+### 1. Safety in the CLI
 
-### 1. Local Terminal Safety
+- Trust prompt: The first time you run `december` in a folder, December asks if you trust it. If you say no, December stops.
+- Project folder only: File tools work only inside your project folder. To let December open files outside it, turn on Non-Workspace Access in `/settings`.
+- PathGuard: December blocks system folders such as `/etc` and `/usr`, and private key files such as `~/.ssh` and `.pem` files. December asks you before it reads a secrets file such as `.env`.
+- Approval for destructive commands: December asks you before it runs a command such as `rm -rf`, `git reset --hard`, or `git push --force`.
+- Stop and undo: Press `Ctrl + C` to stop December. Type `/undo` to revert the last turn.
 
-- **Stays inside your project**: December only reads files within your project folder.
-- **Safety checks**: December asks for confirmation before running dangerous commands like deleting folders or force-pushing git branches.
-- **You are always in control**: You can press `Ctrl + C` or type `/undo` at any point to cancel or revert changes.
+If you run December with `-y` or `--print`, December approves tool calls without asking. Use these flags only in folders you trust.
 
-### 2. Cloud Sandbox Isolation
+### 2. Sandboxes in December Cloud
 
-- **Private containers**: Every cloud workspace runs in its own isolated Linux sandbox.
-- **Zero shared state**: Your files and servers are never shared with other users.
-- **Automatic cleanup**: Inactive cloud sandboxes are cleanly shut down and wiped.
+- One sandbox per session: Each December Cloud session runs in its own sandbox, not on your computer.
+- Active limit: You can have 3 active sandboxes. If you start a fourth, December pauses the one you used least recently.
 
-### 3. API Key & Data Encryption
+### 3. API keys
 
-- **Direct communication**: When you use your own API keys (BYOK), requests go straight to the model provider (Anthropic, OpenAI, Google) without December storing your code.
-- **Local storage**: Keys are saved on your own computer in `~/.december/config.json` with restricted user permissions.
+- Direct requests: If you use your own keys, the CLI sends requests straight to the model provider.
+- Local storage: The CLI saves your keys in `~/.december/config.json`. Only your user account can read this file (file mode `600`).

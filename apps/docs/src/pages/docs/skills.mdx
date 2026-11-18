@@ -1,138 +1,98 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Skills & Playbooks
-description: Teach December specialized engineering workflows, testing playbooks, and custom slash commands.
+description: Install and write skills that teach December how to do a task in your project.
 currentSlug: 'skills'
 ---
 
+This page helps you install and write skills, so December can do repeated tasks your way.
+
 ## Overview
 
-Skills are simple markdown playbooks (`SKILL.md`) that teach December how to handle specific tasks in your repository.
+A skill is a folder with a `SKILL.md` file. The file tells December how to do one task, such as a database migration or a code review.
 
-Instead of typing repetitive instructions every time, you can define a skill once. Every installed skill instantly becomes an interactive slash command in your terminal (such as `/plan`, `/grill-me`, or `/code-review`).
+Each skill becomes a slash command. For example, a skill named `db-migrate` becomes `/db-migrate`. You can also type `/skill:db-migrate`.
 
----
+When you run a skill, December gives the task to a subagent. A subagent is a separate agent with its own context. This keeps your main conversation short.
 
-## Built-in Skills
+## Run a skill
 
-December ships with core engineering playbooks bundled out of the box:
+1. Type `/` and the skill name. Add your goal after the name:
 
-### `/plan [goal]`
-
-Generates a structured, phased implementation plan for your feature or refactor without modifying code yet. It inspects existing files, identifies blast radius, maps step-by-step tasks, provides verification commands, and uses interactive prompts for sign-off.
-
-### `/grill-me [topic]`
-
-Initiates a Socratic pre-implementation interview to surface hidden assumptions, clarify edge cases, evaluate trade-offs, and align on contracts before writing code.
-
-### `/code-review`
-
-Executes a thorough post-implementation code review across staged and unstaged diffs. It audits for architectural consistency, anti-patterns, missing tests, and performance regressions.
-
----
-
-## The Idea-to-Ship Spine
-
-The official December engineering playbook repository ([phasehumans/skills](https://github.com/phasehumans/skills)) defines a 5-stage lifecycle from initial thought to verified deployment:
-
-```
-/grill-me  ──>  /to-spec (or /plan)  ──>  /to-tickets  ──>  /implement  ──>  /code-review
-(Align)         (Plan architecture)       (Decompose)       (TDD slice)      (Verify)
+```text
+/db-migrate add a status column to the orders table
 ```
 
-1. **/grill-me**: Ask tough questions to clarify requirements and eliminate ambiguity.
-2. **/to-spec** (or **/plan**): Draft unambiguous technical specifications and interface schemas.
-3. **/to-tickets**: Break down the specification into small, testable, vertical slices.
-4. **/implement**: Execute each slice test-first with empirical verification commands.
-5. **/code-review**: Catch defects, security issues, and style inconsistencies before merging.
+2. To see all your skills, type `/skills` in a session.
 
----
+For a plan before December edits files, use `/plan`. See [Session Artifacts & Planning](/docs/artifacts).
 
-## Managing Skills with December CLI
+## Manage skills with the CLI
 
-December includes a dedicated `skill` subcommand to discover, inspect, and install packages:
+Use the `december skill` command to list, inspect, add, and remove skills:
 
 ```bash
-# List all active skills (built-in, global, and workspace)
+# List all skills that December finds
 december skill list
 
-# Inspect metadata, parameters, and instructions for a skill
-december skill info grill-me
+# Show the description and location of a skill
+december skill info db-migrate
 
-# Install skills from GitHub into current project (.december/skills)
+# Add skills from a GitHub repository to this project (.december/skills)
 december skill add phasehumans/skills
 
-# Install skills globally (~/.december/skills)
+# Add skills for all your projects (~/.december/skills)
 december skill add phasehumans/skills --global
 
-# Remove an installed skill
-december skill remove tdd
+# Remove an installed skill package
+december skill remove skills
 ```
 
----
+`december skill add` clones the repository with Git. If the folder already exists, December runs `git pull` to update it.
 
-## Universal Ecosystem & NPM Package
+## Where December looks for skills
 
-December skills follow the open agent standard. You can install and synchronize playbooks using your preferred workflow:
+December finds skills in these folders, in your project and in each parent folder up to the Git root:
 
-### Using December CLI
+- `.december/skills`
+- `.agents/skills`
+- `.agent/skills`
+- `.claude/skills`
 
-```bash
-december skill add phasehumans/skills
-```
+December also finds skills in your home folder, for example in `~/.december/skills`, `~/.agents/skills`, and `~/.claude/skills`. Skills that you installed for other agents work in December too.
 
-### Using Vercel Skills CLI
+Plugins can also add skills. Type `/plugin` to manage plugins.
 
-Install skills across Claude Code, Cursor, Codex, Antigravity, and December with the universal runner:
+## Write a project skill
 
-```bash
-npx skills add phasehumans/skills
-```
-
-### Using NPM (`@trydecember/skills`)
-
-For projects with strict lockfile requirements, install the official package directly:
-
-```bash
-# Install as a dev dependency
-npm i -D @trydecember/skills
-
-# Synchronize skills from node_modules into your agent directory
-npx skills experimental_sync
-```
-
----
-
-## Authoring Custom Project Skills
-
-You can create project-specific skills tailored to your codebase's architecture and conventions. Simply create a directory under `.december/skills/<skill-name>/` with a `SKILL.md` file:
+1. Make a folder at `.december/skills/<skill-name>/`.
+2. Add a `SKILL.md` file to the folder. The file needs a `name` and a `description`:
 
 ````markdown
 ---
 name: db-migrate
-description: Safe database migration playbook with schema rollback verification
-argument-hint: [migration-name]
-tags:
-    - database
-    - prisma
+description: Make a database migration and test it before you commit.
+argument-hint: '[migration-name]'
 ---
 
-# Database Migration Playbook
+# Database migration
 
-When creating or modifying database schemas:
+When you change the database schema:
 
-1. Inspect the existing schema under `packages/database/prisma/schema.prisma`.
-2. Generate the migration using `bun db:migrate:dev --create-only`.
-3. Verify backward compatibility with the active production schema.
-4. Execute test migrations against the test database:
+1. Read the schema in `packages/database/prisma/schema.prisma`.
+2. Make the migration with `bun db:migrate:dev --create-only`.
+3. Apply the migration to the test database:
     ```bash
     bun db:migrate:test
     ```
+4. Run the integration tests.
 ````
 
-5. Run integration tests to ensure existing queries succeed.
+3. Exit December and start it again. `/db-migrate` now shows in the slash command menu.
 
-```
+### Frontmatter fields
 
-Once saved, `/db-migrate` immediately appears in your December terminal slash command menu.
-```
+- `name` (required): The skill name. December uses it as the slash command.
+- `description` (required): What the skill does. December shows it in `december skill list`.
+- `argument-hint`: The arguments that the skill expects, for example `[migration-name]`.
+- `allowed-tools`: The tools that the skill can use, for example `bash`.

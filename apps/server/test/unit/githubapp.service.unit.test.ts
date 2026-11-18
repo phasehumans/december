@@ -295,7 +295,7 @@ describe('GitHubApp Service - Unit Tests', () => {
             },
         }
 
-        it('returns handled: false if comment does not mention @december', async () => {
+        it('returns handled: false if comment does not mention @trydecember', async () => {
             const res = await githubAppService.handleIssueComment(baseCommentData)
             expect(res.handled).toBe(false)
             expect(res.reason).toBe('not_mentioned')
@@ -324,7 +324,7 @@ describe('GitHubApp Service - Unit Tests', () => {
                     ...baseCommentData,
                     comment: {
                         ...baseCommentData.comment,
-                        body: '@december fix this',
+                        body: '@trydecember fix this',
                         authorAssociation: 'NONE',
                     },
                 })
@@ -378,7 +378,7 @@ describe('GitHubApp Service - Unit Tests', () => {
                     ...baseCommentData,
                     comment: {
                         ...baseCommentData.comment,
-                        body: '@december please fix auth token refresh and write tests',
+                        body: '@trydecember please fix auth token refresh and write tests',
                         authorAssociation: 'OWNER',
                     },
                 })
@@ -420,7 +420,7 @@ describe('GitHubApp Service - Unit Tests', () => {
             },
         }
 
-        it('returns handled: false if PR body does not mention @december', async () => {
+        it('returns handled: false if PR body does not mention @trydecember', async () => {
             const res = await githubAppService.handlePullRequestOpened(basePrData)
             expect(res.handled).toBe(false)
             expect(res.reason).toBe('not_mentioned')
@@ -449,7 +449,7 @@ describe('GitHubApp Service - Unit Tests', () => {
                     ...basePrData,
                     pullRequest: {
                         ...basePrData.pullRequest,
-                        body: '@december review this pr',
+                        body: '@trydecember review this pr',
                         authorAssociation: 'NONE',
                     },
                 })
@@ -505,7 +505,7 @@ describe('GitHubApp Service - Unit Tests', () => {
                     ...basePrData,
                     pullRequest: {
                         ...basePrData.pullRequest,
-                        body: '@december review this pr and check for regressions',
+                        body: '@trydecember review this pr and check for regressions',
                         authorAssociation: 'COLLABORATOR',
                     },
                 })

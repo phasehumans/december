@@ -74,6 +74,16 @@ describe('CLI docs command', () => {
             expect(openSpy).toHaveBeenCalledWith('https://trydecember.com/docs/cli')
         })
 
+        it('opens privacy and terms at the site root, not under /docs', async () => {
+            const openSpy = vi.spyOn(openUtils, 'openUrl').mockResolvedValue(undefined)
+
+            await handleDocsCommand({ section: 'privacy' })
+            await handleDocsCommand({ section: 'terms' })
+
+            expect(openSpy).toHaveBeenCalledWith('https://trydecember.com/privacy')
+            expect(openSpy).toHaveBeenCalledWith('https://trydecember.com/terms')
+        })
+
         it('respects WEB_URL environment variable', async () => {
             process.env.WEB_URL = 'http://localhost:2000'
             const openSpy = vi.spyOn(openUtils, 'openUrl').mockResolvedValue(undefined)

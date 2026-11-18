@@ -1,34 +1,52 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Prompting Guide
-description: Best practices for instructing December on complex refactors, test fixes, and full-stack greenfield projects.
+description: Write prompts that help December finish refactors, test fixes, and new projects.
 currentSlug: 'prompting'
 ---
 
+This page helps you write prompts that December can finish without extra questions.
+
 ## Effective Prompting Strategies
 
-December responds best to precise, goal-oriented technical instructions:
+Tell December what to change and how to check the result.
 
 ### 1. Give Clear Verification Criteria
 
-State what "done" looks like:
+Say what "done" means. Give the command that proves it.
 
-```bash
-december "Refactor auth.service.ts to use argon2 instead of bcrypt. Ensure all tests in test/auth pass with bun test."
+```text
+Change auth.service.ts to use argon2 instead of bcrypt. Run bun test test/auth and make sure all tests pass.
 ```
 
 ### 2. Point to Context Files
 
-Mention files or symbols when you know where the issue lives:
+If you know where the problem is, name the file or the function. Type `@` and a file name to add the file to the prompt.
 
-```bash
-december "In packages/database/schema.prisma, add a new SessionStatus enum. Generate Prisma client and update session.service.ts."
+```text
+In @packages/database/schema.prisma, add a SessionStatus enum. Generate the Prisma client and update session.service.ts.
 ```
 
 ### 3. Let the Agent Explore First
 
-For unfamiliar bugs, instruct the agent to diagnose before making changes:
+If you do not know the cause of a bug, ask December to find it before it changes code.
+
+```text
+Find out why the tests in test/api fail with a 401 error. Run the tests, read the output, and fix the cause.
+```
+
+## Plan large changes first
+
+For a large change, type `/plan` and your goal. December writes a plan first. You approve or reject the plan before December changes code.
+
+```text
+/plan move the session store from memory to Redis
+```
+
+## Prompts from the terminal
+
+To run one prompt without the interactive session, pass it to `december` with `--print`. December prints the result and exits.
 
 ```bash
-december "Investigate why integration tests are failing with 401 in test/api. Run the test, inspect the output, and fix the root cause."
+december --print "Fix the failing unit tests in packages/server"
 ```

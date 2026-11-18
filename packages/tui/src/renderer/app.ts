@@ -86,6 +86,7 @@ import {
     DEFAULT_MODELS,
 } from './views/model-select-menu-view'
 import { PlanApproveMenuView, PLAN_APPROVE_OPTIONS } from './views/plan-approve-menu-view'
+import { PluginMenuView, type PluginTab, type PluginItemViewProps } from './views/plugin-menu-view'
 import {
     RewindSelectMenuView,
     type RewindTurnEntry,
@@ -139,6 +140,7 @@ export type OverlayType =
     | 'auth'
     | 'switch'
     | 'mcp'
+    | 'plugin'
 
 export interface PendingModelFallback {
     provider: string
@@ -198,9 +200,14 @@ export interface DifferentialAppState {
     diffSelectedIndex: number
     diffWindowStart: number
     isDiffDetailView: boolean
+    isDiffFullFile: boolean
     diffScrollOffset: number
     diffCursorLineIndex: number
-    diffFilePositions: Record<string, { cursorIndex: number; scrollOffset: number }>
+    diffFilePositions: Record<
+        string,
+        { cursorIndex: number; scrollOffset: number; isFullFile?: boolean }
+    >
+    diffFullContents: Record<string, string>
 
     // Tasks view state
     tasks: TaskItem[]
@@ -365,6 +372,16 @@ export interface DifferentialAppState {
     mcpCustomEnv: string
     mcpCustomActiveField: number
 
+    // Plugin view state
+    pluginActiveTab: PluginTab
+    pluginSearchQuery: string
+    pluginSelectedIndex: number
+    pluginWindowStart: number
+    pluginExpandedId: string | null
+    pluginConfirmUninstallId: string | null
+    installedPlugins: PluginItemViewProps[]
+    discoverablePlugins: PluginItemViewProps[]
+
     pendingModelFallback?: PendingModelFallback
 
     sessionId?: string
@@ -399,6 +416,13 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
         eager?: boolean
         env?: Record<string, string>
     }) => Promise<void>
+    onLoadPlugins?: () => Promise<{
+        installed: PluginItemViewProps[]
+        discoverable: PluginItemViewProps[]
+    }>
+    onTogglePlugin?: (id: string) => Promise<void>
+    onInstallPlugin?: (id: string) => Promise<void>
+    onUninstallPlugin?: (id: string) => Promise<void>
     onModelFallback?: (fallbackModel: string, failedModel: string, prompt: string) => void
     announcement?: ReleaseAnnouncement | null
     models?: ModelItem[]
@@ -786,9 +810,11 @@ export class DifferentialApp {
             diffSelectedIndex: 0,
             diffWindowStart: 0,
             isDiffDetailView: false,
+            isDiffFullFile: false,
             diffScrollOffset: 0,
             diffCursorLineIndex: 0,
             diffFilePositions: {},
+            diffFullContents: {},
 
             tasks: options?.tasks || [],
             tasksSelectedIndex: 0,
@@ -848,6 +874,15 @@ export class DifferentialApp {
             mcpCustomEager: false,
             mcpCustomEnv: '',
             mcpCustomActiveField: 0,
+
+            pluginActiveTab: 'installed',
+            pluginSearchQuery: '',
+            pluginSelectedIndex: 0,
+            pluginWindowStart: 0,
+            pluginExpandedId: null,
+            pluginConfirmUninstallId: null,
+            installedPlugins: [],
+            discoverablePlugins: [],
         }
 
         this.refreshModelsForProvider(this.state.selectedProvider)
@@ -1348,6 +1383,31 @@ export class DifferentialApp {
                 this.render()
             } catch {
                 // Intentionally swallowed: ignore mcp load error
+            }
+        }
+    }
+
+    async openPluginView(): Promise<void> {
+        this.state.activeOverlay = 'plugin'
+        this.state.pluginActiveTab = 'installed'
+        this.state.pluginSearchQuery = ''
+        this.state.pluginSelectedIndex = 0
+        this.state.pluginWindowStart = 0
+        this.state.pluginExpandedId = null
+        this.state.pluginConfirmUninstallId = null
+        this.render()
+        await this.loadPlugins()
+    }
+
+    async loadPlugins(): Promise<void> {
+        if (this.options?.onLoadPlugins) {
+            try {
+                const res = await this.options.onLoadPlugins()
+                this.state.installedPlugins = res.installed || []
+                this.state.discoverablePlugins = res.discoverable || []
+                this.render()
+            } catch {
+                // Intentionally swallowed: ignore plugin load error
             }
         }
     }
@@ -3028,6 +3088,7 @@ export class DifferentialApp {
         if (cmd === 'diff') {
             this.state.activeOverlay = 'diff'
             this.state.isDiffDetailView = false
+            this.state.isDiffFullFile = false
             this.state.diffScrollOffset = 0
             this.state.diffSelectedIndex = 0
             this.state.diffWindowStart = 0
@@ -3102,6 +3163,13 @@ export class DifferentialApp {
         if (cmd === 'mcp') {
             this.openMcpView().catch(() => {
                 // Intentionally swallowed: openMcpView error
+            })
+            return
+        }
+
+        if (cmd === 'plugin' || cmd === 'plugins') {
+            this.openPluginView().catch(() => {
+                // Intentionally swallowed: openPluginView error
             })
             return
         }
@@ -3315,6 +3383,7 @@ export class DifferentialApp {
             this.state.diffFilePositions[currentFile.path] = {
                 cursorIndex: this.state.diffCursorLineIndex,
                 scrollOffset: this.state.diffScrollOffset,
+                isFullFile: this.state.isDiffFullFile,
             }
         }
 
@@ -3326,6 +3395,9 @@ export class DifferentialApp {
         if (saved) {
             this.state.diffCursorLineIndex = saved.cursorIndex
             this.state.diffScrollOffset = saved.scrollOffset
+            if (saved.isFullFile !== undefined) {
+                this.state.isDiffFullFile = saved.isFullFile
+            }
         } else {
             this.state.diffScrollOffset = 0
             this.state.diffCursorLineIndex = 0
@@ -3338,6 +3410,31 @@ export class DifferentialApp {
             this.state.diffWindowStart = Math.max(0, nextIdx - diffWindowSize + 1)
         }
         this.render()
+    }
+
+    getDiffFullContent(filePath: string): string | null {
+        if (!filePath) return null
+        if (this.state.diffFullContents[filePath] !== undefined) {
+            return this.state.diffFullContents[filePath]
+        }
+        const fileEntry = this.state.diffFiles.find((f) => f.path === filePath)
+        if (fileEntry?.fullContent) {
+            this.state.diffFullContents[filePath] = fileEntry.fullContent
+            return fileEntry.fullContent
+        }
+        try {
+            const fullPath = path.isAbsolute(filePath)
+                ? filePath
+                : path.resolve(this.state.cwd || process.cwd(), filePath)
+            if (fs.existsSync(fullPath)) {
+                const content = fs.readFileSync(fullPath, 'utf8')
+                this.state.diffFullContents[filePath] = content
+                return content
+            }
+        } catch {
+            // Intentionally swallowed: file cannot be read from disk
+        }
+        return null
     }
 
     closeOrPopOverlay(): void {
@@ -3359,6 +3456,7 @@ export class DifferentialApp {
                     this.state.diffFilePositions[currentFile.path] = {
                         cursorIndex: this.state.diffCursorLineIndex,
                         scrollOffset: this.state.diffScrollOffset,
+                        isFullFile: this.state.isDiffFullFile,
                     }
                 }
                 this.state.isDiffDetailView = false
@@ -3582,6 +3680,28 @@ export class DifferentialApp {
                 this.state.mcpIsDetailView = false
                 this.state.mcpMode = 'list'
                 this.state.mcpScrollOffset = 0
+                this.render()
+                return
+            }
+            this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'plugin') {
+            if (this.state.pluginConfirmUninstallId) {
+                this.state.pluginConfirmUninstallId = null
+                this.render()
+                return
+            }
+            if (this.state.pluginExpandedId) {
+                this.state.pluginExpandedId = null
+                this.render()
+                return
+            }
+            if (this.state.pluginSearchQuery) {
+                this.state.pluginSearchQuery = ''
+                this.state.pluginSelectedIndex = 0
+                this.state.pluginWindowStart = 0
                 this.render()
                 return
             }
@@ -4899,6 +5019,184 @@ export class DifferentialApp {
             return
         }
 
+        if (overlay === 'plugin') {
+            const rawItems =
+                this.state.pluginActiveTab === 'installed'
+                    ? this.state.installedPlugins
+                    : this.state.discoverablePlugins
+            const query = this.state.pluginSearchQuery.trim().toLowerCase()
+            const items = query
+                ? rawItems.filter(
+                      (p) =>
+                          p.name.toLowerCase().includes(query) ||
+                          p.description.toLowerCase().includes(query)
+                  )
+                : rawItems
+            const total = items.length
+            const curPlugin = items[this.state.pluginSelectedIndex]
+
+            // If confirm uninstall is active
+            if (this.state.pluginConfirmUninstallId) {
+                if (key === 'y' || key === 'Y' || key === '\x13') {
+                    const toUninstall = this.state.pluginConfirmUninstallId
+                    this.state.pluginConfirmUninstallId = null
+                    this.render()
+                    if (this.options?.onUninstallPlugin) {
+                        this.options
+                            .onUninstallPlugin(toUninstall)
+                            .then(() => this.loadPlugins())
+                            .catch(() => {
+                                // Intentionally swallowed: uninstall error handled
+                            })
+                    }
+                    return
+                }
+                if (key === 'n' || key === 'N' || key === '\x1b') {
+                    this.state.pluginConfirmUninstallId = null
+                    this.render()
+                    return
+                }
+                return
+            }
+
+            // Tab / Shift+Tab cycles between Installed and Discover tabs
+            if (key === '\t' || key === '\x1b[Z') {
+                this.state.pluginActiveTab =
+                    this.state.pluginActiveTab === 'installed' ? 'discover' : 'installed'
+                this.state.pluginSelectedIndex = 0
+                this.state.pluginWindowStart = 0
+                this.state.pluginExpandedId = null
+                this.render()
+                return
+            }
+
+            // Left arrow switch to installed, Right arrow switch to discover
+            if (key === '\x1b[D' && this.state.pluginActiveTab !== 'installed') {
+                this.state.pluginActiveTab = 'installed'
+                this.state.pluginSelectedIndex = 0
+                this.state.pluginWindowStart = 0
+                this.state.pluginExpandedId = null
+                this.render()
+                return
+            }
+            if (key === '\x1b[C' && this.state.pluginActiveTab !== 'discover') {
+                this.state.pluginActiveTab = 'discover'
+                this.state.pluginSelectedIndex = 0
+                this.state.pluginWindowStart = 0
+                this.state.pluginExpandedId = null
+                this.render()
+                return
+            }
+
+            // Up arrow
+            if (key === '\x1b[A') {
+                if (this.state.pluginSelectedIndex > 0) {
+                    this.state.pluginSelectedIndex -= 1
+                    if (this.state.pluginSelectedIndex < this.state.pluginWindowStart) {
+                        this.state.pluginWindowStart = this.state.pluginSelectedIndex
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            // Down arrow
+            if (key === '\x1b[B') {
+                const maxWin = 5
+                if (this.state.pluginSelectedIndex < total - 1) {
+                    this.state.pluginSelectedIndex += 1
+                    if (this.state.pluginSelectedIndex >= this.state.pluginWindowStart + maxWin) {
+                        this.state.pluginWindowStart += 1
+                    }
+                    this.render()
+                }
+                return
+            }
+
+            // Space: Toggle enable/disable (installed) or install (discover)
+            if (key === ' ') {
+                if (curPlugin) {
+                    if (this.state.pluginActiveTab === 'installed') {
+                        if (this.options?.onTogglePlugin) {
+                            this.options
+                                .onTogglePlugin(curPlugin.id)
+                                .then(() => this.loadPlugins())
+                                .catch(() => {
+                                    // Intentionally swallowed: toggle plugin error
+                                })
+                        }
+                    } else {
+                        if (this.options?.onInstallPlugin) {
+                            this.options
+                                .onInstallPlugin(curPlugin.id)
+                                .then(() => this.loadPlugins())
+                                .catch(() => {
+                                    // Intentionally swallowed: install plugin error
+                                })
+                        }
+                    }
+                }
+                return
+            }
+
+            // Enter: Expand details (installed) or install (discover)
+            if (key === '\r' || key === '\n') {
+                if (curPlugin) {
+                    if (this.state.pluginActiveTab === 'installed') {
+                        this.state.pluginExpandedId =
+                            this.state.pluginExpandedId === curPlugin.id ? null : curPlugin.id
+                        this.render()
+                    } else {
+                        if (this.options?.onInstallPlugin) {
+                            this.options
+                                .onInstallPlugin(curPlugin.id)
+                                .then(() => this.loadPlugins())
+                                .catch(() => {
+                                    // Intentionally swallowed: install plugin error
+                                })
+                        }
+                    }
+                }
+                return
+            }
+
+            // Ctrl+S: Uninstall
+            if (key === '\x13') {
+                if (curPlugin && this.state.pluginActiveTab === 'installed') {
+                    this.state.pluginConfirmUninstallId = curPlugin.id
+                    this.render()
+                }
+                return
+            }
+
+            // Backspace: Search query
+            if (key === '\x7f' || key === '\b') {
+                if (this.state.pluginSearchQuery.length > 0) {
+                    this.state.pluginSearchQuery = this.state.pluginSearchQuery.slice(0, -1)
+                    this.state.pluginSelectedIndex = 0
+                    this.state.pluginWindowStart = 0
+                    this.render()
+                }
+                return
+            }
+
+            // Typing characters into search filter
+            if (key.length === 1 && key >= ' ' && key <= '~') {
+                this.state.pluginSearchQuery += key
+                this.state.pluginSelectedIndex = 0
+                this.state.pluginWindowStart = 0
+                this.render()
+                return
+            }
+
+            if (key === '\x1b') {
+                this.handleOverlayEsc()
+                return
+            }
+
+            return
+        }
+
         if (overlay === 'model') {
             const models = this.state.models.length > 0 ? this.state.models : DEFAULT_MODELS
             const filtered = ModelSelectMenuView.getFilteredModels(
@@ -5029,7 +5327,11 @@ export class DifferentialApp {
 
                 const currentFile = files[this.state.diffSelectedIndex]
                 if (currentFile) {
-                    const parsed = parseUnifiedDiffToRows(currentFile.diff || '')
+                    const fullContent = this.getDiffFullContent(currentFile.path)
+                    const parsed = parseUnifiedDiffToRows(currentFile.diff || '', {
+                        fullContent,
+                        expandAllFolds: this.state.isDiffFullFile,
+                    })
                     const diffRows = parsed.rows
                     const changeBlocks = parsed.changeBlocks
                     const visibleDiffHeight = Math.max(2, this.screen.height - 4)
@@ -5042,6 +5344,49 @@ export class DifferentialApp {
                         } else if (cursorIdx >= this.state.diffScrollOffset + visibleDiffHeight) {
                             this.state.diffScrollOffset = cursorIdx - visibleDiffHeight + 1
                         }
+                    }
+
+                    // Toggle full file diff view with 'f'
+                    if (key === 'f') {
+                        const currentRow = diffRows[this.state.diffCursorLineIndex]
+                        const targetLineNum =
+                            currentRow?.type === 'line'
+                                ? currentRow.data.newLineNumber || currentRow.data.oldLineNumber
+                                : currentRow?.type === 'fold'
+                                  ? currentRow.data.startNew || currentRow.data.startOld
+                                  : undefined
+
+                        this.state.isDiffFullFile = !this.state.isDiffFullFile
+
+                        const parsedAfter = parseUnifiedDiffToRows(currentFile.diff || '', {
+                            fullContent,
+                            expandAllFolds: this.state.isDiffFullFile,
+                        })
+
+                        if (targetLineNum !== undefined) {
+                            const newRowIdx = parsedAfter.rows.findIndex(
+                                (r) =>
+                                    (r.type === 'line' &&
+                                        (r.data.newLineNumber === targetLineNum ||
+                                            r.data.oldLineNumber === targetLineNum)) ||
+                                    (r.type === 'fold' &&
+                                        targetLineNum >= r.data.startNew &&
+                                        targetLineNum < r.data.startNew + r.data.count)
+                            )
+                            if (newRowIdx >= 0) {
+                                keepCursorInView(newRowIdx)
+                            }
+                        } else {
+                            keepCursorInView(
+                                Math.min(
+                                    this.state.diffCursorLineIndex,
+                                    Math.max(0, parsedAfter.rows.length - 1)
+                                )
+                            )
+                        }
+
+                        this.render()
+                        return
                     }
 
                     // Jump next diff change block with 'n'
@@ -5230,6 +5575,9 @@ export class DifferentialApp {
                     if (saved) {
                         this.state.diffCursorLineIndex = saved.cursorIndex
                         this.state.diffScrollOffset = saved.scrollOffset
+                        if (saved.isFullFile !== undefined) {
+                            this.state.isDiffFullFile = saved.isFullFile
+                        }
                     } else {
                         this.state.diffScrollOffset = 0
                         this.state.diffCursorLineIndex = 0
@@ -6935,6 +7283,7 @@ export class DifferentialApp {
                     totalFiles: isCodesearchReturn ? searchGroups.length : undefined,
                 })
             } else if (overlay === 'diff') {
+                const currentDiffFile = this.state.diffFiles[this.state.diffSelectedIndex]
                 DiffViewMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: 0,
@@ -6944,6 +7293,10 @@ export class DifferentialApp {
                     selectedFileIndex: this.state.diffSelectedIndex,
                     windowStart: this.state.diffWindowStart,
                     isDetailView: true,
+                    isFullFile: this.state.isDiffFullFile,
+                    fullContent: currentDiffFile
+                        ? this.getDiffFullContent(currentDiffFile.path)
+                        : null,
                     detailScrollOffset: this.state.diffScrollOffset,
                     cursorLineIndex: this.state.diffCursorLineIndex,
                 })
@@ -7195,7 +7548,29 @@ export class DifferentialApp {
                     this.state.skillsIsDetailView
                 )
             } else if (overlay === 'mcp') {
-                naturalHeight = 16
+                naturalHeight = McpMenuView.getHeight(
+                    this.state.mcpMode,
+                    this.state.mcpServersList.length,
+                    this.state.mcpIsDetailView
+                )
+            } else if (overlay === 'plugin') {
+                const rawItems =
+                    this.state.pluginActiveTab === 'installed'
+                        ? this.state.installedPlugins
+                        : this.state.discoverablePlugins
+                const q = this.state.pluginSearchQuery.trim().toLowerCase()
+                const itemsCount = q
+                    ? rawItems.filter(
+                          (p) =>
+                              p.name.toLowerCase().includes(q) ||
+                              p.description.toLowerCase().includes(q)
+                      ).length
+                    : rawItems.length
+                naturalHeight = PluginMenuView.getHeight(
+                    this.state.pluginActiveTab,
+                    itemsCount,
+                    Boolean(this.state.pluginExpandedId)
+                )
             } else if (overlay === 'codesearch') {
                 const count =
                     this.state.codeSearchGroups.length > 0
@@ -7388,6 +7763,21 @@ export class DifferentialApp {
                     customEnv: this.state.mcpCustomEnv,
                     customActiveField: this.state.mcpCustomActiveField,
                 })
+            } else if (overlay === 'plugin') {
+                PluginMenuView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: overlayY,
+                    width,
+                    height: clampedOverlayHeight,
+                    activeTab: this.state.pluginActiveTab,
+                    searchQuery: this.state.pluginSearchQuery,
+                    selectedIndex: this.state.pluginSelectedIndex,
+                    windowStart: this.state.pluginWindowStart,
+                    expandedPluginId: this.state.pluginExpandedId,
+                    confirmUninstallId: this.state.pluginConfirmUninstallId,
+                    installedPlugins: this.state.installedPlugins,
+                    discoverablePlugins: this.state.discoverablePlugins,
+                })
             } else if (overlay === 'codesearch') {
                 const groups =
                     this.state.codeSearchGroups.length > 0
@@ -7405,6 +7795,7 @@ export class DifferentialApp {
                     windowStart: this.state.codeSearchWindowStart,
                 })
             } else if (overlay === 'diff') {
+                const currentDiffFile = this.state.diffFiles[this.state.diffSelectedIndex]
                 DiffViewMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: overlayY,
@@ -7414,6 +7805,10 @@ export class DifferentialApp {
                     selectedFileIndex: this.state.diffSelectedIndex,
                     windowStart: this.state.diffWindowStart,
                     isDetailView: this.state.isDiffDetailView,
+                    isFullFile: this.state.isDiffFullFile,
+                    fullContent: currentDiffFile
+                        ? this.getDiffFullContent(currentDiffFile.path)
+                        : null,
                     detailScrollOffset: this.state.diffScrollOffset,
                     cursorLineIndex: this.state.diffCursorLineIndex,
                 })

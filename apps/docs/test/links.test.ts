@@ -50,6 +50,10 @@ describe('apps/docs link integrity verification', () => {
         '/blog/how-to-build-tools-for-ai-agents',
         '/blog/self-improving-agents',
         '/me',
+        // Generated at build time by endpoints in src/pages/*.ts
+        '/llms.txt',
+        '/llms-full.txt',
+        '/sitemap.xml',
     ])
 
     const files = getAllSourceFiles(srcDir)

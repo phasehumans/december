@@ -19,6 +19,8 @@ export interface DiffViewMenuViewProps {
     isDetailView: boolean
     detailScrollOffset: number
     cursorLineIndex?: number
+    isFullFile?: boolean
+    fullContent?: string | null
 }
 
 export const DiffViewMenuView = {
@@ -181,7 +183,10 @@ export const DiffViewMenuView = {
             // ==========================================
             // 2. DETAILED DIFF VIEW MODE (MATCHING REACT)
             // ==========================================
-            const parsed = parseUnifiedDiffToRows(currentFile.diff || '')
+            const parsed = parseUnifiedDiffToRows(currentFile.diff || '', {
+                fullContent: props.fullContent,
+                expandAllFolds: props.isFullFile,
+            })
             const diffRows: DiffRow[] = parsed.rows
             const changeBlocks = parsed.changeBlocks
             const cursorLine = props.cursorLineIndex ?? 0
@@ -203,7 +208,7 @@ export const DiffViewMenuView = {
                 return nearestBefore > 0 ? `${nearestBefore}` : '1'
             })()
 
-            // Header line: [path] +X -Y          change X/Y · file A/B
+            // Header line: [path] +X -Y [· full file]          change X/Y · file A/B
             drawText(buffer, currentFile.path, {
                 x,
                 y,
@@ -221,8 +226,19 @@ export const DiffViewMenuView = {
                 style: { fg: THEME.colors.error },
             })
 
+            let statsEndOffset =
+                statsOffset + `+${currentFile.additions} -${currentFile.deletions}`.length
+            if (props.isFullFile) {
+                drawText(buffer, ' · full file', {
+                    x: statsEndOffset,
+                    y,
+                    style: { fg: THEME.colors.brand, bold: true },
+                })
+                statsEndOffset += ' · full file'.length
+            }
+
             const rightHeader = `change ${currentChangeUnderCursor}/${changeBlocks.length || 0} · file ${safeIndex + 1}/${files.length}`
-            const rightHeaderX = Math.max(statsOffset + 15, width - rightHeader.length - 2)
+            const rightHeaderX = Math.max(statsEndOffset + 4, width - rightHeader.length - 2)
             drawText(buffer, rightHeader, {
                 x: rightHeaderX,
                 y,
@@ -326,6 +342,7 @@ export const DiffViewMenuView = {
                 items: [
                     { key: '↑/↓', label: 'scroll' },
                     { key: 'p/n', label: 'hunk' },
+                    { key: 'f', label: props.isFullFile ? 'compact' : 'full file' },
                     { key: '←/→', label: 'cycle file' },
                     { key: 'enter', label: 'insert @file:line' },
                     { key: 'esc', label: 'back' },

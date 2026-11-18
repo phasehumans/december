@@ -13,6 +13,7 @@ export interface DiffFileEntry {
     deletions: number
     status: 'modified' | 'added' | 'deleted' | 'untracked'
     diff: string
+    fullContent?: string
 }
 
 export interface DiffHunkLine {
@@ -59,6 +60,7 @@ export function parseUnifiedDiffToRows(
     options?: {
         fullContent?: string | null
         expandedFolds?: Record<string, boolean>
+        expandAllFolds?: boolean
     }
 ): {
     rows: DiffRow[]
@@ -69,7 +71,10 @@ export function parseUnifiedDiffToRows(
     const rawLines = (diffText || '').trim().split(/\r?\n/)
     const rows: DiffRow[] = []
     const changeIndices: number[] = []
-    const fullLines = options?.fullContent ? options.fullContent.split(/\r?\n/) : null
+    const fullLines =
+        options?.fullContent !== undefined && options?.fullContent !== null
+            ? options.fullContent.replace(/\r?\n$/, '').split(/\r?\n/)
+            : null
 
     const getFoldPreview = (start: number, count: number): string => {
         if (fullLines && start - 1 >= 0 && start - 1 < fullLines.length) {
@@ -103,7 +108,9 @@ export function parseUnifiedDiffToRows(
                 if (hunkOldStart > 1) {
                     const foldCount = hunkOldStart - 1
                     const foldId = `fold-0-${hunkOldStart}`
-                    const isExpanded = options?.expandedFolds?.[foldId] ?? false
+                    const isExpanded = Boolean(
+                        options?.expandAllFolds || options?.expandedFolds?.[foldId]
+                    )
 
                     if (fullLines && isExpanded) {
                         for (let f = 0; f < foldCount; f++) {
@@ -116,7 +123,7 @@ export function parseUnifiedDiffToRows(
                                     oldLineNumber: curOld,
                                     newLineNumber: curNew,
                                     type: 'context',
-                                    content: fullLines[curOld - 1] ?? '',
+                                    content: fullLines[curNew - 1] ?? fullLines[curOld - 1] ?? '',
                                 },
                             })
                         }
@@ -140,7 +147,9 @@ export function parseUnifiedDiffToRows(
                 const gapCount = hunkOldStart - lastOldLine
                 if (gapCount > 0) {
                     const foldId = `fold-${lastOldLine}-${hunkOldStart}`
-                    const isExpanded = options?.expandedFolds?.[foldId] ?? false
+                    const isExpanded = Boolean(
+                        options?.expandAllFolds || options?.expandedFolds?.[foldId]
+                    )
 
                     if (fullLines && isExpanded) {
                         for (let f = 0; f < gapCount; f++) {
@@ -153,7 +162,7 @@ export function parseUnifiedDiffToRows(
                                     oldLineNumber: curOld,
                                     newLineNumber: curNew,
                                     type: 'context',
-                                    content: fullLines[curOld - 1] ?? '',
+                                    content: fullLines[curNew - 1] ?? fullLines[curOld - 1] ?? '',
                                 },
                             })
                         }
@@ -224,15 +233,17 @@ export function parseUnifiedDiffToRows(
         }
     }
 
-    if (fullLines && lastOldLine <= fullLines.length) {
-        const trailingCount = fullLines.length - lastOldLine + 1
+    const effectiveLastNew = lastNewLine
+    const effectiveLastOld = lastOldLine
+    if (fullLines && effectiveLastNew <= fullLines.length) {
+        const trailingCount = fullLines.length - effectiveLastNew + 1
         if (trailingCount > 0) {
-            const foldId = `fold-${lastOldLine}-${fullLines.length}`
-            const isExpanded = options?.expandedFolds?.[foldId] ?? false
+            const foldId = `fold-${effectiveLastOld}-${fullLines.length}`
+            const isExpanded = Boolean(options?.expandAllFolds || options?.expandedFolds?.[foldId])
             if (isExpanded) {
                 for (let f = 0; f < trailingCount; f++) {
-                    const curOld = lastOldLine + f
-                    const curNew = lastNewLine + f
+                    const curOld = effectiveLastOld + f
+                    const curNew = effectiveLastNew + f
                     rows.push({
                         type: 'line',
                         index: rowIndex++,
@@ -240,7 +251,7 @@ export function parseUnifiedDiffToRows(
                             oldLineNumber: curOld,
                             newLineNumber: curNew,
                             type: 'context',
-                            content: fullLines[curOld - 1] ?? '',
+                            content: fullLines[curNew - 1] ?? fullLines[curOld - 1] ?? '',
                         },
                     })
                 }
@@ -251,9 +262,9 @@ export function parseUnifiedDiffToRows(
                     data: {
                         id: foldId,
                         count: trailingCount,
-                        startOld: lastOldLine,
-                        startNew: lastNewLine,
-                        preview: getFoldPreview(lastOldLine, trailingCount),
+                        startOld: effectiveLastOld,
+                        startNew: effectiveLastNew,
+                        preview: getFoldPreview(effectiveLastOld, trailingCount),
                         isExpanded,
                     },
                 })

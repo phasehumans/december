@@ -6,24 +6,20 @@
   <b>English</b> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a> | <a href="README.mr.md">मराठी</a>
 </p>
 
-December is a (so much) better coding agent. It helps you build faster by writing code, fixing bugs, and running commands directly in your terminal or alongside your favorite IDE.
-
-**Also available on the web at <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
+December is an open-source coding agent. It reads your code, writes changes, and runs commands in your terminal or in the cloud at [trydecember.com](https://trydecember.com).
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
 </p>
 
-- **Writes code & runs commands:** Ask it to build features, fix bugs, or run tests. It does the work for you.
-- **Cloud Sandboxes:** Spin up remote environments and live previews.
-- **Bring your own AI:** Use API keys for OpenAI, Anthropic, Gemini, and 100+ others, or log in via December to use December credits.
-- **Persistent Workspace Memory:** Learns project conventions and team rules across sessions without context rot.
-- **Autonomous Multi-Agent Teams:** Spawns parallel background subagents to research docs, debug, and run tests.
-- **Extensible Skills & MCP:** Plug in custom skills and connect external developer tools or APIs via MCP.
+- Use any model. Link a plan you already pay for (Claude, ChatGPT, GitHub Copilot, or Gemini), sign in with December, or use your own API keys from 40+ providers.
+- Run in the cloud. December Cloud runs your project in a sandbox with a live preview of your app.
+- Split big tasks. December can hand side tasks to helper agents that work at the same time.
+- Add tools. Teach December your workflows with skills, and connect tools through MCP.
 
-### Get Started
+## Get started
 
-1. Install December:
+1. Install the CLI:
 
 ```bash
 npm install -g @trydecember/cli
@@ -31,6 +27,10 @@ npm install -g @trydecember/cli
 
 2. Navigate to your project directory and run `december`.
 
-### Feedback & Bugs
+3. Type `/login` to connect a model. Then tell December what to do.
 
-Found a bug or have a feature request? [Open an issue](https://github.com/phasehumans/december/issues) or email us at [team@trydecember.com](mailto:team@trydecember.com)
+Read the [docs](https://trydecember.com/docs) for more.
+
+## Feedback and bugs
+
+If you find a bug or want a feature, [open an issue](https://github.com/phasehumans/december/issues) or email [team@trydecember.com](mailto:team@trydecember.com).

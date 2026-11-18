@@ -7,6 +7,7 @@ import { getPathForView, type ViewState } from '@/app/types'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
 import { getWebUrl } from '@/shared/config/env'
+import { clearLoggedInCookie } from '@/shared/utils/logged-in-cookie'
 
 export const useNavigationController = () => {
     const navigate = useNavigate()
@@ -99,13 +100,7 @@ export const useNavigationController = () => {
 
     const handleSignOut = React.useCallback(async () => {
         const landingUrl = getWebUrl()
-        try {
-            document.cookie =
-                'december_logged_in=; Path=/; Domain=.trydecember.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-            document.cookie = 'december_logged_in=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-        } catch {
-            // Intentionally swallowed: cookie clearing fallback in test/restricted environment
-        }
+        clearLoggedInCookie()
         try {
             await profileAPI.signout()
         } catch {

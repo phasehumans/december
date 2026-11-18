@@ -736,20 +736,20 @@ async function main() {
     }
 
     const buildSettingsFromConfig = (cfg: DecemberConfig, prov?: string, mod?: string) => {
+        // Same fallbacks as session startup: default provider 'gemini', then that provider's default model
+        const settingsProvider = prov || cfg.activeProvider || 'gemini'
         return [
             {
                 id: 'provider',
                 title: 'Active Provider',
-                value: prov || cfg.activeProvider || 'Claude',
+                value: settingsProvider,
             },
             {
                 id: 'model',
                 title: 'Active Model',
-                value: mod
-                    ? getModelLabel(mod)
-                    : cfg.activeModel
-                      ? getModelLabel(cfg.activeModel)
-                      : 'Claude 3.5 Sonnet',
+                value: getModelLabel(
+                    mod || ensureValidModelForProvider(settingsProvider, cfg.activeModel)
+                ),
             },
             {
                 id: 'tool_permission',
@@ -1589,6 +1589,95 @@ async function main() {
             })
             await mcpClientManager.connectServer(data.name, config)
             agent?.registerMcpServerTools(data.name)
+        },
+        onLoadPlugins: async () => {
+            const { PluginManager } = await import('@december/tools')
+            const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
+            const [installed, discoverable] = await Promise.all([
+                pluginManager.getInstalledPlugins(),
+                pluginManager.getDiscoverablePlugins(),
+            ])
+            return {
+                installed: installed.map((p) => ({
+                    id: p.id,
+                    name: p.manifest.name,
+                    description: p.manifest.description,
+                    version: p.manifest.version,
+                    author: p.manifest.author,
+                    source: p.source,
+                    enabled: p.enabled,
+                    isBuiltIn: p.isBuiltIn,
+                    components: p.components,
+                    location: p.location,
+                })),
+                discoverable: discoverable.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    description: p.description,
+                    version: p.version,
+                    author: p.author,
+                    source: 'catalog' as const,
+                    enabled: false,
+                    isInstalled: p.isInstalled,
+                    components: p.components,
+                    tags: p.tags,
+                })),
+            }
+        },
+        onTogglePlugin: async (id: string) => {
+            const { PluginManager } = await import('@december/tools')
+            const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
+            const plugin = await pluginManager.togglePlugin(id)
+            if (plugin && plugin.components.mcpServers.length > 0) {
+                for (const s of plugin.components.mcpServers) {
+                    if (plugin.enabled) {
+                        try {
+                            await mcpClientManager.startServer(s.name)
+                            agent?.registerMcpServerTools(s.name)
+                        } catch {
+                            // Intentionally swallowed: mcp server auto-start fallback
+                        }
+                    } else {
+                        try {
+                            await mcpClientManager.stopServer(s.name)
+                            agent?.unregisterMcpServerTools(s.name)
+                        } catch {
+                            // Intentionally swallowed: mcp server auto-stop fallback
+                        }
+                    }
+                }
+            }
+        },
+        onInstallPlugin: async (id: string) => {
+            const { PluginManager } = await import('@december/tools')
+            const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
+            const installed = await pluginManager.installPlugin(id)
+            if (installed && installed.components.mcpServers.length > 0) {
+                for (const s of installed.components.mcpServers) {
+                    try {
+                        await mcpClientManager.startServer(s.name)
+                        agent?.registerMcpServerTools(s.name)
+                    } catch {
+                        // Intentionally swallowed: mcp server auto-start fallback
+                    }
+                }
+            }
+        },
+        onUninstallPlugin: async (id: string) => {
+            const { PluginManager } = await import('@december/tools')
+            const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
+            const installed = (await pluginManager.getInstalledPlugins()).find((p) => p.id === id)
+            if (installed && installed.components.mcpServers.length > 0) {
+                for (const s of installed.components.mcpServers) {
+                    try {
+                        await mcpClientManager.stopServer(s.name)
+                        agent?.unregisterMcpServerTools(s.name)
+                    } catch {
+                        // Intentionally swallowed: mcp server auto-stop fallback
+                    }
+                }
+            }
+            await pluginManager.uninstallPlugin(id)
         },
         onLoadProjectRules: async () => {
             const { discoverProjectRules } = await import('@december/shared')

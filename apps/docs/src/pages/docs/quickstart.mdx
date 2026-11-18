@@ -1,36 +1,44 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Getting Started with December
-description: Follow this walkthrough to launch your first session in either the cloud workspace or directly inside your local terminal repository.
+description: Start your first December session in the terminal or in December Cloud.
 currentSlug: 'quickstart'
 ---
 
-## 1. Terminal Installation (CLI)
+This page helps you start your first December session. You can use December in your terminal or in December Cloud.
 
-The fastest way to use December is directly inside your existing project repository using the command line:
+## 1. Use December in your terminal
+
+### Install the CLI
+
+1. Install the CLI with npm:
 
 ```bash
 npm install -g @trydecember/cli
 ```
 
-Navigate to any codebase directory and launch the agent:
+2. Go to your project folder and start December:
 
 ```bash
 cd my-project
 december
 ```
 
-### Authentication & Providers
+### Connect a model
 
-Run `/login` in your terminal to choose your preferred setup:
+December needs a model to work. Run `/login` and pick one of these options:
 
-- **Sign in with December**: Use your December Cloud account and unified wallet credits.
-- **Bring Your Own Key (BYOK)**: Add your own API keys for OpenAI, Anthropic, Google Gemini, OpenRouter, or DeepSeek.
+- Link a plan: Use a plan you already pay for. December supports Claude, ChatGPT, GitHub Copilot, and Gemini plans.
+- Sign in with December: Use your December Cloud account and its monthly credits.
+- Use your own keys: Add API keys for OpenAI, Anthropic, Gemini, OpenRouter, or DeepSeek.
 
-## 2. Cloud Workspace Walkthrough
+After you connect a model, type what you want December to do. For example: "fix the failing tests".
 
-The cloud workspace at [trydecember.com](https://trydecember.com) provides zero-configuration micro-VM sandboxes with live interactive previews and GitHub synchronization.
+## 2. Use December Cloud
 
-1. **Launch a Project**: Visit [trydecember.com](https://trydecember.com) and describe what you want to build or connect your GitHub repository.
-2. **Observe Real-Time Execution**: The agent provisions an isolated Linux sandbox, plans the architecture, writes source code, and starts dev servers.
-3. **Inspect Live Previews**: Test your full-stack application inside the built-in browser preview with complete console diagnostics.
+December Cloud runs your project in a sandbox. You do not need to install anything.
+
+1. Go to [app.trydecember.com](https://app.trydecember.com) and sign in.
+2. Describe what you want to build, or connect a GitHub repository.
+3. December starts a sandbox, writes the code, and starts your app.
+4. Use the preview to test your app in the browser. The preview also shows console logs.

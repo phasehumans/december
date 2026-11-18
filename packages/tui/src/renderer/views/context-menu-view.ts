@@ -36,7 +36,7 @@ export const ContextMenuView = {
         let y = props.y
         const width = props.width
 
-        const modelName = props.modelLabel || props.activeModel || 'Claude 3.5 Sonnet'
+        const modelName = props.modelLabel || props.activeModel || 'No model selected'
         const currentTokens = props.contextTokens ?? 0
         const maxTokens = props.maxContextTokens || 200000
         const percentage = Math.min(100, (currentTokens / maxTokens) * 100)

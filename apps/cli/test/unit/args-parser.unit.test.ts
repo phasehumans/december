@@ -54,4 +54,63 @@ describe('CLI Args Parser (Unit)', () => {
         expect(help).toContain('december login')
         expect(help).toContain('december update')
     })
+
+    describe('mcp add', () => {
+        it('passes server flags like npx -y through to the server command', () => {
+            const parsed = parseCliArgs([
+                'mcp',
+                'add',
+                'github',
+                'npx',
+                '-y',
+                '@modelcontextprotocol/server-github',
+                '-e',
+                'GITHUB_TOKEN=abc',
+            ])
+            expect(parsed.command).toBe('mcp')
+            expect(parsed.yes).toBe(false)
+            expect(parsed.positionals).toEqual([
+                'mcp',
+                'add',
+                'github',
+                'npx',
+                '-y',
+                '@modelcontextprotocol/server-github',
+            ])
+            expect(parsed.env).toEqual(['GITHUB_TOKEN=abc'])
+        })
+
+        it('reads mcp add flags in any position, including --flag=value', () => {
+            const parsed = parseCliArgs([
+                'mcp',
+                'add',
+                '--scope=project',
+                'remote',
+                'https://example.com/sse',
+                '-H',
+                'Authorization: Bearer t',
+                '--global',
+                '--eager',
+            ])
+            expect(parsed.scope).toBe('project')
+            expect(parsed.isGlobal).toBe(true)
+            expect(parsed.eager).toBe(true)
+            expect(parsed.header).toEqual(['Authorization: Bearer t'])
+            expect(parsed.positionals).toEqual(['mcp', 'add', 'remote', 'https://example.com/sse'])
+        })
+
+        it('passes everything after -- through verbatim', () => {
+            const parsed = parseCliArgs(['mcp', 'add', 'x', 'node', '--', 'server.js', '-e', 'raw'])
+            expect(parsed.env).toBeUndefined()
+            expect(parsed.positionals).toEqual([
+                'mcp',
+                'add',
+                'x',
+                'node',
+                'server.js',
+                '-e',
+                'raw',
+            ])
+        })
+    })
 })

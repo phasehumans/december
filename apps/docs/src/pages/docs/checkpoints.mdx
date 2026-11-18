@@ -1,55 +1,58 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Git Checkpoints
-description: Learn how December automatically creates restore points so you can undo any mistake with one command.
+description: Learn how December saves your files at each turn so you can undo a change with one command.
 currentSlug: 'checkpoints'
 ---
 
+This page tells you how December saves your files at each turn and how you undo a change.
+
 ## Automatic Restore Points
 
-Every time December edits your files, it creates a safe checkpoint:
+When you send a prompt, December saves a snapshot of your project files before it starts work. Each snapshot belongs to one turn.
 
-- **Automatic Checkpoints**: Every step saves a snapshot of your files before and after changes.
-- **Review Diffs**: See exact line-by-line diffs so you always know what changed.
-- **One-Command Undo**: Type `/undo` to instantly roll back if a change breaks your build or tests.
-- **Clean Git State**: December respects your `.gitignore` and never touches ignored or private files.
+- Separate history: December keeps snapshots in a separate git repository in `.december/snapshots`. Your own git history and branches do not change.
+- Ignored files stay out: Snapshots skip the files in your `.gitignore`. They also skip `node_modules`, `dist`, `.git`, and `.december`.
+- Review changes: Type `/diff` to see the git diff of your workspace.
+- Undo the last turn: Type `/undo` to revert the files and the conversation from the last turn.
+- Go back further: Type `/rewind` to pick any earlier turn and restore the files and the conversation to that point.
 
-<div class="my-8 p-4 sm:p-6 border border-[#e2e8f0] bg-[#f8fafc]/50 relative">
-  <span class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#87b2f4]"></span>
-  <span class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#87b2f4]"></span>
-  <span class="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-[#87b2f4]"></span>
-  <span class="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-[#87b2f4]"></span>
-
-  <div class="space-y-4 max-w-xl mx-auto">
-    <div class="flex items-center justify-between font-mono text-xs text-[#64748b]">
-      <span>Working Tree Timeline</span>
-      <span class="text-[#87b2f4]">Point-in-Time Snapshots</span>
+<div class="my-8">
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="p-3 border border-[#e2e8f0] bg-white">
+      <div class="font-mono text-[11px] text-[#64748b]">Checkpoint 0</div>
+      <div class="text-xs font-semibold text-[#090a0f] mt-1">Before the turn</div>
+      <p class="text-[11px] text-[#52525b] mt-1 leading-relaxed">December saves your files when you send a prompt.</p>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <div class="p-3 border border-[#e2e8f0] bg-white shadow-2xs">
-        <div class="font-mono text-[11px] text-[#87b2f4] font-medium">Checkpoint 0</div>
-        <div class="text-xs font-semibold text-[#090a0f] mt-1">Clean Git Head</div>
-        <p class="text-[11px] text-[#52525b] mt-1 leading-relaxed">Pre-execution branch state recorded.</p>
-      </div>
-
-      <div class="p-3 border border-[#e2e8f0] bg-white shadow-2xs">
-        <div class="font-mono text-[11px] text-[#87b2f4] font-medium">Checkpoint 1</div>
-        <div class="text-xs font-semibold text-[#090a0f] mt-1">Atomic Mutation</div>
-        <p class="text-[11px] text-[#52525b] mt-1 leading-relaxed">Files modified; verifiable diff ready.</p>
-      </div>
-
-      <div class="p-3 border border-emerald-300 bg-white shadow-2xs">
-        <div class="font-mono text-[11px] text-emerald-600 font-medium">Checkpoint 2</div>
-        <div class="text-xs font-semibold text-[#090a0f] mt-1">Tests Verified</div>
-        <p class="text-[11px] text-[#52525b] mt-1 leading-relaxed">Compiler passes; checkpoint locked.</p>
-      </div>
+    <div class="p-3 border border-[#e2e8f0] bg-white">
+      <div class="font-mono text-[11px] text-[#64748b]">Checkpoint 1</div>
+      <div class="text-xs font-semibold text-[#090a0f] mt-1">Files changed</div>
+      <p class="text-[11px] text-[#52525b] mt-1 leading-relaxed">December edits files. Type /diff to see the changes.</p>
     </div>
 
-    <div class="p-3 border border-[#e2e8f0] bg-white font-mono text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-      <span class="text-[#52525b]">Unintended side effect detected?</span>
-      <span class="text-[#87b2f4] font-medium font-mono">/undo → Instant Rollback</span>
+    <div class="p-3 border border-[#e2e8f0] bg-white">
+      <div class="font-mono text-[11px] text-[#64748b]">Checkpoint 2</div>
+      <div class="text-xs font-semibold text-[#090a0f] mt-1">Next turn</div>
+      <p class="text-[11px] text-[#52525b] mt-1 leading-relaxed">Your next prompt saves the new state.</p>
     </div>
+  </div>
 
+  <div class="mt-3 p-3 border border-[#cbd5e1] bg-white font-mono text-xs text-[#52525b]">
+    Change went wrong? Type /undo to go back one turn, or /rewind to pick a turn.
   </div>
 </div>
+
+## Rewind from the terminal
+
+You can also restore a turn outside a session. To list the saved turns, run:
+
+```bash
+december rewind list
+```
+
+To restore a turn, add its number. With no number, December restores the latest snapshot.
+
+```bash
+december rewind 3
+```

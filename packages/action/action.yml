@@ -1,4 +1,4 @@
-name: 'december-action'
+name: 'trydecember'
 description: 'Automated AI software engineer for GitHub issues and workflows'
 author: 'phasehumans'
 
@@ -11,9 +11,8 @@ inputs:
         required: false
         default: ${{ github.token }}
     model:
-        description: 'Model name (default: gemini-2.5-flash)'
+        description: "Model name. Leave empty to use the provider's default model (gemini-3.8-flash for Gemini)"
         required: false
-        default: 'gemini-2.5-flash'
     provider:
         description: 'Model provider (gemini, openai, anthropic, openrouter)'
         required: false
@@ -78,4 +77,4 @@ runs:
               GITHUB_EVENT_PATH: ${{ github.event_path }}
               GITHUB_REPOSITORY: ${{ github.repository }}
           run: |
-              bun ${{ github.action_path }}/runner.ts
+              bun ${{ github.action_path }}/dist/index.js

@@ -1,30 +1,56 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Model Providers & Bring Your Own Key (BYOK)
-description: Connect your own API keys for OpenAI, Anthropic, Google Gemini, OpenRouter, and DeepSeek.
+description: Connect December to a plan you already pay for, to December credits, or to your own API keys.
 currentSlug: 'integrations'
 ---
 
-## Bring Your Own Key (BYOK)
+This page helps you connect December to a model. You can link a plan, sign in with December, or use your own keys.
 
-December is 100% model-agnostic. You can use your own API keys with **zero markup** on token prices:
+## Three ways to connect
+
+Run `/login` in a session and pick one option:
+
+- Link a plan: Use a Claude, ChatGPT, GitHub Copilot, or Gemini plan that you already pay for.
+- Sign in with December: Use your December Cloud account and its credits.
+- Use your own keys: Add an API key from a model provider. This is also called bring your own key (BYOK).
+
+## Bring Your Own Key (BYOK)
 
 ### Supported Providers
 
-- **Anthropic**: Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude Opus 5
-- **OpenAI**: GPT-4o, o3-mini, GPT-5.6 Sol, o1
-- **Google Gemini**: Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 3.7 Flash
-- **DeepSeek**: DeepSeek V3, DeepSeek R1, DeepSeek V4 Pro
-- **Groq**: Llama 3.3 70B Versatile, Qwen 3.8 27B
-- **Mistral AI**: Codestral Latest, Devstral, Mistral Large
-- **OpenRouter**: Access to over 100 open and proprietary models
+December works with many providers. These are some of them, with the model December uses first:
+
+| Provider      | Default model          |
+| :------------ | :--------------------- |
+| Anthropic     | `claude-opus-5`        |
+| OpenAI        | `gpt-5.6-sol`          |
+| Google Gemini | `gemini-3.8-flash`     |
+| DeepSeek      | `deepseek-v4-pro`      |
+| Groq          | `openai/gpt-oss-120b`  |
+| Mistral       | `mistral-large-latest` |
+| OpenRouter    | many open and paid models |
+
+After you add a key, December gets the model list from the provider. Run `/model` to pick a different model.
 
 ### Configuring Keys
 
-In your terminal, run:
+To save a key from your terminal, run `december key` with the provider name and the key:
 
 ```bash
-december login
+december key anthropic sk-ant-...
 ```
 
-Select **Configure Custom API Keys (BYOK)** and paste your key. Keys are securely stored in your local configuration directory (`~/.december/config.json`) and never transmitted to December servers when in local mode.
+If you leave out the key, December asks you for it. To send requests through a proxy, add `--base-url <url>`.
+
+December saves your keys in `~/.december/config.json` on your computer. If you use your own keys, the CLI sends requests straight to the provider.
+
+## Link a plan from the terminal
+
+To link a plan without opening a session, run `december link` with the provider name:
+
+```bash
+december link claude
+```
+
+The provider names are `claude`, `chatgpt`, `copilot`, `gemini`, and `amazon-q`.

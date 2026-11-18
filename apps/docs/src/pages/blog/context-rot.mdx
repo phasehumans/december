@@ -1,30 +1,30 @@
 ---
 layout: ../../layouts/BlogLayout.astro
 title: 'Context Rot in Long-Context LLMs'
-description: 'Why expanding input token budgets degrades retrieval accuracy and how coding agents avoid semantic distractors.'
+description: 'Why longer prompts make models worse at finding the right code, and how coding agents avoid look-alike distractors.'
 publishDate: '20 Aug 2026'
 author: 'December Research Desk'
-readTime: '4 min read'
+readTime: '5 min read'
 currentSlug: 'context-rot'
 ---
 
-Modern LLMs advertise context windows scaling from 128k to 1M+ tokens. The common assumption is that models process this space uniformly - that a rule or interface placed at token 100k is recalled as reliably as one at token 100.
+Model vendors now sell context windows of 128k to 1M+ tokens. The context window is how much text the model can read at once, counted in tokens (small chunks of text, often parts of words). The usual assumption is that the model reads all of that space equally well. A rule at token 100k should be as easy to recall as a rule at token 100.
 
-Empirical research by Chroma ([_Context Rot_](https://www.trychroma.com/research/context-rot)) shows this assumption fails in practice. As input length expands, retrieval accuracy degrades sharply under semantic ambiguity, a phenomenon known as **Context Rot**.
+It is not. Chroma tested this in [_Context Rot_](https://www.trychroma.com/research/context-rot). As the input gets longer, the model gets worse at finding the right fact. It gets much worse when the question and the answer use different words. Chroma calls this context rot: the longer the prompt, the less reliably the model uses what is in it.
 
 ## The Uniformity Myth
 
-In theory, self-attention connects all tokens pairwise. In reality, attention weights dilute across massive sequences. When an agent dumps whole directories into a prompt, probability mass spreads across irrelevant tokens, leading to:
+Models use self-attention to decide which earlier tokens matter for the next one. In theory, every token can attend to every other token. In practice, the model has a fixed amount of attention to spread, and a long input spreads it thin. When an agent dumps whole directories into a prompt, most of that attention lands on code that does not matter. You get three problems:
 
-1. **Instruction drift**: Early system constraints are deprioritized.
-2. **Attribution blending**: Disparate code snippets merge into invalid implementations.
-3. **Hallucination**: The model invents missing details when context density exceeds retrieval limits.
+1. Instruction drift: The model stops following rules from the start of the prompt, such as the system prompt.
+2. Attribution blending: The model merges pieces of unrelated files into one implementation that does not work.
+3. Hallucination: The model cannot find a detail in the pile, so it invents one.
 
 ## Semantic Degradation vs. Standard NIAH
 
-Standard Needle in a Haystack (NIAH) tests measure **exact lexical overlap** - searching for a specific string inside unrelated text. This behaves like an optimized grep search and yields deceptively high scores.
+The standard long-context test is Needle in a Haystack (NIAH). It hides one sentence (the needle) in a long block of unrelated text (the haystack) and asks the model to find it. The question and the needle usually share the exact same words. This is lexical matching: matching on identical words. It is basically grep with extra steps, and models score well on it. Those scores flatter them.
 
-When tested against **non-lexical semantic relationships** (where concepts are referenced indirectly without identical keywords), retrieval accuracy drops rapidly as context expands:
+Chroma also tested semantic, non-lexical matching. Here the question and the answer mean the same thing but share no keywords. On this test, accuracy drops fast as the input grows:
 
 ```
 Retrieval Accuracy
@@ -37,58 +37,37 @@ Retrieval Accuracy
                       Input Tokens
 ```
 
+Real code questions look like the bottom line, not the top one. You rarely ask an agent for a function by its exact name. You ask it to "fix the login bug".
+
 ## Distractors in Codebases
 
-The Chroma study highlights the critical distinction between **orthogonal noise** and **distractors**:
+Chroma separates two kinds of extra text in a prompt:
 
-- **Noise**: Completely unrelated text (e.g. documentation mixed with history essays). Models ignore this relatively well.
-- **Distractors**: Topically related content that looks like the target but is incorrect.
+- Noise: Text unrelated to the question, such as history essays mixed into documentation. Models ignore noise fairly well.
+- Distractors: Text on the same topic that looks like the answer but is wrong.
 
-Codebases are filled with distractors: overloaded signatures (`getUser`, `getUserById`), outdated legacy modules, and test mock fixtures. When an agent floods context with 50 unpruned files, the model frequently selects the wrong signature or imports deprecated utilities.
+A codebase is mostly distractors. You have overloaded signatures (several functions with near-identical names and shapes, like `getUser` and `getUserById`). You have old legacy modules nobody deleted. You have test mocks that copy the real interfaces. If an agent loads 50 files without filtering them, the model often picks the wrong function or imports a deprecated helper. It is not being careless. You handed it five plausible answers and asked it to pick one.
 
 ## How December Mitigates Context Rot
 
-Rather than relying on oversized prompt dumps, December uses targeted context pruning:
+December does not dump the repo into the prompt. It loads only what the task needs:
 
-- **Localized AST extraction**: Only referenced symbols and type interfaces are loaded into context, not entire files.
-- **Pruned agent reasoning loop**: Diagnostic terminal output and intermediate planning traces are discarded once verified.
-- **Deterministic checkpoints**: Verification uses compiler diagnostics and test exits in isolated sandboxes rather than prompt memory.
+- Localized AST extraction: December parses your code into an AST (abstract syntax tree, a structured map of every symbol in a file). It loads only the symbols and type interfaces the task uses, not whole files.
+- Pruned agent reasoning loop: Once December verifies a step, it drops that step's terminal output and planning notes from context.
+- Deterministic checkpoints: December checks its work with signals that give the same answer every time: compiler errors and test exit codes, run in an isolated sandbox. It does not trust what the prompt "remembers".
 
-<div class="my-8 p-4 sm:p-6 border border-[#e2e8f0] bg-[#f8fafc]/50 relative">
-  <span class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#87b2f4]"></span>
-  <span class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#87b2f4]"></span>
-  <span class="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-[#87b2f4]"></span>
-  <span class="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-[#87b2f4]"></span>
+The short version: a bigger context window is a bigger haystack. It is not a better search.
 
-  <div class="space-y-4 max-w-xl mx-auto">
-    <div class="p-4 sm:p-5 border border-red-200 bg-white shadow-2xs">
-      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
-        <span class="text-red-600 font-semibold">Naive Context Pipeline</span>
-        <span class="text-[10px] uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 border border-red-200">Context Rot</span>
-      </div>
-      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 font-mono text-xs text-[#090a0f] mt-2">
-        <span class="bg-[#f8fafc] px-2 py-1 border border-[#e2e8f0]">Entire Repo Dump</span>
-        <span class="text-[#cbd5e1] hidden sm:inline">→</span>
-        <span class="bg-[#f8fafc] px-2 py-1 border border-[#e2e8f0]">128K+ Distractors</span>
-        <span class="text-[#cbd5e1] hidden sm:inline">→</span>
-        <span class="text-red-600 font-medium">Wrong Imports &amp; Drift</span>
-      </div>
-    </div>
-
-    <div class="p-4 sm:p-5 border border-[#87b2f4] bg-white shadow-2xs">
-      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
-        <span class="text-[#87b2f4] font-semibold">December Pruned Pipeline</span>
-        <span class="text-[10px] uppercase tracking-wider text-[#87b2f4] bg-[#87b2f4]/10 px-2 py-0.5 border border-[#87b2f4]/30">High Accuracy</span>
-      </div>
-      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 font-mono text-xs text-[#090a0f] mt-2">
-        <span class="bg-[#f8fafc] px-2 py-1 border border-[#e2e8f0]">AST Symbol Extraction</span>
-        <span class="text-[#87b2f4] hidden sm:inline">→</span>
-        <span class="bg-[#87b2f4]/10 text-[#090a0f] px-2 py-1 border border-[#87b2f4]/30">~4K Focused Tokens</span>
-        <span class="text-[#87b2f4] hidden sm:inline">→</span>
-        <span class="text-emerald-600 font-medium">Deterministic Edits</span>
-      </div>
-    </div>
-
+<div class="my-8 max-w-xl mx-auto space-y-3">
+  <div class="p-4 border border-[#e2e8f0] bg-white">
+    <div class="font-mono text-xs text-[#64748b]">01</div>
+    <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Naive pipeline</h4>
+    <p class="mt-1 text-xs leading-relaxed text-[#52525b]">Dumps the whole repo: 128K+ tokens of distractors. Result: wrong imports and instruction drift.</p>
+  </div>
+  <div class="p-4 border border-[#e2e8f0] bg-white">
+    <div class="font-mono text-xs text-[#64748b]">02</div>
+    <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">December pruned pipeline</h4>
+    <p class="mt-1 text-xs leading-relaxed text-[#52525b]">Extracts AST symbols: about 4K tokens. Result: edits checked by the compiler and tests.</p>
   </div>
 </div>
 

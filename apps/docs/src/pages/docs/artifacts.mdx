@@ -1,62 +1,52 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Session Artifacts & Planning
-description: Inspect structured implementation plans, architecture designs, and task specifications before modifying code.
+description: Get a plan from December and approve it before December changes your code.
 currentSlug: 'artifacts'
 ---
 
+This page helps you get a plan from December and approve it before December changes any files.
+
 ## Overview
 
-When planning large features or executing multi-file refactors, stuffing hundreds of lines of proposed changes directly into a chat transcript causes clutter and lost context.
+A plan is the main session artifact in the CLI. December writes the plan as text in your session. The plan prompt tells December not to run tools, so no files change while December writes the plan.
 
-December introduces **Session Artifacts**: structured documents created by the agent during complex workflows (such as `/plan`, `/to-spec`, or `/code-review`). Artifacts live alongside your session, providing interactive review interfaces, task checklists, and approval checkpoints before any file is touched.
+Use a plan for large features and for changes that touch many files. You see the proposed changes first, and you decide what happens next.
 
----
+## Make a plan
 
-## How Artifacts Work
-
-1. When you run an architectural command (like `december "/plan implement oauth2 pkce flow"`), December inspects your repository.
-2. Rather than immediately generating code, the agent creates an implementation plan artifact via the `write_artifact` tool.
-3. Artifacts are persisted locally under `~/.december/artifacts/<session-id>/`.
-4. An interactive approval prompt lets you inspect the plan, request revisions, or proceed with implementation.
-
----
-
-## Interactive Artifacts Browser (`/artifacts`)
-
-You can inspect, browse, and manage artifacts at any point in an active session by typing `/artifacts`:
+1. Type `/plan` and your goal:
 
 ```text
-╭─ Session Artifacts ─────────────────────────────────────────────────────╮
-│ [1] plan-oauth2-flow.md (Implementation Plan) - Pending Approval        │
-│ [2] schema-auth-tokens.md (Data Model Spec)                             │
-│ [3] review-security-audit.md (Code Review Report)                       │
-╰─────────────────────────────────────────────────────────────────────────╯
- [enter] Open artifact   [p] Proceed with plan   [r] Request changes   [esc] Close
+/plan add rate limiting to the login route
 ```
 
-### Plan Approvals
+2. December writes a step-by-step plan. The plan starts with `### Implementation Plan` and names the files to create, change, or delete.
+3. December shows the plan approval menu.
 
-When an artifact requires user sign-off (such as an execution plan):
+## Approve, refine, or reject the plan
 
-- **Proceed (`[p]`)**: Confirms the proposed architecture and commands December to begin executing task steps.
-- **Request Changes (`[r]`)**: Opens a prompt where you can provide feedback (e.g. _"Use Redis instead of in-memory maps for token revocation"_). December updates the artifact and presents the revised plan.
+The plan approval menu has four options. Press the key, or select the option and press Enter.
 
----
+| Option            | Key | What happens                                                         |
+| :---------------- | :-- | :------------------------------------------------------------------- |
+| Approve & Execute | `y` | December starts to make the changes in the plan, step by step.       |
+| Refine Plan       | `r` | December puts `/plan refine: ` in the input. Type your feedback.     |
+| View Full Plan    | `v` | December opens the full plan in a viewer that you can scroll.        |
+| Reject / Cancel   | `n` | December discards the plan. No files change.                         |
 
-## Artifact Structure & Visual Formats
+When you refine a plan, December writes a new plan from your feedback. Then it shows the approval menu again.
 
-December artifacts support standard Markdown and GitHub Flavored Markdown features:
+You can also type these commands in the input:
 
-- **Checklists**: Dynamic task lists that check off items as implementation proceeds.
-- **Alert Blocks**: Highlighted notes (`> [!NOTE]`), tips (`> [!TIP]`), and warnings (`> [!WARNING]`).
-- **Mermaid Diagrams**: Visual flowcharts, sequence diagrams, and entity-relationship models rendered directly in compatible viewers.
-- **File Links**: Direct line-referenced links to project files (e.g. `[auth.ts#L42-L58]`).
+```text
+/plan refine: use Redis instead of an in-memory map
+/plan approve
+/plan reject
+```
 
----
+## Where the plan lives
 
-## Benefits for Pair Programming
+December keeps the plan in the current session only. December does not save the plan to a file. To keep the plan, use `/copy` to copy the last response, then save it where you want.
 
-- **Zero Accidental Overwrites**: You see every file the agent plans to touch before it runs any edit operations.
-- **Audit Trail**: High-level designs and review notes are saved as persistent records that can be referenced or committed to your documentation directory.
-- **Seamless Handoff**: Cloud workspaces and terminal sessions share the same artifact structure, allowing you to review plans in the browser and execute in your terminal.
+If you approve the plan, December edits your files. To undo those edits, see [Git Checkpoints](/docs/checkpoints).

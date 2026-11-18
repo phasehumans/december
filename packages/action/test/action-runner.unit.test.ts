@@ -71,7 +71,7 @@ describe('December GitHub Action Runner (Unit Tests)', () => {
         const fakeEventJson = JSON.stringify({
             comment: {
                 id: 12,
-                body: '@december add unit tests for webhook notifications',
+                body: '@trydecember add unit tests for webhook notifications',
                 user: { login: 'devuser' },
             },
             issue: {

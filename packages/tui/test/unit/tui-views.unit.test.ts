@@ -25,6 +25,7 @@ import { MemoryViewMenuView } from '../../src/renderer/views/memory-view-menu-vi
 import { MessageListView } from '../../src/renderer/views/message-list-view'
 import { ModelSelectMenuView } from '../../src/renderer/views/model-select-menu-view'
 import { PlanApproveMenuView } from '../../src/renderer/views/plan-approve-menu-view'
+import { PluginMenuView } from '../../src/renderer/views/plugin-menu-view'
 import { RewindSelectMenuView } from '../../src/renderer/views/rewind-select-menu-view'
 import { SessionSelectMenuView } from '../../src/renderer/views/session-select-menu-view'
 import { SettingsMenuView } from '../../src/renderer/views/settings-menu-view'
@@ -570,6 +571,42 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(3)).toContain('const oldVal = 1')
             expect(buffer.getLine(4)).toContain('+')
             expect(buffer.getLine(4)).toContain('const newVal = 2')
+            expect(buffer.getLine(buffer.height - 1)).toContain('f full file')
+        })
+
+        it('renders full file expanded view with badge and compact footer when isFullFile is true', () => {
+            const buffer = new ScreenBuffer(60, 10)
+            const mockFullContent = Array.from(
+                { length: 15 },
+                (_, i) => `line content ${i + 1}`
+            ).join('\n')
+            DiffViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 60,
+                height: 10,
+                files: [
+                    {
+                        path: 'packages/tui/src/renderer/app.ts',
+                        additions: 1,
+                        deletions: 1,
+                        status: 'modified',
+                        diff: '@@ -10,2 +10,2 @@\n-const oldVal = 1\n+const newVal = 2\n',
+                    },
+                ],
+                selectedFileIndex: 0,
+                windowStart: 0,
+                isDetailView: true,
+                isFullFile: true,
+                fullContent: mockFullContent,
+                detailScrollOffset: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('packages/tui/src/renderer/app.ts')
+            expect(buffer.getLine(0)).toContain('· full file')
+            expect(buffer.getLine(2)).not.toContain('unchanged lines')
+            expect(buffer.getLine(2)).toContain('line content 1')
+            expect(buffer.getLine(buffer.height - 1)).toContain('f compact')
         })
     })
 
@@ -734,29 +771,37 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
     })
 
     describe('McpMenuView', () => {
+        it('computes compact dynamic height based on mode and item count', () => {
+            expect(McpMenuView.getHeight('list', 0)).toBe(5)
+            expect(McpMenuView.getHeight('list', 2)).toBe(6)
+            expect(McpMenuView.getHeight('detail', 1)).toBe(7)
+            expect(McpMenuView.getHeight('add_preset', 0)).toBe(9)
+        })
+
         it('renders empty servers notice when no MCP servers configured', () => {
-            const buffer = new ScreenBuffer(80, 10)
+            const buffer = new ScreenBuffer(80, 5)
             McpMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
-                height: 10,
+                height: 5,
                 selectedIndex: 0,
                 servers: [],
             })
 
-            expect(buffer.getLine(0)).toContain('Model Context Protocol (MCP) Servers (0)')
-            expect(buffer.getLine(3)).toContain('No MCP servers configured')
-            expect(buffer.getLine(4)).toContain('december mcp add')
+            expect(buffer.getLine(0)).toContain('MCP Servers (0)')
+            expect(buffer.getLine(2)).toContain('No servers configured')
+            expect(buffer.getLine(4)).toContain('add server')
+            expect(buffer.getLine(4)).toContain('close')
         })
 
-        it('renders list of MCP servers with scope badges, status, and tool counts', () => {
-            const buffer = new ScreenBuffer(80, 12)
+        it('renders minimal list of MCP servers with [x] / [ ] toggle indicators and tool counts', () => {
+            const buffer = new ScreenBuffer(80, 7)
             McpMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
-                height: 12,
+                height: 7,
                 selectedIndex: 0,
                 servers: [
                     {
@@ -779,18 +824,16 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 ],
             })
 
-            expect(buffer.getLine(0)).toContain('Model Context Protocol (MCP) Servers (2)')
-            expect(buffer.getLine(0)).toContain('1 connected')
-            expect(buffer.getLine(1)).toContain('1 global (trusted) · 1 project-scoped')
-            expect(buffer.getLine(3)).toContain('❭')
-            expect(buffer.getLine(3)).toContain('[project]')
-            expect(buffer.getLine(3)).toContain('postgres')
-            expect(buffer.getLine(3)).toContain('[stdio]')
-            expect(buffer.getLine(3)).toContain('1 tool (eager)')
-            expect(buffer.getLine(4)).toContain('[global]')
-            expect(buffer.getLine(4)).toContain('sentry')
-            expect(buffer.getLine(11)).toContain('select')
-            expect(buffer.getLine(11)).toContain('inspect tools')
+            expect(buffer.getLine(0)).toContain('MCP Servers (2)')
+            expect(buffer.getLine(2)).toContain('❭')
+            expect(buffer.getLine(2)).toContain('[x]')
+            expect(buffer.getLine(2)).toContain('postgres')
+            expect(buffer.getLine(2)).toContain('1 tool')
+            expect(buffer.getLine(3)).toContain('[ ]')
+            expect(buffer.getLine(3)).toContain('sentry')
+            expect(buffer.getLine(3)).toContain('(stopped)')
+            expect(buffer.getLine(6)).toContain('toggle')
+            expect(buffer.getLine(6)).toContain('details')
         })
 
         it('renders detail view for a server displaying tools and command details', () => {
@@ -896,6 +939,120 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(10)).toContain('Confirm remove "github"')
+        })
+    })
+
+    describe('PluginMenuView', () => {
+        it('renders Installed tab with active plugins, search prompt, and keyboard footer', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            PluginMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                activeTab: 'installed',
+                selectedIndex: 0,
+                installedPlugins: [
+                    {
+                        id: 'gmail',
+                        name: 'gmail',
+                        description: 'Search, read, draft, and send emails in Gmail.',
+                        enabled: true,
+                    },
+                    {
+                        id: 'swarm',
+                        name: 'swarm',
+                        description: 'Unlock the power of agent swarms.',
+                        scope: 'built-in',
+                        enabled: true,
+                    },
+                ],
+                discoverablePlugins: [],
+            })
+
+            expect(buffer.getLine(0)).toContain('Plugins')
+            expect(buffer.getLine(1)).toContain('Installed (2)')
+            expect(buffer.getLine(1)).toContain('Discover (0)')
+            expect(buffer.getLine(2)).toContain('Type to search plugins')
+            expect(buffer.getLine(3)).toContain('>')
+            expect(buffer.getLine(3)).toContain('[enabled]')
+            expect(buffer.getLine(3)).toContain('gmail')
+            expect(buffer.getLine(3)).toContain('Search, read, draft, and send emails')
+            expect(buffer.getLine(4)).toContain('[enabled]')
+            expect(buffer.getLine(4)).toContain('swarm')
+            expect(buffer.getLine(4)).toContain('(built-in)')
+            expect(buffer.getLine(9)).toContain('tab Cycle Tabs')
+            expect(buffer.getLine(9)).toContain('space Toggle Enable')
+        })
+
+        it('renders expanded details drawer showing bundled Skills, MCP tools, and Rules', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            PluginMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                activeTab: 'installed',
+                selectedIndex: 0,
+                expandedPluginId: 'gmail',
+                installedPlugins: [
+                    {
+                        id: 'gmail',
+                        name: 'gmail',
+                        description: 'Search, read, draft, and send emails in Gmail.',
+                        enabled: true,
+                        components: {
+                            skills: ['/email', '/draft'],
+                            mcpServers: ['gmail-cli (6 tools)'],
+                            rules: ['email-guardrails'],
+                        },
+                    },
+                ],
+                discoverablePlugins: [],
+            })
+
+            expect(buffer.getLine(3)).toContain('v')
+            expect(buffer.getLine(3)).toContain('gmail')
+            expect(buffer.getLine(4)).toContain('Skills:')
+            expect(buffer.getLine(4)).toContain('/email, /draft')
+            expect(buffer.getLine(5)).toContain('MCP Server:')
+            expect(buffer.getLine(5)).toContain('gmail-cli (6 tools)')
+            expect(buffer.getLine(6)).toContain('Rules:')
+            expect(buffer.getLine(6)).toContain('email-guardrails')
+        })
+
+        it('renders Discover tab with available catalog plugins and install tags', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            PluginMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                activeTab: 'discover',
+                selectedIndex: 0,
+                installedPlugins: [],
+                discoverablePlugins: [
+                    {
+                        id: 'slack',
+                        name: 'slack',
+                        description: 'Team messaging and alerts in Slack.',
+                        installed: false,
+                    },
+                    {
+                        id: 'gmail',
+                        name: 'gmail',
+                        description: 'Email integration.',
+                        installed: true,
+                    },
+                ],
+            })
+
+            expect(buffer.getLine(1)).toContain('Discover (2)')
+            expect(buffer.getLine(3)).toContain('>')
+            expect(buffer.getLine(3)).toContain('[install]')
+            expect(buffer.getLine(3)).toContain('slack')
+            expect(buffer.getLine(4)).toContain('[installed]')
+            expect(buffer.getLine(4)).toContain('gmail')
         })
     })
 

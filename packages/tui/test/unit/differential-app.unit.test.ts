@@ -933,7 +933,29 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // Enter to open detail view
         app.handleKey('\r')
         expect(app.state.isDiffDetailView).toBe(true)
+        expect(app.state.isDiffFullFile).toBe(false)
         expect(app.state.diffCursorLineIndex).toBe(0)
+
+        // Seed full file content cache
+        app.state.diffFullContents['src/config.ts'] = Array.from(
+            { length: 40 },
+            (_, i) => `config line ${i + 1}`
+        ).join('\n')
+
+        // Verify footer offers full file toggle
+        expect(app.screen.backBuffer.getLine(23)).toContain('f full file')
+
+        // 'f' toggles full file view mode
+        app.handleKey('f')
+        expect(app.state.isDiffFullFile).toBe(true)
+        expect(app.screen.backBuffer.getLine(0)).toContain('· full file')
+        expect(app.screen.backBuffer.getLine(23)).toContain('f compact')
+
+        // 'f' again toggles back to compact hunks mode
+        app.handleKey('f')
+        expect(app.state.isDiffFullFile).toBe(false)
+        expect(app.screen.backBuffer.getLine(0)).not.toContain('· full file')
+        expect(app.screen.backBuffer.getLine(23)).toContain('f full file')
 
         // 'n' jumps to next change hunk
         app.handleKey('n')

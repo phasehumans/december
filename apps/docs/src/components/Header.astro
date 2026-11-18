@@ -17,7 +17,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       <span class="text-[#64748b]">{version}</span>
     </a>
 
-    <!-- Nav Items & CTA (Right): docs, blog, and Sign in (hidden on mobile) -->
+    <!-- Nav Items & CTA (Right): docs, blog, and Sign in / Open app (hidden on mobile) -->
     <div class="flex items-center gap-2 sm:gap-5 font-mono text-xs sm:text-sm shrink-0">
       <nav class="hidden sm:flex items-center gap-3 sm:gap-4 font-mono text-xs sm:text-sm" aria-label="Main navigation">
         <a 
@@ -52,13 +52,29 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </svg>
       </a>
 
-      <!-- Sign In CTA Button (Hidden on mobile, visible on sm+) -->
+      <!-- Sign In CTA Button (Hidden on mobile, visible on sm+); becomes "Open app" for signed-in users -->
       <a
+        id="header-auth-cta"
         href={`${appUrl}/login`}
+        data-app-url={appUrl}
         class="hidden sm:inline-flex items-center bg-[#090a0f] text-white hover:bg-[#27272a] text-xs font-mono font-medium px-2.5 sm:px-3 py-1 h-7 rounded-[3px] transition-colors active:scale-[0.98] whitespace-nowrap shrink-0"
       >
         <span class="whitespace-nowrap">Sign in</span>
       </a>
+      <!-- Runs inline right after the CTA so signed-in users never see a "Sign in" flash -->
+      <script is:inline>
+        (function () {
+          var cta = document.getElementById('header-auth-cta');
+          if (!cta) return;
+          var isLoggedIn = document.cookie.split(';').some(function (c) {
+            return c.trim().startsWith('december_logged_in=1');
+          });
+          if (!isLoggedIn) return;
+          cta.setAttribute('href', cta.getAttribute('data-app-url') || '/');
+          var label = cta.querySelector('span');
+          if (label) label.textContent = 'Open app';
+        })();
+      </script>
     </div>
   </div>
 </header>

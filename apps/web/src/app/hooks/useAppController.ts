@@ -11,6 +11,7 @@ import { profileAPI } from '@/features/profile/api/profile'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { useSessionController } from '@/features/sessions/hooks/useSessionController'
 import { ApiError } from '@/shared/api/client'
+import { clearLoggedInCookie, setLoggedInCookie } from '@/shared/utils/logged-in-cookie'
 
 export const useAppController = () => {
     const queryClient = useQueryClient()
@@ -55,12 +56,14 @@ export const useAppController = () => {
                 await profileAPI.getQuickInfo()
                 if (!isMounted) return
 
+                setLoggedInCookie()
                 setIsAuthenticated(true)
                 queryClient.invalidateQueries({ queryKey: ['sessions'] })
                 queryClient.invalidateQueries({ queryKey: ['profile'] })
             } catch (error: any) {
                 // If 401 Unauthorized, visitor has no session or is unauthenticated
                 if (error instanceof ApiError && error.status === 401) {
+                    clearLoggedInCookie()
                     if (isMounted) setIsAuthenticated(false)
                     return
                 }
@@ -73,6 +76,7 @@ export const useAppController = () => {
                     await profileAPI.getQuickInfo()
                     if (!isMounted) return
 
+                    setLoggedInCookie()
                     setIsAuthenticated(true)
                     queryClient.invalidateQueries({ queryKey: ['sessions'] })
                     queryClient.invalidateQueries({ queryKey: ['profile'] })

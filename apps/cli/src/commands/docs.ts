@@ -36,11 +36,15 @@ export async function handleChangelogCommand(): Promise<void> {
     }
 }
 
+const SITE_ROOT_PATHS = new Set(['/privacy', '/terms'])
+
 export async function handleDocsCommand(options?: { section?: string }): Promise<void> {
     const rawSection = options?.section?.toLowerCase().trim()
     const sectionPath = resolveDocsSectionPath(rawSection)
     const baseUrl = (process.env.WEB_URL || 'https://trydecember.com').replace(/\/$/, '')
-    const targetUrl = `${baseUrl}/docs${sectionPath}`
+    // Legal pages live at the site root, not under /docs
+    const isRootPage = SITE_ROOT_PATHS.has(sectionPath)
+    const targetUrl = isRootPage ? `${baseUrl}${sectionPath}` : `${baseUrl}/docs${sectionPath}`
 
     console.log('Opening December documentation in your default browser...')
     console.log(`\x1b[38;2;135;178;244m${targetUrl}\x1b[0m`)

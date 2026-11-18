@@ -44,14 +44,13 @@ export function extractBotMention(commentBody: string): BotMentionResult {
         return { isMentioned: false, instruction: '' }
     }
 
-    const mentionRegex = /@(trydecember|december)(?:\[bot\])?(?=[\s:;,.]|$)/i
+    // Only @trydecember: the @december handle belongs to an unrelated GitHub user
+    const mentionRegex = /@trydecember(?:\[bot\])?(?=[\s:;,.]|$)/i
     if (!mentionRegex.test(commentBody)) {
         return { isMentioned: false, instruction: '' }
     }
 
-    const stripped = commentBody
-        .replace(/@(trydecember|december)(?:\[bot\])?(?=[\s:;,.]|$)/gi, '')
-        .trim()
+    const stripped = commentBody.replace(/@trydecember(?:\[bot\])?(?=[\s:;,.]|$)/gi, '').trim()
     const instruction =
         stripped.length > 0
             ? stripped

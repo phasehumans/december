@@ -120,6 +120,13 @@ export interface McpMenuViewProps {
 }
 
 export const McpMenuView = {
+    getHeight(mode?: McpViewMode, serverCount: number = 0, isDetailView?: boolean): number {
+        if (mode === 'add_preset') return 9
+        if (mode === 'add_custom') return 10
+        if (mode === 'detail' || isDetailView) return 7
+        return Math.max(serverCount, 1) + 4
+    },
+
     render(buffer: ScreenBuffer, props: McpMenuViewProps): void {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
@@ -449,61 +456,23 @@ export const McpMenuView = {
         }
 
         // ==========================================
-        // 4. LIST VIEW
+        // 4. LIST VIEW (MINIMAL SWITCHBOARD)
         // ==========================================
-        const connectedCount = servers.filter((s) => s.status === 'connected').length
-        const globalCount = servers.filter((s) => s.scope === 'global').length
-        const projectCount = servers.filter((s) => s.scope === 'project').length
-
         // Header Title
-        drawText(
-            buffer,
-            `Model Context Protocol (MCP) Servers (${servers.length}) · ${connectedCount} connected`,
-            {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            }
-        )
-        y += 1
-
-        drawText(
-            buffer,
-            `Scope: ${globalCount} global (trusted) · ${projectCount} project-scoped`,
-            {
-                x,
-                y,
-                style: { fg: THEME.colors.muted },
-            }
-        )
+        drawText(buffer, `MCP Servers (${servers.length})`, {
+            x,
+            y,
+            style: { fg: THEME.colors.text, bold: true },
+        })
         y += 2
 
         if (servers.length === 0) {
-            drawText(buffer, 'No MCP servers configured.', {
+            drawText(buffer, 'No servers configured. Press [a] to add a server.', {
                 x,
                 y,
                 style: { fg: THEME.colors.muted },
             })
             y += 1
-            drawText(
-                buffer,
-                'Add servers using [a] in TUI or: december mcp add <name> <commandOrUrl>',
-                {
-                    x,
-                    y,
-                    style: { fg: THEME.colors.dim },
-                }
-            )
-            y += 1
-            drawText(
-                buffer,
-                'Example: december mcp add github npx -y @modelcontextprotocol/server-github',
-                {
-                    x,
-                    y,
-                    style: { fg: THEME.colors.dim },
-                }
-            )
         } else {
             const windowSize = Math.max(1, footerY - y - 1)
             const windowStart = props.windowStart ?? 0
@@ -514,6 +483,7 @@ export const McpMenuView = {
                 const s = visibleServers[i]
                 const isSelected = actualIndex === safeIndex
                 const rowY = y + i
+                const isConn = s.status === 'connected'
 
                 // Selection cursor
                 drawText(buffer, isSelected ? '❭ ' : '  ', {
@@ -522,29 +492,19 @@ export const McpMenuView = {
                     style: { fg: isSelected ? THEME.colors.brand : THEME.colors.dim },
                 })
 
-                // Status bullet
-                const isConn = s.status === 'connected'
-                const statusColor = isConn
-                    ? THEME.colors.success
-                    : s.status === 'error'
-                      ? THEME.colors.error
-                      : THEME.colors.dim
-                drawText(buffer, '● ', {
+                // [x] enabled or [ ] disabled checkbox
+                const toggleCheck = isConn ? '[x] ' : '[ ] '
+                drawText(buffer, toggleCheck, {
                     x: x + 2,
                     y: rowY,
-                    style: { fg: statusColor },
-                })
-
-                // Scope badge
-                const scopeText = `[${s.scope}] `
-                drawText(buffer, scopeText, {
-                    x: x + 4,
-                    y: rowY,
-                    style: { fg: THEME.colors.dim },
+                    style: {
+                        fg: isConn ? THEME.colors.success : THEME.colors.dim,
+                        bold: isConn,
+                    },
                 })
 
                 // Server name
-                let nameX = x + 4 + scopeText.length
+                let nameX = x + 6
                 drawText(buffer, s.name, {
                     x: nameX,
                     y: rowY,
@@ -553,25 +513,17 @@ export const McpMenuView = {
                         bold: isSelected,
                     },
                 })
-                nameX += s.name.length
+                nameX += s.name.length + 2
 
-                // Transport badge
-                const transBadge = ` [${s.transport}]`
-                drawText(buffer, transBadge, {
-                    x: nameX,
-                    y: rowY,
-                    style: { fg: THEME.colors.dim },
-                })
-                nameX += transBadge.length
-
-                // Tool count
+                // Tool count and transport
                 const toolCount = s.tools?.length ?? 0
-                const eagerTag = s.eager ? ' (eager)' : ''
-                const toolText = ` · ${toolCount} tool${toolCount === 1 ? '' : 's'}${eagerTag}`
-                drawText(buffer, toolText, {
+                const statusText = isConn
+                    ? `${toolCount} tool${toolCount === 1 ? '' : 's'}  [${s.transport}]`
+                    : '(stopped)'
+                drawText(buffer, statusText, {
                     x: nameX,
                     y: rowY,
-                    style: { fg: THEME.colors.muted },
+                    style: { fg: isConn ? THEME.colors.muted : THEME.colors.dim },
                 })
             }
         }
@@ -590,20 +542,25 @@ export const McpMenuView = {
             )
         }
 
-        const currentIsConn = currentServer?.status === 'connected'
+        const footerItems =
+            servers.length === 0
+                ? [
+                      { key: 'a', label: 'add server' },
+                      { key: 'esc', label: 'close' },
+                  ]
+                : [
+                      { key: 'space', label: 'toggle' },
+                      { key: 'enter', label: 'details' },
+                      { key: 'a', label: 'add' },
+                      { key: 'd', label: 'remove' },
+                      { key: 'esc', label: 'close' },
+                  ]
+
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,
             y: footerY,
             width,
-            items: [
-                { key: '↑/↓', label: 'select' },
-                { key: 'enter', label: 'inspect tools' },
-                { key: 'space', label: currentIsConn ? 'stop' : 'start' },
-                { key: 'r', label: 'restart' },
-                { key: 'a', label: 'add' },
-                { key: 'd', label: 'remove' },
-                { key: 'esc', label: 'close' },
-            ],
+            items: footerItems,
         })
     },
 }

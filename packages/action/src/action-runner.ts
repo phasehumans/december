@@ -9,7 +9,26 @@ import {
     sendTaskNotification,
 } from '@december/shared'
 
+import { createActionOperations } from './action-operations'
+
 const execAsync = promisify(exec)
+
+export type ActionProvider = 'gemini' | 'openai' | 'anthropic' | 'openrouter'
+
+const PROVIDER_ORDER: ActionProvider[] = ['gemini', 'openai', 'anthropic', 'openrouter']
+
+/**
+ * Use the `provider` input when it has a key. Otherwise use the first provider that has a key.
+ */
+export function resolveActionProvider(
+    requested: string | undefined,
+    keys: Record<ActionProvider, string | undefined>
+): ActionProvider | undefined {
+    const normalized = (requested || '').toLowerCase().trim()
+    const wanted = (normalized === 'google' ? 'gemini' : normalized) as ActionProvider
+    if (PROVIDER_ORDER.includes(wanted) && keys[wanted]) return wanted
+    return PROVIDER_ORDER.find((name) => Boolean(keys[name]))
+}
 
 export interface DecemberActionOptions {
     prompt?: string
@@ -112,7 +131,7 @@ export async function runDecemberAction(
             return {
                 success: true,
                 status: 'SKIPPED',
-                error: 'No @december mention found in event comment or body',
+                error: 'No @trydecember mention found in event comment or body',
             }
         }
         prompt = mention.instruction
@@ -139,55 +158,49 @@ export async function runDecemberAction(
     await runCmd(`git checkout -B ${branchName}`, cwd)
 
     // Execute agent loop if BYOK provider credentials exist
-    const geminiKey = process.env.GEMINI_API_KEY
-    const openaiKey = process.env.OPENAI_API_KEY
-    const anthropicKey = process.env.ANTHROPIC_API_KEY
-    const openrouterKey = process.env.OPENROUTER_API_KEY
+    const providerKeys: Record<ActionProvider, string | undefined> = {
+        gemini: process.env.GEMINI_API_KEY,
+        openai: process.env.OPENAI_API_KEY,
+        anthropic: process.env.ANTHROPIC_API_KEY,
+        openrouter: process.env.OPENROUTER_API_KEY,
+    }
+    const provider = resolveActionProvider(
+        options.provider || process.env.INPUT_PROVIDER,
+        providerKeys
+    )
 
-    if (geminiKey || openaiKey || anthropicKey || openrouterKey) {
+    if (provider) {
         try {
-            let providerInstance: any = null
-            if (geminiKey) {
-                const { geminiProvider } = await import('@december/providers')
-                providerInstance = geminiProvider(geminiKey)
-            } else if (openaiKey) {
-                const { openaiProvider } = await import('@december/providers')
-                providerInstance = openaiProvider(undefined, openaiKey)
-            } else if (anthropicKey) {
-                const { anthropicProvider } = await import('@december/providers')
-                providerInstance = anthropicProvider(anthropicKey)
-            } else if (openrouterKey) {
-                const { openrouterProvider } = await import('@december/providers')
-                providerInstance = openrouterProvider(openrouterKey)
-            }
+            const providers = await import('@december/providers')
+            const apiKey = providerKeys[provider]!
+            const providerInstance =
+                provider === 'gemini'
+                    ? providers.geminiProvider(apiKey)
+                    : provider === 'openai'
+                      ? providers.openaiProvider(undefined, apiKey)
+                      : provider === 'anthropic'
+                        ? providers.anthropicProvider(apiKey)
+                        : providers.openrouterProvider(apiKey)
+            const model =
+                options.model ||
+                process.env.INPUT_MODEL ||
+                providers.getDefaultModelForProvider(provider)
 
-            if (providerInstance) {
-                const { AgentHarness, runAgentLoop } = await import('@december/agent')
-                const { CORE_TOOLS } = await import('@december/tools')
-                const localOps = {
-                    executeBash: async (cmd: string) => {
-                        const r = await runCmd(cmd, cwd)
-                        return { output: r.stdout || r.stderr, exitCode: r.exitCode }
-                    },
-                    readFile: async (p: string) => fs.promises.readFile(p, 'utf8'),
-                    writeFile: async (p: string, c: string) => fs.promises.writeFile(p, c, 'utf8'),
-                }
+            const { AgentHarness, runAgentLoop } = await import('@december/agent')
+            const { CORE_TOOLS } = await import('@december/tools')
 
-                const harness = new AgentHarness({
-                    llm: providerInstance,
-                    tools: CORE_TOOLS,
-                    operations: localOps as any,
-                    workspaceDir: cwd,
-                    sessionId: `action-${Date.now()}`,
-                    runtime: 'cli',
-                    modelOptions: {
-                        model: options.model || process.env.INPUT_MODEL || 'gemini-2.5-flash',
-                    },
-                })
-                const agent = harness.getAgent()
-                for await (const _ of runAgentLoop(agent, prompt)) {
-                    // Intentionally streaming progress
-                }
+            const harness = new AgentHarness({
+                llm: providerInstance,
+                tools: CORE_TOOLS,
+                operations: createActionOperations(cwd),
+                workspaceDir: cwd,
+                sessionId: `action-${Date.now()}`,
+                runtime: 'cli',
+                modelOptions: { model },
+            })
+            const agent = harness.getAgent()
+            for await (const _ of runAgentLoop(agent, prompt)) {
+                // Intentionally streaming progress
             }
         } catch (agentErr: any) {
             // Intentionally swallowed: action agent runner fallback

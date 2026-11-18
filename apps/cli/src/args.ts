@@ -31,7 +31,95 @@ export interface ParsedCliArgs {
     positionals: string[]
 }
 
+const MCP_ADD_VALUE_FLAGS: Record<string, 'env' | 'header' | 'scope'> = {
+    '-e': 'env',
+    '--env': 'env',
+    '-H': 'header',
+    '--header': 'header',
+    '--scope': 'scope',
+}
+
+/**
+ * `december mcp add <name> <command-or-url> [server args...]` needs its own parsing:
+ * the server's own flags (for example `npx -y`) must reach the server command instead of
+ * being read as December flags. Only the `mcp add` flags below are taken out; every other
+ * token after the target belongs to the server. `--` passes everything after it through verbatim.
+ */
+function parseMcpAddArgs(args: string[]): ParsedCliArgs {
+    const positionals: string[] = ['mcp', 'add']
+    const env: string[] = []
+    const header: string[] = []
+    let scope: string | undefined
+    let isGlobal = false
+    let eager = false
+
+    for (let i = 2; i < args.length; i++) {
+        const token = args[i]!
+        if (token === '--') {
+            positionals.push(...args.slice(i + 1))
+            break
+        }
+
+        const [flag, inlineValue] = token.startsWith('--')
+            ? token.split(/=(.*)/s, 2)
+            : [token, undefined]
+        const valueTarget = MCP_ADD_VALUE_FLAGS[flag!]
+        if (valueTarget) {
+            const value = inlineValue ?? args[++i]
+            if (value === undefined) break
+            if (valueTarget === 'env') env.push(value)
+            else if (valueTarget === 'header') header.push(value)
+            else scope = value
+            continue
+        }
+        if (token === '-g' || token === '--global') {
+            isGlobal = true
+            continue
+        }
+        if (token === '--eager') {
+            eager = true
+            continue
+        }
+        positionals.push(token)
+    }
+
+    return {
+        ...defaultParsedArgs(),
+        command: 'mcp',
+        scope,
+        isGlobal,
+        eager,
+        env: env.length > 0 ? env : undefined,
+        header: header.length > 0 ? header : undefined,
+        positionals,
+    }
+}
+
+function defaultParsedArgs(): ParsedCliArgs {
+    return {
+        isHelp: false,
+        isVersion: false,
+        yes: false,
+        json: false,
+        rpc: false,
+        print: false,
+        fix: false,
+        force: false,
+        isGlobal: false,
+        isLocal: false,
+        resume: false,
+        isInline: false,
+        turn: undefined,
+        list: false,
+        positionals: [],
+    }
+}
+
 export function parseCliArgs(args: string[]): ParsedCliArgs {
+    if (args[0] === 'mcp' && args[1] === 'add') {
+        return parseMcpAddArgs(args)
+    }
+
     try {
         const { values, positionals } = parseArgs({
             args,
@@ -161,23 +249,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         }
     } catch {
         // Intentionally swallowed: return default args on parse failure
-        return {
-            isHelp: false,
-            isVersion: false,
-            yes: false,
-            json: false,
-            rpc: false,
-            print: false,
-            fix: false,
-            force: false,
-            isGlobal: false,
-            isLocal: false,
-            resume: false,
-            isInline: false,
-            turn: undefined,
-            list: false,
-            positionals: [],
-        }
+        return defaultParsedArgs()
     }
 }
 

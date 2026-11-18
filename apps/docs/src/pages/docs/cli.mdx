@@ -1,59 +1,95 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: CLI Reference
-description: Every command, keyboard shortcut, and flag you can run in your terminal.
+description: Every command, flag, and keyboard shortcut in the December CLI.
 currentSlug: 'cli'
 ---
 
+This page lists the commands, flags, and keyboard shortcuts of the December CLI.
+
 ## Overview
 
-The December CLI (`@trydecember/cli`) runs directly inside your local project. It reads your files, runs tests, fixes bugs, and commits clean git diffs:
+The CLI (`@trydecember/cli`) runs in your project folder. It reads your files, edits code, and runs commands such as your tests.
 
 ```bash
-# Start December in the current working directory
+# Start an interactive session in the current folder
 december
 
-# Start with a specific instruction prompt
-december "Fix failing unit tests in packages/server"
+# Run one prompt, print the result, and exit
+december --print "Fix the failing unit tests in packages/server"
 
-# Start with a specific model
-december --model claude-3-7-sonnet
+# Start a session with a specific model
+december --model claude-opus-5
 ```
+
+If you pass a prompt, December runs it without the interactive session. By default it streams JSON events (NDJSON). Add `--print` to get plain text.
 
 ## Global CLI Commands
 
-| Command                        | Description                                            |
-| :----------------------------- | :----------------------------------------------------- |
-| `december`                     | Start the interactive conversational session           |
-| `december login`               | Authenticate with December Cloud or configure API keys |
-| `december skill list`          | List discovered built-in, global, and workspace skills |
-| `december skill add <repo>`    | Install skills from GitHub (e.g. `phasehumans/skills`) |
-| `december skill info <name>`   | View description, parameters, and playbook details     |
-| `december skill remove <name>` | Uninstall a skill from workspace or global directory   |
-| `december docs [section]`      | Open technical documentation in your default browser   |
-| `december changelog`           | Open changelog in your default browser                 |
-| `december update`              | Check for and install the latest CLI release           |
-| `december version`             | Print current CLI version information                  |
+| Command                           | What it does                                                             |
+| :-------------------------------- | :----------------------------------------------------------------------- |
+| `december`                        | Start an interactive session.                                            |
+| `december "<prompt>"`             | Run one prompt without the interactive session.                          |
+| `december ask "<question>"`       | Ask a question about the code. December only reads files.                |
+| `december resume [session-id]`    | Resume the last session, or the session with this ID.                    |
+| `december login [provider]`       | Sign in with December. Add a provider name to link a plan.               |
+| `december link <provider>`        | Link a plan: `claude`, `chatgpt`, `copilot`, `gemini`, or `amazon-q`.    |
+| `december key <provider> [key]`   | Save your own API key for a provider.                                    |
+| `december logout [provider]`      | Remove saved sign-in data and keys.                                      |
+| `december switch [provider]`      | Change the active provider.                                              |
+| `december auth [status\|import]`  | Show sign-in status, or import plans from other CLIs on this computer.   |
+| `december skill list`             | List the installed skills.                                               |
+| `december skill add <repo>`       | Install skills from GitHub (for example `phasehumans/skills`).           |
+| `december skill info <name>`      | Show the details of a skill.                                             |
+| `december skill remove <name>`    | Remove a skill.                                                          |
+| `december mcp [list]`             | Show the configured MCP servers.                                         |
+| `december rewind [turn\|list]`    | List saved turns, or restore your files to a turn.                       |
+| `december doctor [--fix]`         | Check the install. Add `--fix` to repair `PATH` problems.                |
+| `december docs [section]`         | Open the documentation in your browser.                                  |
+| `december changelog`              | Open the changelog in your browser.                                      |
+| `december update`                 | Install the latest CLI release.                                          |
+
+## Flags
+
+| Flag                    | What it does                                                    |
+| :---------------------- | :-------------------------------------------------------------- |
+| `-h`, `--help`          | Show the help and exit.                                         |
+| `-v`, `--version`       | Show the CLI version and exit.                                  |
+| `-r`, `--resume`        | Resume the last session.                                        |
+| `-m`, `--model <model>` | Use this model.                                                 |
+| `-y`, `--yes`           | Approve tool calls without asking.                              |
+| `--print`               | Print plain text for a one-prompt run. Approves tool calls.     |
+| `--json`                | Print JSON events for a one-prompt run.                         |
+| `--session-id <id>`     | Use this session ID.                                            |
+| `--scope <dir>`         | Keep December inside one folder, such as a package.             |
+| `--cwd <dir>`           | Set the working folder.                                         |
 
 ## In-Session Keyboard Shortcuts
 
-- `Ctrl + C`: Interrupt current agent generation or abort running process
-- `Ctrl + L`: Clear terminal buffer while preserving session history
-- `Up / Down`: Navigate prompt input history
-- `Esc`: Cancel active modal or menu selection
+- `Ctrl + C`: Stop December or exit the CLI.
+- `Esc`: Close a menu or clear the input.
+- `Ctrl + P` / `Ctrl + N`: Go to the previous or next prompt in your history.
+- `Up` / `Down`: Scroll the chat when the prompt is empty.
+- `Ctrl + L`: Open or close the slash command menu.
+- `Ctrl + O`: Show or hide tool output.
+- `Ctrl + T`: Show or hide background tasks.
+- `@` and a file name: Add a file to the prompt.
+- `!` and a command: Run a shell command directly, for example `!git status`.
+
+Type `/help` in a session to see the full list.
 
 ## In-Session Slash Commands
 
-While in an active December session, use slash commands to steer execution:
+In a session, type `/` to see the slash commands. These are the most common:
 
-- `/login`: Manage provider API keys or switch active authentication mode
-- `/clear`: Clear active chat transcript and reset agent memory
-- `/memory`: View and manage learned workspace memory (.december/memory.md) and project rules (AGENTS.md)
-- `/model`: Switch between supported LLMs (Claude Fable, GPT 5 series / Astra, Gemini 3.8, DeepSeek)
-- `/plan`: Activate the implementation planning skill
-- `/grill-me`: Launch a pre-implementation alignment interview
-- `/code-review`: Trigger a comprehensive code quality and smell review
-- `/<skill-name>`: Any installed community or workspace skill becomes an instant slash command
-- `/docs`: Open documentation directly in your browser
-- `/changelog`: Open changelog directly in your browser
-- `/exit` or `/quit`: Terminate the terminal session
+- `/login`: Link a plan, sign in with December, or add your own keys.
+- `/model`: Pick a model from your connected provider.
+- `/clear`: Clear the conversation history.
+- `/memory`: Manage workspace memory (`.december/memory.md`) and project rules (`AGENTS.md`).
+- `/plan <goal>`: Make a plan that you approve before December changes code.
+- `/<skill-name>`: Run an installed skill.
+- `/docs`: Open the documentation in your browser.
+- `/changelog`: Open the changelog in your browser.
+- `/exit`: Exit the CLI.
+
+See [Slash Commands](/docs/slash-commands) for the full list.

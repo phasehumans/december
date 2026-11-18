@@ -1,14 +1,17 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { version } from '../lib/version';
+import { latestHighlight } from '../lib/changelog';
+import { landingFaq, faqParagraphHtml, landingFaqJsonLd } from '../lib/landing-faq';
 
 const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
 
 <BaseLayout
   title="December | A (So Much) Better Coding Agent"
-  description="December is a (so much) better coding agent. It writes code, fixes bugs, and runs commands directly in your terminal and cloud."
+  description="December is an open-source coding agent. Use any model, or the Claude Code and Codex plans you already have. Run it in your terminal or in the cloud."
   canonicalUrl="https://trydecember.com"
+  structuredData={[landingFaqJsonLd]}
   hideHeader={false}
   hideFooter={false}
 >
@@ -17,374 +20,6 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     <!-- Center Chassis (1024px wide, framed with clean line borders) -->
     <div class="relative z-10 mx-auto max-w-[1024px] border-x border-transparent lg:border-[#e2e8f0] bg-white">
       
-      <!-- Left Side Gutter: Fixed Fullscreen Model Stream (Frontier & Commercial) -->
-      <aside
-        id="left-gutter-ticker"
-        class="hidden xl:flex fixed top-20 bottom-8 right-[calc(50%+522px)] 2xl:right-[calc(50%+536px)] w-[110px] 2xl:w-[135px] flex-col items-end text-right gutter-ticker-container gutter-ticker-mask overflow-hidden pointer-events-auto select-none font-mono text-[9px] text-[#94a3b8] tracking-widest uppercase z-30 transition-opacity duration-300"
-        title="Supported Models (Hover to pause)"
-        aria-label="Supported Models - Frontier & Proprietary"
-      >
-        <div class="gutter-ticker-track-up flex flex-col items-end w-full">
-          <!-- Set 1 -->
-          <div class="flex flex-col items-end gap-3.5 pb-3.5 w-full">
-            <!-- ANTHROPIC -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>ANTHROPIC</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">claude-3-7-sonnet</span>
-              <span class="hover:text-[#090a0f] transition-colors">claude-3-5-sonnet</span>
-              <span class="hover:text-[#090a0f] transition-colors">claude-3-5-haiku</span>
-              <span class="hover:text-[#090a0f] transition-colors">claude-3-opus</span>
-            </div>
-
-            <!-- OPENAI -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>OPENAI</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">gpt-4o</span>
-              <span class="hover:text-[#090a0f] transition-colors">o3-mini</span>
-              <span class="hover:text-[#090a0f] transition-colors">o1</span>
-              <span class="hover:text-[#090a0f] transition-colors">gpt-4o-mini</span>
-              <span class="hover:text-[#090a0f] transition-colors">gpt-4-turbo</span>
-            </div>
-
-            <!-- MISTRAL -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>MISTRAL</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">mistral-large</span>
-              <span class="hover:text-[#090a0f] transition-colors">codestral</span>
-              <span class="hover:text-[#090a0f] transition-colors">pixtral-12b</span>
-              <span class="hover:text-[#090a0f] transition-colors">mistral-small</span>
-            </div>
-
-            <!-- COPILOT -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>COPILOT</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">copilot-claude</span>
-              <span class="hover:text-[#090a0f] transition-colors">copilot-gpt-4o</span>
-              <span class="hover:text-[#090a0f] transition-colors">copilot-o3-mini</span>
-            </div>
-
-            <!-- MOONSHOT & KIMI -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>KIMI AI</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">kimi-k1.5</span>
-              <span class="hover:text-[#090a0f] transition-colors">moonshot-v1</span>
-            </div>
-
-            <!-- XAI GROK -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>XAI GROK</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">grok-2</span>
-              <span class="hover:text-[#090a0f] transition-colors">grok-beta</span>
-            </div>
-
-            <!-- COHERE -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>COHERE</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">command-r-plus</span>
-              <span class="hover:text-[#090a0f] transition-colors">command-r</span>
-            </div>
-
-            <!-- AI21 -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>AI21 LABS</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">jamba-1.5-large</span>
-              <span class="hover:text-[#090a0f] transition-colors">jamba-1.5-mini</span>
-            </div>
-          </div>
-
-          <!-- Set 2 (Seamless loop clone) -->
-          <div class="flex flex-col items-end gap-3.5 pb-3.5 w-full" aria-hidden="true">
-            <!-- ANTHROPIC -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>ANTHROPIC</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">claude-3-7-sonnet</span>
-              <span class="hover:text-[#090a0f] transition-colors">claude-3-5-sonnet</span>
-              <span class="hover:text-[#090a0f] transition-colors">claude-3-5-haiku</span>
-              <span class="hover:text-[#090a0f] transition-colors">claude-3-opus</span>
-            </div>
-
-            <!-- OPENAI -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>OPENAI</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">gpt-4o</span>
-              <span class="hover:text-[#090a0f] transition-colors">o3-mini</span>
-              <span class="hover:text-[#090a0f] transition-colors">o1</span>
-              <span class="hover:text-[#090a0f] transition-colors">gpt-4o-mini</span>
-              <span class="hover:text-[#090a0f] transition-colors">gpt-4-turbo</span>
-            </div>
-
-            <!-- MISTRAL -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>MISTRAL</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">mistral-large</span>
-              <span class="hover:text-[#090a0f] transition-colors">codestral</span>
-              <span class="hover:text-[#090a0f] transition-colors">pixtral-12b</span>
-              <span class="hover:text-[#090a0f] transition-colors">mistral-small</span>
-            </div>
-
-            <!-- COPILOT -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>COPILOT</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">copilot-claude</span>
-              <span class="hover:text-[#090a0f] transition-colors">copilot-gpt-4o</span>
-              <span class="hover:text-[#090a0f] transition-colors">copilot-o3-mini</span>
-            </div>
-
-            <!-- MOONSHOT & KIMI -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>KIMI AI</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">kimi-k1.5</span>
-              <span class="hover:text-[#090a0f] transition-colors">moonshot-v1</span>
-            </div>
-
-            <!-- XAI GROK -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>XAI GROK</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">grok-2</span>
-              <span class="hover:text-[#090a0f] transition-colors">grok-beta</span>
-            </div>
-
-            <!-- COHERE -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>COHERE</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">command-r-plus</span>
-              <span class="hover:text-[#090a0f] transition-colors">command-r</span>
-            </div>
-
-            <!-- AI21 -->
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>AI21 LABS</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">jamba-1.5-large</span>
-              <span class="hover:text-[#090a0f] transition-colors">jamba-1.5-mini</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Right Side Gutter: Fixed Fullscreen Model Stream (Reasoning, Open & Local) -->
-      <aside
-        id="right-gutter-ticker"
-        class="hidden xl:flex fixed top-20 bottom-8 left-[calc(50%+522px)] 2xl:left-[calc(50%+536px)] w-[110px] 2xl:w-[135px] flex-col items-start text-left gutter-ticker-container gutter-ticker-mask overflow-hidden pointer-events-auto select-none font-mono text-[9px] text-[#94a3b8] tracking-widest uppercase z-30 transition-opacity duration-300"
-        title="Supported Models (Hover to pause)"
-        aria-label="Supported Models - Reasoning & Open Weights"
-      >
-        <div class="gutter-ticker-track-down flex flex-col items-start w-full">
-          <!-- Set 1 -->
-          <div class="flex flex-col items-start gap-3.5 pb-3.5 w-full">
-            <!-- GOOGLE -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>GOOGLE</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-2.5-pro</span>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-2.5-flash</span>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-2.0-flash</span>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-1.5-pro</span>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-1.5-flash</span>
-            </div>
-
-            <!-- DEEPSEEK -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>DEEPSEEK</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-r1</span>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-chat</span>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-v3</span>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-coder</span>
-            </div>
-
-            <!-- GROQ & META -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>GROQ &amp; META</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3.3-70b</span>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3.1-8b</span>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3.1-405b</span>
-              <span class="hover:text-[#090a0f] transition-colors">mixtral-8x7b</span>
-            </div>
-
-            <!-- OLLAMA / LOCAL -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>OLLAMA LOCAL</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">qwen-2.5-coder</span>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-r1-14b</span>
-              <span class="hover:text-[#090a0f] transition-colors">phi-4-mini</span>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3.2-3b</span>
-            </div>
-
-            <!-- AMAZON BEDROCK -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>BEDROCK</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">bedrock-claude</span>
-              <span class="hover:text-[#090a0f] transition-colors">nova-pro</span>
-            </div>
-
-            <!-- ALIBABA CLOUD -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>ALIBABA QWEN</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">qwen-max</span>
-              <span class="hover:text-[#090a0f] transition-colors">qwen-plus</span>
-              <span class="hover:text-[#090a0f] transition-colors">qwen-turbo</span>
-            </div>
-
-            <!-- TOGETHER AI -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>TOGETHER AI</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-r1-distill</span>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3-vision</span>
-            </div>
-          </div>
-
-          <!-- Set 2 (Seamless loop clone) -->
-          <div class="flex flex-col items-start gap-3.5 pb-3.5 w-full" aria-hidden="true">
-            <!-- GOOGLE -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>GOOGLE</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-2.5-pro</span>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-2.5-flash</span>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-2.0-flash</span>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-1.5-pro</span>
-              <span class="hover:text-[#090a0f] transition-colors">gemini-1.5-flash</span>
-            </div>
-
-            <!-- DEEPSEEK -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>DEEPSEEK</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-r1</span>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-chat</span>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-v3</span>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-coder</span>
-            </div>
-
-            <!-- GROQ & META -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>GROQ &amp; META</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3.3-70b</span>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3.1-8b</span>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3.1-405b</span>
-              <span class="hover:text-[#090a0f] transition-colors">mixtral-8x7b</span>
-            </div>
-
-            <!-- OLLAMA / LOCAL -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>OLLAMA LOCAL</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">qwen-2.5-coder</span>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-r1-14b</span>
-              <span class="hover:text-[#090a0f] transition-colors">phi-4-mini</span>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3.2-3b</span>
-            </div>
-
-            <!-- AMAZON BEDROCK -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>BEDROCK</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">bedrock-claude</span>
-              <span class="hover:text-[#090a0f] transition-colors">nova-pro</span>
-            </div>
-
-            <!-- ALIBABA CLOUD -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>ALIBABA QWEN</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">qwen-max</span>
-              <span class="hover:text-[#090a0f] transition-colors">qwen-plus</span>
-              <span class="hover:text-[#090a0f] transition-colors">qwen-turbo</span>
-            </div>
-
-            <!-- TOGETHER AI -->
-            <div class="flex flex-col items-start gap-1">
-              <div class="flex items-center gap-1 text-[#090a0f] font-semibold text-[10px]">
-                <span class="text-[#87b2f4]">//</span>
-                <span>TOGETHER AI</span>
-              </div>
-              <span class="hover:text-[#090a0f] transition-colors">deepseek-r1-distill</span>
-              <span class="hover:text-[#090a0f] transition-colors">llama-3-vision</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
       <!-- Hero Section -->
       <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-12 sm:pt-12 sm:pb-16">
         <!-- Centered Hero Header & CLI Script -->
@@ -400,7 +35,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <span class="font-semibold text-[#090a0f] shrink-0">{version}</span>
             <span class="text-[#cbd5e1] font-normal shrink-0">/</span>
             <span class="text-[#52525b] group-hover:text-[#090a0f] transition-colors text-[11px] sm:text-xs font-normal truncate whitespace-nowrap">
-              Autonomous agent loop &amp; bot PR flow
+              {latestHighlight}
             </span>
             <svg class="w-3 h-3 text-[#64748b] group-hover:text-[#87b2f4] transition-transform duration-150 ease-out group-hover:translate-x-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7" />
@@ -421,27 +56,17 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             >
               <!-- Step 0: coding agent. (black) -->
               <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-100 translate-y-0 text-[#090a0f]" data-index="0">coding agent.</span>
-              <!-- Step 1: planning agent. (blue #0066f5) -->
-              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#0066f5]" data-index="1">planning agent.</span>
-              <!-- Step 2: building agent. (blue #0066f5) -->
-              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#0066f5]" data-index="2">building agent.</span>
-              <!-- Step 3: debugging agent. (blue #0066f5) -->
-              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#0066f5]" data-index="3">debugging agent.</span>
-              <!-- Step 4: shipping agent. (blue #0066f5) -->
-              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#0066f5]" data-index="4">shipping agent.</span>
-              <!-- Step 5: coding agent. (black landing phrase) -->
-              <span class="hero-flip-word col-start-1 row-start-1 justify-self-center w-max whitespace-nowrap transition-all duration-300 ease-out opacity-0 translate-y-4 pointer-events-none text-[#090a0f]" data-index="5">coding agent.</span>
             </span>
           </span>
         </h1>
 
         <!-- Subtitle -->
         <p class="mt-4 sm:mt-5 text-base sm:text-lg md:text-[19px] text-[#52525b] font-normal leading-relaxed text-center max-w-xl sm:max-w-2xl">
-          It helps you build faster by writing code, fixing bugs, and running commands directly in your terminal or alongside your favorite IDE.
+          Open source. Works with any model, or the Claude Code and Codex plans you already have. Run it in your terminal or in the cloud.
         </p>
 
         <!-- Quick Install Command Bar -->
-        <div class="mt-7 sm:mt-8 w-full max-w-[400px] mx-auto">
+        <div class="mt-7 sm:mt-8 w-full max-w-[400px] sm:max-w-[540px] mx-auto">
           <!-- Mobile-only Cloud Sandbox Primary CTA (above the script bar) -->
           <div class="sm:hidden mb-3">
             <a
@@ -452,8 +77,9 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </a>
           </div>
 
-          <!-- Command Bar -->
-          <div class="relative w-full" id="hero-install-container">
+          <!-- Command Bar + Desktop Web CTA -->
+          <div class="flex items-center gap-3">
+          <div class="relative w-full min-w-0" id="hero-install-container">
             <div class="corner-brackets relative h-10 flex items-center justify-between border border-[#e2e8f0] bg-white rounded-none pl-3 sm:pl-3.5 pr-1.5 transition-all hover:border-[#87b2f4]">
               <span class="corner-brackets-tr"></span>
               <span class="corner-brackets-bl"></span>
@@ -484,6 +110,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                 </button>
               </div>
             </div>
+          </div>
+          <a
+            href={`${appUrl}/login`}
+            class="hidden sm:inline-flex h-10 shrink-0 items-center justify-center bg-[#090a0f] text-white hover:bg-[#27272a] text-xs font-mono font-medium px-4 rounded-none border border-[#090a0f] transition-all active:scale-[0.98] whitespace-nowrap shadow-xs"
+          >
+            Try December Cloud
+          </a>
           </div>
         </div>
       </div>
@@ -590,19 +223,14 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               </svg>
             </span>
 
-            <!-- Cursor (lg+) -->
-            <span title="Cursor" class="hover:opacity-80 transition-opacity cursor-pointer hidden lg:inline-flex items-center shrink-0">
-              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#090a0f">
-                <path d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"/>
-              </svg>
-            </span>
 
-          <!-- and 100+ more providers -->
+
+          <!-- and 35+ more providers (catalog has 49) -->
           <a
             href="/docs/integrations"
             class="font-mono text-[10px] sm:text-xs text-[#64748b] hover:text-[#090a0f] transition-colors whitespace-nowrap shrink-0 ml-0.5 sm:ml-1"
           >
-            <span class="sm:hidden">and 100+ more</span><span class="hidden sm:inline">and 100+ more providers</span>
+            <span class="sm:hidden">and 35+ more</span><span class="hidden sm:inline">and 35+ more providers</span>
           </a>
         </div>
 
@@ -613,35 +241,48 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       >
         <span class="corner-brackets-tr"></span>
         <span class="corner-brackets-bl"></span>
-        <iframe
-          class="w-full h-full block"
-          src="https://www.youtube-nocookie.com/embed/n1gXOdLLTz4?rel=0"
-          title="December Demo Video"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowfullscreen
-          loading="lazy"
-        ></iframe>
+        <!-- Click-to-load facade: the YouTube player only loads after the visitor asks for it -->
+        <button
+          id="hero-video-facade"
+          type="button"
+          data-video-id="n1gXOdLLTz4"
+          class="group absolute inset-0 w-full h-full cursor-pointer focus:outline-none"
+          aria-label="Play December demo video"
+        >
+          <img
+            src="https://i.ytimg.com/vi/n1gXOdLLTz4/maxresdefault.jpg"
+            alt=""
+            class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+            width="1280"
+            height="720"
+            loading="lazy"
+            decoding="async"
+          />
+          <span class="absolute inset-0 flex items-center justify-center">
+            <span class="inline-flex items-center gap-2 bg-white text-[#090a0f] border border-[#e2e8f0] group-hover:border-[#87b2f4] px-4 h-10 font-mono text-xs font-medium shadow-xs transition-colors">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              Watch the demo
+            </span>
+          </span>
+        </button>
       </div>
     </section>
 
-    <!-- Section Divider: 01 How It Works -->
+    <!-- Section Divider: 01 Features -->
     <div class="sticky top-14 z-30 sm:relative sm:top-auto sm:z-0 border-y border-[#e2e8f0] bg-[#fafbfc]/95 sm:bg-[#fafbfc] backdrop-blur-xs sm:backdrop-blur-none px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 flex items-center justify-between font-mono text-xs select-none">
       <div class="flex items-center gap-2">
         <span class="text-[#87b2f4] font-semibold">// 01</span>
-        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">How it works</span>
+        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">Features</span>
       </div>
-      <span class="text-[10px] font-mono text-[#94a3b8] uppercase tracking-wider hidden sm:inline">Execution Engine &amp; Loop</span>
+      <span class="text-[10px] font-mono text-[#94a3b8] uppercase tracking-wider hidden sm:inline">Agent, Sandboxes &amp; Models</span>
     </div>
 
-    <!-- How It Works Section -->
+    <!-- Features Section -->
     <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-12 sm:py-16">
       <div class="w-full mb-6 sm:mb-8">
-        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
-          How it works
-        </h2>
-        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
+        <h2 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
           Everything you need to write, test, and ship code.
-        </h3>
+        </h2>
         <div class="mt-3 space-y-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
           <p>
             December runs directly inside your local repository. It plans multi-file changes, edits code, and executes shell commands and test suites to verify every fix.
@@ -652,8 +293,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-        <!-- 01 Writes code & runs commands -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+        <!-- 01 Bring your own AI -->
         <div
           class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
         >
@@ -661,13 +302,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
               <span class="text-[#87b2f4] font-semibold">01</span>
               <span class="text-[#cbd5e1]">/</span>
-              <span>Loop</span>
+              <span>BYOK</span>
             </div>
             <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">
-              Writes code &amp; runs commands
+              Bring your own AI
             </h4>
             <p class="text-sm text-[#64748b] leading-relaxed">
-              Ask it to build features, fix bugs, or run tests. It does the work for you.
+              Plug in your own keys for OpenAI, Anthropic, Gemini, DeepSeek, or OpenRouter. Or sign in with the Claude Code or Codex plan you already have.
             </p>
           </div>
 
@@ -678,8 +319,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
 
             <img
-              src="/illustrations/code-loop.webp?v=2"
-              alt="Writes code and runs commands"
+              src="/illustrations/byok-chip.webp?v=2"
+              alt="Bring your own AI"
               width="240"
               height="240"
               class="w-24 h-24 sm:w-28 sm:h-28 object-contain group-hover:scale-105 transition-transform duration-300"
@@ -703,7 +344,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               Cloud Sandboxes
             </h4>
             <p class="text-sm text-[#64748b] leading-relaxed">
-              Spin up remote environments and live previews.
+              Run December in a fresh cloud machine with nothing to set up. It starts your app and shows a live preview you can click through, right in the browser.
             </p>
           </div>
 
@@ -725,7 +366,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           </div>
         </div>
 
-        <!-- 03 Bring your own AI -->
+        <!-- 03 Autonomous Multi-Agent Teams -->
         <div
           class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
         >
@@ -733,85 +374,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
               <span class="text-[#87b2f4] font-semibold">03</span>
               <span class="text-[#cbd5e1]">/</span>
-              <span>BYOK</span>
-            </div>
-            <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">
-              Bring your own AI
-            </h4>
-            <p class="text-sm text-[#64748b] leading-relaxed">
-              Use your own API keys or existing subscriptions.
-            </p>
-          </div>
-
-          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
-            <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
-            <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
-            <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
-            <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
-
-            <img
-              src="/illustrations/byok-chip.webp?v=2"
-              alt="Bring your own AI"
-              width="240"
-              height="240"
-              class="w-24 h-24 sm:w-28 sm:h-28 object-contain group-hover:scale-105 transition-transform duration-300"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-        </div>
-
-        <!-- 04 Persistent Workspace Memory -->
-        <div
-          class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
-        >
-          <div>
-            <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
-              <span class="text-[#87b2f4] font-semibold">04</span>
-              <span class="text-[#cbd5e1]">/</span>
-              <span>Memory</span>
-            </div>
-            <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">
-              Persistent Workspace Memory
-            </h4>
-            <p class="text-sm text-[#64748b] leading-relaxed">
-              Learns project conventions and team rules across sessions without context rot.
-            </p>
-          </div>
-
-          <div class="relative my-4 py-2.5 flex items-center justify-center min-h-[120px] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
-            <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
-            <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
-            <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
-            <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
-
-            <img
-              src="/illustrations/memory.webp?v=2"
-              alt="Persistent Workspace Memory"
-              width="240"
-              height="240"
-              class="w-24 h-24 sm:w-28 sm:h-28 object-contain group-hover:scale-105 transition-transform duration-300"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-        </div>
-
-        <!-- 05 Autonomous Multi-Agent Teams -->
-        <div
-          class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
-        >
-          <div>
-            <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
-              <span class="text-[#87b2f4] font-semibold">05</span>
-              <span class="text-[#cbd5e1]">/</span>
               <span>Subagents</span>
             </div>
             <h4 class="text-sm font-semibold text-[#090a0f] mb-1.5">
               Autonomous Multi-Agent Teams
             </h4>
             <p class="text-sm text-[#64748b] leading-relaxed">
-              Spawns parallel background subagents to research docs, debug, and run tests.
+              December can hand side tasks to helper agents, like reading docs, chasing a bug, or running tests. They work at the same time, so the main task keeps moving.
             </p>
           </div>
 
@@ -833,13 +402,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           </div>
         </div>
 
-        <!-- 06 Extensible Skills & MCP -->
+        <!-- 04 Extensible Skills & MCP -->
         <div
           class="group flex flex-col justify-between p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
         >
           <div>
             <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-3">
-              <span class="text-[#87b2f4] font-semibold">06</span>
+              <span class="text-[#87b2f4] font-semibold">04</span>
               <span class="text-[#cbd5e1]">/</span>
               <span>Skills</span>
             </div>
@@ -847,7 +416,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               Extensible Skills &amp; MCP
             </h4>
             <p class="text-sm text-[#64748b] leading-relaxed">
-              Plug in custom skills and connect external developer tools or APIs via MCP.
+              Teach December how your team works with skills. Connect it to the tools you already use, like databases, browsers, and APIs, through MCP.
             </p>
           </div>
 
@@ -871,33 +440,28 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       </div>
     </section>
 
-    <!-- Section Divider: 02 Benchmarks & Adoption -->
+    <!-- Section Divider: 02 Open Source -->
     <div class="sticky top-14 z-30 sm:relative sm:top-auto sm:z-0 border-y border-[#e2e8f0] bg-[#fafbfc]/95 sm:bg-[#fafbfc] backdrop-blur-xs sm:backdrop-blur-none px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 flex items-center justify-between font-mono text-xs select-none">
       <div class="flex items-center gap-2">
         <span class="text-[#87b2f4] font-semibold">// 02</span>
-        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">Benchmarks &amp; Adoption</span>
+        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">Open Source</span>
       </div>
-      <span class="text-[10px] font-mono text-[#94a3b8] uppercase tracking-wider hidden sm:inline">TerminalBench #42 Evaluation</span>
+      <span class="text-[10px] font-mono text-[#94a3b8] uppercase tracking-wider hidden sm:inline">npm &amp; GitHub</span>
     </div>
 
-    <!-- Benchmarks & Adoption Section -->
+    <!-- Open Source & Adoption Section -->
     <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-12 sm:py-16">
       <div class="w-full mb-6 sm:mb-8">
-        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
-          Benchmarks & Adoption
+        <h2 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
+          Built in public. Used every day.
         </h2>
-        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
-          Tested on open benchmarks. Trusted by developers.
-        </h3>
         <p class="mt-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
-          Evaluated on open coding benchmarks and used daily across production codebases.
+          Every line of the agent is on GitHub, and thousands of developers install it from npm each week.
         </p>
       </div>
 
-      <!-- Top Grid: Left Stacked Cards + Right Benchmark Card -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
-        <!-- Left Column: Adoption and Skills (5 cols) -->
-        <div class="lg:col-span-5 flex flex-col gap-4 sm:gap-5">
+      <!-- Adoption + Community Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           <!-- Card 1: Adoption & Downloads -->
           <div class="p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all">
             <div class="flex items-center justify-between font-mono text-xs text-[#090a0f] font-medium mb-3">
@@ -935,201 +499,34 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             href="https://github.com/phasehumans/december"
             target="_blank"
             rel="noopener noreferrer"
-            class="group/github block p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex-1 flex flex-col justify-between"
+            class="group/github flex flex-col p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all"
           >
-            <div>
-              <div class="flex items-center justify-between font-mono text-xs text-[#090a0f] font-medium mb-3">
-                <div class="flex items-center gap-1.5">
-                  <span class="text-[#87b2f4] font-semibold">02</span>
-                  <span class="text-[#cbd5e1]">/</span>
-                  <span>Community</span>
-                </div>
-                <span class="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-[#87b2f4] font-medium group-hover/github:text-[#1c56ba] transition-colors">
-                  <span>phasehumans/december</span>
-                  <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M7 17L17 7M17 7H7M17 7V17" />
-                  </svg>
-                </span>
-              </div>
-              <h4 class="text-sm font-semibold text-[#090a0f] group-hover/github:text-[#87b2f4] transition-colors mb-1.5">
-                Open source &amp; community-driven
-              </h4>
-              <p class="text-xs sm:text-[13px] text-[#52525b] leading-relaxed">
-                December is built completely in public. Inspect the agent loop, audit tool definitions, or star and contribute on GitHub.
-              </p>
-            </div>
-          </a>
-        </div>
-
-        <!-- Right Column: Benchmarks Card (7 cols) -->
-        <div class="lg:col-span-7 p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col justify-between group">
-          <div>
             <div class="flex items-center justify-between font-mono text-xs text-[#090a0f] font-medium mb-3">
               <div class="flex items-center gap-1.5">
-                <span class="text-[#87b2f4] font-semibold">03</span>
+                <span class="text-[#87b2f4] font-semibold">02</span>
                 <span class="text-[#cbd5e1]">/</span>
-                <span>Benchmarks</span>
+                <span>Community</span>
               </div>
-              <span class="font-mono text-[10px] uppercase tracking-wider text-[#87b2f4] font-medium">Evaluation</span>
+              <span class="font-mono text-[10px] uppercase tracking-wider text-[#87b2f4] font-medium">MIT license</span>
             </div>
-
-            <div class="flex items-baseline justify-between gap-2">
-              <div>
-                <h4 class="text-sm font-semibold text-[#090a0f]">TerminalBench</h4>
-              </div>
-              <div class="text-right">
-                <div class="text-2xl sm:text-3xl font-mono font-semibold text-[#87b2f4] tracking-tight">
-                  #42
-                </div>
-                <span class="block font-mono text-[9px] uppercase tracking-wider text-[#87b2f4] font-semibold -mt-0.5">
-                  GLOBAL RANK
-                </span>
-              </div>
-            </div>
-
-            <p class="mt-2 text-sm text-[#52525b] leading-relaxed">
-              Evaluated on TerminalBench across real-world shell navigation, runtime setup, command execution, and automated diagnostics.
+            <h4 class="text-sm font-semibold text-[#090a0f]">Open source</h4>
+            <p class="mt-1.5 text-xs sm:text-[13px] text-[#52525b] leading-relaxed">
+              All the code is on GitHub. Read it, fork it, or help build it.
             </p>
-          </div>
 
-          <!-- 3D Isometric Benchmark Chart Diagram -->
-          <div class="relative mt-4 py-3 sm:py-3.5 px-2 flex items-center justify-center bg-[#f8fafc]/50 border border-[#f1f5f9]">
-            <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
-            <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
-            <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
-            <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
-
-            <div class="relative w-full h-32 sm:h-36 lg:h-38">
-              <svg class="w-full h-full" viewBox="0 0 380 140" fill="none" preserveAspectRatio="xMidYMid meet">
-                <defs>
-                  <!-- Fine Dither Dot Pattern for Comparative Bars -->
-                  <pattern id="tb-dither-light" width="4" height="4" patternUnits="userSpaceOnUse">
-                    <rect x="0" y="0" width="1" height="1" fill="#87b2f4" opacity="0.45" />
-                    <rect x="2" y="2" width="1" height="1" fill="#87b2f4" opacity="0.45" />
-                  </pattern>
-
-                  <!-- Dither Accent for Side Facets -->
-                  <pattern id="tb-dither-side" width="4" height="4" patternUnits="userSpaceOnUse">
-                    <rect x="0" y="0" width="1" height="1" fill="#60a5fa" opacity="0.4" />
-                    <rect x="2" y="2" width="1" height="1" fill="#60a5fa" opacity="0.4" />
-                  </pattern>
-
-                  <!-- Dither Pattern for December Highlight Front Face -->
-                  <pattern id="tb-dither-december-front" width="4" height="4" patternUnits="userSpaceOnUse">
-                    <rect x="0" y="0" width="1.2" height="1.2" fill="#ffffff" opacity="0.6" />
-                    <rect x="2" y="2" width="1.2" height="1.2" fill="#ffffff" opacity="0.6" />
-                  </pattern>
-
-                  <!-- Dither Pattern for December Side Facet -->
-                  <pattern id="tb-dither-december-side" width="3" height="3" patternUnits="userSpaceOnUse">
-                    <rect x="0" y="0" width="1" height="1" fill="#ffffff" opacity="0.45" />
-                    <rect x="1.5" y="1.5" width="1" height="1" fill="#ffffff" opacity="0.45" />
-                  </pattern>
-                </defs>
-
-                <!-- Technical Dashed Reference Gridlines -->
-                <line x1="16" y1="36" x2="364" y2="36" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3 3" />
-                <line x1="16" y1="64" x2="364" y2="64" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3 3" />
-                <line x1="16" y1="92" x2="364" y2="92" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3 3" />
-
-                <!-- Technical Baseline Axis -->
-                <line x1="16" y1="124" x2="364" y2="124" stroke="#cbd5e1" stroke-width="1.25" stroke-linecap="round" />
-
-                <!-- Baseline Reference Ticks -->
-                <line x1="38" y1="124" x2="38" y2="128" stroke="#cbd5e1" stroke-width="1" />
-                <line x1="74" y1="124" x2="74" y2="128" stroke="#cbd5e1" stroke-width="1" />
-                <line x1="110" y1="124" x2="110" y2="128" stroke="#cbd5e1" stroke-width="1" />
-                <line x1="146" y1="124" x2="146" y2="128" stroke="#cbd5e1" stroke-width="1" />
-                <line x1="182" y1="124" x2="182" y2="128" stroke="#cbd5e1" stroke-width="1" />
-                <line x1="219" y1="124" x2="219" y2="129" stroke="#87b2f4" stroke-width="1.5" stroke-linecap="round" />
-                <line x1="256" y1="124" x2="256" y2="128" stroke="#cbd5e1" stroke-width="1" />
-                <line x1="292" y1="124" x2="292" y2="128" stroke="#cbd5e1" stroke-width="1" />
-                <line x1="328" y1="124" x2="328" y2="128" stroke="#cbd5e1" stroke-width="1" />
-
-                <!-- 3D Bar 1 -->
-                <polygon points="27,124 35,118 57,118 49,124" fill="#e2e8f0" opacity="0.6" />
-                <polygon points="49,36 57,30 57,118 49,124" fill="#dce9fc" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <polygon points="49,36 57,30 57,118 49,124" fill="url(#tb-dither-side)" />
-                <rect x="27" y="36" width="22" height="88" fill="#f4f8fe" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <rect x="27" y="36" width="22" height="88" fill="url(#tb-dither-light)" />
-                <polygon points="27,36 35,30 57,30 49,36" fill="#ffffff" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-
-                <!-- 3D Bar 2 -->
-                <polygon points="63,124 71,118 93,118 85,124" fill="#e2e8f0" opacity="0.6" />
-                <polygon points="85,48 93,42 93,118 85,124" fill="#dce9fc" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <polygon points="85,48 93,42 93,118 85,124" fill="url(#tb-dither-side)" />
-                <rect x="63" y="48" width="22" height="76" fill="#f4f8fe" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <rect x="63" y="48" width="22" height="76" fill="url(#tb-dither-light)" />
-                <polygon points="63,48 71,42 93,42 85,48" fill="#ffffff" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-
-                <!-- 3D Bar 3 -->
-                <polygon points="99,124 107,118 129,118 121,124" fill="#e2e8f0" opacity="0.6" />
-                <polygon points="121,58 129,52 129,118 121,124" fill="#dce9fc" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <polygon points="121,58 129,52 129,118 121,124" fill="url(#tb-dither-side)" />
-                <rect x="99" y="58" width="22" height="66" fill="#f4f8fe" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <rect x="99" y="58" width="22" height="66" fill="url(#tb-dither-light)" />
-                <polygon points="99,58 107,52 129,52 121,58" fill="#ffffff" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-
-                <!-- 3D Bar 4 -->
-                <polygon points="135,124 143,118 165,118 157,124" fill="#e2e8f0" opacity="0.6" />
-                <polygon points="157,68 165,62 165,118 157,124" fill="#dce9fc" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <polygon points="157,68 165,62 165,118 157,124" fill="url(#tb-dither-side)" />
-                <rect x="135" y="68" width="22" height="56" fill="#f4f8fe" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <rect x="135" y="68" width="22" height="56" fill="url(#tb-dither-light)" />
-                <polygon points="135,68 143,62 165,62 157,68" fill="#ffffff" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-
-                <!-- 3D Bar 5 -->
-                <polygon points="171,124 179,118 201,118 193,124" fill="#e2e8f0" opacity="0.6" />
-                <polygon points="193,76 201,70 201,118 193,124" fill="#dce9fc" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <polygon points="193,76 201,70 201,118 193,124" fill="url(#tb-dither-side)" />
-                <rect x="171" y="76" width="22" height="48" fill="#f4f8fe" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <rect x="171" y="76" width="22" height="48" fill="url(#tb-dither-light)" />
-                <polygon points="171,76 179,70 201,70 193,76" fill="#ffffff" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-
-                <!-- 3D Bar 6: December Position #42 Highlighted -->
-                <polygon points="207,124 215,118 239,118 231,124" fill="#93c5fd" opacity="0.5" />
-                <polygon points="231,76 239,70 239,118 231,124" fill="#3b82f6" stroke="#1d4ed8" stroke-width="1.25" stroke-linejoin="round" />
-                <polygon points="231,76 239,70 239,118 231,124" fill="url(#tb-dither-december-side)" />
-                <rect x="207" y="76" width="24" height="48" fill="#87b2f4" stroke="#1d4ed8" stroke-width="1.25" stroke-linejoin="round" />
-                <rect x="207" y="76" width="24" height="48" fill="url(#tb-dither-december-front)" />
-                <polygon points="207,76 215,70 239,70 231,76" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.25" stroke-linejoin="round" />
-
-                <!-- Vertical Leader Line to #42 Callout Badge -->
-                <line x1="223" y1="28" x2="223" y2="72" stroke="#2563eb" stroke-width="1.25" stroke-dasharray="2.5 2.5" />
-                <circle cx="223" cy="73" r="2" fill="#ffffff" stroke="#1d4ed8" stroke-width="1.25" />
-
-                <!-- Floating #42 Callout Badge -->
-                <rect x="207" y="8" width="32" height="17" rx="3" fill="#090a0f" />
-                <polygon points="220,25 226,25 223,28" fill="#090a0f" />
-                <text x="223" y="20.5" font-family="var(--font-mono, ui-monospace, monospace)" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle" letter-spacing="-0.02em">#42</text>
-
-                <!-- 3D Bar 7 -->
-                <polygon points="247,124 255,118 277,118 269,124" fill="#e2e8f0" opacity="0.6" />
-                <polygon points="269,86 277,80 277,118 269,124" fill="#dce9fc" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <polygon points="269,86 277,80 277,118 269,124" fill="url(#tb-dither-side)" />
-                <rect x="247" y="86" width="22" height="38" fill="#f4f8fe" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <rect x="247" y="86" width="22" height="38" fill="url(#tb-dither-light)" />
-                <polygon points="247,86 255,80 277,80 269,86" fill="#ffffff" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-
-                <!-- 3D Bar 8 -->
-                <polygon points="283,124 291,118 313,118 305,124" fill="#e2e8f0" opacity="0.6" />
-                <polygon points="305,98 313,92 313,118 305,124" fill="#dce9fc" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <polygon points="305,98 313,92 313,118 305,124" fill="url(#tb-dither-side)" />
-                <rect x="283" y="98" width="22" height="26" fill="#f4f8fe" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <rect x="283" y="98" width="22" height="26" fill="url(#tb-dither-light)" />
-                <polygon points="283,98 291,92 313,92 305,98" fill="#ffffff" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-
-                <!-- 3D Bar 9 -->
-                <polygon points="319,124 327,118 349,118 341,124" fill="#e2e8f0" opacity="0.6" />
-                <polygon points="341,108 349,102 349,118 341,124" fill="#dce9fc" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <polygon points="341,108 349,102 349,118 341,124" fill="url(#tb-dither-side)" />
-                <rect x="319" y="108" width="22" height="16" fill="#f4f8fe" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-                <rect x="319" y="108" width="22" height="16" fill="url(#tb-dither-light)" />
-                <polygon points="319,108 327,102 349,102 341,108" fill="#ffffff" stroke="#93c5fd" stroke-width="1" stroke-linejoin="round" />
-              </svg>
+            <div class="mt-auto pt-4 flex items-center justify-between font-mono text-xs">
+              <span class="inline-flex items-center gap-2 text-[#090a0f]">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+                </svg>
+                phasehumans/december
+              </span>
+              <span class="inline-flex items-center gap-1 text-[#64748b] group-hover/github:text-[#0066f5] transition-colors">
+                Star on GitHub
+                <svg class="w-3 h-3 transition-transform group-hover/github:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+              </span>
             </div>
-          </div>
-        </div>
+          </a>
       </div>
     </section>
 
@@ -1145,12 +542,9 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     <!-- Environments Section -->
     <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-12 sm:py-16">
       <div class="w-full mb-6 sm:mb-8">
-        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
-          Environments
-        </h2>
-        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
+        <h2 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
           Use December Agent everywhere you work
-        </h3>
+        </h2>
         <p class="mt-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
           A unified workspace for agents across every surface.
         </p>
@@ -1166,7 +560,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               <span>Terminal</span>
             </div>
             <p class="text-sm text-[#64748b] leading-relaxed">
-              Run agents in any terminal or script, with integrations to your preferred IDEs.
+              Run agents in any terminal or script.
             </p>
 
             <!-- Terminal Illustration -->
@@ -1193,7 +587,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               <span>Web</span>
             </div>
             <p class="text-sm text-[#64748b] leading-relaxed">
-              Kick off agents in the cloud from your browser, phone, or tools like Slack, GitHub, and Linear.
+              Kick off agents in the cloud from your browser, your phone, or a GitHub issue.
             </p>
 
             <!-- Web Illustration -->
@@ -1225,139 +619,43 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     <!-- FAQ Section -->
     <section id="faq" class="relative px-6 sm:px-8 md:px-10 lg:px-12 pt-12 sm:pt-16 pb-8 sm:pb-10">
       <div class="w-full mb-6 sm:mb-8">
-        <h2 class="font-mono text-xs uppercase tracking-wider text-[#87b2f4] font-medium mb-1.5">
-          FAQ
-        </h2>
-        <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
+        <h2 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
           Frequently Asked Questions
-        </h3>
+        </h2>
         <p class="mt-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
-          Everything you need to know about using December in your terminal, bringing your own models, data privacy, and cloud sandboxes.
+          Quick answers before you try it.
         </p>
       </div>
 
       <div id="faq-list" class="space-y-3 sm:space-y-3.5">
-        <!-- 01 Overview -->
-        <div class="faq-item border border-[#e2e8f0] bg-white transition-all hover:border-[#87b2f4]">
-          <button
-            type="button"
-            class="faq-toggle w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 cursor-pointer group"
-            aria-expanded="false"
-          >
-            <div>
-              <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
-                <span class="text-[#87b2f4] font-semibold">01</span>
-                <span class="text-[#cbd5e1]">/</span>
-                <span>Overview</span>
+        {landingFaq.map((entry, i) => (
+          <div class="faq-item border border-[#e2e8f0] bg-white transition-all hover:border-[#87b2f4]">
+            <button
+              type="button"
+              class="faq-toggle w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 cursor-pointer group"
+              aria-expanded="false"
+            >
+              <div>
+                <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
+                  <span class="text-[#87b2f4] font-semibold">{String(i + 1).padStart(2, '0')}</span>
+                  <span class="text-[#cbd5e1]">/</span>
+                  <span>{entry.label}</span>
+                </div>
+                <h4 class="text-sm sm:text-[15px] font-normal text-[#090a0f] leading-snug">
+                  {entry.question}
+                </h4>
               </div>
-              <h4 class="text-sm sm:text-[15px] font-normal text-[#090a0f] leading-snug">
-                What is December?
-              </h4>
+              <span class="faq-icon-box shrink-0 w-6 h-6 mt-0.5 border border-[#e2e8f0] group-hover:border-[#87b2f4] flex items-center justify-center font-mono text-xs text-[#64748b] group-hover:text-[#87b2f4] transition-all select-none">
+                <span class="faq-icon font-bold leading-none">+</span>
+              </span>
+            </button>
+            <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed">
+              {entry.answer.map((paragraph, j) => (
+                <p class={j > 0 ? 'mt-2' : undefined} set:html={faqParagraphHtml(paragraph)} />
+              ))}
             </div>
-            <span class="faq-icon-box shrink-0 w-6 h-6 mt-0.5 border border-[#e2e8f0] group-hover:border-[#87b2f4] flex items-center justify-center font-mono text-xs text-[#64748b] group-hover:text-[#87b2f4] transition-all select-none">
-              <span class="faq-icon font-bold leading-none">+</span>
-            </span>
-          </button>
-          <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed">
-            <p>
-              December is a coding agent designed for your terminal and cloud. Rather than just offering inline suggestions, December explores your project, plans multi-file changes, writes code, and executes terminal commands and tests to verify fixes. You can work with it entirely in your local terminal or alongside your favorite IDE.
-            </p>
           </div>
-        </div>
-
-        <!-- 02 Installation -->
-        <div class="faq-item border border-[#e2e8f0] bg-white transition-all hover:border-[#87b2f4]">
-          <button
-            type="button"
-            class="faq-toggle w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 cursor-pointer group"
-            aria-expanded="false"
-          >
-            <div>
-              <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
-                <span class="text-[#87b2f4] font-semibold">02</span>
-                <span class="text-[#cbd5e1]">/</span>
-                <span>Installation</span>
-              </div>
-              <h4 class="text-sm sm:text-[15px] font-normal text-[#090a0f] leading-snug">
-                How do I get started with December?
-              </h4>
-            </div>
-            <span class="faq-icon-box shrink-0 w-6 h-6 mt-0.5 border border-[#e2e8f0] group-hover:border-[#87b2f4] flex items-center justify-center font-mono text-xs text-[#64748b] group-hover:text-[#87b2f4] transition-all select-none">
-              <span class="faq-icon font-bold leading-none">+</span>
-            </span>
-          </button>
-          <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed">
-            <p>
-              Install December using the standalone installer or your preferred package manager (npm or bun) from the quick install command bar above.
-            </p>
-            <p class="mt-2.5">
-              Then navigate to any git repository in your shell and run <code class="font-mono text-[#090a0f]">december</code> to start an interactive session, or launch with an initial instruction like <code class="font-mono text-[#090a0f]">december "fix failing unit tests"</code>.
-            </p>
-          </div>
-        </div>
-
-        <!-- 03 Models & BYOK -->
-        <div class="faq-item border border-[#e2e8f0] bg-white transition-all hover:border-[#87b2f4]">
-          <button
-            type="button"
-            class="faq-toggle w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 cursor-pointer group"
-            aria-expanded="false"
-          >
-            <div>
-              <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
-                <span class="text-[#87b2f4] font-semibold">03</span>
-                <span class="text-[#cbd5e1]">/</span>
-                <span>Models &amp; BYOK</span>
-              </div>
-              <h4 class="text-sm sm:text-[15px] font-normal text-[#090a0f] leading-snug">
-                Do I need extra AI subscriptions or proprietary credits?
-              </h4>
-            </div>
-            <span class="faq-icon-box shrink-0 w-6 h-6 mt-0.5 border border-[#e2e8f0] group-hover:border-[#87b2f4] flex items-center justify-center font-mono text-xs text-[#64748b] group-hover:text-[#87b2f4] transition-all select-none">
-              <span class="faq-icon font-bold leading-none">+</span>
-            </span>
-          </button>
-          <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed">
-            <p>
-              No! December is 100% model-agnostic with zero token markup. Bring your own API keys for Claude Fable, OpenAI (GPT 5 series, GPT-6 Astra), Google Gemini 3.8 Flash, DeepSeek, and 100+ model providers.
-            </p>
-            <p class="mt-2">
-              If you prefer zero setup, you can also sign in to December Cloud to use bundled monthly credits across top-tier models. Configure your keys anytime by running <code class="font-mono text-[#090a0f]">december login</code>.
-            </p>
-          </div>
-        </div>
-
-        <!-- 04 Privacy & Security -->
-        <div class="faq-item border border-[#e2e8f0] bg-white transition-all hover:border-[#87b2f4]">
-          <button
-            type="button"
-            class="faq-toggle w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 cursor-pointer group"
-            aria-expanded="false"
-          >
-            <div>
-              <div class="flex items-center gap-1.5 font-mono text-xs text-[#090a0f] font-medium mb-1">
-                <span class="text-[#87b2f4] font-semibold">04</span>
-                <span class="text-[#cbd5e1]">/</span>
-                <span>Privacy &amp; Security</span>
-              </div>
-              <h4 class="text-sm sm:text-[15px] font-normal text-[#090a0f] leading-snug">
-                What about data privacy and codebase security?
-              </h4>
-            </div>
-            <span class="faq-icon-box shrink-0 w-6 h-6 mt-0.5 border border-[#e2e8f0] group-hover:border-[#87b2f4] flex items-center justify-center font-mono text-xs text-[#64748b] group-hover:text-[#87b2f4] transition-all select-none">
-              <span class="faq-icon font-bold leading-none">+</span>
-            </span>
-          </button>
-          <div class="faq-content hidden px-4 pb-4 sm:px-5 sm:pb-5 pt-0 text-sm text-[#52525b] leading-relaxed">
-            <p>
-              December operates locally on your machine. Your codebase, git history, and local environment files never leave your system. When you use BYOK mode, requests travel directly from your machine to your configured LLM endpoint.
-            </p>
-            <p class="mt-2">
-              Code remains on your machine and is never synchronized to cloud servers without your explicit action.
-            </p>
-          </div>
-        </div>
-
+        ))}
       </div>
     </section>
 
@@ -1423,6 +721,21 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     if (heroCopyCmdBtn) (heroCopyCmdBtn as HTMLElement).onclick = triggerHeroCopy;
     if (heroCopyIconBtn) (heroCopyIconBtn as HTMLElement).onclick = triggerHeroCopy;
 
+    // 1b. Hero video facade: swap thumbnail for the YouTube player on click
+    const videoFacade = document.getElementById('hero-video-facade');
+    if (videoFacade) {
+      videoFacade.onclick = () => {
+        const videoId = videoFacade.dataset.videoId;
+        const iframe = document.createElement('iframe');
+        iframe.className = 'absolute inset-0 w-full h-full block';
+        iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&autoplay=1`;
+        iframe.title = 'December Demo Video';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        iframe.allowFullscreen = true;
+        videoFacade.replaceWith(iframe);
+      };
+    }
+
     // 2. FAQ Accordion Toggle Script
     const faqList = document.getElementById('faq-list');
     if (faqList) {
@@ -1469,6 +782,28 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         ((window as any).__heroFlipTimers as number[]).forEach(clearTimeout);
       }
       (window as any).__heroFlipTimers = [];
+
+      // Only "coding agent." is in the HTML so search engines read one clean H1. The other
+      // words are added here. Class names stay literal so Tailwind generates them.
+      const FLIP_STEPS = [
+        { text: 'planning agent.', colorClass: 'text-[#0066f5]' },
+        { text: 'building agent.', colorClass: 'text-[#0066f5]' },
+        { text: 'debugging agent.', colorClass: 'text-[#0066f5]' },
+        { text: 'shipping agent.', colorClass: 'text-[#0066f5]' },
+        { text: 'coding agent.', colorClass: 'text-[#090a0f]' },
+      ];
+      const baseWord = flipContainer.querySelector<HTMLElement>('.hero-flip-word[data-index="0"]');
+      if (baseWord && flipContainer.querySelectorAll('.hero-flip-word').length === 1) {
+        FLIP_STEPS.forEach((step, i) => {
+          const el = baseWord.cloneNode(false) as HTMLElement;
+          el.textContent = step.text;
+          el.dataset.index = String(i + 1);
+          el.setAttribute('aria-hidden', 'true');
+          el.classList.remove('opacity-100', 'translate-y-0', 'text-[#090a0f]');
+          el.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none', step.colorClass);
+          flipContainer.appendChild(el);
+        });
+      }
 
       const words = Array.from(flipContainer.querySelectorAll<HTMLElement>('.hero-flip-word'));
       if (words.length >= 2) {

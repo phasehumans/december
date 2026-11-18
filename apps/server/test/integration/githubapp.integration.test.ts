@@ -242,7 +242,7 @@ describe('GitHubApp Module Integration Tests', () => {
                 pull_request: {
                     number: 123,
                     title: 'test pr',
-                    body: '@december review this pr',
+                    body: '@trydecember review this pr',
                     head: { ref: 'feat/test', sha: '111222' },
                     base: { ref: 'main' },
                     user: { login: 'tester', id: 44 },
@@ -267,7 +267,7 @@ describe('GitHubApp Module Integration Tests', () => {
             expect(res.body.success).toBe(true)
             expect(handlePrOpenedCalledWith.installationId).toBe('99999')
             expect(handlePrOpenedCalledWith.pullRequest.number).toBe(123)
-            expect(handlePrOpenedCalledWith.pullRequest.body).toBe('@december review this pr')
+            expect(handlePrOpenedCalledWith.pullRequest.body).toBe('@trydecember review this pr')
         } finally {
             githubAppService.handlePullRequestOpened = originalHandlePr
         }

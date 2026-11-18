@@ -1,167 +1,113 @@
 ---
 layout: ../../layouts/BlogLayout.astro
-title: 'Building Self-Improving Agents: From One-Shot Prompts to Closed Reasoning Loops'
-description: 'How modern coding agents evolve from brittle single-pass code generators into autonomous, self-correcting systems using test-time compute, iterative refinement, and environment grounding.'
+title: 'Self-Improving Agents: From One-Shot Prompts to Closed Reasoning Loops'
+description: 'How coding agents go from one-shot code generators to systems that check and fix their own work, using test-time compute and real compiler and test output.'
 publishDate: '29 Sept 2026'
 author: 'December Engineering'
-readTime: '6 min read'
+readTime: '7 min read'
 currentSlug: 'self-improving-agents'
 ---
 
-The early wave of AI code generation treated programming as a single-pass text completion problem. You provided a prompt, the model generated 200 lines of code in a single inference burst, and the developer was left to debug the hallucinations.
+The first wave of AI code generation treated programming as text completion. You wrote a prompt. The model wrote 200 lines of code in one pass. Then you spent the afternoon debugging its hallucinations (code the model made up, like functions that do not exist).
 
-While single-pass generation works for boilerplate snippets, it breaks down on non-trivial software engineering tasks: multi-file refactoring, asynchronous state reconciliation, and dependency migrations.
+One-pass generation is fine for boilerplate. It breaks on real engineering work: refactors across many files, keeping asynchronous state consistent, and dependency migrations.
 
-The breakthrough in agent reliability comes from shifting from **single-pass prompting** to **closed reasoning loops**, grounded by research such as the foundational _Self-Refine_ paper ([Madaan et al., arXiv:2303.17651](https://arxiv.org/abs/2303.17651)) and agentic architectures like Nous Hermes.
+Agents got reliable when they moved from single-pass prompting to closed reasoning loops. In a closed loop, the agent writes code, checks it, and uses the result to choose its next edit. Research backs this up, starting with the _Self-Refine_ paper ([Madaan et al., arXiv:2303.17651](https://arxiv.org/abs/2303.17651)) and agent designs like Nous Hermes.
 
 ## The Flaw of Single-Pass Generation
 
-In single-pass inference, an LLM generates tokens autoregressively without back-tracking. If the model makes a minor incorrect assumption on token 40 (such as inferring an outdated database schema or a deprecated method signature), every subsequent token is forced to rationalize that initial error.
+An LLM writes one token (a small chunk of text) at a time. Each token depends on the ones before it. This is called autoregressive generation, and it has no undo. Say the model makes one small wrong assumption at token 40, like an outdated database schema or a deprecated method signature. Every token after that has to work around the mistake. The model does not fix the error. It builds on it.
 
-This leads to three failure modes in complex software tasks:
+On hard tasks, this causes three failure modes:
 
-1. **Compounding Syntax Errors**: A missing bracket or invalid import cascades into dozens of downstream compilation failures.
-2. **Hallucinated State**: Without an execution sandbox, the model speculates on the output of terminal commands and database queries.
-3. **Premature Convergence**: The model commits to the first plausible architecture it generates, even when subsequent constraints make it unworkable.
+1. Compounding Syntax Errors: One missing bracket or bad import causes dozens of compile errors further down.
+2. Hallucinated State: The model has no sandbox to run code in. So it guesses what terminal commands and database queries would return.
+3. Premature Convergence: The model commits to the first design that looks plausible. It keeps that design even after later constraints make it unworkable.
 
 ## The Self-Refine Framework (arXiv:2303.17651)
 
-In _Self-Refine: Iterative Refinement with Self-Feedback_, Madaan et al. demonstrated that LLMs achieve up to ~20% higher performance when structured into an iterative three-phase cycle:
+In _Self-Refine: Iterative Refinement with Self-Feedback_, Madaan et al. ran LLMs through a repeated three-step cycle. Performance went up by as much as ~20%:
 
-- **Generate**: Produce an initial candidate implementation.
-- **Feedback**: Inspect the generated output against functional constraints and edge cases.
-- **Refine**: Apply targeted modifications guided specifically by the feedback payload.
+- Generate: Write a first version.
+- Feedback: Check that output against the requirements and edge cases.
+- Refine: Change the output, guided by that feedback.
 
-Crucially, Self-Refine proves that models do not require supervised retraining or reinforcement learning to improve task accuracy - they can improve dynamically at test time by allocating **test-time compute**.
+Here is the important part. The models did not need retraining: no supervised fine-tuning (training on labelled examples) and no reinforcement learning (training on reward signals). They improved at test time, while answering. This is test-time compute: compute you spend while the model works on a task, not while it trains. Here, that means more passes over the same problem.
 
 ## Grounded Feedback vs. Sycophantic Self-Critique
 
-While the original Self-Refine paper evaluated tasks where the LLM generated its own critiques, autonomous software development reveals a critical limitation of pure prompt-based reflection: **LLM sycophancy**.
+In the original paper, the model wrote its own critiques. For code, that runs straight into LLM sycophancy: the model's habit of saying what sounds agreeable instead of what is true.
 
-When an LLM is asked to review its own generated code in a vacuum, it frequently suffers from confirmation bias - either hallucinating non-existent flaws or confidently declaring invalid code to be correct.
+Ask a model to review its own code with nothing to run, and you get confirmation bias. It either invents flaws that do not exist or calls broken code correct, with full confidence. Neither helps you.
 
-In production coding agents, self-refinement must be **environment-grounded**:
+So in a coding agent, self-refinement must be environment-grounded. The feedback has to come from running the code, not from the model's opinion of it:
 
 | Feedback Mechanism         | Grounding Source                                | Failure Mode                                              |
 | :------------------------- | :---------------------------------------------- | :-------------------------------------------------------- |
-| **Prompt Self-Reflection** | Pure LLM token probability                      | Confirmation bias, sycophancy, missed runtime errors      |
-| **Compiler Feedback**      | `tsc`, `rustc`, `gcc` exit codes                | Syntax-only (does not verify semantic logic)              |
-| **Test-Driven Refinement** | Unit test assertions, linters, MicroVM runtimes | True deterministic verification of behavioral correctness |
+| Prompt Self-Reflection | Pure LLM token probability                      | Confirmation bias, sycophancy, missed runtime errors      |
+| Compiler Feedback      | `tsc`, `rustc`, `gcc` exit codes                | Syntax-only (does not verify semantic logic)              |
+| Test-Driven Refinement | Unit test assertions, linters, MicroVM runtimes | Checks real behavior; same result on every run            |
 
-By substituting speculative text critiques with **hard compiler diagnostics and test execution outputs**, the agent reasoning loop gains ground truth.
+Replace text critiques with compiler errors and test output, and the loop gets ground truth: a signal that reflects what the code actually does. A failing test does not flatter you.
 
 ## Closed Reasoning Loop Architecture
 
-Modern autonomous agents structure test-time refinement into an automated closed loop:
+An autonomous agent runs this cycle on its own, with no human in the middle:
 
-<div class="my-8 p-4 sm:p-6 border border-[#e2e8f0] bg-[#f8fafc]/50 relative">
-  <span class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#87b2f4]"></span>
-  <span class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#87b2f4]"></span>
-  <span class="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-[#87b2f4]"></span>
-  <span class="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-[#87b2f4]"></span>
-
-  <div class="flex flex-col items-center max-w-xl mx-auto space-y-0">
-    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
-      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
-        <div class="flex items-center gap-1.5 font-medium">
-          <span class="text-[#87b2f4] font-semibold">01</span>
-          <span class="text-[#cbd5e1]">/</span>
-          <span class="text-[#090a0f]">Generate</span>
-        </div>
-        <span class="text-[10px] uppercase tracking-wider text-[#64748b] bg-[#f8fafc] px-2 py-0.5 border border-[#e2e8f0]">Initial Hypothesis</span>
-      </div>
-      <h4 class="text-sm sm:text-base font-semibold text-[#090a0f] tracking-tight">Atomic Code Mutation</h4>
-      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
-        <span>AST Symbol Context</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Scoped File Replacement</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Checkpoint Zero</span>
-      </div>
+<div class="my-8 max-w-xl mx-auto">
+  <div class="p-4 border border-[#e2e8f0] bg-white">
+    <div class="font-mono text-xs text-[#64748b]">01</div>
+    <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Generate</h4>
+    <p class="mt-1 text-xs leading-relaxed text-[#52525b]">Make one scoped file edit, using AST symbol context.</p>
+  </div>
+  <div class="flex flex-col items-center py-2">
+    <div class="w-px h-4 bg-[#cbd5e1]"></div>
+    <span class="my-1 font-mono text-[11px] text-[#64748b]">Sandboxed execution</span>
+    <svg class="w-3 h-3" viewBox="0 0 12 12" fill="#94a3b8" aria-hidden="true"><path d="M6 9.5L1.5 4h9L6 9.5z"></path></svg>
+  </div>
+  <div class="p-4 border border-[#e2e8f0] bg-white">
+    <div class="font-mono text-xs text-[#64748b]">02</div>
+    <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Diagnose</h4>
+    <p class="mt-1 text-xs leading-relaxed text-[#52525b]">Compiler and tests report exit codes, typecheck traces, and lint errors.</p>
+  </div>
+  <div class="flex flex-col items-center py-2">
+    <div class="w-px h-4 bg-[#cbd5e1]"></div>
+    <span class="my-1 font-mono text-[11px] text-[#64748b]">Decision gate</span>
+    <svg class="w-3 h-3" viewBox="0 0 12 12" fill="#94a3b8" aria-hidden="true"><path d="M6 9.5L1.5 4h9L6 9.5z"></path></svg>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div class="p-4 border border-[#e2e8f0] bg-white">
+      <div class="font-mono text-xs text-[#64748b]">03a / refine</div>
+      <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Fix the failure</h4>
+      <p class="mt-1 text-xs leading-relaxed text-[#52525b]">The error output goes into context. The agent writes a targeted diff.</p>
     </div>
-
-    <div class="flex flex-col items-center py-1 select-none">
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
-      <div class="px-2.5 py-1 border border-[#e2e8f0] bg-white font-mono text-[11px] text-[#090a0f] shadow-2xs flex items-center gap-1.5 my-0.5">
-        <span class="text-[#87b2f4] font-semibold">→</span>
-        <span>Sandboxed Execution</span>
-      </div>
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
-      <svg class="w-3 h-3 text-[#87b2f4] -mt-0.5" viewBox="0 0 12 12" fill="currentColor">
-        <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
-      </svg>
+    <div class="p-4 border border-[#e2e8f0] bg-white">
+      <div class="font-mono text-xs text-[#64748b]">03b / lock</div>
+      <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Git checkpoint</h4>
+      <p class="mt-1 text-xs leading-relaxed text-[#52525b]">All tests exit 0. The agent commits and waits for the next instruction.</p>
     </div>
-
-    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
-      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
-        <div class="flex items-center gap-1.5 font-medium">
-          <span class="text-[#87b2f4] font-semibold">02</span>
-          <span class="text-[#cbd5e1]">/</span>
-          <span class="text-[#090a0f]">Diagnose</span>
-        </div>
-        <span class="text-[10px] uppercase tracking-wider text-[#87b2f4] bg-[#87b2f4]/10 px-2 py-0.5 border border-[#87b2f4]/30">Grounded Critique</span>
-      </div>
-      <h4 class="text-sm sm:text-base font-semibold text-[#090a0f] tracking-tight">Compiler &amp; Test Oracle</h4>
-      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
-        <span>Non-Zero Exit Codes</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Typecheck Stack Traces</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Linter AST Errors</span>
-      </div>
-    </div>
-
-    <div class="flex flex-col items-center py-1 select-none">
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
-      <div class="px-2.5 py-1 border border-[#e2e8f0] bg-white font-mono text-[11px] text-[#64748b] shadow-2xs my-0.5">Iterative Decision Gate</div>
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
-      <svg class="w-3 h-3 text-[#87b2f4] -mt-0.5" viewBox="0 0 12 12" fill="currentColor">
-        <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
-      </svg>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-      <div class="p-4 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
-        <div class="flex items-center justify-between font-mono text-xs mb-1">
-          <span class="text-[#64748b] font-medium">Step 03A: Refine</span>
-          <span class="text-[10px] uppercase tracking-wider text-amber-700 bg-amber-50 px-1.5 py-0.5 border border-amber-200">Self-Heal</span>
-        </div>
-        <h5 class="text-sm font-semibold text-[#090a0f]">Corrective Payload</h5>
-        <p class="mt-1.5 text-xs text-[#52525b] leading-relaxed">Error output injected into context; agent generates targeted diff to resolve failure.</p>
-      </div>
-
-      <div class="p-4 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
-        <div class="flex items-center justify-between font-mono text-xs mb-1">
-          <span class="text-[#64748b] font-medium">Step 03B: Lock</span>
-          <span class="text-[10px] uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200">Verified</span>
-        </div>
-        <h5 class="text-sm font-semibold text-[#090a0f]">Git Checkpoint</h5>
-        <p class="mt-1.5 text-xs text-[#52525b] leading-relaxed">All tests exit with 0; immutable commit created. Ready for next user instruction.</p>
-      </div>
-    </div>
-
   </div>
 </div>
 
 ## The Hermes Pattern: Structured Agentic Scratchpads
 
-In the Hermes agent lineage developed by Nous Research, self-improvement is facilitated by rigorous separation between **private scratchpad reasoning** and **public tool invocation**:
+Nous Research builds the Hermes line of agent models. Hermes keeps two things strictly apart: private scratchpad reasoning (notes the model writes to itself) and public tool invocation (the calls it actually makes):
 
-1. **Explicit Pre-Action CoT**: Before every file modification, the agent writes an internal hypothesis justifying why the edit is required.
-2. **Single-Concern Invocation**: Tool calls are executed atomically, avoiding large multi-action blobs that obscure the cause of failures.
-3. **Structured Diagnostics**: Runtime outputs (stdout, stderr, exit codes) are returned as strict JSON payloads rather than unstructured raw text.
+1. Explicit Pre-Action CoT: CoT is chain of thought, the model's step-by-step reasoning written out as text. Before every file edit, the agent writes down why the edit is needed.
+2. Single-Concern Invocation: Each tool call does one thing. A call that does five things hides which one broke.
+3. Structured Diagnostics: The runtime returns stdout, stderr, and exit codes as strict JSON, not raw text.
 
-When a test failure occurs, the agent does not start from scratch. It preserves the verified scratchpad history, identifies the specific invalid assumption, and formulates a minimal targeted patch.
+When a test fails, the agent does not start over. It keeps its verified scratchpad history. It finds the one assumption that was wrong. Then it writes a small patch for that assumption only.
 
 ## How December Implements Self-Improving Loops
 
-December integrates the Self-Refine paradigm directly into its terminal-to-cloud development workflow:
+December builds the Self-Refine loop into its workflow, from the terminal to the cloud:
 
-- **Isolated MicroVM Verification**: Every terminal action runs inside a sandboxed Linux container where tests and build pipelines execute in real time.
-- **Verifiable Git Checkpoints**: Before any file is modified, December snapshots the working tree. If an iterative refinement loop drifts or fails to converge, the `/undo` command rolls back the tree to the exact pre-flight state.
-- **Pruned Diagnostic Memory**: Rather than bloating the prompt with thousands of lines of terminal logs, December parses compiler stderr into actionable diff hints, preventing context rot.
+- Isolated MicroVM Verification: Every terminal action runs in a sandboxed Linux container. Tests and builds run there in real time.
+- Verifiable Git Checkpoints: Before December changes any file, it snapshots the working tree. A refinement loop can drift, or fail to converge (never reach passing tests). If that happens, run `/undo`. It restores the tree to the exact state before the run.
+- Pruned Diagnostic Memory: December does not paste thousands of lines of terminal logs into the prompt. It parses compiler stderr into short diff hints. This keeps the prompt small and avoids context rot (the drop in accuracy as a prompt gets longer).
 
-By anchoring test-time compute to verifiable compiler and test outputs, autonomous coding agents transition from probabilistic guessers into self-improving software engineers.
+Point test-time compute at real compiler and test output, and a coding agent stops guessing. It becomes an engineer that checks its own work.
 
 ---
 

@@ -164,6 +164,14 @@ export const COMMANDS: Command[] = [
         },
     },
     {
+        name: 'plugin',
+        description: 'Browse, install, and manage plugins and extensions',
+        value: '/plugin',
+        action: () => {
+            // forwarded to differential screen
+        },
+    },
+    {
         name: 'memory',
         description:
             'View and manage workspace memory (.december/memory.md) and project rules (AGENTS.md)',

@@ -1,152 +1,113 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Agent Reasoning Loop
-description: How December reads files, plans changes, makes safe edits, and tests everything before finishing.
+description: Learn how December reads your code, makes changes, and checks its work.
 currentSlug: 'agent-loop'
 ---
 
-## The Four-Phase Loop
+This page helps you understand how December works on a task, from your prompt to the final answer.
 
-Instead of blindly generating code, December follows four straightforward steps: inspect your repository, write a clear plan, make small edits, and test everything:
+## The four steps
 
-<div class="my-8 p-4 sm:p-6 border border-[#e2e8f0] bg-[#f8fafc]/50 relative">
-  <span class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#87b2f4]"></span>
-  <span class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#87b2f4]"></span>
-  <span class="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-[#87b2f4]"></span>
-  <span class="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-[#87b2f4]"></span>
+December is told to work in four steps: inspect the code, plan the change, edit the files, and verify the result.
 
-  <div class="flex flex-col items-center max-w-xl mx-auto space-y-0">
-    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
-      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
-        <div class="flex items-center gap-1.5 font-medium">
-          <span class="text-[#87b2f4] font-semibold">01</span>
-          <span class="text-[#cbd5e1]">/</span>
-          <span class="text-[#090a0f]">Inspect</span>
-        </div>
-        <span class="text-[10px] uppercase tracking-wider text-[#64748b] bg-[#f8fafc] px-2 py-0.5 border border-[#e2e8f0]">Read Only</span>
-      </div>
-      <h4 class="text-base font-semibold text-[#090a0f] tracking-tight">Context Gathering</h4>
-      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
-        <span>AST Symbols</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Package Manifests</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Git Status</span>
-      </div>
+<div class="my-8">
+  <div class="flex flex-col items-center max-w-xl mx-auto">
+    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white">
+      <div class="font-mono text-xs text-[#64748b] mb-1">01</div>
+      <h4 class="text-base font-medium text-[#090a0f] tracking-tight">Inspect</h4>
+      <p class="mt-1 text-sm text-[#52525b]">Find and read the files that matter.</p>
     </div>
 
     <div class="flex flex-col items-center py-1 select-none">
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
-      <svg class="w-3 h-3 text-[#87b2f4] -my-0.5" viewBox="0 0 12 12" fill="currentColor">
+      <div class="w-px h-4 bg-[#cbd5e1]"></div>
+      <svg class="w-3 h-3 text-[#94a3b8] -my-0.5" viewBox="0 0 12 12" fill="currentColor">
         <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
       </svg>
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <div class="w-px h-4 bg-[#cbd5e1]"></div>
     </div>
 
-    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
-      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
-        <div class="flex items-center gap-1.5 font-medium">
-          <span class="text-[#87b2f4] font-semibold">02</span>
-          <span class="text-[#cbd5e1]">/</span>
-          <span class="text-[#090a0f]">Plan</span>
-        </div>
-        <span class="text-[10px] uppercase tracking-wider text-[#87b2f4] bg-[#87b2f4]/10 px-2 py-0.5 border border-[#87b2f4]/30">Reasoning</span>
-      </div>
-      <h4 class="text-base font-semibold text-[#090a0f] tracking-tight">Implementation Roadmap</h4>
-      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
-        <span>Atomic File Changes</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Breaking Change Analysis</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Test Hypotheses</span>
-      </div>
+    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white">
+      <div class="font-mono text-xs text-[#64748b] mb-1">02</div>
+      <h4 class="text-base font-medium text-[#090a0f] tracking-tight">Plan</h4>
+      <p class="mt-1 text-sm text-[#52525b]">Decide which files to change.</p>
     </div>
 
     <div class="flex flex-col items-center py-1 select-none">
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
-      <svg class="w-3 h-3 text-[#87b2f4] -my-0.5" viewBox="0 0 12 12" fill="currentColor">
+      <div class="w-px h-4 bg-[#cbd5e1]"></div>
+      <svg class="w-3 h-3 text-[#94a3b8] -my-0.5" viewBox="0 0 12 12" fill="currentColor">
         <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
       </svg>
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <div class="w-px h-4 bg-[#cbd5e1]"></div>
     </div>
 
-    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
-      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
-        <div class="flex items-center gap-1.5 font-medium">
-          <span class="text-[#87b2f4] font-semibold">03</span>
-          <span class="text-[#cbd5e1]">/</span>
-          <span class="text-[#090a0f]">Execute</span>
-        </div>
-        <span class="text-[10px] uppercase tracking-wider text-[#64748b] bg-[#f8fafc] px-2 py-0.5 border border-[#e2e8f0]">Mutation</span>
-      </div>
-      <h4 class="text-base font-semibold text-[#090a0f] tracking-tight">Tool Execution</h4>
-      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
-        <span>replace_file_content</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>write_to_file</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>run_command</span>
-      </div>
+    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white">
+      <div class="font-mono text-xs text-[#64748b] mb-1">03</div>
+      <h4 class="text-base font-medium text-[#090a0f] tracking-tight">Execute</h4>
+      <p class="mt-1 text-sm text-[#52525b]">Edit the files and run commands.</p>
     </div>
 
     <div class="flex flex-col items-center py-1 select-none">
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
-      <svg class="w-3 h-3 text-[#87b2f4] -my-0.5" viewBox="0 0 12 12" fill="currentColor">
+      <div class="w-px h-4 bg-[#cbd5e1]"></div>
+      <svg class="w-3 h-3 text-[#94a3b8] -my-0.5" viewBox="0 0 12 12" fill="currentColor">
         <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
       </svg>
-      <div class="w-px h-5 bg-[#cbd5e1]"></div>
+      <div class="w-px h-4 bg-[#cbd5e1]"></div>
     </div>
 
-    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] transition-all shadow-2xs">
-      <div class="flex items-center justify-between font-mono text-xs mb-1.5">
-        <div class="flex items-center gap-1.5 font-medium">
-          <span class="text-[#87b2f4] font-semibold">04</span>
-          <span class="text-[#cbd5e1]">/</span>
-          <span class="text-[#090a0f]">Verify</span>
-        </div>
-        <span class="text-[10px] uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200">Feedback Loop</span>
-      </div>
-      <h4 class="text-base font-semibold text-[#090a0f] tracking-tight">Diagnostic Verification</h4>
-      <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-[#52525b]">
-        <span>Compiler Exit Codes</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Linter Feedback</span>
-        <span class="text-[#cbd5e1]">·</span>
-        <span>Self-Healing Iteration</span>
-      </div>
+    <div class="w-full p-4 sm:p-5 border border-[#e2e8f0] bg-white">
+      <div class="font-mono text-xs text-[#64748b] mb-1">04</div>
+      <h4 class="text-base font-medium text-[#090a0f] tracking-tight">Verify</h4>
+      <p class="mt-1 text-sm text-[#52525b]">Run the tests or build, and fix what fails.</p>
     </div>
-
   </div>
 </div>
 
-### 1. Context Gathering & Inspection
+These steps come from the instructions that December gives the model. The loop below is the mechanism that does the work.
 
-Before touching source code, the agent inspects project structure:
+## How the loop works
 
-- Reads `package.json`, `tsconfig.json`, or relevant build manifests
-- Searches symbols and dependencies using regex and AST symbol analysis
-- Reads git status and existing test suites
+Each request is a loop of model turns:
 
-### 2. Implementation Planning
+1. December sends your prompt, the conversation, and the list of tools to the model.
+2. The model answers with text, tool calls, or both.
+3. December runs the tool calls and adds the results to the conversation.
+4. December sends the conversation back to the model, and the next turn starts.
 
-For multi-step edits, the agent breaks the problem down into verifiable atomic steps:
+The loop stops when the model answers without a tool call. The loop also stops after 100 turns, or when you press Ctrl+C.
 
-- Outlines exact modules that will be modified
-- Identifies potential breaking changes and edge cases
-- Formulates verification tests
+## 1. Inspect
 
-### 3. Tool Execution & Mutation
+December reads your code before it changes it. In the CLI, December uses `read_file` to read a file. It uses `bash` to run search commands, such as `grep`.
 
-The agent applies code changes using atomic file operations and runs shell commands:
+In December Cloud, December also has `grep_search` to search file contents, `find_files` to find files by name, and `list_dir` to list a folder.
 
-- Edit files with precise line-range diff replacements
-- Install missing dependencies
-- Format code using configured linters (`prettier`, `eslint`)
+December runs read-only tool calls at the same time, so the inspect step is fast. December also reads your rules and memory when a session starts. See [Workspace Memory & Rules](/docs/memory).
 
-### 4. Diagnostic Feedback & Self-Correction
+## 2. Plan
 
-If a test or build fails, the error output is piped directly into the agent context:
+For a change to many files, December breaks the work into small steps. It names the files to change and the tests that prove the change works.
 
-- Compiler error diagnostics are analyzed
-- Stack traces pinpoint exact failure sites
-- The agent iterates and corrects itself until the test suite passes
+To see and approve the plan before December edits files, use `/plan`. See [Session Artifacts & Planning](/docs/artifacts).
+
+## 3. Execute
+
+December changes your project with these tools:
+
+- `edit_file` replaces text in a file. December uses it for most edits.
+- `write_file` makes a new file or replaces a whole file.
+- `bash` runs a shell command, for example to install a package or run a formatter.
+
+December runs edits and commands one at a time, in order. If `toolPermission` is `"always-ask"`, December asks you before edits and commands that change your project. See [Configuration](/docs/configuration).
+
+## 4. Verify
+
+December runs your tests, build, or linter with `bash`. The output of the command goes back into the conversation. If a check fails, the model reads the error and makes a new edit. Then it runs the check again.
+
+After each edit, December can also get errors from a language server for that file. If the file has errors, December adds them to the tool result, so the model can fix them.
+
+## Long sessions
+
+A long session can fill the context window of the model. When this happens, December summarizes the older messages. The summary takes the place of the older messages, and the session continues.
+
+For a large side task, December can start a subagent with the `invoke_subagent` tool. A subagent is a separate agent with its own context. It does the task and sends back only the result.

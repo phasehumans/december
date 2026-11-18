@@ -7,6 +7,7 @@ import { EditDiffTool } from './edit_diff'
 import { ManageMemoryTool } from './manage_memory'
 import { ManageTaskTool } from './manage_task'
 import { ReadFileTool } from './read'
+import { SearchToolsTool } from './search_tools'
 import { WebSearchTool } from './web_search'
 import { EnterWorktreeTool, ExitWorktreeTool } from './worktree'
 import { WriteFileTool } from './write'
@@ -34,13 +35,15 @@ export * from './deferred-registry'
 export * from './search_tools'
 export * from './code_intelligence'
 export * from './mcp'
+export * from './plugins'
 export * from './snapshot'
 export * from './file-mutation-queue'
 export { Type, type Static } from '@sinclair/typebox'
 
 export const FOUNDATIONAL_TOOLS = [ReadFileTool, WriteFileTool, EditFileTool, BashTool]
 
-export const CORE_TOOLS = [ReadFileTool, WriteFileTool, EditFileTool, BashTool]
+// search_tools is the only way the agent can activate DEFERRED_TOOLS and non-eager MCP tools
+export const CORE_TOOLS = [ReadFileTool, WriteFileTool, EditFileTool, BashTool, SearchToolsTool]
 
 export const DEFERRED_TOOLS = [
     ManageTaskTool,
@@ -48,6 +51,7 @@ export const DEFERRED_TOOLS = [
     BrowserActionTool,
     WebSearchTool,
     EditDiffTool,
+    ManageMemoryTool,
 ]
 
 // Pre-register standard deferred tools in defaultDeferredRegistry

@@ -17,10 +17,9 @@ describe('GitHub Utils - Unit Tests', () => {
             expect(res.instruction).toBe('')
         })
 
-        it('detects @december and extracts the instruction', () => {
+        it('ignores @december, which is an unrelated GitHub user', () => {
             const res = extractBotMention('@december fix the bug in session handling and add tests')
-            expect(res.isMentioned).toBe(true)
-            expect(res.instruction).toBe('fix the bug in session handling and add tests')
+            expect(res.isMentioned).toBe(false)
         })
 
         it('detects @trydecember and @trydecember[bot]', () => {
@@ -34,13 +33,13 @@ describe('GitHub Utils - Unit Tests', () => {
         })
 
         it('handles case-insensitive mention and whitespace', () => {
-            const res = extractBotMention('  @December   please refactor this module  ')
+            const res = extractBotMention('  @TryDecember   please refactor this module  ')
             expect(res.isMentioned).toBe(true)
             expect(res.instruction).toBe('please refactor this module')
         })
 
         it('provides default instruction if comment only contains mention', () => {
-            const res = extractBotMention('@december')
+            const res = extractBotMention('@trydecember')
             expect(res.isMentioned).toBe(true)
             expect(res.instruction).toBe(
                 'Fix the issue described in the issue description and ensure tests pass.'

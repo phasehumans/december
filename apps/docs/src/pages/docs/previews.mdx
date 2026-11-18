@@ -1,14 +1,20 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Live Sandboxed Previews
-description: How December starts your dev server and opens live interactive browser previews as you build.
+description: See your app running in December Cloud with a live preview.
 currentSlug: 'previews'
 ---
 
+This page helps you see and test your app while December builds it in December Cloud.
+
 ## Live Browser Previews
 
-When you work in December Cloud, your code runs inside a secure Linux sandbox with instant web previews:
+In December Cloud, your project runs in a sandbox. The sandbox is a cloud machine, so the code does not run on your computer.
 
-- **Automatic Port Forwarding**: Whenever your app starts a dev server (like Next.js on port 3000 or Vite on 5173), December automatically opens a live preview.
-- **Isolated Linux Environment**: Your code builds and runs inside its own safe container without risking your host machine.
-- **Console & Diagnostics**: View build outputs, server logs, and runtime errors in real time right next to your code.
+- Automatic preview: When your app starts a dev server, December finds the port and shows a preview of the app. December checks common dev server ports first, for example 5173 (Vite) and 3000 (Next.js).
+- Database ports stay hidden: December does not show a preview for database ports such as 5432 (PostgreSQL) or 6379 (Redis).
+- Logs: The preview shows console logs, so you can find errors while you test.
+
+## Sandbox limits
+
+Each December Cloud session runs in its own sandbox. You can have 3 active sandboxes at a time. If you start a fourth, December pauses the sandbox you used least recently.

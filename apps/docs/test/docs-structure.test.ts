@@ -16,13 +16,13 @@ interface DocCategory {
 
 describe('apps/docs navigation & content structure', () => {
     const docsDir = join(__dirname, '../src/pages/docs')
-    const layoutPath = join(__dirname, '../src/layouts/DocsLayout.astro')
+    const navPath = join(__dirname, '../src/lib/docs-nav.ts')
 
     const getDocCategories = (): DocCategory[] => {
-        const content = readFileSync(layoutPath, 'utf-8')
-        const match = content.match(/const docCategories = (\[[\s\S]*?\]);\n/)
+        const content = readFileSync(navPath, 'utf-8')
+        const match = content.match(/const docCategories(?::[^=]+)? = (\[[\s\S]*?\]);\n/)
         if (!match) {
-            throw new Error('Could not find docCategories in DocsLayout.astro')
+            throw new Error('Could not find docCategories in src/lib/docs-nav.ts')
         }
         return eval(`(${match[1]})`) as DocCategory[]
     }

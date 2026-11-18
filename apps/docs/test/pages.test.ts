@@ -75,12 +75,13 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).not.toContain('id="back-to-top-btn"')
         })
 
-        it('renders hero video player with privacy-enhanced YouTube embed', () => {
+        it('renders hero video as a click-to-load privacy-enhanced YouTube facade', () => {
             const html = getLandingHtml()
 
             expect(html).toContain('id="hero-media-placeholder"')
-            expect(html).toContain('https://www.youtube-nocookie.com/embed/n1gXOdLLTz4')
-            expect(html).toContain('title="December Demo Video"')
+            expect(html).toContain('id="hero-video-facade"')
+            expect(html).toContain('data-video-id="n1gXOdLLTz4"')
+            expect(html).not.toContain('<iframe')
         })
 
         it('renders environments card and cloud nudge auth links to /login', () => {
@@ -95,7 +96,7 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('TTL_MS')
             expect(html).toContain('isDesktop')
             expect(html).toContain('hidden sm:block fixed')
-            expect(html).toContain('connect external developer tools or APIs via MCP')
+            expect(html).toContain('Teach December how your team works with skills')
         })
 
         it('renders mobile github icon in header without x icon and single-line mobile footer with built-by and docs/blog', () => {
@@ -134,6 +135,9 @@ describe('apps/docs page content & layout tests', () => {
             expect(headerHtml).not.toContain('border-b')
             expect(headerHtml).toContain('hidden sm:inline-flex')
             expect(headerHtml).toContain('Sign in')
+            expect(headerHtml).toContain('id="header-auth-cta"')
+            expect(headerHtml).toContain('Open app')
+            expect(headerHtml).toContain('december_logged_in=1')
             expect(html).toContain('sticky top-14')
             expect(html).toContain('Try December Cloud')
             expect(html).toContain('Try in Web')
@@ -159,18 +163,17 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).not.toContain('PROTOCOL: TRUST')
         })
 
-        it('renders upper-fold infinite model tickers in desktop side gutters', () => {
+        it('does not render the side gutter model tickers', () => {
             const html = getLandingHtml()
 
-            expect(html).toContain('gutter-ticker-container')
-            expect(html).toContain('gutter-ticker-track-up')
-            expect(html).toContain('gutter-ticker-track-down')
-            expect(html).toContain('claude-3-7-sonnet')
-            expect(html).toContain('gemini-2.5-pro')
-            expect(html).toContain('deepseek-r1')
-            expect(html).toContain('gpt-4o')
-            expect(html).toContain('llama-3.3-70b')
-            expect(html).toContain('qwen-2.5-coder')
+            expect(html).not.toContain('gutter-ticker-container')
+            expect(html).not.toContain('claude-3-7-sonnet')
+        })
+
+        it('does not render the benchmark rank', () => {
+            const html = getLandingHtml()
+
+            expect(html).not.toContain('GLOBAL RANK')
         })
     })
 
@@ -263,7 +266,7 @@ describe('apps/docs page content & layout tests', () => {
 
             expect(html).toContain('Chaitanya Sonawane')
             expect(html).toContain('software engineer')
-            expect(html).toContain('@december')
+            expect(html).toContain('@trydecember')
             expect(html).toContain('https://github.com/phasehumans')
             expect(html).toContain('https://www.youtube.com/@phasehumans')
             expect(html).toContain('https://x.com/phasehumans')

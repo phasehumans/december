@@ -1,52 +1,56 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Git Worktrees & Safe Isolation
-description: Isolate complex refactors and risky experiments in parallel git worktrees without interrupting your active working directory.
+description: Let December make large or risky changes in a separate git worktree, away from your working folder.
 currentSlug: 'worktrees'
 ---
 
+This page tells you how December uses git worktrees to keep large or risky changes away from your working folder.
+
 ## Overview
 
-When an AI agent modifies tens of files at once, a single broken test or incomplete refactor can leave your local git directory in a messy state. Worse, active dev servers, watch mode builds, and open IDE tabs can break mid-turn.
+A large change can touch many files. If a test fails halfway, your working folder can be left in a broken state. A running dev server or an open editor can also break while files change.
 
-December solves this with native **Git Worktree Isolation**. Using the `enter_worktree` and `exit_worktree` tools, December can branch off into a separate, isolated linked working tree, test its changes in total isolation, and only merge back once everything compiles and passes tests.
+A git worktree is a second working folder that is linked to your repository. December can do its work in a worktree. Your own files and your dev server do not change while December works.
+
+December uses two tools for this: `enter_worktree` and `exit_worktree`. Your project must be a git repository.
 
 ---
 
 ## How Worktree Isolation Works
 
 ```
-Main Workspace (Your Editor)        Isolated Worktree (December Hands)
-────────────────────────────        ──────────────────────────────────
-branch: main (clean)                branch: agent/refactor-auth
-running dev server (port 3000)      runs test suite in background
-uncommitted files untouched         edits 12 files & runs typecheck
-                                    └── verifies all tests pass
-                                    └── merges back to main on success
+Your working folder                 December's worktree
+───────────────────                 ───────────────────
+branch: main                        branch: worktree/refactor-auth
+dev server keeps running            December edits files here
+your uncommitted files stay         December runs tests here
+                                    └── on exit: cleanup, keep, or merge
 ```
 
-1. **Enter Worktree**: December creates a temporary git worktree in a parallel directory linked to your repository.
-2. **Execute & Test**: The agent reads files, makes edits, runs compilers, and executes test suites inside the isolated worktree. Your primary files and running dev servers remain completely unaffected.
-3. **Verify & Merge**: Once all tests pass, December commits the clean changes and merges the branch back into your working branch.
-4. **Clean Exit**: If you cancel or if the refactor proves unviable, December exits the worktree and cleans up the temporary directory, leaving your working directory pristine.
+1. Enter: December makes a worktree in `.december/worktrees/<name>` on a new branch, `worktree/<name>`. December copies your uncommitted changes and your `.env` files into it.
+2. Work: December edits files and runs commands in the worktree. Your working folder does not change.
+3. Exit: December leaves the worktree with one of three actions:
+    - cleanup: Delete the worktree and its branch. December discards the changes.
+    - keep: Commit the changes, keep the branch, and delete the worktree folder. Use the branch for a review or a pull request.
+    - merge: Commit the changes, merge the branch into your branch, and delete the worktree and the branch.
 
 ---
 
 ## When December Uses Worktrees
 
-- **Large Architecture Refactors**: Replacing an ORM, migrating an API schema, or upgrading framework dependencies.
-- **Speculative Bug Fixing**: Testing alternative hypotheses without clobbering your current branch state.
-- **Parallel Subagent Tasks**: Allowing background subagents to work on independent feature slices simultaneously without file-locking conflicts.
+- Large refactors: For example, a change of ORM or a framework upgrade.
+- Experiments: Try a fix without changing your current branch.
+- Subagents: A subagent can work in its own worktree, so it does not change the files that other agents use.
 
 ---
 
 ## Manual Worktree Control
 
-You can also instruct December directly to use worktrees in your natural language prompts:
+To make December use a worktree, ask for it in your prompt:
 
-```bash
-# Explicitly request worktree isolation
-december "Migrate our database models to Prisma 6 inside an isolated worktree"
+```text
+Move our database models to Prisma 6 in a separate worktree. Keep the branch so I can review it.
 ```
 
-December will acknowledge the instruction, spin up a linked worktree, run the migration tests, and prompt for confirmation before touching your primary branch.
+If you want the changes merged, say so in the prompt. If you want to review first, ask December to keep the branch.

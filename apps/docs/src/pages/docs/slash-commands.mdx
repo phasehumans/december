@@ -1,57 +1,90 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Slash Commands Reference
-description: Guide to available in-session slash commands across the terminal CLI and web workspace.
+description: Every slash command you can type in a December CLI session.
 currentSlug: 'slash-commands'
 ---
 
-## Available Slash Commands
+This page lists the slash commands you can type in a December CLI session. Type `/` in the prompt to see the list. Type `/help` to see the commands and keyboard shortcuts.
 
-December provides quick-action slash commands directly inside the prompt bar:
+## Available Slash Commands
 
 ### `/login`
 
-Opens the interactive authentication manager. Allows switching between:
+Opens the login menu. Pick one option:
 
-- **December Cloud Account**: Unified billing and shared credits.
-- **BYOK (Bring Your Own Key)**: Configure keys for OpenAI, Anthropic, Gemini, OpenRouter, and DeepSeek.
+- Link a plan: Use a Claude, ChatGPT, GitHub Copilot, or Gemini plan that you already pay for.
+- Sign in with December: Use your December Cloud account and its credits.
+- Use your own keys: Add an API key for OpenAI, Anthropic, Gemini, Groq, OpenRouter, DeepSeek, or another provider.
 
-### `/model [model-name]`
+To link a plan directly, add the provider name. For example: `/login claude`.
 
-Inspects or switches the active intelligence engine:
+### `/model`
 
-- `claude-fable-5-1`
-- `gpt-5.6-sol`
-- `gpt-6-astra`
-- `gemini-3.8-flash`
-- `deepseek-r1`
+Opens the model menu. The menu shows the models from the provider you connected. For example:
+
+- Anthropic: `claude-opus-5`, `claude-sonnet-5`, `claude-fable-5-1`
+- OpenAI: `gpt-5.6-sol`, `gpt-5.6-terra`
+- Google Gemini: `gemini-3.8-flash`, `gemini-2.5-pro`
+- DeepSeek: `deepseek-v4-pro`, `deepseek-reasoner`
+
+If you have not connected a model, December tells you to run `/login` first. To change the provider, type `/switch`.
 
 ### `/clear`
 
-Resets the conversation context while preserving file modifications. Use this when transitioning to an unrelated task to keep token context concise.
+Clears the conversation history. Your file changes stay. Use it when you start a task that is not related to the last one.
 
-### `/docs [section]`
+### `/docs`
 
-Opens the official documentation on `trydecember.com/docs` matching the requested section (e.g. `/docs cli`).
+Opens the December documentation at `trydecember.com/docs` in your browser.
 
-### `/effort [level]`
+### `/effort`
 
-Inspects or configures the active model reasoning depth (`fast`, `deep`):
+Sets how much the model reasons before it answers. There are two levels:
 
-- **`/effort`**: Opens the interactive reasoning depth selector.
-- **`/effort [level]`**: Directly sets the reasoning level (`/effort fast`, `/effort deep`). For reasoning models, default is `fast` (minimal token cost and quick response) and can be increased to `deep`. Non-reasoning models run in standard mode.
+- `fast`: Less reasoning, faster answers, and lower token cost. This is the default.
+- `deep`: More reasoning for hard design and debugging work.
 
-### `/artifacts`
-
-Opens the interactive session artifacts viewer to inspect, navigate, and approve implementation plans, architecture specs, and task walkthroughs stored under `~/.december/artifacts/<session-id>/`.
+Type `/effort` to open the menu, or type `/effort deep` to set the level directly. If a model does not support reasoning control, it runs in standard mode.
 
 ### `/skills`
 
-Opens the interactive skills browser to inspect, search, and view documentation for all discovered skills across workspace, global, and plugin directories. Press `Enter` on any skill to read its `SKILL.md` in the code viewer.
+Opens the skills browser. You can search the installed skills and read the `SKILL.md` of each skill.
+
+To run a skill, type `/` and the skill name: `/<skill-name>`. You can add a task after the name.
 
 ### `/memory` (or `/rules`)
 
-Opens the interactive workspace memory and project guidelines manager:
+Opens the workspace memory and project rules menu:
 
-- **Workspace Memory**: Inspect, search, record (`[a]`), forget (`[d]`), edit (`[e]`), or clear (`[x]`) learned conventions, build/test commands, architecture notes, and quirks stored in `.december/memory.md` (budgeted within 2KB).
-- **Rules & Guidelines**: Browse discovered project rules (`AGENTS.md`, `CLAUDE.md`, `.december/rules.md`, and global machine rules), scaffold a starter `AGENTS.md` (`[c]`), edit in your editor (`[e]`), or hot reload rules into the active session (`[r]`).
+- Memory: See what December learned about your project. December keeps it in `.december/memory.md`, with a limit of 2 KB. Press `a` to add a note. Press `d` to forget a note.
+- Rules: Read the rule files December found, such as `AGENTS.md`. Press `c` to make a starter `AGENTS.md`.
+
+## Other commands
+
+| Command              | What it does                                                        |
+| :------------------- | :------------------------------------------------------------------ |
+| `/btw <question>`    | Ask a side question. The answer does not go into the conversation.  |
+| `/changelog`         | Open the December changelog in your browser.                        |
+| `/codesearch <query>`| Search the code in your workspace.                                  |
+| `/context`           | Show how much of the context window the session uses.               |
+| `/copy`              | Copy the last response to the clipboard.                            |
+| `/diff`              | Show the git diff of your workspace.                                |
+| `/exit`              | Exit the CLI.                                                       |
+| `/feedback`          | Open the issue page to send feedback or report a bug.              |
+| `/fork`              | Start a new branch of the conversation from this point.             |
+| `/help`              | Show commands, keyboard shortcuts, and CLI information.             |
+| `/mcp`               | Show the connected MCP servers and their tools.                     |
+| `/new`               | Start a new conversation.                                           |
+| `/open <file>`       | Open a file in the file viewer.                                     |
+| `/plan <goal>`       | Make a plan first. You approve it before December changes code.     |
+| `/plugin`            | Find, install, and manage plugins.                                  |
+| `/resume`            | Find and resume an earlier conversation.                            |
+| `/rewind`            | Restore files and conversation to an earlier turn.                  |
+| `/settings`          | Open the settings.                                                  |
+| `/switch`            | Change the active provider and model.                               |
+| `/tasks`             | Show background tasks.                                              |
+| `/undo`              | Revert the files and conversation from the last turn.               |
+| `/update`            | Update the CLI to the latest version.                               |
+| `/usage`             | Show your quota usage.                                              |
+| `/voice`             | Speak a prompt with your microphone (uses Deepgram).                |

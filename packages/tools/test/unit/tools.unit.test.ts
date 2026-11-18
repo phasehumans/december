@@ -7,7 +7,7 @@ import { EditFileTool, EditTool } from '../../src/edit'
 import { EditDiffTool } from '../../src/edit_diff'
 import { FindFilesTool } from '../../src/find'
 import { GrepSearchTool } from '../../src/grep'
-import { FOUNDATIONAL_TOOLS } from '../../src/index'
+import { CORE_TOOLS, DEFERRED_TOOLS, FOUNDATIONAL_TOOLS } from '../../src/index'
 import { LsTool } from '../../src/ls'
 import { ManageMemoryTool } from '../../src/manage_memory'
 import { ManageTaskTool } from '../../src/manage_task'
@@ -24,6 +24,16 @@ describe('Tools Schema & Registration (Unit)', () => {
         expect(names).toContain('write_file')
         expect(names).toContain('edit_file')
         expect(names).toContain('bash')
+    })
+
+    test('CORE_TOOLS includes search_tools so deferred and MCP tools can be activated', () => {
+        const names = CORE_TOOLS.map((t) => t.name)
+        expect(names).toContain('search_tools')
+    })
+
+    test('DEFERRED_TOOLS includes manage_memory', () => {
+        const names = DEFERRED_TOOLS.map((t) => t.name)
+        expect(names).toContain('manage_memory')
     })
 
     test('ReadTool and ReadFileTool are configured with aliases', () => {

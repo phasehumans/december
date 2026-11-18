@@ -1,28 +1,51 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Model Context Protocol (MCP)
-description: Connect external tools, databases, APIs, and custom services to December using the open Model Context Protocol.
+description: Connect MCP servers to December to give it more tools, such as databases and GitHub.
 currentSlug: 'mcp'
 ---
 
+This page helps you connect MCP servers to December, so December can use more tools.
+
 ## Overview
 
-December natively supports the open [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing your agent to connect to external developer tools, live databases, internal APIs, and third-party integrations.
+An MCP server is a program that gives tools to an agent. It uses the open [Model Context Protocol (MCP)](https://modelcontextprotocol.io). For example, a Postgres MCP server gives December a tool to query your database.
 
-Rather than overloading every prompt with hundreds of tool schemas, December uses a **deferred tool registry**. Tools from your connected MCP servers are indexed dynamically and activated on demand using `search_tools` only when needed, keeping token usage low and reasoning fast.
+December connects to the MCP servers in your configuration when the CLI starts.
 
----
+## Add a server with the CLI
 
-## Configuring MCP Servers
+Use `december mcp add` with a server name and a command or URL:
 
-You can configure MCP servers at two levels:
+```bash
+# Local server (stdio), with an environment variable
+december mcp add github npx -y @modelcontextprotocol/server-github -e GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...
 
-1. **Workspace Level** (`.december/mcp.json`): Scoped to the current repository. Perfect for project-specific tools like local databases, dev cluster connections, or repository bots.
-2. **Global Level** (`~/.december/mcp.json`): Available across all projects on your machine. Great for personal tools like Linear, GitHub CLI, or web search.
+# Remote server (URL), with a header
+december mcp add remote https://example.com/sse -H "Authorization: Bearer <token>"
 
-### Configuration Format
+# Save the server for this project only
+december mcp add postgres npx -y @modelcontextprotocol/server-postgres postgresql://localhost/mydb --scope project
+```
 
-December uses the standard `mcpServers` JSON structure:
+If you do not give `--scope project`, December saves the server in your global settings.
+
+Use these commands to manage servers:
+
+- `december mcp list` shows each server, its scope, and its status.
+- `december mcp get <name>` shows the configuration of one server.
+- `december mcp remove <name>` removes a server.
+
+## Configure servers in a file
+
+December reads MCP servers from two files:
+
+1. Global: the `mcpServers` key in `~/.december/config.json`. These servers work in every project.
+2. Project: `.december/mcp.json` in your project root. These servers work in this project only.
+
+If both files have a server with the same name, the project server replaces the global server.
+
+Both files use the standard `mcpServers` format:
 
 ```json
 {
@@ -42,55 +65,50 @@ December uses the standard `mcpServers` JSON structure:
                 "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
             }
         },
-        "filesystem": {
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+        "remote": {
+            "url": "https://example.com/sse",
+            "headers": {
+                "Authorization": "Bearer <token>"
+            }
         }
     }
 }
 ```
 
-### Supported Transports
+### Server fields
 
-- **STDIO**: Launches a local process via `command`, `args`, and optional `env` variables.
-- **SSE / HTTP**: Connects to remote MCP servers via server-sent events using `url` and optional authorization headers.
+- `command`, `args`, `env`, `cwd`: December starts a local process and talks to it over stdio.
+- `url`, `headers`: December connects to a remote server over SSE.
+- `disabled`: Set to `true` to keep the server in the file but not connect to it.
+- `eager`: Set to `true` to load all the tools of the server when the session starts. See [Tool loading](#tool-loading).
 
----
+## Manage servers in a session (`/mcp`)
 
-## Inspecting Servers In-Session (`/mcp`)
+Type `/mcp` to open the MCP view. The view shows each server, its scope, its status, and its tools.
 
-While running an interactive December session, type `/mcp` in the prompt bar to open the MCP management view:
+- Press Space to start or stop the selected server.
+- Press Enter to see the details and tools of a server.
+- Press `a` to add a server. You can select a preset, such as `github`, `postgres`, or `filesystem`, or press `c` to type a custom command.
+- Press `d` to remove a server.
+- Press `r` in the details view to restart a server.
+
+The status bar shows the number of MCP servers, for example `· 2 MCP`.
+
+## Tool names
+
+December adds a prefix to each MCP tool name. This prevents conflicts with the built-in tools of December. The format is:
 
 ```text
-> /mcp
-Active MCP Servers:
-  ● postgres (connected) - 4 tools registered
-  ● github (connected) - 12 tools registered
-  ○ linear (disabled)
+mcp_<server_name>_<tool_name>
 ```
 
-The status bar in the December prompt also displays the count of active MCP connections (e.g. `· 2 MCP`).
+For example, the `query` tool of the `postgres` server becomes `mcp_postgres_query`.
 
----
+## Tool loading
 
-## Tool Naming & Activation
+Many tools in the instructions make each request larger. December limits this:
 
-Tools exposed by MCP servers are automatically namespaced to avoid collisions with December's core tools:
-
-`mcp_<server_name>_<tool_name>`
-
-For example:
-
-- `mcp_postgres_query`
-- `mcp_github_create_issue`
-- `mcp_linear_search_issues`
-
-### On-Demand Tool Discovery
-
-Unlike naive agent loops that dump all tool definitions into every prompt, December indexes your MCP tools in a deferred registry:
-
-1. When you ask December: _"Check our local database for the latest user signup"_, December identifies that it needs database access.
-2. The agent executes `search_tools(query="database query")` to discover `mcp_postgres_query`.
-3. The tool definition is loaded into context just for that turn, executed, and the results are presented cleanly.
-
-This keeps your context window clean and prevents tool hallucinations.
+- If a server has 5 tools or fewer, December loads all of them when the session starts.
+- If a server has more than 5 tools, December does not load them at the start. December finds them with the `search_tools` tool when a task needs them.
+- If you set `"eager": true`, December loads all the tools of the server at the start.
+- If you set `"eager": false`, December never loads the tools at the start.

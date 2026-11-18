@@ -6,24 +6,20 @@
   <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <b>日本語</b> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a> | <a href="README.mr.md">मराठी</a>
 </p>
 
-December は (so much) better なコーディングエージェントです。コードの作成、バグ修正、コマンドの実行を通じて、開発をより迅速に進めるサポートをします。ターミナルで直接利用することも、お気に入りの IDE と併用することも可能です。
-
-**ウェブ版も利用可能: <a href="https://trydecember.com" target="_blank">trydecember.com</a>**
+December はオープンソースのコーディングエージェントです。コードを読み、変更を書き、コマンドを実行します。ターミナルでも、クラウド（[trydecember.com](https://trydecember.com)）でも使えます。
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
 </p>
 
-- **コード作成とコマンド実行:** 新機能の実装、バグ修正、テストの実行を指示すれば、自動で作業を行います。
-- **クラウドサンドボックス:** リモート環境とリアルタイムプレビューをすばやく立ち上げます。
-- **お好みの AI を持ち込み:** OpenAI、Anthropic、Gemini、その他 100 以上のモデルの API キーを使用するか、December にログインして December クレジットを利用できます。
-- **永続的なワークスペースメモリ:** コンテキストの劣化を防ぎながら、セッションをまたいでプロジェクトの規約やチームのルールを学習します。
-- **自律型マルチエージェントチーム:** バックグラウンドで並行してサブエージェントを立ち上げ、ドキュメント調査、デバッグ、テスト実行を行います。
-- **拡張可能な Skills & MCP:** 独自のカスタムスキルを組み込み、MCP 経由で外部開発ツールや API と連携します。
+- どのモデルでも使えます。契約中のプラン（Claude、ChatGPT、GitHub Copilot、Gemini）を連携するか、December にサインインするか、40 以上のプロバイダーの API キーを使えます。
+- クラウドで実行できます。December Cloud はプロジェクトをサンドボックスで実行し、アプリのライブプレビューを表示します。
+- 大きなタスクを分割できます。December はサブタスクを複数の補助エージェントに同時に任せられます。
+- ツールを追加できます。スキルで作業手順を教え、MCP でツールを接続できます。
 
-### クイックスタート
+## クイックスタート
 
-1. December をインストール:
+1. CLI をインストールします：
 
 ```bash
 npm install -g @trydecember/cli
@@ -31,6 +27,10 @@ npm install -g @trydecember/cli
 
 2. プロジェクトのディレクトリに移動して `december` を実行します。
 
-### フィードバック & バグ報告
+3. `/login` と入力してモデルを接続し、December にやりたいことを伝えます。
 
-バグの発見や機能リクエストがありますか？ [Issue を作成](https://github.com/phasehumans/december/issues) するか、[team@trydecember.com](mailto:team@trydecember.com) までメールでお問い合わせください。
+詳しくは[ドキュメント](https://trydecember.com/docs)をご覧ください。
+
+## フィードバック & バグ報告
+
+バグを見つけた場合や機能のご要望は、[Issue を作成](https://github.com/phasehumans/december/issues)するか、[team@trydecember.com](mailto:team@trydecember.com) までメールでお知らせください。
