@@ -544,15 +544,18 @@ describe('Differential 2D Screen Buffer Engine', () => {
             expect(isRaw()).toBe(false)
         })
 
-        it('enables mouse wheel and bracketed paste modes without button click hijacking', () => {
+        it('reports the mouse wheel as SGR mouse events, not as arrow keys', () => {
             const { screen, getWritten } = createMockScreen(10, 2)
             screen.start()
             const written = getWritten()
+            expect(written).toContain('\x1b[?1000h')
             expect(written).toContain('\x1b[?1006h')
-            expect(written).toContain('\x1b[?1007h')
             expect(written).toContain('\x1b[?2004h')
-            expect(written).not.toContain('\x1b[?1000h')
+            // Alternate scroll mode turns wheel ticks into arrow keys, which collide with prompt history
+            expect(written).not.toContain('\x1b[?1007h')
+            // No drag or motion tracking: only press and release (wheel) reports
             expect(written).not.toContain('\x1b[?1002h')
+            expect(written).not.toContain('\x1b[?1003h')
             screen.stop()
         })
     })

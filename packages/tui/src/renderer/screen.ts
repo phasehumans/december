@@ -50,7 +50,9 @@ export class DifferentialScreen {
         this.terminal.enterAlternateScreen()
         this.terminal.hideCursor()
         this.terminal.enableRawMode()
-        this.terminal.write('\x1b[?1006h\x1b[?1007h\x1b[?2004h')
+        // 1000 + 1006: report wheel ticks as SGR mouse events so they never reach the
+        // arrow-key handler (prompt history). Plain drag-select then needs Shift+drag.
+        this.terminal.write('\x1b[?1000h\x1b[?1006h\x1b[?2004h')
 
         this.unsubscribeResize = this.terminal.onResize((cols, rws) => {
             this.handleResize(cols, rws)

@@ -12,6 +12,7 @@ export const TIPS: readonly string[] = [
     'press Tab to autocomplete slash commands and file paths',
     'press Ctrl+J or Shift+Enter to insert a newline',
     'press Ctrl+C once to cancel a running tool or command',
+    'hold Shift while you drag to select and copy text',
     'place persistent project rules in AGENTS.md at repo root',
     'install skills into .december/skills to add specialized tools',
 ] as const
