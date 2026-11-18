@@ -20,7 +20,7 @@ describe('apps/docs navigation & content structure', () => {
 
     const getDocCategories = (): DocCategory[] => {
         const content = readFileSync(navPath, 'utf-8')
-        const match = content.match(/const docCategories(?::[^=]+)? = (\[[\s\S]*?\]);\n/)
+        const match = content.match(/const docCategories(?::[^=]+)? = (\[[\s\S]*?\n\]);?\n/)
         if (!match) {
             throw new Error('Could not find docCategories in src/lib/docs-nav.ts')
         }
