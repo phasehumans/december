@@ -3346,49 +3346,48 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('integrates butterflow queue for fluid token pacing and flushes instantly on finishStream', () => {
+    it('applies streamed text to the message immediately without pacing', () => {
         const app = new DifferentialApp({
             terminal,
             width: 80,
             height: 24,
-            butterflow: true,
         })
         app.start()
 
         app.state.input = 'test prompt'
         app.submitPrompt()
 
-        // Enqueue a burst of characters
-        app.appendStreamDelta('The quick brown fox jumps over the lazy dog')
+        app.appendStreamDelta('The quick brown ')
+        app.appendStreamDelta('fox jumps over the lazy dog')
 
-        const queue = (app as any).butterflowQueue
-        expect(queue).toBeDefined()
-        expect(queue.enabled).toBe(true)
-
-        // flushStream should immediately advance all remaining characters
-        app.flushStream()
         const lastMsg = app.state.messages[app.state.messages.length - 1]
+        expect(lastMsg?.role).toBe('assistant')
         expect(lastMsg?.content).toBe('The quick brown fox jumps over the lazy dog')
+        expect(lastMsg?.isStreaming).toBe(true)
+
+        app.flushStream()
+        expect(lastMsg?.isStreaming).toBe(false)
 
         app.stop()
     })
 
-    it('resets butterflow pending text on stream abort', () => {
+    it('keeps received text and appends the interrupt notice on stream abort', () => {
         const app = new DifferentialApp({
             terminal,
             width: 80,
             height: 24,
-            butterflow: true,
         })
         app.start()
 
         app.state.input = 'test prompt'
         app.submitPrompt()
 
-        app.appendStreamDelta('Some pending text that will be cancelled')
+        app.appendStreamDelta('Some partial answer')
         app.handleAbortStream()
 
-        expect((app as any).butterflowQueue.hasPending()).toBe(false)
+        const lastMsg = app.state.messages[app.state.messages.length - 1]
+        expect(lastMsg?.content).toContain('Some partial answer')
+        expect(lastMsg?.content).toContain('Interrupted')
         app.stop()
     })
 

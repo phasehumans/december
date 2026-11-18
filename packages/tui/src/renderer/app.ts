@@ -33,7 +33,6 @@ import {
 import { getFileQueryMatch, scoreAndSortFiles, type ScoredFile } from '../utils/fuzzy'
 import { expandPastes, storePaste } from '../utils/paste-manager'
 
-import { ButterflowQueue } from './butterflow'
 import { splitInputSequences } from './input-lexer'
 import { DifferentialScreen } from './screen'
 import { TerminalController } from './terminal'
@@ -389,7 +388,6 @@ export interface DifferentialAppState {
 }
 
 export interface DifferentialAppOptions extends DifferentialScreenOptions {
-    butterflow?: boolean
     cliVersion?: string
     latestVersion?: string
     modelLabel?: string
@@ -521,7 +519,6 @@ export function openBrowserUrl(url: string): void {
 export const DEFAULT_SETTINGS: SettingItem[] = [
     { id: 'provider', title: 'Active Provider', value: 'Claude' },
     { id: 'model', title: 'Active Model', value: 'Claude 3.5 Sonnet' },
-    { id: 'butterflow', title: 'Butterflow Streaming', value: 'on' },
     { id: 'tool_permission', title: 'Tool Permission', value: 'always-proceed' },
     { id: 'pathguard', title: 'PathGuard Protection', value: 'on' },
     { id: 'non_workspace', title: 'Non-Workspace Access', value: 'off' },
@@ -611,7 +608,6 @@ export class DifferentialApp {
     private toolRenderTimer: ReturnType<typeof setTimeout> | null = null
     private lastToolRenderTime = 0
     private static readonly TOOL_THROTTLE_MS = 33 // ~30fps max for tool output updates
-    private readonly butterflowQueue: ButterflowQueue
     private renderScheduled = false
 
     constructor(options?: DifferentialAppOptions) {
@@ -621,18 +617,6 @@ export class DifferentialApp {
             width: options?.width,
             height: options?.height,
             synchronized: options?.synchronized,
-        })
-
-        const butterflowEnabled =
-            options?.butterflow !== undefined
-                ? options.butterflow
-                : process.env.NODE_ENV !== 'test' && !process.env.BUN_TEST
-
-        this.butterflowQueue = new ButterflowQueue({
-            enabled: butterflowEnabled,
-            onDrip: (delta) => {
-                this.applyDrippedDelta(delta)
-            },
         })
 
         this.options = options
@@ -987,8 +971,6 @@ export class DifferentialApp {
             clearTimeout(this.streamRenderTimer)
             this.streamRenderTimer = null
         }
-
-        this.butterflowQueue.destroy()
 
         if (
             this.stdinListener &&
@@ -4014,9 +3996,6 @@ export class DifferentialApp {
                     else if (current.value === 'always-ask') current.value = 'always-proceed'
                     else if (current.value === 'all') current.value = 'one-at-a-time'
                     else if (current.value === 'one-at-a-time') current.value = 'all'
-                    if (current.id === 'butterflow') {
-                        this.butterflowQueue.enabled = current.value === 'on'
-                    }
                     this.showToast(`Updated ${current.title}: [${current.value}]`, 'success')
                     if (this.onSettingChangeCallback) {
                         try {
@@ -6942,7 +6921,6 @@ export class DifferentialApp {
     }
 
     flushStream(): void {
-        this.butterflowQueue.flush()
         if (this.streamRenderTimer) {
             clearTimeout(this.streamRenderTimer)
             this.streamRenderTimer = null
@@ -6980,7 +6958,6 @@ export class DifferentialApp {
             clearTimeout(this.toolRenderTimer)
             this.toolRenderTimer = null
         }
-        this.butterflowQueue.reset()
         this.flushStream()
         this.stopSpinner()
         this.state.isStreaming = false
@@ -6991,7 +6968,7 @@ export class DifferentialApp {
         if (this.onAbortCallback) {
             this.onAbortCallback()
         } else {
-            this.applyDrippedDelta('\n\nInterrupted · What should December do instead?')
+            this.applyStreamDelta('\n\nInterrupted · What should December do instead?')
         }
         this.showToast('Aborted.', 'info')
         this.render()
@@ -7012,10 +6989,10 @@ export class DifferentialApp {
             }
         }
 
-        this.butterflowQueue.enqueue(delta)
+        this.applyStreamDelta(delta)
     }
 
-    private applyDrippedDelta(delta: string): void {
+    private applyStreamDelta(delta: string): void {
         if (!delta) return
 
         const lastMsg = this.state.messages[this.state.messages.length - 1]
@@ -7193,18 +7170,6 @@ export class DifferentialApp {
             this.state.isReadingMode = true
         }
         this.requestRender()
-    }
-
-    setButterflow(enabled: boolean): void {
-        this.butterflowQueue.enabled = enabled
-        const setting = this.state.settings.find((s) => s.id === 'butterflow')
-        if (setting) {
-            setting.value = enabled ? 'on' : 'off'
-        }
-    }
-
-    isButterflowEnabled(): boolean {
-        return this.butterflowQueue.enabled
     }
 
     scrollToBottom(): void {
