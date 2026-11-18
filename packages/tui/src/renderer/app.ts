@@ -6979,6 +6979,13 @@ export class DifferentialApp {
             this.onAbortCallback()
         } else {
             this.applyStreamDelta('\n\nInterrupted · What should December do instead?')
+            // The notice is final text, not a live stream: settle it so nothing stays live
+            const notice = this.state.messages[this.state.messages.length - 1]
+            if (notice) notice.isStreaming = false
+            if (this.streamRenderTimer) {
+                clearTimeout(this.streamRenderTimer)
+                this.streamRenderTimer = null
+            }
         }
         this.showToast('Aborted.', 'info')
         this.render()

@@ -251,12 +251,76 @@ interface CacheEntry {
 
 export const THOUGHT_DWELL_MS = 2500
 
-function hasLiveBefore(messages: MessageItem[], end: number): boolean {
-    for (let i = 0; i < end; i++) {
-        const m = messages[i]
-        if (m && (m.isStreaming || m.toolCall?.status === 'running')) return true
+function isLiveMessage(m: MessageItem | undefined): boolean {
+    return Boolean(m && (m.isStreaming || m.toolCall?.status === 'running'))
+}
+
+/**
+ * Lines for messages [0, end) of a conversation, cached while those messages are unchanged.
+ * Validation compares each message's identity, content, tool status and tool output by
+ * reference: one pointer check per field, so a hit stays cheap, and an in-place edit or a
+ * replaced message (as the login flow does) still invalidates the entry.
+ */
+class PrefixLineCache {
+    private refs: MessageItem[] = []
+    private contents: (string | undefined)[] = []
+    private statuses: (string | undefined)[] = []
+    private outputs: (string | undefined)[] = []
+    private width = 0
+    private expandTools = false
+    private lines: FormattedLine[] | null = null
+
+    get(
+        messages: MessageItem[],
+        end: number,
+        width: number,
+        expandTools: boolean
+    ): FormattedLine[] | null {
+        if (
+            !this.lines ||
+            this.refs.length !== end ||
+            this.width !== width ||
+            this.expandTools !== expandTools
+        ) {
+            return null
+        }
+        for (let i = 0; i < end; i++) {
+            const m = messages[i]!
+            if (
+                this.refs[i] !== m ||
+                this.contents[i] !== (m.content ?? m.text) ||
+                this.statuses[i] !== m.toolCall?.status ||
+                this.outputs[i] !== m.toolCall?.output
+            ) {
+                return null
+            }
+        }
+        return this.lines
     }
-    return false
+
+    set(
+        messages: MessageItem[],
+        end: number,
+        width: number,
+        expandTools: boolean,
+        lines: FormattedLine[]
+    ): void {
+        this.refs = messages.slice(0, end)
+        this.contents = this.refs.map((m) => m.content ?? m.text)
+        this.statuses = this.refs.map((m) => m.toolCall?.status)
+        this.outputs = this.refs.map((m) => m.toolCall?.output)
+        this.width = width
+        this.expandTools = expandTools
+        this.lines = lines
+    }
+
+    clear(): void {
+        this.refs = []
+        this.contents = []
+        this.statuses = []
+        this.outputs = []
+        this.lines = null
+    }
 }
 
 export class MessageLineCache {
@@ -270,17 +334,10 @@ export class MessageLineCache {
     private lastAggregateSpinner = ''
     private lastAggregateExpandTools = false
     private lastAggregateResult: FormattedLine[] | null = null
-    private lastPriorMessages: MessageItem[] | null = null
-    private lastPriorLength = 0
-    private lastPriorWidth = 0
-    private lastPriorExpandTools = false
-    private lastPriorResult: FormattedLine[] | null = null
-    private settledTurnsMessages: MessageItem[] | null = null
-    private settledTurnsEnd = 0
-    private settledTurnsBoundary: MessageItem | null = null
-    private settledTurnsWidth = 0
-    private settledTurnsExpandTools = false
-    private settledTurnsResult: FormattedLine[] | null = null
+    /** Everything before a single live trailing message. */
+    private readonly priorCache = new PrefixLineCache()
+    /** Settled turns before the turn that holds the first live message. */
+    private readonly settledTurnsCache = new PrefixLineCache()
 
     /**
      * Clears all cached lines.
@@ -294,22 +351,13 @@ export class MessageLineCache {
         this.lastAggregateLastKey = ''
         this.lastAggregateExpandTools = false
         this.lastAggregateResult = null
-        this.lastPriorMessages = null
-        this.lastPriorLength = 0
-        this.lastPriorWidth = 0
-        this.lastPriorExpandTools = false
-        this.lastPriorResult = null
-        this.settledTurnsMessages = null
-        this.settledTurnsEnd = 0
-        this.settledTurnsBoundary = null
-        this.settledTurnsResult = null
+        this.priorCache.clear()
+        this.settledTurnsCache.clear()
     }
 
-    /**
-     * Lines for the turns before `end`. They hold no live message, so they cannot change
-     * while a later turn streams or runs tools, and are laid out once instead of per frame.
-     */
-    private getSettledTurnLines(
+    /** Lines for messages [0, end), laid out once and reused until one of them changes. */
+    private getPrefixLines(
+        cache: PrefixLineCache,
         messages: MessageItem[],
         end: number,
         width: number,
@@ -317,29 +365,10 @@ export class MessageLineCache {
         expandTools: boolean,
         tip?: string | null
     ): FormattedLine[] {
-        const boundary = messages[end - 1] ?? null
-        if (
-            this.settledTurnsResult &&
-            this.settledTurnsMessages === messages &&
-            this.settledTurnsEnd === end &&
-            this.settledTurnsBoundary === boundary &&
-            this.settledTurnsWidth === width &&
-            this.settledTurnsExpandTools === expandTools
-        ) {
-            return this.settledTurnsResult
-        }
-
-        const lines = this.getLines(messages.slice(0, end), width, {
-            spinnerGlyph: spinner,
-            expandTools,
-            tip,
-        })
-        this.settledTurnsMessages = messages
-        this.settledTurnsEnd = end
-        this.settledTurnsBoundary = boundary
-        this.settledTurnsWidth = width
-        this.settledTurnsExpandTools = expandTools
-        this.settledTurnsResult = lines
+        const cached = cache.get(messages, end, width, expandTools)
+        if (cached) return cached
+        const lines = this.layoutAll(messages.slice(0, end), width, spinner, expandTools, tip)
+        cache.set(messages, end, width, expandTools, lines)
         return lines
     }
 
@@ -1272,10 +1301,9 @@ export class MessageLineCache {
         const expandTools = Boolean(options?.expandTools)
         const tip = options?.tip
 
-        // Check if any message is actively streaming or running
-        const hasLiveActivity = messages.some(
-            (m) => m.isStreaming || m.toolCall?.status === 'running'
-        )
+        // One scan finds the first live (streaming or running) message
+        const firstLive = messages.findIndex(isLiveMessage)
+        const hasLiveActivity = firstLive >= 0
 
         const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null
         const lastKey = lastMsg ? this.computeContentKey(lastMsg, expandTools, true, tip) : ''
@@ -1292,45 +1320,19 @@ export class MessageLineCache {
             return [this.lastAggregateResult]
         }
 
-        // Streaming performance fast-path: if only the latest trailing message is actively streaming
-        // or running, reuse the cached prior lines without re-partitioning or re-traversing history
+        // Streaming fast path: only the trailing message is live, so reuse the cached lines
+        // for everything before it and format just that message
         const lastIdx = messages.length - 1
-        const onlyLastIsActive =
-            hasLiveActivity &&
-            messages.length > 1 &&
-            Boolean(lastMsg && (lastMsg.isStreaming || lastMsg.toolCall?.status === 'running')) &&
-            !hasLiveBefore(messages, lastIdx)
-
-        if (onlyLastIsActive && lastMsg) {
-            if (
-                this.lastPriorResult &&
-                this.lastPriorMessages === messages &&
-                this.lastPriorLength === lastIdx &&
-                this.lastPriorWidth === width &&
-                this.lastPriorExpandTools === expandTools
-            ) {
-                const lastLines = this.getMessageLines(
-                    lastMsg,
-                    width,
-                    spinner,
-                    expandTools,
-                    true,
-                    tip
-                )
-                return [this.lastPriorResult, lastLines]
-            }
-
-            const priorMsgs = messages.slice(0, lastIdx)
-            const priorLines = this.getLines(priorMsgs, width, {
-                spinnerGlyph: spinner,
+        if (firstLive === lastIdx && lastIdx > 0 && lastMsg) {
+            const priorLines = this.getPrefixLines(
+                this.priorCache,
+                messages,
+                lastIdx,
+                width,
+                spinner,
                 expandTools,
-                tip,
-            })
-            this.lastPriorResult = priorLines
-            this.lastPriorMessages = messages
-            this.lastPriorLength = lastIdx
-            this.lastPriorWidth = width
-            this.lastPriorExpandTools = expandTools
+                tip
+            )
             const lastLines = this.getMessageLines(lastMsg, width, spinner, expandTools, true, tip)
             return [priorLines, lastLines]
         }
@@ -1340,15 +1342,13 @@ export class MessageLineCache {
         // A turn starts at a user message, and both turn rollups and discovery grouping break
         // there, so splitting at that index gives the same lines as a full layout.
         if (hasLiveActivity) {
-            const firstLive = messages.findIndex(
-                (m) => m.isStreaming || m.toolCall?.status === 'running'
-            )
             let turnStart = firstLive
             while (turnStart > 0 && messages[turnStart]?.role !== 'user') {
                 turnStart--
             }
             if (turnStart > 0) {
-                const settledLines = this.getSettledTurnLines(
+                const settledLines = this.getPrefixLines(
+                    this.settledTurnsCache,
                     messages,
                     turnStart,
                     width,
@@ -1356,15 +1356,45 @@ export class MessageLineCache {
                     expandTools,
                     tip
                 )
-                const liveSegments = this.getLineSegments(messages.slice(turnStart), width, {
-                    spinnerGlyph: spinner,
+                const liveLines = this.layoutAll(
+                    messages.slice(turnStart),
+                    width,
+                    spinner,
                     expandTools,
-                    tip,
-                })
-                return [settledLines, ...liveSegments]
+                    tip
+                )
+                return [settledLines, liveLines]
             }
         }
 
+        const allLines = this.layoutAll(messages, width, spinner, expandTools, tip)
+
+        if (!hasLiveActivity) {
+            this.lastAggregateMessages = messages
+            this.lastAggregateLength = messages.length
+            this.lastAggregateLastKey = lastKey
+            this.lastAggregateWidth = width
+            this.lastAggregateSpinner = spinner
+            this.lastAggregateExpandTools = expandTools
+            this.lastAggregateResult = allLines
+        } else {
+            this.lastAggregateResult = null
+        }
+
+        return [allLines]
+    }
+
+    /**
+     * Full layout of `messages`: turn partitioning, the > 25 step rollup and discovery
+     * grouping. Touches only per-message caches, never the aggregate or prefix caches.
+     */
+    private layoutAll(
+        messages: MessageItem[],
+        width: number,
+        spinner: string,
+        expandTools: boolean,
+        tip?: string | null
+    ): FormattedLine[] {
         let allLines: FormattedLine[] = []
 
         if (expandTools) {
@@ -1463,18 +1493,6 @@ export class MessageLineCache {
             }
         }
 
-        if (!hasLiveActivity) {
-            this.lastAggregateMessages = messages
-            this.lastAggregateLength = messages.length
-            this.lastAggregateLastKey = lastKey
-            this.lastAggregateWidth = width
-            this.lastAggregateSpinner = spinner
-            this.lastAggregateExpandTools = expandTools
-            this.lastAggregateResult = allLines
-        } else {
-            this.lastAggregateResult = null
-        }
-
-        return [allLines]
+        return allLines
     }
 }

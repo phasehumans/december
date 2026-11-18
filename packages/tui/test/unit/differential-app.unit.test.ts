@@ -3388,6 +3388,8 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         const lastMsg = app.state.messages[app.state.messages.length - 1]
         expect(lastMsg?.content).toContain('Some partial answer')
         expect(lastMsg?.content).toContain('Interrupted')
+        // Nothing stays live after an abort, so the line cache can settle again
+        expect(app.state.messages.some((m) => m.isStreaming)).toBe(false)
         app.stop()
     })
 

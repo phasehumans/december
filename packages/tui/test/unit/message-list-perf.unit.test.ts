@@ -113,4 +113,40 @@ describe('MessageListView frame cost', () => {
         cache.getLines(messages, 120)
         expect(cache.getLines(messages, 40)).toEqual(new MessageLineCache().getLines(messages, 40))
     })
+
+    it('shows an in-place edit to an earlier turn while tools are running', () => {
+        const messages = buildHistory(5)
+        messages.push({ role: 'user', content: 'now' })
+        messages.push({
+            role: 'tool',
+            toolCall: { id: 'a', name: 'read_file', command: 'Read(a.ts)', status: 'running' },
+        })
+        messages.push({
+            role: 'tool',
+            toolCall: { id: 'b', name: 'grep_search', command: 'Search(foo)', status: 'running' },
+        })
+
+        const cache = new MessageLineCache()
+        cache.getLines(messages, 100)
+
+        // Same array, same boundary message: only an earlier message changes in place
+        messages[2]!.content = 'Edited earlier answer'
+        const text = (lines: ReturnType<MessageLineCache['getLines']>) =>
+            lines.map((line) => line.map((seg) => seg.text).join('')).join('\n')
+
+        expect(text(cache.getLines(messages, 100))).toContain('Edited earlier answer')
+    })
+
+    it('shows a replaced earlier message while the last message streams', () => {
+        const messages = buildHistory(5)
+        messages.push({ role: 'assistant', content: 'streaming', isStreaming: true })
+
+        const cache = new MessageLineCache()
+        cache.getLines(messages, 100)
+
+        messages[2] = { role: 'assistant', content: 'Replaced answer' }
+        const lines = cache.getLines(messages, 100)
+        const text = lines.map((line) => line.map((seg) => seg.text).join('')).join('\n')
+        expect(text).toContain('Replaced answer')
+    })
 })
