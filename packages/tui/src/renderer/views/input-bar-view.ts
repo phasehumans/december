@@ -14,6 +14,7 @@ export interface InputBarViewProps {
     isStreaming?: boolean
     activeModel?: string
     modelLabel?: string
+    isDeepEffort?: boolean
     isAuthenticated?: boolean
     authMethod?: string
     contextTokens?: number
@@ -348,12 +349,33 @@ export const InputBarView = {
             } else {
                 modelText = props.modelLabel || props.activeModel || 'Gemini 3.7 Flash'
             }
+            // Effort suffix: only shown for Deep. Kept visible on narrow
+            // terminals by shortening the model name first.
+            const effortText =
+                props.isAuthenticated !== false && props.isDeepEffort ? ' (Deep)' : ''
+            const rightReserve = props.contextTokens !== undefined ? 24 : 2
+            const maxModelWidth = Math.max(
+                8,
+                width - paddingLeft - effortText.length - rightReserve
+            )
+            if (modelText.length > maxModelWidth) {
+                modelText = `${modelText.slice(0, maxModelWidth - 1)}…`
+            }
             drawText(buffer, modelText, {
                 x: leftX,
                 y: statusY,
                 style: { fg: THEME.colors.muted },
             })
             leftX += modelText.length
+
+            if (effortText) {
+                drawText(buffer, effortText, {
+                    x: leftX,
+                    y: statusY,
+                    style: { fg: THEME.colors.brand },
+                })
+                leftX += effortText.length
+            }
 
             // Tasks indicator
             const totalTasks = props.tasksCount ?? 0

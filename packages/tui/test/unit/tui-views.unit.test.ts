@@ -1782,93 +1782,56 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
     })
 
     describe('MemoryViewMenuView', () => {
-        it('renders project rules vs memory tabs and document line numbers', () => {
+        it('renders AGENTS.md with line numbers and no tabs', () => {
             const buffer = new ScreenBuffer(80, 12)
             MemoryViewMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
                 height: 12,
-                activeTab: 'rules',
-                ruleFiles: [
-                    {
-                        path: 'AGENTS.md',
-                        content: '# AGENTS.md\nRule 1: No Ink\nRule 2: No React',
-                    },
-                ],
-                selectedRuleIndex: 0,
-                ruleCursorLineIndex: 0,
-                ruleScrollOffset: 0,
-            })
-
-            expect(buffer.getLine(0)).toContain('memory')
-            expect(buffer.getLine(0)).toContain('rules')
-            expect(buffer.getLine(2)).toContain('AGENTS.md')
-            expect(buffer.getLine(4)).toContain('1 # AGENTS.md')
-            expect(buffer.getLine(5)).toContain('2 Rule 1: No Ink')
-            expect(buffer.getLine(buffer.height - 1)).toContain('scroll')
-            expect(buffer.getLine(buffer.height - 1)).toContain('close')
-            expect(buffer.getLine(buffer.height - 1)).not.toContain('open in editor')
-            expect(buffer.getLine(buffer.height - 1)).not.toContain('reload')
-        })
-
-        it('renders memory tab with budget stats, entries, and interactive footer', () => {
-            const buffer = new ScreenBuffer(80, 12)
-            MemoryViewMenuView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                height: 12,
-                activeTab: 'memory',
-                memoryDetails: {
-                    filePath: '.december/memory.md',
-                    totalBytes: 512,
-                    maxBytes: 2048,
-                    budgetPercent: 25,
-                    entries: [
-                        { category: 'build_and_test', text: 'bun test --bail' },
-                        { category: 'conventions', text: 'no em dashes' },
-                    ],
+                file: {
+                    path: 'AGENTS.md',
+                    content: '# AGENTS.md\nRule 1: No Ink\nRule 2: No React',
                 },
-                selectedEntryIndex: 0,
+                cursorLineIndex: 0,
                 scrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('memory')
-            expect(buffer.getLine(0)).toContain('rules')
-            expect(buffer.getLine(2)).toContain('.december/memory.md')
-            expect(buffer.getLine(2)).toContain('2 items')
-            expect(buffer.getLine(4)).toContain('[build_and_test] bun test --bail')
-            expect(buffer.getLine(5)).toContain('[conventions] no em dashes')
-            expect(buffer.getLine(buffer.height - 1)).toContain('add')
-            expect(buffer.getLine(buffer.height - 1)).toContain('forget')
+            expect(buffer.getLine(0)).toContain('AGENTS.md · 3 lines')
+            expect(buffer.getLine(0)).not.toContain('rules')
+            expect(buffer.getLine(2)).toContain('1 # AGENTS.md')
+            expect(buffer.getLine(3)).toContain('2 Rule 1: No Ink')
+            expect(buffer.getLine(buffer.height - 1)).toContain('scroll')
             expect(buffer.getLine(buffer.height - 1)).toContain('close')
-            expect(buffer.getLine(buffer.height - 1)).not.toContain('open in editor')
+            expect(buffer.getLine(buffer.height - 1)).not.toContain('switch tab')
+            expect(buffer.getLine(buffer.height - 1)).not.toContain('create')
         })
 
-        it('renders inline forget confirmation tag and contextual confirmation footer', () => {
+        it('renders fallback file path such as CLAUDE.md', () => {
             const buffer = new ScreenBuffer(80, 12)
             MemoryViewMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
                 height: 12,
-                activeTab: 'memory',
-                memoryDetails: {
-                    filePath: '.december/memory.md',
-                    totalBytes: 512,
-                    maxBytes: 2048,
-                    budgetPercent: 25,
-                    entries: [{ category: 'build_and_test', text: 'bun test --bail' }],
-                },
-                selectedEntryIndex: 0,
-                confirmForgetText: 'bun test --bail',
+                file: { path: 'CLAUDE.md', content: 'rule' },
             })
 
-            expect(buffer.getLine(4)).toContain('[build_and_test] bun test --bail')
-            expect(buffer.getLine(4)).toContain('[Forget? (y/n)]')
-            expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
-            expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
+            expect(buffer.getLine(0)).toContain('CLAUDE.md · 1 line')
+        })
+
+        it('renders empty state with create shortcut when no file exists', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            MemoryViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                file: null,
+            })
+
+            expect(buffer.getLine(2)).toContain('No AGENTS.md found')
+            expect(buffer.getLine(buffer.height - 1)).toContain('create AGENTS.md')
         })
 
         it('renders back label in footer when canGoBack is true', () => {
@@ -1878,40 +1841,11 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 y: 0,
                 width: 80,
                 height: 12,
-                activeTab: 'rules',
-                ruleFiles: [{ path: 'AGENTS.md', content: 'rule' }],
+                file: { path: 'AGENTS.md', content: 'rule' },
                 canGoBack: true,
             })
 
             expect(buffer.getLine(buffer.height - 1)).toContain('back')
-        })
-
-        it('renders inline add prompt when isAddingEntry is true', () => {
-            const buffer = new ScreenBuffer(80, 12)
-            MemoryViewMenuView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                height: 12,
-                activeTab: 'memory',
-                memoryDetails: {
-                    filePath: '.december/memory.md',
-                    totalBytes: 512,
-                    maxBytes: 2048,
-                    budgetPercent: 25,
-                    entries: [{ category: 'conventions', text: 'no em dashes' }],
-                },
-                isAddingEntry: true,
-                newEntryText: 'always use bun',
-                newEntryCategory: 'build_and_test',
-            })
-
-            expect(buffer.getLine(buffer.height - 3)).toContain(
-                'add memory [build_and_test] › always use bun'
-            )
-            expect(buffer.getLine(buffer.height - 1)).toContain('save')
-            expect(buffer.getLine(buffer.height - 1)).toContain('cycle category')
-            expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
         })
     })
 
@@ -2040,7 +1974,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(3)).toContain('active')
             expect(buffer.getLine(3)).toContain('[Disconnect? (y/n)]')
             expect(buffer.getLine(5)).toContain('Google (Antigravity)')
-            expect(buffer.getLine(5)).toContain('✓')
+            expect(buffer.getLine(5)).toContain('connected')
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
             expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
         })
@@ -2059,7 +1993,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(3)).toContain('Anthropic (Claude)')
-            expect(buffer.getLine(4)).toContain('GitHub (Copilot) ✓')
+            expect(buffer.getLine(4)).toContain('GitHub (Copilot) connected')
             expect(buffer.getLine(5)).toContain('Google (Antigravity) active')
 
             const labelCell = buffer.get(4, 5)
@@ -2073,9 +2007,9 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(activeBadgeCell?.fg).toBe(THEME.colors.success)
 
             const connectedLine = buffer.getLine(4)
-            const connectedIdx = connectedLine.indexOf('✓')
+            const connectedIdx = connectedLine.indexOf('connected')
             const connectedBadgeCell = buffer.get(connectedIdx, 4)
-            expect(connectedBadgeCell?.char).toBe('✓')
+            expect(connectedBadgeCell?.char).toBe('c')
             expect(connectedBadgeCell?.fg).toBe(THEME.colors.muted)
         })
 
@@ -2120,7 +2054,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 confirmDeleteValue: 'provider:openai',
             })
 
-            expect(buffer.getLine(4)).toContain('OpenAI ✓')
+            expect(buffer.getLine(4)).toContain('OpenAI connected')
             expect(buffer.getLine(4)).toContain('[Delete? (y/n)]')
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
             expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
@@ -2151,7 +2085,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.get(activeIdx, 4)?.fg).toBe(THEME.colors.success)
 
             const anthropicLine = buffer.getLine(3)
-            const configuredIdx = anthropicLine.indexOf('✓')
+            const configuredIdx = anthropicLine.indexOf('connected')
             expect(buffer.get(configuredIdx, 3)?.fg).toBe(THEME.colors.muted)
         })
 

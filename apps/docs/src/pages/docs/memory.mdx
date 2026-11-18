@@ -39,25 +39,15 @@ December can also add and remove entries itself with the `manage_memory` tool, i
 
 December adds at most 2,048 bytes of memory to its instructions. If your memory files are larger, December cuts the text at 2 KB. Keep each entry short, and remove entries that are out of date.
 
-The `/memory` view shows a warning when memory is at 85% of the limit or more.
+## View rules with `/memory`
 
-## Manage memory with `/memory`
+Type `/memory` to see the rule files that December reads. December uses the same files and folders as the agent. See [Where December looks for rules](#where-december-looks-for-rules). If December finds more than one file, the view shows all of them. The most specific file is first in the title.
 
-Type `/memory` to open the memory view. The view has two tabs: `memory` and `rules`. Press Tab to switch between them.
+- Press `↑` and `↓` to scroll the file.
+- Press `c` to make a starter `AGENTS.md` file. This key shows only when December finds no rule file. December puts the file at the root of your git repository. If there is no git repository, December puts it in your current folder. December does not replace a file that exists.
+- Press Esc to close the view.
 
-On the `memory` tab:
-
-- Press `a` to add an entry. Type the text, press Tab to select a category, then press Enter.
-- Press `d` to remove the selected entry. Press `y` to confirm.
-- Press `↑` and `↓` to select an entry.
-
-On the `rules` tab:
-
-- Press `↑` and `↓` to scroll the rule file.
-- Press `[` and `]` to switch between rule files, if you have more than one.
-- Press `c` to make a starter `AGENTS.md` file. This key shows only when December finds no rule files.
-
-Press Esc to close the view.
+The view is read only. To change the file, edit it in your editor.
 
 ## Where December looks for rules
 

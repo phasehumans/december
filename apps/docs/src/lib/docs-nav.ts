@@ -72,7 +72,7 @@ export const docCategories: DocsNavCategory[] = [
             {
                 slug: 'memory',
                 label: 'Workspace Memory & Rules',
-                desc: 'Autonomous learning, .december/memory.md, and the interactive /memory manager.',
+                desc: 'Autonomous learning, .december/memory.md, and the /memory view for AGENTS.md.',
             },
             {
                 slug: 'skills',

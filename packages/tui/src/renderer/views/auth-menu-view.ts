@@ -241,7 +241,7 @@ export const AuthMenuView = {
                     badge = ' active'
                     badgeColor = THEME.colors.success
                 } else if (isConfigured) {
-                    badge = ` ${THEME.glyphs.connected}`
+                    badge = ' connected'
                     badgeColor = THEME.colors.muted
                 }
 
@@ -546,7 +546,7 @@ export const AuthMenuView = {
                     badge = ' active'
                     badgeColor = THEME.colors.success
                 } else if (isConfigured) {
-                    badge = ` ${THEME.glyphs.connected}`
+                    badge = ' connected'
                     badgeColor = THEME.colors.muted
                 }
 

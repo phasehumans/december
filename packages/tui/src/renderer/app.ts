@@ -68,14 +68,7 @@ import {
     type McpViewMode,
     MCP_PRESET_TEMPLATES,
 } from './views/mcp-menu-view'
-import {
-    MemoryViewMenuView,
-    MEMORY_CATEGORIES,
-    type MemoryTab,
-    type MemoryDocument,
-    type MemoryDetailsProps,
-    type RuleFileViewItem,
-} from './views/memory-view-menu-view'
+import { MemoryViewMenuView, type AgentsFileViewItem } from './views/memory-view-menu-view'
 import { MessageLineCache } from './views/message-line-cache'
 import { MessageListView, type MessageItem } from './views/message-list-view'
 import {
@@ -285,22 +278,11 @@ export interface DifferentialAppState {
     weeklyStats?: WeeklyStats
     balance?: { supported: boolean; balance?: string; currency?: string; error?: string }
 
-    // Memory view state
-    memoryTab: MemoryTab
-    memoryInitialTab: MemoryTab
+    // Memory view state (AGENTS.md viewer)
     memoryReturnOverlay: OverlayType
-    memoryDocuments: MemoryDocument[]
-    workspaceMemoryDetails: MemoryDetailsProps | null
-    memoryRuleFiles: RuleFileViewItem[]
-    memoryActiveDocIndex: number
+    memoryFile: AgentsFileViewItem | null
     memoryCursorLine: number
     memoryScrollOffset: number
-    memoryRuleScrollOffset: number
-    memorySelectedIndex: number
-    memoryConfirmForgetText: string | null
-    isAddingMemory: boolean
-    memoryNewEntryText: string
-    memoryNewEntryCategoryIndex: number
     memoryIsLoading: boolean
 
     // Rewind view state
@@ -471,14 +453,7 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     usageStats?: UsageStats
     dailyUsage?: DailyUsageEntry[]
     rewindTurns?: RewindTurnEntry[]
-    memoryDocuments?: MemoryDocument[]
-    onLoadMemoryDetails?: () => Promise<MemoryDetailsProps | null>
-    onLoadProjectRules?: () => Promise<RuleFileViewItem[]>
-    onRecordMemory?: (
-        text: string,
-        category: string
-    ) => Promise<{ success: boolean; message: string }>
-    onForgetMemory?: (text: string) => Promise<{ success: boolean; message: string }>
+    onLoadAgentsFile?: () => Promise<AgentsFileViewItem | null>
     onScaffoldRules?: () => Promise<{ success: boolean; message: string }>
     onOpenEditor?: (filePath: string) => Promise<void>
     workspaceFiles?: string[]
@@ -732,22 +707,11 @@ export class DifferentialApp {
             },
             dailyUsage: options?.dailyUsage || [],
 
-            // Memory view state
-            memoryTab: 'memory',
-            memoryInitialTab: 'memory',
+            // Memory view state (AGENTS.md viewer)
             memoryReturnOverlay: 'none',
-            memoryDocuments: options?.memoryDocuments || [],
-            workspaceMemoryDetails: null,
-            memoryRuleFiles: [],
-            memoryActiveDocIndex: 0,
+            memoryFile: null,
             memoryCursorLine: 0,
             memoryScrollOffset: 0,
-            memoryRuleScrollOffset: 0,
-            memorySelectedIndex: 0,
-            memoryConfirmForgetText: null,
-            isAddingMemory: false,
-            memoryNewEntryText: '',
-            memoryNewEntryCategoryIndex: 0,
             memoryIsLoading: false,
 
             // Rewind view state
@@ -1409,39 +1373,26 @@ export class DifferentialApp {
         this.render()
     }
 
-    async openMemoryView(
-        initialTab: MemoryTab = 'memory',
-        returnOverlay: OverlayType = 'none'
-    ): Promise<void> {
+    async openMemoryView(returnOverlay: OverlayType = 'none'): Promise<void> {
         this.state.activeOverlay = 'memory'
-        this.state.memoryTab = initialTab
-        this.state.memoryInitialTab = initialTab
         this.state.memoryReturnOverlay = returnOverlay
-        this.state.memorySelectedIndex = 0
-        this.state.memoryConfirmForgetText = null
         this.state.memoryScrollOffset = 0
         this.state.memoryCursorLine = 0
-        this.state.memoryRuleScrollOffset = 0
-        this.state.isAddingMemory = false
-        this.state.memoryNewEntryText = ''
         this.state.memoryIsLoading = true
         this.render()
 
-        await this.loadMemoryAndRules()
+        await this.loadAgentsFile()
     }
 
-    async loadMemoryAndRules(): Promise<void> {
+    async loadAgentsFile(): Promise<void> {
         this.state.memoryIsLoading = true
         this.render()
         try {
-            if (this.options?.onLoadMemoryDetails) {
-                this.state.workspaceMemoryDetails = await this.options.onLoadMemoryDetails()
-            }
-            if (this.options?.onLoadProjectRules) {
-                this.state.memoryRuleFiles = await this.options.onLoadProjectRules()
+            if (this.options?.onLoadAgentsFile) {
+                this.state.memoryFile = await this.options.onLoadAgentsFile()
             }
         } catch {
-            // Intentionally swallowed: ignore memory loading error
+            // Intentionally swallowed: show empty state when AGENTS.md cannot be read
         } finally {
             this.state.memoryIsLoading = false
             this.render()
@@ -1887,13 +1838,6 @@ export class DifferentialApp {
                     this.render()
                     return
                 }
-            }
-
-            if (overlay === 'memory' && this.state.isAddingMemory) {
-                const entryChunk = cleaned.replace(/[\r\n]+/g, ' ')
-                this.state.memoryNewEntryText += entryChunk
-                this.render()
-                return
             }
 
             if (overlay === 'skills' && this.state.skillsIsSearching) {
@@ -3143,10 +3087,10 @@ export class DifferentialApp {
             return
         }
 
-        if (cmd === 'memory' || cmd === 'rules') {
+        if (cmd === 'memory') {
             const returnOverlay =
                 this.state.activeOverlay !== 'none' ? this.state.activeOverlay : 'none'
-            this.openMemoryView(cmd === 'rules' ? 'rules' : 'memory', returnOverlay).catch(() => {
+            this.openMemoryView(returnOverlay).catch(() => {
                 // Intentionally swallowed: openMemoryView error
             })
             return
@@ -3599,17 +3543,6 @@ export class DifferentialApp {
         }
 
         if (overlay === 'memory') {
-            if (this.state.isAddingMemory) {
-                this.state.isAddingMemory = false
-                this.state.memoryNewEntryText = ''
-                this.render()
-                return
-            }
-            if (this.state.memoryTab === 'rules' && this.state.memoryInitialTab === 'memory') {
-                this.state.memoryTab = 'memory'
-                this.render()
-                return
-            }
             if (this.state.memoryReturnOverlay && this.state.memoryReturnOverlay !== 'none') {
                 const ret = this.state.memoryReturnOverlay
                 this.state.memoryReturnOverlay = 'none'
@@ -5948,214 +5881,56 @@ export class DifferentialApp {
         }
 
         if (overlay === 'memory') {
-            if (this.state.isAddingMemory) {
-                if (key === '\t') {
-                    this.state.memoryNewEntryCategoryIndex =
-                        (this.state.memoryNewEntryCategoryIndex + 1) % MEMORY_CATEGORIES.length
-                    this.render()
-                    return
-                }
-                if (key === '\r' || key === '\n') {
-                    const text = this.state.memoryNewEntryText.trim()
-                    const category =
-                        MEMORY_CATEGORIES[this.state.memoryNewEntryCategoryIndex] || 'general'
-                    if (text && this.options?.onRecordMemory) {
-                        this.options
-                            .onRecordMemory(text, category)
-                            .then(async (res) => {
-                                if (res.success) {
-                                    this.showToast(
-                                        `Saved to memory under "${category}".`,
-                                        'success'
-                                    )
-                                    await this.loadMemoryAndRules()
-                                } else {
-                                    this.showToast(res.message || 'Failed to save entry.', 'error')
-                                }
-                            })
-                            .catch(() => {
-                                // Intentionally swallowed: ignore save error
-                            })
-                    }
-                    this.state.isAddingMemory = false
-                    this.state.memoryNewEntryText = ''
-                    this.render()
-                    return
-                }
-                if (key === '\x7f' || key === '\b' || key === '\x08') {
-                    if (this.state.memoryNewEntryText.length > 0) {
-                        this.state.memoryNewEntryText = this.state.memoryNewEntryText.slice(0, -1)
-                        this.render()
-                    }
-                    return
-                }
-                if (key.length === 1 && key >= ' ') {
-                    this.state.memoryNewEntryText += key
-                    this.render()
-                    return
-                }
-                return
-            }
-
-            // Confirmation to forget entry
-            if (this.state.memoryConfirmForgetText) {
-                if (key === 'y' || key === 'Y') {
-                    const textToForget = this.state.memoryConfirmForgetText
-                    this.state.memoryConfirmForgetText = null
-                    if (this.options?.onForgetMemory) {
-                        this.options
-                            .onForgetMemory(textToForget)
-                            .then(async (res) => {
-                                if (res.success) {
-                                    this.showToast('Removed entry from memory.', 'success')
-                                    await this.loadMemoryAndRules()
-                                    const newLen =
-                                        this.state.workspaceMemoryDetails?.entries?.length || 0
-                                    if (this.state.memorySelectedIndex >= newLen) {
-                                        this.state.memorySelectedIndex = Math.max(0, newLen - 1)
-                                    }
-                                } else {
-                                    this.showToast(
-                                        res.message || 'Failed to remove entry.',
-                                        'error'
-                                    )
-                                }
-                            })
-                            .catch(() => {
-                                // Intentionally swallowed: ignore forget error
-                            })
-                    }
-                    this.render()
-                    return
-                }
-                if (key === 'n' || key === 'N' || key === '\x1b') {
-                    this.state.memoryConfirmForgetText = null
-                    this.render()
-                    return
-                }
-                // Any navigation or other key clears confirmation
-                this.state.memoryConfirmForgetText = null
-            }
-
-            // Tab navigation: toggle between memory and rules
-            if (key === '\t' || key === '\x1b[C' || key === '\x1b[D') {
-                this.state.memoryConfirmForgetText = null
-                this.state.memoryTab = this.state.memoryTab === 'rules' ? 'memory' : 'rules'
-                this.state.memoryActiveDocIndex = 0
-                this.state.memoryCursorLine = 0
-                this.state.memoryRuleScrollOffset = 0
-                this.render()
-                return
-            }
-
-            // Switch rule document in rules tab
-            if (key === '[' || key === ']') {
-                const rulesCount = this.state.memoryRuleFiles.length
-                if (this.state.memoryTab === 'rules' && rulesCount > 0) {
-                    const delta = key === '[' ? -1 : 1
-                    this.state.memoryActiveDocIndex =
-                        (this.state.memoryActiveDocIndex + delta + rulesCount) % rulesCount
-                    this.state.memoryCursorLine = 0
-                    this.state.memoryRuleScrollOffset = 0
-                    this.render()
-                }
-                return
-            }
-
             // Arrow Up / k
             if (key === '\x1b[A' || key === 'k') {
-                this.state.memoryConfirmForgetText = null
-                if (this.state.memoryTab === 'memory') {
-                    if (this.state.memorySelectedIndex > 0) {
-                        this.state.memorySelectedIndex -= 1
-                        if (this.state.memorySelectedIndex < this.state.memoryScrollOffset) {
-                            this.state.memoryScrollOffset = this.state.memorySelectedIndex
-                        }
-                        this.render()
+                if (this.state.memoryCursorLine > 0) {
+                    this.state.memoryCursorLine -= 1
+                    if (this.state.memoryCursorLine < this.state.memoryScrollOffset) {
+                        this.state.memoryScrollOffset = this.state.memoryCursorLine
                     }
-                } else {
-                    if (this.state.memoryCursorLine > 0) {
-                        this.state.memoryCursorLine -= 1
-                        if (this.state.memoryCursorLine < this.state.memoryRuleScrollOffset) {
-                            this.state.memoryRuleScrollOffset = this.state.memoryCursorLine
-                        }
-                        this.render()
-                    }
+                    this.render()
                 }
                 return
             }
 
             // Arrow Down / j
             if (key === '\x1b[B' || key === 'j') {
-                this.state.memoryConfirmForgetText = null
                 const visibleRows = Math.max(5, this.screen.height - 6)
-                if (this.state.memoryTab === 'memory') {
-                    const entries = this.state.workspaceMemoryDetails?.entries || []
-                    if (this.state.memorySelectedIndex < entries.length - 1) {
-                        this.state.memorySelectedIndex += 1
-                        if (
-                            this.state.memorySelectedIndex >=
-                            this.state.memoryScrollOffset + visibleRows
-                        ) {
-                            this.state.memoryScrollOffset =
-                                this.state.memorySelectedIndex - visibleRows + 1
-                        }
-                        this.render()
+                const content = this.state.memoryFile?.content || ''
+                const totalLines = content ? content.split('\n').length : 0
+                if (this.state.memoryCursorLine < totalLines - 1) {
+                    this.state.memoryCursorLine += 1
+                    if (
+                        this.state.memoryCursorLine >=
+                        this.state.memoryScrollOffset + visibleRows
+                    ) {
+                        this.state.memoryScrollOffset =
+                            this.state.memoryCursorLine - visibleRows + 1
                     }
-                } else {
-                    const activeRule = this.state.memoryRuleFiles[this.state.memoryActiveDocIndex]
-                    const totalLines = activeRule ? activeRule.content.split('\n').length : 0
-                    if (this.state.memoryCursorLine < totalLines - 1) {
-                        this.state.memoryCursorLine += 1
-                        if (
-                            this.state.memoryCursorLine >=
-                            this.state.memoryRuleScrollOffset + visibleRows
-                        ) {
-                            this.state.memoryRuleScrollOffset =
-                                this.state.memoryCursorLine - visibleRows + 1
-                        }
-                        this.render()
-                    }
-                }
-                return
-            }
-
-            // [a]: Add new memory entry
-            if (key === 'a' || key === 'A') {
-                if (this.state.memoryTab === 'memory') {
-                    this.state.isAddingMemory = true
-                    this.state.memoryNewEntryText = ''
                     this.render()
                 }
                 return
             }
 
-            // [d]: Trigger confirmation to forget selected memory entry
-            if (key === 'd' || key === 'D') {
-                if (this.state.memoryTab === 'memory') {
-                    const entries = this.state.workspaceMemoryDetails?.entries || []
-                    const selectedItem = entries[this.state.memorySelectedIndex]
-                    if (selectedItem) {
-                        this.state.memoryConfirmForgetText = selectedItem.text
-                        this.render()
-                    }
-                }
-                return
-            }
-
-            // [c]: Scaffold starter AGENTS.md
+            // [c]: Create starter AGENTS.md, only once loading finished and no rule file was found
             if (key === 'c' || key === 'C') {
-                if (this.state.memoryTab === 'rules' && this.options?.onScaffoldRules) {
-                    this.options
-                        .onScaffoldRules()
+                const canScaffold =
+                    !this.state.memoryIsLoading &&
+                    this.state.memoryFile === null &&
+                    Boolean(this.options?.onScaffoldRules)
+                if (canScaffold) {
+                    this.options!.onScaffoldRules!()
                         .then(async (res) => {
                             if (res.success) {
                                 this.showToast('Created starter AGENTS.md.', 'success')
-                                await this.loadMemoryAndRules()
+                                await this.loadAgentsFile()
+                            } else {
+                                this.showToast(res.message, 'error')
                             }
                         })
-                        .catch(() => {
-                            // Intentionally swallowed: ignore scaffold error
+                        .catch((error: unknown) => {
+                            const reason = error instanceof Error ? error.message : String(error)
+                            this.showToast(`Could not create AGENTS.md: ${reason}`, 'error')
                         })
                 }
                 return
@@ -6163,13 +5938,9 @@ export class DifferentialApp {
 
             // [q]: Back / close memory viewer
             if (key === 'q' || key === 'Q') {
-                if (this.state.memoryTab === 'rules' && this.state.memoryInitialTab === 'memory') {
-                    this.state.memoryTab = 'memory'
-                    this.render()
-                    return
-                }
                 this.state.activeOverlay = this.state.memoryReturnOverlay || 'none'
                 this.render()
+                this.state.memoryReturnOverlay = 'none'
                 return
             }
             return
@@ -7333,33 +7104,16 @@ export class DifferentialApp {
                     customActiveField: this.state.mcpCustomActiveField,
                 })
             } else if (overlay === 'memory') {
-                const currentCat =
-                    MEMORY_CATEGORIES[this.state.memoryNewEntryCategoryIndex] || 'general'
                 MemoryViewMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: 0,
                     width,
                     height,
-                    activeTab: this.state.memoryTab,
-                    memoryDetails: this.state.workspaceMemoryDetails,
-                    selectedEntryIndex: this.state.memorySelectedIndex,
-                    confirmForgetText: this.state.memoryConfirmForgetText,
+                    file: this.state.memoryFile,
+                    cursorLineIndex: this.state.memoryCursorLine,
                     scrollOffset: this.state.memoryScrollOffset,
-                    isAddingEntry: this.state.isAddingMemory,
-                    newEntryText: this.state.memoryNewEntryText,
-                    newEntryCategory: currentCat,
-                    ruleFiles: this.state.memoryRuleFiles,
-                    selectedRuleIndex: this.state.memoryActiveDocIndex,
-                    ruleScrollOffset: this.state.memoryRuleScrollOffset,
-                    ruleCursorLineIndex: this.state.memoryCursorLine,
                     isLoading: this.state.memoryIsLoading,
-                    documents: this.state.memoryDocuments,
-                    canGoBack: Boolean(
-                        (this.state.memoryTab === 'rules' &&
-                            this.state.memoryInitialTab === 'memory') ||
-                        (this.state.memoryReturnOverlay &&
-                            this.state.memoryReturnOverlay !== 'none')
-                    ),
+                    canGoBack: this.state.memoryReturnOverlay !== 'none',
                 })
             }
             this.screen.render()
@@ -7497,6 +7251,10 @@ export class DifferentialApp {
                 activeModel: this.state.activeModel,
                 modelLabel: this.state.modelLabel,
                 isAuthenticated: this.state.isAuthenticated,
+                isDeepEffort:
+                    normalizeReasoningLevel(this.state.thinkingLevel) === 'deep' &&
+                    getReasoningSupportType(this.state.activeModel || this.state.modelLabel) ===
+                        'controllable',
                 authMethod: this.state.authMethod,
                 contextTokens: this.getEffectiveContextTokens(),
                 maxContextTokens: this.state.maxContextTokens,

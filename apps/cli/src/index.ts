@@ -1495,10 +1495,6 @@ async function main() {
         onExit: () => {
             handleExit()
         },
-        onLoadMemoryDetails: async () => {
-            const { getWorkspaceMemoryDetails } = await import('@december/tools')
-            return getWorkspaceMemoryDetails(process.cwd())
-        },
         onLoadMcpServers: async () => {
             const { listMcpServersWithScope } = await import('@december/tools')
             const list = await listMcpServersWithScope({ workspaceDir: targetWorkspaceDir })
@@ -1683,46 +1679,64 @@ async function main() {
             }
             await pluginManager.uninstallPlugin(id)
         },
-        onLoadProjectRules: async () => {
+        onLoadAgentsFile: async () => {
+            // Same lookup as the agent harness, so /memory shows the rules the agent reads
             const { discoverProjectRules } = await import('@december/shared')
-            return discoverProjectRules(process.cwd())
-        },
-        onRecordMemory: async (text: string, category: string) => {
-            const { recordMemoryDirect } = await import('@december/tools')
-            const res = await recordMemoryDirect(process.cwd(), text, category)
-            if (res.success && agent?.conversation?.initSession) {
-                try {
-                    agent.conversation.initSession({
-                        workspaceRoot: process.cwd(),
-                        systemPrompt: agent.systemPrompt,
-                    })
-                } catch {
-                    // Intentionally swallowed: agent prompt re-sync fallback
-                }
+            const files = discoverProjectRules(targetWorkspaceDir)
+            if (files.length === 0) return null
+
+            const label = (filePath: string) => {
+                const relative = path.relative(process.cwd(), filePath)
+                return relative.startsWith('..') ? filePath : relative
             }
-            return res
-        },
-        onForgetMemory: async (text: string) => {
-            const { forgetMemoryDirect } = await import('@december/tools')
-            const res = await forgetMemoryDirect(process.cwd(), text)
-            if (res.success && agent?.conversation?.initSession) {
-                try {
-                    agent.conversation.initSession({
-                        workspaceRoot: process.cwd(),
-                        systemPrompt: agent.systemPrompt,
-                    })
-                } catch {
-                    // Intentionally swallowed: agent prompt re-sync fallback
-                }
+            // Files come root-most first; the last one is the most specific
+            const primary = files[files.length - 1]!
+            if (files.length === 1) {
+                return { path: label(primary.path), content: primary.content }
             }
-            return res
+            return {
+                path: `${label(primary.path)} (+${files.length - 1} more)`,
+                content: files
+                    .map((file) => `── ${label(file.path)} ──\n\n${file.content}`)
+                    .join('\n\n'),
+            }
         },
         onScaffoldRules: async () => {
             const fs = await import('node:fs/promises')
-            const path = await import('node:path')
             const { DEFAULT_AGENTS_MD_TEMPLATE } = await import('@december/tools')
-            const targetPath = path.join(process.cwd(), 'AGENTS.md')
-            await fs.writeFile(targetPath, DEFAULT_AGENTS_MD_TEMPLATE, 'utf8')
+
+            // Create the file at the git root (or the workspace when there is no repo),
+            // where the rules lookup finds it from any subfolder
+            let targetDir = path.resolve(targetWorkspaceDir)
+            let current = targetDir
+            while (true) {
+                const isGitRoot = await fs
+                    .stat(path.join(current, '.git'))
+                    .then(() => true)
+                    .catch(() => false)
+                if (isGitRoot) {
+                    targetDir = current
+                    break
+                }
+                const parent = path.dirname(current)
+                if (parent === current) break
+                current = parent
+            }
+
+            const targetPath = path.join(targetDir, 'AGENTS.md')
+            try {
+                // 'wx' fails when the file exists, so an existing (even empty) file is never replaced
+                await fs.writeFile(targetPath, DEFAULT_AGENTS_MD_TEMPLATE, {
+                    encoding: 'utf8',
+                    flag: 'wx',
+                })
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+                    return { success: false, message: `${targetPath} already exists.` }
+                }
+                throw error
+            }
+
             if (agent?.conversation?.initSession) {
                 try {
                     agent.conversation.initSession({
@@ -1733,7 +1747,7 @@ async function main() {
                     // Intentionally swallowed: agent prompt re-sync fallback
                 }
             }
-            return { success: true, message: 'Created AGENTS.md' }
+            return { success: true, message: `Created ${targetPath}` }
         },
         onOpenEditor: async (filePath: string) => {
             const { openPath } = await import('./utils/open')

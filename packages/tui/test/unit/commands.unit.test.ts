@@ -165,7 +165,7 @@ describe('/changelog and /docs commands', () => {
         const memCmd = COMMANDS.find((c) => c.name === 'memory')
         expect(memCmd).toBeDefined()
         expect(memCmd?.value).toBe('/memory')
-        expect(memCmd?.description).toContain('workspace memory')
+        expect(memCmd?.description).toContain('project rules')
         expect(memCmd?.description).toContain('AGENTS.md')
     })
 

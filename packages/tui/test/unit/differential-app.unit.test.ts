@@ -1926,14 +1926,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.sessionSearchQuery).toBe('search-session')
         expect(app.state.input).toBe('')
 
-        // 5. Memory new entry paste
-        app.state.activeOverlay = 'memory'
-        app.state.isAddingMemory = true
-        app.handleKey('\x1b[200~remember this project architecture\x1b[201~')
-        expect(app.state.memoryNewEntryText).toBe('remember this project architecture')
-        expect(app.state.input).toBe('')
-
-        // 6. Skills search paste
+        // 5. Skills search paste
         app.state.activeOverlay = 'skills'
         app.state.skillsIsSearching = true
         app.handleKey('\x1b[200~typescript\x1b[201~')
@@ -2073,100 +2066,121 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('manages fullscreen memory overlay, hierarchical esc back navigation, and adding entries', async () => {
-        let recorded: { text: string; category: string } | null = null
-        let forgotten: string | null = null
-
+    it('manages fullscreen AGENTS.md overlay with scrolling and esc back navigation', async () => {
         const app = new DifferentialApp({
             terminal,
             width: 80,
             height: 24,
-            onLoadMemoryDetails: async () => ({
-                filePath: '.december/memory.md',
-                totalBytes: 256,
-                maxBytes: 2048,
-                budgetPercent: 12,
-                entries: [
-                    { category: 'build_and_test', text: 'bun test --bail' },
-                    { category: 'conventions', text: 'always lowercase commits' },
-                ],
+            onLoadAgentsFile: async () => ({
+                path: 'AGENTS.md',
+                content: '# AGENTS.md\nline 1\nline 2',
             }),
-            onLoadProjectRules: async () => [
-                { path: 'AGENTS.md', content: '# AGENTS.md\nline 1\nline 2' },
-            ],
-            onRecordMemory: async (text, category) => {
-                recorded = { text, category }
-                return { success: true, message: 'Saved' }
-            },
-            onForgetMemory: async (text) => {
-                forgotten = text
-                return { success: true, message: 'Removed' }
-            },
         })
         app.start()
 
         // 1. Open /memory from 'help' overlay to test returnOverlay
         app.state.activeOverlay = 'help'
-        await app.openMemoryView('memory', 'help')
+        await app.openMemoryView('help')
         expect(app.state.activeOverlay as string).toBe('memory')
-        expect(app.state.memoryTab).toBe('memory')
-        expect(app.state.workspaceMemoryDetails?.entries.length).toBe(2)
+        expect(app.state.memoryFile?.path).toBe('AGENTS.md')
 
-        // 2. Tab switches to rules
-        app.handleKey('\t')
-        expect(app.state.memoryTab).toBe('rules')
-
-        // 3. Esc from rules steps back to memory tab (does NOT close overlay)
-        app.handleKey('\x1b')
-        expect(app.state.memoryTab).toBe('memory')
-        expect(app.state.activeOverlay as string).toBe('memory')
-
-        // 4. Press 'a' to add new memory entry, then Esc cancels adding without closing
-        app.handleKey('a')
-        expect(app.state.isAddingMemory).toBe(true)
-        app.handleKey('\x1b')
-        expect(app.state.isAddingMemory).toBe(false)
-        expect(app.state.activeOverlay as string).toBe('memory')
-
-        // 5. Actually add entry: press 'a', type, submit
-        app.handleKey('a')
-        for (const char of 'run db migration') {
-            app.handleKey(char)
-        }
-        expect(app.state.memoryNewEntryText).toBe('run db migration')
-        // Cycle category with Tab
-        app.handleKey('\t')
-        // Submit with Enter
-        app.handleKey('\r')
-        expect(app.state.isAddingMemory).toBe(false)
-        expect(recorded).not.toBeNull()
-        expect(recorded?.text).toBe('run db migration')
-
-        // 6. Test cancellation with 'n', arrow keys, and 'y' confirms forget
-        app.handleKey('d')
-        expect(app.state.memoryConfirmForgetText).toBe('bun test --bail')
-        app.handleKey('n')
-        expect(app.state.memoryConfirmForgetText).toBeNull()
-
-        // Arrow down clears confirmation and moves to next item
-        app.handleKey('d')
-        expect(app.state.memoryConfirmForgetText).toBe('bun test --bail')
+        // 2. Arrow keys move the cursor line within bounds
         app.handleKey('\x1b[B')
-        expect(app.state.memoryConfirmForgetText).toBeNull()
+        app.handleKey('\x1b[B')
+        app.handleKey('\x1b[B')
+        expect(app.state.memoryCursorLine).toBe(2)
+        app.handleKey('\x1b[A')
+        expect(app.state.memoryCursorLine).toBe(1)
 
-        // Press 'd' on item 1 and 'y' to confirm
-        app.handleKey('d')
-        expect(app.state.memoryConfirmForgetText).toBe('always lowercase commits')
-        app.handleKey('y')
-        expect(forgotten).toBe('always lowercase commits')
+        // 3. Tab no longer switches anything
+        app.handleKey('\t')
+        expect(app.state.activeOverlay as string).toBe('memory')
 
-        // 7. Esc from memory root steps back to returnOverlay ('help')
+        // 4. Esc steps back to returnOverlay ('help')
         app.handleKey('\x1b')
         expect(app.state.activeOverlay as string).toBe('help')
 
-        // 8. Esc from help closes to none
+        // 5. Esc from help closes to none
         app.handleKey('\x1b')
         expect(app.state.activeOverlay as string).toBe('none')
+
+        app.stop()
+    })
+
+    it('creates starter AGENTS.md with [c] when no file exists', async () => {
+        let created = false
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onLoadAgentsFile: async () =>
+                created ? { path: 'AGENTS.md', content: '# AGENTS.md' } : null,
+            onScaffoldRules: async () => {
+                created = true
+                return { success: true, message: 'Created AGENTS.md' }
+            },
+        })
+        app.start()
+
+        await app.openMemoryView()
+        expect(app.state.memoryFile).toBeNull()
+        app.handleKey('c')
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(created).toBe(true)
+        expect(app.state.memoryFile?.path).toBe('AGENTS.md')
+
+        app.stop()
+    })
+
+    it('ignores [c] while the rules file is loading or when a file was found', async () => {
+        let scaffoldCalls = 0
+        let resolveLoad: (file: { path: string; content: string } | null) => void = () => {}
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onLoadAgentsFile: () =>
+                new Promise((resolve) => {
+                    resolveLoad = resolve
+                }),
+            onScaffoldRules: async () => {
+                scaffoldCalls++
+                return { success: true, message: 'Created AGENTS.md' }
+            },
+        })
+        app.start()
+
+        const opening = app.openMemoryView()
+        // Still loading: memoryFile is null, but [c] must not overwrite a file not yet read
+        app.handleKey('c')
+        expect(scaffoldCalls).toBe(0)
+
+        resolveLoad({ path: 'AGENTS.md', content: '# Rules' })
+        await opening
+        app.handleKey('c')
+        expect(scaffoldCalls).toBe(0)
+
+        app.stop()
+    })
+
+    it('shows the reason when [c] cannot create AGENTS.md', async () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onLoadAgentsFile: async () => null,
+            onScaffoldRules: async () => ({
+                success: false,
+                message: '/repo/AGENTS.md already exists.',
+            }),
+        })
+        app.start()
+
+        await app.openMemoryView()
+        app.handleKey('c')
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(app.state.toast?.message).toBe('/repo/AGENTS.md already exists.')
 
         app.stop()
     })
