@@ -20,7 +20,7 @@ describe('apps/docs page content & layout tests', () => {
             const html = getLandingHtml()
 
             expect(html).toContain('december')
-            expect(html).toContain('a (so much) better')
+            expect(html).toContain('a better')
             expect(html).toContain('coding agent.')
             expect(html).toContain('npm install -g @trydecember/cli')
         })

@@ -95,7 +95,7 @@ export const HelpMenuView = {
             // Summary paragraph
             drawText(
                 buffer,
-                'December is a (so much) better coding agent. It helps you build faster by writing',
+                'December is a better coding agent. It helps you build faster by writing',
                 { x, y, style: { fg: THEME.colors.text } }
             )
             y += 1

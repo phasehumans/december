@@ -6,7 +6,7 @@
   <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a> | <a href="README.ru.md">Русский</a> | <b>मराठी</b>
 </p>
 
-December हा एक ओपन-सोर्स कोडिंग एजंट आहे. तो तुमचा कोड वाचतो, बदल लिहितो आणि कमांड चालवतो. तुम्ही तो टर्मिनलमध्ये किंवा क्लाउडमध्ये [trydecember.com](https://trydecember.com) वर वापरू शकता.
+December हा एक अधिक चांगला कोडिंग एजंट आहे. तो तुमचा कोड वाचतो, बदल लिहितो आणि कमांड चालवतो. तुम्ही तो टर्मिनलमध्ये किंवा क्लाउडमध्ये [trydecember.com](https://trydecember.com) वर वापरू शकता.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
@@ -17,7 +17,7 @@ December हा एक ओपन-सोर्स कोडिंग एजंट
 - मोठी कामे विभागा. December उप-कामे एकाच वेळी काम करणाऱ्या मदतनीस एजंट्सना देऊ शकतो.
 - टूल्स जोडा. स्किल्सद्वारे December ला तुमची कामाची पद्धत शिकवा आणि MCP द्वारे टूल्स जोडा.
 
-## सुरुवात करा
+### सुरुवात करा
 
 1. CLI इन्स्टॉल करा:
 
@@ -31,6 +31,6 @@ npm install -g @trydecember/cli
 
 अधिक माहितीसाठी [डॉक्स](https://trydecember.com/docs) वाचा.
 
-## अभिप्राय आणि बग्स
+### अभिप्राय आणि बग्स
 
 बग आढळला किंवा नवीन फीचर हवे असल्यास [इश्यू उघडा](https://github.com/phasehumans/december/issues) किंवा [team@trydecember.com](mailto:team@trydecember.com) वर ईमेल करा.

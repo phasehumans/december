@@ -6,7 +6,7 @@
   <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <b>Español</b> | <a href="README.ru.md">Русский</a> | <a href="README.mr.md">मराठी</a>
 </p>
 
-December es un agente de programación de código abierto. Lee tu código, escribe cambios y ejecuta comandos en tu terminal o en la nube en [trydecember.com](https://trydecember.com).
+December es un agente de programación mejor. Lee tu código, escribe cambios y ejecuta comandos en tu terminal o en la nube en [trydecember.com](https://trydecember.com).
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8e15b973-eddc-4bcb-96a0-26d37c35c718" alt="December" width="100%"/>
@@ -17,7 +17,7 @@ December es un agente de programación de código abierto. Lee tu código, escri
 - Divide las tareas grandes. December puede pasar subtareas a agentes auxiliares que trabajan al mismo tiempo.
 - Añade herramientas. Enseña tus flujos de trabajo a December con skills y conecta herramientas mediante MCP.
 
-## Primeros pasos
+### Primeros pasos
 
 1. Instala la CLI:
 
@@ -31,6 +31,6 @@ npm install -g @trydecember/cli
 
 Lee la [documentación](https://trydecember.com/docs) para saber más.
 
-## Comentarios y errores
+### Comentarios y errores
 
 Si encuentras un error o quieres una función nueva, [abre un issue](https://github.com/phasehumans/december/issues) o escribe a [team@trydecember.com](mailto:team@trydecember.com).
