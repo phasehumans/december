@@ -1,9 +1,9 @@
 {
-    "version": "0.4.18",
-    "title": "What's New in v0.4.18",
+    "version": "0.4.19",
+    "title": "What's New in v0.4.19",
     "bullets": [
-        "Update landing chassis borders, restore gutter telemetry, and clean mobile layout",
-        "Update mobile navbar, hero cta, and footer layout"
+        "Add in-tui lifecycle management, presets wizard, and dynamic tool binding",
+        "Automated github bot and action with issue-to-pr and notifications"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

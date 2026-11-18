@@ -59,16 +59,21 @@ December does not dump the repo into the prompt. It loads only what the task nee
 The short version: a bigger context window is a bigger haystack. It is not a better search.
 
 <div class="my-8 max-w-xl mx-auto space-y-3">
-  <div class="p-4 border border-[#e2e8f0] bg-white">
-    <div class="font-mono text-xs text-[#64748b]">01</div>
-    <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Naive pipeline</h4>
-    <p class="mt-1 text-xs leading-relaxed text-[#52525b]">Dumps the whole repo: 128K+ tokens of distractors. Result: wrong imports and instruction drift.</p>
-  </div>
-  <div class="p-4 border border-[#e2e8f0] bg-white">
-    <div class="font-mono text-xs text-[#64748b]">02</div>
-    <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">December pruned pipeline</h4>
-    <p class="mt-1 text-xs leading-relaxed text-[#52525b]">Extracts AST symbols: about 4K tokens. Result: edits checked by the compiler and tests.</p>
-  </div>
+    <div class="p-4 border border-[#e2e8f0] bg-white">
+        <div class="font-mono text-xs text-[#64748b]">01</div>
+        <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Naive pipeline</h4>
+        <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
+            Dumps the whole repo: 128K+ tokens of distractors. Result: wrong imports and instruction
+            drift.
+        </p>
+    </div>
+    <div class="p-4 border border-[#e2e8f0] bg-white">
+        <div class="font-mono text-xs text-[#64748b]">02</div>
+        <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">December pruned pipeline</h4>
+        <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
+            Extracts AST symbols: about 4K tokens. Result: edits checked by the compiler and tests.
+        </p>
+    </div>
 </div>
 
 _Reference: [Chroma Technical Report: Context Rot](https://www.trychroma.com/research/context-rot)._

@@ -635,7 +635,7 @@
                 {
                     "id": "qwen/qwen3.8-27b",
                     "label": "Qwen3.8 27B",
-                    "contextWindow": 1048575,
+                    "contextWindow": 1024000,
                     "thinking": true
                 },
                 {
@@ -1580,7 +1580,7 @@
                 {
                     "id": "MiniMax-M2.5",
                     "label": "MiniMax M2.5",
-                    "contextWindow": 200000,
+                    "contextWindow": 198000,
                     "thinking": true
                 },
                 {

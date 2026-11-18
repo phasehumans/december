@@ -26,43 +26,43 @@ If you pass a prompt, December runs it without the interactive session. By defau
 
 ## Global CLI Commands
 
-| Command                           | What it does                                                             |
-| :-------------------------------- | :----------------------------------------------------------------------- |
-| `december`                        | Start an interactive session.                                            |
-| `december "<prompt>"`             | Run one prompt without the interactive session.                          |
-| `december ask "<question>"`       | Ask a question about the code. December only reads files.                |
-| `december resume [session-id]`    | Resume the last session, or the session with this ID.                    |
-| `december login [provider]`       | Sign in with December. Add a provider name to link a plan.               |
-| `december link <provider>`        | Link a plan: `claude`, `chatgpt`, `copilot`, `gemini`, or `amazon-q`.    |
-| `december key <provider> [key]`   | Save your own API key for a provider.                                    |
-| `december logout [provider]`      | Remove saved sign-in data and keys.                                      |
-| `december switch [provider]`      | Change the active provider.                                              |
-| `december auth [status\|import]`  | Show sign-in status, or import plans from other CLIs on this computer.   |
-| `december skill list`             | List the installed skills.                                               |
-| `december skill add <repo>`       | Install skills from GitHub (for example `phasehumans/skills`).           |
-| `december skill info <name>`      | Show the details of a skill.                                             |
-| `december skill remove <name>`    | Remove a skill.                                                          |
-| `december mcp [list]`             | Show the configured MCP servers.                                         |
-| `december rewind [turn\|list]`    | List saved turns, or restore your files to a turn.                       |
-| `december doctor [--fix]`         | Check the install. Add `--fix` to repair `PATH` problems.                |
-| `december docs [section]`         | Open the documentation in your browser.                                  |
-| `december changelog`              | Open the changelog in your browser.                                      |
-| `december update`                 | Install the latest CLI release.                                          |
+| Command                          | What it does                                                           |
+| :------------------------------- | :--------------------------------------------------------------------- |
+| `december`                       | Start an interactive session.                                          |
+| `december "<prompt>"`            | Run one prompt without the interactive session.                        |
+| `december ask "<question>"`      | Ask a question about the code. December only reads files.              |
+| `december resume [session-id]`   | Resume the last session, or the session with this ID.                  |
+| `december login [provider]`      | Sign in with December. Add a provider name to link a plan.             |
+| `december link <provider>`       | Link a plan: `claude`, `chatgpt`, `copilot`, `gemini`, or `amazon-q`.  |
+| `december key <provider> [key]`  | Save your own API key for a provider.                                  |
+| `december logout [provider]`     | Remove saved sign-in data and keys.                                    |
+| `december switch [provider]`     | Change the active provider.                                            |
+| `december auth [status\|import]` | Show sign-in status, or import plans from other CLIs on this computer. |
+| `december skill list`            | List the installed skills.                                             |
+| `december skill add <repo>`      | Install skills from GitHub (for example `phasehumans/skills`).         |
+| `december skill info <name>`     | Show the details of a skill.                                           |
+| `december skill remove <name>`   | Remove a skill.                                                        |
+| `december mcp [list]`            | Show the configured MCP servers.                                       |
+| `december rewind [turn\|list]`   | List saved turns, or restore your files to a turn.                     |
+| `december doctor [--fix]`        | Check the install. Add `--fix` to repair `PATH` problems.              |
+| `december docs [section]`        | Open the documentation in your browser.                                |
+| `december changelog`             | Open the changelog in your browser.                                    |
+| `december update`                | Install the latest CLI release.                                        |
 
 ## Flags
 
-| Flag                    | What it does                                                    |
-| :---------------------- | :-------------------------------------------------------------- |
-| `-h`, `--help`          | Show the help and exit.                                         |
-| `-v`, `--version`       | Show the CLI version and exit.                                  |
-| `-r`, `--resume`        | Resume the last session.                                        |
-| `-m`, `--model <model>` | Use this model.                                                 |
-| `-y`, `--yes`           | Approve tool calls without asking.                              |
-| `--print`               | Print plain text for a one-prompt run. Approves tool calls.     |
-| `--json`                | Print JSON events for a one-prompt run.                         |
-| `--session-id <id>`     | Use this session ID.                                            |
-| `--scope <dir>`         | Keep December inside one folder, such as a package.             |
-| `--cwd <dir>`           | Set the working folder.                                         |
+| Flag                    | What it does                                                |
+| :---------------------- | :---------------------------------------------------------- |
+| `-h`, `--help`          | Show the help and exit.                                     |
+| `-v`, `--version`       | Show the CLI version and exit.                              |
+| `-r`, `--resume`        | Resume the last session.                                    |
+| `-m`, `--model <model>` | Use this model.                                             |
+| `-y`, `--yes`           | Approve tool calls without asking.                          |
+| `--print`               | Print plain text for a one-prompt run. Approves tool calls. |
+| `--json`                | Print JSON events for a one-prompt run.                     |
+| `--session-id <id>`     | Use this session ID.                                        |
+| `--scope <dir>`         | Keep December inside one folder, such as a package.         |
+| `--cwd <dir>`           | Set the working folder.                                     |
 
 ## In-Session Keyboard Shortcuts
 

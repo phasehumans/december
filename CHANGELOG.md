@@ -1,3 +1,23 @@
+## [0.4.19] - 2026-11-18
+
+### Features
+
+- _(mcp)_ Add in-tui lifecycle management, presets wizard, and dynamic tool binding
+- _(githubapp,worker)_ Automated github bot and action with issue-to-pr and notifications (#568)
+- _(worker,action)_ Verify clean test exit and lowercase runtime pr metadata
+- _(docs,action,cli)_ Refresh landing page and docs, publish github action
+
+### Bug Fixes
+
+- _(tui)_ Remove error action details prefix text and deduplicate toasts
+- _(cli)_ Refine prefix stripping fallback and strengthen unit test
+- _(cli,providers)_ Align model discovery, subscriptions, and byok provider catalogs
+- _(cli,docs)_ Map plugin items to menu props and restore blog post descriptions
+
+### Testing
+
+- _(docs)_ Match docs nav list with or without trailing semicolon
+
 ## [0.4.18] - 2026-11-13
 
 ### Features
@@ -24,6 +44,10 @@
 ### Testing
 
 - _(tui)_ Update thought indicator assertion in message line cache
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.18
 
 ## [0.4.17] - 2026-11-07
 

@@ -60,38 +60,52 @@ The second error says what went wrong and what to do next. The agent can fix its
 Reliable agents run tool calls in a closed loop: the result of each call feeds the next decision. Every call returns something the agent can act on, whether it passed or failed:
 
 <div class="my-8 max-w-xl mx-auto">
-  <div class="p-4 border border-[#e2e8f0] bg-white">
-    <div class="font-mono text-xs text-[#64748b]">01</div>
-    <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Structured tool call</h4>
-    <p class="mt-1 text-xs leading-relaxed text-[#52525b]">Strict Zod schema, targeted arguments, finite enums.</p>
-  </div>
-  <div class="flex flex-col items-center py-2">
-    <div class="w-px h-4 bg-[#cbd5e1]"></div>
-    <span class="my-1 font-mono text-[11px] text-[#64748b]">Atomic invocation</span>
-    <svg class="w-3 h-3" viewBox="0 0 12 12" fill="#94a3b8" aria-hidden="true"><path d="M6 9.5L1.5 4h9L6 9.5z"></path></svg>
-  </div>
-  <div class="p-4 border border-[#e2e8f0] bg-white">
-    <div class="font-mono text-xs text-[#64748b]">02</div>
-    <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Isolated execution</h4>
-    <p class="mt-1 text-xs leading-relaxed text-[#52525b]"><code>view_file</code>, <code>replace_file_content</code>, and <code>run_command</code> run in a sandbox.</p>
-  </div>
-  <div class="flex flex-col items-center py-2">
-    <div class="w-px h-4 bg-[#cbd5e1]"></div>
-    <span class="my-1 font-mono text-[11px] text-[#64748b]">Check the output</span>
-    <svg class="w-3 h-3" viewBox="0 0 12 12" fill="#94a3b8" aria-hidden="true"><path d="M6 9.5L1.5 4h9L6 9.5z"></path></svg>
-  </div>
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
     <div class="p-4 border border-[#e2e8f0] bg-white">
-      <div class="font-mono text-xs text-[#64748b]">03a / on failure</div>
-      <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Actionable diagnostic</h4>
-      <p class="mt-1 text-xs leading-relaxed text-[#52525b]">Line numbers, compiler hints, and partial matches go back to the agent.</p>
+        <div class="font-mono text-xs text-[#64748b]">01</div>
+        <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Structured tool call</h4>
+        <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
+            Strict Zod schema, targeted arguments, finite enums.
+        </p>
+    </div>
+    <div class="flex flex-col items-center py-2">
+        <div class="w-px h-4 bg-[#cbd5e1]"></div>
+        <span class="my-1 font-mono text-[11px] text-[#64748b]">Atomic invocation</span>
+        <svg class="w-3 h-3" viewBox="0 0 12 12" fill="#94a3b8" aria-hidden="true">
+            <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
+        </svg>
     </div>
     <div class="p-4 border border-[#e2e8f0] bg-white">
-      <div class="font-mono text-xs text-[#64748b]">03b / on success</div>
-      <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Git checkpoint</h4>
-      <p class="mt-1 text-xs leading-relaxed text-[#52525b]">Exit code 0. The diff is recorded and the state is locked before the next instruction.</p>
+        <div class="font-mono text-xs text-[#64748b]">02</div>
+        <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Isolated execution</h4>
+        <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
+            <code>view_file</code>, <code>replace_file_content</code>, and <code>run_command</code>{' '}
+            run in a sandbox.
+        </p>
     </div>
-  </div>
+    <div class="flex flex-col items-center py-2">
+        <div class="w-px h-4 bg-[#cbd5e1]"></div>
+        <span class="my-1 font-mono text-[11px] text-[#64748b]">Check the output</span>
+        <svg class="w-3 h-3" viewBox="0 0 12 12" fill="#94a3b8" aria-hidden="true">
+            <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
+        </svg>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="p-4 border border-[#e2e8f0] bg-white">
+            <div class="font-mono text-xs text-[#64748b]">03a / on failure</div>
+            <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Actionable diagnostic</h4>
+            <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
+                Line numbers, compiler hints, and partial matches go back to the agent.
+            </p>
+        </div>
+        <div class="p-4 border border-[#e2e8f0] bg-white">
+            <div class="font-mono text-xs text-[#64748b]">03b / on success</div>
+            <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Git checkpoint</h4>
+            <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
+                Exit code 0. The diff is recorded and the state is locked before the next
+                instruction.
+            </p>
+        </div>
+    </div>
 </div>
 
 ## How December Implements Tooling
