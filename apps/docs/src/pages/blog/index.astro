@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 interface BlogFrontmatter {
   title: string;
+  description: string;
   publishDate: string;
   currentSlug: string;
 }
@@ -14,6 +15,7 @@ const posts = Object.values(postModules)
   .map(({ frontmatter }) => ({
     slug: frontmatter.currentSlug,
     title: frontmatter.title,
+    desc: frontmatter.description,
     date: frontmatter.publishDate,
     timestamp: parsePublishDate(frontmatter.publishDate),
   }))

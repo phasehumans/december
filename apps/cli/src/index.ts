@@ -1600,15 +1600,18 @@ async function main() {
             return {
                 installed: installed.map((p) => ({
                     id: p.id,
-                    name: p.manifest.name,
-                    description: p.manifest.description,
-                    version: p.manifest.version,
-                    author: p.manifest.author,
-                    source: p.source,
+                    name: p.name,
+                    description: p.description,
+                    version: p.version,
+                    author: p.author,
+                    scope: p.scope,
                     enabled: p.enabled,
-                    isBuiltIn: p.isBuiltIn,
-                    components: p.components,
-                    location: p.location,
+                    installed: true,
+                    components: {
+                        skills: p.components.skills.map((skill) => skill.name),
+                        rules: p.components.rules.map((rule) => rule.name),
+                        mcpServers: p.components.mcpServers.map((server) => server.name),
+                    },
                 })),
                 discoverable: discoverable.map((p) => ({
                     id: p.id,
@@ -1616,11 +1619,12 @@ async function main() {
                     description: p.description,
                     version: p.version,
                     author: p.author,
-                    source: 'catalog' as const,
                     enabled: false,
-                    isInstalled: p.isInstalled,
-                    components: p.components,
-                    tags: p.tags,
+                    installed: p.installed ?? false,
+                    components: {
+                        skills: p.defaultSkills ?? [],
+                        mcpServers: p.defaultMcpServers ?? [],
+                    },
                 })),
             }
         },
