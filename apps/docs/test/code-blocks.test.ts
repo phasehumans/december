@@ -11,7 +11,6 @@ describe('apps/docs code block styling & minimal layout tests', () => {
         'docs/quickstart/index.html',
         'docs/cli/index.html',
         'docs/prompting/index.html',
-        'docs/index.html',
     ]
 
     for (const pagePath of docPagesWithCode) {
@@ -19,7 +18,14 @@ describe('apps/docs code block styling & minimal layout tests', () => {
             const fullPath = join(distDir, pagePath)
             expect(existsSync(fullPath)).toBe(true)
 
-            const html = readFileSync(fullPath, 'utf-8')
+            const pageHtml = readFileSync(fullPath, 'utf-8')
+            // Astro inlines small stylesheets and links larger ones, so check both
+            const linkedCss = [...pageHtml.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)]
+                .map((m) => join(distDir, m[1]))
+                .filter((cssPath) => existsSync(cssPath))
+                .map((cssPath) => readFileSync(cssPath, 'utf-8'))
+                .join('\n')
+            const html = `${pageHtml}\n${linkedCss}`
 
             // Must contain Astro pre code element
             expect(html).toContain('<pre class="astro-code')

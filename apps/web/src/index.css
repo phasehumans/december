@@ -154,12 +154,6 @@ input:-webkit-autofill:active {
     -webkit-text-fill-color: #ffffff !important;
     transition: background-color 5000s ease-in-out 0s;
 }
-body.feedback-modal-open .home-header-badge {
-    opacity: 0 !important;
-    pointer-events: none !important;
-    visibility: hidden !important;
-}
-
 /* Custom resets to override Tailwind defaults and prevent focus/border/white-ring flickers */
 *:focus:not(:focus-visible) {
     outline: none !important;

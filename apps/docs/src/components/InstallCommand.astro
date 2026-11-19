@@ -1,0 +1,73 @@
+---
+// Install command bar with copy button. Used on the landing page hero and in the docs.
+interface Props {
+  cmd?: string;
+  class?: string;
+}
+
+const { cmd = 'npm install -g @trydecember/cli', class: className = '' } = Astro.props;
+---
+
+<div class:list={['relative w-full min-w-0', className]} data-install-cmd={cmd}>
+  <div class="corner-brackets relative h-10 flex items-center justify-between border border-[#e2e8f0] bg-white rounded-none pl-3 sm:pl-3.5 pr-1.5 transition-all hover:border-[#87b2f4]">
+    <span class="corner-brackets-tr"></span>
+    <span class="corner-brackets-bl"></span>
+    <button
+      type="button"
+      data-install-copy
+      class="flex-1 min-w-0 flex items-center gap-2 font-mono text-xs sm:text-[13px] text-[#1e293b] text-left cursor-pointer focus:outline-none overflow-hidden"
+      title="Click to copy command"
+    >
+      <span class="text-[#090a0f] select-none font-semibold shrink-0">$</span>
+      <span class="font-normal text-[#0f172a] truncate">{cmd}</span>
+    </button>
+
+    <div class="flex items-center gap-1 ml-2 shrink-0">
+      <button
+        type="button"
+        data-install-copy
+        class="w-7 h-7 flex items-center justify-center text-[#64748b] hover:text-[#090a0f] hover:bg-[#f8fafc] transition-colors cursor-pointer focus:outline-none rounded-[2px]"
+        title="Copy command"
+        aria-label="Copy install command"
+      >
+        <svg data-install-icon class="w-3.5 h-3.5 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const COPY_ICON =
+    '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>';
+  const CHECK_ICON = '<polyline points="20 6 9 17 4 12"></polyline>';
+
+  const initInstallCommands = () => {
+    document.querySelectorAll<HTMLElement>('[data-install-cmd]').forEach((bar) => {
+      const cmd = bar.dataset.installCmd ?? '';
+      const icon = bar.querySelector<SVGElement>('[data-install-icon]');
+
+      const copy = async () => {
+        try {
+          await navigator.clipboard.writeText(cmd);
+          if (icon) {
+            icon.innerHTML = CHECK_ICON;
+            setTimeout(() => {
+              icon.innerHTML = COPY_ICON;
+            }, 1200);
+          }
+        } catch {
+          // Intentionally swallowed: clipboard fallback handled by user selection
+        }
+      };
+
+      bar.querySelectorAll<HTMLButtonElement>('[data-install-copy]').forEach((btn) => {
+        btn.onclick = copy;
+      });
+    });
+  };
+
+  document.addEventListener('astro:page-load', initInstallCommands);
+</script>

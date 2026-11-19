@@ -110,35 +110,9 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
                 )}
             </div>
 
-            {/* center heading */}
-            <div className="flex-initial flex items-center justify-center pointer-events-auto">
-                <div
-                    onClick={() => {
-                        window.open('https://www.npmjs.com/package/@trydecember/cli', '_blank')
-                    }}
-                    className="home-header-badge hidden md:flex items-center gap-2 bg-transparent border border-white/5 rounded-full pl-1.5 pr-2.5 h-7 text-[13px] text-[#E8E8E6] cursor-pointer whitespace-nowrap flex-shrink-0 transition-transform duration-200 ease-out hover:scale-[1.008] active:scale-[0.99] select-none"
-                >
-                    <span className="bg-[#87B2F4]/15 text-[#87B2F4] rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold tracking-wider uppercase leading-none flex items-center justify-center flex-shrink-0">
-                        NEW
-                    </span>
-                    <span className="font-medium text-[#D4D4D8] whitespace-nowrap">
-                        December Terminal Agent Is Now Live
-                    </span>
-                    <span className="text-[#3F3F46] font-light flex-shrink-0">|</span>
-                    <div className="text-[#D4D4D8] font-medium flex items-center gap-1 whitespace-nowrap flex-shrink-0">
-                        Try December CLI <ArrowUpRight className="w-3.5 h-3.5" />
-                    </div>
-                </div>
-            </div>
-
             {/* right icons */}
             <div className="flex-1 flex items-center justify-end pointer-events-auto">
                 <div className="flex items-center gap-0">
-                    <MagneticIconWithTooltip
-                        icon={<Icons.XLogo className="w-[15px] h-[15px]" />}
-                        tooltip="Twitter"
-                        href="https://x.com/phasehumans"
-                    />
                     <MagneticIconWithTooltip
                         icon={<Icons.Github className="w-5 h-5" />}
                         tooltip="GitHub"

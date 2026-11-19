@@ -96,7 +96,7 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('TTL_MS')
             expect(html).toContain('isDesktop')
             expect(html).toContain('hidden sm:block fixed')
-            expect(html).toContain('Teach December how your team works with skills')
+            expect(html).toContain('Skills teach December your conventions and workflows')
         })
 
         it('renders mobile github icon in header without x icon and single-line mobile footer with built-by and docs/blog', () => {
@@ -170,10 +170,12 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).not.toContain('claude-3-7-sonnet')
         })
 
-        it('does not render the benchmark rank', () => {
+        it('renders the TerminalBench benchmark rank', () => {
             const html = getLandingHtml()
 
-            expect(html).not.toContain('GLOBAL RANK')
+            expect(html).toContain('TerminalBench')
+            expect(html).toContain('GLOBAL RANK')
+            expect(html).toContain('#42')
         })
     })
 
