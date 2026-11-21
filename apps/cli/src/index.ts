@@ -425,6 +425,7 @@ async function main() {
         { convertAgentMessagesToDifferentialMessages },
         { recordUsage, getUsageHistory },
         { fetchDecemberCreditsInCents },
+        { buildSettingsFromConfig },
     ] = await Promise.all([
         import('@december/agent'),
         import('@december/providers'),
@@ -440,6 +441,7 @@ async function main() {
         import('./utils/message-converter'),
         import('./utils/usage-tracker'),
         import('./utils/december-credits'),
+        import('./settings-menu'),
     ])
 
     if (parsedArgs.scope) {
@@ -859,48 +861,6 @@ async function main() {
         }
     }
 
-    const buildSettingsFromConfig = (cfg: DecemberConfig, prov?: string, mod?: string) => {
-        // Same fallbacks as session startup: default provider 'gemini', then that provider's default model
-        const settingsProvider = prov || cfg.activeProvider || 'gemini'
-        return [
-            {
-                id: 'provider',
-                title: 'Provider',
-                value: settingsProvider,
-            },
-            {
-                id: 'model',
-                title: 'Model',
-                value: getModelLabel(
-                    mod || ensureValidModelForProvider(settingsProvider, cfg.activeModel)
-                ),
-            },
-            {
-                id: 'tool_permission',
-                title: 'Tool permission',
-                value: cfg.toolPermission || 'always-proceed',
-            },
-            {
-                id: 'pathguard',
-                title: 'Path guard',
-                value: cfg.pathGuard === false ? 'off' : 'on',
-            },
-            {
-                id: 'non_workspace',
-                title: 'Files outside workspace',
-                value: cfg.nonWorkspaceAccess ? 'on' : 'off',
-            },
-            { id: 'thinking_level', title: 'Thinking level', value: cfg.thinkingLevel || 'fast' },
-            { id: 'steering_mode', title: 'Steering', value: cfg.steeringMode || 'all' },
-            { id: 'follow_up_mode', title: 'Follow-up', value: cfg.followUpMode || 'all' },
-            {
-                id: 'browser_visible',
-                title: 'Browser window',
-                value: cfg.browserVisible ? 'on' : 'off',
-            },
-        ]
-    }
-
     const { taskManager } = await import('./task-manager')
     type BackgroundTask = import('./task-manager').BackgroundTask
 
@@ -921,6 +881,14 @@ async function main() {
             turns: t.turns,
             output: getDisplayOutput(t),
         }))
+    }
+
+    const applyThinkingLevel = (level: string) => {
+        agent.thinkingLevel = level
+        if (agent.modelOptions) {
+            agent.modelOptions.thinkingLevel = level
+        }
+        harness.updateThinkingLevel(level)
     }
 
     differentialApp = new DifferentialApp({
@@ -1020,59 +988,34 @@ async function main() {
             await agent.setSessionTitle(generated, 'manual')
             return agent.sessionTitle
         },
+        // Save first, then change the running session: a failed save rejects, and the TUI
+        // reverts the value and shows an error
         onEffortSelect: async (level) => {
-            if (agent) {
-                agent.thinkingLevel = level
-                if (agent.modelOptions) {
-                    agent.modelOptions.thinkingLevel = level
-                }
-            }
-            if (harness) {
-                harness.updateThinkingLevel(level)
-            }
-            try {
-                const cfg = await loadConfig()
-                await saveConfig({ ...cfg, thinkingLevel: level })
-            } catch {
-                // Intentionally swallowed: ignore thinking level config save error
-            }
+            const cfg = await loadConfig()
+            await saveConfig({ ...cfg, thinkingLevel: level })
+            applyThinkingLevel(level)
         },
         onSettingChange: async (settingId: string, newValue: string) => {
-            try {
-                const cfg = await loadConfig()
-                if (settingId === 'pathguard') {
-                    cfg.pathGuard = newValue === 'on'
-                } else if (settingId === 'non_workspace') {
-                    cfg.nonWorkspaceAccess = newValue === 'on'
-                } else if (settingId === 'tool_permission') {
-                    cfg.toolPermission = newValue as 'always-proceed' | 'always-ask'
-                } else if (settingId === 'thinking_level') {
-                    cfg.thinkingLevel = newValue as any
-                    if (agent) {
-                        agent.thinkingLevel = newValue as any
-                        if (agent.modelOptions) {
-                            agent.modelOptions.thinkingLevel = newValue
-                        }
-                    }
-                    if (harness) {
-                        harness.updateThinkingLevel(newValue)
-                    }
-                } else if (settingId === 'steering_mode') {
-                    cfg.steeringMode = newValue as 'all' | 'one-at-a-time'
-                    if (agent && agent.steeringQueue) {
-                        agent.steeringQueue.mode = newValue as 'all' | 'one-at-a-time'
-                    }
-                } else if (settingId === 'follow_up_mode') {
-                    cfg.followUpMode = newValue as 'all' | 'one-at-a-time'
-                    if (agent && agent.followUpQueue) {
-                        agent.followUpQueue.mode = newValue as 'all' | 'one-at-a-time'
-                    }
-                } else if (settingId === 'browser_visible') {
-                    cfg.browserVisible = newValue === 'on'
-                }
-                await saveConfig(cfg)
-            } catch {
-                // Intentionally swallowed: ignore setting config save error
+            const cfg = await loadConfig()
+            if (settingId === 'pathguard') {
+                cfg.pathGuard = newValue === 'on'
+            } else if (settingId === 'non_workspace') {
+                cfg.nonWorkspaceAccess = newValue === 'on'
+            } else if (settingId === 'tool_permission') {
+                cfg.toolPermission = newValue as 'always-proceed' | 'always-ask'
+            } else if (settingId === 'thinking_level') {
+                cfg.thinkingLevel = newValue as DecemberConfig['thinkingLevel']
+            } else if (settingId === 'steering_mode') {
+                cfg.steeringMode = newValue as 'all' | 'one-at-a-time'
+            } else if (settingId === 'browser_visible') {
+                cfg.browserVisible = newValue === 'on'
+            }
+            await saveConfig(cfg)
+
+            if (settingId === 'thinking_level') {
+                applyThinkingLevel(newValue)
+            } else if (settingId === 'steering_mode' && agent?.steeringQueue) {
+                agent.steeringQueue.mode = newValue as 'all' | 'one-at-a-time'
             }
         },
         onModelSelect: async (selected) => {

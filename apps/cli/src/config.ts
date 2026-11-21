@@ -190,6 +190,7 @@ export interface DecemberConfig {
     deniedTools?: string[]
     thinkingLevel?: 'fast' | 'deep' | 'off' | string
     steeringMode?: 'all' | 'one-at-a-time'
+    /** No longer in /settings and not written to workspace settings. Still read so old configs load. */
     followUpMode?: 'all' | 'one-at-a-time'
     pathGuard?: boolean
     scope?: string
@@ -438,8 +439,6 @@ export async function saveConfig(config: DecemberConfig): Promise<void> {
             currentWorkspaceSettings.thinkingLevel = config.thinkingLevel
         if (config.steeringMode !== undefined)
             currentWorkspaceSettings.steeringMode = config.steeringMode
-        if (config.followUpMode !== undefined)
-            currentWorkspaceSettings.followUpMode = config.followUpMode
         if (config.toolPermission !== undefined)
             currentWorkspaceSettings.toolPermission = config.toolPermission
         if (config.pathGuard !== undefined) currentWorkspaceSettings.pathGuard = config.pathGuard

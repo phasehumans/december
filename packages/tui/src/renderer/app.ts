@@ -118,7 +118,7 @@ import {
     type SessionItem,
     SESSION_WINDOW_SIZE,
 } from './views/session-select-menu-view'
-import { SettingsMenuView, formatSettingValue, type SettingItem } from './views/settings-menu-view'
+import { SettingsMenuView, type SettingItem } from './views/settings-menu-view'
 import { SkillsMenuView, toTildePath, type SkillItem } from './views/skills-menu-view'
 import { SwitchSelectMenuView, type SwitchItem } from './views/switch-select-menu-view'
 import {
@@ -698,10 +698,9 @@ export const DEFAULT_SETTINGS: SettingItem[] = [
     { id: 'tool_permission', title: 'Tool permission', value: 'always-proceed' },
     { id: 'pathguard', title: 'Path guard', value: 'on' },
     { id: 'non_workspace', title: 'Files outside workspace', value: 'off' },
-    { id: 'thinking_level', title: 'Thinking level', value: 'auto' },
+    { id: 'thinking_level', title: 'Thinking level', value: 'fast' },
     { id: 'steering_mode', title: 'Steering', value: 'all' },
-    { id: 'follow_up_mode', title: 'Follow-up', value: 'all' },
-    { id: 'browser_visible', title: 'Browser window', value: 'off' },
+    { id: 'browser_visible', title: 'Browser window', value: 'on' },
 ]
 
 export class DifferentialApp {
@@ -5168,7 +5167,16 @@ export class DifferentialApp {
             if (key === '\r' || key === '\n' || key === ' ') {
                 const current = settings[this.state.settingsSelectedIndex]
                 if (current) {
-                    if (current.id === 'model' || current.id === 'provider') {
+                    if (current.id === 'provider') {
+                        // Same view as /switch; esc comes back here
+                        this.state.overlayHistory.push('settings')
+                        this.state.activeOverlay = 'switch'
+                        this.state.switchSelectedIndex = 0
+                        this.state.switchConfirmDeleteValue = null
+                        this.render()
+                        return
+                    }
+                    if (current.id === 'model') {
                         this.state.overlayHistory.push('settings')
                         this.state.activeOverlay = 'model'
                         this.render()
@@ -5183,24 +5191,15 @@ export class DifferentialApp {
                         this.render()
                         return
                     }
+                    const previous = current.value
                     if (current.value === 'on') current.value = 'off'
                     else if (current.value === 'off') current.value = 'on'
                     else if (current.value === 'always-proceed') current.value = 'always-ask'
                     else if (current.value === 'always-ask') current.value = 'always-proceed'
                     else if (current.value === 'all') current.value = 'one-at-a-time'
                     else if (current.value === 'one-at-a-time') current.value = 'all'
-                    this.showToast(`${current.title}: ${formatSettingValue(current)}`, 'success')
-                    if (this.onSettingChangeCallback) {
-                        try {
-                            const res = this.onSettingChangeCallback(current.id, current.value)
-                            if (res && typeof (res as any).catch === 'function') {
-                                ;(res as any).catch(() => {})
-                            }
-                        } catch {
-                            // Intentionally swallowed: ignore setting callback error
-                        }
-                    }
                     this.render()
+                    void this.saveSettingChange(current, previous)
                 }
                 return
             }

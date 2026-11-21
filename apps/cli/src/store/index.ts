@@ -23,8 +23,6 @@ export interface CliState {
     setHasDecember: (val: boolean) => void
     decemberEmail: string | undefined
     setDecemberEmail: (email: string | undefined) => void
-    settingsAuthPriority: 'byok' | 'december' | 'subscription'
-    setSettingsAuthPriority: (val: 'byok' | 'december' | 'subscription') => void
     currentEmail: string | undefined
     setCurrentEmail: (email: string | undefined) => void
     authMode: AuthMode
@@ -112,34 +110,6 @@ export interface CliState {
     }[]
     setRewindItems: (items: any[]) => void
 
-    // settings feature
-    settingsPathGuard: boolean
-    setSettingsPathGuard: (val: boolean) => void
-    settingsNonWorkspace: boolean
-    setSettingsNonWorkspace: (val: boolean) => void
-    settingsToolPermission: 'always-ask' | 'always-proceed'
-    setSettingsToolPermission: (val: 'always-ask' | 'always-proceed') => void
-    settingsCompactMode: boolean
-    setSettingsCompactMode: (val: boolean) => void
-    settingsSoundEffects: boolean
-    setSettingsSoundEffects: (val: boolean) => void
-    settingsAutoScroll: boolean
-    setSettingsAutoScroll: (val: boolean) => void
-    settingsStreamSpeed: 'smooth' | 'instant'
-    setSettingsStreamSpeed: (val: 'smooth' | 'instant') => void
-    settingsSelectedIndex: number
-    setSettingsSelectedIndex: (val: number) => void
-    settingsThinkingLevel: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
-    setSettingsThinkingLevel: (
-        val: 'auto' | 'fast' | 'deep' | 'off' | 'minimal' | 'low' | 'medium' | 'high'
-    ) => void
-    settingsSteeringMode: 'all' | 'one-at-a-time'
-    setSettingsSteeringMode: (val: 'all' | 'one-at-a-time') => void
-    settingsFollowUpMode: 'all' | 'one-at-a-time'
-    setSettingsFollowUpMode: (val: 'all' | 'one-at-a-time') => void
-    settingsBrowserVisible: boolean
-    setSettingsBrowserVisible: (val: boolean) => void
-
     // tasks feature
     tasksData: BackgroundTask[]
     setTasksData: (data: BackgroundTask[]) => void
@@ -215,8 +185,6 @@ export const useCliStore = createStore<CliState>((set) => ({
     setHasDecember: (hasDecember) => set({ hasDecember }),
     decemberEmail: undefined,
     setDecemberEmail: (decemberEmail) => set({ decemberEmail }),
-    settingsAuthPriority: 'byok',
-    setSettingsAuthPriority: (settingsAuthPriority) => set({ settingsAuthPriority }),
     currentEmail: undefined,
     setCurrentEmail: (currentEmail) => set({ currentEmail }),
     helpInitialTab: 'general',
@@ -337,32 +305,6 @@ export const useCliStore = createStore<CliState>((set) => ({
     // rewind
     rewindItems: [],
     setRewindItems: (rewindItems) => set({ rewindItems }),
-
-    // settings feature
-    settingsPathGuard: true,
-    setSettingsPathGuard: (settingsPathGuard) => set({ settingsPathGuard }),
-    settingsNonWorkspace: false,
-    setSettingsNonWorkspace: (settingsNonWorkspace) => set({ settingsNonWorkspace }),
-    settingsToolPermission: 'always-proceed',
-    setSettingsToolPermission: (settingsToolPermission) => set({ settingsToolPermission }),
-    settingsCompactMode: false,
-    setSettingsCompactMode: (settingsCompactMode) => set({ settingsCompactMode }),
-    settingsSoundEffects: false,
-    setSettingsSoundEffects: (settingsSoundEffects) => set({ settingsSoundEffects }),
-    settingsAutoScroll: true,
-    setSettingsAutoScroll: (settingsAutoScroll) => set({ settingsAutoScroll }),
-    settingsStreamSpeed: 'smooth',
-    setSettingsStreamSpeed: (settingsStreamSpeed) => set({ settingsStreamSpeed }),
-    settingsSelectedIndex: 0,
-    setSettingsSelectedIndex: (settingsSelectedIndex) => set({ settingsSelectedIndex }),
-    settingsThinkingLevel: 'auto',
-    setSettingsThinkingLevel: (settingsThinkingLevel) => set({ settingsThinkingLevel }),
-    settingsSteeringMode: 'all',
-    setSettingsSteeringMode: (settingsSteeringMode) => set({ settingsSteeringMode }),
-    settingsFollowUpMode: 'all',
-    setSettingsFollowUpMode: (settingsFollowUpMode) => set({ settingsFollowUpMode }),
-    settingsBrowserVisible: true,
-    setSettingsBrowserVisible: (settingsBrowserVisible) => set({ settingsBrowserVisible }),
 
     // tasks
     tasksData: [],
