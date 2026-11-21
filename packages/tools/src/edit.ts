@@ -111,6 +111,24 @@ interface NormalizedEdit {
     replacement: string
 }
 
+/**
+ * The 1-based line where each replacement starts in the edited file. `spans` must be sorted
+ * by position and point into `content`, the file before the edit.
+ */
+export function editStartLines(
+    content: string,
+    spans: Array<{ span: { startIndex: number; endIndex: number }; replacement: string }>
+): number[] {
+    const newlines = (text: string) => (text.match(/\n/g) || []).length
+    const lines: number[] = []
+    let shift = 0
+    for (const { span, replacement } of spans) {
+        lines.push(1 + newlines(content.slice(0, span.startIndex)) + shift)
+        shift += newlines(replacement) - newlines(content.slice(span.startIndex, span.endIndex))
+    }
+    return lines
+}
+
 export interface MatchSpan {
     startIndex: number
     endIndex: number
@@ -453,11 +471,12 @@ export const EditFileTool: Tool<EditFileInput> = {
                 const methods = resolvedSpans.map((r) => r.span.method)
                 const hasFuzzy = methods.some((m) => m !== 'exact')
                 const methodNotice = hasFuzzy ? ` (matched with normalized whitespace)` : ''
+                const lines = editStartLines(contentLF, resolvedSpans)
 
                 if (resolvedSpans.length > 1) {
-                    return `Successfully edited file: ${filePath} (${resolvedSpans.length} disjoint replacements applied)${lspNotice}`
+                    return `Successfully edited file: ${filePath} (${resolvedSpans.length} disjoint replacements applied at lines ${lines.join(', ')})${lspNotice}`
                 }
-                return `Successfully edited file${methodNotice}: ${filePath}${lspNotice}`
+                return `Successfully edited file${methodNotice}: ${filePath} (line ${lines[0]})${lspNotice}`
             } catch (error: any) {
                 return `Failed to edit file: ${error.message}`
             }

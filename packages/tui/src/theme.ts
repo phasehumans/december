@@ -4,16 +4,22 @@
 export const THEME = {
     colors: {
         brand: '#89B4F8',
-        text: 'white',
-        muted: '#AAAAAA',
-        subtle: '#777777',
-        dim: '#666666',
-        border: '#333333',
+        /** Hex, not the named 'white', so text looks the same in every terminal theme */
+        text: '#E4E4E7',
+        muted: '#A1A1AA',
+        /** Meta text: durations, counts, hints */
+        dim: '#71717A',
+        /** Dividers and rules */
+        border: '#3F3F46',
+        /** Filled bands: the user prompt row, the scroll pill */
+        surface: '#262629',
+        /** Only for the shimmer on the activity line */
+        highlight: '#FFFFFF',
         success: '#6EE7B7',
-        error: '#FCA5A5',
+        error: '#F87171',
         warning: '#FDD663',
-        diffAddBg: '#122f1e',
-        diffDeleteBg: '#3f1316',
+        diffAddBg: '#0F2419',
+        diffDeleteBg: '#2C1214',
         codespanBg: '#303030',
     },
     padding: {
@@ -26,6 +32,10 @@ export const THEME = {
         selector: '❭',
         bullet: '•',
         status: '●',
+        /** One finished or running step. Color carries the state: dim done, red failed, accent live. */
+        step: '●',
+        /** One result line under a step */
+        result: '└',
     },
 } as const
 

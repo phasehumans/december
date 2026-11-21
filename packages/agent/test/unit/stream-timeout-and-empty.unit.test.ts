@@ -40,7 +40,6 @@ describe('Stream Timeouts and Empty Responses (Unit)', () => {
             llm: mockEmptyLLM,
             tools: [],
             operations: {} as any,
-            disableLogging: true,
         })
 
         const events: any[] = []

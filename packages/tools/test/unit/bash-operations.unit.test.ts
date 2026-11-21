@@ -84,6 +84,8 @@ describe('bash-operations', () => {
             expect.objectContaining({
                 cwd: '/mock/cwd',
                 shell: true,
+                // stdin must not be an open pipe: rg and cat would wait on it forever
+                stdio: ['ignore', 'pipe', 'pipe'],
             })
         )
     })

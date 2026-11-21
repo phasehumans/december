@@ -111,7 +111,7 @@ describe('new slash commands', () => {
             expect(rows).toEqual([
                 'Auth',
                 'Active provider',
-                '↳ Run /login',
+                '└ Run /login',
                 '',
                 'Rules',
                 'AGENTS.md',

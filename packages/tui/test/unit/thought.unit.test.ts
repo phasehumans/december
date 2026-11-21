@@ -30,7 +30,7 @@ I need to inspect the auth headers in the request.
             'I need to thoroughly investigate the exact mechanism through which the credentials are refreshed across all providers'
         const topic = extractThoughtTopic(raw)
         expect(topic.length).toBeLessThanOrEqual(48)
-        expect(topic.endsWith('...')).toBe(true)
+        expect(topic.endsWith('…')).toBe(true)
     })
 
     it('returns empty string for empty input', () => {

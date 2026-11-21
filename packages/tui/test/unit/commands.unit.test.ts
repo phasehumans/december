@@ -138,7 +138,7 @@ describe('/changelog and /docs commands', () => {
         const changelogCmd = COMMANDS.find((c) => c.name === 'changelog')
         expect(changelogCmd).toBeDefined()
         expect(changelogCmd?.value).toBe('/changelog')
-        expect(changelogCmd?.description).toContain('Open December changelog in your browser')
+        expect(changelogCmd?.description).toContain('Open the changelog in your browser')
     })
 
     test('should define /docs command forwarded to chat screen', () => {

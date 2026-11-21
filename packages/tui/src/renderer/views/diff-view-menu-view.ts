@@ -1,8 +1,11 @@
 import { THEME } from '../../theme'
 import { parseUnifiedDiffToRows, type DiffFileEntry, type DiffRow } from '../../utils/diff'
+import { middleEllipsis } from '../../utils/tool-kind'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { formatDiffRow } from './message-line-cache'
+import { drawPanelTitle } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -23,6 +26,34 @@ export interface DiffViewMenuViewProps {
     fullContent?: string | null
 }
 
+/** "+12 -4" parts; a zero count is not shown (M16.1) */
+function countParts(additions: number, deletions: number): { text: string; color: string }[] {
+    const parts: { text: string; color: string }[] = []
+    if (additions > 0) parts.push({ text: `+${additions}`, color: THEME.colors.success })
+    if (deletions > 0) parts.push({ text: `-${deletions}`, color: THEME.colors.error })
+    return parts
+}
+
+/** Draws "+12 -4" from x and returns the x after it */
+function drawCounts(
+    buffer: ScreenBuffer,
+    x: number,
+    y: number,
+    parts: { text: string; color: string }[]
+): number {
+    let cx = x
+    parts.forEach((part, i) => {
+        if (i > 0) cx += 1
+        drawText(buffer, part.text, { x: cx, y, style: { fg: part.color } })
+        cx += part.text.length
+    })
+    return cx
+}
+
+function countsWidth(parts: { text: string }[]): number {
+    return parts.reduce((sum, p, i) => sum + p.text.length + (i > 0 ? 1 : 0), 0)
+}
+
 export const DiffViewMenuView = {
     getHeight(filesCount: number, windowSize = DIFF_WINDOW_SIZE): number {
         const count = filesCount || 1
@@ -35,23 +66,20 @@ export const DiffViewMenuView = {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
         const width = props.width
+        /** Right edge of the panel content, as in the other panels */
+        const rightEdge = (props.x ?? 0) + width - (THEME.padding.paddingRight ?? 4)
         const files = props.files
         const windowSize = DIFF_WINDOW_SIZE
+        const footerY = props.y + props.height - 1
 
         if (files.length === 0) {
-            drawText(buffer, 'Workspace Changes', {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
+            drawPanelTitle(buffer, { x, y, title: 'Changes' })
             y += 2
             drawText(buffer, 'No changed files in workspace.', {
                 x,
                 y,
                 style: { fg: THEME.colors.muted },
             })
-
-            const footerY = props.y + props.height - 1
             MenuFooterView.render(buffer, {
                 x: props.x ?? 0,
                 y: footerY,
@@ -62,35 +90,21 @@ export const DiffViewMenuView = {
         }
 
         const safeIndex = Math.max(0, Math.min(props.selectedFileIndex, files.length - 1))
-        const currentFile = files[safeIndex]
+        const currentFile = files[safeIndex]!
 
         if (!props.isDetailView) {
-            // ==========================================
-            // 1. FILES LIST MODE (MATCHING REACT)
-            // ==========================================
+            // M16: the list of changed files
             const totalAdditions = files.reduce((acc, f) => acc + (f.additions || 0), 0)
             const totalDeletions = files.reduce((acc, f) => acc + (f.deletions || 0), 0)
-            const summaryText = `${files.length} file${files.length === 1 ? '' : 's'} (+${totalAdditions} -${totalDeletions})`
+            const filesText = `${files.length} file${files.length === 1 ? '' : 's'}`
 
-            drawText(buffer, 'Workspace Changes', {
-                x,
+            drawPanelTitle(buffer, { x, y, title: 'Changes', meta: filesText })
+            drawCounts(
+                buffer,
+                x + 'Changes'.length + 2 + filesText.length + 1,
                 y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
-            if (files.length > 0) {
-                drawText(buffer, ` · ${summaryText}`, {
-                    x: x + 17,
-                    y,
-                    style: { fg: THEME.colors.muted },
-                })
-                const countLabel = `${safeIndex + 1}/${files.length}`
-                const countX = Math.max(x + 40, width - countLabel.length - 4)
-                drawText(buffer, countLabel, {
-                    x: countX,
-                    y,
-                    style: { fg: THEME.colors.muted },
-                })
-            }
+                countParts(totalAdditions, totalDeletions)
+            )
             y += 2
 
             const windowStart = Math.max(
@@ -101,51 +115,47 @@ export const DiffViewMenuView = {
             const visible = files.slice(windowStart, windowEnd)
 
             for (let i = 0; i < visible.length; i++) {
-                const file = visible[i]
-                const absIdx = windowStart + i
-                const isSelected = absIdx === safeIndex
+                const file = visible[i]!
+                const isSelected = windowStart + i === safeIndex
                 const rowY = y + i
 
-                // Selector indicator (No background highlight band)
-                const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, selector, {
-                    x,
-                    y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                        bold: isSelected,
-                    },
-                })
-
-                // File path (Clean display without artificial badges or ? marks)
-                drawText(buffer, file.path, {
-                    x: x + 2,
-                    y: rowY,
-                    maxWidth: Math.max(10, width - x - 25),
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
-                })
-
-                // Stats: +X -Y
-                const statsText = `+${file.additions} -${file.deletions}`
-                const statsX = Math.max(x + 40, width - statsText.length - 4)
-                if (file.additions > 0 || file.deletions > 0) {
-                    drawText(buffer, `+${file.additions}`, {
+                // Counts end at the right edge; "-N" keeps its column when only additions show
+                const adds = file.additions > 0 ? `+${file.additions}` : ''
+                const dels = file.deletions > 0 ? `-${file.deletions}` : ''
+                const delSlot = dels || (adds ? ' '.repeat(`-${file.deletions}`.length) : '')
+                const stats = adds && delSlot ? `${adds} ${delSlot}` : adds || delSlot
+                const statsX = rightEdge - stats.length
+                if (adds) {
+                    drawText(buffer, adds, {
                         x: statsX,
                         y: rowY,
                         style: { fg: THEME.colors.success },
                     })
-                    drawText(buffer, ` -${file.deletions}`, {
-                        x: statsX + `+${file.additions}`.length,
+                }
+                if (dels) {
+                    drawText(buffer, dels, {
+                        x: statsX + (adds ? adds.length + 1 : 0),
                         y: rowY,
                         style: { fg: THEME.colors.error },
                     })
                 }
+
+                if (isSelected) {
+                    drawText(buffer, `${THEME.glyphs.selector} `, {
+                        x,
+                        y: rowY,
+                        style: { fg: THEME.colors.brand },
+                    })
+                }
+                const pathRoom = Math.max(10, statsX - (x + 2) - 2)
+                drawText(buffer, middleEllipsis(file.path, pathRoom), {
+                    x: x + 2,
+                    y: rowY,
+                    maxWidth: pathRoom,
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
+                })
             }
 
-            // Pagination overflow
             if (files.length > windowSize) {
                 const itemsAbove = windowStart
                 const itemsBelow = files.length - windowEnd
@@ -161,13 +171,11 @@ export const DiffViewMenuView = {
                     drawText(buffer, statusText, {
                         x: x + 2,
                         y: y + visible.length,
-                        style: { fg: THEME.colors.subtle },
+                        style: { fg: THEME.colors.dim },
                     })
                 }
             }
 
-            // Footer
-            const footerY = props.y + props.height - 1
             MenuFooterView.render(buffer, {
                 x: props.x ?? 0,
                 y: footerY,
@@ -179,175 +187,119 @@ export const DiffViewMenuView = {
                     { key: 'esc', label: 'dismiss' },
                 ],
             })
-        } else {
-            // ==========================================
-            // 2. DETAILED DIFF VIEW MODE (MATCHING REACT)
-            // ==========================================
-            const parsed = parseUnifiedDiffToRows(currentFile.diff || '', {
-                fullContent: props.fullContent,
-                expandAllFolds: props.isFullFile,
-            })
-            const diffRows: DiffRow[] = parsed.rows
-            const changeBlocks = parsed.changeBlocks
-            const cursorLine = props.cursorLineIndex ?? 0
+            return
+        }
 
-            // Current change hunk under cursor
-            const currentChangeUnderCursor = (() => {
-                if (changeBlocks.length === 0) return '-'
-                const insideIdx = changeBlocks.findIndex(
-                    (b) => cursorLine >= b.startIndex && cursorLine <= b.endIndex
-                )
-                if (insideIdx >= 0) return `${insideIdx + 1}`
-                let nearestBefore = -1
-                for (let i = 0; i < changeBlocks.length; i++) {
-                    const b = changeBlocks[i]
-                    if (b && b.startIndex <= cursorLine) {
-                        nearestBefore = i + 1
-                    }
-                }
-                return nearestBefore > 0 ? `${nearestBefore}` : '1'
-            })()
+        // M17: the diff of one file, full screen. Rows are the chat's diff rows (formatDiffRow).
+        const parsed = parseUnifiedDiffToRows(currentFile.diff || '', {
+            fullContent: props.fullContent,
+            expandAllFolds: props.isFullFile,
+        })
+        const diffRows: DiffRow[] = parsed.rows
+        const changeBlocks = parsed.changeBlocks
+        const cursorLine = props.cursorLineIndex ?? 0
 
-            // Header line: [path] +X -Y [· full file]          change X/Y · file A/B
-            drawText(buffer, currentFile.path, {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
-            const statsOffset = x + currentFile.path.length + 2
-            drawText(buffer, `+${currentFile.additions}`, {
-                x: statsOffset,
-                y,
-                style: { fg: THEME.colors.success },
-            })
-            drawText(buffer, ` -${currentFile.deletions}`, {
-                x: statsOffset + `+${currentFile.additions}`.length,
-                y,
-                style: { fg: THEME.colors.error },
-            })
-
-            let statsEndOffset =
-                statsOffset + `+${currentFile.additions} -${currentFile.deletions}`.length
-            if (props.isFullFile) {
-                drawText(buffer, ' · full file', {
-                    x: statsEndOffset,
-                    y,
-                    style: { fg: THEME.colors.brand, bold: true },
-                })
-                statsEndOffset += ' · full file'.length
+        const currentChange = (() => {
+            if (changeBlocks.length === 0) return '-'
+            const insideIdx = changeBlocks.findIndex(
+                (b) => cursorLine >= b.startIndex && cursorLine <= b.endIndex
+            )
+            if (insideIdx >= 0) return `${insideIdx + 1}`
+            let nearestBefore = -1
+            for (let i = 0; i < changeBlocks.length; i++) {
+                const b = changeBlocks[i]
+                if (b && b.startIndex <= cursorLine) nearestBefore = i + 1
             }
+            return nearestBefore > 0 ? `${nearestBefore}` : '1'
+        })()
 
-            const rightHeader = `change ${currentChangeUnderCursor}/${changeBlocks.length || 0} · file ${safeIndex + 1}/${files.length}`
-            const rightHeaderX = Math.max(statsEndOffset + 4, width - rightHeader.length - 2)
-            drawText(buffer, rightHeader, {
-                x: rightHeaderX,
-                y,
-                style: { fg: THEME.colors.muted },
-            })
-            y += 2
+        // Title row: path  +12 -4 · full file              change 1/3 · file 1/3
+        const rightHeader = `change ${currentChange}/${changeBlocks.length || 0} · file ${safeIndex + 1}/${files.length}`
+        const counts = countParts(currentFile.additions, currentFile.deletions)
+        const fullTag = props.isFullFile ? ' · full file' : ''
+        const pathRoom = Math.max(
+            10,
+            rightEdge - x - rightHeader.length - 2 - countsWidth(counts) - 2 - fullTag.length
+        )
+        const shownPath = middleEllipsis(currentFile.path, pathRoom)
+        drawPanelTitle(buffer, { x, y, title: shownPath, width: pathRoom })
+        let headX = drawCounts(buffer, x + shownPath.length + 2, y, counts)
+        if (fullTag) {
+            drawText(buffer, fullTag, { x: headX, y, style: { fg: THEME.colors.brand } })
+            headX += fullTag.length
+        }
+        drawText(buffer, rightHeader, {
+            x: Math.max(headX + 2, rightEdge - rightHeader.length),
+            y,
+            style: { fg: THEME.colors.muted },
+        })
+        y += 2
 
-            const visibleDiffHeight = Math.max(2, props.height - 4)
-            const maxScroll = Math.max(0, diffRows.length - visibleDiffHeight)
-            const scrollOffset = Math.min(props.detailScrollOffset, maxScroll)
-            const visibleRows = diffRows.slice(scrollOffset, scrollOffset + visibleDiffHeight)
+        const visibleDiffHeight = Math.max(2, props.height - 4)
+        const maxScroll = Math.max(0, diffRows.length - visibleDiffHeight)
+        const scrollOffset = Math.min(props.detailScrollOffset, maxScroll)
+        const visibleRows = diffRows.slice(scrollOffset, scrollOffset + visibleDiffHeight)
+        // The diff row starts after the 2-cell selector slot and ends at the right edge
+        const rowX = x + 2
+        const rowWidth = Math.max(12, rightEdge - rowX + 1)
 
-            for (let i = 0; i < visibleRows.length; i++) {
-                const row = visibleRows[i]
-                const rowY = y + i
-                const isCursor = (props.cursorLineIndex ?? 0) === row.index
+        for (let i = 0; i < visibleRows.length; i++) {
+            const row = visibleRows[i]!
+            const rowY = y + i
+            const isCursor = cursorLine === row.index
 
-                if (row.type === 'fold') {
-                    drawText(
-                        buffer,
-                        `   ↕ ${row.data.count} unchanged lines · ${row.data.preview}`,
-                        {
-                            x,
-                            y: rowY,
-                            maxWidth: width - x - 2,
-                            style: { fg: THEME.colors.dim },
-                        }
-                    )
-                    continue
-                }
-
-                const line = row.data
-                const lineNum = line.type === 'delete' ? line.oldLineNumber : line.newLineNumber
-                const paddedNum = lineNum ? String(lineNum).padStart(5, ' ') : '     '
-
-                const sign = line.type === 'add' ? '+' : line.type === 'delete' ? '-' : ' '
-                const signColor =
-                    line.type === 'add'
-                        ? THEME.colors.success
-                        : line.type === 'delete'
-                          ? THEME.colors.error
-                          : THEME.colors.dim
-                const textColor =
-                    line.type === 'add'
-                        ? THEME.colors.success
-                        : line.type === 'delete'
-                          ? THEME.colors.error
-                          : THEME.colors.text
-                const bgColor =
-                    line.type === 'add'
-                        ? THEME.colors.diffAddBg
-                        : line.type === 'delete'
-                          ? THEME.colors.diffDeleteBg
-                          : undefined
-
-                const rowBg = isCursor ? bgColor || THEME.colors.codespanBg : bgColor
-                if (rowBg) {
-                    const rowWidth = Math.max(10, width - x - 2)
-                    for (let c = 0; c < rowWidth; c++) {
-                        buffer.setChar(x + c, rowY, ' ', { bg: rowBg })
-                    }
-                }
-
-                const cursorGlyph = isCursor ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, cursorGlyph, {
+            if (row.type === 'fold') {
+                drawText(buffer, `   ↕ ${row.data.count} unchanged lines · ${row.data.preview}`, {
                     x,
                     y: rowY,
-                    style: { fg: isCursor ? THEME.colors.brand : THEME.colors.dim, bg: rowBg },
+                    maxWidth: Math.max(10, rightEdge - x),
+                    style: { fg: THEME.colors.dim },
                 })
+                continue
+            }
 
-                drawText(buffer, `${paddedNum} `, {
-                    x: x + 2,
-                    y: rowY,
-                    style: {
-                        fg: isCursor ? THEME.colors.brand : THEME.colors.dim,
-                        bg: rowBg,
-                        bold: isCursor,
-                    },
-                })
+            const line = row.data
+            const lineNo = line.type === 'delete' ? line.oldLineNumber : line.newLineNumber
+            const segments = formatDiffRow(line.type, line.content, rowWidth, lineNo)
 
-                drawText(buffer, `${sign} `, {
-                    x: x + 8,
+            // G15: the cursor row gets the surface band (an add/delete row keeps its tint),
+            // the line number in brand, and the code in text color, all regular weight
+            const tint = segments[0]?.style?.bg
+            const bg = isCursor ? (tint ?? THEME.colors.surface) : tint
+            if (isCursor) {
+                for (let c = 0; c < rowWidth - 1 + 2; c++) {
+                    buffer.setChar(x + c, rowY, ' ', { bg })
+                }
+                drawText(buffer, `${THEME.glyphs.selector} `, {
+                    x,
                     y: rowY,
-                    style: { fg: signColor, bg: rowBg, bold: line.type !== 'context' || isCursor },
-                })
-
-                drawText(buffer, line.content, {
-                    x: x + 10,
-                    y: rowY,
-                    maxWidth: width - x - 12,
-                    style: { fg: textColor, bg: rowBg, bold: isCursor },
+                    style: { fg: THEME.colors.brand, bg },
                 })
             }
 
-            // Footer
-            const footerY = props.y + props.height - 1
-            MenuFooterView.render(buffer, {
-                x: props.x ?? 0,
-                y: footerY,
-                width,
-                items: [
-                    { key: '↑/↓', label: 'scroll' },
-                    { key: 'p/n', label: 'hunk' },
-                    { key: 'f', label: props.isFullFile ? 'compact' : 'full file' },
-                    { key: '←/→', label: 'cycle file' },
-                    { key: 'enter', label: 'insert @file:line' },
-                    { key: 'esc', label: 'back' },
-                ],
+            let cx = rowX
+            segments.forEach((segment, s) => {
+                const style = { ...segment.style, bg }
+                if (isCursor && s === 0) style.fg = THEME.colors.brand
+                // Code stays in text color, context lines too, at today's brightness (M17)
+                if (s === 2) style.fg = THEME.colors.text
+                buffer.write(cx, rowY, segment.text, style)
+                cx += segment.text.length
             })
         }
+
+        MenuFooterView.render(buffer, {
+            x: props.x ?? 0,
+            y: footerY,
+            width,
+            items: [
+                { key: '↑/↓', label: 'scroll' },
+                { key: 'p/n', label: 'change' },
+                { key: 'f', label: props.isFullFile ? 'compact' : 'full file' },
+                { key: '←/→', label: 'cycle file' },
+                { key: 'enter', label: 'insert @file:line' },
+                { key: 'esc', label: 'back' },
+            ],
+        })
     },
 }

@@ -2,10 +2,13 @@ import { getFilteredCommands } from '../../commands/filter-commands'
 import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
+import { drawCommandRow, drawWindowOverflow } from './panel'
+
 import type { ScreenBuffer } from '../buffer'
 
 export const WINDOW_SIZE = 5
-export const CMD_COL_WIDTH = 28
+/** M1.2: the name column is 22 cells, so descriptions are not cut at 80 columns */
+export const CMD_COL_WIDTH = 22
 
 export interface CommandMenuViewProps {
     x?: number
@@ -63,64 +66,21 @@ export const CommandMenuView = {
 
         for (let i = 0; i < visibleItems.length; i++) {
             const cmd = visibleItems[i]
-            const absIdx = windowStart + i
-            const isSelected = absIdx === props.selectedIndex
-            const rowY = y + i
-
-            // 1. Selector glyph: ❭ or spaces
-            const selectorGlyph = isSelected ? `${THEME.glyphs.selector} ` : '  '
-            drawText(buffer, selectorGlyph, {
+            drawCommandRow(buffer, {
                 x,
-                y: rowY,
-                style: {
-                    fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                    bold: isSelected,
-                },
-            })
-
-            // 2. Command name: /<name>
-            const cmdName = `/${cmd.name}`
-            drawText(buffer, cmdName, {
-                x: x + 2,
-                y: rowY,
-                maxWidth: CMD_COL_WIDTH,
-                style: {
-                    fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                    bold: isSelected,
-                },
-            })
-
-            // 3. Command description
-            const descX = x + 2 + CMD_COL_WIDTH
-            const maxDescWidth = Math.max(10, width - descX - 2)
-            drawText(buffer, cmd.description, {
-                x: descX,
-                y: rowY,
-                maxWidth: maxDescWidth,
-                style: {
-                    fg: isSelected ? THEME.colors.muted : THEME.colors.subtle,
-                },
+                y: y + i,
+                width: Math.max(0, width - x - 2),
+                selected: windowStart + i === props.selectedIndex,
+                name: `/${cmd.name}`,
+                args: cmd.args,
+                desc: cmd.description,
+                nameWidth: CMD_COL_WIDTH,
             })
         }
 
-        // 4. Overflow pagination line
+        // "↑ N more · ↓ N more" under the last row
         if (hasOverflow) {
-            let statusText = ''
-            if (itemsAbove > 0 && itemsBelow > 0) {
-                statusText = `↑ ${itemsAbove} more · ↓ ${itemsBelow} more`
-            } else if (itemsAbove > 0) {
-                statusText = `↑ ${itemsAbove} more`
-            } else if (itemsBelow > 0) {
-                statusText = `↓ ${itemsBelow} more`
-            }
-
-            if (statusText) {
-                drawText(buffer, statusText, {
-                    x: x + 2,
-                    y: y + visibleItems.length,
-                    style: { fg: THEME.colors.subtle },
-                })
-            }
+            drawWindowOverflow(buffer, x, y + visibleItems.length, itemsAbove, itemsBelow)
         }
     },
 }

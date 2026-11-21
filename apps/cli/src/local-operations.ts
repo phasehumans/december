@@ -340,7 +340,7 @@ export const localOperations: PlatformAdapter = {
                     detached: process.platform !== 'win32',
                     env: actualOptions.env ?? process.env,
                     shell: true,
-                    stdio: ['pipe', 'pipe', 'pipe'],
+                    stdio: ['ignore', 'pipe', 'pipe'],
                 })
 
                 let output = ''

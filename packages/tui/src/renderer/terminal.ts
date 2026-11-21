@@ -61,9 +61,42 @@ export class TerminalController {
         return this.stdout.rows && this.stdout.rows > 0 ? this.stdout.rows : 24
     }
 
+    /** Time the last write() spent inside stdout.write. TTY writes are synchronous on Linux and macOS. */
+    lastWriteMs = 0
+    /** Total bytes written, for the performance overlay */
+    bytesWritten = 0
+    private blocked = false
+    private readonly drainListeners = new Set<() => void>()
+
+    /**
+     * True while the terminal has not taken the last write (stdout.write returned false).
+     * Only tracked for TTYs: a test PassThrough with no reader would never drain.
+     */
+    get isBlocked(): boolean {
+        return this.blocked
+    }
+
     write(data: string): void {
         if (!data || this.isCleanedUp) return
-        this.stdout.write(data)
+        const startedAt = performance.now()
+        const accepted = this.stdout.write(data)
+        this.lastWriteMs = performance.now() - startedAt
+        this.bytesWritten += data.length
+        if (!accepted && this.stdout.isTTY && !this.blocked) {
+            this.blocked = true
+            this.stdout.once('drain', () => {
+                this.blocked = false
+                for (const listener of [...this.drainListeners]) listener()
+            })
+        }
+    }
+
+    /** Calls `listener` each time a blocked terminal takes its pending output */
+    onDrain(listener: () => void): () => void {
+        this.drainListeners.add(listener)
+        return () => {
+            this.drainListeners.delete(listener)
+        }
     }
 
     /** sets the terminal window or tab title (OSC 0). control characters are removed. */
@@ -209,5 +242,6 @@ export class TerminalController {
         }
 
         this.resizeListeners.clear()
+        this.drainListeners.clear()
     }
 }

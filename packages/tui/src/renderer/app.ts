@@ -31,12 +31,15 @@ import {
     type ChangeBlock,
     parseUnifiedDiffToRows,
 } from '../utils/diff'
+import { toolCallChanges } from '../utils/edit-diff'
 import { getFileQueryMatch, scoreAndSortFiles, type ScoredFile } from '../utils/fuzzy'
 import { expandPastes, storePaste } from '../utils/paste-manager'
+import { toRelativePath } from '../utils/terminal-link'
 
 import { splitInputSequences } from './input-lexer'
 import { DifferentialScreen } from './screen'
 import { TerminalController } from './terminal'
+import { ActivityTracker, planStepsFromText } from './views/activity-line-view'
 import { AskQuestionMenuView, type QuestionItem } from './views/ask-question-menu-view'
 import {
     AuthMenuView,
@@ -72,8 +75,8 @@ import {
     ModelSelectMenuView,
     MODEL_WINDOW_SIZE,
     type ModelItem,
-    DEFAULT_MODELS,
 } from './views/model-select-menu-view'
+import { takePanelCursor } from './views/panel'
 import { PlanApproveMenuView, PLAN_APPROVE_OPTIONS } from './views/plan-approve-menu-view'
 import {
     buildPluginList,
@@ -114,7 +117,7 @@ import {
     type SessionItem,
     SESSION_WINDOW_SIZE,
 } from './views/session-select-menu-view'
-import { SettingsMenuView, type SettingItem } from './views/settings-menu-view'
+import { SettingsMenuView, formatSettingValue, type SettingItem } from './views/settings-menu-view'
 import { SkillsMenuView, toTildePath, type SkillItem } from './views/skills-menu-view'
 import { SwitchSelectMenuView, type SwitchItem } from './views/switch-select-menu-view'
 import {
@@ -126,10 +129,7 @@ import {
     type TaskItem,
     type TasksConfirmStop,
 } from './views/tasks-mode-menu-view'
-import {
-    ToolPermissionMenuView,
-    DEFAULT_PERMISSION_OPTIONS,
-} from './views/tool-permission-menu-view'
+import { ToolPermissionMenuView, getPermissionOptions } from './views/tool-permission-menu-view'
 import {
     UsageSelectMenuView,
     type UsageOverview,
@@ -139,6 +139,7 @@ import {
 import type { DifferentialScreenOptions } from './types'
 import type { ReleaseAnnouncement } from '../constants/announcements'
 import type { BtwState } from '../types'
+import type { FormattedLine } from './views/markdown'
 
 export type OverlayType =
     | 'none'
@@ -225,7 +226,6 @@ export interface DifferentialAppState {
     /** A new version is installed; the running session still uses the old one */
     pendingRestart?: { version: string; dismissed: boolean }
     activeTip?: string | null
-    expandTools: boolean
     activeModel?: string
     modelLabel?: string
     authMethod?: string
@@ -365,6 +365,8 @@ export interface DifferentialAppState {
     currentQuestionIndex: number
     questionSelectedIndex: number
     questionSelectedMulti: Set<number>
+    /** Text typed into the "Type your own answer…" row; null when not typing (S21) */
+    questionCustomText: string | null
 
     // Tool permission interactive state
     pendingToolCall: {
@@ -690,15 +692,15 @@ export function openBrowserUrl(url: string): void {
 const ESC_ABORT_GUARD_MS = 1000
 
 export const DEFAULT_SETTINGS: SettingItem[] = [
-    { id: 'provider', title: 'Active Provider', value: 'Claude' },
-    { id: 'model', title: 'Active Model', value: 'Claude 3.5 Sonnet' },
-    { id: 'tool_permission', title: 'Tool Permission', value: 'always-proceed' },
-    { id: 'pathguard', title: 'PathGuard Protection', value: 'on' },
-    { id: 'non_workspace', title: 'Non-Workspace Access', value: 'off' },
-    { id: 'thinking_level', title: 'Thinking Level', value: 'auto' },
-    { id: 'steering_mode', title: 'Steering Mode', value: 'all' },
-    { id: 'follow_up_mode', title: 'Follow-Up Mode', value: 'all' },
-    { id: 'browser_visible', title: 'Browser Visible', value: 'off' },
+    { id: 'provider', title: 'Provider', value: 'none' },
+    { id: 'model', title: 'Model', value: 'none' },
+    { id: 'tool_permission', title: 'Tool permission', value: 'always-proceed' },
+    { id: 'pathguard', title: 'Path guard', value: 'on' },
+    { id: 'non_workspace', title: 'Files outside workspace', value: 'off' },
+    { id: 'thinking_level', title: 'Thinking level', value: 'auto' },
+    { id: 'steering_mode', title: 'Steering', value: 'all' },
+    { id: 'follow_up_mode', title: 'Follow-up', value: 'all' },
+    { id: 'browser_visible', title: 'Browser window', value: 'off' },
 ]
 
 export class DifferentialApp {
@@ -723,6 +725,27 @@ export class DifferentialApp {
     private isDetached = false
     private spinnerTimer: any = null
     private streamStartTime = 0
+    /** Activity line (L0): phase latch and timing for the current turn */
+    private readonly activityTracker = new ActivityTracker()
+    private lastStreamActivityAt = 0
+    private firstTokenAt = 0
+    private statusSetAt = 0
+    private turnPausedMs = 0
+    private turnPauseStartedAt: number | undefined
+    private hasReceivedToken = false
+    private btwLoaderTimer: ReturnType<typeof setInterval> | null = null
+    /** The latest retry from the agent's AgentRetry event (F1); cleared when output resumes */
+    private retryInfo:
+        | { attempt: number; max?: number; reason: string; nextAt?: number }
+        | undefined
+    /** Checklist made from an approved /plan until the agent sends its own (F2) */
+    private seededPlan:
+        | { items: { text: string; status: 'pending' | 'in_progress' | 'done' }[]; at: number }
+        | undefined
+    /** Output tokens of the current turn, for the end-of-turn line (L16) */
+    private turnOutputTokens = 0
+    /** Files whose diff an approval prompt showed this turn, so the chat does not repeat it (S4.8) */
+    private readonly previewedPaths = new Set<string>()
     private onSettingChangeCallback?: (settingId: string, newValue: string) => Promise<void> | void
     private onKillTaskCallback?: (taskId: string) => boolean | void
     private onClearCompletedTasksCallback?: () => void
@@ -798,6 +821,30 @@ export class DifferentialApp {
     private static readonly TOOL_THROTTLE_MS = 33 // ~30fps max for tool output updates
     private renderScheduled = false
     private readonly scheduleFrame: ((callback: () => void) => void) | null
+    /** Lay out only the newest turns while following the bottom (off under synchronous tests) */
+    private readonly virtualizeHistory: boolean
+    /** An idle pass is queued to lay out older turns the last frame skipped */
+    private historyLayoutScheduled = false
+    /** A frame was skipped because the terminal had not taken the last one yet */
+    private paintOnDrain = false
+    private unsubscribeDrain?: () => void
+    /** Earliest time for the next paint when the terminal is slow to take output */
+    private nextPaintAt = 0
+    /** A frame write slower than this means the terminal is behind */
+    private static readonly SLOW_WRITE_MS = 4
+    private static readonly MAX_FRAME_DELAY_MS = 250
+    /** DECEMBER_PERF=1 draws frame, output and first-token stats in the top-right corner */
+    private readonly perfHud = process.env.DECEMBER_PERF === '1'
+    private readonly perfStats = {
+        frameMs: 0,
+        avgFrameMs: 0,
+        maxFrameMs: 0,
+        frameBytes: 0,
+        slowWrites: 0,
+        droppedFrames: 0,
+        ttftMs: 0,
+    }
+    private static readonly HISTORY_LAYOUT_BUDGET_MS = 8
 
     constructor(options?: DifferentialAppOptions) {
         this.terminal = options?.terminal ?? new TerminalController()
@@ -812,6 +859,7 @@ export class DifferentialApp {
         const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.BUN_TEST)
         this.scheduleFrame =
             options?.scheduleFrame ?? (isTestEnv ? null : (callback) => setImmediate(callback))
+        this.virtualizeHistory = this.scheduleFrame !== null
         this.onSubmitCallback = options?.onSubmit
         this.onAbortCallback = options?.onAbort
         this.onExitCallback = options?.onExit
@@ -868,7 +916,6 @@ export class DifferentialApp {
             updateStatus: undefined,
             pendingRestart: undefined,
             activeTip: null,
-            expandTools: false,
             cliVersion: options?.cliVersion || '0.4.15',
             latestVersion: options?.latestVersion,
             modelLabel: options?.modelLabel || 'Gemini 3.7 Flash',
@@ -939,6 +986,7 @@ export class DifferentialApp {
             currentQuestionIndex: 0,
             questionSelectedIndex: 0,
             questionSelectedMulti: new Set(),
+            questionCustomText: null,
 
             // Tool permission interactive state
             pendingToolCall: null,
@@ -974,7 +1022,7 @@ export class DifferentialApp {
             commandSelectedIndex: 0,
             commandWindowStart: 0,
 
-            models: options?.models || DEFAULT_MODELS,
+            models: options?.models || [],
             modelSearchQuery: '',
             modelSelectedIndex: 0,
             modelWindowStart: 0,
@@ -1080,6 +1128,11 @@ export class DifferentialApp {
         this.isRunning = true
 
         this.screen.start()
+        this.unsubscribeDrain = this.terminal.onDrain(() => {
+            if (!this.paintOnDrain) return
+            this.paintOnDrain = false
+            this.render()
+        })
 
         this.stdinListener = (data) => {
             let str = data.toString()
@@ -1154,8 +1207,14 @@ export class DifferentialApp {
     stop(): void {
         if (!this.isRunning) return
         this.isRunning = false
+        this.unsubscribeDrain?.()
+        this.unsubscribeDrain = undefined
 
         this.stopSpinner()
+        if (this.btwLoaderTimer) {
+            clearInterval(this.btwLoaderTimer)
+            this.btwLoaderTimer = null
+        }
         if (this.tasksTicker) {
             clearInterval(this.tasksTicker)
             this.tasksTicker = null
@@ -1190,10 +1249,11 @@ export class DifferentialApp {
         this.screen.stop()
     }
 
-    getAllCommands(): { name: string; description: string }[] {
+    getAllCommands(): { name: string; description: string; args?: string }[] {
         return COMMANDS.map((c) => ({
             name: c.name,
             description: c.description,
+            args: c.args,
         })).sort((a, b) => a.name.localeCompare(b.name))
     }
 
@@ -1234,21 +1294,12 @@ export class DifferentialApp {
             ) {
                 this.state.activeTip = getNextTip()
             }
-            // Only force an independent spinner redraw if a spinner glyph is actually rendered on screen
-            const lastMsg = this.state.messages[this.state.messages.length - 1]
-            const isWaitingForFirstToken =
-                !lastMsg ||
-                lastMsg.role === 'user' ||
-                (lastMsg.role === 'assistant' && !lastMsg.content)
-            const hasVisibleSpinner =
-                Boolean(this.state.statusMessage) ||
-                isWaitingForFirstToken ||
-                this.state.messages.some(
-                    (m) =>
-                        (m.role === 'thinking' && m.isStreaming) || m.toolCall?.status === 'running'
-                )
+            // Redraw only while something animates: the activity line, or a running step's dot
+            const hasAnimation =
+                this.state.isStreaming ||
+                this.state.messages.some((m) => m.toolCall?.status === 'running')
 
-            if (hasVisibleSpinner) {
+            if (hasAnimation) {
                 this.render()
             }
         }, 80)
@@ -1288,7 +1339,9 @@ export class DifferentialApp {
         const status = this.state.updateStatus
         if (!status) return undefined
         const seconds = Math.floor((Date.now() - status.startedAt) / 1000)
-        return `${status.message} · ${seconds}s`
+        // Shown as plain text in the status row: "updating to v0.4.16 12s" (L17)
+        const message = status.message.charAt(0).toLowerCase() + status.message.slice(1)
+        return `${message} ${seconds}s`
     }
 
     setPendingRestart(version?: string): void {
@@ -1321,10 +1374,30 @@ export class DifferentialApp {
     setStatusMessage(msg?: string): void {
         if (this.state.statusMessage === msg) return
         this.state.statusMessage = msg
+        this.statusSetAt = Date.now()
+        this.render()
+    }
+
+    /** Shows a retry in the activity line from the agent's typed AgentRetry event (F1) */
+    setRetry(info?: {
+        attempt: number
+        maxAttempts?: number
+        delayMs?: number
+        reason: string
+    }): void {
+        this.retryInfo = info
+            ? {
+                  attempt: info.attempt,
+                  max: info.maxAttempts,
+                  reason: info.reason,
+                  nextAt: info.delayMs !== undefined ? Date.now() + info.delayMs : undefined,
+              }
+            : undefined
         this.render()
     }
 
     clearStatusMessage(): void {
+        this.retryInfo = undefined
         if (this.state.statusMessage === undefined) return
         this.state.statusMessage = undefined
         this.render()
@@ -2266,7 +2339,7 @@ export class DifferentialApp {
         const msgIndex = this.state.messages.length
         this.state.messages.push({
             role: 'assistant',
-            content: 'Generating December login code...',
+            content: 'Generating December login code…',
         })
         this.render()
 
@@ -2288,7 +2361,7 @@ export class DifferentialApp {
 
                 this.state.messages[msgIndex] = {
                     role: 'assistant',
-                    content: `Confirm code: \`${code}\`\nOpen URL: [${fullUrl}](${fullUrl})\n\nWaiting for approval in your browser...`,
+                    content: `Confirm code: \`${code}\`\nOpen URL: [${fullUrl}](${fullUrl})\n\nWaiting for approval in your browser…`,
                 }
                 this.render()
                 openBrowserUrl(fullUrl)
@@ -2357,9 +2430,8 @@ export class DifferentialApp {
                 return
             }
         }
-        if (!this.state.models || this.state.models.length === 0) {
-            this.state.models = DEFAULT_MODELS
-        }
+        // No fixed fallback list: the model panel shows its empty state (B13)
+        if (!this.state.models) this.state.models = []
     }
 
     async startSubscriptionLogin(provider: string, label?: string): Promise<void> {
@@ -2370,7 +2442,7 @@ export class DifferentialApp {
         const msgIndex = this.state.messages.length
         this.state.messages.push({
             role: 'assistant',
-            content: `Initiating ${displayLabel} subscription verification...`,
+            content: `Initiating ${displayLabel} subscription verification…`,
         })
         this.render()
 
@@ -2391,10 +2463,10 @@ export class DifferentialApp {
 
                 if (isBrowserAuth) {
                     writeToClipboard(targetUrl)
-                    promptText = `Opening browser to authorize ${displayLabel} subscription...\n(Link copied to clipboard - paste in browser if it did not open automatically)\n\nAuthorization URL:\n${targetUrl}\n\nWaiting for authorization and subscription verification...`
+                    promptText = `Opening browser to authorize ${displayLabel} subscription…\n(Link copied to clipboard - paste in browser if it did not open automatically)\n\nAuthorization URL:\n${targetUrl}\n\nWaiting for authorization and subscription verification…`
                 } else {
                     writeToClipboard(code)
-                    promptText = `To authorize ${displayLabel}:\n1. Open: ${targetUrl}\n2. Enter code: \`${code}\` (code copied to clipboard)\n\nWaiting for authorization and subscription verification...`
+                    promptText = `To authorize ${displayLabel}:\n1. Open: ${targetUrl}\n2. Enter code: \`${code}\` (code copied to clipboard)\n\nWaiting for authorization and subscription verification…`
                 }
 
                 this.state.messages[msgIndex] = {
@@ -2506,6 +2578,7 @@ export class DifferentialApp {
             this.state.currentQuestionIndex = 0
             this.state.questionSelectedIndex = 0
             this.state.questionSelectedMulti = new Set()
+            this.state.questionCustomText = null
             this.pendingQuestionAnswers = {}
             this.pendingQuestionResolver = resolve
             this.state.activeOverlay = 'ask_question'
@@ -2518,6 +2591,10 @@ export class DifferentialApp {
         commandOrTarget?: string
         diffLines?: string[]
     }): Promise<'approve' | 'always' | 'git_tracked' | 'deny'> {
+        if (call.diffLines && call.diffLines.length > 0 && call.commandOrTarget) {
+            const target = call.commandOrTarget.match(/^[\w-]+:\s*(.+)$/)?.[1]
+            if (target) this.previewedPaths.add(toRelativePath(target.trim()))
+        }
         return new Promise((resolve) => {
             this.state.pendingToolCall = {
                 toolName: call.toolName,
@@ -2677,6 +2754,7 @@ export class DifferentialApp {
         if (!currentQ) return
 
         this.pendingQuestionAnswers[currentQ.question] = answer
+        this.state.questionCustomText = null
 
         if (this.state.currentQuestionIndex < qList.length - 1) {
             this.state.currentQuestionIndex += 1
@@ -2718,6 +2796,10 @@ export class DifferentialApp {
             return
         }
 
+        if (decision === 'approve') {
+            const items = planStepsFromText(plan?.fullPlan || plan?.summary || '')
+            this.seededPlan = items.length > 0 ? { items, at: Date.now() } : undefined
+        }
         const res = this.pendingPlanApprovalResolver || this.state.pendingPlan?.resolve
         this.pendingPlanApprovalResolver = undefined
         this.state.pendingPlan = null
@@ -2861,20 +2943,6 @@ export class DifferentialApp {
                 this.handleKey(mapped, true)
                 return
             }
-        }
-
-        // Ctrl+O: Toggle tool execution details / command logs
-        if (key === '\x0f') {
-            this.state.expandTools = !this.state.expandTools
-            this.lineCache.clear()
-            this.showToast(
-                this.state.expandTools
-                    ? 'Tool outputs expanded (Ctrl+O to collapse)'
-                    : 'Tool outputs collapsed (Ctrl+O to expand)',
-                'info'
-            )
-            this.render()
-            return
         }
 
         // Ctrl+C
@@ -3307,6 +3375,14 @@ export class DifferentialApp {
                 }
             }
 
+            // L14: with an empty prompt during a turn, ↑ takes the last queued message back to edit
+            if (!this.state.input && this.state.isStreaming && this.state.promptQueue.length > 0) {
+                this.state.input = this.state.promptQueue.pop() || ''
+                this.state.cursorPos = this.state.input.length
+                this.render()
+                return
+            }
+
             if (!this.state.input && this.state.messages.length > 0) {
                 this.scrollUp(2)
             } else if (this.state.promptHistory.length > 0) {
@@ -3379,6 +3455,8 @@ export class DifferentialApp {
                 this.state.cursorPos = 0
                 this.render()
             } else if (this.state.messages.length > 0) {
+                // Read maxScroll only after older turns are laid out
+                this.ensureHistoryLaidOut()
                 this.scrollUp(this.maxScroll)
             }
             return
@@ -3903,7 +3981,7 @@ export class DifferentialApp {
                 return
             }
             if (!requested) {
-                this.showToast('Generating a session title...', 'info')
+                this.showToast('Generating a session title…', 'info')
             }
             Promise.resolve(this.onRenameSessionCallback(requested || undefined))
                 .then((title) => {
@@ -4324,7 +4402,7 @@ export class DifferentialApp {
                 this.showToast('Usage: /codesearch <query>', 'info')
                 return
             }
-            this.showToast(`Searching for "${args}"...`, 'info')
+            this.showToast(`Searching for "${args}"…`, 'info')
             this.state.codeSearchQuery = args
             this.state.codeSearchResults = []
             this.state.codeSearchGroups = []
@@ -4368,6 +4446,7 @@ export class DifferentialApp {
             }
             this.state.btwScrollOffset = 0
             this.render()
+            this.startBtwLoaderTimer()
 
             if (this.onSideQuestionCallback) {
                 const controller = new AbortController()
@@ -4711,6 +4790,12 @@ export class DifferentialApp {
                 return
             }
             this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'ask_question' && this.state.questionCustomText !== null) {
+            this.state.questionCustomText = null
+            this.render()
             return
         }
 
@@ -5098,7 +5183,7 @@ export class DifferentialApp {
                     else if (current.value === 'always-ask') current.value = 'always-proceed'
                     else if (current.value === 'all') current.value = 'one-at-a-time'
                     else if (current.value === 'one-at-a-time') current.value = 'all'
-                    this.showToast(`Updated ${current.title}: [${current.value}]`, 'success')
+                    this.showToast(`${current.title}: ${formatSettingValue(current)}`, 'success')
                     if (this.onSettingChangeCallback) {
                         try {
                             const res = this.onSettingChangeCallback(current.id, current.value)
@@ -5663,12 +5748,13 @@ export class DifferentialApp {
             // 3. Add Custom mode
             if (this.state.mcpMode === 'add_custom') {
                 if (key === '\t' || key === '\x1b[B') {
-                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField + 1) % 6
+                    // M13: 5 fields, no button row (enter adds from any field)
+                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField + 1) % 5
                     this.render()
                     return
                 }
                 if (key === '\x1b[Z' || key === '\x1b[A') {
-                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField - 1 + 6) % 6
+                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField - 1 + 5) % 5
                     this.render()
                     return
                 }
@@ -5959,7 +6045,7 @@ export class DifferentialApp {
         }
 
         if (overlay === 'model') {
-            const models = this.state.models.length > 0 ? this.state.models : DEFAULT_MODELS
+            const models = this.state.models
             const filtered = ModelSelectMenuView.getFilteredModels(
                 models,
                 this.state.modelSearchQuery
@@ -6658,7 +6744,7 @@ export class DifferentialApp {
                 } else {
                     openBrowserUrl(dashboard.url)
                 }
-                this.showToast(`Opening ${dashboard.name} usage dashboard in browser...`, 'info')
+                this.showToast(`Opening ${dashboard.name} usage dashboard in browser…`, 'info')
                 return
             }
             if (key === 'q' || key === 'Q' || key === '\r' || key === '\n' || key === '\x1b') {
@@ -6807,6 +6893,41 @@ export class DifferentialApp {
             if (!currentQ) return
             const optionsCount = currentQ.options.length
             const isMulti = Boolean(currentQ.is_multi_select)
+            // The last row is "Type your own answer…" (S21)
+            const customIndex = optionsCount
+
+            if (this.state.questionCustomText !== null) {
+                const typed = this.state.questionCustomText
+                if (key === '\r' || key === '\n') {
+                    const answer = typed.trim()
+                    if (!answer) return
+                    if (isMulti) {
+                        const chosen = Array.from(this.state.questionSelectedMulti)
+                            .map((i) => currentQ.options[i])
+                            .filter(Boolean) as string[]
+                        this.submitCurrentQuestionAnswer([...chosen, answer])
+                    } else {
+                        this.submitCurrentQuestionAnswer(answer)
+                    }
+                    return
+                }
+                if (key === '\x7f' || key === '\b') {
+                    this.state.questionCustomText = typed.slice(0, -1)
+                    this.render()
+                    return
+                }
+                if (key === '\x1b[A') {
+                    this.state.questionCustomText = null
+                    this.state.questionSelectedIndex = Math.max(0, customIndex - 1)
+                    this.render()
+                    return
+                }
+                if (!key.startsWith('\x1b') && [...key].every((c) => c.charCodeAt(0) >= 32)) {
+                    this.state.questionCustomText = typed + key
+                    this.render()
+                }
+                return
+            }
 
             if (key === '\x1b[A' || key === 'k') {
                 if (this.state.questionSelectedIndex > 0) {
@@ -6816,13 +6937,21 @@ export class DifferentialApp {
                 return
             }
             if (key === '\x1b[B' || key === 'j') {
-                if (this.state.questionSelectedIndex < optionsCount - 1) {
+                if (this.state.questionSelectedIndex < customIndex) {
                     this.state.questionSelectedIndex += 1
                     this.render()
                 }
                 return
             }
-            if (key === ' ' && isMulti) {
+            if (
+                (key === '\r' || key === '\n') &&
+                this.state.questionSelectedIndex === customIndex
+            ) {
+                this.state.questionCustomText = ''
+                this.render()
+                return
+            }
+            if (key === ' ' && isMulti && this.state.questionSelectedIndex < customIndex) {
                 if (this.state.questionSelectedMulti.has(this.state.questionSelectedIndex)) {
                     this.state.questionSelectedMulti.delete(this.state.questionSelectedIndex)
                 } else {
@@ -6869,7 +6998,10 @@ export class DifferentialApp {
         }
 
         if (overlay === 'tool_permission') {
-            const opts = DEFAULT_PERMISSION_OPTIONS
+            const opts = getPermissionOptions(
+                this.state.pendingToolCall?.toolName || '',
+                this.state.pendingToolCall?.commandOrTarget
+            )
             if (
                 key === '\x1b[A' ||
                 key === '\x1b[D' ||
@@ -6902,7 +7034,7 @@ export class DifferentialApp {
                 this.resolveToolPermission('always')
                 return
             }
-            if (key === 'g' || key === 'G') {
+            if ((key === 'g' || key === 'G') && opts.some((o) => o.value === 'git_tracked')) {
                 this.resolveToolPermission('git_tracked')
                 return
             }
@@ -6912,8 +7044,7 @@ export class DifferentialApp {
             }
             if (key === '\r' || key === '\n' || key === ' ') {
                 const opt = opts[this.state.toolPermissionSelectedIndex]
-                const val = (opt?.value as any) || 'deny'
-                this.resolveToolPermission(val === 'git-tracked' ? 'git_tracked' : val)
+                this.resolveToolPermission(opt?.value || 'deny')
                 return
             }
             return
@@ -7532,7 +7663,7 @@ export class DifferentialApp {
         }
         this.state.isStreaming = true
         this.startSpinner()
-        this.setStatusMessage('Compacting conversation...')
+        this.setStatusMessage('Compacting conversation…')
         onCompact(focus)
             .then((res) => {
                 if (res.compacted) {
@@ -7710,7 +7841,7 @@ export class DifferentialApp {
             title: 'Check',
             rows: [],
             isLoading: true,
-            loadingText: 'Running checks...',
+            loadingText: 'Running checks…',
             footer,
             onKey,
         })
@@ -7732,7 +7863,7 @@ export class DifferentialApp {
                     for (const c of checks.filter((x) => x.group === group)) {
                         rows.push({ text: c.label, tone: c.status, detail: c.detail })
                         if (c.fix && c.status !== 'ok') {
-                            rows.push({ text: `↳ ${c.fix}`, tone: 'muted' })
+                            rows.push({ text: `└ ${c.fix}`, tone: 'muted' })
                         }
                     }
                 }
@@ -7956,7 +8087,7 @@ export class DifferentialApp {
             title: 'GitHub Action',
             rows: [],
             isLoading: true,
-            loadingText: 'Checking gh, the repository, and its secrets...',
+            loadingText: 'Checking gh, the repository, and its secrets…',
             footer: [{ key: 'esc', label: 'close' }],
         })
         if (!onLoad || !onAction) {
@@ -7968,7 +8099,7 @@ export class DifferentialApp {
         }
 
         const run = (action: GithubSetupAction) => {
-            this.updateReport('github', { isLoading: true, loadingText: 'Working...' })
+            this.updateReport('github', { isLoading: true, loadingText: 'Working…' })
             onAction(action)
                 .then((message) => {
                     this.showToast(message, 'success')
@@ -8006,7 +8137,7 @@ export class DifferentialApp {
                         : { text: 'GitHub CLI (gh)', tone: 'fail', detail: 'not found' }
                 )
                 if (!data.ghInstalled) {
-                    rows.push({ text: '↳ Install it from https://cli.github.com', tone: 'muted' })
+                    rows.push({ text: '└ Install it from https://cli.github.com', tone: 'muted' })
                 } else {
                     rows.push(
                         data.ghAuthed
@@ -8018,7 +8149,7 @@ export class DifferentialApp {
                               }
                     )
                     if (!data.ghAuthed) {
-                        rows.push({ text: '↳ Run `!gh auth login`, then press r', tone: 'muted' })
+                        rows.push({ text: '└ Run `!gh auth login`, then press r', tone: 'muted' })
                     }
                 }
                 if (!data.inGitRepo) {
@@ -8059,7 +8190,7 @@ export class DifferentialApp {
                               }
                     )
                     if (data.providerNote)
-                        rows.push({ text: `↳ ${data.providerNote}`, tone: 'muted' })
+                        rows.push({ text: `└ ${data.providerNote}`, tone: 'muted' })
                     rows.push({
                         text: 'Slack / Discord alerts (optional)',
                         tone: data.slackSet || data.discordSet ? 'ok' : 'muted',
@@ -8487,7 +8618,115 @@ export class DifferentialApp {
         return true
     }
 
+    private static readonly APPROVAL_OVERLAYS = new Set([
+        'tool_permission',
+        'ask_question',
+        'plan_approve',
+    ])
+
+    /**
+     * The activity block (L0) for this frame. `turn` (the activity line and the plan
+     * checklist) is drawn at the end of the chat (L20); `queued` stays above the prompt box.
+     * Also settles the paused time while an approval prompt is open.
+     */
+    private getActivityBlock(
+        width: number,
+        hideHint = false
+    ): { turn: FormattedLine[]; queued: FormattedLine[] } {
+        const now = Date.now()
+        const waiting =
+            this.state.isStreaming &&
+            DifferentialApp.APPROVAL_OVERLAYS.has(this.state.activeOverlay)
+        if (waiting && this.turnPauseStartedAt === undefined) this.turnPauseStartedAt = now
+        if (!waiting && this.turnPauseStartedAt !== undefined) {
+            this.turnPausedMs += now - this.turnPauseStartedAt
+            this.turnPauseStartedAt = undefined
+        }
+        const locale = process.env.LC_ALL || process.env.LC_CTYPE || process.env.LANG || ''
+        return this.activityTracker.getBlock(
+            {
+                messages: this.state.messages,
+                isStreaming: this.state.isStreaming,
+                statusMessage: this.state.statusMessage,
+                statusSetAt: this.statusSetAt,
+                waitingForUser: waiting,
+                now,
+                turnStartedAt: this.streamStartTime || now,
+                pausedMs: this.turnPausedMs,
+                pauseStartedAt: this.turnPauseStartedAt,
+                lastActivityAt: this.lastStreamActivityAt,
+                firstTokenAt: this.firstTokenAt,
+                isColdStart: !this.hasReceivedToken,
+                tip: this.state.activeTip,
+                queued: this.state.promptQueue,
+                contextTokens: this.getEffectiveContextTokens(),
+                retry: this.retryInfo,
+                seededPlan: this.seededPlan?.items,
+                hideHint,
+                reduceMotion: Boolean(process.env.NO_COLOR || process.env.DECEMBER_REDUCE_MOTION),
+                wideAmbiguous: /^(zh|ja|ko)/i.test(locale),
+            },
+            Math.max(10, width - THEME.padding.paddingLeft - THEME.padding.paddingRight)
+        )
+    }
+
+    private drawActivityLines(lines: FormattedLine[], y: number, width: number): void {
+        const buffer = this.screen.backBuffer
+        lines.forEach((line, i) => {
+            let x = THEME.padding.paddingLeft
+            for (const seg of line) {
+                const room = width - x
+                if (room <= 0) break
+                const text = seg.text.length > room ? seg.text.slice(0, room) : seg.text
+                buffer.write(x, y + i, text, seg.style)
+                x += text.length
+            }
+        })
+    }
+
+    /** Redraws while /btw waits for its first token, so its ✱ breathes (M25, Q8 A) */
+    private startBtwLoaderTimer(): void {
+        if (this.btwLoaderTimer) return
+        this.btwLoaderTimer = setInterval(() => {
+            if (this.state.btwState?.status !== 'loading') {
+                clearInterval(this.btwLoaderTimer!)
+                this.btwLoaderTimer = null
+                return
+            }
+            this.render()
+        }, 130)
+    }
+
+    /** Records stream or tool activity for the activity line's stall and first-token checks */
+    private markStreamActivity(): void {
+        const now = Date.now()
+        this.lastStreamActivityAt = now
+        if (this.firstTokenAt === 0) {
+            this.firstTokenAt = now
+            if (this.streamStartTime > 0) this.perfStats.ttftMs = now - this.streamStartTime
+        }
+        this.hasReceivedToken = true
+    }
+
+    private resetActivityTiming(): void {
+        this.activityTracker.reset()
+        this.lastStreamActivityAt = 0
+        this.firstTokenAt = 0
+        this.statusSetAt = 0
+        this.turnPausedMs = 0
+        this.turnPauseStartedAt = undefined
+        this.previewedPaths.clear()
+        this.retryInfo = undefined
+        this.turnOutputTokens = 0
+    }
+
+    /** Adds one model call's output tokens to the current turn (shown in the L16 line) */
+    addTurnOutputTokens(tokens: number): void {
+        if (Number.isFinite(tokens) && tokens > 0) this.turnOutputTokens += tokens
+    }
+
     scheduleStreamRender(): void {
+        this.markStreamActivity()
         const now = performance.now()
         const elapsed = now - this.lastStreamRenderTime
 
@@ -8529,13 +8768,64 @@ export class DifferentialApp {
         this.render()
     }
 
+    /** End-of-turn line (L16): only for turns over 10s, or turns that changed files */
+    private appendTurnSummary(): void {
+        if (!this.streamStartTime) return
+        const now = Date.now()
+        const paused =
+            this.turnPausedMs + (this.turnPauseStartedAt ? now - this.turnPauseStartedAt : 0)
+        const durationMs = Math.max(0, now - this.streamStartTime - paused)
+        const messages = this.state.messages
+        let start = messages.length
+        while (start > 0 && messages[start - 1]?.role !== 'user') start--
+        const turn = messages.slice(start)
+        if (turn.length === 0) return
+        // An interrupted turn already ends with the interrupt notice
+        if (
+            turn.some(
+                (m) =>
+                    m.role === 'assistant' &&
+                    (m.content || '').includes('Interrupted · What should December do instead?')
+            )
+        )
+            return
+
+        const files = new Map<string, { path: string; added: number; removed: number }>()
+        let outputTokens = this.turnOutputTokens
+        for (const m of turn) {
+            if (!this.turnOutputTokens) outputTokens += m.usage?.completionTokens || 0
+            if (!m.toolCall || m.toolCall.status === 'error') continue
+            const change = toolCallChanges(m.toolCall)
+            if (!change || !change.path) continue
+            const entry = files.get(change.path) ?? { path: change.path, added: 0, removed: 0 }
+            entry.added += change.added
+            entry.removed += change.removed
+            files.set(change.path, entry)
+        }
+        if (durationMs <= 10_000 && files.size === 0) return
+        messages.push({
+            role: 'turn_summary',
+            summary: {
+                durationMs,
+                outputTokens: outputTokens || undefined,
+                files: [...files.values()],
+            },
+        })
+    }
+
     finishStream(): void {
         this.flushStream()
+        this.appendTurnSummary()
+        // The seeded checklist lasts until the turn that carries out the plan ends (F2)
+        if (this.seededPlan && this.streamStartTime && this.seededPlan.at <= this.streamStartTime) {
+            this.seededPlan = undefined
+        }
         this.clearStatusMessage()
         this.stopSpinner()
         this.state.isStreaming = false
         this.flushTaskNotices()
         this.streamStartTime = 0
+        this.resetActivityTiming()
         this.state.activeTip = null
         this.refreshUsageStats()
         this.render()
@@ -8552,6 +8842,7 @@ export class DifferentialApp {
         this.state.isStreaming = false
         this.flushTaskNotices()
         this.streamStartTime = 0
+        this.resetActivityTiming()
         this.state.activeTip = null
         this.state.promptQueue = []
         this.clearStatusMessage()
@@ -8638,7 +8929,14 @@ export class DifferentialApp {
         this.render()
     }
 
-    appendToolCall(toolCall: { id: string; name: string; input?: any; command?: string }): void {
+    appendToolCall(toolCall: {
+        id: string
+        name: string
+        input?: any
+        command?: string
+        mcpServer?: string
+        mcpTool?: string
+    }): void {
         // Finalize any in-progress thinking block before tool execution
         for (let i = this.state.messages.length - 1; i >= 0; i--) {
             const m = this.state.messages[i]
@@ -8648,6 +8946,7 @@ export class DifferentialApp {
             }
         }
 
+        this.markStreamActivity()
         const fallbackSummary = toolCall.command || `${toolCall.name}()`
 
         this.state.messages.push({
@@ -8660,6 +8959,9 @@ export class DifferentialApp {
                 status: 'running',
                 output: '',
                 startTime: Date.now(),
+                ...(toolCall.mcpServer
+                    ? { mcpServer: toolCall.mcpServer, mcpTool: toolCall.mcpTool }
+                    : {}),
             },
         })
 
@@ -8671,10 +8973,9 @@ export class DifferentialApp {
     }
 
     updateToolExecution(toolCallId: string, chunk: string): void {
-        const msg = this.state.messages.find(
-            (m) => m.role === 'tool' && m.toolCall?.id === toolCallId
-        )
+        const msg = this.findToolMessage(toolCallId)
         if (msg && msg.toolCall) {
+            this.markStreamActivity()
             const prev = msg.toolCall.output || ''
             if (prev.length > 200_000) {
                 msg.toolCall.output = prev.slice(-100_000) + chunk
@@ -8710,9 +9011,7 @@ export class DifferentialApp {
             clearTimeout(this.toolRenderTimer)
             this.toolRenderTimer = null
         }
-        const msg = this.state.messages.find(
-            (m) => m.role === 'tool' && m.toolCall?.id === toolCallId
-        )
+        const msg = this.findToolMessage(toolCallId)
         if (msg && msg.toolCall) {
             msg.toolCall.status = result.isError ? 'error' : 'success'
             if (result.output) {
@@ -8730,11 +9029,46 @@ export class DifferentialApp {
         }
     }
 
+    /** The running tool is almost always near the end, so search from there */
+    private findToolMessage(toolCallId: string): MessageItem | undefined {
+        const messages = this.state.messages
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const m = messages[i]!
+            if (m.role === 'tool' && m.toolCall?.id === toolCallId) return m
+        }
+        return undefined
+    }
+
     requestRender(): void {
         this.render()
     }
 
+    /**
+     * Older turns may not be laid out yet (virtualized history). Scrolling needs the real
+     * line count, so finish the layout and repaint before reading maxScroll.
+     */
+    private ensureHistoryLaidOut(): void {
+        if (this.lineCache.isComplete()) return
+        this.lineCache.layoutPending(Number.POSITIVE_INFINITY)
+        if (this.isRunning && !this.isDetached) this.paint()
+    }
+
+    /** Lays out skipped older turns in small idle slices, so input stays responsive */
+    private scheduleHistoryLayout(): void {
+        if (this.historyLayoutScheduled) return
+        this.historyLayoutScheduled = true
+        setImmediate(() => {
+            this.historyLayoutScheduled = false
+            if (!this.isRunning) return
+            const done = this.lineCache.layoutPending(DifferentialApp.HISTORY_LAYOUT_BUDGET_MS)
+            // A finished pass changes only the line count (and the header above the oldest
+            // turn), which matter once the user scrolls; ensureHistoryLaidOut() covers that
+            if (!done) this.scheduleHistoryLayout()
+        })
+    }
+
     scrollUp(delta = 1): void {
+        this.ensureHistoryLaidOut()
         const current = this.state.scrollOffset ?? this.maxScroll
         const next = Math.max(0, current - delta)
         this.state.scrollOffset = next
@@ -8743,6 +9077,7 @@ export class DifferentialApp {
     }
 
     scrollDown(delta = 1): void {
+        this.ensureHistoryLaidOut()
         const current = this.state.scrollOffset ?? this.maxScroll
         const next = Math.min(this.maxScroll, current + delta)
         if (next >= this.maxScroll) {
@@ -8757,7 +9092,7 @@ export class DifferentialApp {
 
     /** Line layout depends on width and tool expansion; a change re-anchors the new-lines count. */
     private getScrollLayoutKey(width: number): string {
-        return `${width}:${this.state.expandTools ? 1 : 0}`
+        return `${width}`
     }
 
     private getNewLinesAnchor(width: number): number | undefined {
@@ -8814,12 +9149,68 @@ export class DifferentialApp {
 
         if (this.renderScheduled || !this.isRunning) return
         this.renderScheduled = true
-        this.scheduleFrame(() => {
+        const scheduleFrame = this.scheduleFrame
+        const run = () => {
             this.renderScheduled = false
-            if (this.isRunning) {
-                this.paint()
+            if (!this.isRunning) return
+            // The terminal has not taken the last frame: paint the latest state once it drains
+            if (this.terminal.isBlocked) {
+                this.paintOnDrain = true
+                this.perfStats.droppedFrames++
+                return
             }
-        })
+            this.terminal.lastWriteMs = 0
+            const startedAt = performance.now()
+            const bytesBefore = this.terminal.bytesWritten
+            this.paint()
+            if (this.perfHud) this.recordFrame(performance.now() - startedAt, bytesBefore)
+            this.paceNextFrame()
+        }
+        const wait = this.nextPaintAt - performance.now()
+        if (wait > 1) {
+            setTimeout(() => scheduleFrame(run), wait)
+        } else {
+            scheduleFrame(run)
+        }
+    }
+
+    /**
+     * TTY writes block on Linux and macOS until the terminal takes them. When a frame write
+     * was slow, wait about as long before the next paint, so frames never queue up behind
+     * input on a slow terminal (for example WSL with ConPTY). Fast terminals keep full rate.
+     */
+    private recordFrame(frameMs: number, bytesBefore: number): void {
+        const stats = this.perfStats
+        stats.frameMs = frameMs
+        stats.avgFrameMs = stats.avgFrameMs ? stats.avgFrameMs * 0.9 + frameMs * 0.1 : frameMs
+        stats.maxFrameMs = Math.max(stats.maxFrameMs * 0.995, frameMs)
+        stats.frameBytes = this.terminal.bytesWritten - bytesBefore
+        if (this.terminal.lastWriteMs > DifferentialApp.SLOW_WRITE_MS) stats.slowWrites++
+    }
+
+    /** Sends the back buffer to the terminal, with the performance overlay when enabled */
+    private flushFrame(): void {
+        if (this.perfHud) {
+            const s = this.perfStats
+            const ttft = s.ttftMs ? `${(s.ttftMs / 1000).toFixed(2)}s` : '-'
+            const text =
+                ` frame ${s.frameMs.toFixed(1)}ms avg ${s.avgFrameMs.toFixed(1)} max ${s.maxFrameMs.toFixed(1)}` +
+                ` · ${s.frameBytes}B · slow ${s.slowWrites} · drop ${s.droppedFrames} · ttft ${ttft} `
+            const x = Math.max(0, this.screen.columns - text.length)
+            this.screen.backBuffer.write(x, 0, text.slice(0, this.screen.columns), {
+                fg: THEME.colors.muted,
+                bg: THEME.colors.surface,
+            })
+        }
+        this.screen.render()
+    }
+
+    private paceNextFrame(): void {
+        const writeMs = this.terminal.lastWriteMs
+        this.nextPaintAt =
+            writeMs > DifferentialApp.SLOW_WRITE_MS
+                ? performance.now() + Math.min(writeMs, DifferentialApp.MAX_FRAME_DELAY_MS)
+                : 0
     }
 
     private paint(): void {
@@ -8832,6 +9223,8 @@ export class DifferentialApp {
         }
 
         this.screen.backBuffer.clear()
+        // A panel asks for the real cursor while it draws (G11); start each frame with none
+        takePanelCursor()
 
         const overlay = this.state.activeOverlay
         const isPagerMode =
@@ -8964,7 +9357,8 @@ export class DifferentialApp {
                     canGoBack: this.state.memoryReturnOverlay !== 'none',
                 })
             }
-            this.screen.render()
+            this.placePanelCursor()
+            this.flushFrame()
             return
         }
 
@@ -9019,36 +9413,51 @@ export class DifferentialApp {
                 btwHeight = BtwOverlayView.getHeight(this.state.btwState, undefined, contentWidth)
             }
 
-            // 4. Message List View (full height above interactive area)
+            // 4. Activity block (L0). The activity line and the plan end the chat (L20); queued
+            // messages stay above the prompt box and any floating menu, one blank row above it
+            const activity = this.getActivityBlock(width)
+            const activityLines = activity.queued
+            const activityHeight = activityLines.length > 0 ? activityLines.length + 1 : 0
+
+            // 5. Message List View (full height above interactive area)
             // Insert a 1-line separation gap above the interactive area (both floating menus and the prompt box)
             const bottomFloating = Math.max(fileMenuHeight, commandMenuHeight)
             const interactiveGap = height >= 10 ? 1 : 0
-            const topOfInteractive = inputY - bottomFloating - btwHeight - interactiveGap
+            const topOfInteractive =
+                inputY - bottomFloating - btwHeight - activityHeight - interactiveGap
             const bodyHeight = Math.max(1, topOfInteractive)
 
-            const { maxScroll, totalLines } = MessageListView.render(this.screen.backBuffer, {
-                x: 0,
-                y: 0,
-                width,
-                height: bodyHeight,
-                newLinesAnchor: this.getNewLinesAnchor(width),
-                messages: this.state.messages,
-                scrollOffset: this.state.scrollOffset,
-                isStreaming: this.state.isStreaming,
-                spinnerFrame: this.state.spinnerFrame,
-                statusMessage: this.state.statusMessage,
-                backgroundStatus: this.getUpdateStatusText(),
-                headerProps,
-                lineCache: this.lineCache,
-                expandTools: this.state.expandTools,
-                tip: this.state.activeTip,
-            })
+            const { maxScroll, totalLines, complete } = MessageListView.render(
+                this.screen.backBuffer,
+                {
+                    x: 0,
+                    y: 0,
+                    width,
+                    height: bodyHeight,
+                    newLinesAnchor: this.getNewLinesAnchor(width),
+                    messages: this.state.messages,
+                    scrollOffset: this.state.scrollOffset,
+                    isStreaming: this.state.isStreaming,
+                    headerProps,
+                    lineCache: this.lineCache,
+                    previewedPaths: this.previewedPaths,
+                    virtualize: this.virtualizeHistory,
+                    trailingLines: activity.turn,
+                }
+            )
             this.maxScroll = maxScroll
             this.updateScrollAnchor(width, totalLines)
+            if (!complete) this.scheduleHistoryLayout()
 
             // Clear the 1-row separator line so chat text does not bleed into the gap
             if (interactiveGap > 0 && topOfInteractive >= 0 && topOfInteractive < height) {
                 this.screen.backBuffer.clearArea(0, topOfInteractive, width, 1)
+            }
+
+            if (activityHeight > 0) {
+                const activityY = Math.max(0, inputY - bottomFloating - btwHeight - activityHeight)
+                this.screen.backBuffer.clearArea(0, activityY, width, activityHeight)
+                this.drawActivityLines(activityLines, activityY, width)
             }
 
             // 5. Render floating overlays on top of chat area (with clearArea)
@@ -9061,6 +9470,7 @@ export class DifferentialApp {
                     width,
                     state: this.state.btwState,
                     scrollOffset: this.state.btwScrollOffset,
+                    now: Date.now(),
                 })
             }
 
@@ -9100,6 +9510,10 @@ export class DifferentialApp {
                 cursorPos: this.state.cursorPos,
                 modeTag: this.state.planMode ? 'plan' : undefined,
                 isStreaming: this.state.isStreaming,
+                // L21: the Esc hint lives here during a turn, not in the activity line
+                placeholder: this.state.isStreaming
+                    ? 'Type to queue a message · esc to interrupt'
+                    : undefined,
                 activeModel: this.state.activeModel,
                 modelLabel: this.state.modelLabel,
                 isAuthenticated: this.state.isAuthenticated,
@@ -9113,6 +9527,7 @@ export class DifferentialApp {
                 tasksCount: this.state.tasks.length,
                 runningTasksCount: this.state.tasks.filter((t) => t.status === 'running').length,
                 queuedPromptsCount: this.state.promptQueue.length,
+                backgroundStatus: this.getUpdateStatusText(),
                 showExitConfirm: this.state.showExitConfirm,
                 toast: this.state.toast,
                 pendingModelFallback: this.state.pendingModelFallback,
@@ -9185,10 +9600,12 @@ export class DifferentialApp {
                 naturalHeight = AskQuestionMenuView.getHeight(q?.options?.length || 0)
             } else if (overlay === 'tool_permission') {
                 naturalHeight = ToolPermissionMenuView.getHeight(
-                    this.state.pendingToolCall?.diffLines?.length || 0
+                    this.state.pendingToolCall?.toolName || '',
+                    this.state.pendingToolCall?.diffLines || [],
+                    this.state.pendingToolCall?.commandOrTarget
                 )
             } else if (overlay === 'plan_approve') {
-                naturalHeight = PlanApproveMenuView.getHeight()
+                naturalHeight = PlanApproveMenuView.getHeight(this.state.pendingPlan?.fullPlan)
             } else if (overlay === 'auth') {
                 naturalHeight = AuthMenuView.getHeight(
                     this.state.authViewMode,
@@ -9204,34 +9621,46 @@ export class DifferentialApp {
                 Math.max(5, height - overlayGap - 1)
             )
             const overlayY = Math.max(overlayGap, height - clampedOverlayHeight)
+            // L20: during a turn the activity line ends the chat above the panel. An approval
+            // prompt shows "Waiting for you" (L10); other panels hide the hint (Esc closes them).
+            const isApproval = DifferentialApp.APPROVAL_OVERLAYS.has(overlay)
+            const overlayActivity = this.state.isStreaming
+                ? this.getActivityBlock(width, !isApproval).turn.slice(0, 1)
+                : []
             const chatHeight = Math.max(0, overlayY - overlayGap)
 
             // Render messages above the overlay card
             if (chatHeight > 0) {
-                const { maxScroll, totalLines } = MessageListView.render(this.screen.backBuffer, {
-                    x: 0,
-                    y: 0,
-                    width,
-                    height: chatHeight,
-                    newLinesAnchor: this.getNewLinesAnchor(width),
-                    messages: this.state.messages,
-                    scrollOffset: this.state.scrollOffset,
-                    isStreaming: this.state.isStreaming,
-                    spinnerFrame: this.state.spinnerFrame,
-                    statusMessage: this.state.statusMessage,
-                    backgroundStatus: this.getUpdateStatusText(),
-                    headerProps,
-                    lineCache: this.lineCache,
-                    expandTools: this.state.expandTools,
-                    tip: this.state.activeTip,
-                })
+                const { maxScroll, totalLines, complete } = MessageListView.render(
+                    this.screen.backBuffer,
+                    {
+                        x: 0,
+                        y: 0,
+                        width,
+                        height: chatHeight,
+                        newLinesAnchor: this.getNewLinesAnchor(width),
+                        messages: this.state.messages,
+                        scrollOffset: this.state.scrollOffset,
+                        isStreaming: this.state.isStreaming,
+                        headerProps,
+                        lineCache: this.lineCache,
+                        previewedPaths: this.previewedPaths,
+                        awaitingApproval:
+                            this.state.isStreaming &&
+                            DifferentialApp.APPROVAL_OVERLAYS.has(overlay),
+                        virtualize: this.virtualizeHistory,
+                        trailingLines: overlayActivity,
+                    }
+                )
                 this.maxScroll = maxScroll
                 this.updateScrollAnchor(width, totalLines)
+                if (!complete) this.scheduleHistoryLayout()
             }
 
             // Clear the 1-line separation gap so no residual chat cells remain in the gap
-            if (overlayGap > 0 && overlayY - overlayGap >= 0) {
-                this.screen.backBuffer.clearArea(0, overlayY - overlayGap, width, overlayGap)
+            const gapY = overlayY - overlayGap
+            if (overlayGap > 0 && gapY >= 0) {
+                this.screen.backBuffer.clearArea(0, gapY, width, overlayGap)
             }
 
             // Clear overlay region completely so no residual chat cells remain
@@ -9398,7 +9827,7 @@ export class DifferentialApp {
                     authMethod: this.state.authMethod,
                 })
             } else if (overlay === 'session') {
-                SessionSelectMenuView.render(this.screen.backBuffer, {
+                const sessionProps = {
                     x: 0,
                     y: overlayY,
                     width,
@@ -9411,7 +9840,11 @@ export class DifferentialApp {
                     renameMode: this.state.sessionRenameMode,
                     renameValue: this.state.sessionRenameValue,
                     confirmDeleteId: this.state.sessionConfirmDeleteId,
-                })
+                }
+                SessionSelectMenuView.render(this.screen.backBuffer, sessionProps)
+                // G11, M21.2: the real terminal cursor while searching or renaming
+                const sessionCursor = SessionSelectMenuView.getCursorPosition(sessionProps)
+                if (sessionCursor) this.screen.setCursor(sessionCursor.x, sessionCursor.y, true)
             } else if (overlay === 'usage') {
                 UsageSelectMenuView.render(this.screen.backBuffer, {
                     x: 0,
@@ -9443,6 +9876,7 @@ export class DifferentialApp {
                         currentQuestionIndex: this.state.currentQuestionIndex,
                         selectedIndex: this.state.questionSelectedIndex,
                         selectedMultiIndices: this.state.questionSelectedMulti,
+                        customText: this.state.questionCustomText,
                     })
                 }
             } else if (overlay === 'tool_permission') {
@@ -9463,6 +9897,7 @@ export class DifferentialApp {
                     width,
                     height: clampedOverlayHeight,
                     planSummary: this.state.pendingPlan?.summary,
+                    planText: this.state.pendingPlan?.fullPlan,
                     selectedIndex: this.state.planApproveSelectedIndex,
                 })
             } else if (overlay === 'auth') {
@@ -9525,7 +9960,14 @@ export class DifferentialApp {
             }
         }
 
+        this.placePanelCursor()
         // Diff and flush to stdout
-        this.screen.render()
+        this.flushFrame()
+    }
+
+    /** G11: shows the real terminal cursor where a panel's text field asked for it */
+    private placePanelCursor(): void {
+        const cursor = takePanelCursor()
+        if (cursor) this.screen.setCursor(cursor.x, cursor.y, true)
     }
 }

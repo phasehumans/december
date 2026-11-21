@@ -182,42 +182,40 @@ export interface PluginCatalogSummary {
     marketplaces: MarketplaceRow[]
 }
 
-/** The muted sentence under the tabs */
+/** M14: the counts on the right of the tab row (the description row is gone) */
 export function pluginSubtitle(
     tab: PluginTab,
     catalog: PluginCatalogSummary,
     marketFilter?: string | null
 ): string {
+    const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`
     if (tab === 'installed') {
         const off = catalog.installed.filter((r) => !r.enabled).length
         const total = catalog.installed.length
-        return `Plugins, skills, and MCP servers. ${total} installed${off ? `, ${off} off` : ''}.`
+        return `${total} installed${off ? ` · ${off} off` : ''}`
     }
     if (tab === 'discover') {
-        const markets = catalog.marketplaces.length
         const shown = marketFilter
             ? catalog.discover.filter((d) => d.marketplace === marketFilter).length
             : catalog.discover.length
-        const from = marketFilter
-            ? `from ${marketFilter}`
-            : `from ${markets} marketplace${markets === 1 ? '' : 's'}`
-        return `${shown} plugin${shown === 1 ? '' : 's'} ${from}.`
+        const from = marketFilter ?? plural(catalog.marketplaces.length, 'marketplace')
+        return `${plural(shown, 'plugin')} · ${from}`
     }
-    return 'Where December finds plugins: a git repo or folder with a marketplace.json.'
+    return plural(catalog.marketplaces.length, 'marketplace')
 }
 
-/** Text for the right-hand column of an Installed row */
+/** Text for the right-hand column of an Installed row: "skill · docs · update" */
 export function extensionMetaText(row: ExtensionRow): string {
-    const parts = [row.kind, row.meta]
-    if (row.parentPlugin) parts.push(`via ${row.parentPlugin}`)
+    const parts = [row.kind, row.meta, row.parentPlugin]
+    if (row.enabled && row.status === 'error') parts.push('failed to load')
     if (row.updateAvailable) parts.push('update')
     return parts.filter(Boolean).join(' · ')
 }
 
-/** Text for the right-hand column of a Discover row */
+/** Text for the right-hand column of a Discover row; an installed plugin shows a ✓ */
 export function discoverMetaText(row: DiscoverRow, showMarketplace: boolean): string {
     if (row.updateAvailable) return 'update'
-    if (row.installed) return 'installed'
+    if (row.installed) return '✓'
     const parts: string[] = []
     if (row.skillNames?.length) {
         parts.push(`${row.skillNames.length} skill${row.skillNames.length === 1 ? '' : 's'}`)
@@ -229,8 +227,8 @@ export function discoverMetaText(row: DiscoverRow, showMarketplace: boolean): st
 
 /** How many list lines fit in a /plugin card of this height */
 export function visibleListLines(height: number, totalLines: number): number {
-    // tabs, subtitle, search, gap above the list; gap and footer below
-    const available = Math.max(1, height - 6)
+    // tabs, search, gap above the list; gap and footer below
+    const available = Math.max(1, height - 5)
     if (totalLines <= Math.min(available, PLUGIN_WINDOW_SIZE)) return totalLines
     // Leave one row for the "↑ n more · ↓ n more" line
     return Math.max(1, Math.min(available - 1, PLUGIN_WINDOW_SIZE))

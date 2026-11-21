@@ -52,7 +52,7 @@ function medianFrameMs(turns: number): number {
             messages,
             lineCache,
             isStreaming: true,
-            spinnerFrame: i % 10,
+            now: i * 80,
         })
     }
 

@@ -2,6 +2,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawInlineConfirm, drawPanelTitle } from './panel'
 import { formatSessionTimeAgo, sanitizeSessionTitle } from './session-select-menu-view'
 
 import type { ScreenBuffer } from '../buffer'
@@ -35,8 +36,8 @@ export const RewindSelectMenuView = {
         const count = turnsCount || 1
         const visible = Math.min(windowSize, count)
         const hasOverflow = count > windowSize
-        // Title (1) + Subtitle (1) + Gap (1) + Visible + Overflow (0|1) + Gap (1) + Footer (1)
-        return 3 + visible + (hasOverflow ? 1 : 0) + 2
+        // Title (1) + Gap (1) + Visible + Overflow (0|1) + Gap (1) + Footer (1)
+        return 2 + visible + (hasOverflow ? 1 : 0) + 2
     },
 
     render(buffer: ScreenBuffer, props: RewindSelectMenuViewProps): void {
@@ -48,24 +49,17 @@ export const RewindSelectMenuView = {
         )
         const windowSize = props.windowSize ?? REWIND_WINDOW_SIZE
 
-        // 1. Title Row
-        drawText(buffer, 'Rewind', {
+        // 1. Title row (M20): the description goes into the meta
+        drawPanelTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.text, bold: true },
-        })
-        y += 1
-
-        // 2. Subtitle Row
-        drawText(buffer, 'Restore files and conversation to the start of a turn.', {
-            x,
-            y,
-            maxWidth: width,
-            style: { fg: THEME.colors.muted },
+            title: 'Rewind',
+            meta: 'go back to the start of a turn',
+            width,
         })
         y += 2
 
-        // 3. Turn Items
+        // 2. Turn rows
         const turns = props.turns || []
         const totalItems = turns.length
 
@@ -82,7 +76,8 @@ export const RewindSelectMenuView = {
             )
             const windowEnd = Math.min(windowStart + windowSize, totalItems)
             const visible = turns.slice(windowStart, windowEnd)
-            const turnLabelWidth = `Turn ${Math.max(...turns.map((t) => t.turnIndex))}`.length + 2
+            // M20.1: the turn number with no "Turn" word, then the prompt as the label
+            const numberWidth = String(Math.max(...turns.map((t) => t.turnIndex))).length + 2
 
             for (let i = 0; i < visible.length; i++) {
                 const turn = visible[i]!
@@ -91,19 +86,14 @@ export const RewindSelectMenuView = {
                 const isConfirming = isSelected && Boolean(props.confirming)
                 const rowY = y + i
 
-                // Indicator
-                const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, selector, {
-                    x,
-                    y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                        bold: isSelected,
-                    },
-                })
-
-                // Turn label
-                drawText(buffer, `Turn ${turn.turnIndex}`, {
+                if (isSelected) {
+                    drawText(buffer, `${THEME.glyphs.selector} `, {
+                        x,
+                        y: rowY,
+                        style: { fg: THEME.colors.brand },
+                    })
+                }
+                drawText(buffer, String(turn.turnIndex), {
                     x: x + 2,
                     y: rowY,
                     style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted },
@@ -122,9 +112,9 @@ export const RewindSelectMenuView = {
                     style: { fg: THEME.colors.muted },
                 })
 
-                // Prompt
-                const promptX = x + 2 + turnLabelWidth
-                const maxPromptWidth = Math.max(10, width - 2 - turnLabelWidth - metaWidth - 2)
+                // Prompt, then the inline confirm (M20.2) in yellow with no bold
+                const promptX = x + 2 + numberWidth
+                const maxPromptWidth = Math.max(10, width - 2 - numberWidth - metaWidth - 2)
                 const prompt = sanitizeSessionTitle(turn.prompt || '') || '(empty prompt)'
                 const confirmSuffix = ' [Rewind? y/n]'
                 const promptWidth = isConfirming
@@ -135,20 +125,14 @@ export const RewindSelectMenuView = {
                     y: rowY,
                     maxWidth: promptWidth,
                     ellipsis: true,
-                    style: {
-                        fg: isConfirming
-                            ? THEME.colors.warning
-                            : isSelected
-                              ? THEME.colors.brand
-                              : THEME.colors.text,
-                        bold: isSelected,
-                    },
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
                 })
                 if (isConfirming) {
-                    drawText(buffer, confirmSuffix, {
+                    drawInlineConfirm(buffer, {
                         x: promptResult.x,
                         y: rowY,
-                        style: { fg: THEME.colors.warning, bold: true },
+                        text: confirmSuffix,
+                        tone: 'warning',
                     })
                 }
             }
@@ -169,7 +153,7 @@ export const RewindSelectMenuView = {
                     drawText(buffer, statusText, {
                         x: x + 2,
                         y: y + visible.length,
-                        style: { fg: THEME.colors.subtle },
+                        style: { fg: THEME.colors.dim },
                     })
                 }
             }

@@ -1,6 +1,8 @@
 import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
+import { MenuFooterView, type MenuFooterItem } from './menu-footer-view'
+
 import type { BtwState } from '../../types'
 import type { ScreenBuffer } from '../buffer'
 
@@ -51,6 +53,16 @@ export interface BtwOverlayViewProps {
     state: BtwState
     scrollOffset: number
     maxVisibleLines?: number
+    /** Clock for the breathing loader (M25.2); the loader is a static ✱ when it is not set */
+    now?: number
+}
+
+/** The breathing ✱ of the activity line, one frame every 130 ms */
+const BTW_STAR_FRAMES = ['·', '∙', '∗', '✱', '✲', '✱', '∗', '∙']
+
+export function btwLoaderGlyph(now?: number): string {
+    if (now === undefined) return '✱'
+    return BTW_STAR_FRAMES[Math.floor(now / 130) % BTW_STAR_FRAMES.length] ?? '✱'
 }
 
 export const BtwOverlayView = {
@@ -89,36 +101,37 @@ export const BtwOverlayView = {
 
         const borderGlyph = '▎ '
 
-        // 1. Header row
+        // 1. Header row (M25.1): "btw" in muted, the question in regular text color
         drawText(buffer, borderGlyph, {
             x,
             y,
             style: { fg: THEME.colors.brand },
         })
-        drawText(buffer, '[btw] ', {
+        drawText(buffer, 'btw', {
             x: x + 2,
             y,
-            style: { fg: THEME.colors.brand, bold: true },
+            style: { fg: THEME.colors.muted },
         })
         drawText(buffer, state.question, {
-            x: x + 8,
+            x: x + 7,
             y,
-            maxWidth: Math.max(10, width - x - 10),
-            style: { fg: THEME.colors.text, bold: true },
+            maxWidth: Math.max(10, width - x - 9),
+            style: { fg: THEME.colors.text },
         })
         y += 1
 
         // 2. Body row(s)
         if (state.status === 'loading') {
-            drawText(buffer, borderGlyph, {
+            // M25.2: the breathing ✱ in brand blue, with the chat sentence
+            drawText(buffer, `${borderGlyph}${btwLoaderGlyph(props.now)} `, {
                 x,
                 y,
                 style: { fg: THEME.colors.brand },
             })
-            drawText(buffer, 'Thinking...', {
-                x: x + 2,
+            drawText(buffer, 'Thinking it through…', {
+                x: x + 4,
                 y,
-                style: { fg: THEME.colors.muted },
+                style: { fg: THEME.colors.text },
             })
             y += 1
         } else if (state.status === 'error') {
@@ -196,49 +209,43 @@ export const BtwOverlayView = {
                     drawText(buffer, overflowText, {
                         x: x + 2,
                         y,
-                        style: { fg: THEME.colors.muted },
+                        style: { fg: THEME.colors.dim },
                     })
                     y += 1
                 }
             }
         }
 
-        // 3. Branded Footer
+        // 3. Footer (M25.3): drawn by MenuFooterView after the border glyph
         drawText(buffer, borderGlyph, {
             x,
             y,
             style: { fg: THEME.colors.brand },
         })
-        let footerX = x + 2
-
+        let footerItems: MenuFooterItem[]
         if (state.status === 'loading') {
-            drawText(buffer, 'esc', { x: footerX, y, style: { fg: THEME.colors.brand } })
-            footerX += 4
-            drawText(buffer, 'cancel', { x: footerX, y, style: { fg: THEME.colors.muted } })
+            footerItems = [{ key: 'esc', label: 'cancel' }]
         } else if (state.isFocused) {
-            const allLines = (state.answer || '').split(/\r?\n/)
-            if (allLines.length > maxVisible) {
-                drawText(buffer, '↑/↓', { x: footerX, y, style: { fg: THEME.colors.brand } })
-                footerX += 4
-                drawText(buffer, 'scroll', { x: footerX, y, style: { fg: THEME.colors.muted } })
-                footerX += 7
-                drawText(buffer, '· ', { x: footerX, y, style: { fg: THEME.colors.muted } })
-                footerX += 2
-            }
-            drawText(buffer, 'esc', { x: footerX, y, style: { fg: THEME.colors.brand } })
-            footerX += 4
-            drawText(buffer, 'back', { x: footerX, y, style: { fg: THEME.colors.muted } })
+            // B12: decide on the scroll hint from the wrapped lines, as drawn above
+            const wrappedCount = wrapBtwLines(
+                state.answer || '',
+                Math.max(10, width - x - 4)
+            ).length
+            footerItems = [
+                ...(wrappedCount > maxVisible ? [{ key: '↑/↓', label: 'scroll' }] : []),
+                { key: 'esc', label: 'back' },
+            ]
         } else {
-            drawText(buffer, 'tab', { x: footerX, y, style: { fg: THEME.colors.brand } })
-            footerX += 4
-            drawText(buffer, 'focus', { x: footerX, y, style: { fg: THEME.colors.muted } })
-            footerX += 6
-            drawText(buffer, '· ', { x: footerX, y, style: { fg: THEME.colors.muted } })
-            footerX += 2
-
-            drawText(buffer, 'esc', { x: footerX, y, style: { fg: THEME.colors.brand } })
-            footerX += 4
-            drawText(buffer, 'dismiss', { x: footerX, y, style: { fg: THEME.colors.muted } })
+            footerItems = [
+                { key: 'tab', label: 'scroll' },
+                { key: 'esc', label: 'dismiss' },
+            ]
         }
+        MenuFooterView.render(buffer, {
+            x: (props.x ?? 0) + borderGlyph.length,
+            y,
+            width,
+            items: footerItems,
+        })
     },
 }

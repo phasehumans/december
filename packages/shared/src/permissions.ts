@@ -53,6 +53,7 @@ const SAFE_TOOLS = new Set([
     'ask_question',
     'manage_task',
     'schedule',
+    'update_plan',
 ])
 
 const DESTRUCTIVE_COMMAND_REGEXES = [

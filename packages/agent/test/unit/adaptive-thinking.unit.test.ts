@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 
-import { getAdaptiveThinkingLevel, isSimpleConversationalTurn } from '../../src/agent-loop'
+import { Agent } from '../../src/agent'
+import {
+    getAdaptiveThinkingLevel,
+    isSimpleConversationalTurn,
+    runAgentLoop,
+} from '../../src/agent-loop'
 
+import type { LLMProvider } from '@december/providers'
 import type { AgentMessage } from '@december/shared'
 
 describe('Adaptive Thinking Level Classifier (Unit)', () => {
@@ -96,5 +102,47 @@ describe('Adaptive Thinking Level Classifier (Unit)', () => {
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: null as any }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: undefined as any }])).toBe('off')
         expect(getAdaptiveThinkingLevel([{ role: 'user', content: '   ' }])).toBe('off')
+    })
+})
+
+describe('Thinking level within one user turn (Unit)', () => {
+    it('keeps the level chosen at the start of the turn for every model call', async () => {
+        const levels: string[] = []
+        let call = 0
+        const llm: LLMProvider = {
+            id: 'mock',
+            stream: async function* (_messages, _tools, _system, modelOptions) {
+                levels.push(modelOptions?.thinkingLevel)
+                call++
+                if (call === 1) {
+                    yield { type: 'tool_call', toolCall: { id: 'c1', name: 'note', input: '{}' } }
+                } else {
+                    yield { type: 'text', text: 'done' }
+                }
+            },
+        }
+        const agent = new Agent({
+            llm,
+            tools: [
+                {
+                    name: 'note',
+                    description: 'note',
+                    inputSchema: {},
+                    // A steering message that alone would turn thinking off
+                    execute: async () => {
+                        agent.steer({ role: 'user', content: '/status' })
+                        return 'ok'
+                    },
+                },
+            ],
+            operations: {} as any,
+            thinkingLevel: 'deep',
+        })
+
+        for await (const _event of runAgentLoop(agent, 'refactor the parser')) {
+            // drain events
+        }
+
+        expect(levels).toEqual(['deep', 'deep'])
     })
 })

@@ -15,6 +15,36 @@ export interface SessionInfo {
     titleSource?: SessionMeta['titleSource']
 }
 
+/**
+ * True when a message differs from the copy saved last time. Messages are only changed
+ * at the top level (isUI, content, parentId), so fields are compared by identity first.
+ * Nested values (toolCalls, usage) are serialized only when their reference differs,
+ * for example after a session file was read back from disk. This keeps a save from
+ * serializing the whole session every time.
+ */
+function hasMessageChanged(saved: AgentMessage, current: AgentMessage): boolean {
+    const savedFields = saved as unknown as Record<string, unknown>
+    const currentFields = current as unknown as Record<string, unknown>
+    const keys = Object.keys(currentFields)
+    if (keys.length !== Object.keys(savedFields).length) return true
+    for (const key of keys) {
+        const before = savedFields[key]
+        const after = currentFields[key]
+        if (Object.is(before, after)) continue
+        if (
+            before !== null &&
+            after !== null &&
+            typeof before === 'object' &&
+            typeof after === 'object' &&
+            JSON.stringify(before) === JSON.stringify(after)
+        ) {
+            continue
+        }
+        return true
+    }
+    return false
+}
+
 export class FileSessionRepository implements SessionRepository {
     private sessionDir: string
     private legacySessionDir?: string
@@ -60,7 +90,7 @@ export class FileSessionRepository implements SessionRepository {
         for (const msg of messages) {
             if (msg.id) {
                 const cached = existing[msg.id]
-                if (!cached || JSON.stringify(cached) !== JSON.stringify(msg)) {
+                if (!cached || hasMessageChanged(cached, msg)) {
                     existing[msg.id] = { ...msg }
                     appendContent += JSON.stringify(msg) + '\n'
                 }

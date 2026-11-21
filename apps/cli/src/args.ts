@@ -29,6 +29,8 @@ export interface ParsedCliArgs {
     env?: string[]
     header?: string[]
     eager?: boolean
+    /** Show the performance overlay (frame time, output bytes, first-token time) */
+    perf: boolean
     positionals: string[]
 }
 
@@ -113,6 +115,7 @@ function defaultParsedArgs(): ParsedCliArgs {
         isInline: false,
         turn: undefined,
         list: false,
+        perf: false,
         positionals: [],
     }
 }
@@ -121,6 +124,9 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
     if (args[0] === 'mcp' && args[1] === 'add') {
         return parseMcpAddArgs(args)
     }
+
+    // `-perf` would otherwise parse as `-p erf` (provider "erf")
+    args = args.map((arg) => (arg === '-perf' ? '--perf' : arg))
 
     try {
         const { values, positionals } = parseArgs({
@@ -150,6 +156,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 env: { type: 'string', short: 'e', multiple: true },
                 header: { type: 'string', short: 'H', multiple: true },
                 eager: { type: 'boolean' },
+                perf: { type: 'boolean' },
             },
             allowPositionals: true,
             strict: false,
@@ -188,6 +195,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 : [values.header as string]
             : undefined
         const eager = Boolean(values.eager)
+        const perf = Boolean(values.perf)
 
         const knownCommands = [
             'login',
@@ -252,6 +260,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             env,
             header,
             eager,
+            perf,
             positionals,
         }
     } catch {
@@ -314,5 +323,6 @@ Options:
   --session-id <id>                 Specify session ID
   --scope <dir>                     Confine agent searches and tools to a specific subpackage
   --cwd <dir>                       Set the working directory root
+  --perf                            Show render and latency stats in the top-right corner
 `
 }

@@ -2,6 +2,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView, type MenuFooterItem } from './menu-footer-view'
+import { drawPanelTitle, drawTabs, requestPanelCursor } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -42,10 +43,11 @@ export interface ReportViewProps {
     footer: MenuFooterItem[]
 }
 
+/** M26.1: a pass is a dim ✓, a warning a yellow !, a failure a red ● (the chat's failed step) */
 const TONE_GLYPH: Record<ReportTone, string> = {
     ok: '✓',
     warn: '!',
-    fail: '✗',
+    fail: THEME.glyphs.status,
     heading: '',
     muted: '',
     normal: '',
@@ -54,7 +56,7 @@ const TONE_GLYPH: Record<ReportTone, string> = {
 function toneColor(tone: ReportTone): string {
     switch (tone) {
         case 'ok':
-            return THEME.colors.success
+            return THEME.colors.dim
         case 'warn':
             return THEME.colors.warning
         case 'fail':
@@ -97,6 +99,16 @@ export function firstSelectableRow(rows: ReportRow[]): number {
     return idx >= 0 ? idx : 0
 }
 
+/** M26.5: fix lines start with a dim └ (rows built with the older ↳ are drawn the same way) */
+const FIX_PREFIXES = ['└ ', '↳ ']
+
+function fixText(text: string): string | null {
+    for (const prefix of FIX_PREFIXES) {
+        if (text.startsWith(prefix)) return text.slice(prefix.length)
+    }
+    return null
+}
+
 export const ReportView = {
     render(buffer: ScreenBuffer, props: ReportViewProps): void {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
@@ -105,37 +117,24 @@ export const ReportView = {
         const footerY = props.y + props.height - 1
         const maxTextWidth = Math.max(10, width - x - (THEME.padding.paddingRight ?? 4))
 
-        // 1. Header
-        drawText(buffer, props.title, {
+        // 1. Title row (G2): the title, then the subtitle as muted meta
+        drawPanelTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.text, bold: true },
+            title: props.title,
+            meta: props.subtitle,
+            width: maxTextWidth,
         })
-        if (props.subtitle) {
-            drawText(buffer, ` · ${props.subtitle}`, {
-                x: x + props.title.length,
-                y,
-                maxWidth: Math.max(1, maxTextWidth - props.title.length),
-                ellipsis: true,
-                style: { fg: THEME.colors.dim },
-            })
-        }
         y += 2
 
-        // 2. Tabs
+        // 2. Tabs (G14, M26.3): active in brand blue, others muted, no bold, no underline
         if (props.tabs && props.tabs.length > 0) {
-            let tabX = x
-            for (const tab of props.tabs) {
-                const label = ` ${tab.label} `
-                drawText(buffer, label, {
-                    x: tabX,
-                    y,
-                    style: tab.active
-                        ? { fg: THEME.colors.brand, bold: true, underline: true }
-                        : { fg: THEME.colors.muted },
-                })
-                tabX += label.length + 1
-            }
+            drawTabs(buffer, {
+                x,
+                y,
+                tabs: props.tabs.map((t) => t.label),
+                active: props.tabs.findIndex((t) => t.active),
+            })
             y += 2
         }
 
@@ -147,7 +146,7 @@ export const ReportView = {
         )
 
         if (props.isLoading) {
-            drawText(buffer, props.loadingText || 'Loading...', {
+            drawText(buffer, props.loadingText || 'Loading…', {
                 x,
                 y,
                 style: { fg: THEME.colors.dim },
@@ -170,22 +169,37 @@ export const ReportView = {
                 const rowIndex = scroll + i
                 const rowY = y + i
                 const tone = row.tone || 'normal'
+                // G3: the selected row is ❭ and label in brand blue, regular weight, no band
                 const isSelected = row.id !== undefined && rowIndex === props.selectedIndex
 
-                if (isSelected) {
-                    for (let c = 0; c < maxTextWidth; c++) {
-                        buffer.setChar(x + c, rowY, ' ', { bg: THEME.colors.codespanBg })
-                    }
+                const fix = fixText(row.text)
+                if (fix !== null) {
+                    // Lined up under the label, after the selector and glyph slots
+                    const fx = x + 4
+                    drawText(buffer, `${THEME.glyphs.result} `, {
+                        x: fx,
+                        y: rowY,
+                        style: { fg: THEME.colors.dim },
+                    })
+                    drawText(buffer, fix, {
+                        x: fx + 2,
+                        y: rowY,
+                        maxWidth: Math.max(1, x + maxTextWidth - fx - 2),
+                        ellipsis: true,
+                        style: { fg: THEME.colors.muted },
+                    })
+                    continue
                 }
-                const bg = isSelected ? THEME.colors.codespanBg : undefined
 
                 let cx = x
                 if (row.id !== undefined) {
-                    drawText(buffer, isSelected ? `${THEME.glyphs.selector} ` : '  ', {
-                        x: cx,
-                        y: rowY,
-                        style: { fg: THEME.colors.brand, bold: true, bg },
-                    })
+                    if (isSelected) {
+                        drawText(buffer, `${THEME.glyphs.selector} `, {
+                            x: cx,
+                            y: rowY,
+                            style: { fg: THEME.colors.brand },
+                        })
+                    }
                     cx += 2
                 }
 
@@ -194,40 +208,38 @@ export const ReportView = {
                     drawText(buffer, `${glyph} `, {
                         x: cx,
                         y: rowY,
-                        style: { fg: toneColor(tone), bold: true, bg },
+                        style: { fg: isSelected ? THEME.colors.brand : toneColor(tone) },
                     })
                     cx += 2
                 } else if (tone !== 'heading' && row.id === undefined) {
                     cx += 2
                 }
 
-                const textStyle =
+                // M26.2: section headings in muted with no bold
+                const textColor =
                     tone === 'heading'
-                        ? { fg: THEME.colors.brand, bold: true, bg }
-                        : {
-                              fg: isSelected
-                                  ? THEME.colors.brand
-                                  : tone === 'muted'
-                                    ? THEME.colors.dim
-                                    : THEME.colors.text,
-                              bold: isSelected,
-                              bg,
-                          }
+                        ? THEME.colors.muted
+                        : isSelected
+                          ? THEME.colors.brand
+                          : tone === 'muted'
+                            ? THEME.colors.dim
+                            : THEME.colors.text
                 const available = Math.max(1, x + maxTextWidth - cx)
                 const drawn = drawText(buffer, row.text, {
                     x: cx,
                     y: rowY,
                     maxWidth: available,
                     ellipsis: true,
-                    style: textStyle,
+                    style: { fg: textColor },
                 })
                 if (row.detail && drawn.x < x + maxTextWidth - 4) {
+                    // Side text in muted; a failure's detail is a fault word, in red
                     drawText(buffer, `  ${row.detail}`, {
                         x: drawn.x,
                         y: rowY,
                         maxWidth: x + maxTextWidth - drawn.x,
                         ellipsis: true,
-                        style: { fg: THEME.colors.dim, bg },
+                        style: { fg: tone === 'fail' ? THEME.colors.error : THEME.colors.muted },
                     })
                 }
             }
@@ -242,9 +254,10 @@ export const ReportView = {
             drawText(buffer, `${props.input.prompt} `, {
                 x,
                 y: inputY,
-                style: { fg: THEME.colors.brand, bold: true },
+                style: { fg: THEME.colors.brand },
             })
-            drawText(buffer, `${shown}▏`, {
+            requestPanelCursor(x + props.input.prompt.length + 1 + shown.length, inputY)
+            drawText(buffer, shown, {
                 x: x + props.input.prompt.length + 1,
                 y: inputY,
                 maxWidth: Math.max(1, maxTextWidth - props.input.prompt.length - 1),

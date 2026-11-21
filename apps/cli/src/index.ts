@@ -8,6 +8,7 @@ if (rawArgs.length === 1 && (rawArgs[0] === '-v' || rawArgs[0] === '--version'))
     process.exit(0)
 }
 
+import nodeModule from 'node:module'
 import path from 'node:path'
 
 import { parseCliArgs, getHelpText } from './args'
@@ -17,6 +18,15 @@ import { purgeProjectEnvApiKeys } from './utils/env-sanitizer'
 
 import type { DecemberConfig } from './config'
 import type { DifferentialApp, TaskItem } from '@december/tui'
+
+// Node 22.1+ keeps compiled code on disk, so later starts skip parsing the bundle again.
+// Older Node versions and Bun do not have it.
+try {
+    const { enableCompileCache } = nodeModule as { enableCompileCache?: () => unknown }
+    enableCompileCache?.()
+} catch {
+    // Intentionally swallowed: the compile cache only makes startup faster
+}
 
 // Ensure no API keys or tokens from project .env files are loaded into CLI process
 purgeProjectEnvApiKeys()
@@ -56,6 +66,11 @@ async function main() {
     }
 
     const parsedArgs = parseCliArgs(process.argv.slice(2))
+
+    // --perf (or -perf) turns on the TUI performance overlay, read when the TUI is created
+    if (parsedArgs.perf) {
+        process.env.DECEMBER_PERF = '1'
+    }
 
     // Fast-path 1: Help flag (< 5ms)
     if (parsedArgs.isHelp) {
@@ -629,7 +644,7 @@ async function main() {
         try {
             const { getProviderConfig, loadConfig } = await import('./config')
             const cfg = await loadConfig()
-            const providerCfg = await getProviderConfig()
+            const providerCfg = await getProviderConfig(cfg)
             const activeProv = providerCfg?.provider || cfg.activeProvider || 'gemini'
             const activeMod = agent.modelOptions?.model || cfg.activeModel
             const { isValidModelForProvider } = await import('./utils/models')
@@ -710,6 +725,13 @@ async function main() {
                     streamedResponse += event.content
                 } else if (event.type === 'ThinkingChunk') {
                     differentialApp.appendThinkingChunk(event.content)
+                } else if (event.type === 'AgentRetry') {
+                    differentialApp.setRetry({
+                        attempt: event.attempt,
+                        maxAttempts: event.maxAttempts,
+                        delayMs: event.delayMs,
+                        reason: event.reason,
+                    })
                 } else if (event.type === 'AgentStatus') {
                     if (event.message && event.message.trim().length > 0) {
                         differentialApp.setStatusMessage(event.message.trim())
@@ -756,6 +778,8 @@ async function main() {
                         name: event.toolCall.name,
                         input: event.toolCall.input,
                         command: getToolSummary(event.toolCall.name, inputStr),
+                        mcpServer: event.mcpServer,
+                        mcpTool: event.mcpTool,
                     })
                 } else if (event.type === 'ToolExecutionUpdate') {
                     differentialApp.updateToolExecution(event.toolCallId, event.chunk)
@@ -767,6 +791,7 @@ async function main() {
                 } else if (event.type === 'AgentUsage') {
                     differentialApp.state.contextTokens =
                         event.promptTokens + event.completionTokens
+                    differentialApp.addTurnOutputTokens(event.completionTokens)
                     void recordUsage({ ...event, sessionId: agent.sessionId })
                     differentialApp.render()
                 } else if (event.type === 'ContextCompacted') {
@@ -840,37 +865,37 @@ async function main() {
         return [
             {
                 id: 'provider',
-                title: 'Active Provider',
+                title: 'Provider',
                 value: settingsProvider,
             },
             {
                 id: 'model',
-                title: 'Active Model',
+                title: 'Model',
                 value: getModelLabel(
                     mod || ensureValidModelForProvider(settingsProvider, cfg.activeModel)
                 ),
             },
             {
                 id: 'tool_permission',
-                title: 'Tool Permission',
+                title: 'Tool permission',
                 value: cfg.toolPermission || 'always-proceed',
             },
             {
                 id: 'pathguard',
-                title: 'PathGuard Protection',
+                title: 'Path guard',
                 value: cfg.pathGuard === false ? 'off' : 'on',
             },
             {
                 id: 'non_workspace',
-                title: 'Non-Workspace Access',
+                title: 'Files outside workspace',
                 value: cfg.nonWorkspaceAccess ? 'on' : 'off',
             },
-            { id: 'thinking_level', title: 'Thinking Level', value: cfg.thinkingLevel || 'fast' },
-            { id: 'steering_mode', title: 'Steering Mode', value: cfg.steeringMode || 'all' },
-            { id: 'follow_up_mode', title: 'Follow-Up Mode', value: cfg.followUpMode || 'all' },
+            { id: 'thinking_level', title: 'Thinking level', value: cfg.thinkingLevel || 'fast' },
+            { id: 'steering_mode', title: 'Steering', value: cfg.steeringMode || 'all' },
+            { id: 'follow_up_mode', title: 'Follow-up', value: cfg.followUpMode || 'all' },
             {
                 id: 'browser_visible',
-                title: 'Browser Visible',
+                title: 'Browser window',
                 value: cfg.browserVisible ? 'on' : 'off',
             },
         ]
@@ -2236,6 +2261,12 @@ async function main() {
     differentialApp.state.announcement = announcement
 
     differentialApp.start()
+
+    // Opens the provider connection while the user types the first prompt
+    if (providerConfig) {
+        const { warmProviderConnection } = await import('./utils/provider-warmup')
+        warmProviderConnection(agent.llm)
+    }
 }
 
 main().catch(console.error)

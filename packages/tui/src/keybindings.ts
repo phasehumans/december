@@ -38,11 +38,6 @@ export const KEYBINDING_ACTIONS = {
     historyNext: { description: 'Next prompt in history', defaults: ['ctrl+n'] },
     commandMenu: { description: 'Toggle slash command menu', defaults: ['ctrl+l'] },
     copyLastResponse: { description: 'Copy last assistant response', defaults: ['ctrl+y'] },
-    toggleToolOutput: {
-        description: 'Expand / collapse tool outputs',
-        defaults: ['ctrl+o'],
-        global: true,
-    },
     toggleTasks: { description: 'Toggle background tasks', defaults: ['ctrl+t'], global: true },
     moveToBackground: {
         description: 'Move the running command to the background',

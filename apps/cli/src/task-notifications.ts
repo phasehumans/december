@@ -93,9 +93,14 @@ export function formatTaskNotification(task: BackgroundTask): TaskNotification {
           : `exit ${task.exitCode ?? '?'}`
     const label = task.type === 'subagent' ? `${task.role ?? 'subagent'} · ${command}` : command
 
+    // S14: "Task t_8f2a finished: bun dev · exit 0", failures point to /tasks
+    const state = timedOut ? 'timed out' : task.status === 'completed' ? 'finished' : 'failed'
+    const facts = [label]
+    if (!timedOut && task.type !== 'subagent') facts.push(result)
+    if (tone !== 'success') facts.push('/tasks')
     return {
         modelText: `<task-notification>\n${lines.join('\n')}\n</task-notification>`,
-        transcriptText: `${task.id} · ${label} · ${result} · ${elapsed}`,
+        transcriptText: `Task ${task.id} ${state}: ${facts.join(' · ')}`,
         tone,
     }
 }

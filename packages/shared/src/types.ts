@@ -48,6 +48,8 @@ export interface Tool<TInput = any> {
     name: string
     description: string
     inputSchema: any
+    /** Set for tools that come from an MCP server, so a UI can name the server */
+    mcp?: { server: string; tool: string }
     executionMode?: 'sequential' | 'parallel'
     prepareArguments?: (args: any) => any
     execute: (input: TInput, context: ToolExecuteContext) => Promise<string>
@@ -93,6 +95,9 @@ export interface ThinkingChunkEvent {
 export interface ToolCallStartEvent {
     type: 'ToolCallStart'
     toolCall: ToolCall
+    /** MCP server and original tool name, when the tool comes from an MCP server */
+    mcpServer?: string
+    mcpTool?: string
 }
 
 export interface ToolExecutionUpdateEvent {
@@ -113,6 +118,17 @@ export interface TurnEndEvent {
 export interface AgentStatusEvent {
     type: 'AgentStatus'
     message: string
+}
+
+/** A provider call failed and the loop retries it; sent next to the AgentStatus text */
+export interface AgentRetryEvent {
+    type: 'AgentRetry'
+    attempt: number
+    maxAttempts?: number
+    /** Wait before the next attempt, when the loop backs off */
+    delayMs?: number
+    /** Short reason, e.g. "Opus 5.5 rate limit" */
+    reason: string
 }
 
 export interface AgentUsageEvent {
@@ -178,6 +194,7 @@ export type AgentEvent =
     | AgentErrorEvent
     | AgentInterruptEvent
     | AgentStatusEvent
+    | AgentRetryEvent
     | AgentUsageEvent
     | ContextCompactedEvent
     | TerminalDataEvent
@@ -224,34 +241,6 @@ export interface RequestLogSystemPromptDecomposition {
     dynamicEnv: string
     dynamicEnvTokens: number
     totalTokens: number
-}
-
-export interface RequestLogEntry {
-    turn: number
-    timestamp: string
-    sessionId: string
-    model?: string
-    request: {
-        systemPrompt: string
-        systemPromptDecomposition: RequestLogSystemPromptDecomposition
-        tools: RequestLogToolEntry[]
-        messages: any[]
-        toolTokens: number
-        messagesTokens: number
-        totalEstimatedTokens: number
-    }
-    response: {
-        assistantMessage: string
-        thinking?: string
-        toolCalls: ToolCall[]
-        usage?: {
-            promptTokens?: number
-            completionTokens?: number
-            totalTokens?: number
-        }
-        durationMs: number
-        error?: string
-    }
 }
 
 export interface ContextDecomposition {

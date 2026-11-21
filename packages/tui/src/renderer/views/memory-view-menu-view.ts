@@ -2,6 +2,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawPagerRow, drawPagerTitle } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -38,27 +39,24 @@ export const MemoryViewMenuView = {
         const content = file?.content || ''
         const lines = content ? content.split('\n') : []
 
-        // 1. Header: file path and line count
-        const filePath = file?.path || 'AGENTS.md'
-        drawText(buffer, filePath, {
+        // 1. Title row (M19.4): file path, line count as meta
+        drawPagerTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.text, bold: true },
+            width: (props.x ?? 0) + width - (THEME.padding.paddingRight ?? 4) - x,
+            title: file?.path || 'AGENTS.md',
+            meta:
+                lines.length > 0
+                    ? `${lines.length} line${lines.length === 1 ? '' : 's'}`
+                    : undefined,
         })
-        if (lines.length > 0) {
-            drawText(buffer, ` · ${lines.length} line${lines.length === 1 ? '' : 's'}`, {
-                x: x + filePath.length,
-                y,
-                style: { fg: THEME.colors.dim },
-            })
-        }
         y += 2
 
         // 2. Content viewport
         const contentHeight = Math.max(1, footerY - y - 1)
 
         if (props.isLoading) {
-            drawText(buffer, 'Loading...', {
+            drawText(buffer, 'Loading…', {
                 x,
                 y,
                 style: { fg: THEME.colors.dim },
@@ -81,51 +79,14 @@ export const MemoryViewMenuView = {
 
             for (let i = 0; i < visibleLines.length; i++) {
                 const lineIndex = scrollOffset + i
-                const lineText = visibleLines[i] || ''
-                const rowY = y + i
-                const isCursor = lineIndex === cursorLine
-                const rowBg = isCursor ? THEME.colors.codespanBg : undefined
-
-                // Active cursor line highlight bar across the full row (matching FileViewMenuView)
-                if (isCursor) {
-                    const rowWidth = Math.max(10, width - x - 2)
-                    for (let c = 0; c < rowWidth; c++) {
-                        buffer.setChar(x + c, rowY, ' ', { bg: rowBg })
-                    }
-                }
-
-                const selector = isCursor ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, selector, {
+                drawPagerRow(buffer, {
                     x,
-                    y: rowY,
-                    style: {
-                        fg: isCursor ? THEME.colors.brand : THEME.colors.muted,
-                        bg: rowBg,
-                        bold: isCursor,
-                    },
-                })
-
-                const numStr = String(lineIndex + 1).padStart(gutterWidth, ' ')
-                drawText(buffer, `${numStr} `, {
-                    x: x + 2,
-                    y: rowY,
-                    style: {
-                        fg: isCursor ? THEME.colors.brand : THEME.colors.dim,
-                        bg: rowBg,
-                        bold: isCursor,
-                    },
-                })
-
-                const codeX = x + 2 + gutterWidth + 1
-                drawText(buffer, lineText, {
-                    x: codeX,
-                    y: rowY,
-                    maxWidth: Math.max(10, width - codeX - 4),
-                    style: {
-                        fg: isCursor ? THEME.colors.brand : THEME.colors.text,
-                        bg: rowBg,
-                        bold: isCursor,
-                    },
+                    y: y + i,
+                    width: Math.max(10, width - x - 2),
+                    lineNo: lineIndex + 1,
+                    gutterWidth,
+                    text: visibleLines[i] || '',
+                    cursor: lineIndex === cursorLine,
                 })
             }
         }

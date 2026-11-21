@@ -4,6 +4,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawPagerRow, drawPagerTitle } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -52,39 +53,17 @@ export const SkillsMenuView = {
         const totalLines = lines.length
         const displayPath = toTildePath(skill.entryFilePath)
 
-        // Header: Skill name & entry file path on left, line coordinates on right
-        drawText(buffer, skill.name, {
+        // Title row (M19.4): skill name, then entry file and line count as meta
+        const metaParts: string[] = []
+        if (displayPath) metaParts.push(displayPath)
+        if (totalLines > 0) metaParts.push(`${totalLines} line${totalLines === 1 ? '' : 's'}`)
+        drawPagerTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.brand, bold: true },
-        })
-
-        let headX = x + skill.name.length
-        if (displayPath) {
-            const pathLabel = ` · ${displayPath}`
-            drawText(buffer, pathLabel, {
-                x: headX,
-                y,
-                maxWidth: Math.max(10, width - headX - 20),
-                style: { fg: THEME.colors.dim },
-            })
-            headX += Math.min(pathLabel.length, width - headX - 20)
-        }
-
-        if (totalLines > 0) {
-            drawText(buffer, ` (${totalLines} lines)`, {
-                x: headX,
-                y,
-                style: { fg: THEME.colors.dim },
-            })
-        }
-
-        const coordLabel = `line ${(props.cursorLineIndex ?? 0) + 1}:${totalLines}`
-        const coordX = Math.max(x + 40, width - coordLabel.length - 4)
-        drawText(buffer, coordLabel, {
-            x: coordX,
-            y,
-            style: { fg: THEME.colors.text, bold: true },
+            width: (props.x ?? 0) + width - (THEME.padding.paddingRight ?? 4) - x,
+            title: skill.name,
+            meta: metaParts.join(' · ') || undefined,
+            right: totalLines > 0 ? `${(props.cursorLineIndex ?? 0) + 1}:1` : undefined,
         })
         y += 2
 
@@ -95,7 +74,7 @@ export const SkillsMenuView = {
         const cursorLineIndex = props.cursorLineIndex ?? 0
 
         if (props.isLoadingDetail) {
-            drawText(buffer, 'Loading documentation...', {
+            drawText(buffer, 'Loading documentation…', {
                 x,
                 y,
                 style: { fg: THEME.colors.dim },
@@ -115,49 +94,16 @@ export const SkillsMenuView = {
             })
         } else {
             const visibleLines = lines.slice(scrollOffset, scrollOffset + visibleLineCount)
-
             for (let i = 0; i < visibleLines.length; i++) {
                 const absIdx = scrollOffset + i
-                const isCursor = absIdx === cursorLineIndex
-                const lineNum = absIdx + 1
-                const lineText = visibleLines[i] || ''
-                const rowY = y + i
-                const rowBg = isCursor ? THEME.colors.codespanBg : undefined
-
-                // Cursor row background
-                if (isCursor) {
-                    const rowWidth = Math.max(10, width - x - 2)
-                    for (let c = 0; c < rowWidth; c++) {
-                        buffer.setChar(x + c, rowY, ' ', { bg: rowBg })
-                    }
-                }
-
-                // Selector
-                const selector = isCursor ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, selector, {
+                drawPagerRow(buffer, {
                     x,
-                    y: rowY,
-                    style: { fg: THEME.colors.brand, bg: rowBg, bold: isCursor },
-                })
-
-                // Line number in gutter
-                const paddedNum = String(lineNum).padStart(gutterWidth, ' ')
-                drawText(buffer, `${paddedNum} `, {
-                    x: x + 2,
-                    y: rowY,
-                    style: {
-                        fg: isCursor ? THEME.colors.brand : THEME.colors.dim,
-                        bg: rowBg,
-                        bold: isCursor,
-                    },
-                })
-
-                // Line text
-                drawText(buffer, lineText || ' ', {
-                    x: x + 2 + gutterWidth + 1,
-                    y: rowY,
-                    maxWidth: Math.max(10, width - x - gutterWidth - 5),
-                    style: { fg: THEME.colors.text, bg: rowBg },
+                    y: y + i,
+                    width: Math.max(10, width - x - 2),
+                    lineNo: absIdx + 1,
+                    gutterWidth,
+                    text: visibleLines[i] || '',
+                    cursor: absIdx === cursorLineIndex,
                 })
             }
         }

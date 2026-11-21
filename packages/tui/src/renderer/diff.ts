@@ -73,6 +73,8 @@ export function computeDiff(
         }
     }
 
+    const prefix = options?.prefix ?? ''
+    if (prefix) body = prefix + body
     const hasCellChanges = body.length > 0
 
     // Reset style at end of frame if any active styles were applied

@@ -15,7 +15,7 @@ export function formatSingleLineDescription(desc: string, maxLen: number = 70): 
     if (sentenceEnd > 15 && sentenceEnd <= maxLen) {
         return clean.slice(0, sentenceEnd + 1)
     }
-    return clean.slice(0, maxLen - 1).trimEnd() + '...'
+    return clean.slice(0, maxLen - 1).trimEnd() + '…'
 }
 
 export function getAllAvailableCommands(workspaceDir: string = process.cwd()): Command[] {

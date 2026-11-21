@@ -2,6 +2,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawPanelTitle } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -213,7 +214,7 @@ function drawHeatmap(
     }
 
     const legendY = y + 1 + HEATMAP_ROWS
-    drawText(buffer, 'less', { x: gridX, y: legendY, style: { fg: THEME.colors.dim } })
+    drawText(buffer, 'less', { x: gridX, y: legendY, style: { fg: THEME.colors.muted } })
     drawText(buffer, SHADES.join(' '), {
         x: gridX + 5,
         y: legendY,
@@ -222,7 +223,7 @@ function drawHeatmap(
     drawText(buffer, 'more', {
         x: gridX + 5 + SHADES.length * 2,
         y: legendY,
-        style: { fg: THEME.colors.dim },
+        style: { fg: THEME.colors.muted },
     })
 }
 
@@ -328,11 +329,10 @@ function innerWidthOf(width: number): number {
 }
 
 export const UsageSelectMenuView = {
-    /** header, optional credits, heatmap, blank, stats, blank, footer */
+    /** title (credits in its meta), blank, heatmap, blank, stats, blank, footer */
     getHeight(overview?: UsageOverview, width = 120): number {
-        const creditRows = overview?.creditsRemainingInCents !== undefined ? 2 : 0
         const statRows = statRowCount(overview, innerWidthOf(width))
-        return 2 + creditRows + HEATMAP_HEIGHT + 1 + statRows + 2
+        return 2 + HEATMAP_HEIGHT + 1 + statRows + 2
     },
 
     render(buffer: ScreenBuffer, props: UsageSelectMenuViewProps): void {
@@ -343,12 +343,24 @@ export const UsageSelectMenuView = {
         const now = props.now ?? new Date()
         let y = props.y
 
-        drawText(buffer, 'Usage', { x, y, style: { fg: THEME.colors.text, bold: true } })
+        // M22.1: the credits move into the title row meta
+        const credits = props.overview?.creditsRemainingInCents
+        drawPanelTitle(buffer, {
+            x,
+            y,
+            title: 'Usage',
+            meta:
+                credits !== undefined
+                    ? `${formatCredits(credits)} in December credits left`
+                    : undefined,
+            width,
+        })
         y += 2
 
+        // B10: MenuFooterView adds the left padding itself, so pass the panel's own x
         const footer = (): void => {
             MenuFooterView.render(buffer, {
-                x,
+                x: props.x ?? 0,
                 y: footerY,
                 width,
                 items: [
@@ -371,19 +383,6 @@ export const UsageSelectMenuView = {
 
         // only rows above the footer are usable
         const fits = (rows: number): boolean => y + rows <= footerY - 1
-
-        if (overview.creditsRemainingInCents !== undefined && fits(1)) {
-            drawLabelValue(
-                buffer,
-                x,
-                y,
-                'December credits',
-                `${formatCredits(overview.creditsRemainingInCents)} left`,
-                18,
-                width
-            )
-            y += 2
-        }
 
         const history = overview.history
         const statRows = statRowCount(overview, width)

@@ -42,7 +42,7 @@ describe('task notifications', () => {
         expect(steered[0]).toContain(`Background shell ${task.id} (bun test) exited with code 1`)
         expect(steered[0]).toContain('1 fail')
         expect(notices).toEqual([
-            { text: expect.stringContaining(`${task.id} · bun test · exit 1`), tone: 'error' },
+            { text: `Task ${task.id} failed: bun test · exit 1 · /tasks`, tone: 'error' },
         ])
         expect(task.notified).toBe(true)
     })

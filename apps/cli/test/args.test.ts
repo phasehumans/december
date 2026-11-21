@@ -8,6 +8,15 @@ describe('parseCliArgs', () => {
         expect(parseCliArgs(['-h']).isHelp).toBe(true)
     })
 
+    it('parses --perf, and -perf as the same flag instead of -p erf', () => {
+        expect(parseCliArgs(['--perf']).perf).toBe(true)
+        const single = parseCliArgs(['-perf'])
+        expect(single.perf).toBe(true)
+        expect(single.provider).toBeUndefined()
+        expect(parseCliArgs(['--perf', '-r']).resume).toBe(true)
+        expect(parseCliArgs([]).perf).toBe(false)
+    })
+
     it('parses --version and -v flags', () => {
         expect(parseCliArgs(['--version']).isVersion).toBe(true)
         expect(parseCliArgs(['-v']).isVersion).toBe(true)

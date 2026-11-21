@@ -1,5 +1,5 @@
 import { THEME } from '../../theme'
-import { areStylesEqual } from '../cell'
+import { areStylesEqual, getCharWidth, sliceToWidth, stringWidth } from '../cell'
 
 import type { CellStyle } from '../types'
 
@@ -31,7 +31,6 @@ function parseInlineMarkdown(
                     text: codeText,
                     style: {
                         fg: THEME.colors.brand,
-                        bold: true,
                     },
                 })
                 i = closing + 1
@@ -43,7 +42,6 @@ function parseInlineMarkdown(
                     text: remaining,
                     style: {
                         fg: THEME.colors.brand,
-                        bold: true,
                     },
                 })
                 break
@@ -173,31 +171,35 @@ export function wrapSegments(segments: FormattedLine, maxWidth: number): Formatt
         for (let token of words) {
             if (!token) continue
 
+            // Widths are terminal columns, so CJK text and emoji wrap where they are drawn
+            let tokenWidth = stringWidth(token)
+
             // If token alone exceeds targetWidth (e.g. long URLs), chunk it cleanly
-            while (token.length > targetWidth) {
+            while (tokenWidth > targetWidth) {
                 const available = targetWidth - currentLen
-                if (available > 0 && currentLen > 0) {
-                    const chunk = token.slice(0, available)
-                    currentLine.push({ text: chunk, style: seg.style })
+                const fitted = available > 0 && currentLen > 0 ? sliceToWidth(token, available) : ''
+                if (fitted) {
+                    currentLine.push({ text: fitted, style: seg.style })
                     lines.push(currentLine)
                     currentLine = []
                     currentLen = 0
-                    token = token.slice(available)
+                    token = token.slice(fitted.length)
                 } else {
                     if (currentLen > 0) {
                         lines.push(currentLine)
                         currentLine = []
                         currentLen = 0
                     }
-                    const chunk = token.slice(0, targetWidth)
+                    const chunk = sliceToWidth(token, targetWidth)
                     lines.push([{ text: chunk, style: seg.style }])
-                    token = token.slice(targetWidth)
+                    token = token.slice(chunk.length)
                 }
+                tokenWidth = stringWidth(token)
             }
 
             if (!token) continue
 
-            if (currentLen + token.length > targetWidth && currentLen > 0) {
+            if (currentLen + tokenWidth > targetWidth && currentLen > 0) {
                 lines.push(currentLine)
                 currentLine = []
                 currentLen = 0
@@ -213,7 +215,7 @@ export function wrapSegments(segments: FormattedLine, maxWidth: number): Formatt
             } else {
                 currentLine.push({ text: token, style: seg.style })
             }
-            currentLen += token.length
+            currentLen += tokenWidth
         }
     }
 
@@ -224,6 +226,8 @@ export function wrapSegments(segments: FormattedLine, maxWidth: number): Formatt
     return lines.length > 0 ? lines : [[{ text: '', style: {} }]]
 }
 
+const CODE_INDENT = '  '
+
 /**
  * Basic syntax highlighter for code block lines across common languages
  * (TypeScript, JavaScript, Python, JSON, Shell, SQL).
@@ -233,7 +237,8 @@ function highlightCodeLine(lineText: string, language: string): FormattedLine {
         return [{ text: '', style: {} }]
     }
 
-    const segments: TextSegment[] = []
+    // Code blocks sit 2 columns in from the reply text, with no gutter
+    const segments: TextSegment[] = [{ text: CODE_INDENT, style: {} }]
     // Match comments, strings, keywords, numbers, types, or words
     const regex =
         /(\/\/[^\n]*|#[^\n]*)|("(?:\\.|[^"\\])*"|'[^']*'|`[^`]*`)|(\b(?:const|let|var|function|return|import|export|from|if|else|for|while|class|type|interface|async|await|def|lambda|with|as|try|except|finally|public|private|protected|static|readonly|case|switch|break|continue|default|throw|catch|new|this|typeof|instanceof|true|false|null|undefined|None|True|False)\b)|(\b\d+(?:\.\d+)?\b)|(\b[A-Z][a-zA-Z0-9_]*\b)|([^\s"'\`\d\w#\/]+|\s+|[a-z_][a-zA-Z0-9_]*)/g
@@ -245,11 +250,11 @@ function highlightCodeLine(lineText: string, language: string): FormattedLine {
         }
         const [full, comment, str, keyword, num, typeIdent, other] = match
         if (comment) {
-            segments.push({ text: comment, style: { fg: THEME.colors.dim, italic: true } })
+            segments.push({ text: comment, style: { fg: THEME.colors.dim } })
         } else if (str) {
             segments.push({ text: str, style: { fg: THEME.colors.success } })
         } else if (keyword) {
-            segments.push({ text: keyword, style: { fg: THEME.colors.brand, bold: true } })
+            segments.push({ text: keyword, style: { fg: THEME.colors.brand } })
         } else if (num) {
             segments.push({ text: num, style: { fg: THEME.colors.warning } })
         } else if (typeIdent) {
@@ -259,11 +264,150 @@ function highlightCodeLine(lineText: string, language: string): FormattedLine {
         }
     }
 
-    return segments.length > 0 ? segments : [{ text: lineText, style: { fg: THEME.colors.text } }]
+    return segments.length > 1
+        ? segments
+        : [{ text: CODE_INDENT + lineText, style: { fg: THEME.colors.text } }]
+}
+
+/** Narrowest a table column may shrink to before the table switches to a list */
+const TABLE_MIN_CELL_WIDTH = 10
+
+/** Terminal columns a string takes up (CJK and emoji count as 2) */
+const textWidth = (text: string) => {
+    let width = 0
+    for (const char of text) width += getCharWidth(char)
+    return width
+}
+
+const segmentsWidth = (segments: FormattedLine) =>
+    segments.reduce((width, seg) => width + textWidth(seg.text), 0)
+
+/**
+ * Word-wraps styled segments to an exact terminal-column width. Words wider
+ * than the width are broken by character. Used for table cells, where a line
+ * that overflows by even one column pushes the right border off screen.
+ */
+function wrapToWidth(segments: FormattedLine, width: number): FormattedLine[] {
+    const lines: FormattedLine[] = []
+    let line: FormattedLine = []
+    let lineWidth = 0
+
+    const append = (text: string, style?: CellStyle) => {
+        const last = line[line.length - 1]
+        if (last && areStylesEqual(last.style ?? {}, style ?? {})) {
+            last.text += text
+        } else {
+            line.push({ text, style })
+        }
+        lineWidth += textWidth(text)
+    }
+    const breakLine = () => {
+        const last = line[line.length - 1]
+        if (last?.text.endsWith(' ')) {
+            last.text = last.text.slice(0, -1)
+        }
+        lines.push(line)
+        line = []
+        lineWidth = 0
+    }
+
+    for (const seg of segments) {
+        for (const token of seg.text.split(/(\s+)/)) {
+            if (!token) continue
+
+            if (/^\s+$/.test(token)) {
+                if (lineWidth === 0) continue
+                if (lineWidth + 1 >= width) {
+                    breakLine()
+                } else {
+                    append(' ', seg.style)
+                }
+                continue
+            }
+
+            const tokenWidth = textWidth(token)
+            if (lineWidth > 0 && lineWidth + tokenWidth > width) {
+                breakLine()
+            }
+            if (tokenWidth <= width) {
+                append(token, seg.style)
+                continue
+            }
+            for (const char of token) {
+                if (lineWidth > 0 && lineWidth + getCharWidth(char) > width) {
+                    breakLine()
+                }
+                append(char, seg.style)
+            }
+        }
+    }
+
+    if (line.length > 0 || lines.length === 0) {
+        lines.push(line)
+    }
+    return lines
 }
 
 /**
- * Formats markdown table rows into aligned ASCII box-drawing border rows.
+ * Fits column widths into the space left after borders. Width is taken from
+ * the widest column first, so short columns keep their full width and long
+ * columns share what is left. No column goes below TABLE_MIN_CELL_WIDTH (or
+ * its natural width, if that is smaller).
+ */
+function fitColumnWidths(naturalWidths: number[], available: number): number[] {
+    const widths = [...naturalWidths]
+    const floors = naturalWidths.map((w) => Math.min(w, TABLE_MIN_CELL_WIDTH))
+    let total = widths.reduce((a, b) => a + b, 0)
+
+    while (total > available) {
+        let widest = -1
+        for (let c = 0; c < widths.length; c++) {
+            if (widths[c] > floors[c] && (widest === -1 || widths[c] > widths[widest])) {
+                widest = c
+            }
+        }
+        if (widest === -1) break
+        widths[widest]--
+        total--
+    }
+    return widths
+}
+
+/**
+ * Narrow-screen fallback: each body row becomes a block. The first cell is the
+ * title and the other cells follow as `Header: value` lines.
+ */
+function formatTableAsList(cells: FormattedLine[][], maxWidth: number): FormattedLine[] {
+    const output: FormattedLine[] = []
+    const hasHeader = cells.length > 1
+    const headers = cells[0].map((cell) => cell.map((s) => s.text).join(''))
+    const bodyRows = hasHeader ? cells.slice(1) : cells
+    const indent = '  '
+
+    bodyRows.forEach((row, r) => {
+        if (r > 0) output.push([{ text: '', style: {} }])
+
+        // D6: bold only for headings and **strong**; the first cell is a label in brand
+        const title = row[0].map((s) => ({ ...s, style: { ...s.style, fg: THEME.colors.brand } }))
+        output.push(...wrapToWidth(title, maxWidth))
+
+        for (let c = 1; c < row.length; c++) {
+            const label: FormattedLine = hasHeader
+                ? [{ text: `${headers[c]}: `, style: { fg: THEME.colors.muted } }]
+                : []
+            for (const line of wrapToWidth([...label, ...row[c]], maxWidth - indent.length)) {
+                output.push([{ text: indent, style: {} }, ...line])
+            }
+        }
+    })
+
+    return output
+}
+
+/**
+ * Formats markdown table rows into box-drawn rows that always fit maxWidth.
+ * Long cells wrap inside their column. When the screen is too narrow for every
+ * column to get TABLE_MIN_CELL_WIDTH, rows render as a list instead.
  */
 function formatMarkdownTable(tableLines: string[], maxWidth: number): FormattedLine[] {
     const parsedRows: string[][] = []
@@ -286,75 +430,62 @@ function formatMarkdownTable(tableLines: string[], maxWidth: number): FormattedL
     if (parsedRows.length === 0) return []
 
     const colCount = Math.max(...parsedRows.map((r) => r.length))
-    const colWidths: number[] = new Array(colCount).fill(3)
+    const cells: FormattedLine[][] = parsedRows.map((row, r) =>
+        Array.from({ length: colCount }, (_, c) => {
+            const segments = parseInlineMarkdown(row[c] ?? '')
+            if (r !== 0) return segments
+            return segments.map((s) => ({
+                ...s,
+                style: { ...s.style, fg: THEME.colors.brand },
+            }))
+        })
+    )
 
-    for (const row of parsedRows) {
-        for (let c = 0; c < colCount; c++) {
-            const val = row[c] || ''
-            colWidths[c] = Math.max(colWidths[c], val.length)
+    // Each column adds `│ ` before and ` ` after its text, plus the closing `│`
+    const available = maxWidth - (colCount * 3 + 1)
+    if (available < colCount * TABLE_MIN_CELL_WIDTH) {
+        return formatTableAsList(cells, Math.max(1, maxWidth))
+    }
+
+    const naturalWidths = Array.from({ length: colCount }, (_, c) =>
+        Math.max(1, ...cells.map((row) => segmentsWidth(row[c])))
+    )
+    const colWidths = fitColumnWidths(naturalWidths, available)
+
+    const border = (left: string, mid: string, right: string): FormattedLine => [
+        {
+            text: left + colWidths.map((w) => '─'.repeat(w + 2)).join(mid) + right,
+            style: { fg: THEME.colors.border },
+        },
+    ]
+
+    const wrappedRows = cells.map((row) => row.map((cell, c) => wrapToWidth(cell, colWidths[c])))
+    const bodyWraps = wrappedRows.slice(1).some((row) => row.some((cell) => cell.length > 1))
+
+    const output: FormattedLine[] = [border('┌', '┬', '┐')]
+
+    wrappedRows.forEach((row, r) => {
+        if (r === 1 || (r > 1 && bodyWraps)) {
+            output.push(border('├', '┼', '┤'))
         }
-    }
-
-    // Scale widths if table exceeds maxWidth
-    const totalTableWidth = colWidths.reduce((a, b) => a + b + 3, 1)
-    if (totalTableWidth > maxWidth && maxWidth > 20) {
-        const excess = totalTableWidth - maxWidth
-        const shrinkPerCol = Math.floor(excess / colCount)
-        for (let c = 0; c < colCount; c++) {
-            colWidths[c] = Math.max(4, colWidths[c] - shrinkPerCol)
-        }
-    }
-
-    const output: FormattedLine[] = []
-
-    // Top border: ┌───────┬───────┐
-    let topBorder = '┌'
-    for (let c = 0; c < colCount; c++) {
-        topBorder += '─'.repeat(colWidths[c] + 2) + (c === colCount - 1 ? '┐' : '┬')
-    }
-    output.push([{ text: topBorder, style: { fg: THEME.colors.border } }])
-
-    // Rows
-    for (let r = 0; r < parsedRows.length; r++) {
-        const row = parsedRows[r]
-        const isHeader = r === 0
-        const rowSegs: TextSegment[] = []
-        rowSegs.push({ text: '│', style: { fg: THEME.colors.border } })
-
-        for (let c = 0; c < colCount; c++) {
-            const rawCell = row[c] || ''
-            const cell =
-                rawCell.length > colWidths[c]
-                    ? rawCell.slice(0, colWidths[c] - 1) + '…'
-                    : rawCell.padEnd(colWidths[c])
-            rowSegs.push({
-                text: ` ${cell} `,
-                style: {
-                    fg: isHeader ? THEME.colors.brand : THEME.colors.text,
-                    bold: isHeader,
-                },
+        const height = Math.max(...row.map((cell) => cell.length))
+        for (let i = 0; i < height; i++) {
+            const lineSegs: FormattedLine = [{ text: '│', style: { fg: THEME.colors.border } }]
+            row.forEach((cell, c) => {
+                const segs = cell[i] ?? []
+                lineSegs.push({ text: ' ', style: {} })
+                lineSegs.push(...segs)
+                lineSegs.push({
+                    text: ' '.repeat(colWidths[c] - segmentsWidth(segs) + 1),
+                    style: {},
+                })
+                lineSegs.push({ text: '│', style: { fg: THEME.colors.border } })
             })
-            rowSegs.push({ text: '│', style: { fg: THEME.colors.border } })
+            output.push(lineSegs)
         }
-        output.push(rowSegs)
+    })
 
-        // Divider after header: ├───────┼───────┤
-        if (isHeader && parsedRows.length > 1) {
-            let midBorder = '├'
-            for (let c = 0; c < colCount; c++) {
-                midBorder += '─'.repeat(colWidths[c] + 2) + (c === colCount - 1 ? '┤' : '┼')
-            }
-            output.push([{ text: midBorder, style: { fg: THEME.colors.border } }])
-        }
-    }
-
-    // Bottom border: └───────┴───────┘
-    let botBorder = '└'
-    for (let c = 0; c < colCount; c++) {
-        botBorder += '─'.repeat(colWidths[c] + 2) + (c === colCount - 1 ? '┘' : '┴')
-    }
-    output.push([{ text: botBorder, style: { fg: THEME.colors.border } }])
-
+    output.push(border('└', '┴', '┘'))
     return output
 }
 
@@ -379,7 +510,7 @@ function formatMermaidDiagram(code: string): FormattedLine[] {
         if (titleMatch && titleMatch[1]) {
             title = titleMatch[1].trim()
         }
-        output.push([{ text: `• ${title}`, style: { fg: THEME.colors.brand, bold: true } }])
+        output.push([{ text: `• ${title}`, style: { fg: THEME.colors.brand } }])
 
         const slices: { label: string; value: number }[] = []
         for (let i = 1; i < lines.length; i++) {
@@ -409,7 +540,7 @@ function formatMermaidDiagram(code: string): FormattedLine[] {
 
     // 2. Sequence diagram
     if (firstLine.startsWith('sequencediagram')) {
-        output.push([{ text: '• Sequence Diagram', style: { fg: THEME.colors.brand, bold: true } }])
+        output.push([{ text: '• Sequence Diagram', style: { fg: THEME.colors.brand } }])
         for (let i = 1; i < lines.length; i++) {
             const m = lines[i].match(
                 /^([A-Za-z0-9_]+)\s*(->>|-->>|->)\s*([A-Za-z0-9_]+)\s*:\s*(.*)$/
@@ -418,9 +549,9 @@ function formatMermaidDiagram(code: string): FormattedLine[] {
                 const [, from, arrow, to, text] = m
                 const arrowStr = arrow.includes('--') ? ' ◄┄┄ ' : ' ──► '
                 output.push([
-                    { text: `  [${from}]`, style: { fg: THEME.colors.brand, bold: true } },
+                    { text: `  [${from}]`, style: { fg: THEME.colors.brand } },
                     { text: arrowStr, style: { fg: THEME.colors.muted } },
-                    { text: `[${to}]`, style: { fg: THEME.colors.brand, bold: true } },
+                    { text: `[${to}]`, style: { fg: THEME.colors.brand } },
                     { text: `: ${text}`, style: { fg: THEME.colors.text } },
                 ])
             }
@@ -430,7 +561,7 @@ function formatMermaidDiagram(code: string): FormattedLine[] {
 
     // 3. Flowchart / Graph
     if (firstLine.startsWith('graph') || firstLine.startsWith('flowchart')) {
-        output.push([{ text: '• Flowchart', style: { fg: THEME.colors.brand, bold: true } }])
+        output.push([{ text: '• Flowchart', style: { fg: THEME.colors.brand } }])
         for (let i = 1; i < lines.length; i++) {
             const edgeMatch = lines[i].match(
                 /^([A-Za-z0-9_]+)(?:\[(.*?)\])?\s*(-->|---|==>|-\.->)(?:\|(.*?)\|)?\s*([A-Za-z0-9_]+)(?:\[(.*?)\])?/
@@ -443,9 +574,9 @@ function formatMermaidDiagram(code: string): FormattedLine[] {
                 const labelStr = edgeLabel ? ` (${edgeLabel})` : ''
 
                 output.push([
-                    { text: `  [${fromDisplay}]`, style: { fg: THEME.colors.brand, bold: true } },
+                    { text: `  [${fromDisplay}]`, style: { fg: THEME.colors.brand } },
                     { text: arrowStr, style: { fg: THEME.colors.muted } },
-                    { text: `[${toDisplay}]`, style: { fg: THEME.colors.brand, bold: true } },
+                    { text: `[${toDisplay}]`, style: { fg: THEME.colors.brand } },
                     { text: labelStr, style: { fg: THEME.colors.dim } },
                 ])
             }
@@ -488,6 +619,11 @@ export function createStreamingMarkdownCache(options?: {
         tableBuffer: [],
     }
 }
+
+/** Horizontal rule: `---`, `***`, `___`, `- - -`, up to 3 leading spaces */
+const HORIZONTAL_RULE = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/
+
+const isBlankLine = (line: string | undefined) => line !== undefined && line.trim() === ''
 
 /**
  * Parses markdown string and converts it into a list of formatted lines with ANSI styles.
@@ -611,13 +747,33 @@ export function formatMarkdownToLines(
             flushTable(!isTrailingLine)
         }
 
+        // Horizontal rules are hidden: the blank lines and the heading that
+        // usually follow already mark the section break. Checked before
+        // bullets so `* * *` and `- - -` do not render as list items. A blank
+        // line right after a hidden rule is also dropped when a blank line
+        // came before it, so the gap stays one line high.
+        if (
+            HORIZONTAL_RULE.test(rawLine) ||
+            (isBlankLine(rawLine) &&
+                r >= 1 &&
+                HORIZONTAL_RULE.test(rawLines[r - 1]) &&
+                (r === 1 || isBlankLine(rawLines[r - 2])))
+        ) {
+            if (!isTrailingLine && cache) {
+                cache.committedRawCount = r + 1
+            }
+            continue
+        }
+
         // Heading lines (# Heading)
         if (rawLine.startsWith('#')) {
+            const level = rawLine.match(/^#+/)?.[0].length ?? 1
+            const headingText = rawLine.replace(/^#+\s*/, '')
             const hLine: FormattedLine = [
                 {
-                    text: rawLine,
+                    text: headingText,
                     style: {
-                        fg: THEME.colors.brand,
+                        fg: level <= 2 ? THEME.colors.text : THEME.colors.muted,
                         bold: true,
                     },
                 },
@@ -637,7 +793,7 @@ export function formatMarkdownToLines(
                 streamingTail: isTrailingLine && Boolean(cache?.stabilizeInline),
             })
             const formattedBullet: FormattedLine = [
-                { text: '• ', style: { fg: THEME.colors.brand, bold: true } },
+                { text: '• ', style: { fg: THEME.colors.dim } },
                 ...inlineParsed,
             ]
             const wrapped = wrapSegments(formattedBullet, maxWidth)
@@ -669,7 +825,7 @@ export function formatMarkdownToLines(
             outputLines.push([
                 {
                     text: '  [Generating diagram...]',
-                    style: { fg: THEME.colors.dim, italic: true },
+                    style: { fg: THEME.colors.dim },
                 },
             ])
         } else {

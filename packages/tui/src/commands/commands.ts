@@ -5,7 +5,8 @@ import type { Command } from './types'
 export const COMMANDS: Command[] = [
     {
         name: 'btw',
-        description: 'Ask an ephemeral side question without polluting history or breaking cache',
+        description: 'Ask a side question. It is not saved.',
+        args: '<question>',
         value: '/btw',
         action: () => {
             // forwarded to differential screen
@@ -13,7 +14,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'changelog',
-        description: 'Open December changelog in your browser',
+        description: 'Open the changelog in your browser',
         value: '/changelog',
         action: () => {
             // forwarded to differential screen
@@ -21,7 +22,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'check',
-        description: 'Check your setup: keys, settings, MCP servers, skills, and rules',
+        description: 'Check keys, settings, MCP servers, skills',
         value: '/check',
         action: () => {
             // forwarded to differential screen
@@ -29,7 +30,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'clear',
-        description: 'Clear conversation history',
+        description: 'Clear the conversation',
         value: '/clear',
         action: async (ctx) => {
             if (ctx.agent) {
@@ -41,7 +42,8 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'codesearch',
-        description: 'Search code in workspace (usage: /codesearch <query>)',
+        description: 'Search code in the workspace',
+        args: '<query>',
         value: '/codesearch',
         action: () => {
             // forwarded to differential screen
@@ -49,7 +51,8 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'compact',
-        description: 'Summarize the conversation to free up context (usage: /compact [focus])',
+        description: 'Summarize the chat to free up context',
+        args: '[focus]',
         value: '/compact',
         action: () => {
             // forwarded to differential screen
@@ -57,7 +60,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'context',
-        description: 'Visualize current context usage',
+        description: 'Show how much context is in use',
         value: '/context',
         action: () => {
             // forwarded to differential screen
@@ -65,7 +68,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'copy',
-        description: 'Copy the last planner response to the clipboard',
+        description: 'Copy the last response to the clipboard',
         value: '/copy',
         action: (ctx) => {
             if (ctx.agent && ctx.agent.messages.length > 0) {
@@ -123,7 +126,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'exit',
-        description: 'Exit the CLI',
+        description: 'Exit December',
         value: '/exit',
         action: (ctx) => {
             ctx.exit()
@@ -131,7 +134,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'feedback',
-        description: 'Submit feedback, report a bug, or request a feature',
+        description: 'Report a bug or ask for a feature',
         value: '/feedback',
         action: () => {
             // forwarded to differential screen
@@ -139,7 +142,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'fork',
-        description: 'Create a branch of the current conversation at this point',
+        description: 'Branch the conversation at this point',
         value: '/fork',
         action: async (ctx) => {
             if (ctx.agent) {
@@ -152,7 +155,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'github',
-        description: 'Set up the December GitHub Action for this repository',
+        description: 'Set up the December GitHub Action',
         value: '/github',
         action: () => {
             // forwarded to differential screen
@@ -160,7 +163,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'help',
-        description: 'Show available commands, keybindings, and CLI info',
+        description: 'Show commands, keybindings, and CLI info',
         value: '/help',
         action: () => {
             // forwarded to differential screen
@@ -184,7 +187,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'learn',
-        description: 'Save a lesson from this chat to AGENTS.md or a skill',
+        description: 'Save a lesson to AGENTS.md or a skill',
         value: '/learn',
         action: () => {
             // forwarded to differential screen
@@ -192,7 +195,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'login',
-        description: 'Configure API keys or Connect via December Cloud',
+        description: 'Set up API keys or connect December Cloud',
         value: '/login',
         action: () => {},
     },
@@ -206,7 +209,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'mcp',
-        description: 'See running MCP servers and their tools, restart or stop them',
+        description: 'Manage MCP servers and their tools',
         value: '/mcp',
         action: () => {
             // forwarded to differential screen
@@ -214,7 +217,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'plugin',
-        description: 'Install and manage plugins, skills, MCP servers, and marketplaces',
+        description: 'Install and manage plugins and marketplaces',
         value: '/plugin',
         action: () => {
             // forwarded to differential screen
@@ -242,7 +245,8 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'open',
-        description: 'View and inspect a file in the workspace viewer',
+        description: 'View a file in the workspace viewer',
+        args: '<file>',
         value: '/open',
         action: () => {
             // forwarded to differential screen
@@ -258,7 +262,8 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'plan',
-        description: 'Plan before changing code (usage: /plan <goal>, no goal toggles plan mode)',
+        description: 'Plan first. No goal toggles plan mode',
+        args: '[goal]',
         value: '/plan',
         action: () => {
             // forwarded to differential screen
@@ -266,7 +271,8 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'rename',
-        description: 'Rename this session (no title: generate one from the conversation)',
+        description: 'Rename the session (no title: make one)',
+        args: '[title]',
         value: '/rename',
         action: () => {
             // forwarded to differential screen
@@ -282,7 +288,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'rewind',
-        description: 'Rollback files and conversation history to any previous turn',
+        description: 'Roll back files and chat to an earlier turn',
         value: '/rewind',
         action: () => {
             // forwarded to differential screen
@@ -298,7 +304,8 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'skills',
-        description: 'List skills (usage: /skills reload to scan again)',
+        description: 'List skills, or reload to scan again',
+        args: '[reload]',
         value: '/skills',
         action: () => {
             // forwarded to differential screen
@@ -338,7 +345,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'voice',
-        description: 'Dictate a prompt using your microphone (Deepgram)',
+        description: 'Dictate a prompt with your microphone',
         value: '/voice',
         action: () => {
             // forwarded to input bar

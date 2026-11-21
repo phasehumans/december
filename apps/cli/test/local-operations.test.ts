@@ -44,6 +44,16 @@ describe('local-operations', () => {
             expect(taskManager.getTasks().length).toBe(initialTaskCount)
         })
 
+        test('exec does not leave stdin open for commands that read it', async () => {
+            // A bare `cat` reads stdin; with an open pipe it hangs and gets backgrounded
+            const res = await localOperations.bash.exec('cat', process.cwd(), {
+                waitMsBeforeAsync: 2_000,
+            } as any)
+
+            expect(res.exitCode).toBe(0)
+            expect(res.taskId).toBeUndefined()
+        })
+
         test('exec promotes command to background task when exceeding fallback timeout', async () => {
             const res = await localOperations.bash.exec('sleep 2', process.cwd(), {
                 waitMsBeforeAsync: 80,

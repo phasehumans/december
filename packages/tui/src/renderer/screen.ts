@@ -1,5 +1,6 @@
 import { ScreenBuffer } from './buffer'
 import { computeDiff } from './diff'
+import { findScrollMove, hashRows, scrollMoveSequence } from './scroll'
 import { TerminalController } from './terminal'
 
 import type { CellStyle, CursorPosition, DiffOptions, DifferentialScreenOptions } from './types'
@@ -11,6 +12,9 @@ export class DifferentialScreen {
     private _width: number
     private _height: number
     private readonly synchronized: boolean
+    private readonly scrollRegions: boolean
+    /** Row hashes of the front buffer, kept from the last frame's back buffer */
+    private frontHashes: Int32Array | null = null
     private cursor?: CursorPosition
     private forceFullRedraw = false
     private isRunning = false
@@ -22,6 +26,8 @@ export class DifferentialScreen {
         this._width = options?.width ?? this.terminal.columns
         this._height = options?.height ?? this.terminal.rows
         this.synchronized = options?.synchronized ?? true
+        this.scrollRegions =
+            (options?.scrollRegions ?? true) && process.env.DECEMBER_NO_SCROLL_REGIONS !== '1'
 
         this.frontBuffer = new ScreenBuffer(this._width, this._height)
         this.backBuffer = new ScreenBuffer(this._width, this._height)
@@ -101,6 +107,7 @@ export class DifferentialScreen {
 
         // Window dimension change necessitates a full frame redraw to eliminate visual corruption
         this.forceFullRedraw = true
+        this.frontHashes = null
 
         for (const listener of this.resizeListeners) {
             listener(this.width, this.height)
@@ -124,13 +131,37 @@ export class DifferentialScreen {
     }
 
     render(options?: DiffOptions): string {
+        const forceFullRedraw = options?.forceFullRedraw ?? this.forceFullRedraw
+
+        // A band that scrolled (chat output while following the bottom) moves with one
+        // terminal scroll; the cell diff then only draws the rows that are new
+        let prefix = options?.prefix ?? ''
+        let backHashes: Int32Array | null = null
+        if (this.scrollRegions) {
+            backHashes = hashRows(this.backBuffer)
+            if (!forceFullRedraw && this.frontHashes) {
+                const move = findScrollMove(
+                    this.frontBuffer,
+                    this.backBuffer,
+                    this.frontHashes,
+                    backHashes
+                )
+                if (move) {
+                    prefix += scrollMoveSequence(move)
+                    this.frontBuffer.scrollRegionUp(move.top, move.bottom, move.shift)
+                }
+            }
+        }
+
         const diffOptions: DiffOptions = {
-            forceFullRedraw: options?.forceFullRedraw ?? this.forceFullRedraw,
+            forceFullRedraw,
             synchronized: options?.synchronized ?? this.synchronized,
             cursor: options?.cursor ?? this.cursor,
+            prefix,
         }
 
         const delta = computeDiff(this.frontBuffer, this.backBuffer, diffOptions)
+        this.frontHashes = backHashes
 
         if (delta.length > 0) {
             this.terminal.write(delta)

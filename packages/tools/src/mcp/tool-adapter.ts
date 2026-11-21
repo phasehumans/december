@@ -80,6 +80,7 @@ export function createMcpTool(options: {
         name: toolName,
         description,
         inputSchema,
+        mcp: { server: serverName, tool: mcpTool.name },
         execute: async (input: any, context: ToolExecuteContext): Promise<string> => {
             const result = await callTool(mcpTool.name, input || {}, context)
             return formatMcpCallToolResult(result)

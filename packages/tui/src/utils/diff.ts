@@ -80,7 +80,7 @@ export function parseUnifiedDiffToRows(
         if (fullLines && start - 1 >= 0 && start - 1 < fullLines.length) {
             const line = fullLines[start - 1]?.trim()
             if (line) {
-                return line.length > 50 ? `${line.slice(0, 47)}...` : line
+                return line.length > 50 ? `${line.slice(0, 49)}…` : line
             }
         }
         return `line ${start}..${start + count - 1}`

@@ -1,6 +1,6 @@
 import { describe, expect, test, mock } from 'bun:test'
 
-import { EditFileTool } from '../../src/edit'
+import { EditFileTool, editStartLines } from '../../src/edit'
 import { createMockContext } from '../mock-context'
 
 describe('EditFileTool (Unit)', () => {
@@ -22,6 +22,8 @@ describe('EditFileTool (Unit)', () => {
             'const a = 10\nconst b = 2'
         )
         expect(result).toContain('Successfully edited file')
+        // The result names the line, so the chat can number the live diff (F8)
+        expect(result).toContain('(line 1)')
     })
 
     test('should fall back to line-by-line whitespace trimmed matching', async () => {
@@ -238,7 +240,7 @@ test('should support edits array with oldText and newText aliases', async () => 
     )
 
     expect(result).toContain(
-        'Successfully edited file: /config.ts (2 disjoint replacements applied)'
+        'Successfully edited file: /config.ts (2 disjoint replacements applied at lines 2, 6)'
     )
     expect(context.operations.fs.writeFile).toHaveBeenCalledWith(
         '/config.ts',
@@ -304,4 +306,13 @@ test('should serialize concurrent writes to the same file while allowing differe
 
     expect(fileStates['/fileA.ts']).toBe('Updated A')
     expect(fileStates['/fileB.ts']).toBe('Updated B')
+})
+
+test('editStartLines finds each replacement line after earlier replacements', () => {
+    const content = 'a\nb\nc\nd\n'
+    const spans = [
+        { span: { startIndex: 2, endIndex: 3 }, replacement: 'B1\nB2' },
+        { span: { startIndex: 6, endIndex: 7 }, replacement: 'D' },
+    ]
+    expect(editStartLines(content, spans)).toEqual([2, 5])
 })

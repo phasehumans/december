@@ -41,8 +41,6 @@ export interface AgentConfig {
     steeringMode?: 'all' | 'one-at-a-time'
     followUpMode?: 'all' | 'one-at-a-time'
     workspaceDir?: string
-    logsDir?: string
-    disableLogging?: boolean
     tracer?: AgentTracer
     depth?: number
     maxDepth?: number
@@ -107,14 +105,16 @@ export class Agent {
     public activeAbortController?: AbortController
     public convertToLlm: (messages: AgentMessage[]) => Message[]
     public workspaceDir?: string
-    public logsDir?: string
-    public disableLogging: boolean
     public tracer: AgentTracer
     public deferredRegistry: DeferredToolRegistry
     public mcpClientManager?: McpClientManager
     public depth: number
     public maxDepth: number
+    /** The workspace snapshot of the running turn; tools that can change files wait for it */
+    public pendingSnapshot?: Promise<void>
     private titleUpgradeAttempted = new Set<string>()
+    /** Saves run one after another, so a background save never overlaps the next one */
+    private saveChain: Promise<void> = Promise.resolve()
 
     constructor(config: AgentConfig) {
         this.depth = config.depth ?? 0
@@ -139,8 +139,6 @@ export class Agent {
             workspaceRoot: config.workspaceDir,
             systemPrompt: this.systemPrompt,
         })
-        this.logsDir = config.logsDir
-        this.disableLogging = config.disableLogging || false
         this.deferredRegistry = config.deferredRegistry || new DeferredToolRegistry()
         this.mcpClientManager = config.mcpClientManager
         if (this.mcpClientManager) {
@@ -321,10 +319,16 @@ export class Agent {
         this.conversation.addMessage(message)
     }
 
-    public async saveContext() {
-        if (this.sessionRepository) {
-            await this.sessionRepository.saveContext(this.sessionId, this.messages)
-        }
+    public saveContext(): Promise<void> {
+        const repository = this.sessionRepository
+        if (!repository) return Promise.resolve()
+        const sessionId = this.sessionId
+        const messages = this.messages
+        const run = this.saveChain.then(() => repository.saveContext(sessionId, messages))
+        this.saveChain = run.catch(() => {
+            // Intentionally swallowed: the caller of this save gets the error from `run`
+        })
+        return run
     }
 
     public async loadContext(sessionId?: string) {

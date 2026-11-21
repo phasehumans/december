@@ -2,6 +2,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawInlineConfirm, drawPanelTitle, formatPanelDuration, statusMark } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -59,19 +60,16 @@ export function orderTasks(tasks: TaskItem[]): TaskItem[] {
     ]
 }
 
+/** "2m 03s", the chat's duration format */
 export function formatTaskDuration(ms: number): string {
-    const secs = Math.floor(Math.max(0, ms) / 1000)
-    if (secs < 60) return `${secs}s`
-    const mins = Math.floor(secs / 60)
-    if (mins < 60) return `${mins}m ${secs % 60}s`
-    return `${Math.floor(mins / 60)}h ${mins % 60}m`
+    return formatPanelDuration(ms)
 }
 
 /** one-line label for a task row: whitespace (including newlines) collapsed */
 export function getTaskLabel(task: TaskItem): string {
     const command = task.command.replace(/\s+/g, ' ').trim()
     if (task.type === 'subagent' && task.role) {
-        return command ? `${task.role} · ${command}` : task.role
+        return command ? `${task.role}: ${command}` : task.role
     }
     return command || task.id
 }
@@ -88,27 +86,25 @@ export function getTaskLogTitle(task: TaskItem, following: boolean): string {
     return `Task Output: ${task.id} (${getTaskLabel(task)}) · ${mode}`
 }
 
+/** G7: running is a steady brand dot, done and stopped dim, failed red */
 function getStatusColor(status: TaskStatus): string {
     switch (status) {
         case 'running':
-            return THEME.colors.warning
-        case 'completed':
-            return THEME.colors.success
+            return statusMark('running').color
         case 'failed':
-            return THEME.colors.error
+            return statusMark('failed').color
         default:
-            return THEME.colors.muted
+            return statusMark('done').color
     }
 }
 
-function getMetaText(task: TaskItem, now: number): string {
-    let info = ''
+/** the right-hand meta of a row: an optional red fault word, then muted info and the duration */
+function getMeta(task: TaskItem, now: number): { fault: string; text: string } {
+    const parts: string[] = []
     if (task.status === 'killed') {
-        info = 'stopped'
+        parts.push('stopped')
     } else if (task.type === 'subagent') {
-        const parts: string[] = []
-        if (task.depth !== undefined) parts.push(`depth ${task.depth}`)
-        if (task.turns) {
+        if (task.turns && task.status !== 'failed') {
             // while running: the turn it is on; when done: how many turns it took
             parts.push(
                 task.status === 'running'
@@ -116,15 +112,14 @@ function getMetaText(task: TaskItem, now: number): string {
                     : `${task.turns} turn${task.turns === 1 ? '' : 's'}`
             )
         }
-        info = parts.join(' · ')
     } else if (task.status === 'running') {
-        info = task.pid ? `pid ${task.pid}` : ''
+        if (task.pid) parts.push(`pid ${task.pid}`)
     } else if (task.exitCode !== undefined) {
-        info = `exit ${task.exitCode}`
+        parts.push(`exit ${task.exitCode}`)
     }
     const end = task.completedAt ?? now
-    const duration = formatTaskDuration(end - task.createdAt)
-    return info ? `${info}  ${duration}` : duration
+    parts.push(formatTaskDuration(end - task.createdAt))
+    return { fault: task.status === 'failed' ? 'failed' : '', text: parts.join('  ') }
 }
 
 /** number of distinct sections (0, 1 or 2) the list will show */
@@ -135,13 +130,13 @@ function countSections(tasks: TaskItem[]): number {
 export const TasksModeMenuView = {
     getHeight(tasks: TaskItem[], windowSize = TASKS_WINDOW_SIZE): number {
         if (tasks.length === 0) {
-            // Title (1) + Subtitle (1) + Gap (1) + Empty row (1) + Gap (1) + Footer (1)
-            return 6
+            // Title (1) + Gap (1) + Empty row (1) + Gap (1) + Footer (1)
+            return 5
         }
         const visible = Math.min(windowSize, tasks.length)
         const hasOverflow = tasks.length > windowSize
-        // Title (1) + Subtitle (1) + Gap (1) + Section titles + Visible + Overflow (0|1) + Gap (1) + Footer (1)
-        return 3 + countSections(tasks) + visible + (hasOverflow ? 1 : 0) + 2
+        // Title (1) + Gap or stop-all question (1) + Section titles + Visible + Overflow (0|1) + Gap (1) + Footer (1)
+        return 2 + countSections(tasks) + visible + (hasOverflow ? 1 : 0) + 2
     },
 
     render(buffer: ScreenBuffer, props: TasksModeMenuViewProps): void {
@@ -156,30 +151,26 @@ export const TasksModeMenuView = {
         const confirmStop = props.confirmStop ?? null
         const runningCount = tasks.filter((t) => t.status === 'running').length
 
-        // 1. Title
-        drawText(buffer, 'Tasks', { x, y, style: { fg: THEME.colors.text, bold: true } })
+        // 1. Title, with the running count as meta (no description row)
+        drawPanelTitle(buffer, {
+            x,
+            y,
+            title: 'Tasks',
+            meta: runningCount > 0 ? `${runningCount} running` : undefined,
+            width,
+        })
         y += 1
 
-        // 2. Subtitle (doubles as the stop-all confirmation)
+        // 2. The stop-all question takes the gap row under the title, inline as today
         if (confirmStop === 'all') {
-            drawText(
-                buffer,
-                `Stop ${runningCount} running task${runningCount === 1 ? '' : 's'}? [y/n]`,
-                { x, y, maxWidth: width, style: { fg: THEME.colors.warning, bold: true } }
-            )
-        } else {
-            const subtitle =
-                runningCount > 0
-                    ? `Background shells and subagents. ${runningCount} running.`
-                    : 'Background shells and subagents.'
-            drawText(buffer, subtitle, {
+            drawInlineConfirm(buffer, {
                 x,
                 y,
-                maxWidth: width,
-                style: { fg: THEME.colors.muted },
+                text: `Stop ${runningCount} running task${runningCount === 1 ? '' : 's'}? [y/n]`,
+                tone: 'warning',
             })
         }
-        y += 2
+        y += 1
 
         // 3. Rows
         if (tasks.length === 0) {
@@ -202,12 +193,12 @@ export const TasksModeMenuView = {
                 const task = tasks[absIdx]!
                 const prev = absIdx > windowStart ? tasks[absIdx - 1] : undefined
 
-                // Section title where the type changes (and at the top of the window)
+                // Group label where the type changes (and at the top of the window), muted, not bold
                 if (!prev || prev.type !== task.type) {
                     drawText(buffer, SECTION_TITLES[task.type] ?? 'Tasks', {
                         x,
                         y: rowY,
-                        style: { fg: THEME.colors.muted, bold: true },
+                        style: { fg: THEME.colors.muted },
                     })
                     rowY += 1
                 }
@@ -218,20 +209,31 @@ export const TasksModeMenuView = {
                 drawText(buffer, isSelected ? `${THEME.glyphs.selector} ` : '  ', {
                     x,
                     y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted, bold: true },
+                    style: { fg: THEME.colors.brand },
                 })
 
-                drawText(buffer, `${THEME.glyphs.status} `, {
+                drawText(buffer, THEME.glyphs.status, {
                     x: x + 2,
                     y: rowY,
                     style: { fg: getStatusColor(task.status) },
                 })
 
-                const metaText = getMetaText(task, now)
-                drawText(buffer, metaText.padStart(META_WIDTH), {
-                    x: x + width - META_WIDTH,
+                // Meta, right-aligned: a red fault word first, then muted info and duration
+                const meta = getMeta(task, now)
+                const faultText = meta.fault ? `${meta.fault}  ` : ''
+                const metaLen = Math.min(META_WIDTH, faultText.length + meta.text.length)
+                const metaX = x + width - metaLen
+                if (faultText) {
+                    drawText(buffer, meta.fault, {
+                        x: metaX,
+                        y: rowY,
+                        style: { fg: THEME.colors.error },
+                    })
+                }
+                drawText(buffer, meta.text, {
+                    x: metaX + faultText.length,
                     y: rowY,
-                    maxWidth: META_WIDTH,
+                    maxWidth: Math.max(0, metaLen - faultText.length),
                     style: { fg: THEME.colors.muted },
                 })
 
@@ -245,27 +247,21 @@ export const TasksModeMenuView = {
                     y: rowY,
                     maxWidth: labelWidth,
                     ellipsis: true,
-                    style: {
-                        fg: isConfirming
-                            ? THEME.colors.warning
-                            : isSelected
-                              ? THEME.colors.brand
-                              : THEME.colors.text,
-                        bold: isSelected,
-                    },
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
                 })
                 if (isConfirming) {
-                    drawText(buffer, confirmSuffix, {
+                    drawInlineConfirm(buffer, {
                         x: labelResult.x,
                         y: rowY,
-                        style: { fg: THEME.colors.warning, bold: true },
+                        text: confirmSuffix,
+                        tone: 'warning',
                     })
                 }
 
                 rowY += 1
             }
 
-            // Overflow indicator
+            // Overflow indicator, in dim under the last row
             if (tasks.length > windowSize) {
                 const above = windowStart
                 const below = tasks.length - windowEnd
@@ -278,12 +274,12 @@ export const TasksModeMenuView = {
                 drawText(buffer, statusText, {
                     x: x + 2,
                     y: rowY,
-                    style: { fg: THEME.colors.subtle },
+                    style: { fg: THEME.colors.dim },
                 })
             }
         }
 
-        // 4. Footer
+        // 4. Footer, as today
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,
             y: props.y + props.height - 1,

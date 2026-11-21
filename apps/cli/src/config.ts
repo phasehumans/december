@@ -248,10 +248,6 @@ export function getConfigFile(): string {
     return path.join(getConfigDir(), 'config.json')
 }
 
-export function getLogsDir(): string {
-    return process.env.DECEMBER_LOGS_DIR || path.join(getConfigDir(), 'logs')
-}
-
 function deepMergeSettings(base: any, overrides: any): any {
     const result = { ...base }
     for (const key of Object.keys(overrides)) {
@@ -528,8 +524,11 @@ function resolveSubscriptionBundle(
     return undefined
 }
 
-export async function getProviderConfig(): Promise<ProviderConfig | undefined> {
-    const config = await loadConfig()
+/** Pass a config the caller already loaded to skip reading config.json again */
+export async function getProviderConfig(
+    loadedConfig?: DecemberConfig
+): Promise<ProviderConfig | undefined> {
+    const config = loadedConfig ?? (await loadConfig())
 
     const hasByokConfig = !!(
         config.activeProvider &&

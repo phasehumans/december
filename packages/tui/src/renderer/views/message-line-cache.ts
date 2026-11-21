@@ -1,7 +1,27 @@
 import { THEME } from '../../theme'
+import {
+    editDiffRows,
+    editPairs,
+    editResultLines,
+    toolCallChanges,
+    type EditDiffRow,
+} from '../../utils/edit-diff'
 import { parseTuiError } from '../../utils/error-parser'
 import { toRelativePath } from '../../utils/terminal-link'
-import { extractThoughtTopic } from '../../utils/thought'
+import {
+    agentRole,
+    classifyTool,
+    exploreKind,
+    exploreTarget,
+    formatStepDuration,
+    middleEllipsis,
+    parseToolInput,
+    toolCommandText,
+    toolFilePath,
+    webQuery,
+    type ToolKind,
+} from '../../utils/tool-kind'
+import { stringWidth } from '../cell'
 
 import {
     createStreamingMarkdownCache,
@@ -9,256 +29,115 @@ import {
     wrapSegments,
     type FormattedLine,
     type StreamingMarkdownCache,
+    type TextSegment,
 } from './markdown'
 
-import type { MessageItem } from './message-list-view'
+import type { MessageItem, MessageToolCall } from './message-list-view'
 
-export type DiscoveryKind = 'read' | 'list_dir' | 'search' | 'web_search'
+export { parseToolInput }
 
-export function getToolDiscoveryKind(toolName: string, command?: string): DiscoveryKind | null {
-    const nameLower = (toolName || '').toLowerCase()
-    if (nameLower === 'read_file' || nameLower === 'view_file' || command?.startsWith('Read(')) {
-        return 'read'
-    }
-    if (nameLower === 'list_dir' || nameLower === 'ls' || command?.startsWith('ListDir(')) {
-        return 'list_dir'
-    }
-    if (
-        nameLower === 'grep_search' ||
-        nameLower === 'find_files' ||
-        nameLower === 'file_search' ||
-        nameLower === 'code_intelligence' ||
-        command?.startsWith('Search(') ||
-        command?.startsWith('CodeIntel(')
-    ) {
-        return 'search'
-    }
-    if (
-        nameLower === 'search_web' ||
-        nameLower === 'web_search' ||
-        command?.startsWith('WebSearch(')
-    ) {
-        return 'web_search'
-    }
-    return null
+/** Text the agent appends when a turn is interrupted */
+export const INTERRUPT_MARKER = 'Interrupted · What should December do instead?'
+
+/** Most rows an open diff shows (S4.2); the rest is in /diff */
+const MAX_DIFF_ROWS = 12
+/** Rows of a new file shown while it is the open step (S6) */
+const MAX_NEW_FILE_ROWS = 8
+/** A live turn folds its earlier steps past this many steps (S12) */
+const FOLD_AFTER_STEPS = 25
+const FOLD_KEEP_STEPS = 12
+
+export interface LayoutOptions {
+    /** The last turn is still running: its newest edit can show a diff, long runs fold */
+    liveTurn?: boolean
+    /** Clock for the running dot's 1 Hz blink */
+    now?: number
+    /** Files whose diff the permission prompt already showed this turn (S4.8) */
+    previewedPaths?: ReadonlySet<string>
+    /** An approval prompt is open: the step it asks about shows as a yellow pending row (L10) */
+    awaitingApproval?: boolean
 }
 
-export function parseToolInput(input: any): any {
-    if (typeof input === 'string') {
-        try {
-            return JSON.parse(input)
-        } catch {
-            // Intentionally swallowed: fallback to empty object on invalid JSON
-            return {}
+function blank(): FormattedLine {
+    return [{ text: '', style: {} }]
+}
+
+function isFailed(tc?: MessageToolCall): boolean {
+    return tc?.status === 'error' || (tc as any)?.status === 'failed'
+}
+
+function isLiveMessage(m: MessageItem | undefined): boolean {
+    return Boolean(m && (m.isStreaming || m.toolCall?.status === 'running'))
+}
+
+function isToolMessage(m: MessageItem | undefined): boolean {
+    return Boolean(m && (m.role === 'tool' || m.toolCall))
+}
+
+function kindOf(m: MessageItem): ToolKind {
+    return classifyTool(m.toolCall?.name, m.toolCall?.command)
+}
+
+/** A bare interrupt notice attaches under the last step instead of starting a new block */
+function isAttachedNotice(m: MessageItem | undefined): boolean {
+    return Boolean(
+        m && m.role === 'assistant' && (m.content || m.text || '').trim() === INTERRUPT_MARKER
+    )
+}
+
+/** Messages that draw nothing in the chat: thoughts (L5, S2) and plan updates (L19) */
+function isHidden(m: MessageItem): boolean {
+    if (m.role === 'thinking') return true
+    if (isToolMessage(m) && kindOf(m) === 'plan') return true
+    return false
+}
+
+function truncate(text: string, max: number): string {
+    if (max <= 1) return ''
+    return text.length > max ? `${text.slice(0, max - 1)}…` : text
+}
+
+function lastNonEmptyLine(text: string): string {
+    const lines = text.split(/\r?\n/)
+    for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i]!.trim()
+        if (line) return line
+    }
+    return ''
+}
+
+/** Splits one prompt row into text, @mention (accent) and paste chip (dim) segments. */
+function promptRowSegments(rowText: string, bg: string): FormattedLine {
+    const segments: FormattedLine = []
+    const tokenRegex = /(\[Pasted \d+ lines(?: #\d+)?\])|(@[^\s]+)/gi
+    let last = 0
+    let match: RegExpExecArray | null
+    while ((match = tokenRegex.exec(rowText)) !== null) {
+        if (match.index > last) {
+            segments.push({
+                text: rowText.slice(last, match.index),
+                style: { fg: THEME.colors.text, bg },
+            })
         }
-    }
-    return input && typeof input === 'object' ? input : {}
-}
-
-/**
- * Formats a single git diff line with unified gutter and theme background styling,
- * matching the visual design language of the `/diff` command view.
- */
-export function formatDiffRow(
-    type: 'add' | 'delete' | 'context' | 'hunk',
-    content: string,
-    width: number
-): FormattedLine {
-    const sign =
-        type === 'add' ? '  + ' : type === 'delete' ? '  - ' : type === 'hunk' ? '  ~ ' : '    '
-    const signColor =
-        type === 'add'
-            ? THEME.colors.success
-            : type === 'delete'
-              ? THEME.colors.error
-              : type === 'hunk'
-                ? THEME.colors.brand
-                : THEME.colors.dim
-    const textColor =
-        type === 'add'
-            ? THEME.colors.success
-            : type === 'delete'
-              ? THEME.colors.error
-              : type === 'hunk'
-                ? THEME.colors.dim
-                : THEME.colors.muted
-    const bgColor =
-        type === 'add'
-            ? THEME.colors.diffAddBg
-            : type === 'delete'
-              ? THEME.colors.diffDeleteBg
-              : undefined
-
-    const maxContentLen = Math.max(0, width - 5)
-    const displayContent =
-        content.length > maxContentLen ? content.slice(0, maxContentLen) : content
-    const usedLen = sign.length + displayContent.length
-    const padLen = bgColor ? Math.max(0, width - 1 - usedLen) : 0
-
-    const tokens: FormattedLine = [
-        {
-            text: sign,
-            style: {
-                fg: signColor,
-                bg: bgColor,
-                bold: type === 'add' || type === 'delete',
-            },
-        },
-        {
-            text: displayContent,
-            style: {
-                fg: textColor,
-                bg: bgColor,
-            },
-        },
-    ]
-
-    if (padLen > 0) {
-        tokens.push({
-            text: ' '.repeat(padLen),
-            style: { bg: bgColor },
+        segments.push({
+            text: match[1] ? match[1].toLowerCase() : match[0],
+            style: { fg: match[1] ? THEME.colors.dim : THEME.colors.brand, bg },
         })
+        last = match.index + match[0].length
     }
-
-    return tokens
-}
-
-export function getToolActionVerb(name: string, isRunning: boolean): string {
-    const lower = name.toLowerCase()
-    if (isRunning) {
-        if (lower === 'read_file' || lower === 'view_file' || lower === 'read') return 'Reading'
-        if (lower === 'write_file' || lower === 'write_to_file' || lower === 'create_file') {
-            return 'Writing'
-        }
-        if (
-            lower === 'edit_file' ||
-            lower === 'replace_file_content' ||
-            lower === 'edit_diff' ||
-            lower === 'multi_replace_file_content'
-        ) {
-            return 'Editing'
-        }
-        if (
-            lower === 'run_command' ||
-            lower === 'bash' ||
-            lower === 'execute_command' ||
-            lower === 'terminal'
-        ) {
-            return 'Executing'
-        }
-        if (lower === 'search_web' || lower === 'web_search') return 'Searching web'
-        if (
-            lower === 'search' ||
-            lower === 'grep' ||
-            lower === 'code_search' ||
-            lower === 'find_by_name' ||
-            lower === 'grep_search' ||
-            lower === 'find_files'
-        ) {
-            return 'Searching'
-        }
-        if (lower === 'list_dir' || lower === 'ls') return 'Listing'
-        return 'Running'
-    } else {
-        if (lower === 'read_file' || lower === 'view_file' || lower === 'read') return 'Read'
-        if (lower === 'write_file' || lower === 'write_to_file' || lower === 'create_file') {
-            return 'Created'
-        }
-        if (
-            lower === 'edit_file' ||
-            lower === 'replace_file_content' ||
-            lower === 'edit_diff' ||
-            lower === 'multi_replace_file_content'
-        ) {
-            return 'Edited'
-        }
-        if (
-            lower === 'run_command' ||
-            lower === 'bash' ||
-            lower === 'execute_command' ||
-            lower === 'terminal'
-        ) {
-            return 'Executed'
-        }
-        if (lower === 'search_web' || lower === 'web_search') return 'Searched web'
-        if (
-            lower === 'search' ||
-            lower === 'grep' ||
-            lower === 'code_search' ||
-            lower === 'find_by_name' ||
-            lower === 'grep_search' ||
-            lower === 'find_files'
-        ) {
-            return 'Searched'
-        }
-        if (lower === 'list_dir' || lower === 'ls') return 'Listed'
-        return name
+    if (last < rowText.length) {
+        segments.push({ text: rowText.slice(last), style: { fg: THEME.colors.text, bg } })
     }
+    return segments
 }
-
-export function getDiscoveryTarget(
-    kind: DiscoveryKind,
-    tc: { name?: string; command?: string; input?: any }
-): string {
-    const input = parseToolInput(tc.input)
-    switch (kind) {
-        case 'read': {
-            const rawPath =
-                input.TargetFile ||
-                input.AbsolutePath ||
-                input.filePath ||
-                input.filepath ||
-                input.path ||
-                input.file ||
-                tc.command?.match(/^Read\(([^)]*)\)$/)?.[1] ||
-                ''
-            return toRelativePath(rawPath)
-        }
-        case 'list_dir': {
-            const rawPath =
-                input.DirectoryPath ||
-                input.dirPath ||
-                input.path ||
-                tc.command?.match(/^ListDir\(([^)]*)\)$/)?.[1] ||
-                ''
-            return toRelativePath(rawPath) || '.'
-        }
-        case 'search': {
-            const query =
-                input.query ||
-                input.pattern ||
-                input.symbol ||
-                tc.command?.match(/^(?:Search|CodeIntel)\(([^)]*)\)$/)?.[1] ||
-                ''
-            return query
-        }
-        case 'web_search': {
-            const query =
-                input.query ||
-                input.Url ||
-                input.url ||
-                tc.command?.match(/^WebSearch\(([^)]*)\)$/)?.[1] ||
-                ''
-            return query
-        }
-    }
-}
-
-interface CacheEntry {
-    contentKey: string
-    width: number
-    lines: FormattedLine[]
-}
-
-export const THOUGHT_DWELL_MS = 2500
 
 /**
- * User prompt rows: a highlighted block that spans the chat width (ending where the
+ * User prompt rows: a band on the surface color that spans the chat width (ending where the
  * prompt separator ends). Long and multi-line prompts wrap under the text, not the glyph.
  */
 export function formatUserPromptRows(text: string, width: number): FormattedLine[] {
-    const bg = THEME.colors.border
-    const style = { fg: THEME.colors.brand, bold: true, bg }
+    const bg = THEME.colors.surface
+    const style = { fg: THEME.colors.text, bg }
     const glyph = `${THEME.glyphs.prompt} `
     const rowWidth = Math.max(glyph.length + 4, width - THEME.padding.paddingRight)
     const textWidth = rowWidth - glyph.length
@@ -276,16 +155,807 @@ export function formatUserPromptRows(text: string, width: number): FormattedLine
 
     return rows.map((rowText, i) => {
         const prefix = i === 0 ? glyph : ' '.repeat(glyph.length)
-        const pad = ' '.repeat(Math.max(0, rowWidth - prefix.length - rowText.length))
+        const pad = ' '.repeat(Math.max(0, rowWidth - prefix.length - stringWidth(rowText)))
         return [
-            { text: prefix, style },
-            { text: rowText + pad, style },
+            { text: prefix, style: { fg: THEME.colors.brand, bg } },
+            ...promptRowSegments(rowText, bg),
+            { text: pad, style: { bg } },
         ]
     })
 }
 
-function isLiveMessage(m: MessageItem | undefined): boolean {
-    return Boolean(m && (m.isStreaming || m.toolCall?.status === 'running'))
+/**
+ * One diff row: a dim line number, the sign, and the text, on a tinted band for
+ * added and removed lines.
+ */
+export function formatDiffRow(
+    type: 'add' | 'delete' | 'context' | 'hunk',
+    content: string,
+    width: number,
+    lineNo?: number
+): FormattedLine {
+    const bg =
+        type === 'add'
+            ? THEME.colors.diffAddBg
+            : type === 'delete'
+              ? THEME.colors.diffDeleteBg
+              : undefined
+    const num = lineNo !== undefined ? String(lineNo).padStart(6) : '      '
+    const sign = type === 'add' ? '+ ' : type === 'delete' ? '- ' : '  '
+    const signColor =
+        type === 'add'
+            ? THEME.colors.success
+            : type === 'delete'
+              ? THEME.colors.error
+              : THEME.colors.dim
+    const textColor = type === 'context' || type === 'hunk' ? THEME.colors.muted : THEME.colors.text
+    const prefixLen = num.length + 1 + sign.length
+    const maxText = Math.max(0, width - prefixLen - 1)
+    const text = content.length > maxText ? content.slice(0, maxText) : content
+    const tokens: FormattedLine = [
+        { text: `${num} `, style: { fg: THEME.colors.dim, bg } },
+        { text: sign, style: { fg: signColor, bg } },
+        { text, style: { fg: textColor, bg } },
+    ]
+    const pad = bg ? Math.max(0, width - 1 - prefixLen - text.length) : 0
+    if (pad > 0) tokens.push({ text: ' '.repeat(pad), style: { bg } })
+    return tokens
+}
+
+function diffRowLines(rows: EditDiffRow[], width: number, max = MAX_DIFF_ROWS): FormattedLine[] {
+    const lines = rows
+        .slice(0, max)
+        .map((row) => formatDiffRow(row.type, row.text, width, row.lineNo))
+    if (rows.length > max) {
+        lines.push([
+            {
+                text: `         … ${rows.length - max} more lines · /diff`,
+                style: { fg: THEME.colors.dim },
+            },
+        ])
+    }
+    return lines
+}
+
+// ---------- step rows ----------
+
+interface RowContext {
+    width: number
+    blinkOn: boolean
+}
+
+function glyphColor(tc: MessageToolCall | undefined, ctx: RowContext): string {
+    if (isFailed(tc)) return THEME.colors.error
+    if (tc?.status === 'running') return ctx.blinkOn ? THEME.colors.brand : THEME.colors.dim
+    return THEME.colors.dim
+}
+
+/** The step an open approval prompt asks about: a static yellow dot and the plain action (L10) */
+function pendingRow(m: MessageItem, width: number): FormattedLine[] {
+    const tc = m.toolCall!
+    const input = parseToolInput(tc.input)
+    const kind = kindOf(m)
+    let verb: string
+    let target: string
+    if (kind === 'command') {
+        verb = 'Run'
+        target = toolCommandText(input, tc.command)
+    } else if (kind === 'edit' || kind === 'write') {
+        verb = kind === 'write' ? 'Create' : 'Edit'
+        target = middleEllipsis(toolFilePath(input, tc.command), Math.max(10, width - 16))
+    } else {
+        const match = (tc.command || '').match(/^([A-Za-z0-9_]+)\(([\s\S]*)\)$/)
+        verb = match ? match[1]! : tc.name || 'Tool'
+        target = match ? match[2]!.replace(/\s+/g, ' ').trim() : ''
+    }
+    return [
+        [
+            { text: `${THEME.glyphs.step} `, style: { fg: THEME.colors.warning } },
+            { text: verb, style: { fg: THEME.colors.muted } },
+            ...(target
+                ? [
+                      {
+                          text: ` ${truncate(target, Math.max(10, width - verb.length - 6))}`,
+                          style: { fg: THEME.colors.dim },
+                      },
+                  ]
+                : []),
+        ],
+    ]
+}
+
+function stepRow(color: string, parts: TextSegment[]): FormattedLine {
+    return [{ text: `${THEME.glyphs.step} `, style: { fg: color } }, ...parts]
+}
+
+function resultLine(text: string, width: number, color: string = THEME.colors.dim): FormattedLine {
+    return [
+        { text: `    ${THEME.glyphs.result} `, style: { fg: THEME.colors.dim } },
+        { text: truncate(text, Math.max(10, width - 6)), style: { fg: color } },
+    ]
+}
+
+function meta(text: string): TextSegment[] {
+    return text ? [{ text: `  ${text}`, style: { fg: THEME.colors.dim } }] : []
+}
+
+function counts(added: number, removed: number): TextSegment[] {
+    const parts: TextSegment[] = []
+    if (added > 0) parts.push({ text: `  +${added}`, style: { fg: THEME.colors.success } })
+    if (removed > 0)
+        parts.push({
+            text: `${added > 0 ? ' ' : '  '}-${removed}`,
+            style: { fg: THEME.colors.error },
+        })
+    return parts
+}
+
+function plural(n: number, one: string, many: string): string {
+    return `${n} ${n === 1 ? one : many}`
+}
+
+/** A run of read, list, search and code-intel calls as one row (S3) */
+function exploreRows(group: MessageItem[], ctx: RowContext): FormattedLine[] {
+    const running = group.find((m) => m.toolCall?.status === 'running')
+    const failed = group.filter((m) => isFailed(m.toolCall))
+    const color =
+        failed.length > 0
+            ? THEME.colors.error
+            : glyphColor(running?.toolCall ?? group[0]!.toolCall, ctx)
+    const maxTarget = Math.max(10, ctx.width - 16)
+    const lines: FormattedLine[] = []
+
+    if (running) {
+        const live = [...group].reverse().find((m) => m.toolCall?.status === 'running')!.toolCall!
+        const target = exploreTarget(live.name, parseToolInput(live.input), live.command)
+        lines.push(
+            stepRow(color, [
+                { text: 'Exploring', style: { fg: THEME.colors.muted } },
+                ...(target
+                    ? [
+                          {
+                              text: ` · ${middleEllipsis(target, maxTarget)}`,
+                              style: { fg: THEME.colors.dim },
+                          },
+                      ]
+                    : []),
+            ])
+        )
+    } else if (group.length === 1) {
+        const tc = group[0]!.toolCall!
+        const kind = exploreKind(tc.name, tc.command)
+        const target = exploreTarget(tc.name, parseToolInput(tc.input), tc.command)
+        const verb = kind === 'read' ? 'Read' : kind === 'list' ? 'Listed' : 'Searched'
+        lines.push(
+            stepRow(color, [
+                { text: verb, style: { fg: THEME.colors.text } },
+                ...(target
+                    ? [
+                          {
+                              text: ` ${middleEllipsis(target, maxTarget)}`,
+                              style: { fg: THEME.colors.muted },
+                          },
+                      ]
+                    : []),
+                ...meta(formatStepDuration(tc.durationMs)),
+            ])
+        )
+    } else {
+        const files = new Set<string>()
+        let searches = 0
+        let dirs = 0
+        for (const m of group) {
+            const tc = m.toolCall!
+            const kind = exploreKind(tc.name, tc.command)
+            if (kind === 'read')
+                files.add(exploreTarget(tc.name, parseToolInput(tc.input), tc.command))
+            else if (kind === 'list') dirs++
+            else searches++
+        }
+        const parts: string[] = []
+        if (files.size > 0) parts.push(plural(files.size, 'file', 'files'))
+        if (searches > 0) parts.push(plural(searches, 'search', 'searches'))
+        if (dirs > 0) parts.push(plural(dirs, 'directory', 'directories'))
+        lines.push(
+            stepRow(color, [
+                { text: 'Explored', style: { fg: THEME.colors.text } },
+                { text: ` ${parts.join(' · ')}`, style: { fg: THEME.colors.dim } },
+            ])
+        )
+    }
+
+    for (const m of failed.slice(0, 2)) {
+        const tc = m.toolCall!
+        const target = exploreTarget(tc.name, parseToolInput(tc.input), tc.command)
+        const first = (tc.output || '').trim().split(/\r?\n/)[0] || 'failed'
+        lines.push(
+            resultLine(target ? `${target}: ${first}` : first, ctx.width, THEME.colors.error)
+        )
+    }
+    return lines
+}
+
+/** Consecutive edits to one file as one row; the newest can show its diff (S4) */
+function editRows(group: MessageItem[], ctx: RowContext, open: boolean): FormattedLine[] {
+    const newest = group[group.length - 1]!.toolCall!
+    const input = parseToolInput(newest.input)
+    const filePath = toolFilePath(input, newest.command)
+    const isWrite = kindOf(group[group.length - 1]!) === 'write'
+    const running = newest.status === 'running'
+    const failed = isFailed(newest)
+    const color = glyphColor(newest, ctx)
+    const shownPath = middleEllipsis(filePath, Math.max(10, ctx.width - 24))
+    const lines: FormattedLine[] = []
+
+    if (running) {
+        lines.push(
+            stepRow(color, [
+                { text: isWrite ? 'Creating' : 'Editing', style: { fg: THEME.colors.muted } },
+                { text: ` ${shownPath}`, style: { fg: THEME.colors.dim } },
+            ])
+        )
+        return lines
+    }
+
+    let added = 0
+    let removed = 0
+    for (const m of group) {
+        const change = toolCallChanges(m.toolCall!)
+        if (change) {
+            added += change.added
+            removed += change.removed
+        }
+    }
+
+    if (isWrite && !failed) {
+        lines.push(
+            stepRow(color, [
+                { text: 'Created', style: { fg: THEME.colors.text } },
+                { text: ` ${shownPath}`, style: { fg: THEME.colors.muted } },
+                ...meta(plural(added, 'line', 'lines')),
+            ])
+        )
+    } else {
+        lines.push(
+            stepRow(color, [
+                {
+                    text: failed ? (isWrite ? 'Create' : 'Edit') : 'Edited',
+                    style: { fg: THEME.colors.text },
+                },
+                { text: ` ${shownPath}`, style: { fg: THEME.colors.muted } },
+                ...(failed ? [] : counts(added, removed)),
+                ...(group.length > 1
+                    ? [{ text: ` · ${group.length} edits`, style: { fg: THEME.colors.dim } }]
+                    : []),
+            ])
+        )
+    }
+
+    if (failed) {
+        const first = (newest.output || '').trim().split(/\r?\n/)[0] || 'failed'
+        lines.push(
+            resultLine(
+                first.replace(/^Failed to edit file:\s*/i, ''),
+                ctx.width,
+                THEME.colors.error
+            )
+        )
+        return lines
+    }
+
+    if (open) {
+        if (isWrite) {
+            const content = String(
+                input.content ?? input.Content ?? input.CodeContent ?? input.code ?? ''
+            )
+            const rows: EditDiffRow[] = content
+                .split(/\r?\n/)
+                .map((text, i) => ({ type: 'add' as const, lineNo: i + 1, text }))
+            lines.push(...diffRowLines(rows, ctx.width, MAX_NEW_FILE_ROWS))
+        } else {
+            lines.push(
+                ...diffRowLines(
+                    editDiffRows(filePath, editPairs(input), editResultLines(newest.output)),
+                    ctx.width
+                )
+            )
+        }
+    }
+    return lines
+}
+
+function exitCode(output: string): string | null {
+    return output.match(/exit code (\d+)/i)?.[1] ?? null
+}
+
+function backgroundTaskId(output?: string): string | null {
+    if (!output) return null
+    return (
+        output.match(
+            /(?:\[Moved to background task:\s*|\[Auto-Backgrounded\]\s*Task ID:\s*)([A-Za-z0-9_-]+)/i
+        )?.[1] ?? null
+    )
+}
+
+function commandRows(m: MessageItem, ctx: RowContext): FormattedLine[] {
+    const tc = m.toolCall!
+    const cmd = toolCommandText(parseToolInput(tc.input), tc.command)
+    const shownCmd = truncate(cmd, Math.max(10, ctx.width - 24))
+    const color = glyphColor(tc, ctx)
+    const output = tc.output || ''
+    const lines: FormattedLine[] = []
+
+    if (tc.status === 'running') {
+        lines.push(
+            stepRow(color, [
+                { text: 'Running', style: { fg: THEME.colors.muted } },
+                { text: ` ${shownCmd}`, style: { fg: THEME.colors.dim } },
+            ])
+        )
+        // Live output tail: the last 3 lines, indented, with no gutter (L7, S7)
+        const tail = output
+            .trim()
+            .split(/\r?\n/)
+            .filter((l) => l.trim())
+            .slice(-3)
+        for (const line of tail) {
+            lines.push([
+                {
+                    text: `    ${truncate(line, Math.max(10, ctx.width - 6))}`,
+                    style: { fg: THEME.colors.dim },
+                },
+            ])
+        }
+        return lines
+    }
+
+    const taskId = backgroundTaskId(output)
+    if (taskId) {
+        lines.push(
+            stepRow(color, [
+                { text: 'Ran', style: { fg: THEME.colors.text } },
+                { text: ` ${shownCmd}`, style: { fg: THEME.colors.muted } },
+                ...meta(`in background · ${taskId} · /tasks`),
+            ])
+        )
+        return lines
+    }
+
+    const duration = formatStepDuration(tc.durationMs)
+    if (isFailed(tc) || /^Command failed with exit code/m.test(output)) {
+        const code = exitCode(output)
+        lines.push(
+            stepRow(THEME.colors.error, [
+                { text: 'Ran', style: { fg: THEME.colors.text } },
+                { text: ` ${shownCmd}`, style: { fg: THEME.colors.muted } },
+                ...(code ? [{ text: `  exit ${code}`, style: { fg: THEME.colors.error } }] : []),
+                ...(duration
+                    ? [
+                          {
+                              text: `${code ? ' · ' : '  '}${duration}`,
+                              style: { fg: THEME.colors.dim },
+                          },
+                      ]
+                    : []),
+            ])
+        )
+        // First error line, up to 3 rows, then how much more there is (S8)
+        const body = output
+            .split(/\r?\n/)
+            .filter(
+                (l) =>
+                    l.trim() && !/^Command failed with exit code/i.test(l) && !/^\$ /.test(l.trim())
+            )
+        const firstErr = Math.max(
+            0,
+            body.findIndex((l) => /error|failed/i.test(l))
+        )
+        const shown = body.slice(firstErr, firstErr + 1)
+        if (shown.length > 0) {
+            const wrapped = wrapSegments(
+                [{ text: shown[0]!, style: {} }],
+                Math.max(10, ctx.width - 8)
+            )
+                .slice(0, 3)
+                .map((l) => l.map((s) => s.text).join(''))
+            wrapped.forEach((text, i) => {
+                lines.push(
+                    i === 0
+                        ? [
+                              {
+                                  text: `    ${THEME.glyphs.result} `,
+                                  style: { fg: THEME.colors.dim },
+                              },
+                              { text, style: { fg: THEME.colors.error } },
+                          ]
+                        : [{ text: `      ${text}`, style: { fg: THEME.colors.error } }]
+                )
+            })
+            const moreErrors = body.slice(firstErr + 1).filter((l) => /error/i.test(l)).length
+            const moreLines = body.length - firstErr - 1
+            if (moreErrors > 0) {
+                lines.push([
+                    {
+                        text: `      +${moreErrors} more ${moreErrors === 1 ? 'error' : 'errors'}`,
+                        style: { fg: THEME.colors.dim },
+                    },
+                ])
+            } else if (moreLines > 0) {
+                lines.push([
+                    { text: `      +${moreLines} more lines`, style: { fg: THEME.colors.dim } },
+                ])
+            }
+        }
+        return lines
+    }
+
+    // A command that lists or prints things gets a line count, not its last line: that line
+    // is just whatever came last, not a summary. One line of output is still shown.
+    const outputLines = output.split(/\r?\n/).filter((l) => l.trim()).length
+    if (outputLines > 1 && isListingCommand(cmd)) {
+        lines.push(
+            stepRow(color, [
+                { text: 'Ran', style: { fg: THEME.colors.text } },
+                { text: ` ${shownCmd}`, style: { fg: THEME.colors.muted } },
+                ...meta([`${outputLines} lines`, duration].filter(Boolean).join(' · ')),
+            ])
+        )
+        return lines
+    }
+
+    lines.push(
+        stepRow(color, [
+            { text: 'Ran', style: { fg: THEME.colors.text } },
+            { text: ` ${shownCmd}`, style: { fg: THEME.colors.muted } },
+            ...meta(duration),
+        ])
+    )
+    const last = lastNonEmptyLine(output)
+    if (last) lines.push(resultLine(last, ctx.width))
+    return lines
+}
+
+const LISTING_COMMANDS = new Set([
+    'find',
+    'fd',
+    'ls',
+    'tree',
+    'grep',
+    'egrep',
+    'rg',
+    'ag',
+    'cat',
+    'head',
+    'tail',
+    'bat',
+    'less',
+    'more',
+    'nl',
+])
+const LISTING_GIT = new Set(['log', 'ls-files', 'show', 'diff', 'grep', 'branch', 'tag'])
+/** Filters that keep a listing a listing when piped after it */
+const LISTING_FILTERS = new Set([
+    'head',
+    'tail',
+    'sort',
+    'uniq',
+    'grep',
+    'rg',
+    'cut',
+    'less',
+    'more',
+])
+
+/**
+ * True when a command only lists or prints things (find, ls, grep, cat, git log), so its
+ * last output line is not a summary. Looks at the last command of a && or ; chain, and every
+ * stage of its pipe must be a listing command or a filter such as head or sort.
+ */
+export function isListingCommand(command: string): boolean {
+    const chain = command.split(/&&|\|\||;/)
+    const lastCommand = chain[chain.length - 1]?.trim() ?? ''
+    if (!lastCommand) return false
+    const stages = lastCommand.split('|').map((stage) => stage.trim().split(/\s+/))
+    return stages.every((words, i) => {
+        const args = words.filter((w) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(w))
+        const name = (args[0] ?? '').replace(/^.*\//, '')
+        if (name === 'git') return LISTING_GIT.has(args[1] ?? '')
+        return i === 0 ? LISTING_COMMANDS.has(name) : LISTING_FILTERS.has(name)
+    })
+}
+
+function agentRows(m: MessageItem, ctx: RowContext): FormattedLine[] {
+    const tc = m.toolCall!
+    const role = agentRole(parseToolInput(tc.input), tc.command)
+    const color = glyphColor(tc, ctx)
+    const output = tc.output || ''
+    if (tc.status === 'running') {
+        const action = lastNonEmptyLine(output).replace(/^\[SubAgent:[^\]]+\]\s*/i, '')
+        return [
+            stepRow(color, [
+                { text: 'Agent', style: { fg: THEME.colors.text } },
+                { text: ` ${role}`, style: { fg: THEME.colors.muted } },
+                ...(action
+                    ? [
+                          {
+                              text: ` · ${truncate(action, Math.max(10, ctx.width - role.length - 14))}`,
+                              style: { fg: THEME.colors.dim },
+                          },
+                      ]
+                    : []),
+            ]),
+        ]
+    }
+    const turns = output.match(/(?:Total Turns\*\*:\s*(\d+)|\((\d+)\s*turns)/i)
+    const tools = output.match(/(?:Tool Calls\*\*:\s*(\d+)|,\s*(\d+)\s*tool(?:s|\s*calls)?)/i)
+    const stats: string[] = []
+    const t = turns ? turns[1] || turns[2] : ''
+    const n = tools ? tools[1] || tools[2] : ''
+    if (t) stats.push(`${t} turns`)
+    if (n) stats.push(`${n} tools`)
+    const duration = formatStepDuration(tc.durationMs)
+    if (duration) stats.push(duration)
+    const lines = [
+        stepRow(color, [
+            { text: 'Agent', style: { fg: THEME.colors.text } },
+            { text: ` ${role}`, style: { fg: THEME.colors.muted } },
+            ...meta(stats.join(' · ')),
+        ]),
+    ]
+    const findings = output.match(/#### Rollup Summary & Findings:\s*([\s\S]*)$/i)?.[1] ?? ''
+    const first = findings
+        .split(/\r?\n/)
+        .map((s) => s.trim().replace(/^[-•*]\s*/, ''))
+        .filter(Boolean)[0]
+    if (first) lines.push(resultLine(first, ctx.width))
+    else if (isFailed(tc))
+        lines.push(
+            resultLine(output.trim().split(/\r?\n/)[0] || 'failed', ctx.width, THEME.colors.error)
+        )
+    return lines
+}
+
+function webRows(m: MessageItem, ctx: RowContext, kind: 'web' | 'fetch'): FormattedLine[] {
+    const tc = m.toolCall!
+    const q = webQuery(parseToolInput(tc.input), tc.command)
+    const color = glyphColor(tc, ctx)
+    const running = tc.status === 'running'
+    const shown =
+        kind === 'web'
+            ? `"${truncate(q, Math.max(10, ctx.width - 30))}"`
+            : truncate(q.replace(/^https?:\/\//, ''), Math.max(10, ctx.width - 24))
+    const verb =
+        kind === 'web'
+            ? running
+                ? 'Searching web'
+                : 'Searched web'
+            : running
+              ? 'Fetching'
+              : 'Fetched'
+    const extra: string[] = []
+    if (!running && kind === 'web' && tc.output && !isFailed(tc)) {
+        const results = (tc.output.match(/^\d+\.\s/gm) || []).length
+        if (results > 0) extra.push(plural(results, 'result', 'results'))
+    }
+    if (!running && kind === 'fetch' && tc.output) {
+        const kb = Math.max(1, Math.round(Buffer.byteLength(tc.output, 'utf8') / 1024))
+        extra.push(`${kb} KB`)
+    }
+    const duration = formatStepDuration(tc.durationMs)
+    if (!running && duration) extra.push(duration)
+    const lines = [
+        stepRow(color, [
+            { text: verb, style: { fg: running ? THEME.colors.muted : THEME.colors.text } },
+            { text: ` ${shown}`, style: { fg: running ? THEME.colors.dim : THEME.colors.muted } },
+            ...meta(extra.join(' · ')),
+        ]),
+    ]
+    if (isFailed(tc))
+        lines.push(
+            resultLine(
+                (tc.output || 'failed').trim().split(/\r?\n/)[0]!,
+                ctx.width,
+                THEME.colors.error
+            )
+        )
+    return lines
+}
+
+function mcpRows(m: MessageItem, ctx: RowContext): FormattedLine[] {
+    const tc = m.toolCall!
+    const input = parseToolInput(tc.input)
+    const name = tc.name || ''
+    let server = name
+    let action: string
+    if (tc.mcpServer) {
+        // The agent tells us the server (F7), so nothing is guessed
+        server = tc.mcpServer
+        action = tc.mcpTool || name
+    } else if (name.includes('__')) {
+        const parts = name.replace(/^mcp__?/i, '').split('__')
+        server = parts[0] || name
+        action = parts.slice(1).join(' ')
+    } else if (/^mcp_/i.test(name)) {
+        // "mcp_<server>_<tool>" cannot be split when names have underscores: show it whole
+        server = name.replace(/^mcp_/i, '')
+        action = ''
+    } else {
+        action = String(input.tool || input.action || input.method || '')
+    }
+    action = action.replace(/_/g, ' ').trim()
+    const mainArg = ['title', 'name', 'query', 'path', 'url']
+        .map((k) => input[k])
+        .find((v) => typeof v === 'string' && v.trim()) as string | undefined
+    const color = glyphColor(tc, ctx)
+    const lines = [
+        stepRow(color, [
+            { text: server, style: { fg: THEME.colors.text } },
+            ...(action || mainArg
+                ? [
+                      { text: ' · ', style: { fg: THEME.colors.dim } },
+                      {
+                          text: truncate(
+                              `${action}${mainArg ? `${action ? ' ' : ''}"${mainArg}"` : ''}`,
+                              Math.max(10, ctx.width - server.length - 16)
+                          ),
+                          style: { fg: THEME.colors.muted },
+                      },
+                  ]
+                : []),
+            ...meta(tc.status === 'running' ? '' : formatStepDuration(tc.durationMs)),
+        ]),
+    ]
+    if (tc.status !== 'running' && tc.output) {
+        const first = tc.output.trim().split(/\r?\n/)[0] || ''
+        if (first)
+            lines.push(
+                resultLine(first, ctx.width, isFailed(tc) ? THEME.colors.error : THEME.colors.dim)
+            )
+    }
+    return lines
+}
+
+function otherRows(m: MessageItem, ctx: RowContext): FormattedLine[] {
+    const tc = m.toolCall || {
+        id: '',
+        name: 'tool',
+        command: m.content,
+        status: 'success' as const,
+    }
+    const cmdStr = tc.command || `${tc.name}()`
+    const match = cmdStr.match(/^([A-Za-z0-9_]+)\(([\s\S]*)\)$/)
+    const label = match ? match[1]! : tc.name || cmdStr
+    const args = match ? match[2]!.replace(/\s+/g, ' ').trim() : ''
+    const color = glyphColor(tc, ctx)
+    const running = tc.status === 'running'
+    const lines = [
+        stepRow(color, [
+            { text: label, style: { fg: running ? THEME.colors.muted : THEME.colors.text } },
+            ...(args
+                ? [
+                      {
+                          text: ` ${truncate(args, Math.max(10, ctx.width - label.length - 16))}`,
+                          style: { fg: running ? THEME.colors.dim : THEME.colors.muted },
+                      },
+                  ]
+                : []),
+            ...meta(running ? '' : formatStepDuration(tc.durationMs)),
+        ]),
+    ]
+    if (isFailed(tc) && tc.output) {
+        lines.push(
+            resultLine(
+                tc.output.trim().split(/\r?\n/)[0] || 'failed',
+                ctx.width,
+                THEME.colors.error
+            )
+        )
+    }
+    return lines
+}
+
+// ---------- non-tool messages ----------
+
+/** "⟳ Context compacted · 182k → 24k tokens" (S15). The summary is not shown (S25-B). */
+function compactionLines(msg: MessageItem): FormattedLine[] {
+    const text = msg.content || msg.text || ''
+    const tokens = text.match(/~?([\d.]+[kM]?)\s*→\s*~?([\d.]+[kM]?)\s*tokens/)
+    const focus = text.match(/focus:\s*(.+)$/)?.[1]
+    let line = '⟳ Context compacted'
+    const clean = (n: string) => n.replace(/\.0(?=[kM]|$)/, '')
+    if (tokens) line += ` · ${clean(tokens[1]!)} → ${clean(tokens[2]!)} tokens`
+    if (focus) line += ` · focus: ${focus.trim()}`
+    return [[{ text: line, style: { fg: THEME.colors.dim } }], blank()]
+}
+
+function taskNoticeLines(msg: MessageItem, width: number): FormattedLine[] {
+    const dotColor =
+        msg.tone === 'success'
+            ? THEME.colors.success
+            : msg.tone === 'error'
+              ? THEME.colors.error
+              : THEME.colors.muted
+    const text = (msg.content || msg.text || '').replace(/\s+/g, ' ').trim()
+    return [
+        [
+            { text: `${THEME.glyphs.status} `, style: { fg: dotColor } },
+            { text: truncate(text, Math.max(1, width - 2)), style: { fg: THEME.colors.muted } },
+        ],
+        blank(),
+    ]
+}
+
+function errorLines(msg: MessageItem, width: number): FormattedLine[] {
+    const rawText = msg.content || msg.text || ''
+    const parsed = parseTuiError(rawText, (msg as any).cause, (msg as any).hint)
+    const lines: FormattedLine[] = []
+    const message = formatMarkdownToLines(parsed.message, width - 4)
+    message.forEach((line, i) => {
+        for (const seg of line)
+            seg.style = { ...seg.style, fg: THEME.colors.error, bold: undefined }
+        line.unshift({
+            text: i === 0 ? `${THEME.glyphs.step} ` : '  ',
+            style: { fg: THEME.colors.error },
+        })
+    })
+    lines.push(...message)
+    if (parsed.hint) {
+        for (const line of formatMarkdownToLines(parsed.hint, width - 6)) {
+            for (const seg of line)
+                if (!seg.style?.fg || seg.style.fg === THEME.colors.text)
+                    seg.style = { ...seg.style, fg: THEME.colors.muted }
+            line.unshift({ text: '    ', style: {} })
+            lines.push(line)
+        }
+    }
+    if (parsed.cause) {
+        for (const line of formatMarkdownToLines(parsed.cause, width - 6)) {
+            for (const seg of line) seg.style = { ...seg.style, fg: THEME.colors.dim }
+            line.unshift({ text: '    ', style: {} })
+            lines.push(line)
+        }
+    }
+    lines.push(blank())
+    return lines
+}
+
+function formatElapsed(ms: number): string {
+    const s = Math.max(0, Math.round(ms / 1000))
+    return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
+}
+
+function formatTokens(n: number): string {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}k`
+    return String(n)
+}
+
+/** "✱ Worked for 1m 12s · 8.4k tokens · 2 files changed +4 -1 · /diff" (L16, S5) */
+function turnSummaryLines(msg: MessageItem): FormattedLine[] {
+    const s = msg.summary
+    if (!s) return []
+    const facts: string[] = [`Worked for ${formatElapsed(s.durationMs)}`]
+    if (s.outputTokens) facts.push(`${formatTokens(s.outputTokens)} tokens`)
+    if (s.files.length > 0) facts.push(`${plural(s.files.length, 'file', 'files')} changed`)
+    const parts: TextSegment[] = [
+        { text: `✱ ${facts.join(' · ')}`, style: { fg: THEME.colors.dim } },
+    ]
+    if (s.files.length > 0) {
+        const added = s.files.reduce((n, f) => n + f.added, 0)
+        const removed = s.files.reduce((n, f) => n + f.removed, 0)
+        if (added > 0) parts.push({ text: ` +${added}`, style: { fg: THEME.colors.success } })
+        if (removed > 0) parts.push({ text: ` -${removed}`, style: { fg: THEME.colors.error } })
+        parts.push({ text: ' · /diff', style: { fg: THEME.colors.dim } })
+    }
+    return [parts, blank()]
+}
+
+// ---------- caches ----------
+
+interface CacheEntry {
+    contentKey: string
+    width: number
+    lines: FormattedLine[]
 }
 
 /**
@@ -294,849 +964,146 @@ function isLiveMessage(m: MessageItem | undefined): boolean {
  * reference: one pointer check per field, so a hit stays cheap, and an in-place edit or a
  * replaced message (as the login flow does) still invalidates the entry.
  */
-class PrefixLineCache {
-    private refs: MessageItem[] = []
-    private contents: (string | undefined)[] = []
-    private statuses: (string | undefined)[] = []
-    private outputs: (string | undefined)[] = []
-    private width = 0
-    private expandTools = false
-    private lines: FormattedLine[] | null = null
+/** Cached lines of one settled turn, with what they were built from */
+interface TurnEntry {
+    refs: MessageItem[]
+    contents: (string | undefined)[]
+    statuses: (string | undefined)[]
+    outputs: (string | undefined)[]
+    streaming: boolean[]
+    width: number
+    lines: FormattedLine[]
+}
 
-    get(
-        messages: MessageItem[],
-        end: number,
-        width: number,
-        expandTools: boolean
-    ): FormattedLine[] | null {
+function isTurnEntryValid(
+    entry: TurnEntry,
+    messages: MessageItem[],
+    start: number,
+    end: number,
+    width: number
+): boolean {
+    if (entry.width !== width || entry.refs.length !== end - start) return false
+    for (let i = start; i < end; i++) {
+        const m = messages[i]!
+        const k = i - start
         if (
-            !this.lines ||
-            this.refs.length !== end ||
-            this.width !== width ||
-            this.expandTools !== expandTools
+            entry.refs[k] !== m ||
+            entry.contents[k] !== (m.content ?? m.text) ||
+            entry.statuses[k] !== m.toolCall?.status ||
+            entry.outputs[k] !== m.toolCall?.output ||
+            entry.streaming[k] !== Boolean(m.isStreaming)
         ) {
-            return null
+            return false
         }
-        for (let i = 0; i < end; i++) {
-            const m = messages[i]!
-            if (
-                this.refs[i] !== m ||
-                this.contents[i] !== (m.content ?? m.text) ||
-                this.statuses[i] !== m.toolCall?.status ||
-                this.outputs[i] !== m.toolCall?.output
-            ) {
-                return null
-            }
-        }
-        return this.lines
     }
+    return true
+}
 
-    set(
-        messages: MessageItem[],
-        end: number,
-        width: number,
-        expandTools: boolean,
-        lines: FormattedLine[]
-    ): void {
-        this.refs = messages.slice(0, end)
-        this.contents = this.refs.map((m) => m.content ?? m.text)
-        this.statuses = this.refs.map((m) => m.toolCall?.status)
-        this.outputs = this.refs.map((m) => m.toolCall?.output)
-        this.width = width
-        this.expandTools = expandTools
-        this.lines = lines
+function makeTurnEntry(
+    messages: MessageItem[],
+    start: number,
+    end: number,
+    width: number,
+    lines: FormattedLine[]
+): TurnEntry {
+    const refs = messages.slice(start, end)
+    return {
+        refs,
+        contents: refs.map((m) => m.content ?? m.text),
+        statuses: refs.map((m) => m.toolCall?.status),
+        outputs: refs.map((m) => m.toolCall?.output),
+        streaming: refs.map((m) => Boolean(m.isStreaming)),
+        width,
+        lines,
     }
+}
 
-    clear(): void {
-        this.refs = []
-        this.contents = []
-        this.statuses = []
-        this.outputs = []
-        this.lines = null
+/** Turn boundaries [start, end): a user message and the messages after it, up to the next one */
+function splitTurns(messages: MessageItem[]): [number, number][] {
+    const turns: [number, number][] = []
+    let i = 0
+    while (i < messages.length) {
+        let j = i
+        if (messages[j]?.role === 'user') j++
+        while (j < messages.length && messages[j]?.role !== 'user') j++
+        turns.push([i, j])
+        i = j
     }
+    return turns
+}
+
+/** Options for one history layout pass */
+export interface SegmentOptions extends LayoutOptions {
+    /**
+     * Only the newest lines are needed (the view follows the bottom). Settled turns past
+     * this many lines are skipped unless already cached; see isComplete().
+     */
+    tailLines?: number
+}
+
+interface Block {
+    lines: FormattedLine[]
+    /** Tool rows stack with no blank line between them */
+    isStep: boolean
 }
 
 export class MessageLineCache {
     private messageCache = new WeakMap<MessageItem, CacheEntry>()
     private streamMarkdownCaches = new WeakMap<MessageItem, StreamingMarkdownCache>()
-    private thoughtTopicLatches = new WeakMap<MessageItem, { topic: string; latchedAt: number }>()
-    private lastAggregateMessages: MessageItem[] | null = null
-    private lastAggregateLength = 0
-    private lastAggregateLastKey = ''
-    private lastAggregateWidth = 0
-    private lastAggregateSpinner = ''
-    private lastAggregateExpandTools = false
-    private lastAggregateResult: FormattedLine[] | null = null
-    /** Everything before a single live trailing message. */
-    private readonly priorCache = new PrefixLineCache()
-    /** Settled turns before the turn that holds the first live message. */
-    private readonly settledTurnsCache = new PrefixLineCache()
-
+    /** Settled turns, keyed by the first message of the turn */
+    private turnCache = new WeakMap<MessageItem, TurnEntry>()
+    /** Set when the last pass skipped older turns; layoutPending() finishes them */
+    private pending: { messages: MessageItem[]; width: number; settledCount: number } | null = null
     /**
-     * Clears all cached lines.
+     * The last complete settled history: messages[0, end) laid out as `segments`. A frame whose
+     * settled messages all still match reuses it with one flat check, instead of a lookup per turn.
      */
+    private lastSettled: {
+        entry: TurnEntry
+        end: number
+        segments: FormattedLine[][]
+    } | null = null
+
+    /** Clears all cached lines. */
     clear(): void {
         this.messageCache = new WeakMap<MessageItem, CacheEntry>()
         this.streamMarkdownCaches = new WeakMap<MessageItem, StreamingMarkdownCache>()
-        this.thoughtTopicLatches = new WeakMap<MessageItem, { topic: string; latchedAt: number }>()
-        this.lastAggregateMessages = null
-        this.lastAggregateLength = 0
-        this.lastAggregateLastKey = ''
-        this.lastAggregateExpandTools = false
-        this.lastAggregateResult = null
-        this.priorCache.clear()
-        this.settledTurnsCache.clear()
+        this.turnCache = new WeakMap<MessageItem, TurnEntry>()
+        this.pending = null
+        this.lastSettled = null
     }
 
-    /** Lines for messages [0, end), laid out once and reused until one of them changes. */
-    private getPrefixLines(
-        cache: PrefixLineCache,
-        messages: MessageItem[],
-        end: number,
-        width: number,
-        spinner: string,
-        expandTools: boolean,
-        tip?: string | null
-    ): FormattedLine[] {
-        const cached = cache.get(messages, end, width, expandTools)
-        if (cached) return cached
-        const lines = this.layoutAll(messages.slice(0, end), width, spinner, expandTools, tip)
-        cache.set(messages, end, width, expandTools, lines)
-        return lines
+    /** False when the last getLineSegments() left out older turns that are not laid out yet */
+    isComplete(): boolean {
+        return this.pending === null
     }
 
-    getLatchedThoughtTopic(msg: MessageItem, now = Date.now()): string {
-        if (!msg.content) return ''
-        if (!msg.isStreaming) {
-            return extractThoughtTopic(msg.content)
-        }
-        const candidate = extractThoughtTopic(msg.content)
-        const currentLatch = this.thoughtTopicLatches.get(msg)
-        if (currentLatch) {
-            if (now - currentLatch.latchedAt < THOUGHT_DWELL_MS) {
-                if (!currentLatch.topic && candidate) {
-                    currentLatch.topic = candidate
-                    currentLatch.latchedAt = now
-                }
-                return currentLatch.topic
-            }
-            if (candidate && candidate !== currentLatch.topic) {
-                currentLatch.topic = candidate
-                currentLatch.latchedAt = now
-            }
-            return currentLatch.topic || candidate
-        }
-        if (candidate) {
-            this.thoughtTopicLatches.set(msg, { topic: candidate, latchedAt: now })
-        }
-        return candidate
-    }
-
-    private computeContentKey(
-        msg: MessageItem,
-        expandTools = false,
-        trailingSpacing = true,
-        tip?: string | null
-    ): string {
+    /** Lines of a user, assistant, error, notice or summary message, cached per message */
+    private textMessageLines(msg: MessageItem, width: number): FormattedLine[] {
         const text = msg.content || msg.text || ''
-        const toolStatus = msg.toolCall?.status || ''
-        const toolOutput = msg.toolCall?.output || ''
-        const toolCommand = msg.toolCall?.command || ''
-        const toolDuration = msg.toolCall?.durationMs ?? (msg as any).durationMs ?? ''
-        const toolInput =
-            typeof msg.toolCall?.input === 'string'
-                ? msg.toolCall?.input
-                : JSON.stringify(msg.toolCall?.input || '')
-        const isStreaming = Boolean(msg.isStreaming)
-        const isExpanded = Boolean(expandTools)
-        const tipStr = isStreaming && tip ? tip : ''
-        return `${msg.role}|${text}|${toolStatus}|${toolCommand}|${toolDuration}|${toolInput.slice(0, 50)}|${toolOutput.slice(-100)}|${isStreaming}|${isExpanded}|${trailingSpacing}|${tipStr}`
-    }
-
-    /**
-     * Formats a consolidated group of consecutive discovery tool calls.
-     */
-    formatDiscoveryGroup(
-        kind: DiscoveryKind,
-        group: MessageItem[],
-        width: number,
-        spinnerGlyph = '⠋ ',
-        expandTools = false,
-        trailingSpacing = true
-    ): FormattedLine[] {
-        const lines: FormattedLine[] = []
-        const targets = group.map((m) => getDiscoveryTarget(kind, m.toolCall || {}))
-        const count = targets.length
-        const isRunning = group.some((m) => m.toolCall?.status === 'running')
-        const isError = group.some(
-            (m) => m.toolCall?.status === 'error' || (m.toolCall as any)?.status === 'failed'
-        )
-        const glyph = isRunning ? spinnerGlyph : '● '
-        const glyphColor = isError ? THEME.colors.error : THEME.colors.warning
-
-        const totalDurMs = group.reduce(
-            (sum, m) => sum + (m.toolCall?.durationMs ?? (m as any).durationMs ?? 0),
-            0
-        )
-        const durStr =
-            totalDurMs > 0
-                ? totalDurMs >= 1000
-                    ? `${(totalDurMs / 1000).toFixed(1)}s`
-                    : `${totalDurMs}ms`
-                : ''
-
-        let label = isRunning ? 'Reading' : 'Read'
-        let unit = 'files'
-        if (kind === 'list_dir') {
-            label = isRunning ? 'Listing' : 'ListDir'
-            unit = 'directories'
-        } else if (kind === 'search') {
-            label = isRunning ? 'Searching' : 'Search'
-            unit = 'queries'
-        } else if (kind === 'web_search') {
-            label = isRunning ? 'Searching web' : 'WebSearch'
-            unit = 'queries'
-        }
-
-        if (!expandTools) {
-            let inlineArgs = ''
-            if (count === 2) {
-                inlineArgs = `${targets[0]}, ${targets[1]}`
-            } else if (count > 2) {
-                inlineArgs = `${targets[0]}, ${targets[1]}, +${count - 2} more`
-            } else {
-                inlineArgs = targets[0] || ''
-            }
-
-            lines.push([
-                { text: glyph, style: { fg: glyphColor } },
-                { text: label, style: { fg: THEME.colors.warning, bold: true } },
-                { text: `(${inlineArgs})`, style: { fg: THEME.colors.muted } },
-                ...(durStr ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }] : []),
-            ])
-        } else {
-            lines.push([
-                { text: glyph, style: { fg: glyphColor } },
-                { text: label, style: { fg: THEME.colors.warning, bold: true } },
-                { text: `(${count} ${unit})`, style: { fg: THEME.colors.muted } },
-                { text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } },
-            ])
-            for (const item of group) {
-                const itemTarget = getDiscoveryTarget(kind, item.toolCall || {})
-                const itemDurMs = item.toolCall?.durationMs ?? (item as any).durationMs
-                const itemDur =
-                    itemDurMs !== undefined && itemDurMs > 0
-                        ? itemDurMs >= 1000
-                            ? `${(itemDurMs / 1000).toFixed(1)}s`
-                            : `${itemDurMs}ms`
-                        : ''
-                const itemError =
-                    item.toolCall?.status === 'error' || (item.toolCall as any)?.status === 'failed'
-                const itemGlyphColor = itemError ? THEME.colors.error : THEME.colors.warning
-                const itemGlyph = itemError ? '  ✖ ' : '    '
-                lines.push([
-                    { text: itemGlyph, style: { fg: itemGlyphColor } },
-                    { text: itemTarget, style: { fg: THEME.colors.muted } },
-                    ...(itemDur
-                        ? [{ text: ` (${itemDur})`, style: { fg: THEME.colors.dim } }]
-                        : []),
-                ])
-            }
-        }
-
-        if (isError) {
-            for (const item of group) {
-                const itemError =
-                    item.toolCall?.status === 'error' || (item.toolCall as any)?.status === 'failed'
-                if (itemError && item.toolCall?.output) {
-                    const itemTarget = getDiscoveryTarget(kind, item.toolCall || {})
-                    const outLines = item.toolCall.output.trim().split(/\r?\n/)
-                    const firstLine = outLines[0] || 'Execution failed'
-                    lines.push([
-                        { text: '    ', style: {} },
-                        {
-                            text: itemTarget ? `${itemTarget}: ${firstLine}` : firstLine,
-                            style: { fg: THEME.colors.error },
-                        },
-                    ])
-                }
-            }
-        }
-
-        if (trailingSpacing) {
-            lines.push([{ text: '', style: {} }])
-        }
-
-        return lines
-    }
-
-    /**
-     * Formats and caches lines for a single message.
-     */
-    getMessageLines(
-        msg: MessageItem,
-        width: number,
-        spinnerGlyph = '⠋ ',
-        expandTools = false,
-        trailingSpacing = true,
-        tip?: string | null
-    ): FormattedLine[] {
-        const contentKey = this.computeContentKey(msg, expandTools, trailingSpacing, tip)
+        const key = `${msg.role}|${text}|${Boolean(msg.isStreaming)}|${msg.tone ?? ''}|${JSON.stringify(msg.summary ?? '')}`
         const cached = this.messageCache.get(msg)
-
-        // For non-streaming messages or stable tools, return from cache if key and width match
-        if (
-            cached &&
-            cached.width === width &&
-            cached.contentKey === contentKey &&
-            !msg.isStreaming &&
-            msg.toolCall?.status !== 'running'
-        ) {
+        if (cached && cached.width === width && cached.contentKey === key && !msg.isStreaming) {
             return cached.lines
         }
 
-        const lines: FormattedLine[] = []
-
+        let lines: FormattedLine[] = []
         if (msg.role === 'user') {
-            lines.push(...formatUserPromptRows(msg.content || msg.text || '', width))
-            lines.push([{ text: '', style: {} }])
-        } else if (msg.role === 'tool' || msg.toolCall) {
-            const tc = msg.toolCall || {
-                id: '',
-                name: 'tool',
-                command: msg.content,
-                status: 'success' as const,
-            }
-            const isRunning = tc.status === 'running'
-            const isError = tc.status === 'error' || (tc as any).status === 'failed'
-            const glyph = isRunning ? spinnerGlyph : '● '
-            const glyphColor = isError ? THEME.colors.error : THEME.colors.warning
-            const toolNameLower = (tc.name || '').toLowerCase()
-
-            const parsedInput = parseToolInput(tc.input)
-
-            const isEditTool =
-                toolNameLower === 'edit_file' ||
-                toolNameLower === 'replace_file_content' ||
-                toolNameLower === 'edit_diff' ||
-                toolNameLower === 'multi_replace_file_content'
-            const isWriteTool = toolNameLower === 'write_file' || toolNameLower === 'write_to_file'
-            const isSubagentTool =
-                toolNameLower === 'invoke_subagent' ||
-                toolNameLower === 'spawn_subagent' ||
-                tc.command?.startsWith('SubAgent(')
-
-            const durationMs = tc.durationMs ?? (msg as any).durationMs
-            const durStr =
-                durationMs !== undefined && durationMs > 0
-                    ? durationMs >= 1000
-                        ? `${(durationMs / 1000).toFixed(1)}s`
-                        : `${durationMs}ms`
-                    : ''
-
-            if (isEditTool || tc.command?.startsWith('Edit(')) {
-                const rawPath =
-                    parsedInput.TargetFile ||
-                    parsedInput.AbsolutePath ||
-                    parsedInput.filePath ||
-                    parsedInput.filepath ||
-                    parsedInput.path ||
-                    parsedInput.file ||
-                    tc.command?.match(/^Edit\(([^)]*)\)$/)?.[1] ||
-                    ''
-                const cleanPath = toRelativePath(rawPath)
-                const target =
-                    parsedInput.Target ??
-                    parsedInput.target ??
-                    parsedInput.TargetContent ??
-                    parsedInput.targetContent ??
-                    ''
-                const replacement =
-                    parsedInput.Replacement ??
-                    parsedInput.replacement ??
-                    parsedInput.ReplacementContent ??
-                    parsedInput.replacementContent ??
-                    ''
-
-                let stats = ''
-                if (target || replacement) {
-                    const additions = replacement ? replacement.split(/\r?\n/).length : 0
-                    const deletions = target ? target.split(/\r?\n/).length : 0
-                    const parts: string[] = []
-                    if (additions > 0) parts.push(`+${additions}`)
-                    if (deletions > 0) parts.push(`-${deletions}`)
-                    if (parts.length > 0) stats = ` (${parts.join(', ')})`
-                }
-
-                const editVerb = isRunning ? 'Editing ' : isError ? 'Failed editing ' : 'Edited '
-                lines.push([
-                    { text: glyph, style: { fg: glyphColor } },
-                    { text: editVerb, style: { fg: THEME.colors.warning, bold: true } },
-                    { text: cleanPath, style: { fg: THEME.colors.text } },
-                    ...(stats ? [{ text: stats, style: { fg: THEME.colors.muted } }] : []),
-                    ...(durStr
-                        ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
-                        : []),
-                    ...(expandTools
-                        ? [{ text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } }]
-                        : []),
-                ])
-
-                // Render actual unified git diff on expand
-                if (expandTools) {
-                    if (target || replacement) {
-                        const targetLines = target ? target.split(/\r?\n/) : []
-                        const replacementLines = replacement ? replacement.split(/\r?\n/) : []
-                        const maxDiff = 30
-                        let displayed = 0
-
-                        for (const tLine of targetLines) {
-                            if (displayed >= maxDiff) break
-                            lines.push(formatDiffRow('delete', tLine, width))
-                            displayed++
-                        }
-                        for (const rLine of replacementLines) {
-                            if (displayed >= maxDiff) break
-                            lines.push(formatDiffRow('add', rLine, width))
-                            displayed++
-                        }
-                        const totalDiffLines = targetLines.length + replacementLines.length
-                        if (totalDiffLines > maxDiff) {
-                            lines.push([
-                                { text: '    ', style: { fg: THEME.colors.dim } },
-                                {
-                                    text: `... (${totalDiffLines - maxDiff} more lines)`,
-                                    style: { fg: THEME.colors.dim },
-                                },
-                            ])
-                        }
-                    } else if (
-                        tc.output &&
-                        (tc.output.includes('@@') ||
-                            tc.output.includes('+') ||
-                            tc.output.includes('-'))
-                    ) {
-                        const outLines = tc.output.trim().split(/\r?\n/)
-                        const maxDiff = 30
-                        for (let l = 0; l < Math.min(outLines.length, maxDiff); l++) {
-                            const line = outLines[l] || ''
-                            if (line.startsWith('+') && !line.startsWith('+++')) {
-                                lines.push(formatDiffRow('add', line.slice(1), width))
-                            } else if (line.startsWith('-') && !line.startsWith('---')) {
-                                lines.push(formatDiffRow('delete', line.slice(1), width))
-                            } else if (line.startsWith('@@')) {
-                                lines.push(formatDiffRow('hunk', line, width))
-                            } else {
-                                const cleanContext = line.startsWith(' ') ? line.slice(1) : line
-                                lines.push(formatDiffRow('context', cleanContext, width))
-                            }
-                        }
-                        if (outLines.length > maxDiff) {
-                            lines.push([
-                                { text: '    ', style: { fg: THEME.colors.dim } },
-                                {
-                                    text: `... (${outLines.length - maxDiff} more lines)`,
-                                    style: { fg: THEME.colors.dim },
-                                },
-                            ])
-                        }
-                    }
-                }
-            } else if (isWriteTool || tc.command?.startsWith('Create(')) {
-                const rawPath =
-                    parsedInput.TargetFile ||
-                    parsedInput.AbsolutePath ||
-                    parsedInput.filePath ||
-                    parsedInput.filepath ||
-                    parsedInput.path ||
-                    parsedInput.file ||
-                    tc.command?.match(/^Create\(([^)]*)\)$/)?.[1] ||
-                    ''
-                const cleanPath = toRelativePath(rawPath)
-                const content = parsedInput.Content ?? parsedInput.content ?? parsedInput.code ?? ''
-                const lineCount = content ? content.split(/\r?\n/).length : 0
-                const stats = lineCount > 0 ? ` (${lineCount} lines)` : ''
-
-                const writeVerb = isRunning
-                    ? 'Creating '
-                    : isError
-                      ? 'Failed creating '
-                      : 'Created '
-                lines.push([
-                    { text: glyph, style: { fg: glyphColor } },
-                    { text: writeVerb, style: { fg: THEME.colors.warning, bold: true } },
-                    { text: cleanPath, style: { fg: THEME.colors.text } },
-                    ...(stats ? [{ text: stats, style: { fg: THEME.colors.muted } }] : []),
-                    ...(durStr
-                        ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
-                        : []),
-                    ...(expandTools
-                        ? [{ text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } }]
-                        : []),
-                ])
-
-                if (expandTools && content) {
-                    const contentLines = content.split(/\r?\n/)
-                    const maxLines = 30
-                    for (let l = 0; l < Math.min(contentLines.length, maxLines); l++) {
-                        lines.push(formatDiffRow('add', contentLines[l] || '', width))
-                    }
-                    if (contentLines.length > maxLines) {
-                        lines.push([
-                            { text: '    ', style: { fg: THEME.colors.dim } },
-                            {
-                                text: `... (${contentLines.length - maxLines} more lines)`,
-                                style: { fg: THEME.colors.dim },
-                            },
-                        ])
-                    }
-                }
-            } else if (isSubagentTool) {
-                const role =
-                    parsedInput.role ||
-                    parsedInput.Role ||
-                    tc.command?.match(/^SubAgent\(([^)]*)\)$/)?.[1] ||
-                    'subagent'
-
-                if (isRunning) {
-                    // Running subagent live ticker
-                    const outText = tc.output || ''
-                    const rawLines = outText.trim().split(/\r?\n/)
-                    const lastRaw = rawLines[rawLines.length - 1] || ''
-                    const cleanAction = lastRaw.replace(/^\[SubAgent:[^\]]+\]\s*/i, '').trim()
-
-                    lines.push([
-                        { text: glyph, style: { fg: glyphColor } },
-                        { text: 'Subagent: ', style: { fg: THEME.colors.brand, bold: true } },
-                        { text: role, style: { fg: THEME.colors.text, bold: true } },
-                    ])
-                    if (cleanAction) {
-                        lines.push([
-                            { text: '  ↳ ', style: { fg: THEME.colors.border } },
-                            {
-                                text: cleanAction.slice(0, Math.max(30, width - 8)),
-                                style: { fg: THEME.colors.muted },
-                            },
-                        ])
-                    }
-                } else {
-                    // Completed subagent with rollup report
-                    const outText = tc.output || ''
-                    const turnsMatch = outText.match(
-                        /(?:Total Turns\*\*:\s*(\d+)|\((\d+)\s*turns)/i
-                    )
-                    const turns = turnsMatch ? turnsMatch[1] || turnsMatch[2] : ''
-                    const toolsMatch = outText.match(
-                        /(?:Tool Calls\*\*:\s*(\d+)|,\s*(\d+)\s*tool(?:s|\s*calls)?)/i
-                    )
-                    const tools = toolsMatch ? toolsMatch[1] || toolsMatch[2] : ''
-
-                    let statsText = ''
-                    if (turns && tools) {
-                        statsText = ` (${turns} turns, ${tools} tools${durStr ? `, ${durStr}` : ''})`
-                    } else if (turns) {
-                        statsText = ` (${turns} turns${durStr ? `, ${durStr}` : ''})`
-                    } else if (durStr) {
-                        statsText = ` (${durStr})`
-                    }
-
-                    lines.push([
-                        { text: glyph, style: { fg: glyphColor } },
-                        { text: 'Subagent: ', style: { fg: THEME.colors.brand, bold: true } },
-                        { text: role, style: { fg: THEME.colors.text, bold: true } },
-                        ...(statsText
-                            ? [{ text: statsText, style: { fg: THEME.colors.muted } }]
-                            : []),
-                        ...(expandTools
-                            ? [{ text: ' (ctrl+o to collapse)', style: { fg: THEME.colors.dim } }]
-                            : [{ text: ' (ctrl+o to expand)', style: { fg: THEME.colors.dim } }]),
-                    ])
-
-                    if (!expandTools && outText) {
-                        const findingsMatch = outText.match(
-                            /#### Rollup Summary & Findings:\s*([\s\S]*)$/i
-                        )
-                        const summaryText = findingsMatch ? findingsMatch[1].trim() : ''
-                        if (summaryText) {
-                            const firstFinding = summaryText
-                                .split(/\r?\n/)
-                                .map((s) => s.trim().replace(/^[-•*]\s*/, ''))
-                                .filter(Boolean)[0]
-                            if (firstFinding) {
-                                lines.push([
-                                    { text: '  ↳ ', style: { fg: THEME.colors.border } },
-                                    {
-                                        text: firstFinding.slice(0, Math.max(30, width - 8)),
-                                        style: { fg: THEME.colors.muted },
-                                    },
-                                ])
-                            }
-                        }
-                    }
-
-                    if (expandTools) {
-                        const findingsMatch = outText.match(
-                            /#### Rollup Summary & Findings:\s*([\s\S]*)$/i
-                        )
-                        const summaryText = findingsMatch ? findingsMatch[1].trim() : outText.trim()
-                        if (summaryText) {
-                            const summaryLines = summaryText.split(/\r?\n/)
-                            const maxLines = 10
-                            for (let l = 0; l < Math.min(summaryLines.length, maxLines); l++) {
-                                lines.push([
-                                    { text: '    ', style: {} },
-                                    {
-                                        text: summaryLines[l] || '',
-                                        style: { fg: THEME.colors.muted },
-                                    },
-                                ])
-                            }
-                            if (summaryLines.length > maxLines) {
-                                lines.push([
-                                    { text: '    ', style: {} },
-                                    {
-                                        text: `... (${summaryLines.length - maxLines} more lines)`,
-                                        style: { fg: THEME.colors.dim },
-                                    },
-                                ])
-                            }
-                        }
-                    }
-                }
-            } else {
-                const cmdStr = tc.command || `${tc.name}()`
-                const match = cmdStr.match(/^([A-Za-z0-9_]+)\(([\s\S]*)\)$/)
-                if (match) {
-                    const fnName = match[1]!
-                    const args = match[2]
-                    const displayLabel = isRunning ? getToolActionVerb(fnName, true) : fnName
-                    lines.push([
-                        { text: glyph, style: { fg: glyphColor } },
-                        { text: displayLabel, style: { fg: THEME.colors.warning, bold: true } },
-                        { text: `(${args})`, style: { fg: THEME.colors.muted } },
-                        ...(durStr
-                            ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
-                            : []),
-                    ])
-                } else {
-                    const displayLabel = isRunning
-                        ? getToolActionVerb(tc.name || cmdStr, true)
-                        : cmdStr
-                    lines.push([
-                        { text: glyph, style: { fg: glyphColor } },
-                        { text: displayLabel, style: { fg: THEME.colors.warning, bold: true } },
-                        ...(durStr
-                            ? [{ text: ` (${durStr})`, style: { fg: THEME.colors.muted } }]
-                            : []),
-                    ])
-                }
-            }
-
-            // Background task indicator check
-            const bgMatch = tc.output
-                ? tc.output.match(
-                      /(?:\[Moved to background task:\s*|\[Auto-Backgrounded\]\s*Task ID:\s*)([A-Za-z0-9_-]+)/i
-                  )
-                : null
-
-            if (bgMatch) {
-                const bgTaskId = bgMatch[1]
-                lines.push([
-                    { text: '  ↳ ', style: { fg: THEME.colors.brand, bold: true } },
-                    {
-                        text: `Moved to background task: ${bgTaskId}`,
-                        style: { fg: THEME.colors.brand },
-                    },
-                    { text: ' · Use /tasks to inspect', style: { fg: THEME.colors.muted } },
-                ])
-            }
-
-            // Command / Tool Output Gutter
-            if (isError && tc.output) {
-                const toolErrLines = tc.output.trim().split(/\r?\n/)
-                const maxLines = expandTools ? 15 : 5
-                for (let l = 0; l < Math.min(toolErrLines.length, maxLines); l++) {
-                    lines.push([
-                        { text: '    ', style: {} },
-                        { text: toolErrLines[l] || '', style: { fg: THEME.colors.error } },
-                    ])
-                }
-                if (toolErrLines.length > maxLines) {
-                    lines.push([
-                        { text: '    ', style: {} },
-                        {
-                            text: `... (${toolErrLines.length - maxLines} more lines)`,
-                            style: { fg: THEME.colors.dim },
-                        },
-                    ])
-                }
-            } else if (tc.output && !bgMatch) {
-                const isNoOutputTool =
-                    toolNameLower === 'read_file' ||
-                    toolNameLower === 'view_file' ||
-                    toolNameLower === 'list_dir' ||
-                    toolNameLower === 'ls' ||
-                    toolNameLower === 'ask_permission' ||
-                    toolNameLower === 'list_permissions' ||
-                    isEditTool ||
-                    isWriteTool ||
-                    isSubagentTool ||
-                    tc.command?.startsWith('Read(') ||
-                    tc.command?.startsWith('ListDir(') ||
-                    tc.command?.startsWith('Create(') ||
-                    tc.command?.startsWith('Edit(') ||
-                    tc.command?.startsWith('SubAgent(')
-
-                if (!isNoOutputTool) {
-                    const outLines = tc.output.trim().split(/\r?\n/)
-                    if (outLines.length > 0 && outLines[0]) {
-                        if (isRunning) {
-                            const displayLines = outLines.slice(-3)
-                            for (const line of displayLines) {
-                                lines.push([
-                                    { text: '    ', style: {} },
-                                    { text: line, style: { fg: THEME.colors.muted } },
-                                ])
-                            }
-                        } else if (expandTools) {
-                            const maxLines = 10
-                            const displayLines = outLines.slice(0, maxLines)
-                            for (const line of displayLines) {
-                                lines.push([
-                                    { text: '    ', style: {} },
-                                    { text: line, style: { fg: THEME.colors.muted } },
-                                ])
-                            }
-                            if (outLines.length > maxLines) {
-                                lines.push([
-                                    { text: '    ', style: {} },
-                                    {
-                                        text: `... (${outLines.length - maxLines} more lines)`,
-                                        style: { fg: THEME.colors.dim },
-                                    },
-                                ])
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (trailingSpacing) {
-                lines.push([{ text: '', style: {} }])
-            }
-        } else if (msg.role === 'thinking') {
-            if (msg.isStreaming && msg.content) {
-                const topic = this.getLatchedThoughtTopic(msg)
-                const headerSegs: FormattedLine = [
-                    { text: spinnerGlyph, style: { fg: THEME.colors.warning } },
-                    {
-                        text: topic ? 'Thinking' : 'Thinking...',
-                        style: { fg: THEME.colors.warning, bold: true },
-                    },
-                    ...(topic
-                        ? [
-                              { text: ' · ', style: { fg: THEME.colors.dim } },
-                              { text: topic, style: { fg: THEME.colors.muted } },
-                          ]
-                        : []),
-                ]
-
-                if (expandTools) {
-                    headerSegs.push({
-                        text: ' (ctrl+o to collapse)',
-                        style: { fg: THEME.colors.dim },
-                    })
-                    lines.push(headerSegs)
-                    let streamCache: StreamingMarkdownCache | undefined
-                    if (msg.isStreaming) {
-                        streamCache = this.streamMarkdownCaches.get(msg)
-                        if (!streamCache) {
-                            streamCache = createStreamingMarkdownCache({ stabilizeInline: true })
-                            this.streamMarkdownCaches.set(msg, streamCache)
-                        }
-                    }
-                    const formatted = formatMarkdownToLines(msg.content, width - 4, streamCache)
-                    for (const l of formatted) {
-                        l.unshift({ text: '  ', style: {} })
-                        for (const seg of l) {
-                            if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
-                        }
-                    }
-                    lines.push(...formatted)
-                    lines.push([{ text: '', style: {} }])
-                } else {
-                    if (tip) {
-                        headerSegs.push(
-                            { text: '  · ', style: { fg: THEME.colors.dim } },
-                            { text: 'tip: ', style: { fg: THEME.colors.dim } },
-                            { text: tip, style: { fg: THEME.colors.muted } }
-                        )
-                    }
-                    lines.push(headerSegs)
-                    lines.push([{ text: '', style: {} }])
-                }
-            } else if (msg.content) {
-                const topic = extractThoughtTopic(msg.content)
-                const headerSegs: FormattedLine = [
-                    { text: '● ', style: { fg: THEME.colors.warning } },
-                    { text: 'Thought', style: { fg: THEME.colors.warning, bold: true } },
-                    ...(topic
-                        ? [
-                              { text: ' · ', style: { fg: THEME.colors.dim } },
-                              { text: topic, style: { fg: THEME.colors.muted } },
-                          ]
-                        : []),
-                ]
-
-                if (expandTools) {
-                    headerSegs.push({
-                        text: ' (ctrl+o to collapse)',
-                        style: { fg: THEME.colors.dim },
-                    })
-                    lines.push(headerSegs)
-                    let streamCache: StreamingMarkdownCache | undefined
-                    if (msg.isStreaming) {
-                        streamCache = this.streamMarkdownCaches.get(msg)
-                        if (!streamCache) {
-                            streamCache = createStreamingMarkdownCache({ stabilizeInline: true })
-                            this.streamMarkdownCaches.set(msg, streamCache)
-                        }
-                    }
-                    const formatted = formatMarkdownToLines(msg.content, width - 4, streamCache)
-                    for (const l of formatted) {
-                        l.unshift({ text: '  ', style: {} })
-                        for (const seg of l) {
-                            if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
-                        }
-                    }
-                    lines.push(...formatted)
-                    lines.push([{ text: '', style: {} }])
-                } else {
-                    headerSegs.push({
-                        text: ' (ctrl+o to expand)',
-                        style: { fg: THEME.colors.dim },
-                    })
-                    lines.push(headerSegs)
-                    lines.push([{ text: '', style: {} }])
-                }
-            }
+            lines = [...formatUserPromptRows(text, width), blank()]
         } else if (msg.role === 'assistant') {
-            const text = msg.content || msg.text || ''
-            const interruptMarker = 'Interrupted · What should December do instead?'
-            if (text.includes(interruptMarker)) {
-                const parts = text.split(interruptMarker)
-                const preText = parts[0]?.trimEnd() || ''
+            if (text.includes(INTERRUPT_MARKER)) {
+                const preText = text.split(INTERRUPT_MARKER)[0]?.trimEnd() || ''
                 if (preText) {
-                    const formatted = formatMarkdownToLines(preText, width - 2)
-                    lines.push(...formatted)
+                    lines.push(...formatMarkdownToLines(preText, width - 2))
+                    lines.push(blank())
                 }
                 lines.push([
                     {
-                        text: interruptMarker,
-                        style: { fg: THEME.colors.muted, italic: true },
+                        text: `    ${THEME.glyphs.result} Interrupted · tell December what to do instead`,
+                        style: { fg: THEME.colors.dim },
                     },
                 ])
-                lines.push([{ text: '', style: {} }])
+                lines.push(blank())
             } else {
                 let streamCache: StreamingMarkdownCache | undefined
                 if (msg.isStreaming) {
@@ -1146,391 +1113,346 @@ export class MessageLineCache {
                         this.streamMarkdownCaches.set(msg, streamCache)
                     }
                 }
-                const formatted = formatMarkdownToLines(text, width - 2, streamCache)
-                lines.push(...formatted)
-                lines.push([{ text: '', style: {} }])
+                lines = [...formatMarkdownToLines(text, width - 2, streamCache), blank()]
             }
         } else if (msg.role === 'compaction' || (msg as any).type === 'compaction') {
-            // one marker line where the conversation was compacted; the summary itself is not shown
-            const text = (msg.content || 'Conversation compacted').replace(/\s+/g, ' ').trim()
-            const maxText = Math.max(1, width - 4)
-            lines.push([
-                { text: '⟳ ', style: { fg: THEME.colors.warning } },
-                {
-                    text: text.length > maxText ? `${text.slice(0, maxText - 1)}…` : text,
-                    style: { fg: THEME.colors.muted, italic: true },
-                },
-            ])
-            lines.push([{ text: '', style: {} }])
+            lines = compactionLines(msg)
         } else if (msg.role === 'task_notice') {
-            // one line: a status dot coloured by outcome, then the notice text
-            const dotColor =
-                msg.tone === 'success'
-                    ? THEME.colors.success
-                    : msg.tone === 'error'
-                      ? THEME.colors.error
-                      : THEME.colors.muted
-            const text = (msg.content || msg.text || '').replace(/\s+/g, ' ').trim()
-            const maxText = Math.max(1, width - 2)
-            lines.push([
-                { text: `${THEME.glyphs.status} `, style: { fg: dotColor } },
-                {
-                    text: text.length > maxText ? `${text.slice(0, maxText - 1)}…` : text,
-                    style: { fg: THEME.colors.muted },
-                },
-            ])
-            lines.push([{ text: '', style: {} }])
+            lines = taskNoticeLines(msg, width)
         } else if (msg.role === 'error') {
-            const rawText = msg.content || msg.text || ''
-            const parsed = parseTuiError(rawText, (msg as any).cause, (msg as any).hint)
-
-            const errorFormatted = formatMarkdownToLines(parsed.message, width - 2)
-            for (const line of errorFormatted) {
-                for (const seg of line) {
-                    seg.style = { ...seg.style, fg: THEME.colors.error, bold: true }
-                }
-            }
-            lines.push(...errorFormatted)
-
-            if (parsed.hint) {
-                const hintFormatted = formatMarkdownToLines(parsed.hint, width - 2)
-                for (const line of hintFormatted) {
-                    for (const seg of line) {
-                        if (!seg.style?.fg) {
-                            seg.style = { ...seg.style, fg: THEME.colors.text }
-                        }
-                    }
-                }
-                lines.push(...hintFormatted)
-            }
-
-            if (parsed.cause) {
-                const causeFormatted = formatMarkdownToLines(parsed.cause, width - 4)
-                for (const line of causeFormatted) {
-                    line.unshift({ text: '  ', style: {} })
-                    for (const seg of line) {
-                        if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
-                    }
-                }
-                lines.push(...causeFormatted)
-            }
-
-            lines.push([{ text: '', style: {} }])
+            lines = errorLines(msg, width)
+        } else if (msg.role === 'turn_summary') {
+            lines = turnSummaryLines(msg)
         }
 
-        this.messageCache.set(msg, {
-            contentKey,
-            width,
-            lines,
-        })
+        this.messageCache.set(msg, { contentKey: key, width, lines })
+        return lines
+    }
 
+    /** Groups one turn's messages into blocks: explore runs, same-file edit runs, single steps, text */
+    private turnBlocks(
+        msgs: MessageItem[],
+        width: number,
+        live: boolean,
+        options: LayoutOptions
+    ): Block[] {
+        const visible = msgs.filter((m) => !isHidden(m))
+        const ctx: RowContext = {
+            width,
+            blinkOn: Math.floor((options.now ?? Date.now()) / 500) % 2 === 0,
+        }
+
+        // The open diff (S4): the newest edit of the live turn, until another tool starts
+        let openIndex = -1
+        if (live) {
+            for (let i = visible.length - 1; i >= 0; i--) {
+                const m = visible[i]!
+                if (!isToolMessage(m)) continue
+                const kind = kindOf(m)
+                if (kind === 'edit' || kind === 'write') {
+                    const tc = m.toolCall!
+                    const p = toRelativePath(toolFilePath(parseToolInput(tc.input), tc.command))
+                    if (tc.status !== 'running' && !isFailed(tc) && !options.previewedPaths?.has(p))
+                        openIndex = i
+                }
+                break
+            }
+        }
+
+        // L10: the newest running step is the one an open approval prompt asks about
+        let pending: MessageItem | undefined
+        if (live && options.awaitingApproval) {
+            for (let k = visible.length - 1; k >= 0; k--) {
+                if (visible[k]!.toolCall?.status === 'running') {
+                    pending = visible[k]
+                    break
+                }
+            }
+        }
+
+        const blocks: Block[] = []
+        let i = 0
+        while (i < visible.length) {
+            const m = visible[i]!
+            if (m === pending) {
+                blocks.push({ lines: pendingRow(m, width), isStep: true })
+                i++
+                continue
+            }
+            if (!isToolMessage(m)) {
+                blocks.push({ lines: this.textMessageLines(m, width), isStep: isAttachedNotice(m) })
+                i++
+                continue
+            }
+            const kind = kindOf(m)
+            if (kind === 'explore') {
+                let j = i + 1
+                while (
+                    j < visible.length &&
+                    isToolMessage(visible[j]) &&
+                    kindOf(visible[j]!) === 'explore'
+                )
+                    j++
+                blocks.push({ lines: exploreRows(visible.slice(i, j), ctx), isStep: true })
+                i = j
+                continue
+            }
+            if (kind === 'edit' || kind === 'write') {
+                const tc = m.toolCall!
+                const p = toolFilePath(parseToolInput(tc.input), tc.command)
+                let j = i + 1
+                while (
+                    kind === 'edit' &&
+                    j < visible.length &&
+                    isToolMessage(visible[j]) &&
+                    kindOf(visible[j]!) === 'edit' &&
+                    visible[j]!.toolCall?.status !== 'running' &&
+                    toolFilePath(
+                        parseToolInput(visible[j]!.toolCall!.input),
+                        visible[j]!.toolCall!.command
+                    ) === p
+                ) {
+                    j++
+                }
+                blocks.push({
+                    lines: editRows(visible.slice(i, j), ctx, openIndex >= i && openIndex < j),
+                    isStep: true,
+                })
+                i = j
+                continue
+            }
+            let lines: FormattedLine[]
+            if (kind === 'command') lines = commandRows(m, ctx)
+            else if (kind === 'agent') lines = agentRows(m, ctx)
+            else if (kind === 'web' || kind === 'fetch') lines = webRows(m, ctx, kind)
+            else if (kind === 'mcp') lines = mcpRows(m, ctx)
+            else lines = otherRows(m, ctx)
+            blocks.push({ lines, isStep: true })
+            i++
+        }
+        return blocks
+    }
+
+    /** Folds the earlier steps of a long live turn into one row, keeping the last 12 (S12) */
+    private foldLiveTurn(msgs: MessageItem[]): {
+        leading: MessageItem[]
+        summary: FormattedLine | null
+        rest: MessageItem[]
+    } {
+        const stepIdx = msgs
+            .map((m, i) => (isToolMessage(m) && !isHidden(m) ? i : -1))
+            .filter((i) => i >= 0)
+        if (stepIdx.length <= FOLD_AFTER_STEPS) return { leading: [], summary: null, rest: msgs }
+        const cut = stepIdx[stepIdx.length - FOLD_KEEP_STEPS]!
+        const folded = msgs.slice(0, cut)
+        const leading = folded[0]?.role === 'assistant' && folded[0].content ? [folded[0]] : []
+        let reads = 0
+        let edits = 0
+        let commands = 0
+        let steps = 0
+        for (const m of folded) {
+            if (!isToolMessage(m) || isHidden(m)) continue
+            steps++
+            const kind = kindOf(m)
+            if (kind === 'explore') reads++
+            else if (kind === 'edit' || kind === 'write') edits++
+            else if (kind === 'command') commands++
+        }
+        const parts = [`${steps} earlier steps`]
+        if (reads > 0) parts.push(`${reads} files read`)
+        if (edits > 0) parts.push(plural(edits, 'edit', 'edits'))
+        if (commands > 0) parts.push(plural(commands, 'command', 'commands'))
+        return {
+            leading,
+            summary: [
+                {
+                    text: `${THEME.glyphs.step} ${parts.join(' · ')}`,
+                    style: { fg: THEME.colors.dim },
+                },
+            ],
+            rest: msgs.slice(cut),
+        }
+    }
+
+    private layoutTurnBody(
+        msgs: MessageItem[],
+        width: number,
+        live: boolean,
+        options: LayoutOptions
+    ): FormattedLine[] {
+        const lines: FormattedLine[] = []
+        let body = msgs
+        if (live) {
+            const fold = this.foldLiveTurn(msgs)
+            if (fold.summary) {
+                for (const m of fold.leading) lines.push(...this.textMessageLines(m, width))
+                lines.push(fold.summary)
+                body = fold.rest
+            }
+        }
+        const blocks = this.turnBlocks(body, width, live, options)
+        blocks.forEach((block, idx) => {
+            lines.push(...block.lines)
+            const next = blocks[idx + 1]
+            // A run of steps ends with one blank line before text; steps stack with none
+            if (block.isStep && !(next && next.isStep)) lines.push(blank())
+        })
+        return lines
+    }
+
+    /** Lines of the turn messages[start, end): the user prompt, then the turn body */
+    private layoutTurn(
+        messages: MessageItem[],
+        start: number,
+        end: number,
+        width: number,
+        live: boolean,
+        options: LayoutOptions
+    ): FormattedLine[] {
+        let bodyStart = start
+        const lines: FormattedLine[] = []
+        if (messages[start]?.role === 'user') {
+            lines.push(...this.textMessageLines(messages[start]!, width))
+            bodyStart++
+        }
+        const body = this.layoutTurnBody(messages.slice(bodyStart, end), width, live, options)
+        for (const line of body) lines.push(line)
+        return lines
+    }
+
+    /** Cached lines of a settled turn, or null when the cache has none that still match */
+    private cachedTurn(
+        messages: MessageItem[],
+        start: number,
+        end: number,
+        width: number
+    ): FormattedLine[] | null {
+        const entry = this.turnCache.get(messages[start]!)
+        return entry && isTurnEntryValid(entry, messages, start, end, width) ? entry.lines : null
+    }
+
+    /** Lines of a settled turn, laid out once and then reused until the turn changes */
+    private settledTurn(
+        messages: MessageItem[],
+        start: number,
+        end: number,
+        width: number,
+        options: LayoutOptions
+    ): FormattedLine[] {
+        const cached = this.cachedTurn(messages, start, end, width)
+        if (cached) return cached
+        const lines = this.layoutTurn(messages, start, end, width, false, options)
+        this.turnCache.set(messages[start]!, makeTurnEntry(messages, start, end, width, lines))
         return lines
     }
 
     /**
-     * Formats a sequence of messages, grouping consecutive discovery tool calls.
+     * Lays out older turns that the last tail-only pass skipped, newest first, for up to
+     * `budgetMs`. Returns true when nothing is left.
      */
-    private formatMessageSequence(
-        msgs: MessageItem[],
-        width: number,
-        spinner: string,
-        expandTools: boolean,
-        tip?: string | null
-    ): FormattedLine[] {
-        const lines: FormattedLine[] = []
-        let i = 0
-
-        while (i < msgs.length) {
-            const msg = msgs[i]
-            if (!msg) {
-                i++
-                continue
-            }
-
-            const isTool = msg.role === 'tool' || Boolean(msg.toolCall)
-            const kind = isTool
-                ? getToolDiscoveryKind(msg.toolCall?.name || '', msg.toolCall?.command)
-                : null
-
-            if (kind) {
-                // Check for consecutive discovery tools of the same kind
-                let j = i + 1
-                while (j < msgs.length) {
-                    const nextMsg = msgs[j]
-                    const nextIsTool = Boolean(
-                        nextMsg && (nextMsg.role === 'tool' || nextMsg.toolCall)
-                    )
-                    const nextKind = nextIsTool
-                        ? getToolDiscoveryKind(
-                              nextMsg?.toolCall?.name || '',
-                              nextMsg?.toolCall?.command
-                          )
-                        : null
-                    if (nextKind === kind) {
-                        j++
-                    } else {
-                        break
-                    }
-                }
-
-                if (j - i >= 2) {
-                    // Group of 2 or more discovery calls
-                    const nextAfterGroupIsTool =
-                        j < msgs.length && Boolean(msgs[j]?.role === 'tool' || msgs[j]?.toolCall)
-                    const groupLines = this.formatDiscoveryGroup(
-                        kind,
-                        msgs.slice(i, j),
-                        width,
-                        spinner,
-                        expandTools,
-                        !nextAfterGroupIsTool
-                    )
-                    lines.push(...groupLines)
-                    i = j
-                    continue
-                }
-            }
-
-            // Single message (tool or non-tool)
-            if (isTool) {
-                const nextIsTool =
-                    i + 1 < msgs.length &&
-                    Boolean(msgs[i + 1]?.role === 'tool' || msgs[i + 1]?.toolCall)
-                lines.push(
-                    ...this.getMessageLines(msg, width, spinner, expandTools, !nextIsTool, tip)
-                )
-            } else {
-                lines.push(...this.getMessageLines(msg, width, spinner, expandTools, true, tip))
-            }
-
-            i++
+    layoutPending(budgetMs: number): boolean {
+        const pending = this.pending
+        if (!pending) return true
+        const startedAt = performance.now()
+        const { messages, width } = pending
+        const turns = splitTurns(messages).slice(0, pending.settledCount)
+        for (let t = turns.length - 1; t >= 0; t--) {
+            const [start, end] = turns[t]!
+            if (this.cachedTurn(messages, start, end, width)) continue
+            this.settledTurn(messages, start, end, width, {})
+            if (performance.now() - startedAt >= budgetMs && t > 0) return false
         }
-
-        return lines
+        this.pending = null
+        return true
     }
 
     /**
      * Returns the aggregated formatted lines for all messages as one array.
      * Prefer getLineSegments() on hot paths: it avoids copying every line per frame.
      */
-    getLines(
-        messages: MessageItem[],
-        width: number,
-        options?: { spinnerGlyph?: string; expandTools?: boolean; tip?: string | null }
-    ): FormattedLine[] {
+    getLines(messages: MessageItem[], width: number, options?: LayoutOptions): FormattedLine[] {
         const segments = this.getLineSegments(messages, width, options)
         if (segments.length === 1) return segments[0]!
         return ([] as FormattedLine[]).concat(...segments)
     }
 
     /**
-     * Returns the formatted lines for all messages as ordered segments. Joined, they equal
-     * getLines(). Settled history is returned as a shared cached segment, not copied.
-     * Consolidates consecutive discovery blocks (Read, ListDir, Search, WebSearch),
-     * stacks adjacent tool calls with compact vertical spacing, and rolls up
-     * long autonomous turns (> 25 steps) when collapsed.
+     * Returns the formatted lines for all messages as ordered segments, one per turn. Joined,
+     * they equal getLines(). Settled turns come back as shared cached arrays, so a frame only
+     * lays out the live turn, and a new turn only lays out itself.
+     *
+     * With `tailLines`, older settled turns that are not cached yet are left out once enough
+     * lines are found; isComplete() then returns false until layoutPending() finishes them.
      */
     getLineSegments(
         messages: MessageItem[],
         width: number,
-        options?: { spinnerGlyph?: string; expandTools?: boolean; tip?: string | null }
+        options: SegmentOptions = {}
     ): FormattedLine[][] {
-        const spinner = options?.spinnerGlyph || '⠋ '
-        const expandTools = Boolean(options?.expandTools)
-        const tip = options?.tip
+        const live = Boolean(options.liveTurn) || messages.some(isLiveMessage)
 
-        // One scan finds the first live (streaming or running) message
-        const firstLive = messages.findIndex(isLiveMessage)
-        const hasLiveActivity = firstLive >= 0
-
-        const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null
-        const lastKey = lastMsg ? this.computeContentKey(lastMsg, expandTools, true, tip) : ''
-
-        if (
-            !hasLiveActivity &&
-            this.lastAggregateResult &&
-            this.lastAggregateMessages === messages &&
-            this.lastAggregateLength === messages.length &&
-            this.lastAggregateLastKey === lastKey &&
-            this.lastAggregateWidth === width &&
-            this.lastAggregateExpandTools === expandTools
-        ) {
-            return [this.lastAggregateResult]
-        }
-
-        // Streaming fast path: only the trailing message is live, so reuse the cached lines
-        // for everything before it and format just that message
-        const lastIdx = messages.length - 1
-        if (firstLive === lastIdx && lastIdx > 0 && lastMsg) {
-            const priorLines = this.getPrefixLines(
-                this.priorCache,
-                messages,
-                lastIdx,
-                width,
-                spinner,
-                expandTools,
-                tip
-            )
-            const lastLines = this.getMessageLines(lastMsg, width, spinner, expandTools, true, tip)
-            return [priorLines, lastLines]
-        }
-
-        // Several live messages (parallel tools, thinking beside a running tool): lay out only
-        // the turn that holds the first live message and reuse the settled turns before it.
-        // A turn starts at a user message, and both turn rollups and discovery grouping break
-        // there, so splitting at that index gives the same lines as a full layout.
-        if (hasLiveActivity) {
-            let turnStart = firstLive
-            while (turnStart > 0 && messages[turnStart]?.role !== 'user') {
-                turnStart--
-            }
-            if (turnStart > 0) {
-                const settledLines = this.getPrefixLines(
-                    this.settledTurnsCache,
+        // Fast path: only the live turn changed since the last complete pass
+        if (live) {
+            let liveStart = messages.length - 1
+            while (liveStart > 0 && messages[liveStart]?.role !== 'user') liveStart--
+            const last = this.lastSettled
+            if (
+                last &&
+                liveStart > 0 &&
+                last.end === liveStart &&
+                isTurnEntryValid(last.entry, messages, 0, liveStart, width)
+            ) {
+                this.pending = null
+                const liveLines = this.layoutTurn(
                     messages,
-                    turnStart,
+                    liveStart,
+                    messages.length,
                     width,
-                    spinner,
-                    expandTools,
-                    tip
+                    true,
+                    options
                 )
-                const liveLines = this.layoutAll(
-                    messages.slice(turnStart),
-                    width,
-                    spinner,
-                    expandTools,
-                    tip
-                )
-                return [settledLines, liveLines]
+                return [...last.segments, liveLines]
             }
         }
 
-        const allLines = this.layoutAll(messages, width, spinner, expandTools, tip)
+        const turns = splitTurns(messages)
+        let settledCount = turns.length
 
-        if (!hasLiveActivity) {
-            this.lastAggregateMessages = messages
-            this.lastAggregateLength = messages.length
-            this.lastAggregateLastKey = lastKey
-            this.lastAggregateWidth = width
-            this.lastAggregateSpinner = spinner
-            this.lastAggregateExpandTools = expandTools
-            this.lastAggregateResult = allLines
-        } else {
-            this.lastAggregateResult = null
+        let liveLines: FormattedLine[] | null = null
+        if (live && turns.length > 0) {
+            const [start, end] = turns[turns.length - 1]!
+            liveLines = this.layoutTurn(messages, start, end, width, true, options)
+            settledCount--
         }
 
-        return [allLines]
-    }
-
-    /**
-     * Full layout of `messages`: turn partitioning, the > 25 step rollup and discovery
-     * grouping. Touches only per-message caches, never the aggregate or prefix caches.
-     */
-    private layoutAll(
-        messages: MessageItem[],
-        width: number,
-        spinner: string,
-        expandTools: boolean,
-        tip?: string | null
-    ): FormattedLine[] {
-        let allLines: FormattedLine[] = []
-
-        if (expandTools) {
-            allLines = this.formatMessageSequence(messages, width, spinner, expandTools, tip)
-        } else {
-            // Partition messages into conversational turns
-            interface Turn {
-                userMsg?: MessageItem
-                botMsgs: MessageItem[]
+        const tail = options.tailLines
+        let have = liveLines?.length ?? 0
+        const reversed: FormattedLine[][] = []
+        this.pending = null
+        for (let t = settledCount - 1; t >= 0; t--) {
+            const [start, end] = turns[t]!
+            const lines =
+                tail === undefined || have < tail
+                    ? this.settledTurn(messages, start, end, width, options)
+                    : this.cachedTurn(messages, start, end, width)
+            if (!lines) {
+                this.pending = { messages, width, settledCount }
+                break
             }
-            const turns: Turn[] = []
-            let currentTurn: Turn = { botMsgs: [] }
-
-            for (const msg of messages) {
-                if (msg.role === 'user') {
-                    if (currentTurn.userMsg || currentTurn.botMsgs.length > 0) {
-                        turns.push(currentTurn)
-                    }
-                    currentTurn = { userMsg: msg, botMsgs: [] }
-                } else {
-                    currentTurn.botMsgs.push(msg)
-                }
-            }
-            if (currentTurn.userMsg || currentTurn.botMsgs.length > 0) {
-                turns.push(currentTurn)
-            }
-
-            const MAX_VISIBLE_STEPS = 25
-            for (const turn of turns) {
-                if (turn.userMsg) {
-                    allLines.push(
-                        ...this.getMessageLines(
-                            turn.userMsg,
-                            width,
-                            spinner,
-                            expandTools,
-                            true,
-                            tip
-                        )
-                    )
-                }
-
-                if (turn.botMsgs.length > MAX_VISIBLE_STEPS) {
-                    const hiddenCount = turn.botMsgs.length - MAX_VISIBLE_STEPS
-                    const hasLeadingText =
-                        turn.botMsgs[0]?.role === 'assistant' && Boolean(turn.botMsgs[0]?.content)
-
-                    if (hasLeadingText) {
-                        allLines.push(
-                            ...this.getMessageLines(
-                                turn.botMsgs[0]!,
-                                width,
-                                spinner,
-                                expandTools,
-                                true,
-                                tip
-                            )
-                        )
-                        allLines.push([
-                            {
-                                text: `[+${hiddenCount} earlier steps hidden · press Ctrl+O to expand]`,
-                                style: { fg: THEME.colors.dim },
-                            },
-                        ])
-                        allLines.push([{ text: '', style: {} }])
-                        const tail = turn.botMsgs.slice(
-                            turn.botMsgs.length - (MAX_VISIBLE_STEPS - 1)
-                        )
-                        allLines.push(
-                            ...this.formatMessageSequence(tail, width, spinner, expandTools, tip)
-                        )
-                    } else {
-                        allLines.push([
-                            {
-                                text: `[+${hiddenCount} earlier steps hidden · press Ctrl+O to expand]`,
-                                style: { fg: THEME.colors.dim },
-                            },
-                        ])
-                        allLines.push([{ text: '', style: {} }])
-                        const tail = turn.botMsgs.slice(hiddenCount)
-                        allLines.push(
-                            ...this.formatMessageSequence(tail, width, spinner, expandTools, tip)
-                        )
-                    }
-                } else {
-                    allLines.push(
-                        ...this.formatMessageSequence(
-                            turn.botMsgs,
-                            width,
-                            spinner,
-                            expandTools,
-                            tip
-                        )
-                    )
-                }
-            }
+            reversed.push(lines)
+            have += lines.length
         }
 
-        return allLines
+        const segments = reversed.reverse()
+        const settledEnd = settledCount > 0 ? turns[settledCount - 1]![1] : 0
+        if (!this.pending && settledEnd > 0) {
+            this.lastSettled = {
+                entry: makeTurnEntry(messages, 0, settledEnd, width, []),
+                end: settledEnd,
+                segments: segments.slice(),
+            }
+        }
+        if (liveLines) segments.push(liveLines)
+        return segments
     }
 }

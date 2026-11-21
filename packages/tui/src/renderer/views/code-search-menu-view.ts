@@ -1,8 +1,10 @@
 import { THEME } from '../../theme'
 import { groupCodeSearchResults } from '../../utils/code-search'
+import { middleEllipsis } from '../../utils/tool-kind'
 import { drawHighlightedText, drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawPanelTitle } from './panel'
 
 import type { CodeSearchGroupItem, CodeSearchResultItem } from '../../types'
 import type { ScreenBuffer } from '../buffer'
@@ -41,35 +43,20 @@ export const CodeSearchMenuView = {
         const totalFiles = groups.length
         const totalMatches = groups.reduce((acc, g) => acc + g.matchCount, 0)
 
-        // Header Title
-        drawText(buffer, 'Code Search', {
+        // M18: title row with the query and counts as meta (no position counter, M18.2)
+        const meta = props.query
+            ? totalFiles > 1 && totalMatches !== totalFiles
+                ? `"${props.query}" · ${totalMatches} matches in ${totalFiles} files`
+                : `"${props.query}" · ${totalMatches} match${totalMatches === 1 ? '' : 'es'}`
+            : undefined
+        drawPanelTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.text, bold: true },
+            title: 'Code search',
+            meta,
+            width: Math.max(10, width - x - (THEME.padding.paddingRight ?? 4)),
         })
-
-        if (props.query) {
-            const queryLabel =
-                totalFiles > 1 && totalMatches !== totalFiles
-                    ? ` · "${props.query}" (${totalMatches} matches in ${totalFiles} files)`
-                    : ` · "${props.query}" (${totalMatches} match${totalMatches === 1 ? '' : 'es'})`
-            drawText(buffer, queryLabel, {
-                x: x + 11,
-                y,
-                style: { fg: THEME.colors.muted },
-            })
-        }
-
-        if (totalFiles > 0) {
-            const countLabel = `${props.selectedIndex + 1}/${totalFiles}`
-            const countX = Math.max(x + 40, width - countLabel.length - 4)
-            drawText(buffer, countLabel, {
-                x: countX,
-                y,
-                style: { fg: THEME.colors.muted },
-            })
-        }
-        y += 2 // Clean 1 empty line spacing matching React/Ink marginBottom={1}
+        y += 2
 
         if (totalFiles === 0) {
             drawText(buffer, 'No matches found in workspace.', {
@@ -77,7 +64,6 @@ export const CodeSearchMenuView = {
                 y,
                 style: { fg: THEME.colors.dim },
             })
-            y += 1
         } else {
             const fileColWidth = Math.min(38, Math.max(24, Math.floor(width * 0.35)))
             const windowEnd = Math.min(props.windowStart + windowSize, totalFiles)
@@ -90,50 +76,37 @@ export const CodeSearchMenuView = {
                 const isSelected = absIdx === props.selectedIndex
                 const rowY = y + i
 
-                // Selector indicator (clean like command menu)
-                const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, selector, {
-                    x,
-                    y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.dim,
-                        bold: isSelected,
-                    },
-                })
+                if (isSelected) {
+                    drawText(buffer, `${THEME.glyphs.selector} `, {
+                        x,
+                        y: rowY,
+                        style: { fg: THEME.colors.brand },
+                    })
+                }
 
-                // File and line number
-                const fileStr = `${group.file}:${group.firstLine}`
-
+                // File and line number; long paths are shortened in the middle (S24)
+                const lineTag = `:${group.firstLine}`
+                const fileStr = `${middleEllipsis(group.file, Math.max(8, fileColWidth - lineTag.length))}${lineTag}`
                 drawText(buffer, fileStr, {
                     x: x + 2,
                     y: rowY,
                     maxWidth: fileColWidth,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                        bold: isSelected,
-                    },
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
                 })
 
-                // Content snippet with search query highlighted
+                // Snippet in text color, the matches in brand blue (M18.1)
                 const snippetX = x + fileColWidth + 3
                 const snippetMaxW = Math.max(10, width - snippetX - 2)
                 drawHighlightedText(buffer, group.firstSnippet.trim(), props.query, {
                     x: snippetX,
                     y: rowY,
                     maxWidth: snippetMaxW,
-                    normalStyle: {
-                        fg: THEME.colors.text,
-                        bold: isSelected,
-                    },
-                    highlightStyle: {
-                        fg: THEME.colors.warning,
-                        bold: true,
-                    },
+                    normalStyle: { fg: THEME.colors.text },
+                    highlightStyle: { fg: THEME.colors.brand },
                 })
             }
             y += visibleGroups.length
 
-            // Overflow Indicator
             const itemsAbove = props.windowStart
             const itemsBelow = totalFiles - windowEnd
             if (totalFiles > windowSize) {
@@ -149,9 +122,8 @@ export const CodeSearchMenuView = {
                     drawText(buffer, overflowText, {
                         x: x + 2,
                         y,
-                        style: { fg: THEME.colors.muted },
+                        style: { fg: THEME.colors.dim },
                     })
-                    y += 1
                 }
             }
         }

@@ -5,8 +5,15 @@ import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 import {
+    drawInlineConfirm,
+    drawMetaParts,
+    drawPanelTitle,
+    drawTabs,
+    toggleMark,
+    requestPanelCursor,
+} from './panel'
+import {
     discoverMetaText,
-    extensionMetaText,
     formatAge,
     PLUGIN_TABS,
     PLUGIN_WINDOW_SIZE,
@@ -15,6 +22,7 @@ import {
 
 import type { ScreenBuffer } from '../buffer'
 import type { MenuFooterItem } from './menu-footer-view'
+import type { MetaPart } from './panel'
 import type {
     DiscoverRow,
     ExtensionRow,
@@ -39,7 +47,7 @@ export interface PluginMenuViewProps {
     list: PluginList
     selectedIndex: number
     windowStart: number
-    /** Muted sentence under the tabs (see pluginSubtitle) */
+    /** Counts on the right of the tab row (see pluginSubtitle) */
     subtitle?: string
     query?: string
     isSearching?: boolean
@@ -62,7 +70,7 @@ export interface PluginMenuViewProps {
     inputValue?: string
 }
 
-type Style = { fg?: string; bold?: boolean }
+type Style = { fg?: string }
 
 const KIND_FILTER_LABELS: Record<PluginKindFilter, string> = {
     all: 'all',
@@ -73,6 +81,10 @@ const KIND_FILTER_LABELS: Record<PluginKindFilter, string> = {
 
 const META_MAX_WIDTH = 40
 const LABEL_WIDTH = 11
+/** M15: the "Adds" / "Needs" label column */
+const INSTALL_LABEL_WIDTH = 7
+/** M15: the scope label column ("For you" / "This project") */
+const SCOPE_LABEL_WIDTH = 15
 
 function tildePath(p?: string): string {
     if (!p) return ''
@@ -84,11 +96,10 @@ function contentWidth(width: number): number {
     return Math.max(20, width - THEME.padding.paddingLeft - THEME.padding.paddingRight)
 }
 
-/** Status dot colour, the same scheme /tasks uses */
+/** Status dot colour for an MCP server inside a plugin: green when on, red on a fault, dim when off */
 function dotColor(row: ExtensionRow): string {
     if (!row.enabled) return THEME.colors.dim
     if (row.status === 'error') return THEME.colors.error
-    if (row.updateAvailable) return THEME.colors.warning
     return THEME.colors.success
 }
 
@@ -96,25 +107,31 @@ function drawSelector(buffer: ScreenBuffer, x: number, y: number, selected: bool
     drawText(buffer, selected ? `${THEME.glyphs.selector} ` : '  ', {
         x,
         y,
-        style: { fg: selected ? THEME.colors.brand : THEME.colors.muted, bold: true },
+        style: { fg: THEME.colors.brand },
     })
 }
 
-/** The subtitle row. It doubles as the confirm and busy line, like /tasks. */
+/** "uninstall" becomes "Uninstall", for the inline "[Uninstall? y/n]" */
+function capitalize(word: string): string {
+    return word ? word[0]!.toUpperCase() + word.slice(1) : word
+}
+
+/** The row under a sub-screen title. It doubles as the confirm and busy line. */
 function drawSubtitle(
     buffer: ScreenBuffer,
     x: number,
     y: number,
     width: number,
     props: PluginMenuViewProps,
-    fallback: string
+    fallback: string,
+    fallbackColor: string = THEME.colors.muted
 ) {
     if (props.confirm) {
         drawText(buffer, `${props.confirm} [y/n]`, {
             x,
             y,
             maxWidth: width,
-            style: { fg: THEME.colors.warning, bold: true },
+            style: { fg: THEME.colors.error },
         })
     } else if (props.busy) {
         drawText(buffer, `${props.busy}…`, {
@@ -129,23 +146,36 @@ function drawSubtitle(
             y,
             maxWidth: width,
             ellipsis: true,
-            style: { fg: THEME.colors.muted },
+            style: { fg: fallbackColor },
         })
     }
 }
 
-/** Tab bar in the /help style */
-function drawTabs(buffer: ScreenBuffer, x: number, y: number, active: PluginTab) {
-    let tabX = x
-    for (const tab of PLUGIN_TABS) {
-        const current = tab === active
-        drawText(buffer, tab, {
-            x: tabX,
-            y,
-            style: { fg: current ? THEME.colors.brand : THEME.colors.muted, bold: current },
-        })
-        tabX += tab.length + 4
-    }
+/** M14: the tab row (G14), with the counts on the right, or the busy line while an action runs */
+function drawTabRow(
+    buffer: ScreenBuffer,
+    x: number,
+    y: number,
+    width: number,
+    props: PluginMenuViewProps
+) {
+    const tabsEnd = drawTabs(buffer, {
+        x,
+        y,
+        tabs: PLUGIN_TABS,
+        active: Math.max(0, PLUGIN_TABS.indexOf(props.activeTab)),
+    })
+    const busy = props.busy ? `${props.busy}…` : ''
+    const text = busy || props.subtitle || ''
+    if (!text) return
+    const room = x + width - tabsEnd - 3
+    if (room < 4) return
+    const shown = text.length > room ? `${text.slice(0, room - 1)}…` : text
+    drawText(buffer, shown, {
+        x: x + width - shown.length,
+        y,
+        style: { fg: busy ? THEME.colors.brand : THEME.colors.muted },
+    })
 }
 
 function drawSearchRow(
@@ -160,10 +190,12 @@ function drawSearchRow(
     drawText(buffer, label, {
         x,
         y,
-        style: { fg: searching ? THEME.colors.brand : THEME.colors.muted, bold: searching },
+        style: { fg: searching ? THEME.colors.brand : THEME.colors.muted },
     })
     const query = props.query || ''
-    const hint = searching ? `${query}█` : query ? `${query} [/ to filter]` : '[/ to filter]'
+    const hint = searching ? query : query ? `${query} [/ to filter]` : '[/ to filter]'
+    // G11: the real terminal cursor while typing, placed by the app
+    if (searching) requestPanelCursor(x + label.length + query.length, y)
     drawText(buffer, hint, {
         x: x + label.length,
         y,
@@ -171,7 +203,7 @@ function drawSearchRow(
         style: { fg: query || searching ? THEME.colors.brand : THEME.colors.dim },
     })
 
-    // Right side: which filter the list shows
+    // Right side: which filter the list shows, in the tab style (G14)
     let options: Array<{ label: string; active: boolean }> = []
     if (props.activeTab === 'installed') {
         options = (['all', 'plugin', 'skill', 'mcp'] as PluginKindFilter[]).map((kind) => ({
@@ -189,22 +221,14 @@ function drawSearchRow(
     }
     if (options.length === 0) return
 
-    const text = options.map((o) => o.label).join(' · ')
-    let cx = x + width - text.length
+    const text = options.map((o) => o.label).join('   ')
+    const cx = x + width - text.length
     if (cx <= x + label.length + hint.length + 2) return
-    options.forEach((option, i) => {
-        if (i > 0) {
-            drawText(buffer, ' · ', { x: cx, y, style: { fg: THEME.colors.subtle } })
-            cx += 3
-        }
-        drawText(buffer, option.label, {
-            x: cx,
-            y,
-            style: option.active
-                ? { fg: THEME.colors.brand, bold: true }
-                : { fg: THEME.colors.muted },
-        })
-        cx += option.label.length
+    drawTabs(buffer, {
+        x: cx,
+        y,
+        tabs: options.map((o) => o.label),
+        active: options.findIndex((o) => o.active),
     })
 }
 
@@ -214,39 +238,59 @@ function nameColumnWidth(items: PluginSelectable[]): number {
     return Math.min(longest + 2, 28)
 }
 
-function metaFor(item: PluginSelectable, showMarketplace: boolean): { text: string; style: Style } {
+/** M14: the right-hand column of a row, with faults in red words and "update" in brand */
+function metaFor(item: PluginSelectable, showMarketplace: boolean): MetaPart[] {
+    const muted = THEME.colors.muted
     if (item.type === 'extension') {
         const row = item.row
-        const failed = row.enabled && row.status === 'error'
-        return {
-            text: extensionMetaText(row),
-            style: {
-                fg: failed
-                    ? THEME.colors.error
-                    : row.updateAvailable
-                      ? THEME.colors.warning
-                      : THEME.colors.muted,
+        const parts: MetaPart[] = [
+            {
+                text: [row.kind, row.meta, row.parentPlugin].filter(Boolean).join(' · '),
+                color: muted,
             },
+        ]
+        if (row.enabled && row.status === 'error') {
+            parts.push(
+                { text: ' · ', color: muted },
+                { text: 'failed to load', color: THEME.colors.error }
+            )
         }
+        if (row.updateAvailable) {
+            parts.push({ text: ' · ', color: muted }, { text: 'update', color: THEME.colors.brand })
+        }
+        return parts
     }
     if (item.type === 'discover') {
         const row = item.row
-        return {
-            text: discoverMetaText(row, showMarketplace),
-            style: {
-                fg: row.updateAvailable
-                    ? THEME.colors.warning
-                    : row.installed
-                      ? THEME.colors.success
-                      : THEME.colors.muted,
+        return [
+            {
+                text: discoverMetaText(row, showMarketplace),
+                color: row.updateAvailable ? THEME.colors.brand : muted,
             },
-        }
+        ]
     }
     const row = item.row
-    if (row.error) return { text: row.error, style: { fg: THEME.colors.error } }
+    if (row.error) return [{ text: row.error, color: THEME.colors.error }]
     const parts = [`${row.available} plugins`, `${row.installedCount} installed`]
     if (!row.builtIn) parts.push(formatAge(row.updatedAt))
-    return { text: parts.join(' · '), style: { fg: THEME.colors.muted } }
+    return [{ text: parts.join(' · '), color: muted }]
+}
+
+/** Cut meta parts to at most `max` cells, with a one-cell ellipsis */
+function clipMeta(parts: MetaPart[], max: number): MetaPart[] {
+    const out: MetaPart[] = []
+    let used = 0
+    for (const part of parts) {
+        const room = max - used
+        if (room <= 0) break
+        if (part.text.length > room) {
+            out.push({ text: `${part.text.slice(0, Math.max(0, room - 1))}…`, color: part.color })
+            break
+        }
+        out.push(part)
+        used += part.text.length
+    }
+    return out
 }
 
 function drawRow(
@@ -257,41 +301,44 @@ function drawRow(
     item: PluginSelectable,
     selected: boolean,
     nameWidth: number,
-    showMarketplace: boolean
+    showMarketplace: boolean,
+    confirmText: string
 ) {
     drawSelector(buffer, x, y, selected)
 
     // Right-aligned muted column, like the time column in /tasks
-    const meta = metaFor(item, showMarketplace)
-    const metaText =
-        meta.text.length > META_MAX_WIDTH ? meta.text.slice(0, META_MAX_WIDTH - 1) + '…' : meta.text
-    const metaX = x + width - metaText.length
-    drawText(buffer, metaText, { x: metaX, y, style: meta.style })
+    const meta = clipMeta(metaFor(item, showMarketplace), META_MAX_WIDTH)
+    const metaX = drawMetaParts(buffer, { right: x + width, y, parts: meta })
 
     let cx = x + 2
-    let off = false
-    if (item.type === 'extension' || item.type === 'marketplace') {
-        const color =
-            item.type === 'extension'
-                ? dotColor(item.row)
-                : item.row.error
-                  ? THEME.colors.error
-                  : THEME.colors.success
-        drawText(buffer, `${THEME.glyphs.status} `, { x: cx, y, style: { fg: color } })
+    if (item.type === 'extension') {
+        // G6: ✓ for on, ○ for off
+        const mark = toggleMark(item.row.enabled)
+        drawText(buffer, `${mark.char} `, { x: cx, y, style: { fg: mark.color } })
         cx += 2
-        off = item.type === 'extension' && !item.row.enabled
+    } else if (item.type === 'marketplace') {
+        drawText(buffer, `${THEME.glyphs.status} `, {
+            x: cx,
+            y,
+            style: { fg: item.row.error ? THEME.colors.error : THEME.colors.success },
+        })
+        cx += 2
     }
 
-    const nameStyle: Style = selected
-        ? { fg: THEME.colors.brand, bold: true }
-        : { fg: off ? THEME.colors.muted : THEME.colors.text }
-    drawText(buffer, item.row.name, {
+    const nameRoom = Math.max(4, Math.min(nameWidth, metaX - cx - 1 - confirmText.length))
+    const nameResult = drawText(buffer, item.row.name, {
         x: cx,
         y,
-        maxWidth: Math.max(4, Math.min(nameWidth, metaX - cx - 1)),
+        maxWidth: nameRoom,
         ellipsis: true,
-        style: nameStyle,
+        style: { fg: selected ? THEME.colors.brand : THEME.colors.text },
     })
+
+    // G10: the confirm stays inline on the row, in red with no bold
+    if (confirmText) {
+        drawInlineConfirm(buffer, { x: nameResult.x, y, text: confirmText, tone: 'danger' })
+        return
+    }
 
     // Discover rows and marketplaces fill the middle with a description or source
     const middle =
@@ -389,11 +436,9 @@ function renderList(buffer: ScreenBuffer, props: PluginMenuViewProps) {
     const { list } = props
     let y = props.y
 
-    drawTabs(buffer, x, y, props.activeTab)
+    drawTabRow(buffer, x, y, width, props)
     y += 1
     const loadingNow = props.loading && list.items.length === 0
-    drawSubtitle(buffer, x, y, width, props, loadingNow ? 'Loading…' : props.subtitle || '')
-    y += 1
     drawSearchRow(buffer, x, y, width, props)
     y += 2
 
@@ -402,7 +447,7 @@ function renderList(buffer: ScreenBuffer, props: PluginMenuViewProps) {
 
     if (list.items.length === 0) {
         const empty = loadingNow
-            ? ''
+            ? '  Loading plugins…'
             : props.query
               ? `  Nothing matches "${props.query}".`
               : props.activeTab === 'installed'
@@ -422,20 +467,24 @@ function renderList(buffer: ScreenBuffer, props: PluginMenuViewProps) {
                 drawText(buffer, line.label, {
                     x,
                     y,
-                    style: { fg: THEME.colors.muted, bold: true },
+                    style: { fg: THEME.colors.muted },
                 })
             } else {
                 const item = list.items[line.index]
                 if (item) {
+                    const isSelected = line.index === safeIndex
                     drawRow(
                         buffer,
                         x,
                         y,
                         width,
                         item,
-                        line.index === safeIndex,
+                        isSelected,
                         nameWidth,
-                        showMarketplace
+                        showMarketplace,
+                        isSelected && props.confirm
+                            ? ` [${capitalize(props.confirmVerb || 'confirm')}? y/n]`
+                            : ''
                     )
                 }
             }
@@ -443,7 +492,7 @@ function renderList(buffer: ScreenBuffer, props: PluginMenuViewProps) {
         }
         const more = overflowText(list, start, shown.length)
         if (more) {
-            drawText(buffer, more, { x: x + 2, y, style: { fg: THEME.colors.subtle } })
+            drawText(buffer, more, { x: x + 2, y, style: { fg: THEME.colors.dim } })
         }
     }
 
@@ -455,7 +504,7 @@ function renderList(buffer: ScreenBuffer, props: PluginMenuViewProps) {
     })
 }
 
-/** A "Label:  value" row in the /help general-tab style */
+/** G17: a "Label  value" row, label muted with no colon, values in one column */
 function drawField(
     buffer: ScreenBuffer,
     x: number,
@@ -465,7 +514,7 @@ function drawField(
     value: string,
     style: Style = { fg: THEME.colors.text }
 ) {
-    drawText(buffer, `${label}:`.padEnd(LABEL_WIDTH), {
+    drawText(buffer, label.padEnd(LABEL_WIDTH), {
         x,
         y,
         style: { fg: THEME.colors.muted },
@@ -488,13 +537,7 @@ function drawSubScreenHeader(
     description: string,
     props: PluginMenuViewProps
 ) {
-    drawText(buffer, title, {
-        x,
-        y,
-        maxWidth: width,
-        ellipsis: true,
-        style: { fg: THEME.colors.text, bold: true },
-    })
+    drawPanelTitle(buffer, { x, y, title, width })
     drawSubtitle(buffer, x, y + 1, width, props, description)
 }
 
@@ -535,7 +578,7 @@ function renderDetails(buffer: ScreenBuffer, props: PluginMenuViewProps) {
     } else {
         servers.forEach((server, i) => {
             if (y >= footerY - 2) return
-            drawText(buffer, (i === 0 ? 'MCP:' : '').padEnd(LABEL_WIDTH), {
+            drawText(buffer, (i === 0 ? 'MCP' : '').padEnd(LABEL_WIDTH), {
                 x,
                 y,
                 style: { fg: THEME.colors.muted },
@@ -575,7 +618,7 @@ function renderDetails(buffer: ScreenBuffer, props: PluginMenuViewProps) {
         drawText(buffer, action, {
             x: x + 2,
             y,
-            style: selected ? { fg: THEME.colors.brand, bold: true } : { fg: THEME.colors.text },
+            style: { fg: selected ? THEME.colors.brand : THEME.colors.text },
         })
         y += 1
     })
@@ -606,7 +649,15 @@ function renderInstall(buffer: ScreenBuffer, props: PluginMenuViewProps) {
     const footerY = props.y + (props.height ?? buffer.height - props.y) - 1
     let y = props.y
 
-    drawSubScreenHeader(buffer, x, y, width, `Install ${row.name}`, row.description, props)
+    // M15: a confirm, so the title is the question; version and source are meta
+    drawPanelTitle(buffer, {
+        x,
+        y,
+        title: `Install ${row.name}?`,
+        meta: [row.version, row.marketplace].filter(Boolean).join(' · '),
+        width,
+    })
+    drawSubtitle(buffer, x, y + 1, width, props, row.description, THEME.colors.text)
     y += 3
 
     const adds: string[] = []
@@ -618,36 +669,55 @@ function renderInstall(buffer: ScreenBuffer, props: PluginMenuViewProps) {
             `${plural(row.mcpServerNames.length, 'MCP server')} (${row.mcpServerNames.join(', ')})`
         )
     }
-    if (row.version) drawField(buffer, x, y++, width, 'Version', row.version)
-    drawField(buffer, x, y++, width, 'From', row.marketplace)
-    if (adds.length) drawField(buffer, x, y++, width, 'Adds', adds.join(' and '))
-    if (props.missingEnv?.length) {
-        drawField(buffer, x, y++, width, 'Needs', `${props.missingEnv.join(', ')} (not set)`, {
-            fg: THEME.colors.warning,
+    const drawInstallField = (label: string, value: string, color: string) => {
+        drawText(buffer, label, { x, y, style: { fg: THEME.colors.muted } })
+        drawText(buffer, value, {
+            x: x + INSTALL_LABEL_WIDTH,
+            y,
+            maxWidth: Math.max(4, width - INSTALL_LABEL_WIDTH),
+            ellipsis: true,
+            style: { fg: color },
         })
+        y += 1
     }
-    y += 1
+    if (adds.length) drawInstallField('Adds', adds.join(', '), THEME.colors.text)
+    const missing = props.missingEnv || []
+    if (missing.length) {
+        // M15.2: yellow stays, a missing token is a real warning
+        drawInstallField(
+            'Needs',
+            `${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not set`,
+            THEME.colors.warning
+        )
+    }
+    if (adds.length || missing.length) y += 1
 
-    drawText(buffer, 'Install to:', { x, y, style: { fg: THEME.colors.muted } })
-    y += 1
-    const scopes: Array<{ scope: PluginInstallScope; note: string }> = [
-        { scope: 'user', note: 'every project on this machine' },
-        { scope: 'project', note: 'commit it to share with your team' },
+    const scopes: Array<{ scope: PluginInstallScope; label: string; note: string }> = [
+        { scope: 'user', label: 'For you', note: ', all your projects' },
+        { scope: 'project', label: 'This project', note: ', commit it to share' },
     ]
     for (const option of scopes) {
         const selected = props.installScope === option.scope
         drawSelector(buffer, x, y, selected)
-        drawText(buffer, option.scope, {
+        drawText(buffer, option.label, {
             x: x + 2,
             y,
-            style: selected ? { fg: THEME.colors.brand, bold: true } : { fg: THEME.colors.text },
+            style: { fg: selected ? THEME.colors.brand : THEME.colors.text },
         })
-        drawText(buffer, `${props.installPaths?.[option.scope] || ''} · ${option.note}`, {
-            x: x + 11,
+        const pathX = x + 2 + SCOPE_LABEL_WIDTH
+        const path = tildePath(props.installPaths?.[option.scope]) || ''
+        const pathResult = drawText(buffer, path, {
+            x: pathX,
             y,
-            maxWidth: Math.max(4, width - 11),
+            maxWidth: Math.max(4, x + width - pathX),
             ellipsis: true,
-            style: { fg: THEME.colors.muted },
+            style: { fg: selected ? THEME.colors.brand : THEME.colors.muted },
+        })
+        drawText(buffer, option.note, {
+            x: pathResult.x,
+            y,
+            maxWidth: Math.max(0, x + width - pathResult.x),
+            style: { fg: selected ? THEME.colors.text : THEME.colors.muted },
         })
         y += 1
     }
@@ -685,8 +755,9 @@ function renderInput(buffer: ScreenBuffer, props: PluginMenuViewProps) {
     y += 3
 
     const label = 'Source: '
-    drawText(buffer, label, { x, y, style: { fg: THEME.colors.brand, bold: true } })
-    drawText(buffer, `${props.inputValue || ''}█`, {
+    drawText(buffer, label, { x, y, style: { fg: THEME.colors.brand } })
+    requestPanelCursor(x + label.length + (props.inputValue || '').length, y)
+    drawText(buffer, props.inputValue || '', {
         x: x + label.length,
         y,
         maxWidth: Math.max(4, width - label.length),
@@ -717,7 +788,8 @@ export const PluginMenuView = {
         props: Pick<PluginMenuViewProps, 'screen' | 'list' | 'detailRow' | 'detailActions'>
     ): number {
         if (props.screen === 'input') return 8
-        if (props.screen === 'install') return 13
+        // Title, description, gap, adds, needs, gap, 2 scopes, gap, footer
+        if (props.screen === 'install') return 10
         if (props.screen === 'details') {
             const servers = (props.detailRow?.children || []).filter((c) => c.kind === 'mcp').length
             // Title, subtitle, gap, fields, gap, actions, gap, footer
@@ -726,8 +798,8 @@ export const PluginMenuView = {
         const lines = Math.max(1, props.list.lines.length)
         const shown = Math.min(lines, PLUGIN_WINDOW_SIZE)
         const overflow = lines > PLUGIN_WINDOW_SIZE ? 1 : 0
-        // Tabs, subtitle, search, gap, rows, overflow, gap, footer
-        return 4 + shown + overflow + 2
+        // Tabs and counts, search, gap, rows, overflow, gap, footer
+        return 3 + shown + overflow + 2
     },
 
     /** How many list lines fit on the list screen for a given overlay height */

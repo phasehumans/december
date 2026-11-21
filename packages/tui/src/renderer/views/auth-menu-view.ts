@@ -7,6 +7,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawInlineConfirm, drawPanelTitle, requestPanelCursor } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -80,6 +81,16 @@ export const MAIN_MENU_OPTIONS = [
 
 export const DEFAULT_AUTH_PROVIDERS: ProviderItem[] = BYOK_PROVIDER_ITEMS
 
+/**
+ * M24: a key error says what happened and what to do. Known short messages get that
+ * wording here; any other message is shown as it is.
+ */
+function describeKeyError(error: string): string {
+    if (error === 'API key cannot be empty')
+        return 'No key entered. Paste your API key, then press enter.'
+    return error
+}
+
 export const AuthMenuView = {
     getFilteredProviders(providers: ProviderItem[], query: string): ProviderItem[] {
         if (!query.trim()) return providers
@@ -116,11 +127,7 @@ export const AuthMenuView = {
 
         if (props.mode === 'menu') {
             // Mode 1: Main Auth Menu (matching earlier MenuMenu)
-            drawText(buffer, 'Authentication', {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
+            drawPanelTitle(buffer, { x, y, title: 'Authentication', width })
             y += 2
 
             const email =
@@ -142,20 +149,14 @@ export const AuthMenuView = {
                 drawText(buffer, selector, {
                     x,
                     y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                        bold: isSelected,
-                    },
+                    style: { fg: THEME.colors.brand },
                 })
 
                 drawText(buffer, opt.label, {
                     x: x + 2,
                     y: rowY,
                     maxWidth: width - 4,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
                 })
 
                 let labelEnd = x + 2 + opt.label.length
@@ -175,7 +176,8 @@ export const AuthMenuView = {
                         x: descX,
                         y: rowY,
                         maxWidth: width - descX - 1,
-                        style: { fg: THEME.colors.subtle },
+                        ellipsis: true,
+                        style: { fg: THEME.colors.muted },
                     })
                 }
             }
@@ -195,11 +197,7 @@ export const AuthMenuView = {
         }
 
         if (props.mode === 'subscription') {
-            drawText(buffer, 'AI Subscriptions', {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
+            drawPanelTitle(buffer, { x, y, title: 'AI Subscriptions', width })
             y += 2
 
             const subs = SUBSCRIPTION_PROVIDER_ITEMS
@@ -228,10 +226,7 @@ export const AuthMenuView = {
                 drawText(buffer, selector, {
                     x,
                     y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                        bold: isSelected,
-                    },
+                    style: { fg: THEME.colors.brand },
                 })
 
                 const labelText = item.label
@@ -249,10 +244,7 @@ export const AuthMenuView = {
                     x: x + 2,
                     y: rowY,
                     maxWidth: width - 4,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
                 })
 
                 let labelEnd = x + 2 + labelText.length
@@ -266,10 +258,11 @@ export const AuthMenuView = {
                 }
 
                 if (isConfirmingDelete) {
-                    drawText(buffer, ' [Disconnect? (y/n)]', {
+                    drawInlineConfirm(buffer, {
                         x: labelEnd,
                         y: rowY,
-                        style: { fg: THEME.colors.error, bold: true },
+                        text: ' [Disconnect? (y/n)]',
+                        tone: 'danger',
                     })
                 }
             }
@@ -306,11 +299,7 @@ export const AuthMenuView = {
             const accountSuffix =
                 target.account && target.account !== 'local session' ? ` (${target.account})` : ''
 
-            drawText(buffer, 'Existing Credentials Detected', {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
+            drawPanelTitle(buffer, { x, y, title: 'Existing Credentials Detected', width })
             y += 2
 
             drawText(buffer, `Credentials detected for ${target.label}${accountSuffix}.`, {
@@ -344,57 +333,56 @@ export const AuthMenuView = {
         }
 
         if (props.mode === 'byok_key') {
-            // Mode 2: BYOK Key Input (matching earlier ByokKeyMenu)
+            // M24: "<Provider> API key", the link in brand, a cursor cell, the error in red
             const pName = props.activeProviderName || 'Provider'
-            drawText(buffer, `Enter API Key for ${pName}:`, {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
+            drawPanelTitle(buffer, { x, y, title: `${pName} API key`, width })
             y += 1
 
             const keyUrl = props.providerKeyUrl
             if (keyUrl) {
-                const note = props.providerKeyNote || ''
-                const prefix = "Don't have an API key? Get one at "
-                drawText(buffer, prefix, {
-                    x,
-                    y,
-                    style: { fg: THEME.colors.muted },
-                })
-                drawText(buffer, `${keyUrl}${note}`, {
+                const prefix = 'Get a key at '
+                const link = keyUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+                drawText(buffer, prefix, { x, y, style: { fg: THEME.colors.muted } })
+                const linkResult = drawText(buffer, link, {
                     x: x + prefix.length,
                     y,
-                    maxWidth: Math.max(10, props.width - x - prefix.length),
+                    maxWidth: Math.max(0, width - prefix.length),
                     style: { fg: THEME.colors.brand },
                 })
+                if (props.providerKeyNote) {
+                    drawText(buffer, props.providerKeyNote, {
+                        x: linkResult.x,
+                        y,
+                        maxWidth: Math.max(0, x + width - linkResult.x),
+                        style: { fg: THEME.colors.muted },
+                    })
+                }
                 y += 1
             }
 
             y += 1
 
-            // Key Input Box with prompt glyph ›
+            // Key field: the prompt glyph, the masked key, and a surface cell for the cursor
             const rawKey = props.apiKeyInput || ''
             const displayKey = props.apiKeyMasked !== false ? '•'.repeat(rawKey.length) : rawKey
-            const cursorGlyph = '█'
-
             const promptGlyph = `${THEME.glyphs.prompt} `
-            drawText(buffer, promptGlyph, {
-                x,
-                y,
-                style: { fg: THEME.colors.brand },
-            })
-            drawText(buffer, `${displayKey}${cursorGlyph}`, {
+            drawText(buffer, promptGlyph, { x, y, style: { fg: THEME.colors.brand } })
+            const fieldRoom = Math.max(10, width - promptGlyph.length - 1)
+            const shownKey =
+                displayKey.length > fieldRoom
+                    ? displayKey.slice(displayKey.length - fieldRoom)
+                    : displayKey
+            const keyResult = drawText(buffer, shownKey, {
                 x: x + promptGlyph.length,
                 y,
-                maxWidth: Math.max(10, width - promptGlyph.length),
                 style: { fg: THEME.colors.text },
             })
+            // G11: the real terminal cursor, placed by the app
+            requestPanelCursor(keyResult.x, y)
             y += 1
 
             if (props.keyError) {
-                y += 1
-                drawText(buffer, props.keyError, {
+                drawText(buffer, describeKeyError(props.keyError), {
                     x,
                     y,
                     maxWidth: width,
@@ -418,11 +406,7 @@ export const AuthMenuView = {
         if (props.mode === 'confirm_replace_byok') {
             const target = props.confirmTarget || { label: 'Provider', value: '' }
 
-            drawText(buffer, 'Configured Key Detected', {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
+            drawPanelTitle(buffer, { x, y, title: 'Configured Key Detected', width })
             y += 2
 
             drawText(buffer, `An API key for ${target.label} is already configured.`, {
@@ -458,11 +442,7 @@ export const AuthMenuView = {
         const isSwitch = props.mode === 'switch'
         const title = props.title || (isSwitch ? 'Switch Active Provider' : 'Providers')
 
-        drawText(buffer, title, {
-            x,
-            y,
-            style: { fg: THEME.colors.text, bold: true },
-        })
+        drawPanelTitle(buffer, { x, y, title, width })
         y += 1
 
         const q = props.providerSearchQuery || ''
@@ -488,19 +468,29 @@ export const AuthMenuView = {
         )
         const totalItems = providers.length
 
-        const windowSize = AUTH_PROVIDER_WINDOW_SIZE
-        const windowStart = Math.max(
-            0,
-            Math.min(props.providerWindowStart || 0, Math.max(0, totalItems - windowSize))
-        )
-        const windowEnd = Math.min(windowStart + windowSize, totalItems)
-        const visible = providers.slice(windowStart, windowEnd)
-
-        const configuredKeys = props.configuredProviderValues || []
+        // B11: fit the rows above the blank row and the footer, keeping one row for "↓ N more"
+        const footerY = (props.y ?? 0) + (props.height ?? this.getHeight('byok_provider')) - 1
+        const rowRoom = Math.max(1, footerY - y - 1)
+        const windowSize =
+            totalItems > Math.min(AUTH_PROVIDER_WINDOW_SIZE, rowRoom)
+                ? Math.max(1, Math.min(AUTH_PROVIDER_WINDOW_SIZE, rowRoom - 1))
+                : AUTH_PROVIDER_WINDOW_SIZE
         const safeSelectedIdx = Math.min(
             props.providerSelectedIndex || 0,
             Math.max(0, totalItems - 1)
         )
+        let windowStart = Math.max(
+            0,
+            Math.min(props.providerWindowStart || 0, Math.max(0, totalItems - windowSize))
+        )
+        // Keep the selected row on screen when fewer rows fit than the app's window
+        if (safeSelectedIdx >= windowStart + windowSize)
+            windowStart = safeSelectedIdx - windowSize + 1
+        if (safeSelectedIdx < windowStart) windowStart = safeSelectedIdx
+        const windowEnd = Math.min(windowStart + windowSize, totalItems)
+        const visible = providers.slice(windowStart, windowEnd)
+
+        const configuredKeys = props.configuredProviderValues || []
         const selectedProviderItem = providers[safeSelectedIdx]
         const isSelectedProviderConfigured =
             selectedProviderItem && configuredKeys.includes(selectedProviderItem.value)
@@ -530,10 +520,7 @@ export const AuthMenuView = {
                 drawText(buffer, selector, {
                     x,
                     y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                        bold: isSelected,
-                    },
+                    style: { fg: THEME.colors.brand },
                 })
 
                 const labelText = item.label
@@ -554,10 +541,7 @@ export const AuthMenuView = {
                     x: x + 2,
                     y: rowY,
                     maxWidth: width - 4,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
                 })
 
                 let labelEnd = x + 2 + labelText.length
@@ -571,16 +555,18 @@ export const AuthMenuView = {
                 }
 
                 if (isConfirmingDelete) {
-                    drawText(buffer, ' [Delete? (y/n)]', {
+                    drawInlineConfirm(buffer, {
                         x: labelEnd,
                         y: rowY,
-                        style: { fg: THEME.colors.error, bold: true },
+                        text: ' [Delete? (y/n)]',
+                        tone: 'danger',
                     })
                 }
             }
         }
 
-        const scrollStatusY = y + windowSize
+        // B11: "↓ N more" goes under the last visible row, not on a fixed row
+        const scrollStatusY = y + Math.max(1, visible.length)
         if (totalItems > windowSize) {
             const itemsAbove = windowStart
             const itemsBelow = totalItems - windowEnd
@@ -596,7 +582,7 @@ export const AuthMenuView = {
                 drawText(buffer, statusText, {
                     x: x + 2,
                     y: scrollStatusY,
-                    style: { fg: THEME.colors.subtle },
+                    style: { fg: THEME.colors.dim },
                 })
             }
         }
@@ -626,7 +612,6 @@ export const AuthMenuView = {
                       { key: 'esc', label: 'back' },
                   ]
 
-        const footerY = (props.y ?? 0) + (props.height ?? this.getHeight('byok_provider')) - 1
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,
             y: footerY,

@@ -252,10 +252,114 @@ export function getCharWidth(char: string): number {
         (code >= 0xffe0 && code <= 0xffe6) ||
         (code >= 0x1f300 && code <= 0x1f9ff) ||
         (code >= 0x1fa00 && code <= 0x1faff) ||
-        (code >= 0x20000 && code <= 0x3ffff)
+        (code >= 0x20000 && code <= 0x3ffff) ||
+        isWideEmoji(code)
     ) {
         return 2
     }
 
     return 1
+}
+
+/** Emoji below U+1F300 that terminals draw two columns wide (Unicode East Asian Width W) */
+const WIDE_EMOJI_RANGES: [number, number][] = [
+    [0x231a, 0x231b],
+    [0x23e9, 0x23ec],
+    [0x23f0, 0x23f0],
+    [0x23f3, 0x23f3],
+    [0x25fd, 0x25fe],
+    [0x2614, 0x2615],
+    [0x2648, 0x2653],
+    [0x267f, 0x267f],
+    [0x2693, 0x2693],
+    [0x26a1, 0x26a1],
+    [0x26aa, 0x26ab],
+    [0x26bd, 0x26be],
+    [0x26c4, 0x26c5],
+    [0x26ce, 0x26ce],
+    [0x26d4, 0x26d4],
+    [0x26ea, 0x26ea],
+    [0x26f2, 0x26f3],
+    [0x26f5, 0x26f5],
+    [0x26fa, 0x26fa],
+    [0x26fd, 0x26fd],
+    [0x2705, 0x2705],
+    [0x270a, 0x270b],
+    [0x2728, 0x2728],
+    [0x274c, 0x274c],
+    [0x274e, 0x274e],
+    [0x2753, 0x2755],
+    [0x2757, 0x2757],
+    [0x2795, 0x2797],
+    [0x27b0, 0x27b0],
+    [0x27bf, 0x27bf],
+    [0x2b1b, 0x2b1c],
+    [0x2b50, 0x2b50],
+    [0x2b55, 0x2b55],
+    [0x1f004, 0x1f004],
+    [0x1f0cf, 0x1f0cf],
+    [0x1f18e, 0x1f18e],
+    [0x1f191, 0x1f19a],
+    [0x1f200, 0x1f2ff],
+]
+
+function isWideEmoji(code: number): boolean {
+    if (code < 0x231a || code > 0x1f2ff) return false
+    for (const [lo, hi] of WIDE_EMOJI_RANGES) {
+        if (code < lo) return false
+        if (code <= hi) return true
+    }
+    return false
+}
+
+const ASCII_PRINTABLE = /^[\x20-\x7e]*$/
+
+const graphemeSegmenter: Intl.Segmenter | null =
+    typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+        ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+        : null
+
+/**
+ * The text as terminal cells' worth of clusters: one string per user-perceived character, so a
+ * ZWJ emoji, a flag or a letter with combining marks stays in one cell. Printable ASCII skips
+ * the segmenter.
+ */
+export function graphemeClusters(text: string): Iterable<string> {
+    if (ASCII_PRINTABLE.test(text) || !graphemeSegmenter) return text
+    return Array.from(graphemeSegmenter.segment(text), (part) => part.segment)
+}
+
+/** Columns one grapheme cluster takes in the terminal */
+export function getClusterWidth(cluster: string): number {
+    const code = cluster.codePointAt(0)
+    if (code === undefined) return 0
+    const first = getCharWidth(String.fromCodePoint(code))
+    if (cluster.length <= (code > 0xffff ? 2 : 1)) return first
+    // Emoji presentation selector, or a pair of regional indicators (a flag)
+    if (cluster.includes('\ufe0f')) return 2
+    if (code >= 0x1f1e6 && code <= 0x1f1ff) return 2
+    return first
+}
+
+/** Columns `text` takes in the terminal */
+export function stringWidth(text: string): number {
+    if (ASCII_PRINTABLE.test(text)) return text.length
+    let width = 0
+    for (const cluster of graphemeClusters(text)) width += getClusterWidth(cluster)
+    return width
+}
+
+/** The longest start of `text` that fits in `maxWidth` columns, never splitting a character */
+export function sliceToWidth(text: string, maxWidth: number): string {
+    if (maxWidth <= 0) return ''
+    if (ASCII_PRINTABLE.test(text)) return text.length > maxWidth ? text.slice(0, maxWidth) : text
+    let width = 0
+    let end = 0
+    for (const cluster of graphemeClusters(text)) {
+        const w = getClusterWidth(cluster)
+        if (width + w > maxWidth) break
+        width += w
+        end += cluster.length
+    }
+    return end === text.length ? text : text.slice(0, end)
 }

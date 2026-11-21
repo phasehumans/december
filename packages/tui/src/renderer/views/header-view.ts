@@ -54,14 +54,12 @@ export const HeaderView = {
         lines.push([
             { text: `${prefix}✱ `, style: { fg: THEME.colors.brand, bold: true } },
             { text: 'December', style: { fg: THEME.colors.text, bold: true } },
-            { text: versionStr, style: { fg: THEME.colors.subtle } },
+            { text: versionStr, style: { fg: THEME.colors.dim } },
         ])
 
         // 2. Line 2: User email (if present)
         if (props.userEmail) {
-            lines.push([
-                { text: `${prefix}${props.userEmail}`, style: { fg: THEME.colors.subtle } },
-            ])
+            lines.push([{ text: `${prefix}${props.userEmail}`, style: { fg: THEME.colors.dim } }])
         }
 
         // 3. Line 3: Model and billing status line
@@ -84,13 +82,13 @@ export const HeaderView = {
                 modelStatusLine = billingLabel || 'API'
             }
         }
-        lines.push([{ text: `${prefix}${modelStatusLine}`, style: { fg: THEME.colors.subtle } }])
+        lines.push([{ text: `${prefix}${modelStatusLine}`, style: { fg: THEME.colors.dim } }])
 
         // 4. Line 4: CWD and Git branch: ~/code/december (main)
         const cwd = props.cwd || getCwd()
         const branch = props.branch !== undefined ? props.branch : getGitBranch()
         const locationLine = branch ? `${cwd} (${branch})` : cwd
-        lines.push([{ text: `${prefix}${locationLine}`, style: { fg: THEME.colors.subtle } }])
+        lines.push([{ text: `${prefix}${locationLine}`, style: { fg: THEME.colors.dim } }])
 
         // 5. Line 5: Latest update notification OR Release Announcement banner
         if (props.latestVersion) {
@@ -180,7 +178,7 @@ export const HeaderView = {
             drawText(buffer, versionStr, {
                 x: x + 10,
                 y,
-                style: { fg: THEME.colors.subtle },
+                style: { fg: THEME.colors.dim },
             })
         }
         y += 1
@@ -191,7 +189,7 @@ export const HeaderView = {
                 x,
                 y,
                 maxWidth,
-                style: { fg: THEME.colors.subtle },
+                style: { fg: THEME.colors.dim },
             })
             y += 1
         }
@@ -221,7 +219,7 @@ export const HeaderView = {
             x,
             y,
             maxWidth,
-            style: { fg: THEME.colors.subtle },
+            style: { fg: THEME.colors.dim },
         })
         y += 1
 
@@ -234,7 +232,7 @@ export const HeaderView = {
             x,
             y,
             maxWidth,
-            style: { fg: THEME.colors.subtle },
+            style: { fg: THEME.colors.dim },
         })
         y += 1
 

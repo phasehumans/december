@@ -72,6 +72,40 @@ describe('FileSessionRepository', () => {
             expect(appendCall2[1]).not.toContain('hello')
             expect(appendCall2[1]).toContain('how are you?')
         })
+
+        test('appends a message again only after it changes in place', async () => {
+            const repo = new FileSessionRepository()
+            mockReadFile.mockRejectedValueOnce(new Error('ENOENT'))
+
+            const user = { id: '1', role: 'user', content: 'hello' } as any
+            const assistant = {
+                id: '2',
+                role: 'assistant',
+                content: 'reading',
+                toolCalls: [{ id: 't1', name: 'read', input: '{"path":"a.ts"}' }],
+            } as any
+            const msgs: AgentMessage[] = [user, assistant]
+            await repo.saveContext('session-mut', msgs)
+
+            // Nothing changed: nothing is written
+            mockAppendFile.mockClear()
+            await repo.saveContext('session-mut', msgs)
+            expect(mockAppendFile).not.toHaveBeenCalled()
+
+            // A top-level change (e.g. the abort path marks the prompt as UI-only) is written
+            user.isUI = true
+            await repo.saveContext('session-mut', msgs)
+            expect(mockAppendFile).toHaveBeenCalledTimes(1)
+            const written = String(mockAppendFile.mock.calls[0][1]).trim().split('\n')
+            expect(written).toHaveLength(1)
+            expect(JSON.parse(written[0]!)).toMatchObject({ id: '1', isUI: true })
+
+            // A nested value replaced with an equal copy is not written again
+            mockAppendFile.mockClear()
+            assistant.toolCalls = JSON.parse(JSON.stringify(assistant.toolCalls))
+            await repo.saveContext('session-mut', msgs)
+            expect(mockAppendFile).not.toHaveBeenCalled()
+        })
     })
 
     describe('loadContext', () => {

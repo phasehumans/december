@@ -2,6 +2,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawPanelTitle } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -62,11 +63,7 @@ export const LoginMenuView = {
         const email = props.decemberEmail || props.userEmail || 'December user'
 
         if (props.confirmSwitch) {
-            drawText(buffer, 'Switch Account', {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
+            drawPanelTitle(buffer, { x, y, title: 'Switch Account', width })
             y += 2
 
             drawText(buffer, `Already logged in as ${email}.`, {
@@ -78,7 +75,7 @@ export const LoginMenuView = {
             drawText(buffer, 'Do you want to switch to a different account? (y/n)', {
                 x,
                 y,
-                style: { fg: THEME.colors.warning, bold: true },
+                style: { fg: THEME.colors.warning },
             })
 
             const footerY = props.y + (props.height ?? this.getHeight(true)) - 1
@@ -96,11 +93,7 @@ export const LoginMenuView = {
         }
 
         // Title: Authentication
-        drawText(buffer, 'Authentication', {
-            x,
-            y,
-            style: { fg: THEME.colors.text, bold: true },
-        })
+        drawPanelTitle(buffer, { x, y, title: 'Authentication', width })
         y += 2
 
         const isDecemberLoggedIn = Boolean(
@@ -121,20 +114,14 @@ export const LoginMenuView = {
             drawText(buffer, selector, {
                 x,
                 y: rowY,
-                style: {
-                    fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                    bold: isSelected,
-                },
+                style: { fg: THEME.colors.brand },
             })
 
             // Option label
             drawText(buffer, opt.label, {
                 x: x + 2,
                 y: rowY,
-                style: {
-                    fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                    bold: isSelected,
-                },
+                style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
             })
 
             let labelOffset = x + 2 + opt.label.length
@@ -155,6 +142,7 @@ export const LoginMenuView = {
                     x: descX,
                     y: rowY,
                     maxWidth: Math.max(10, width - descX - 2),
+                    ellipsis: true,
                     style: { fg: THEME.colors.muted },
                 })
             }

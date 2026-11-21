@@ -610,11 +610,11 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.codeSearchResults.length).toBe(2)
         expect(app.state.codeSearchSelectedIndex).toBe(0)
 
-        // Bottom card overlay: prompt cursor is hidden and Code Search renders in bottom overlay card
+        // Bottom card overlay: prompt cursor is hidden and Code search renders in bottom overlay card
         expect(app.screen.cursorPosition?.visible).toBe(false)
         let hasCodeSearch = false
         for (let y = 0; y < 24; y++) {
-            if (app.screen.backBuffer.getLine(y).includes('Code Search')) {
+            if (app.screen.backBuffer.getLine(y).includes('Code search  "engine"')) {
                 hasCodeSearch = true
                 break
             }
@@ -751,8 +751,9 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.fileViewPath).toBe('fileA.ts')
         expect(app.state.codeSearchSelectedIndex).toBe(0)
 
-        // Header shows [1/2 files] fileA.ts and footer shows cycle file
-        expect(app.screen.backBuffer.getLine(0)).toContain('[1/2 files] fileA.ts')
+        // Title row shows fileA.ts with "file 1/2" in the meta, and footer shows cycle file
+        expect(app.screen.backBuffer.getLine(0)).toContain('fileA.ts  file 1/2')
+        expect(app.screen.backBuffer.getLine(0)).not.toContain('[1/2 files]')
         expect(app.screen.backBuffer.getLine(23)).toContain('←/→ cycle file')
 
         // Press Right arrow (\x1b[C) to cycle to next file
@@ -3046,7 +3047,21 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(InputBarView.getHeight(longLine, 80)).toBeGreaterThan(4)
     })
 
-    it('toggles tool execution output details with Ctrl+O', () => {
+    it('takes a typed answer from the last question row (S21)', async () => {
+        const app = new DifferentialApp({ terminal, width: 80, height: 24 })
+        app.start()
+        const answer = app.askQuestion([{ question: 'Which TTL?', options: ['1 hour', '8 hours'] }])
+        app.handleKey('\x1b[B')
+        app.handleKey('\x1b[B')
+        app.handleKey('\r')
+        for (const ch of '30 days') app.handleKey(ch)
+        expect(app.state.questionCustomText).toBe('30 days')
+        app.handleKey('\r')
+        expect(await answer).toEqual({ 'Which TTL?': '30 days' })
+        app.stop()
+    })
+
+    it('does nothing on Ctrl+O, since the expand mode is gone (D1, S25-B)', () => {
         const app = new DifferentialApp({
             terminal,
             width: 80,
@@ -3054,18 +3069,140 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         })
         app.start()
 
-        expect(app.state.expandTools).toBe(false)
-
-        // Ctrl+O toggles expansion on
         app.handleKey('\x0f')
-        expect(app.state.expandTools).toBe(true)
-        expect(app.state.toast?.message).toContain('Tool outputs expanded')
+        expect((app.state as any).expandTools).toBeUndefined()
+        expect(app.state.toast).toBeFalsy()
 
-        // Ctrl+O toggles expansion off
-        app.handleKey('\x0f')
-        expect(app.state.expandTools).toBe(false)
-        expect(app.state.toast?.message).toContain('Tool outputs collapsed')
+        app.stop()
+    })
 
+    it('draws the activity line as the last line of the live turn (L20)', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 100,
+            height: 24,
+        })
+        app.start()
+        app.state.messages.push({ role: 'user', content: 'run the tests' })
+        app.state.isStreaming = true
+        app.startSpinner()
+        app.appendToolCall({ id: 't1', name: 'bash', input: { command: 'bun test' } })
+        app.render()
+
+        const grab = () => Array.from({ length: 24 }, (_, y) => app.screen.backBuffer.getLine(y))
+        let rows = grab()
+        const step = rows.findIndex((r) => r.includes('bun test') && !r.includes('…'))
+        const activity = rows.findIndex((r) => r.includes('Running bun test…'))
+        const promptRule = rows.findIndex((r, y) => y > activity && r.includes('────'))
+        // L21: the Esc hint is in the prompt placeholder, not on the activity line
+        expect(rows[activity]).not.toContain('esc to interrupt')
+        expect(rows.some((r) => r.includes('Type to queue a message · esc to interrupt'))).toBe(
+            true
+        )
+        // One blank row under the last step, and far from the prompt box on a short chat
+        expect(activity).toBe(step + 2)
+        expect(rows[step + 1]!.trim()).toBe('')
+        expect(promptRule - activity).toBeGreaterThan(5)
+        expect(rows.some((r) => r.includes('Thinking...'))).toBe(false)
+
+        // A new step pushes the activity line down
+        app.updateToolResult('t1', { output: 'ok' })
+        app.appendToolCall({ id: 't2', name: 'bash', input: { command: 'bun run lint' } })
+        app.render()
+        rows = grab()
+        const moved = rows.findIndex((r) => r.includes('Running bun run lint…'))
+        expect(moved).toBeGreaterThan(activity)
+
+        app.finishStream()
+        app.render()
+        expect(grab().some((r) => r.includes('esc to interrupt'))).toBe(false)
+        app.stop()
+    })
+
+    it('keeps queued messages above the prompt box, not in the chat (L20.6)', () => {
+        const app = new DifferentialApp({ terminal, width: 100, height: 24 })
+        app.start()
+        app.state.messages.push({ role: 'user', content: 'run the tests' })
+        app.state.isStreaming = true
+        app.startSpinner()
+        app.appendToolCall({ id: 't1', name: 'bash', input: { command: 'bun test' } })
+        app.state.promptQueue = ['also update the docs']
+        app.render()
+
+        const rows = Array.from({ length: 24 }, (_, y) => app.screen.backBuffer.getLine(y))
+        const activity = rows.findIndex((r) => r.includes('Running bun test…'))
+        const queued = rows.findIndex((r) => r.includes('also update the docs'))
+        const promptRule = rows.findIndex((r, y) => y > queued && r.includes('────'))
+        expect(queued).toBeGreaterThan(activity + 2)
+        expect(rows[queued + 1]).toContain('queued · sends when this turn ends')
+        expect(promptRule).toBe(queued + 3)
+        app.stop()
+    })
+
+    it('scrolls the activity line away with the chat when scrolled up (L20.3)', () => {
+        const app = new DifferentialApp({ terminal, width: 100, height: 24 })
+        app.start()
+        for (let i = 0; i < 30; i++) {
+            app.state.messages.push({ role: 'user', content: `question ${i}` })
+            app.state.messages.push({ role: 'assistant', content: `answer ${i}` })
+        }
+        app.state.messages.push({ role: 'user', content: 'run the tests' })
+        app.state.isStreaming = true
+        app.startSpinner()
+        app.appendToolCall({ id: 't1', name: 'bash', input: { command: 'bun test' } })
+        app.render()
+        const grab = () => Array.from({ length: 24 }, (_, y) => app.screen.backBuffer.getLine(y))
+        expect(grab().some((r) => r.includes('Running bun test…'))).toBe(true)
+
+        app.state.scrollOffset = 0
+        app.render()
+        expect(grab().some((r) => r.includes('Running bun test…'))).toBe(false)
+        app.stop()
+    })
+
+    it('ends the chat with the activity line above an open panel, with no hint (L20.7)', () => {
+        const app = new DifferentialApp({ terminal, width: 100, height: 30 })
+        app.start()
+        app.state.messages.push({ role: 'user', content: 'run the tests' })
+        app.state.isStreaming = true
+        app.startSpinner()
+        app.appendToolCall({ id: 't1', name: 'bash', input: { command: 'bun test' } })
+        app.state.activeOverlay = 'help'
+        app.render()
+
+        const rows = Array.from({ length: 30 }, (_, y) => app.screen.backBuffer.getLine(y))
+        const activity = rows.find((r) => r.includes('Running bun test…'))
+        expect(activity).toBeDefined()
+        expect(activity).not.toContain('esc to interrupt')
+
+        app.finishStream()
+        app.render()
+        const after = Array.from({ length: 30 }, (_, y) => app.screen.backBuffer.getLine(y))
+        expect(after.some((r) => r.includes('Running bun test…'))).toBe(false)
+        app.stop()
+    })
+
+    it('adds an end-of-turn line when the turn changed files (L16)', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 100,
+            height: 24,
+        })
+        app.start()
+        app.state.messages.push({ role: 'user', content: 'edit it' })
+        app.state.isStreaming = true
+        app.startSpinner()
+        app.appendToolCall({
+            id: 'e1',
+            name: 'edit_file',
+            input: { path: 'src/a.ts', targetContent: 'a', replacementContent: 'b\nc' },
+        })
+        app.updateToolResult('e1', { output: 'Successfully edited file: src/a.ts', isError: false })
+        app.finishStream()
+
+        const summary = app.state.messages[app.state.messages.length - 1]
+        expect(summary?.role).toBe('turn_summary')
+        expect(summary?.summary?.files).toEqual([{ path: 'src/a.ts', added: 2, removed: 1 }])
         app.stop()
     })
 
@@ -4043,7 +4180,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.executeCommand('/update')
         app.setUpdateStatus('Installing v0.4.19 via npm global package')
         expect(app.getUpdateStatusText()).toMatch(
-            /^Installing v0\.4\.19 via npm global package · \d+s$/
+            /^installing v0\.4\.19 via npm global package \d+s$/
         )
 
         app.state.input = 'fix the bug'
