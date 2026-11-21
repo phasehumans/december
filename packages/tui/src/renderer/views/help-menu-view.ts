@@ -1,38 +1,92 @@
+import { KEYBINDING_ACTIONS } from '../../keybindings'
 import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
 
+import type { KeybindingActionName, Keymap } from '../../keybindings'
 import type { ScreenBuffer } from '../buffer'
 
 export type HelpTab = 'general' | 'commands' | 'shortcuts'
 
 export const TABS: HelpTab[] = ['general', 'commands', 'shortcuts']
 
-export const SHORTCUTS = [
+export interface ShortcutItem {
+    key: string
+    desc: string
+    /** keybinding actions this row shows; their user keys replace `key` when changed */
+    actions?: KeybindingActionName[]
+    /** text after the bound keys, for keys that cannot be rebound */
+    suffix?: string
+}
+
+export const SHORTCUTS: ShortcutItem[] = [
     { key: '/', desc: 'Open slash commands' },
     { key: '@ <file>', desc: 'Mention file into context' },
     { key: '! <cmd>', desc: 'Execute shell command directly (e.g. !git status)' },
     { key: 'tab', desc: 'Autocomplete command or file path' },
-    { key: 'alt / shift + enter', desc: 'Insert newline in prompt' },
+    { key: 'shift+tab', desc: 'Toggle plan mode', actions: ['togglePlanMode'] },
+    { key: 'alt / shift + enter', desc: 'Insert newline in prompt', actions: ['newline'] },
     { key: 'esc', desc: 'Cancel / Clear input / Dismiss menu' },
-    { key: 'ctrl+a / ctrl+e', desc: 'Go to start / end of line' },
+    {
+        key: 'ctrl+a / ctrl+e',
+        desc: 'Go to start / end of line',
+        actions: ['lineStart', 'lineEnd'],
+    },
     { key: 'alt+b / alt+f', desc: 'Jump backward / forward by word' },
-    { key: 'ctrl+w / alt+bksp', desc: 'Delete word backward' },
-    { key: 'ctrl+u / ctrl+k', desc: 'Delete to start / end of line' },
-    { key: 'ctrl+y', desc: 'Quick copy last assistant response' },
-    { key: 'ctrl+p / ctrl+n', desc: 'Previous / next prompt history' },
+    {
+        key: 'ctrl+w / alt+bksp',
+        desc: 'Delete word backward',
+        actions: ['deleteWordBack'],
+        suffix: ' / alt+bksp',
+    },
+    {
+        key: 'ctrl+u / ctrl+k',
+        desc: 'Delete to start / end of line',
+        actions: ['killToStart', 'killToEnd'],
+    },
+    { key: 'ctrl+y', desc: 'Quick copy last assistant response', actions: ['copyLastResponse'] },
+    {
+        key: 'ctrl+p / ctrl+n',
+        desc: 'Previous / next prompt history',
+        actions: ['historyPrev', 'historyNext'],
+    },
     { key: '↑ / ↓', desc: 'Scroll chat up / down (when prompt empty)' },
     { key: 'k / j', desc: 'Navigate up / down in menus and overlays' },
     { key: 'ctrl / shift + ↑ / ↓', desc: 'Scroll chat smoothly / line by line' },
     { key: 'pageup / pagedown', desc: 'Scroll chat by page' },
     { key: 'home / end', desc: 'Jump to top / bottom of chat' },
-    { key: 'ctrl+t', desc: 'Toggle background tasks' },
+    { key: 'ctrl+t', desc: 'Toggle background tasks', actions: ['toggleTasks'] },
+    {
+        key: 'ctrl+b',
+        desc: 'Move the running command to the background',
+        actions: ['moveToBackground'],
+    },
     { key: 'ctrl+h', desc: 'Session history menu' },
-    { key: 'ctrl+l', desc: 'Toggle slash command menu' },
-    { key: 'ctrl+o', desc: 'Toggle tool execution outputs (expand / collapse)' },
+    { key: 'ctrl+l', desc: 'Toggle slash command menu', actions: ['commandMenu'] },
+    {
+        key: 'ctrl+o',
+        desc: 'Toggle tool execution outputs (expand / collapse)',
+        actions: ['toggleToolOutput'],
+    },
     { key: 'ctrl+c', desc: 'Exit / Graceful interrupt' },
 ]
+
+/** SHORTCUTS with the user's keys for rebound actions */
+export function resolveShortcuts(keymap?: Keymap): ShortcutItem[] {
+    if (!keymap) return SHORTCUTS
+    return SHORTCUTS.map((item) => {
+        if (!item.actions) return item
+        const changed = item.actions.some((a) => {
+            const keys = keymap.keysFor(a)
+            const defaults = KEYBINDING_ACTIONS[a].defaults as readonly string[]
+            return keys.length !== defaults.length || keys.some((k, i) => k !== defaults[i])
+        })
+        if (!changed) return item
+        const key = item.actions.map((a) => keymap.keysFor(a).join(', ')).join(' / ')
+        return { ...item, key: `${key}${item.suffix || ''}` }
+    })
+}
 
 export const HELP_WINDOW_SIZE = 8
 
@@ -51,6 +105,7 @@ export interface HelpMenuViewProps {
     cwd?: string
     branch?: string
     sessionId?: string
+    sessionTitle?: string
     configPath?: string
     // Commands tab
     commands?: { name: string; description: string }[]
@@ -113,7 +168,9 @@ export const HelpMenuView = {
             const model = props.modelLabel || props.activeModel || 'Claude 3.7 Sonnet'
             const ws = `${props.cwd || process.cwd()}${props.branch ? ` (${props.branch})` : ''}`
             const config = props.configPath || '~/.december/config.json'
-            const session = props.sessionId || 'Active'
+            const session = props.sessionTitle
+                ? `${props.sessionTitle} (${props.sessionId || 'active'})`
+                : props.sessionId || 'Active'
 
             const infoRows = [
                 { label: 'Version', value: `v${(props.cliVersion || '0.4.15').replace(/^v/, '')}` },

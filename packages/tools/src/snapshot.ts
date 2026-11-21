@@ -9,6 +9,9 @@ export interface SnapshotRecord {
     id: string
     commitHash: string
     turnIndex: number
+    /** Session that created the snapshot. */
+    sessionId?: string
+    /** Id of the user message that started the turn. */
     messageId?: string
     prompt?: string
     timestamp: number
@@ -21,6 +24,8 @@ export interface RollbackResult {
     commitHash: string
     restoredFiles: string[]
     deletedFiles: string[]
+    /** Files that could not be restored or deleted. */
+    failedFiles: string[]
 }
 
 export class SnapshotManager {
@@ -130,12 +135,13 @@ export class SnapshotManager {
 
     public async createSnapshot(options: {
         turnIndex: number
+        sessionId?: string
         messageId?: string
         prompt?: string
     }): Promise<SnapshotRecord> {
         await this.init()
 
-        const { turnIndex, messageId, prompt } = options
+        const { turnIndex, sessionId, messageId, prompt } = options
 
         // 1. Stage all workspace files into shadow git
         await execFileAsync(
@@ -195,6 +201,7 @@ export class SnapshotManager {
             id: `snap-${Date.now()}-${turnIndex}`,
             commitHash,
             turnIndex,
+            sessionId,
             messageId,
             prompt,
             timestamp: Date.now(),
@@ -211,10 +218,19 @@ export class SnapshotManager {
         return [...this.records]
     }
 
+    /** Returns the most recent snapshot recorded for a turn number. */
     public getSnapshotForTurn(turnIndex: number): SnapshotRecord | undefined {
-        return this.records.find((r) => r.turnIndex === turnIndex)
+        for (let i = this.records.length - 1; i >= 0; i--) {
+            if (this.records[i]!.turnIndex === turnIndex) return this.records[i]
+        }
+        return undefined
     }
 
+    public getSnapshotById(id: string): SnapshotRecord | undefined {
+        return this.records.find((r) => r.id === id)
+    }
+
+    /** Rewinds the workspace to the most recent snapshot recorded for a turn number. */
     public async rollbackToTurn(targetTurn: number): Promise<RollbackResult> {
         await this.init()
 
@@ -222,7 +238,20 @@ export class SnapshotManager {
         if (!targetRecord) {
             throw new Error(`Snapshot for turn ${targetTurn} not found.`)
         }
+        return this.rollbackToRecord(targetRecord)
+    }
 
+    public async rollbackToSnapshot(id: string): Promise<RollbackResult> {
+        await this.init()
+
+        const targetRecord = this.getSnapshotById(id)
+        if (!targetRecord) {
+            throw new Error(`Snapshot ${id} not found.`)
+        }
+        return this.rollbackToRecord(targetRecord)
+    }
+
+    private async rollbackToRecord(targetRecord: SnapshotRecord): Promise<RollbackResult> {
         const commitHash = targetRecord.commitHash
 
         // Stage current workspace state into shadow git so diff is accurate
@@ -232,7 +261,8 @@ export class SnapshotManager {
             { cwd: this.workspaceDir }
         )
 
-        // Diff current shadow git working tree vs target commit
+        // Diff target commit vs current working tree. --no-renames splits a rename into
+        // a delete plus an add, so both sides get restored. -z keeps unusual paths unquoted.
         const { stdout: diffOut } = await execFileAsync(
             'git',
             [
@@ -241,20 +271,22 @@ export class SnapshotManager {
                 '--work-tree',
                 this.workspaceDir,
                 'diff',
+                '--no-renames',
                 '--name-status',
+                '-z',
                 commitHash,
             ],
-            { cwd: this.workspaceDir }
+            { cwd: this.workspaceDir, maxBuffer: 64 * 1024 * 1024 }
         )
 
         const restoredFiles: string[] = []
         const deletedFiles: string[] = []
+        const failedFiles: string[] = []
 
-        const lines = diffOut.split('\n').filter((l) => l.trim().length > 0)
-        for (const line of lines) {
-            const parts = line.split('\t')
-            const status = parts[0]?.trim()
-            const filePath = parts[1]?.trim()
+        const tokens = diffOut.split('\0')
+        for (let i = 0; i + 1 < tokens.length; i += 2) {
+            const status = tokens[i]
+            const filePath = tokens[i + 1]
             if (!status || !filePath) continue
 
             const absPath = path.resolve(this.workspaceDir, filePath)
@@ -265,7 +297,8 @@ export class SnapshotManager {
                     await fs.rm(absPath, { recursive: true, force: true })
                     deletedFiles.push(filePath)
                 } catch {
-                    // Intentionally swallowed: file already deleted or inaccessible
+                    // Reported to the caller through failedFiles
+                    failedFiles.push(filePath)
                 }
             } else {
                 // File was modified or deleted; restore it from target snapshot commit
@@ -273,6 +306,7 @@ export class SnapshotManager {
                     await execFileAsync(
                         'git',
                         [
+                            '--literal-pathspecs',
                             '--git-dir',
                             this.snapshotsDir,
                             '--work-tree',
@@ -286,24 +320,30 @@ export class SnapshotManager {
                     )
                     restoredFiles.push(filePath)
                 } catch {
-                    // Intentionally swallowed: checkout failure handled
+                    // Reported to the caller through failedFiles
+                    failedFiles.push(filePath)
                 }
             }
         }
 
-        // Truncate snapshot records to targetTurn
-        const targetIndex = this.records.findIndex((r) => r.turnIndex === targetTurn)
+        // The workspace is now back at the target's pre-turn state, so the target and every
+        // later snapshot from the same session no longer describe a reachable turn.
+        // The next prompt records a fresh snapshot for that turn.
+        const targetIndex = this.records.indexOf(targetRecord)
         if (targetIndex !== -1) {
-            this.records = this.records.slice(0, targetIndex + 1)
+            this.records = this.records.filter(
+                (r, idx) => idx < targetIndex || r.sessionId !== targetRecord.sessionId
+            )
             await this.persistRecords()
         }
 
         return {
-            success: true,
-            targetTurn,
+            success: failedFiles.length === 0,
+            targetTurn: targetRecord.turnIndex,
             commitHash,
             restoredFiles,
             deletedFiles,
+            failedFiles,
         }
     }
 
@@ -316,7 +356,7 @@ export class SnapshotManager {
 
         // Roll back to the latest recorded turn snapshot (pre-flight state of the latest turn)
         const target = this.records[this.records.length - 1]!
-        return this.rollbackToTurn(target.turnIndex)
+        return this.rollbackToRecord(target)
     }
 
     public async onBeforeFileMutation(filePath: string): Promise<void> {

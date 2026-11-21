@@ -1,7 +1,7 @@
 import pkg from '../../package.json' with { type: 'json' }
 
 export async function handleDoctorCommand(options?: { fix?: boolean }): Promise<void> {
-    const { diagnoseBinaryCollisions, resolveAndCleanStaleBinaries } =
+    const { diagnoseBinaryCollisions, resolveAndCleanStaleBinaries, selectPrimaryBinary } =
         await import('../utils/bin-discovery')
     const { getAuthStatus, loadConfig } = await import('../config')
 
@@ -54,26 +54,36 @@ export async function handleDoctorCommand(options?: { fix?: boolean }): Promise<
     if (diagnosis.hasCollision) {
         if (options?.fix) {
             console.log(`${BLUE}✱${RESET}  ${WHITE}Resolving binary collisions (--fix)...${RESET}`)
-            const target = diagnosis.activeBinary || diagnosis.allBinaries[0]
-            if (target) {
-                const { cleanedOrForwarded, failedBinaries } = await resolveAndCleanStaleBinaries(
-                    target,
-                    diagnosis.allBinaries
+            const target = selectPrimaryBinary(diagnosis.allBinaries)
+            if (!target) {
+                console.log(
+                    `  ${YELLOW}Could not read a release version from any install. Nothing was changed.${RESET}\n`
                 )
+            } else {
+                const { cleanedOrForwarded, failedBinaries, skipped } =
+                    await resolveAndCleanStaleBinaries(target, diagnosis.allBinaries)
                 if (cleanedOrForwarded.length > 0) {
                     console.log(
-                        `  ${GREEN}Forwarded ${cleanedOrForwarded.length} shadowed binary path(s) to primary active binary (${target.path}).${RESET}`
+                        `  ${GREEN}Forwarded ${cleanedOrForwarded.length} older binary path(s) to v${target.version} (${target.path}).${RESET}`
                     )
                     console.log(
                         `  ${YELLOW}ℹ Run "hash -r" (bash) or restart your terminal to apply.${RESET}\n`
                     )
                 } else if (failedBinaries.length === 0) {
-                    console.log(`  ${GREEN}All binary links are already aligned.${RESET}\n`)
+                    console.log(`  ${GREEN}No older installs to align.${RESET}\n`)
+                }
+
+                if (skipped.length > 0) {
+                    console.log(`  ${GRAY}Left unchanged:${RESET}`)
+                    for (const sb of skipped) {
+                        console.log(`    ${GRAY}• ${sb.path} (${sb.reason})${RESET}`)
+                    }
+                    console.log('')
                 }
 
                 if (failedBinaries.length > 0) {
                     console.log(
-                        `  ${RED}Failed to forward ${failedBinaries.length} binary path(s) due to permissions:${RESET}`
+                        `  ${RED}Could not forward ${failedBinaries.length} binary path(s):${RESET}`
                     )
                     for (const fb of failedBinaries) {
                         if (fb.needsSudo) {
@@ -132,4 +142,8 @@ export async function handleDoctorCommand(options?: { fix?: boolean }): Promise<
         `  • Auth Priority:       ${GRAY}${config.authPriority || authStatus.authPriority}${RESET}`
     )
     console.log('')
+
+    // 5. Workspace checks, shared with /doctor in the tui
+    const { runDoctorChecks, printDoctorChecks } = await import('../utils/doctor-checks')
+    printDoctorChecks(await runDoctorChecks({ workspaceDir: process.cwd() }))
 }

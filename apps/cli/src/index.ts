@@ -164,7 +164,7 @@ async function main() {
 
     if (parsedArgs.command === 'update') {
         const { handleUpdateCommand } = await import('./commands')
-        await handleUpdateCommand({ force: parsedArgs.force })
+        await handleUpdateCommand({ force: parsedArgs.force, check: parsedArgs.check })
         process.exit(process.exitCode || 0)
     }
 
@@ -201,6 +201,7 @@ async function main() {
         process.exit(process.exitCode || 0)
     }
 
+    // 'undo' is a hidden alias of 'rewind'
     if (parsedArgs.command === 'rewind' || parsedArgs.command === 'undo') {
         const turnArg = parsedArgs.positionals[1]
         const turn =
@@ -208,16 +209,25 @@ async function main() {
         const list = parsedArgs.positionals[1] === 'list' || parsedArgs.list
         const { handleRewindCommand } = await import('./commands')
         await handleRewindCommand({ turn, list })
-        process.exit(0)
+        process.exit(process.exitCode || 0)
     }
 
-    if (parsedArgs.command === 'skill' || parsedArgs.command === 'skills') {
-        const { handleSkillCommand } = await import('./commands')
-        await handleSkillCommand({
+    if (parsedArgs.command === 'plugin' || parsedArgs.command === 'plugins') {
+        const { handlePluginCommand } = await import('./commands')
+        await handlePluginCommand({
             action: parsedArgs.positionals[1],
             target: parsedArgs.positionals[2],
-            isGlobal: parsedArgs.isGlobal,
+            extra: parsedArgs.positionals[3],
+            scope: parsedArgs.isGlobal ? 'user' : parsedArgs.scope,
         })
+        process.exit(process.exitCode || 0)
+    }
+
+    // december skill was folded into december plugin. Keep the word known so
+    // "december skill list" prints a pointer instead of running as a prompt.
+    if (parsedArgs.command === 'skill' || parsedArgs.command === 'skills') {
+        const { printSkillCommandMoved } = await import('./commands')
+        printSkillCommandMoved()
         process.exit(process.exitCode || 0)
     }
 
@@ -358,6 +368,10 @@ async function main() {
 
         const rawPrompt = parsedArgs.prompt || ''
         const effectivePrompt = isAskMode ? getAskPrompt(rawPrompt) : rawPrompt
+        // headless runs exit right after the task, so they keep the instant prompt title only
+        await agent.ensurePromptTitle(rawPrompt).catch(() => {
+            // Intentionally swallowed: a missing title never blocks the task
+        })
 
         const result = await runHeadlessTask(effectivePrompt, {
             agent,
@@ -380,13 +394,22 @@ async function main() {
         toolsModule,
         { DifferentialApp },
         { FileSessionRepository },
-        { getProviderConfig, loadConfig, saveConfig, getAuthStatus, getConfiguredProviders },
+        {
+            getProviderConfig,
+            loadConfig,
+            saveConfig,
+            getAuthStatus,
+            getConfiguredProviders,
+            getConfigDir,
+        },
         { suppressConsole },
         { localOperations, setActiveScopeDir },
         { instantiateProvider },
         { ensureValidModelForProvider, getModelLabel, getProviderModels },
         { useCliStore },
         { convertAgentMessagesToDifferentialMessages },
+        { recordUsage, getUsageHistory },
+        { fetchDecemberCreditsInCents },
     ] = await Promise.all([
         import('@december/agent'),
         import('@december/providers'),
@@ -400,6 +423,8 @@ async function main() {
         import('./utils/models'),
         import('./store'),
         import('./utils/message-converter'),
+        import('./utils/usage-tracker'),
+        import('./utils/december-credits'),
     ])
 
     if (parsedArgs.scope) {
@@ -433,11 +458,22 @@ async function main() {
     const isExplicitResumeCmd = parsedArgs.command === 'resume'
     const isResumeFlag = Boolean(parsedArgs.resume)
     let shouldOpenSessionMenuOnBoot = false
+    let unmatchedSessionRef: string | undefined
 
     if (isExplicitResumeCmd || isResumeFlag) {
         allSessions = await sessionRepository.listSessions()
-        if (!targetSessionId && parsedArgs.positionals[1]) {
-            targetSessionId = parsedArgs.positionals[1]
+        // `december resume rewind fix` works without quotes, so join the remaining words
+        const sessionRef = isExplicitResumeCmd
+            ? parsedArgs.positionals.slice(1).join(' ').trim()
+            : ''
+        if (!targetSessionId && sessionRef) {
+            const { resolveSessionRef } = await import('./utils/session-ref')
+            const match = resolveSessionRef(sessionRef, allSessions)
+            if (match) {
+                targetSessionId = match.id
+            } else {
+                unmatchedSessionRef = sessionRef
+            }
         }
         if (!targetSessionId) {
             if (isResumeFlag && !isExplicitResumeCmd) {
@@ -459,6 +495,7 @@ async function main() {
                 if (differentialApp) {
                     differentialApp.state.sessions = sessions.map((s) => ({
                         id: s.id,
+                        title: s.title,
                         preview: s.preview || s.id,
                         updatedAt: s.updatedAt || Date.now(),
                         messageCount: s.messageCount,
@@ -540,6 +577,39 @@ async function main() {
 
     const agent = harness.getAgent()
 
+    // Start or stop the MCP servers a plugin ships. A config-file server with the
+    // same name wins over the plugin's, so only servers the plugin owns are touched.
+    const syncPluginMcpServers = async (
+        plugin: { id: string; components: { mcpServers: Array<{ name: string }> } },
+        running: boolean
+    ) => {
+        const { getMcpServerConfig } = await import('@december/tools')
+        for (const server of plugin.components.mcpServers) {
+            try {
+                if (running) {
+                    const live = await getMcpServerConfig(server.name, {
+                        workspaceDir: targetWorkspaceDir,
+                    })
+                    if (!live || live.plugin !== plugin.id) continue
+                    await mcpClientManager.startServer(server.name, live.config)
+                    agent?.registerMcpServerTools(server.name)
+                } else {
+                    const live = mcpClientManager.getServer(server.name)
+                    const owned = await getMcpServerConfig(server.name, {
+                        workspaceDir: targetWorkspaceDir,
+                    })
+                    if (owned && !owned.plugin) continue
+                    if (live) {
+                        agent?.unregisterMcpServerTools(server.name)
+                        await mcpClientManager.removeServer(server.name)
+                    }
+                }
+            } catch {
+                // Intentionally swallowed: a server that fails shows as failed in /mcp
+            }
+        }
+    }
+
     const userEmail = config.decemberToken
         ? config.email
         : providerConfig?.subscription?.email || config.email || undefined
@@ -548,6 +618,7 @@ async function main() {
 
     let activePlanGoal: string | null = null
     let activePlanText: string | null = null
+    let userHooks: import('./utils/user-hooks-setup').UserHooksController | undefined
 
     const runAgentExecution = async (promptText: string): Promise<string> => {
         let streamedResponse = ''
@@ -613,6 +684,21 @@ async function main() {
                         'info'
                     )
                 }
+            }
+
+            if (userHooks) {
+                const { appendHookContext } = await import('./utils/user-hooks-setup')
+                const hookOutcome = await userHooks.runPromptSubmit(executionPrompt)
+                if (hookOutcome.block) {
+                    differentialApp.clearStatusMessage()
+                    differentialApp.state.messages.push({
+                        role: 'error',
+                        content: `Prompt blocked by a UserPromptSubmit hook: ${hookOutcome.block}`,
+                    })
+                    differentialApp.render()
+                    return ''
+                }
+                executionPrompt = appendHookContext(executionPrompt, hookOutcome.context)
             }
 
             const { getToolSummary } = await import('./utils/formatters')
@@ -681,12 +767,13 @@ async function main() {
                 } else if (event.type === 'AgentUsage') {
                     differentialApp.state.contextTokens =
                         event.promptTokens + event.completionTokens
+                    void recordUsage({ ...event, sessionId: agent.sessionId })
                     differentialApp.render()
                 } else if (event.type === 'ContextCompacted') {
-                    differentialApp.showToast(
-                        'Context memory compacted to optimize latency',
-                        'info'
-                    )
+                    differentialApp.appendCompactionMarker({
+                        tokensBefore: event.tokensBefore,
+                        tokensAfter: event.tokensAfter,
+                    })
                 }
             }
         } catch (err: any) {
@@ -702,6 +789,18 @@ async function main() {
             differentialApp.refreshWorkspaceFiles().catch(() => {
                 // Intentionally swallowed: refresh workspace files after agent turn
             })
+            // runs in the background: the next prompt does not wait for the title
+            agent
+                .upgradeAutoTitle()
+                .then((title) => {
+                    if (title && differentialApp.state.sessionId === agent.sessionId) {
+                        differentialApp.setSessionTitle(title)
+                        differentialApp.render()
+                    }
+                })
+                .catch(() => {
+                    // Intentionally swallowed: the session keeps its prompt title
+                })
             setTimeout(() => {
                 differentialApp.drainPromptQueue()
             }, 0)
@@ -780,37 +879,35 @@ async function main() {
     const { taskManager } = await import('./task-manager')
     type BackgroundTask = import('./task-manager').BackgroundTask
 
-    const mapBackgroundTasksToTaskItems = (tasks: BackgroundTask[]): TaskItem[] => {
-        return tasks.map((t) => {
-            let duration: string | undefined
-            const end = t.completedAt ? t.completedAt.getTime() : Date.now()
-            const diffMs = Math.max(0, end - t.createdAt.getTime())
-            const secs = Math.floor(diffMs / 1000)
-            if (secs < 60) duration = `${secs}s`
-            else duration = `${Math.floor(secs / 60)}m ${secs % 60}s`
+    const { getDisplayOutput } = await import('./task-manager')
 
-            return {
-                id: t.id,
-                command: t.command,
-                status:
-                    t.status === 'running'
-                        ? 'running'
-                        : t.status === 'completed'
-                          ? 'completed'
-                          : 'failed',
-                duration,
-                exitCode: t.exitCode ?? undefined,
-                output: t.output,
-            }
-        })
+    const mapBackgroundTasksToTaskItems = (tasks: BackgroundTask[]): TaskItem[] => {
+        return tasks.map((t) => ({
+            id: t.id,
+            command: t.command,
+            type: t.type === 'subagent' ? 'subagent' : 'shell',
+            status: t.status,
+            createdAt: t.createdAt.getTime(),
+            completedAt: t.completedAt?.getTime(),
+            exitCode: t.exitCode ?? undefined,
+            pid: t.pid,
+            role: t.role,
+            depth: t.depth,
+            turns: t.turns,
+            output: getDisplayOutput(t),
+        }))
     }
 
     differentialApp = new DifferentialApp({
         settings: buildSettingsFromConfig(config, activeProvider, initialModel),
         tasks: mapBackgroundTasksToTaskItems(taskManager.getTasks()),
         onKillTask: (taskId: string) => {
-            taskManager.killTask(taskId)
+            taskManager.killTask(taskId, 'user')
         },
+        onClearCompletedTasks: () => {
+            taskManager.clearCompleted()
+        },
+        onBackgroundForeground: () => taskManager.backgroundForeground(),
         cliVersion: pkg.version,
         userEmail,
         decemberEmail: config.decemberToken ? config.email : undefined,
@@ -834,6 +931,7 @@ async function main() {
         },
         sessions: allSessions.map((s) => ({
             id: s.id,
+            title: s.title,
             preview: s.preview || s.id,
             updatedAt: s.updatedAt || Date.now(),
             messageCount: s.messageCount,
@@ -846,6 +944,7 @@ async function main() {
                     agent.messages || []
                 )
                 differentialApp.state.sessionId = selectedSessionId
+                differentialApp.setSessionTitle(agent.sessionTitle)
                 differentialApp.state.scrollOffset = undefined
                 differentialApp.render()
             } catch (err: any) {
@@ -859,12 +958,42 @@ async function main() {
                 // Intentionally swallowed: ignore session delete failure
             }
         },
-        onSessionRename: async (oldId: string, newId: string) => {
+        onSessionRename: async (sessionId: string, newTitle: string) => {
             try {
-                await sessionRepository.renameSession(oldId, newId)
-            } catch {
-                // Intentionally swallowed: ignore session rename failure
+                if (agent && sessionId === agent.sessionId) {
+                    await agent.setSessionTitle(newTitle, 'manual')
+                } else {
+                    const { normalizeSessionTitle } = await import('@december/agent')
+                    const title = normalizeSessionTitle(newTitle)
+                    if (title) {
+                        await sessionRepository.setSessionMeta(sessionId, {
+                            title,
+                            titleSource: 'manual',
+                        })
+                    }
+                }
+            } catch (err: any) {
+                differentialApp.showToast(
+                    `Failed to save session title: ${err?.message || err}`,
+                    'error'
+                )
             }
+        },
+        onRenameSession: async (title?: string) => {
+            if (!agent) return
+            if (title) {
+                await agent.setSessionTitle(title, 'manual')
+                return agent.sessionTitle
+            }
+            const hasConversation = agent.messages.some((m) => m.role === 'user')
+            if (!hasConversation) {
+                throw new Error('nothing to name yet, send a prompt first')
+            }
+            const generated = await agent.generateSessionTitle()
+            if (!generated) return
+            // a title the user asked for is locked, so later turns never replace it
+            await agent.setSessionTitle(generated, 'manual')
+            return agent.sessionTitle
         },
         onEffortSelect: async (level) => {
             if (agent) {
@@ -1295,89 +1424,53 @@ async function main() {
                 }, 0)
             }
         },
-        onUndo: async () => {
+        onRewindTurn: async (snapshotId: string) => {
             try {
-                if (agent) {
-                    const result = await agent.rollbackLastTurn()
-                    differentialApp.state.messages = convertAgentMessagesToDifferentialMessages(
-                        agent.messages || []
-                    )
-                    const count =
-                        (result.restoredFiles?.length || 0) + (result.deletedFiles?.length || 0)
+                const result = await agent.rollbackToSnapshot(snapshotId)
+                differentialApp.state.messages = convertAgentMessagesToDifferentialMessages(
+                    agent.messages || []
+                )
+                const count = result.restoredFiles.length + result.deletedFiles.length
+                const filesLabel = `${count} file${count === 1 ? '' : 's'}`
+                if (result.failedFiles.length > 0) {
                     differentialApp.showToast(
-                        `Undid Turn ${result.targetTurn}. (${count} file${count === 1 ? '' : 's'} affected)`,
+                        `Rewound to turn ${result.targetTurn} (${filesLabel}), but ${result.failedFiles.length} could not be restored: ${result.failedFiles.slice(0, 3).join(', ')}`,
+                        'error'
+                    )
+                } else {
+                    differentialApp.showToast(
+                        `Rewound to turn ${result.targetTurn} (${filesLabel} restored)`,
                         'success'
                     )
-                    differentialApp.render()
-                    return
                 }
-                const { getSnapshotManager } = await import('@december/tools')
-                const manager = getSnapshotManager(process.cwd())
-                await manager.init()
-                const snapshots = manager.getSnapshots()
-                if (snapshots.length === 0) {
-                    differentialApp.showToast('No turn snapshots recorded in this session.', 'info')
-                    return
-                }
-                differentialApp.showToast('Reverting last agent turn...', 'info')
-                const result = await manager.rollbackLastTurn()
-                const count =
-                    (result.restoredFiles?.length || 0) + (result.deletedFiles?.length || 0)
-                differentialApp.showToast(
-                    `Undid Turn ${result.targetTurn}. (${count} file${count === 1 ? '' : 's'} affected)`,
-                    'success'
-                )
-            } catch (e: any) {
-                differentialApp.showToast(`Failed to undo: ${e.message}`, 'error')
-            }
-        },
-        onRewindTurn: async (turnIndex: number) => {
-            try {
-                if (agent) {
-                    const result = await agent.rollbackToTurn(turnIndex)
-                    differentialApp.state.messages = convertAgentMessagesToDifferentialMessages(
-                        agent.messages || []
-                    )
-                    const count =
-                        (result.restoredFiles?.length || 0) + (result.deletedFiles?.length || 0)
-                    differentialApp.showToast(
-                        `Rewound to Turn ${turnIndex}. (${count} file${count === 1 ? '' : 's'} affected)`,
-                        'success'
-                    )
-                    differentialApp.render()
-                    return
-                }
-                const { getSnapshotManager } = await import('@december/tools')
-                const manager = getSnapshotManager(process.cwd())
-                await manager.init()
-                const result = await manager.rollbackToTurn(turnIndex)
-                const count =
-                    (result.restoredFiles?.length || 0) + (result.deletedFiles?.length || 0)
-                differentialApp.showToast(
-                    `Rewound to Turn ${turnIndex}. (${count} file${count === 1 ? '' : 's'} affected)`,
-                    'success'
-                )
                 differentialApp.render()
             } catch (e: any) {
                 differentialApp.showToast(`Failed to rewind: ${e.message}`, 'error')
             }
         },
+        onLoadUsage: async () => {
+            const isDecemberCloud = differentialApp.state.authMethod === 'december'
+            const [history, creditsRemainingInCents] = await Promise.all([
+                getUsageHistory(),
+                isDecemberCloud
+                    ? loadConfig().then((c) => fetchDecemberCreditsInCents(c.decemberToken))
+                    : Promise.resolve(undefined),
+            ])
+            return { history, creditsRemainingInCents }
+        },
         onLoadRewindTurns: async () => {
             try {
-                const { getSnapshotManager } = await import('@december/tools')
-                const manager = getSnapshotManager(process.cwd())
-                await manager.init()
-                const snapshots = manager.getSnapshots()
-                return [...snapshots]
-                    .sort((a, b) => b.turnIndex - a.turnIndex)
-                    .map((s) => ({
-                        turnIndex: s.turnIndex,
-                        commitHash: s.commitHash,
-                        prompt: s.prompt,
-                        timestamp: s.timestamp,
-                        touchedFiles: s.touchedFiles,
-                    }))
+                const snapshots = await agent.getRewindableSnapshots()
+                return snapshots.map((s) => ({
+                    id: s.id,
+                    turnIndex: s.turnIndex,
+                    commitHash: s.commitHash,
+                    prompt: s.prompt,
+                    timestamp: s.timestamp,
+                    touchedFiles: s.touchedFiles,
+                }))
             } catch {
+                // Intentionally swallowed: the picker shows its empty state
                 return []
             }
         },
@@ -1395,6 +1488,7 @@ async function main() {
                 differentialApp.state.messages = []
                 differentialApp.state.contextTokens = 0
                 differentialApp.state.sessionId = agent.sessionId
+                differentialApp.setSessionTitle(undefined)
                 differentialApp.render()
                 return agent.sessionId
             }
@@ -1403,6 +1497,7 @@ async function main() {
             if (agent) {
                 const newId = await agent.forkContext(newSessionId)
                 differentialApp.state.sessionId = newId
+                differentialApp.setSessionTitle(agent.sessionTitle)
                 differentialApp.render()
                 return newId
             }
@@ -1428,7 +1523,37 @@ async function main() {
                 return
             }
 
+            if (promptText === '/learn' || promptText.startsWith('/learn ')) {
+                const { getLearnPrompt } = await import('./constants/prompts')
+                const { resolveLearnTarget } = await import('./utils/learn-target')
+                const target = resolveLearnTarget(targetWorkspaceDir)
+                const learnPrompt = getLearnPrompt({
+                    lesson: promptText.replace(/^\/learn\s*/, '').trim(),
+                    ruleFile: target.ruleFile,
+                    ruleFileExists: target.ruleFileExists,
+                    nestedRuleFiles: target.nestedRuleFiles,
+                    skillsDir: target.skillsDir,
+                    existingSkillNames: target.existingSkillNames,
+                })
+                await runAgentExecution(learnPrompt)
+                return
+            }
+
             const isPlanRefine = promptText.startsWith('/plan refine')
+            const titleSeed = promptText.replace(/^\/plan(\s+refine:?)?\s*/i, '').trim()
+            if (titleSeed && !/^\/plan\s+(approve|reject)\b/i.test(promptText)) {
+                agent
+                    .ensurePromptTitle(titleSeed)
+                    .then(() => {
+                        if (agent.sessionTitle !== differentialApp.state.sessionTitle) {
+                            differentialApp.setSessionTitle(agent.sessionTitle)
+                            differentialApp.render()
+                        }
+                    })
+                    .catch(() => {
+                        // Intentionally swallowed: a missing title never blocks the prompt
+                    })
+            }
             const isPlanApprove =
                 promptText === '/plan approve' || promptText.startsWith('/plan approve')
             const isPlanReject =
@@ -1510,6 +1635,7 @@ async function main() {
                 return {
                     name: item.name,
                     scope: item.scope,
+                    plugin: item.plugin,
                     transport: (stdioCfg ? 'stdio' : 'http') as any,
                     status: (info?.status || 'disconnected') as any,
                     target,
@@ -1529,9 +1655,52 @@ async function main() {
                 await mcpClientManager.stopServer(name)
                 agent?.unregisterMcpServerTools(name)
             } else {
-                await mcpClientManager.startServer(name)
+                // /mcp starts a server for this session, even one saved as off
+                await mcpClientManager.startServer(
+                    name,
+                    info?.config ? { ...info.config, disabled: false } : undefined
+                )
                 agent?.registerMcpServerTools(name)
             }
+        },
+        onRunUpdate: async () => {
+            // Load everything up front: the install replaces this package's files on
+            // disk, so lazy chunks of the running version cannot be imported afterwards.
+            const [{ performCliUpdate }, { formatUpdateNotice }] = await Promise.all([
+                import('./utils/updater'),
+                import('./commands/update'),
+            ])
+            await agent.saveContext().catch(() => {
+                // Intentionally swallowed: the update itself does not depend on the save
+            })
+            differentialApp.setUpdateStatus('Checking for updates')
+            try {
+                const result = await performCliUpdate({
+                    currentVersion: pkg.version,
+                    onProgress: (msg) => differentialApp.setUpdateStatus(msg.replace(/\.+$/, '')),
+                })
+                differentialApp.setUpdateStatus(undefined)
+                const notice = formatUpdateNotice(result)
+                const installed = result.success && result.verified && !result.alreadyUpToDate
+                if (installed) {
+                    differentialApp.state.latestVersion = undefined
+                }
+                if (notice.message) {
+                    differentialApp.appendMessage(notice.message)
+                    differentialApp.state.scrollOffset = undefined
+                }
+                differentialApp.showToast(notice.toast, notice.variant)
+                if (installed) {
+                    differentialApp.setPendingRestart(
+                        result.installedVersion || result.targetVersion || 'latest'
+                    )
+                }
+            } finally {
+                differentialApp.setUpdateStatus(undefined)
+            }
+        },
+        onRestart: async () => {
+            await restartIntoUpdatedVersion()
         },
         onRestartMcpServer: async (name: string) => {
             agent?.unregisterMcpServerTools(name)
@@ -1587,97 +1756,250 @@ async function main() {
             agent?.registerMcpServerTools(data.name)
         },
         onLoadPlugins: async () => {
-            const { PluginManager } = await import('@december/tools')
-            const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
-            const [installed, discoverable] = await Promise.all([
-                pluginManager.getInstalledPlugins(),
-                pluginManager.getDiscoverablePlugins(),
-            ])
+            const { loadPluginCatalog } = await import('@december/tools')
+            const catalog = await loadPluginCatalog({
+                workspaceDir: targetWorkspaceDir,
+                mcpStatus: (name) => {
+                    const info = mcpClientManager.getServer(name)
+                    return info
+                        ? { status: info.status, toolCount: info.tools.length, error: info.error }
+                        : undefined
+                },
+            })
             return {
-                installed: installed.map((p) => ({
-                    id: p.id,
-                    name: p.name,
-                    description: p.description,
-                    version: p.version,
-                    author: p.author,
-                    scope: p.scope,
-                    enabled: p.enabled,
-                    installed: true,
-                    components: {
-                        skills: p.components.skills.map((skill) => skill.name),
-                        rules: p.components.rules.map((rule) => rule.name),
-                        mcpServers: p.components.mcpServers.map((server) => server.name),
-                    },
-                })),
-                discoverable: discoverable.map((p) => ({
-                    id: p.id,
-                    name: p.name,
-                    description: p.description,
-                    version: p.version,
-                    author: p.author,
-                    enabled: false,
-                    installed: p.installed ?? false,
-                    components: {
-                        skills: p.defaultSkills ?? [],
-                        mcpServers: p.defaultMcpServers ?? [],
-                    },
+                installed: catalog.installed,
+                discover: catalog.discover,
+                marketplaces: catalog.marketplaces.map((m) => ({
+                    name: m.name,
+                    source: m.source,
+                    builtIn: m.builtIn,
+                    available: m.plugins.length,
+                    installedCount: m.installedCount,
+                    updatedAt: m.updatedAt,
+                    error: m.error,
                 })),
             }
         },
-        onTogglePlugin: async (id: string) => {
-            const { PluginManager } = await import('@december/tools')
-            const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
-            const plugin = await pluginManager.togglePlugin(id)
-            if (plugin && plugin.components.mcpServers.length > 0) {
-                for (const s of plugin.components.mcpServers) {
-                    if (plugin.enabled) {
-                        try {
-                            await mcpClientManager.startServer(s.name)
-                            agent?.registerMcpServerTools(s.name)
-                        } catch {
-                            // Intentionally swallowed: mcp server auto-start fallback
-                        }
-                    } else {
-                        try {
-                            await mcpClientManager.stopServer(s.name)
-                            agent?.unregisterMcpServerTools(s.name)
-                        } catch {
-                            // Intentionally swallowed: mcp server auto-stop fallback
-                        }
-                    }
+        onTogglePluginItem: async (item) => {
+            const tools = await import('@december/tools')
+            if (item.kind === 'plugin') {
+                const pluginManager = new tools.PluginManager({ workspaceDir: targetWorkspaceDir })
+                const plugin = await pluginManager.togglePlugin(item.id)
+                await syncPluginMcpServers(plugin, plugin.enabled)
+                return {
+                    enabled: plugin.enabled,
+                    restartRequired: plugin.components.skills.length > 0,
                 }
             }
+            if (item.kind === 'skill') {
+                const { SkillDiscoveryEngine, writeExtensionPreference } =
+                    await import('@december/shared')
+                const skill = new SkillDiscoveryEngine({
+                    workspaceDir: targetWorkspaceDir,
+                    includeDisabled: true,
+                })
+                    .discoverAllSkills()
+                    .find((s) => s.name === item.id)
+                const enabled = !(skill?.enabled !== false)
+                await writeExtensionPreference({
+                    kind: 'skill',
+                    id: item.id,
+                    enabled,
+                    scope: item.scope === 'project' ? 'project' : 'user',
+                    workspaceDir: targetWorkspaceDir,
+                })
+                return { enabled, restartRequired: true }
+            }
+            const current = await tools.getMcpServerConfig(item.id, {
+                workspaceDir: targetWorkspaceDir,
+            })
+            if (!current || current.plugin) {
+                throw new Error(`${item.id} is not in an MCP config file.`)
+            }
+            const disable = !current.config.disabled
+            await tools.setMcpServerDisabled(item.id, disable, {
+                scope: current.scope,
+                workspaceDir: targetWorkspaceDir,
+            })
+            if (disable) {
+                agent?.unregisterMcpServerTools(item.id)
+                await mcpClientManager.stopServer(item.id)
+            } else {
+                await mcpClientManager.startServer(item.id, { ...current.config, disabled: false })
+                agent?.registerMcpServerTools(item.id)
+            }
+            return { enabled: !disable, restartRequired: false }
         },
-        onInstallPlugin: async (id: string) => {
+        onInstallPlugin: async (id, scope) => {
             const { PluginManager } = await import('@december/tools')
             const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
-            const installed = await pluginManager.installPlugin(id)
-            if (installed && installed.components.mcpServers.length > 0) {
-                for (const s of installed.components.mcpServers) {
-                    try {
-                        await mcpClientManager.startServer(s.name)
-                        agent?.registerMcpServerTools(s.name)
-                    } catch {
-                        // Intentionally swallowed: mcp server auto-start fallback
-                    }
-                }
-            }
+            const installed = await pluginManager.installPlugin(id, { scope })
+            await syncPluginMcpServers(installed, installed.enabled)
+            return { name: installed.name }
+        },
+        onInstallPluginFromSource: async (source, scope) => {
+            const { PluginManager } = await import('@december/tools')
+            const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
+            const installed = await pluginManager.installFromSource(source, { scope })
+            await syncPluginMcpServers(installed, installed.enabled)
+            return { name: installed.name }
+        },
+        onUpdatePlugin: async (id) => {
+            const { PluginManager } = await import('@december/tools')
+            const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
+            const before = (await pluginManager.getInstalledPlugins()).find((p) => p.id === id)
+            if (before) await syncPluginMcpServers(before, false)
+            const updated = await pluginManager.updatePlugin(id)
+            await syncPluginMcpServers(updated, updated.enabled)
+            return { name: updated.name, version: updated.version }
         },
         onUninstallPlugin: async (id: string) => {
             const { PluginManager } = await import('@december/tools')
             const pluginManager = new PluginManager({ workspaceDir: targetWorkspaceDir })
             const installed = (await pluginManager.getInstalledPlugins()).find((p) => p.id === id)
-            if (installed && installed.components.mcpServers.length > 0) {
-                for (const s of installed.components.mcpServers) {
-                    try {
-                        await mcpClientManager.stopServer(s.name)
-                        agent?.unregisterMcpServerTools(s.name)
-                    } catch {
-                        // Intentionally swallowed: mcp server auto-stop fallback
-                    }
-                }
-            }
+            if (installed) await syncPluginMcpServers(installed, false)
             await pluginManager.uninstallPlugin(id)
+        },
+        onAddMarketplace: async (source) => {
+            const { MarketplaceRegistry } = await import('@december/tools')
+            const added = await new MarketplaceRegistry().add(source)
+            return { name: added.name, available: added.plugins.length }
+        },
+        onUpdateMarketplace: async (name) => {
+            const { MarketplaceRegistry } = await import('@december/tools')
+            await new MarketplaceRegistry().update(name)
+        },
+        onRemoveMarketplace: async (name) => {
+            const { MarketplaceRegistry } = await import('@december/tools')
+            await new MarketplaceRegistry().remove(name)
+        },
+        onRunChecks: async () => {
+            const { runDoctorChecks } = await import('./utils/doctor-checks')
+            const { listMcpServersWithScope } = await import('@december/tools')
+            const servers = await listMcpServersWithScope({ workspaceDir: targetWorkspaceDir })
+            return runDoctorChecks({
+                workspaceDir: targetWorkspaceDir,
+                includeInstall: true,
+                mcpServers: servers.map((item) => {
+                    const info = mcpClientManager.getServer(item.name)
+                    return {
+                        name: item.name,
+                        scope: item.plugin ? `plugin ${item.plugin}` : item.scope,
+                        status: (info?.status || 'disconnected') as
+                            | 'connected'
+                            | 'connecting'
+                            | 'disconnected'
+                            | 'error',
+                        error: info?.error,
+                    }
+                }),
+            })
+        },
+        // the permission gate (store/interceptors) reads rules from the cwd, so these do too
+        onLoadPermissions: async () => {
+            const { readPermissionRules, getRuleFilePath } =
+                await import('./utils/permission-rules')
+            const { toDisplayPath } = await import('./utils/doctor-checks')
+            const cfg = await loadConfig()
+            const rules = readPermissionRules(process.cwd())
+            return {
+                ...rules,
+                toolPermission: cfg.toolPermission ?? 'always-proceed',
+                globalPath: toDisplayPath(getRuleFilePath('global', process.cwd())),
+                projectPath: toDisplayPath(getRuleFilePath('project', process.cwd())),
+            }
+        },
+        onChangePermissionRule: async (change) => {
+            const { addPermissionRule, removePermissionRule } =
+                await import('./utils/permission-rules')
+            if (change.action === 'add') {
+                addPermissionRule(change.kind, change.scope, change.pattern, process.cwd())
+            } else {
+                removePermissionRule(change.kind, change.scope, change.pattern, process.cwd())
+            }
+        },
+        onLoadGithubSetup: async () => {
+            const gh = await import('./utils/github-setup')
+            const { toDisplayPath } = await import('./utils/doctor-checks')
+            const cfg = await loadConfig()
+            const plan = gh.resolveGithubProvider(cfg)
+            const status = gh.getGithubSetupStatus(process.cwd())
+            return {
+                ghInstalled: status.ghInstalled,
+                ghAuthed: status.ghAuthed,
+                ghAuthDetail: status.ghAuthDetail,
+                repo: status.repo,
+                defaultBranch: status.defaultBranch,
+                inGitRepo: Boolean(status.gitRoot),
+                workflowExists: status.workflowExists,
+                workflowPath: status.workflowPath ? toDisplayPath(status.workflowPath) : undefined,
+                provider: plan.provider,
+                secretName: plan.secretName,
+                providerNote: plan.note,
+                secretSet: status.secrets.includes(plan.secretName),
+                slackSet: status.secrets.includes(gh.SLACK_SECRET),
+                discordSet: status.secrets.includes(gh.DISCORD_SECRET),
+                secretsError: status.secretsError,
+                savedKeyAvailable: Boolean(plan.savedKey),
+            }
+        },
+        onGithubSetupAction: async (action) => {
+            const gh = await import('./utils/github-setup')
+            const cfg = await loadConfig()
+            const plan = gh.resolveGithubProvider(cfg)
+            const status = gh.getGithubSetupStatus(process.cwd())
+            if (!status.gitRoot) throw new Error('This folder is not a git repository.')
+            if (action.type === 'write-workflow') {
+                gh.writeDecemberWorkflow({
+                    gitRoot: status.gitRoot,
+                    provider: plan.provider,
+                    secretName: plan.secretName,
+                    baseBranch: status.defaultBranch,
+                    overwrite: action.overwrite,
+                })
+                return `Wrote ${gh.WORKFLOW_RELATIVE_PATH}. Commit and push it to turn the action on.`
+            }
+            if (action.type === 'use-saved-key') {
+                if (!plan.savedKey) throw new Error('No saved API key for this provider.')
+                gh.setGithubSecret(status.gitRoot, plan.secretName, plan.savedKey)
+                return `Set ${plan.secretName} from your saved ${plan.provider} key.`
+            }
+            gh.setGithubSecret(status.gitRoot, action.name, action.value)
+            return `Set ${action.name}.`
+        },
+        keybindingsPath: path.join(getConfigDir(), 'keybindings.json'),
+        onLoadHooks: async () => {
+            const { parseUserHooksFile } = await import('@december/shared')
+            const { getUserHookPaths } = await import('./utils/user-hooks-setup')
+            const { toDisplayPath } = await import('./utils/doctor-checks')
+            const paths = getUserHookPaths(process.cwd())
+            const global = parseUserHooksFile(paths.globalPath, 'global')
+            const project = parseUserHooksFile(paths.projectPath, 'project')
+            const projectSkipped = Boolean(userHooks?.projectHooksSkipped())
+            const label = (file: string) => toDisplayPath(file)
+            return {
+                hooks: [...global.hooks, ...(projectSkipped ? [] : project.hooks)],
+                globalPath: label(paths.globalPath),
+                projectPath: label(paths.projectPath),
+                globalFile: paths.globalPath,
+                projectFile: paths.projectPath,
+                projectSkipped: projectSkipped && project.hooks.length > 0,
+                problems: [
+                    ...global.problems.map((p) => `${label(paths.globalPath)}: ${p}`),
+                    ...project.problems.map((p) => `${label(paths.projectPath)}: ${p}`),
+                ],
+            }
+        },
+        onCompact: async (focus?: string) => {
+            const result = await agent.compact({
+                focus,
+                onStatus: (status) => differentialApp.setStatusMessage(status),
+            })
+            return {
+                compacted: result.compacted,
+                tokensBefore: result.tokensBefore,
+                tokensAfter: result.tokensAfter,
+            }
         },
         onLoadAgentsFile: async () => {
             // Same lookup as the agent harness, so /memory shows the rules the agent reads
@@ -1703,25 +2025,12 @@ async function main() {
         },
         onScaffoldRules: async () => {
             const fs = await import('node:fs/promises')
-            const { DEFAULT_AGENTS_MD_TEMPLATE } = await import('@december/tools')
+            const { DEFAULT_AGENTS_MD_TEMPLATE } = await import('@december/shared')
 
             // Create the file at the git root (or the workspace when there is no repo),
             // where the rules lookup finds it from any subfolder
-            let targetDir = path.resolve(targetWorkspaceDir)
-            let current = targetDir
-            while (true) {
-                const isGitRoot = await fs
-                    .stat(path.join(current, '.git'))
-                    .then(() => true)
-                    .catch(() => false)
-                if (isGitRoot) {
-                    targetDir = current
-                    break
-                }
-                const parent = path.dirname(current)
-                if (parent === current) break
-                current = parent
-            }
+            const { findRuleRoot } = await import('./utils/learn-target')
+            const targetDir = findRuleRoot(targetWorkspaceDir)
 
             const targetPath = path.join(targetDir, 'AGENTS.md')
             try {
@@ -1758,10 +2067,29 @@ async function main() {
     const { setupAgentInterceptors } = await import('./store/interceptors')
     setupAgentInterceptors(agent, differentialApp)
 
+    const { setupUserHooks } = await import('./utils/user-hooks-setup')
+    userHooks = await setupUserHooks(agent, {
+        workspaceDir: process.cwd(),
+        onNotice: (message, tone) => differentialApp.showToast(message, tone),
+    })
+    void userHooks.runSessionStart(isResumeFlag || isExplicitResumeCmd ? 'resume' : 'startup')
+
+    // output arrives in many small chunks: sync the task list at most every 100ms
+    let syncTasksTimer: ReturnType<typeof setTimeout> | null = null
     const syncTasks = () => {
-        differentialApp.updateTasks(mapBackgroundTasksToTaskItems(taskManager.getTasks()))
+        if (syncTasksTimer) return
+        syncTasksTimer = setTimeout(() => {
+            syncTasksTimer = null
+            differentialApp.updateTasks(mapBackgroundTasksToTaskItems(taskManager.getTasks()))
+        }, 100)
     }
     taskManager.on('change', syncTasks)
+
+    const { attachTaskNotifications } = await import('./task-notifications')
+    const detachTaskNotifications = attachTaskNotifications(taskManager, {
+        steer: (text) => agent.steer({ role: 'user', content: text }),
+        notice: (text, tone) => differentialApp.appendTaskNotice(text, tone),
+    })
 
     // Background workspace file and git status indexing for instantaneous @ and /open suggestions
     differentialApp.refreshWorkspaceFiles().catch(() => {
@@ -1784,6 +2112,7 @@ async function main() {
 
     const handleExit = () => {
         taskManager.off('change', syncTasks)
+        detachTaskNotifications()
         mcpClientManager.disconnectAll().catch(() => {
             // Intentionally swallowed: ignore disconnect errors on exit
         })
@@ -1796,6 +2125,69 @@ async function main() {
         process.on('SIGTERM', handleExit)
     }
 
+    /**
+     * Start the updated December in this terminal, resuming the current session, and
+     * keep this process only as a waiting parent. Spawning (not exec) works on every
+     * platform; the parent forwards termination and exits with the child's code.
+     */
+    const restartIntoUpdatedVersion = async () => {
+        const runningTasks = taskManager.getTasks().filter((t) => t.status === 'running')
+        if (runningTasks.length > 0) {
+            differentialApp.showToast(
+                `${runningTasks.length} background task(s) still running. Stop them in /tasks, then /restart.`,
+                'info'
+            )
+            return
+        }
+
+        const { spawn } = await import('node:child_process')
+        await agent.saveContext().catch(() => {
+            // Intentionally swallowed: the new process reloads whatever was saved last
+        })
+        taskManager.off('change', syncTasks)
+        detachTaskNotifications()
+        await mcpClientManager.disconnectAll().catch(() => {
+            // Intentionally swallowed: MCP servers are restarted by the new process
+        })
+
+        differentialApp.handOffTerminal()
+        process.off('SIGINT', handleExit)
+        process.off('SIGTERM', handleExit)
+
+        const childArgs = [process.argv[1] ?? 'december', '--resume']
+        if (agent.sessionId) {
+            childArgs.push('--session-id', agent.sessionId)
+        }
+        const child = spawn(process.execPath, childArgs, {
+            stdio: 'inherit',
+            cwd: process.cwd(),
+            env: process.env,
+        })
+
+        // The child owns the terminal now. Ctrl+C reaches it directly, so the parent
+        // must not exit early and drop the user back to the shell mid-session.
+        process.on('SIGINT', () => {
+            // Intentionally ignored: the child handles interrupts
+        })
+        const forward = (signal: NodeJS.Signals) => () => {
+            child.kill(signal)
+        }
+        process.on('SIGTERM', forward('SIGTERM'))
+        process.on('SIGHUP', forward('SIGHUP'))
+
+        // ChildProcess event typings conflict between bun-types and @types/node here
+        const childEvents = child as unknown as NodeJS.EventEmitter
+        childEvents.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
+            process.exit(code ?? (signal ? 1 : 0))
+        })
+        childEvents.on('error', (err: Error) => {
+            process.stderr.write(
+                `\nCould not restart December: ${err.message}\nRun "december --resume" to continue your session.\n`
+            )
+            process.exit(1)
+        })
+    }
+
     if (targetSessionId) {
         await agent.loadContext().catch(() => {
             // Intentionally swallowed: ignore context load errors on fresh sessions
@@ -1803,11 +2195,18 @@ async function main() {
         differentialApp.state.messages = convertAgentMessagesToDifferentialMessages(
             agent.messages || []
         )
+        differentialApp.setSessionTitle(agent.sessionTitle)
     } else {
         // Non-blocking session context loading during TUI mounting for fresh sessions
         agent.loadContext().catch(() => {
             // Intentionally swallowed: ignore context load errors on fresh sessions
         })
+    }
+
+    if (unmatchedSessionRef) {
+        shouldOpenSessionMenuOnBoot = true
+        differentialApp.state.sessionSearchQuery = unmatchedSessionRef
+        differentialApp.showToast(`No session matches "${unmatchedSessionRef}".`, 'info')
     }
 
     if (shouldOpenSessionMenuOnBoot) {

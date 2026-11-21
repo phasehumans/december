@@ -266,8 +266,11 @@ export async function* runAgentLoop(
                 const snapshotManager = getSnapshotManager(agent.workspaceDir)
                 const turnIndex = agent.messages.filter((m) => m.role === 'user' && !m.isUI).length
                 const promptText = typeof userInput === 'string' ? userInput : userInput.content
+                const userMessage = agent.messages[agent.messages.length - 1]
                 await snapshotManager.createSnapshot({
                     turnIndex,
+                    sessionId: agent.sessionId,
+                    messageId: userMessage?.id,
                     prompt: promptText,
                 })
             } catch {
@@ -427,6 +430,15 @@ async function runInnerLoop(
                 thoughtSignature,
             })
             isDone = true
+            if (agent.hooks?.beforeStop && !signal.aborted) {
+                const stopRes = (await agent.hooks.beforeStop()) as
+                    | { continue?: boolean; message?: string }
+                    | undefined
+                if (stopRes?.continue && stopRes.message) {
+                    agent.addMessage({ role: 'user', content: stopRes.message })
+                    isDone = false
+                }
+            }
         } else {
             agent.addMessage({
                 role: 'assistant',
@@ -582,6 +594,8 @@ async function streamAssistantResponse(
                     eventQueue.push({
                         type: 'ContextCompacted',
                         summary: compactionResult.summary || '',
+                        tokensBefore: compactionResult.tokensBefore,
+                        tokensAfter: compactionResult.tokensAfter,
                     })
                 }
                 // In read-only mode, restrict to read-only tools. Otherwise provide all tools.
@@ -744,6 +758,7 @@ async function streamAssistantResponse(
                             completionTokens: chunk.completionTokens,
                             cacheCreationInputTokens: chunk.cacheCreationInputTokens,
                             cacheReadInputTokens: chunk.cacheReadInputTokens,
+                            promptTokensExcludeCache: chunk.promptTokensExcludeCache,
                             model: loggedModel,
                         })
                     }
@@ -1191,7 +1206,7 @@ async function executeSingleTool(
     if (agent.operations?.ui?.requestPermission) {
         const hookRes = await agent.operations.ui.requestPermission(toolCall)
         if (hookRes?.block) {
-            errorStr = `Tool execution blocked: ${hookRes.reason || 'No reason provided'}`
+            errorStr = `Tool execution blocked: ${hookRes.reason || (hookRes as any).error || 'No reason provided'}`
             const res = { toolCallId: toolCall.id, result: '', error: errorStr }
             eventQueue.push({ type: 'ToolCallResult', result: res })
             try {
@@ -1206,6 +1221,18 @@ async function executeSingleTool(
             } catch {
                 // Intentionally swallowed: Telemetry tool execution recording must not disrupt agent loop
             }
+            return { toolCall, toolResult: res, resultStr: '', errorStr }
+        }
+    }
+
+    if (agent.hooks?.beforeToolCall) {
+        const beforeRes = (await agent.hooks.beforeToolCall(toolCall)) as
+            | { block?: boolean; reason?: string }
+            | undefined
+        if (beforeRes?.block) {
+            errorStr = `Tool execution blocked: ${beforeRes.reason || 'blocked by a hook'}`
+            const res = { toolCallId: toolCall.id, result: '', error: errorStr }
+            eventQueue.push({ type: 'ToolCallResult', result: res })
             return { toolCall, toolResult: res, resultStr: '', errorStr }
         }
     }

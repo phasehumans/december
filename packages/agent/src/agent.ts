@@ -5,7 +5,13 @@ import {
     type McpServerConfig,
 } from '@december/tools'
 
-import { ConversationManager } from './conversation-manager'
+import { ConversationManager, type CompactResult } from './conversation-manager'
+import {
+    deriveTitleFromPrompt,
+    generateSessionTitle,
+    normalizeSessionTitle,
+    type SessionTitleSource,
+} from './session-title'
 import { createAgentTracer } from './telemetry/tracer.factory'
 import { evaporateStaleToolOutputs } from './utils/evaporation'
 
@@ -14,6 +20,7 @@ import type { PlatformAdapter } from './platform-adapter'
 import type { AgentTracer } from './telemetry/tracer.types'
 import type { LLMProvider } from '@december/providers'
 import type { AgentMessage, Message, Tool, AgentHooks } from '@december/shared'
+import type { SnapshotRecord } from '@december/tools'
 
 export interface AgentConfig {
     sessionId?: string
@@ -87,6 +94,8 @@ export class Agent {
     public systemPrompt: string
     public llm: LLMProvider
     public sessionId: string
+    public sessionTitle?: string
+    public sessionTitleSource?: SessionTitleSource
     public sessionRepository?: SessionRepository
     public hooks?: AgentHooks
     public operations: PlatformAdapter
@@ -105,6 +114,7 @@ export class Agent {
     public mcpClientManager?: McpClientManager
     public depth: number
     public maxDepth: number
+    private titleUpgradeAttempted = new Set<string>()
 
     constructor(config: AgentConfig) {
         this.depth = config.depth ?? 0
@@ -325,6 +335,35 @@ export class Agent {
                 this.messages = loaded
             }
         }
+        await this.loadSessionTitle()
+    }
+
+    /**
+     * Compacts the conversation now (/compact), without waiting for the context threshold.
+     * `focus` is added to the summary instructions. The result is saved to the session.
+     */
+    public async compact(options?: {
+        focus?: string
+        onStatus?: (status: string) => void
+    }): Promise<CompactResult> {
+        // abort() (esc in the tui) cancels the summary request
+        const abortController = new AbortController()
+        this.activeAbortController = abortController
+        try {
+            const result = await this.conversation.compactIfNeeded(
+                this.llm,
+                undefined,
+                this.modelOptions,
+                abortController.signal,
+                { force: true, focus: options?.focus, onStatus: options?.onStatus }
+            )
+            if (result.compacted) await this.saveContext()
+            return result
+        } finally {
+            if (this.activeAbortController === abortController) {
+                this.activeAbortController = undefined
+            }
+        }
     }
 
     public async clearContext() {
@@ -334,27 +373,120 @@ export class Agent {
         }
     }
 
+    /** makes a new internal session id that differs from the current one and any saved one */
+    private async createSessionId(): Promise<string> {
+        const base = `session-${Date.now()}`
+        let id = base
+        let counter = 1
+        while (id === this.sessionId || (await this.sessionRepository?.hasSession?.(id))) {
+            id = `${base}-${counter++}`
+        }
+        return id
+    }
+
     public async newContext() {
-        this.sessionId = `session-${Date.now()}`
+        this.sessionId = await this.createSessionId()
+        this.sessionTitle = undefined
+        this.sessionTitleSource = undefined
         if (this.messages.length > 0) {
             this.messages = [this.messages[0]!]
         }
         await this.saveContext()
     }
 
-    public async forkContext(newSessionId?: string) {
-        let targetId = newSessionId ? sanitizeSessionId(newSessionId) : `session-${Date.now()}`
-        if (this.sessionRepository?.hasSession) {
-            let uniqueId = targetId
-            let counter = 1
-            while (await this.sessionRepository.hasSession(uniqueId)) {
-                uniqueId = `${targetId}-${counter++}`
-            }
-            targetId = uniqueId
-        }
+    /**
+     * copies the conversation into a new session. the new session always gets a
+     * fresh internal id; `title` (from `/fork <title>`) becomes its display name.
+     * without a title, the fork reuses the parent title with a "(fork)" suffix.
+     */
+    public async forkContext(title?: string) {
+        const targetId = await this.createSessionId()
+        const parentTitle = this.sessionTitle
+        const parentSource = this.sessionTitleSource
         this.sessionId = targetId
+        this.sessionTitle = undefined
+        this.sessionTitleSource = undefined
         await this.saveContext()
+
+        const requested = normalizeSessionTitle(title || '')
+        if (requested) {
+            await this.setSessionTitle(requested, 'manual')
+        } else if (parentTitle) {
+            await this.setSessionTitle(
+                normalizeSessionTitle(`${parentTitle} (fork)`),
+                parentSource === 'manual' ? 'manual' : 'auto'
+            )
+        }
         return this.sessionId
+    }
+
+    public async loadSessionTitle() {
+        const meta = await this.sessionRepository?.getSessionMeta?.(this.sessionId).catch(() => {
+            // Intentionally swallowed: a missing meta file means no title
+            return null
+        })
+        this.sessionTitle = meta?.title || undefined
+        this.sessionTitleSource = meta?.title ? meta.titleSource || 'manual' : undefined
+    }
+
+    /** sets and saves the display title of the current session. the session id does not change. */
+    public async setSessionTitle(title: string, source: SessionTitleSource = 'manual') {
+        const clean = normalizeSessionTitle(title)
+        if (!clean) return
+        this.sessionTitle = clean
+        this.sessionTitleSource = source
+        await this.sessionRepository?.setSessionMeta?.(this.sessionId, {
+            title: clean,
+            titleSource: source,
+        })
+    }
+
+    /** gives an untitled session an instant title cut from the prompt. */
+    public async ensurePromptTitle(prompt: string) {
+        if (this.sessionTitle) return
+        const title = deriveTitleFromPrompt(prompt)
+        if (title) await this.setSessionTitle(title, 'prompt')
+    }
+
+    /** asks the model for a short title of the current conversation. empty string on failure. */
+    public async generateSessionTitle(signal?: AbortSignal): Promise<string> {
+        return generateSessionTitle({
+            llm: this.llm,
+            messages: this.messages,
+            modelOptions: this.modelOptions,
+            signal,
+        })
+    }
+
+    /**
+     * upgrades a prompt-derived title to a model-written one. it runs at most once
+     * per session, never replaces a manual title, and writes to the session that
+     * was active when it started (the user may run /new while it is in flight).
+     */
+    public async upgradeAutoTitle(): Promise<string | undefined> {
+        if (this.sessionTitleSource === 'auto' || this.sessionTitleSource === 'manual') return
+        const sessionId = this.sessionId
+        if (this.titleUpgradeAttempted.has(sessionId)) return
+        this.titleUpgradeAttempted.add(sessionId)
+
+        const title = await this.generateSessionTitle()
+        if (!title) return
+
+        const current = await this.sessionRepository?.getSessionMeta?.(sessionId).catch(() => {
+            // Intentionally swallowed: treat as untitled
+            return null
+        })
+        if (current?.titleSource === 'manual' || current?.titleSource === 'auto') return
+
+        await this.sessionRepository?.setSessionMeta?.(sessionId, {
+            title,
+            titleSource: 'auto',
+        })
+        if (this.sessionId === sessionId) {
+            this.sessionTitle = title
+            this.sessionTitleSource = 'auto'
+        }
+        return title
     }
 
     public async initMcpServers(configs?: Record<string, McpServerConfig>): Promise<void> {
@@ -380,26 +512,51 @@ export class Agent {
         this.registerTool(createReadMcpResourceTool(this.mcpClientManager))
     }
 
-    public truncateToTurn(targetTurn: number): void {
-        this.conversation.truncateToTurn(targetTurn)
-    }
-
-    public async rollbackToTurn(targetTurn: number) {
+    /**
+     * Snapshots that can still be rewound in this conversation, newest first.
+     * A snapshot qualifies only while the user message that started its turn is
+     * still in the conversation (not removed by /clear, a new session, or compaction).
+     * turnIndex is renumbered to match the turn's position in the current conversation.
+     */
+    public async getRewindableSnapshots(): Promise<SnapshotRecord[]> {
         const { getSnapshotManager } = await import('@december/tools')
         const snapshotManager = getSnapshotManager(this.workspaceDir)
-        const result = await snapshotManager.rollbackToTurn(targetTurn)
-        this.truncateToTurn(targetTurn)
-        await this.saveContext().catch(() => {
-            // Intentionally swallowed: save context error
-        })
-        return result
+        await snapshotManager.init()
+
+        const turnByMessageId = new Map<string, number>()
+        let turn = 0
+        for (const msg of this.messages) {
+            if (msg.role === 'user' && !msg.isUI) {
+                turn++
+                if (msg.id) turnByMessageId.set(msg.id, turn)
+            }
+        }
+
+        return snapshotManager
+            .getSnapshots()
+            .filter((r) => r.messageId && turnByMessageId.has(r.messageId))
+            .map((r) => ({ ...r, turnIndex: turnByMessageId.get(r.messageId!)! }))
+            .sort((a, b) => b.turnIndex - a.turnIndex)
     }
 
-    public async rollbackLastTurn() {
+    /** Restores files and conversation to the state before the snapshot's turn. */
+    public async rollbackToSnapshot(snapshotId: string) {
         const { getSnapshotManager } = await import('@december/tools')
         const snapshotManager = getSnapshotManager(this.workspaceDir)
-        const result = await snapshotManager.rollbackLastTurn()
-        this.truncateToTurn(result.targetTurn)
+        await snapshotManager.init()
+
+        const record = snapshotManager.getSnapshotById(snapshotId)
+        if (!record) {
+            throw new Error('Checkpoint not found.')
+        }
+        const inConversation =
+            record.messageId !== undefined && this.messages.some((m) => m.id === record.messageId)
+        if (!inConversation) {
+            throw new Error('This turn is no longer in the conversation. Nothing was changed.')
+        }
+
+        const result = await snapshotManager.rollbackToSnapshot(snapshotId)
+        this.conversation.truncateBeforeMessage(record.messageId!)
         await this.saveContext().catch(() => {
             // Intentionally swallowed: save context error
         })

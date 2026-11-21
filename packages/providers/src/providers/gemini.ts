@@ -159,12 +159,15 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
 
             let totalPromptTokens = 0
             let totalCompletionTokens = 0
+            let totalCachedTokens = 0
 
             for await (const chunk of responseStream) {
                 if (chunk.usageMetadata) {
                     totalPromptTokens = chunk.usageMetadata.promptTokenCount || totalPromptTokens
                     totalCompletionTokens =
                         chunk.usageMetadata.candidatesTokenCount || totalCompletionTokens
+                    totalCachedTokens =
+                        chunk.usageMetadata.cachedContentTokenCount || totalCachedTokens
                 }
                 const candidate = chunk.candidates?.[0]
                 if (candidate?.finishReason) {
@@ -261,6 +264,7 @@ export function geminiProvider(apiKey?: string, customClient?: GoogleGenAI): LLM
                     type: 'usage',
                     promptTokens: totalPromptTokens,
                     completionTokens: totalCompletionTokens,
+                    ...(totalCachedTokens > 0 ? { cacheReadInputTokens: totalCachedTokens } : {}),
                 }
             }
         }

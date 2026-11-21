@@ -9,6 +9,8 @@ export const SESSION_WINDOW_SIZE = 7
 
 export interface SessionItem {
     id: string
+    /** display title (manual, model-written, or cut from the first prompt) */
+    title?: string
     preview?: string
     updatedAt: Date | string | number
     messageCount?: number
@@ -54,14 +56,25 @@ export function sanitizeSessionTitle(rawTitle: string): string {
     return cleaned || rawTitle.replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * the name to show for a session: its title, else a legacy custom id
+ * (sessions renamed before titles existed), else the first prompt, else the id.
+ */
+export function getSessionDisplayTitle(session: SessionItem): string {
+    if (session.title && session.title.trim()) return session.title.trim()
+    if (!session.id.startsWith('session-')) return session.id
+    return sanitizeSessionTitle(session.preview || '') || session.id
+}
+
 export const SessionSelectMenuView = {
     getFiltered(sessions: SessionItem[], query?: string): SessionItem[] {
         if (!query || !query.trim()) return sessions
         const q = query.toLowerCase().trim()
         return sessions.filter((s) => {
+            const title = (s.title || '').toLowerCase()
             const preview = (s.preview || '').toLowerCase()
             const id = s.id.toLowerCase()
-            return preview.includes(q) || id.includes(q)
+            return title.includes(q) || preview.includes(q) || id.includes(q)
         })
     },
 
@@ -162,9 +175,7 @@ export const SessionSelectMenuView = {
                 const timeWidth = 12
                 const maxTitleWidth = Math.max(10, width - 2 - timeWidth - 2)
 
-                const isCustomName = !session.id.startsWith('session-')
-                const rawTitle = isCustomName ? session.id : session.preview || session.id
-                const cleanedTitle = sanitizeSessionTitle(rawTitle)
+                const cleanedTitle = getSessionDisplayTitle(session)
 
                 let displayTitle = cleanedTitle
                 if (isConfirmDelete) {

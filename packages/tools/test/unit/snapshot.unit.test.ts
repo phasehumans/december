@@ -164,4 +164,95 @@ describe('SnapshotManager (Unit)', () => {
         expect(loadedSnapshots[0]?.turnIndex).toBe(1)
         expect(loadedSnapshots[0]?.prompt).toBe('initial app')
     })
+
+    it('rewinds to the current session snapshot when turn numbers repeat across sessions', async () => {
+        const file = path.join(tempDir, 'a.txt')
+        const session1 = new SnapshotManager(tempDir)
+        await fs.writeFile(file, 'v1', 'utf8')
+        await session1.createSnapshot({ turnIndex: 1, sessionId: 's1', messageId: 'm1' })
+        await fs.writeFile(file, 'v2', 'utf8')
+        await session1.createSnapshot({ turnIndex: 2, sessionId: 's1', messageId: 'm2' })
+        await fs.writeFile(file, 'v3', 'utf8')
+
+        const session2 = new SnapshotManager(tempDir)
+        const current = await session2.createSnapshot({
+            turnIndex: 1,
+            sessionId: 's2',
+            messageId: 'm3',
+        })
+        await fs.writeFile(file, 'v4', 'utf8')
+
+        const byId = await session2.rollbackToSnapshot(current.id)
+        expect(byId.success).toBe(true)
+        expect(await fs.readFile(file, 'utf8')).toBe('v3')
+
+        // Other sessions keep their snapshots; the rewound one is dropped
+        expect(session2.getSnapshots().map((r) => r.messageId)).toEqual(['m1', 'm2'])
+    })
+
+    it('rollbackToTurn picks the most recent snapshot for a repeated turn number', async () => {
+        const file = path.join(tempDir, 'a.txt')
+        const manager = new SnapshotManager(tempDir)
+        await fs.writeFile(file, 'old', 'utf8')
+        await manager.createSnapshot({ turnIndex: 1, sessionId: 's1' })
+        await fs.writeFile(file, 'new', 'utf8')
+        await manager.createSnapshot({ turnIndex: 1, sessionId: 's2' })
+        await fs.writeFile(file, 'changed', 'utf8')
+
+        await manager.rollbackToTurn(1)
+        expect(await fs.readFile(file, 'utf8')).toBe('new')
+    })
+
+    it('drops the target and later snapshots of the same session after a rewind', async () => {
+        const file = path.join(tempDir, 'a.txt')
+        const manager = new SnapshotManager(tempDir)
+        await fs.writeFile(file, 'v1', 'utf8')
+        await manager.createSnapshot({ turnIndex: 1, sessionId: 's1', messageId: 'm1' })
+        await fs.writeFile(file, 'v2', 'utf8')
+        const turn2 = await manager.createSnapshot({
+            turnIndex: 2,
+            sessionId: 's1',
+            messageId: 'm2',
+        })
+        await fs.writeFile(file, 'v3', 'utf8')
+        await manager.createSnapshot({ turnIndex: 3, sessionId: 's1', messageId: 'm3' })
+
+        await manager.rollbackToSnapshot(turn2.id)
+        expect(await fs.readFile(file, 'utf8')).toBe('v2')
+        expect(manager.getSnapshots().map((r) => r.messageId)).toEqual(['m1'])
+    })
+
+    it('undoes a rename without leaving the new file behind', async () => {
+        const manager = new SnapshotManager(tempDir)
+        const oldPath = path.join(tempDir, 'old.ts')
+        const newPath = path.join(tempDir, 'new.ts')
+        await fs.writeFile(oldPath, 'export const x = 1\n'.repeat(20), 'utf8')
+        await manager.createSnapshot({ turnIndex: 1 })
+
+        await fs.rename(oldPath, newPath)
+
+        const result = await manager.rollbackToTurn(1)
+        expect(result.success).toBe(true)
+        expect(result.restoredFiles).toContain('old.ts')
+        expect(result.deletedFiles).toContain('new.ts')
+        const files = (await fs.readdir(tempDir)).filter((f) => !f.startsWith('.'))
+        expect(files).toEqual(['old.ts'])
+    })
+
+    it('restores paths with spaces and non-ASCII characters', async () => {
+        const manager = new SnapshotManager(tempDir)
+        const file = path.join(tempDir, 'café notes [1].md')
+        await fs.writeFile(file, 'original', 'utf8')
+        await manager.createSnapshot({ turnIndex: 1 })
+
+        await fs.writeFile(file, 'edited', 'utf8')
+        const added = path.join(tempDir, 'naïve *.txt')
+        await fs.writeFile(added, 'new', 'utf8')
+
+        const result = await manager.rollbackToTurn(1)
+        expect(result.success).toBe(true)
+        expect(result.failedFiles).toEqual([])
+        expect(await fs.readFile(file, 'utf8')).toBe('original')
+        await expect(fs.access(added)).rejects.toThrow()
+    })
 })

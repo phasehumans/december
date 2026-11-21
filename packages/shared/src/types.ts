@@ -60,6 +60,11 @@ export interface AgentHooks {
         result: ToolResult
     ) => Promise<{ result?: string; error?: string } | void>
     shouldStopAfterTurn?: () => Promise<boolean>
+    /**
+     * Runs when the agent is about to end its turn (no more tool calls). Returning
+     * `{ continue: true, message }` adds `message` as a user message and keeps going.
+     */
+    beforeStop?: () => Promise<{ continue?: boolean; message?: string } | void>
     getSteeringMessages?: () => Promise<AgentMessage[]>
     prepareNextTurn?: () => Promise<{ modelOptions?: any; systemPrompt?: string } | void>
 }
@@ -116,6 +121,8 @@ export interface AgentUsageEvent {
     completionTokens: number
     cacheCreationInputTokens?: number
     cacheReadInputTokens?: number
+    /** true when promptTokens does not include the cache read and cache write tokens */
+    promptTokensExcludeCache?: boolean
     model?: string
 }
 
@@ -137,6 +144,9 @@ export interface AgentErrorEvent {
 export interface ContextCompactedEvent {
     type: 'ContextCompacted'
     summary: string
+    /** estimated tokens of the conversation before and after compaction */
+    tokensBefore?: number
+    tokensAfter?: number
 }
 
 export interface TerminalDataEvent {

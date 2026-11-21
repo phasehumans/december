@@ -18,60 +18,66 @@ describe('AgentHarness (Unit)', () => {
         fs.rmSync(tmpDir, { recursive: true, force: true })
     })
 
-    test('discovers rules from AGENTS.md, .december/AGENTS.md, and .december/rules.md', () => {
+    test('reads AGENTS.md and ignores legacy rule and memory files', () => {
         const decDir = path.join(tmpDir, '.december')
         fs.mkdirSync(decDir, { recursive: true })
 
         fs.writeFileSync(path.join(tmpDir, 'AGENTS.md'), '# Root Agents Guide\nRules here.')
-        fs.writeFileSync(
-            path.join(decDir, 'AGENTS.md'),
-            '# December Agents Guide\nMore rules here.'
-        )
-        fs.writeFileSync(path.join(decDir, 'rules.md'), '# Workspace Rules\nSingle rules file.')
+        fs.writeFileSync(path.join(decDir, 'AGENTS.md'), '# Legacy December Agents\nIgnored.')
+        fs.writeFileSync(path.join(decDir, 'rules.md'), '# Legacy Rules File\nIgnored.')
+        fs.writeFileSync(path.join(decDir, 'memory.md'), '## conventions\n- legacy memory entry')
+        fs.writeFileSync(path.join(tmpDir, 'RULES.md'), '# Legacy Root Rules\nIgnored.')
 
         const harness = new AgentHarness({
             llm: new MockLLM(),
             tools: [],
             operations: {} as any,
             workspaceDir: tmpDir,
+            rootBoundary: tmpDir,
         })
 
-        const agent = harness.getAgent()
-        const systemPrompt = agent.systemPrompt
+        const systemPrompt = harness.getAgent().systemPrompt
 
         expect(systemPrompt).toContain('Root Agents Guide')
-        expect(systemPrompt).toContain('December Agents Guide')
-        expect(systemPrompt).toContain('Workspace Rules')
+        expect(systemPrompt).not.toContain('Legacy December Agents')
+        expect(systemPrompt).not.toContain('Legacy Rules File')
+        expect(systemPrompt).not.toContain('legacy memory entry')
+        expect(systemPrompt).not.toContain('Legacy Root Rules')
+        expect(systemPrompt).not.toContain('<project_memory>')
         expect(systemPrompt).toContain('<rules>')
         expect(systemPrompt).toContain('Use bash for file operations like ls, rg, find')
     })
 
-    test('passively ingests .december/memory.md under <project_memory> in harness agent prompt', () => {
-        const decDir = path.join(tmpDir, '.december')
-        fs.mkdirSync(decDir, { recursive: true })
-        fs.writeFileSync(path.join(decDir, 'memory.md'), '## conventions\n- use pino logger')
+    test('reads CLAUDE.md only when the folder has no AGENTS.md', () => {
+        const subDir = path.join(tmpDir, 'packages', 'app')
+        fs.mkdirSync(subDir, { recursive: true })
+
+        fs.writeFileSync(path.join(tmpDir, 'AGENTS.md'), '# Root Agents\nRoot rules.')
+        fs.writeFileSync(path.join(tmpDir, 'CLAUDE.md'), '# Root Claude\nShadowed by AGENTS.md.')
+        fs.writeFileSync(path.join(subDir, 'CLAUDE.md'), '# Package Claude\nPackage rules.')
 
         const harness = new AgentHarness({
             llm: new MockLLM(),
             tools: [],
             operations: {} as any,
-            workspaceDir: tmpDir,
+            workspaceDir: subDir,
+            rootBoundary: tmpDir,
         })
 
-        const agent = harness.getAgent()
-        expect(agent.systemPrompt).toContain('<project_memory>')
-        expect(agent.systemPrompt).toContain('## conventions')
-        expect(agent.systemPrompt).toContain('use pino logger')
-        expect(agent.systemPrompt).toContain('</project_memory>')
+        const systemPrompt = harness.getAgent().systemPrompt
+        expect(systemPrompt).toContain('Root Agents')
+        expect(systemPrompt).toContain('Package Claude')
+        expect(systemPrompt).not.toContain('Root Claude')
     })
 
-    test('discovers global machine root rules from ~/.december or DECEMBER_CONFIG_DIR', () => {
+    test('discovers global AGENTS.md from DECEMBER_CONFIG_DIR', () => {
         const globalDir = path.join(tmpDir, 'global-december')
         fs.mkdirSync(globalDir, { recursive: true })
         fs.writeFileSync(
-            path.join(globalDir, 'rules.md'),
+            path.join(globalDir, 'AGENTS.md'),
             '# Global Machine Rules\nGlobal rules here.'
         )
+        fs.writeFileSync(path.join(globalDir, 'rules.md'), '# Legacy Global Rules\nIgnored.')
 
         const originalConfigDir = process.env.DECEMBER_CONFIG_DIR
         process.env.DECEMBER_CONFIG_DIR = globalDir
@@ -86,6 +92,7 @@ describe('AgentHarness (Unit)', () => {
 
             const agent = harness.getAgent()
             expect(agent.systemPrompt).toContain('Global Machine Rules')
+            expect(agent.systemPrompt).not.toContain('Legacy Global Rules')
         } finally {
             if (originalConfigDir) {
                 process.env.DECEMBER_CONFIG_DIR = originalConfigDir

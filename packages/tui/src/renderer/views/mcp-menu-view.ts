@@ -5,7 +5,7 @@ import { MenuFooterView } from './menu-footer-view'
 
 import type { ScreenBuffer } from '../buffer'
 
-export type McpViewMode = 'list' | 'detail' | 'add_preset' | 'add_custom'
+export type McpViewMode = 'list' | 'detail' | 'add_custom'
 
 export interface McpToolItem {
     name: string
@@ -22,79 +22,9 @@ export interface McpServerMenuItem {
     error?: string
     tools?: McpToolItem[]
     resourcesCount?: number
+    /** Set when the server comes from a plugin; it is managed in /plugin */
+    plugin?: string
 }
-
-export interface McpPresetTemplate {
-    id: string
-    name: string
-    title: string
-    description: string
-    command: string
-    args?: string[]
-    defaultScope: 'global' | 'project'
-    envHint?: string
-}
-
-export const MCP_PRESET_TEMPLATES: McpPresetTemplate[] = [
-    {
-        id: 'github',
-        name: 'github',
-        title: 'GitHub',
-        description: 'Repository search, issues, pull requests, and git contents',
-        command: 'npx -y @modelcontextprotocol/server-github',
-        defaultScope: 'global',
-        envHint: 'GITHUB_PERSONAL_ACCESS_TOKEN',
-    },
-    {
-        id: 'postgres',
-        name: 'postgres',
-        title: 'PostgreSQL',
-        description: 'Database query execution, schema inspection, and query plans',
-        command: 'npx -y @modelcontextprotocol/server-postgres postgresql://localhost/db',
-        defaultScope: 'project',
-    },
-    {
-        id: 'sqlite',
-        name: 'sqlite',
-        title: 'SQLite',
-        description: 'Read and query local SQLite database files',
-        command: 'npx -y @modelcontextprotocol/server-sqlite --db ./app.db',
-        defaultScope: 'project',
-    },
-    {
-        id: 'brave-search',
-        name: 'brave-search',
-        title: 'Brave Search',
-        description: 'Real-time internet web search and content retrieval',
-        command: 'npx -y @modelcontextprotocol/server-brave-search',
-        defaultScope: 'global',
-        envHint: 'BRAVE_API_KEY',
-    },
-    {
-        id: 'fetch',
-        name: 'fetch',
-        title: 'Fetch & Web',
-        description: 'Web page scraping and markdown extraction',
-        command: 'npx -y @modelcontextprotocol/server-fetch',
-        defaultScope: 'global',
-    },
-    {
-        id: 'puppeteer',
-        name: 'puppeteer',
-        title: 'Puppeteer',
-        description: 'Browser automation and web screenshot captures',
-        command: 'npx -y @modelcontextprotocol/server-puppeteer',
-        defaultScope: 'global',
-    },
-    {
-        id: 'filesystem',
-        name: 'filesystem',
-        title: 'Filesystem Sandboxed',
-        description: 'Direct sandboxed local directory read and write access',
-        command: 'npx -y @modelcontextprotocol/server-filesystem .',
-        defaultScope: 'project',
-    },
-]
 
 export interface McpMenuViewProps {
     x?: number
@@ -108,8 +38,6 @@ export interface McpMenuViewProps {
     scrollOffset?: number
     mode?: McpViewMode
     confirmDeleteName?: string | null
-    // Add Preset props
-    presetSelectedIndex?: number
     // Add Custom props
     customName?: string
     customCommand?: string
@@ -121,10 +49,10 @@ export interface McpMenuViewProps {
 
 export const McpMenuView = {
     getHeight(mode?: McpViewMode, serverCount: number = 0, isDetailView?: boolean): number {
-        if (mode === 'add_preset') return 9
         if (mode === 'add_custom') return 10
         if (mode === 'detail' || isDetailView) return 7
-        return Math.max(serverCount, 1) + 4
+        // Title, blank, rows, "find more" line, footer
+        return Math.max(serverCount, 1) + 5
     },
 
     render(buffer: ScreenBuffer, props: McpMenuViewProps): void {
@@ -139,71 +67,6 @@ export const McpMenuView = {
         )
         const currentServer = servers[safeIndex]
         const mode = props.mode || (props.isDetailView ? 'detail' : 'list')
-
-        // ==========================================
-        // 1. ADD PRESET TEMPLATES MODE
-        // ==========================================
-        if (mode === 'add_preset') {
-            drawText(buffer, 'Add MCP Server · Preset Templates', {
-                x,
-                y,
-                style: { fg: THEME.colors.brand, bold: true },
-            })
-            y += 1
-            drawText(buffer, 'Choose a template or press [c] for custom command / URL', {
-                x,
-                y,
-                style: { fg: THEME.colors.muted },
-            })
-            y += 2
-
-            const presetIdx = Math.min(
-                Math.max(0, props.presetSelectedIndex ?? 0),
-                MCP_PRESET_TEMPLATES.length - 1
-            )
-
-            for (let i = 0; i < MCP_PRESET_TEMPLATES.length; i++) {
-                const item = MCP_PRESET_TEMPLATES[i]
-                const isSelected = i === presetIdx
-                const rowY = y + i
-
-                drawText(buffer, isSelected ? '❭ ' : '  ', {
-                    x,
-                    y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.dim },
-                })
-
-                drawText(buffer, item.title, {
-                    x: x + 2,
-                    y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
-                })
-
-                const descX = x + 2 + item.title.length + 2
-                drawText(buffer, `- ${item.description}`, {
-                    x: descX,
-                    y: rowY,
-                    maxWidth: Math.max(10, width - descX - 2),
-                    style: { fg: THEME.colors.muted },
-                })
-            }
-
-            MenuFooterView.render(buffer, {
-                x: props.x ?? 0,
-                y: footerY,
-                width,
-                items: [
-                    { key: '↑/↓', label: 'select' },
-                    { key: 'enter', label: 'use preset' },
-                    { key: 'c', label: 'custom command' },
-                    { key: 'esc', label: 'back' },
-                ],
-            })
-            return
-        }
 
         // ==========================================
         // 2. ADD CUSTOM SERVER MODE
@@ -333,7 +196,9 @@ export const McpMenuView = {
                 style: { fg: THEME.colors.brand, bold: true },
             })
 
-            const scopeBadge = ` [${currentServer.scope}]`
+            const scopeBadge = currentServer.plugin
+                ? ` [via ${currentServer.plugin}]`
+                : ` [${currentServer.scope === 'global' ? 'user' : 'project'}]`
             drawText(buffer, scopeBadge, {
                 x: x + `MCP Server: ${currentServer.name}`.length,
                 y,
@@ -448,7 +313,7 @@ export const McpMenuView = {
                     { key: '↑/↓', label: 'scroll' },
                     { key: 'space', label: isConn ? 'stop' : 'start' },
                     { key: 'r', label: 'restart' },
-                    { key: 'd', label: 'remove' },
+                    ...(currentServer.plugin ? [] : [{ key: 'd', label: 'remove' }]),
                     { key: 'esc', label: 'back' },
                 ],
             })
@@ -467,11 +332,15 @@ export const McpMenuView = {
         y += 2
 
         if (servers.length === 0) {
-            drawText(buffer, 'No servers configured. Press [a] to add a server.', {
-                x,
-                y,
-                style: { fg: THEME.colors.muted },
-            })
+            drawText(
+                buffer,
+                'No servers configured. Press a to add one, or install one from /plugin.',
+                {
+                    x,
+                    y,
+                    style: { fg: THEME.colors.muted },
+                }
+            )
             y += 1
         } else {
             const windowSize = Math.max(1, footerY - y - 1)
@@ -525,7 +394,28 @@ export const McpMenuView = {
                     y: rowY,
                     style: { fg: isConn ? THEME.colors.muted : THEME.colors.dim },
                 })
+
+                // Where the server is configured
+                const sourceLabel = s.plugin
+                    ? `via ${s.plugin}`
+                    : s.scope === 'project'
+                      ? 'project'
+                      : 'user'
+                drawText(buffer, sourceLabel, {
+                    x: nameX + statusText.length + 3,
+                    y: rowY,
+                    maxWidth: Math.max(0, width - (nameX + statusText.length + 3) - 2),
+                    style: { fg: THEME.colors.dim },
+                })
             }
+        }
+
+        if (!props.confirmDeleteName && y + Math.max(1, servers.length) < footerY - 1) {
+            drawText(buffer, '→ Find more servers in /plugin', {
+                x: x + 2,
+                y: footerY - 1,
+                style: { fg: THEME.colors.brand },
+            })
         }
 
         // Inline confirmation message if user initiated delete

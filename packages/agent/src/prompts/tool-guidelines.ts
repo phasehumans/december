@@ -42,11 +42,15 @@ export const DEFAULT_TOOL_PROMPTS: Record<string, { snippet: string; guidelines:
         snippet: 'Execute shell commands in the terminal',
         guidelines: [
             "Use 'bash' to run builds, tests, linters, and verify changes. Commands will run in the workspace.",
+            "Set 'run_in_background' for dev servers, watchers, and other commands that do not exit on their own.",
         ],
     },
     manage_task: {
-        snippet: 'Monitor and manage background tasks',
-        guidelines: ["Use 'manage_task' to monitor, send input to, or stop background processes."],
+        snippet: 'List, read, and stop background tasks',
+        guidelines: [
+            "Use 'manage_task' with 'list' to find task ids, 'status' for the state and last lines, 'output' for only the output since your last read (optionally filtered by a regex), and 'kill' to stop a task.",
+            'You get a <task-notification> when a background task finishes. Do not poll in a loop or sleep to wait for one.',
+        ],
     },
     web_search: {
         snippet: 'Search web for docs and APIs',
@@ -74,12 +78,6 @@ export const DEFAULT_TOOL_PROMPTS: Record<string, { snippet: string; guidelines:
         snippet: 'Delegate specialized tasks to an isolated skill subagent',
         guidelines: [
             "Use 'run_skill' to delegate complex procedural workflows or specialized domain tasks to an isolated subagent, keeping the main conversation context clean.",
-        ],
-    },
-    manage_memory: {
-        snippet: 'Record, read, or prune persistent workspace rules and memories',
-        guidelines: [
-            "Use 'manage_memory' to record learned conventions, build/test commands, architecture notes, and quirks into persistent workspace memory.",
         ],
     },
     invoke_subagent: {

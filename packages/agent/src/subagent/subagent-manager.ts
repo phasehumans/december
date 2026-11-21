@@ -30,7 +30,10 @@ export class SubagentManager extends EventEmitter {
         return this.tracker
     }
 
-    public spawnBackground(options: SpawnSubagentOptions): SubagentHandle {
+    public spawnBackground(
+        options: SpawnSubagentOptions,
+        mode: { background?: boolean } = {}
+    ): SubagentHandle {
         const id =
             options.subagentId ||
             `subagent-${options.role.replace(/[^a-zA-Z0-9_-]/g, '_')}-${this.nextId++}`
@@ -94,13 +97,22 @@ export class SubagentManager extends EventEmitter {
             },
             promise: (async () => {
                 try {
+                    let turnsStarted = 0
                     const result = await executeDynamicSubagent({
                         ...options,
                         subagentId: id,
                         depth: childDepth,
                         signal: abortController.signal,
                         onStream,
+                        onEvent: (event) => {
+                            options.onEvent?.(event)
+                            if (event.type === 'TurnStart') {
+                                turnsStarted++
+                                this.tracker?.setTurns?.(id, turnsStarted)
+                            }
+                        },
                     })
+                    this.tracker?.setTurns?.(id, Math.max(result.totalTurns, turnsStarted))
 
                     childAgentRef = (options as any)._childAgent
                     handle.status = result.status
@@ -153,8 +165,10 @@ export class SubagentManager extends EventEmitter {
         if (this.tracker) {
             this.tracker.registerSubagentTask({
                 id,
-                role: `depth ${childDepth} - ${options.role}`,
+                role: options.role,
                 task: options.task,
+                depth: childDepth,
+                background: mode.background ?? true,
                 abortController,
                 onKill: () => handle.abort(),
             })
@@ -166,7 +180,8 @@ export class SubagentManager extends EventEmitter {
     }
 
     public async spawn(options: SpawnSubagentOptions): Promise<SubagentRollupSummary> {
-        const handle = this.spawnBackground(options)
+        // the caller waits for the result, so no completion notice is needed
+        const handle = this.spawnBackground(options, { background: false })
         return handle.promise
     }
 

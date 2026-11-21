@@ -29,6 +29,8 @@ export interface MessageItem {
     toolCall?: MessageToolCall
     durationMs?: number
     isStreaming?: boolean
+    /** colour of the status dot for `task_notice` messages */
+    tone?: 'success' | 'error' | 'muted'
     usage?: {
         promptTokens?: number
         completionTokens?: number
@@ -47,10 +49,17 @@ export interface MessageListViewProps {
     isStreaming?: boolean
     spinnerFrame?: number
     statusMessage?: string
+    /** Status of background work (like /update) that shows even when no turn is streaming */
+    backgroundStatus?: string
     headerProps?: HeaderViewProps
     lineCache?: MessageLineCache
     expandTools?: boolean
     tip?: string | null
+    /**
+     * Total line count when the user scrolled away from the bottom.
+     * Lines past this count are shown as new in the scroll pill.
+     */
+    newLinesAnchor?: number
 }
 
 export const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
@@ -82,6 +91,11 @@ export const MessageListView = {
         const x = props.x ?? 0
         const y = props.y ?? 0
         const width = props.width
+        // Chat lines start at the same left edge as the prompt box and status bar.
+        // Layout width is reduced by the same amount, so wrapped text ends where the
+        // prompt separator ends.
+        const contentX = x + THEME.padding.paddingLeft
+        const layoutWidth = Math.max(10, width - THEME.padding.paddingLeft)
         const height = props.height
         const messages = props.messages
         const spinnerGlyph = SPINNER_FRAMES[(props.spinnerFrame ?? 0) % SPINNER_FRAMES.length] + ' '
@@ -92,12 +106,12 @@ export const MessageListView = {
 
         // 0. Prepend non-sticky scrollable header lines if provided
         if (props.headerProps) {
-            segments.push(HeaderView.toLines(props.headerProps, width))
+            segments.push(HeaderView.toLines(props.headerProps, layoutWidth))
         }
 
         const cache = props.lineCache ?? defaultLineCache
         segments.push(
-            ...cache.getLineSegments(messages, width, {
+            ...cache.getLineSegments(messages, layoutWidth, {
                 spinnerGlyph,
                 expandTools: props.expandTools,
                 tip: props.tip,
@@ -107,6 +121,15 @@ export const MessageListView = {
         // Status and loader rows that follow the history
         const allLines: FormattedLine[] = []
         segments.push(allLines)
+
+        // 1a. Background work (like /update) keeps a status row even between turns
+        if (props.backgroundStatus) {
+            allLines.push([
+                { text: '⟳ ', style: { fg: THEME.colors.warning } },
+                { text: props.backgroundStatus, style: { fg: THEME.colors.muted } },
+            ])
+            allLines.push([{ text: '', style: {} }])
+        }
 
         // 1b. If streaming is active, render active status message or waiting loader
         if (props.isStreaming) {
@@ -158,7 +181,7 @@ export const MessageListView = {
         let currY = y
         for (let i = 0; i < visibleLines.length && currY < y + height; i++) {
             const line = visibleLines[i]
-            let currX = x + 1
+            let currX = contentX
             for (const seg of line) {
                 if (currX >= x + width) break
                 const available = Math.max(0, x + width - currX)
@@ -172,17 +195,39 @@ export const MessageListView = {
             currY += 1
         }
 
-        // 3. Unseen content indicator pill when user is scrolled up
-        const unseenCount = maxScroll - scroll
-        if (unseenCount > 0 && props.scrollOffset !== undefined && height > 2) {
-            const pillText = ` ↓ ${unseenCount} new line${unseenCount === 1 ? '' : 's'} · Esc `
-            const pillX = Math.max(x + 2, x + width - pillText.length - 3)
+        // 3. Scroll pill when the user is scrolled up: new output, or plain history below
+        const linesBelow = maxScroll - scroll
+        if (linesBelow > 0 && props.scrollOffset !== undefined && height > 2) {
+            const newLines =
+                props.newLinesAnchor !== undefined
+                    ? Math.min(linesBelow, Math.max(0, totalLines - props.newLinesAnchor))
+                    : 0
+            const plural = (n: number) => (n === 1 ? '' : 's')
+            const countText =
+                newLines > 0
+                    ? `↓ ${newLines} new line${plural(newLines)}`
+                    : `↓ ${linesBelow} line${plural(linesBelow)} below`
+            const bg = THEME.colors.border
+            const parts = [
+                {
+                    text: ` ${countText}`,
+                    style: {
+                        fg: newLines > 0 ? THEME.colors.text : THEME.colors.muted,
+                        bg,
+                        bold: newLines > 0,
+                    },
+                },
+                { text: ' · ', style: { fg: THEME.colors.subtle, bg } },
+                { text: 'esc', style: { fg: THEME.colors.brand, bg, bold: true } },
+                { text: ' jump to bottom ', style: { fg: THEME.colors.muted, bg } },
+            ]
+            const pillWidth = parts.reduce((sum, part) => sum + part.text.length, 0)
+            let pillX = Math.max(x + 2, x + width - pillWidth - 3)
             const pillY = y + height - 1
-            buffer.write(pillX, pillY, pillText, {
-                fg: THEME.colors.text,
-                bg: THEME.colors.border,
-                bold: true,
-            })
+            for (const part of parts) {
+                buffer.write(pillX, pillY, part.text, part.style)
+                pillX += part.text.length
+            }
         }
 
         return { totalLines, maxScroll }

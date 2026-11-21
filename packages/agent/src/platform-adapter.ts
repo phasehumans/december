@@ -1,8 +1,11 @@
 import type {
+    BackgroundTaskInfo,
     BrowserOperations,
     DiagnosticsOperations,
     LspOperations,
     SubagentTaskTracker,
+    TaskOutputResult,
+    TaskStatusResult,
 } from '@december/shared'
 
 export interface BashExecOptions {
@@ -14,6 +17,8 @@ export interface BashExecOptions {
     env?: NodeJS.ProcessEnv
     opId?: string
     taskId?: string
+    /** start the command as a background task right away */
+    runInBackground?: boolean
 }
 
 export interface PlatformAdapter {
@@ -30,8 +35,10 @@ export interface PlatformAdapter {
             cwdOrOnData?: string | ((chunk: string) => void),
             options?: BashExecOptions
         ) => Promise<{ exitCode: number | null; output: string; taskId?: string }>
-        getTaskStatus?: (taskId: string) => Promise<{ status: string; output: string }>
+        getTaskStatus?: (taskId: string) => Promise<TaskStatusResult>
         killTask?: (taskId: string) => Promise<boolean>
+        listTasks?: () => Promise<BackgroundTaskInfo[]>
+        readTaskOutput?: (taskId: string, filter?: string) => Promise<TaskOutputResult>
     }
     search: {
         find: (path: string, query: string) => Promise<string>

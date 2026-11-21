@@ -109,7 +109,7 @@ describe('Session Resume & Management Integration', () => {
         app.stop()
     })
 
-    it('renames session file on disk when using onSessionRename', async () => {
+    it('sets a title on rename and keeps the session id and history', async () => {
         const app = new DifferentialApp({
             terminal: {
                 write: () => {},
@@ -126,25 +126,28 @@ describe('Session Resume & Management Integration', () => {
                 { id: 'sess-alpha', preview: 'Design an auth system', updatedAt: Date.now() },
             ],
             sessionRepository: sessionRepo,
-            onSessionRename: async (oldId, newId) => {
-                await sessionRepo.renameSession(oldId, newId)
+            onSessionRename: async (sessionId, newTitle) => {
+                await sessionRepo.setSessionMeta(sessionId, {
+                    title: newTitle,
+                    titleSource: 'manual',
+                })
             },
         })
 
         app.executeCommand('session')
         app.handleKey('r')
         expect(app.state.sessionRenameMode).toBe(true)
-        app.state.sessionRenameValue = 'auth-architecture'
+        app.state.sessionRenameValue = 'Auth architecture'
         app.handleKey('\r')
 
         // Give async rename a moment
         await new Promise((r) => setTimeout(r, 20))
 
         const sessionsAfter = await sessionRepo.listSessions()
-        const found = sessionsAfter.find((s) => s.id === 'auth-architecture')
-        expect(found).toBeDefined()
-        const oldFound = sessionsAfter.find((s) => s.id === 'sess-alpha')
-        expect(oldFound).toBeUndefined()
+        const found = sessionsAfter.find((s) => s.id === 'sess-alpha')
+        expect(found?.title).toBe('Auth architecture')
+        expect(found?.titleSource).toBe('manual')
+        expect(await sessionRepo.loadContext('sess-alpha')).toHaveLength(2)
 
         app.stop()
     })

@@ -186,13 +186,15 @@ export interface DecemberConfig {
     autoScroll?: boolean
     streamSpeed?: 'smooth' | 'instant'
     approvedTools?: string[]
+    /** deny rules; see utils/permission-rules */
+    deniedTools?: string[]
     thinkingLevel?: 'fast' | 'deep' | 'off' | string
     steeringMode?: 'all' | 'one-at-a-time'
     followUpMode?: 'all' | 'one-at-a-time'
     pathGuard?: boolean
     scope?: string
     authPriority?: 'subscription' | 'byok' | 'december'
-    installMethod?: 'npm' | 'bun' | 'pnpm' | 'npx' | 'curl' | 'source'
+    installMethod?: 'npm' | 'bun' | 'pnpm' | 'yarn' | 'npx' | 'curl' | 'source'
     versionCheckCache?: {
         latestVersion: string
         checkedAt: number
@@ -365,6 +367,45 @@ export async function loadConfig(): Promise<DecemberConfig> {
     }
 }
 
+/**
+ * Keys written by @december/tools (MCP servers, plugin and skill on/off,
+ * marketplaces) and by utils/permission-rules (allow and deny rules). The CLI
+ * holds a config loaded at startup and merged with project settings, so saving
+ * it as-is would undo later writes to these keys or copy project values into
+ * the user config. The file on disk owns them.
+ */
+const TOOL_OWNED_CONFIG_KEYS = [
+    'mcpServers',
+    'mcp',
+    'plugins',
+    'skills',
+    'marketplaces',
+    'approvedTools',
+    'deniedTools',
+] as const
+
+async function withToolOwnedKeysFromDisk(
+    configFile: string,
+    config: DecemberConfig
+): Promise<DecemberConfig> {
+    let onDisk: Record<string, unknown> = {}
+    try {
+        const parsed = JSON.parse(await fs.readFile(configFile, 'utf-8'))
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) onDisk = parsed
+    } catch {
+        // Intentionally swallowed: no existing file, so nothing to preserve
+    }
+    const result: Record<string, unknown> = { ...config }
+    for (const key of TOOL_OWNED_CONFIG_KEYS) {
+        if (key in onDisk) {
+            result[key] = onDisk[key]
+        } else {
+            delete result[key]
+        }
+    }
+    return result as unknown as DecemberConfig
+}
+
 export async function saveConfig(config: DecemberConfig): Promise<void> {
     const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST
     let configDir = getConfigDir()
@@ -381,7 +422,8 @@ export async function saveConfig(config: DecemberConfig): Promise<void> {
     }
 
     await fs.mkdir(configDir, { recursive: true })
-    await fs.writeFile(configFile, JSON.stringify(config, null, 2), 'utf-8')
+    const toSave = await withToolOwnedKeysFromDisk(configFile, config)
+    await fs.writeFile(configFile, JSON.stringify(toSave, null, 2), 'utf-8')
     await fs.chmod(configFile, 0o600).catch(() => {
         // Intentionally swallowed: chmod failure on non-POSIX systems
     })

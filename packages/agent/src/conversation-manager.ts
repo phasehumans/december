@@ -1,14 +1,16 @@
-import fs from 'node:fs'
-import path from 'node:path'
-
 import { v4 as uuidv4 } from 'uuid'
 
-import { compactContextIfNeeded, pruneToolResults } from './utils/compaction'
+import {
+    compactContextIfNeeded,
+    estimateTokens,
+    pruneToolResults,
+    type CompactionOptions,
+} from './utils/compaction'
 
 import type { LLMProvider } from '@december/providers'
 import type { AgentMessage } from '@december/shared'
 
-export const MAX_WORKSPACE_MEMORY_BYTES = 2048 // Strict 2KB memory budget
+export const MAX_WORKSPACE_MEMORY_BYTES = 2048 // Strict 2KB budget for cloud pinned rules
 
 /**
  * Safely truncates a UTF-8 string to a maximum byte length without splitting multi-byte characters.
@@ -136,7 +138,7 @@ export class ConversationManager {
             }
         }
 
-        const memoryContent = this.readWorkspaceMemory(workspaceRoot)
+        const memoryContent = this.readPinnedRules()
 
         let finalPrompt = prompt
         if (memoryContent) {
@@ -157,64 +159,12 @@ export class ConversationManager {
         return finalPrompt
     }
 
-    private readWorkspaceMemory(workspaceRoot?: string): string {
-        const parts: string[] = []
-        if (this.pinnedRules && this.pinnedRules.trim()) {
-            parts.push(this.pinnedRules.trim())
-        }
-
-        if (workspaceRoot) {
-            const memoryCandidates = [
-                path.join(workspaceRoot, '.december', 'memory.md'),
-                path.join(workspaceRoot, 'MEMORY.md'),
-                path.join(workspaceRoot, '.december', 'MEMORY.md'),
-                path.join(workspaceRoot, 'memory.md'),
-            ]
-
-            const rulesCandidates = [
-                path.join(workspaceRoot, 'RULES.md'),
-                path.join(workspaceRoot, '.december', 'rules.md'),
-                path.join(workspaceRoot, '.december', 'RULES.md'),
-                path.join(workspaceRoot, 'rules.md'),
-            ]
-
-            let memoryText = ''
-            for (const candidate of memoryCandidates) {
-                try {
-                    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-                        const content = fs.readFileSync(candidate, 'utf8').trim()
-                        if (content) {
-                            memoryText = content
-                            break
-                        }
-                    }
-                } catch {
-                    // Intentionally swallowed: missing or unreadable workspace memory file handled gracefully
-                }
-            }
-
-            let rulesText = ''
-            for (const candidate of rulesCandidates) {
-                try {
-                    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-                        const content = fs.readFileSync(candidate, 'utf8').trim()
-                        if (content) {
-                            rulesText = content
-                            break
-                        }
-                    }
-                } catch {
-                    // Intentionally swallowed: missing or unreadable workspace rules file handled gracefully
-                }
-            }
-
-            if (memoryText) parts.push(memoryText)
-            if (rulesText && rulesText !== memoryText && !parts.includes(rulesText)) {
-                parts.push(rulesText)
-            }
-        }
-
-        let combined = parts.join('\n\n').trim()
+    /**
+     * Cloud pinned rules (project setting). Workspace rule files (AGENTS.md / CLAUDE.md)
+     * are loaded by the agent harness through discoverProjectRules, not here.
+     */
+    private readPinnedRules(): string {
+        let combined = (this.pinnedRules || '').trim()
         if (Buffer.byteLength(combined, 'utf8') > this.maxMemoryBytes) {
             const limit = Math.max(0, this.maxMemoryBytes - 32)
             const truncated = truncateUtf8ByBytes(combined, limit)
@@ -264,24 +214,12 @@ export class ConversationManager {
         this._messages.push(msg)
     }
 
-    public truncateToTurn(targetTurn: number): void {
-        let userMessageCount = 0
-        let cutIndex = -1
-
-        for (let i = 0; i < this._messages.length; i++) {
-            const msg = this._messages[i]
-            if (msg && msg.role === 'user' && !msg.isUI) {
-                userMessageCount++
-                if (userMessageCount === targetTurn) {
-                    cutIndex = i
-                    break
-                }
-            }
-        }
-
-        if (cutIndex !== -1) {
-            this._messages = this._messages.slice(0, cutIndex)
-        }
+    /** Removes the message with the given id and every message after it. */
+    public truncateBeforeMessage(messageId: string): boolean {
+        const cutIndex = this._messages.findIndex((m) => m.id === messageId)
+        if (cutIndex === -1) return false
+        this._messages = this._messages.slice(0, cutIndex)
+        return true
     }
 
     async compactIfNeeded(
@@ -289,8 +227,10 @@ export class ConversationManager {
         maxTokens?: number,
         modelOptions?: Record<string, any>,
         signal?: AbortSignal,
-        options?: { maxTurns?: number; minTokens?: number; onStatus?: (status: string) => void }
-    ): Promise<{ compacted: boolean; summary?: string; pruned?: boolean; tokensSaved?: number }> {
+        options?: CompactionOptions
+    ): Promise<CompactResult> {
+        const tokensBefore = estimateTokens(this._messages as any)
+
         // Tier 1: Zero-LLM Tool Result Pruning
         const pruneResult = pruneToolResults(this._messages)
 
@@ -298,10 +238,12 @@ export class ConversationManager {
 
         // Tier 2: LLM Context Summarization
         // Compacts when context window reaches >= 80% capacity (or if explicit maxTurns is configured)
-        const effectiveOptions = {
+        const effectiveOptions: CompactionOptions = {
             maxTurns: options?.maxTurns,
             minTokens: options?.minTokens,
             onStatus: options?.onStatus,
+            force: options?.force,
+            focus: options?.focus,
         }
 
         const newMessages = (await compactContextIfNeeded(
@@ -321,6 +263,8 @@ export class ConversationManager {
                 summary: summaryMsg?.content || '',
                 pruned: pruneResult.pruned,
                 tokensSaved: pruneResult.tokensSaved,
+                tokensBefore,
+                tokensAfter: estimateTokens(this._messages as any),
             }
         }
 
@@ -330,9 +274,21 @@ export class ConversationManager {
                 summary: `Pruned old tool results, saving ~${pruneResult.tokensSaved} tokens.`,
                 pruned: true,
                 tokensSaved: pruneResult.tokensSaved,
+                tokensBefore,
+                tokensAfter: estimateTokens(this._messages as any),
             }
         }
 
-        return { compacted: false }
+        return { compacted: false, tokensBefore, tokensAfter: tokensBefore }
     }
+}
+
+export interface CompactResult {
+    compacted: boolean
+    summary?: string
+    pruned?: boolean
+    tokensSaved?: number
+    /** estimated tokens of the conversation before and after compaction */
+    tokensBefore?: number
+    tokensAfter?: number
 }

@@ -34,6 +34,10 @@ export interface DiscoveredSkill {
     references: string[]
     examples?: string[]
     resources?: string[]
+    /** Folder name of the plugin that ships this skill, when it comes from a plugin */
+    pluginId?: string
+    /** False when the skill or its plugin is turned off. Only set by discovery. */
+    enabled?: boolean
 }
 
 export interface SkillsConfigEntry {

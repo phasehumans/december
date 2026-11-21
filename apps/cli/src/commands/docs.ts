@@ -16,14 +16,14 @@ export function resolveDocsSectionPath(section?: string): string {
         terminal: '/cli',
         privacy: '/privacy',
         terms: '/terms',
-        changelog: '/changelog/',
+        changelog: '/changelog',
     }
     return map[clean] !== undefined ? map[clean] : `/${clean}`
 }
 
 export async function handleChangelogCommand(): Promise<void> {
     const baseUrl = (process.env.WEB_URL || 'https://trydecember.com').replace(/\/$/, '')
-    const targetUrl = `${baseUrl}/docs/changelog/`
+    const targetUrl = `${baseUrl}/docs/changelog`
 
     console.log('Opening December changelog in your default browser...')
     console.log(`\x1b[38;2;135;178;244m${targetUrl}\x1b[0m`)

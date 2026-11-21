@@ -4,7 +4,6 @@ import { BrowserActionTool } from './browser_action'
 import { defaultDeferredRegistry } from './deferred-registry'
 import { EditFileTool } from './edit'
 import { EditDiffTool } from './edit_diff'
-import { ManageMemoryTool } from './manage_memory'
 import { ManageTaskTool } from './manage_task'
 import { ReadFileTool } from './read'
 import { SearchToolsTool } from './search_tools'
@@ -25,7 +24,6 @@ export * from './find'
 export * from './grep'
 export * from './ask_question'
 export * from './manage_task'
-export * from './manage_memory'
 export * from './browser'
 export * from './browser_action'
 export * from './web_search'
@@ -51,7 +49,6 @@ export const DEFERRED_TOOLS = [
     BrowserActionTool,
     WebSearchTool,
     EditDiffTool,
-    ManageMemoryTool,
 ]
 
 // Pre-register standard deferred tools in defaultDeferredRegistry
@@ -81,10 +78,6 @@ defaultDeferredRegistry.register(WebSearchTool, {
 defaultDeferredRegistry.register(ManageTaskTool, {
     category: 'task',
     keywords: ['task', 'background', 'kill', 'status', 'process', 'pid', 'manage_task'],
-})
-defaultDeferredRegistry.register(ManageMemoryTool, {
-    category: 'memory',
-    keywords: ['memory', 'rules', 'conventions', 'quirks', 'manage_memory', 'remember', 'forget'],
 })
 defaultDeferredRegistry.register(EnterWorktreeTool, {
     category: 'git',

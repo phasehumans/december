@@ -4,6 +4,10 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { compareVersions, extractVersion } from './semver'
+
+export { compareVersions }
+
 export type BinaryManager =
     | 'bun'
     | 'npm'
@@ -55,7 +59,9 @@ export function inferManagerFromPath(filePath: string, realPath: string): Binary
     ) {
         return 'source'
     }
-    if (normalized.includes('/cellar/december') || normalized.includes('/opt/homebrew')) {
+    // Only a real Homebrew formula counts as brew. /opt/homebrew/bin/december is
+    // usually an npm global installed with Homebrew's node, so it falls through to npm.
+    if (normalized.includes('/cellar/december')) {
         return 'brew'
     }
     if (normalized.includes('/.bun/bin') || normalized.includes('/.bun/')) {
@@ -71,6 +77,7 @@ export function inferManagerFromPath(filePath: string, realPath: string): Binary
         normalized.includes('/.nvm/') ||
         normalized.includes('/node_modules/@trydecember/cli') ||
         normalized.includes('/.npm-global') ||
+        normalized.includes('/opt/homebrew/') ||
         normalized.includes('/usr/local/') ||
         normalized.includes('/usr/bin/')
     ) {
@@ -87,29 +94,45 @@ export function inferManagerFromPath(filePath: string, realPath: string): Binary
     return 'unknown'
 }
 
-/**
- * Attempt to read package.json version adjacent to the resolved binary target.
- */
-async function readVersionFromPackageJson(targetPath: string): Promise<string | undefined> {
+const readCliPackageVersion = async (candidatePkg: string): Promise<string | undefined> => {
     try {
-        let dir = path.dirname(targetPath)
-        for (let i = 0; i < 4; i++) {
-            const candidatePkg = path.join(dir, 'package.json')
-            try {
-                const content = await fs.readFile(candidatePkg, 'utf-8')
-                const parsed = JSON.parse(content)
-                if (parsed.name === '@trydecember/cli' && typeof parsed.version === 'string') {
-                    return parsed.version
-                }
-            } catch {
-                // Intentionally swallowed: package.json missing or not matching at this level
-            }
-            const parent = path.dirname(dir)
-            if (parent === dir) break
-            dir = parent
+        const content = await fs.readFile(candidatePkg, 'utf-8')
+        const parsed = JSON.parse(content)
+        if (parsed.name === '@trydecember/cli' && typeof parsed.version === 'string') {
+            return parsed.version
         }
     } catch {
-        // Intentionally swallowed: failed finding package.json
+        // Intentionally swallowed: package.json missing or not matching at this location
+    }
+    return undefined
+}
+
+/**
+ * Attempt to read the CLI package.json version for a binary.
+ * Walks up from the resolved target, then checks the npm prefix layouts next to the
+ * shim itself (Windows: <prefix>/node_modules, POSIX: <prefix>/lib/node_modules).
+ */
+async function readVersionFromPackageJson(
+    targetPath: string,
+    shimPath: string = targetPath
+): Promise<string | undefined> {
+    let dir = path.dirname(targetPath)
+    for (let i = 0; i < 4; i++) {
+        const version = await readCliPackageVersion(path.join(dir, 'package.json'))
+        if (version) return version
+        const parent = path.dirname(dir)
+        if (parent === dir) break
+        dir = parent
+    }
+
+    const shimDir = path.dirname(shimPath)
+    const prefixCandidates = [
+        path.join(shimDir, 'node_modules', '@trydecember', 'cli', 'package.json'),
+        path.join(shimDir, '..', 'lib', 'node_modules', '@trydecember', 'cli', 'package.json'),
+    ]
+    for (const candidate of prefixCandidates) {
+        const version = await readCliPackageVersion(candidate)
+        if (version) return version
     }
     return undefined
 }
@@ -137,18 +160,25 @@ export function isEligibleBinaryPath(filePath: string): boolean {
 }
 
 /**
- * Fallback: execute binary directly to get version string.
+ * Execute a binary with --version to read its version.
  */
 function readVersionFromExecution(binPath: string): Promise<string | undefined> {
+    const lower = binPath.toLowerCase()
+    if (lower.endsWith('.ps1')) {
+        // PowerShell scripts cannot be spawned directly; rely on package.json lookup
+        return Promise.resolve(undefined)
+    }
+    // Node refuses to spawn .cmd/.bat files without a shell (CVE-2024-27980)
+    const needsShell = process.platform === 'win32' && /\.(cmd|bat)$/.test(lower)
+    const file = needsShell ? `"${binPath}"` : binPath
+
     return new Promise((resolve) => {
-        execFile(binPath, ['--version'], { timeout: 3000 }, (error, stdout) => {
+        execFile(file, ['--version'], { timeout: 3000, shell: needsShell }, (error, stdout) => {
             if (error || !stdout) {
                 resolve(undefined)
                 return
             }
-            const trimmed = stdout.trim()
-            const match = trimmed.match(/\d+\.\d+\.\d+(?:-[\w.]+)?/)
-            resolve(match ? match[0] : undefined)
+            resolve(extractVersion(stdout.trim()))
         })
     })
 }
@@ -220,12 +250,18 @@ export async function findAllDecemberBinaries(
         candidateFiles.push(options.argv1)
     }
 
-    // 3. Inspect and verify existing binaries
-    const verifiedBinaries: DecemberBinaryInfo[] = []
+    // 3. Inspect existing binaries in PATH order.
+    // A directory holds at most one install: npm on Windows writes december,
+    // december.cmd and december.ps1 side by side, and those are one shim set.
+    const found: Array<{
+        path: string
+        realPath: string
+        isSymlink: boolean
+        manager: BinaryManager
+    }> = []
     const seenPaths = new Set<string>()
     const seenRealPaths = new Set<string>()
-
-    let activeAssigned = false
+    const seenDirs = new Set<string>()
 
     for (const candidate of candidateFiles) {
         if (!isEligibleBinaryPath(candidate)) continue
@@ -234,18 +270,18 @@ export async function findAllDecemberBinaries(
         if (seenPaths.has(normalizedPath)) continue
         seenPaths.add(normalizedPath)
 
+        const dirKey = path.dirname(normalizedPath).toLowerCase()
+        if (seenDirs.has(dirKey)) continue
+
         try {
             const lstat = await fs.lstat(normalizedPath)
-            const isSymlink = lstat.isSymbolicLink()
-            const isExecutable = !lstat.isDirectory()
-
-            if (!isExecutable) continue
+            if (lstat.isDirectory()) continue
 
             let realPath = normalizedPath
             try {
                 realPath = await fs.realpath(normalizedPath)
             } catch {
-                // If broken symlink or unreadable realpath, use normalizedPath
+                // Intentionally swallowed: broken symlink or unreadable realpath, keep normalizedPath
             }
 
             if (seenRealPaths.has(realPath)) {
@@ -253,57 +289,85 @@ export async function findAllDecemberBinaries(
                 continue
             }
             seenRealPaths.add(realPath)
+            seenDirs.add(dirKey)
 
-            const manager = inferManagerFromPath(normalizedPath, realPath)
-
-            // Try reading version: execution is authoritative because dist might not match package.json
-            let version = await readVersionFromExecution(normalizedPath)
-            if (!version) {
-                version = await readVersionFromPackageJson(realPath)
-            }
-
-            const isActive = !activeAssigned
-            if (isActive) {
-                activeAssigned = true
-            }
-
-            verifiedBinaries.push({
+            found.push({
                 path: normalizedPath,
                 realPath,
-                manager,
-                version,
-                isSymlink,
-                isActive,
-                isShadowed: !isActive,
+                isSymlink: lstat.isSymbolicLink(),
+                manager: inferManagerFromPath(normalizedPath, realPath),
             })
         } catch {
-            // File does not exist at candidate path, ignore
+            // Intentionally swallowed: file does not exist at candidate path
         }
     }
 
-    return verifiedBinaries
+    // 4. Read versions in parallel: execution is authoritative because dist might
+    // not match package.json, package.json is the fallback.
+    const versions = await Promise.all(
+        found.map(async (bin) => {
+            const executed = await readVersionFromExecution(bin.path)
+            return executed ?? (await readVersionFromPackageJson(bin.realPath, bin.path))
+        })
+    )
+
+    return found.map((bin, index) => ({
+        ...bin,
+        version: versions[index],
+        isActive: index === 0,
+        isShadowed: index !== 0,
+    }))
 }
 
 /**
- * Compare two semver strings (returns >0 if a is newer than b).
+ * Resolve the `december` binary the shell runs first from PATH, without scanning
+ * well-known locations or executing every install on the machine.
  */
-export function compareVersions(a?: string, b?: string): number {
-    if (!a && !b) return 0
-    if (!a) return -1
-    if (!b) return 1
+export async function findActivePathBinary(
+    options?: DiscoveryOptions
+): Promise<DecemberBinaryInfo | null> {
+    const env = options?.env ?? process.env
+    const rawPath = options?.envPath ?? env.PATH ?? ''
+    const pathDirs = rawPath.split(path.delimiter).filter(Boolean)
+    const searchDirs =
+        process.platform === 'linux' && !options?.envPath
+            ? pathDirs.filter((dir) => !dir.startsWith('/mnt/'))
+            : pathDirs
+    const binNames =
+        process.platform === 'win32'
+            ? ['december.cmd', 'december.exe', 'december.ps1', 'december']
+            : ['december']
 
-    const cleanA = a.replace(/^v/, '')
-    const cleanB = b.replace(/^v/, '')
-    const p1 = cleanA.split('.').map((n) => Number(n) || 0)
-    const p2 = cleanB.split('.').map((n) => Number(n) || 0)
-
-    for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
-        const v1 = p1[i] ?? 0
-        const v2 = p2[i] ?? 0
-        if (v1 > v2) return 1
-        if (v1 < v2) return -1
+    for (const dir of searchDirs) {
+        for (const name of binNames) {
+            const candidate = path.join(dir, name)
+            try {
+                const lstat = await fs.lstat(candidate)
+                if (lstat.isDirectory()) continue
+                let realPath = candidate
+                try {
+                    realPath = await fs.realpath(candidate)
+                } catch {
+                    // Intentionally swallowed: broken symlink, keep the PATH entry
+                }
+                const version =
+                    (await readVersionFromExecution(candidate)) ??
+                    (await readVersionFromPackageJson(realPath, candidate))
+                return {
+                    path: candidate,
+                    realPath,
+                    manager: inferManagerFromPath(candidate, realPath),
+                    version,
+                    isSymlink: lstat.isSymbolicLink(),
+                    isActive: true,
+                    isShadowed: false,
+                }
+            } catch {
+                // Intentionally swallowed: no binary with this name in this PATH entry
+            }
+        }
     }
-    return 0
+    return null
 }
 
 /**
@@ -349,7 +413,7 @@ export async function diagnoseBinaryCollisions(
     }
 }
 
-function isPermissionDeniedError(errMsg: string): boolean {
+export function isPermissionDeniedError(errMsg: string): boolean {
     const lower = errMsg.toLowerCase()
     return (
         lower.includes('eacces') ||
@@ -366,9 +430,33 @@ export interface FailedStaleBinary {
     needsSudo: boolean
 }
 
+export interface SkippedBinary {
+    path: string
+    reason: string
+}
+
 export interface ResolveCleanResult {
     cleanedOrForwarded: string[]
     failedBinaries: FailedStaleBinary[]
+    skipped: SkippedBinary[]
+}
+
+/**
+ * Pick the install other binaries should point at: the newest known version that
+ * is not a development build. Ties keep PATH order. Returns undefined when no
+ * version is known, so callers never align binaries to a guess.
+ */
+export function selectPrimaryBinary(
+    allBinaries: DecemberBinaryInfo[]
+): DecemberBinaryInfo | undefined {
+    let primary: DecemberBinaryInfo | undefined
+    for (const bin of allBinaries) {
+        if (bin.manager === 'source' || !bin.version) continue
+        if (!primary || compareVersions(bin.version, primary.version) > 0) {
+            primary = bin
+        }
+    }
+    return primary
 }
 
 /**
@@ -383,6 +471,13 @@ export async function forwardStaleBinary(
     try {
         if (stalePath === targetPath) {
             return { success: true }
+        }
+
+        if (process.platform === 'win32') {
+            return {
+                success: false,
+                error: 'Automatic cleanup is not supported on Windows. Remove this install with the package manager that created it.',
+            }
         }
 
         // Avoid creating broken cross-OS symlinks between WSL Linux paths and Windows mounts
@@ -414,14 +509,7 @@ export async function forwardStaleBinary(
             // Intentionally swallowed: unlink may fail if file was moved or on Windows locking
         }
 
-        // On POSIX, create symlink pointing to targetPath
-        if (process.platform !== 'win32') {
-            await fs.symlink(targetPath, stalePath)
-        } else {
-            // On Windows, create forwarding .cmd script
-            const cmdContent = `@ECHO off\r\n"${targetPath}" %*\r\n`
-            await fs.writeFile(stalePath, cmdContent, 'utf-8')
-        }
+        await fs.symlink(targetPath, stalePath)
 
         return { success: true }
     } catch (e: any) {
@@ -435,7 +523,9 @@ export async function forwardStaleBinary(
 }
 
 /**
- * Clean up or forward all stale / competing binaries so that the primary binary takes precedence.
+ * Forward binaries that are known to be older than the primary binary.
+ * Binaries with the same or a newer version, an unknown version, or a development
+ * build are left alone and reported in `skipped`.
  */
 export async function resolveAndCleanStaleBinaries(
     targetPrimaryBinary: DecemberBinaryInfo,
@@ -443,21 +533,34 @@ export async function resolveAndCleanStaleBinaries(
 ): Promise<ResolveCleanResult> {
     const cleanedOrForwarded: string[] = []
     const failedBinaries: FailedStaleBinary[] = []
+    const skipped: SkippedBinary[] = []
 
-    for (const bin of allBinaries) {
-        if (
-            bin.path === targetPrimaryBinary.path ||
-            bin.realPath === targetPrimaryBinary.realPath
-        ) {
-            continue
+    const others = allBinaries.filter(
+        (bin) =>
+            bin.path !== targetPrimaryBinary.path && bin.realPath !== targetPrimaryBinary.realPath
+    )
+
+    if (targetPrimaryBinary.manager === 'source' || !targetPrimaryBinary.version) {
+        for (const bin of others) {
+            skipped.push({ path: bin.path, reason: 'primary install has no known release version' })
         }
+        return { cleanedOrForwarded, failedBinaries, skipped }
+    }
 
-        // Never forward or modify source development files or source directories
+    for (const bin of others) {
         if (bin.manager === 'source' || !isEligibleBinaryPath(bin.path)) {
+            skipped.push({ path: bin.path, reason: 'development build' })
+            continue
+        }
+        if (!bin.version) {
+            skipped.push({ path: bin.path, reason: 'unknown version' })
+            continue
+        }
+        if (compareVersions(bin.version, targetPrimaryBinary.version) >= 0) {
+            skipped.push({ path: bin.path, reason: `same or newer version (v${bin.version})` })
             continue
         }
 
-        // If stale binary is in a different manager path (e.g. ~/.bun/bin/december while target is npm)
         const forwardRes = await forwardStaleBinary(bin.path, targetPrimaryBinary.path)
         if (forwardRes.success) {
             cleanedOrForwarded.push(bin.path)
@@ -470,5 +573,5 @@ export async function resolveAndCleanStaleBinaries(
         }
     }
 
-    return { cleanedOrForwarded, failedBinaries }
+    return { cleanedOrForwarded, failedBinaries, skipped }
 }

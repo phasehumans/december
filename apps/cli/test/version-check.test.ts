@@ -18,3 +18,13 @@ describe('Version Check Utility (Unit)', () => {
         expect(CHECK_TTL_MS).toBe(4 * 60 * 60 * 1000)
     })
 })
+
+describe('getRegistryUrl', () => {
+    test('uses the public registry by default and respects npm_config_registry', async () => {
+        const { getRegistryUrl } = await import('../src/utils/version-check')
+        expect(getRegistryUrl({})).toBe('https://registry.npmjs.org/@trydecember%2fcli/latest')
+        expect(getRegistryUrl({ npm_config_registry: 'https://mirror.example/npm' })).toBe(
+            'https://mirror.example/npm/@trydecember%2fcli/latest'
+        )
+    })
+})

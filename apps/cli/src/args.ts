@@ -11,6 +11,7 @@ export interface ParsedCliArgs {
     print: boolean
     fix: boolean
     force: boolean
+    check: boolean
     isGlobal: boolean
     isLocal: boolean
     resume: boolean
@@ -105,6 +106,7 @@ function defaultParsedArgs(): ParsedCliArgs {
         print: false,
         fix: false,
         force: false,
+        check: false,
         isGlobal: false,
         isLocal: false,
         resume: false,
@@ -132,6 +134,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 print: { type: 'boolean' },
                 fix: { type: 'boolean' },
                 force: { type: 'boolean', short: 'f' },
+                check: { type: 'boolean' },
                 global: { type: 'boolean', short: 'g' },
                 local: { type: 'boolean', short: 'l' },
                 resume: { type: 'boolean', short: 'r' },
@@ -160,6 +163,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const print = Boolean(values.print)
         const fix = Boolean(values.fix)
         const force = Boolean(values.force)
+        const check = Boolean(values.check)
         const isGlobal = Boolean(values.global)
         const isLocal = Boolean(values.local)
         const isResume = Boolean(values.resume)
@@ -198,6 +202,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'changelog',
             'docs',
             'ask',
+            'plugin',
+            'plugins',
             'skill',
             'skills',
             'mcp',
@@ -229,6 +235,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             print,
             fix,
             force,
+            check,
             isGlobal,
             isLocal,
             resume: isResume || command === 'resume',
@@ -278,15 +285,16 @@ Usage:
   december                          Launch interactive TUI session
   december "<prompt>"               Execute headless agent task
   december ask "<question>"         Ask a question about the codebase (read-only Q&A mode)
-  december resume [session-id]      Resume the most recent session or specified session ID
+  december resume [name]            Resume the most recent session, or one by title or ID
   december auth [status|import]     Inspect active subscriptions and authentication status
   december link <provider>          Link AI subscription (copilot, claude, chatgpt, gemini, etc.)
   december key <provider> [key]     Save BYOK API key (openai, anthropic, deepseek, etc.) [--base-url <url>]
   december login [provider]         Log in to December Cloud or subscription
   december logout [provider]        Remove saved authentication credentials
   december switch [provider]        Switch active provider and restore remembered model
+  december plugin [list|install]    Manage plugins, skills, MCP servers, and marketplaces
   december mcp [status|list]        Inspect configured and connected MCP servers and tools
-  december update                   Update December CLI to the latest version
+  december update [--check]         Update December CLI to the latest version (--check only reports)
   december doctor [--fix]           Inspect installations, health, and resolve PATH collisions
   december changelog                Open changelog in your browser
   december docs [section]           Open documentation in your browser

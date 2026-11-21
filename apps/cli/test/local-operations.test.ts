@@ -88,12 +88,68 @@ describe('local-operations', () => {
             task.status = 'running'
 
             const res = await (localOperations.bash as any).getTaskStatus(task.id)
-            expect(res).toEqual({ status: 'running', output: 'hello' })
+            expect(res).toMatchObject({
+                id: task.id,
+                type: 'shell',
+                status: 'running',
+                output: 'hello',
+            })
         })
 
-        test('getTaskStatus handles missing task', async () => {
-            const res = await (localOperations.bash as any).getTaskStatus('task-999')
-            expect(res).toEqual({ status: 'failed', output: 'Task not found' })
+        test('getTaskStatus rejects an unknown task id', async () => {
+            await expect((localOperations.bash as any).getTaskStatus('task-999')).rejects.toThrow(
+                'no task with id task-999'
+            )
+        })
+
+        test('exec with runInBackground returns a task id at once', async () => {
+            const start = Date.now()
+            const res = await localOperations.bash.exec('sleep 5', process.cwd(), {
+                runInBackground: true,
+            } as any)
+            expect(Date.now() - start).toBeLessThan(1_000)
+            expect(res.exitCode).toBeNull()
+            expect(taskManager.getTask(res.taskId!)?.status).toBe('running')
+            taskManager.killTask(res.taskId!)
+        })
+
+        test('backgroundForeground moves a running foreground command to the background', async () => {
+            const pending = localOperations.bash.exec('sleep 5', process.cwd(), {
+                waitMsBeforeAsync: 60_000,
+            } as any)
+            // let the command start and register
+            await new Promise((r) => setTimeout(r, 50))
+            expect(taskManager.backgroundForeground()).toBe(1)
+            const res = await pending
+            expect(res.exitCode).toBeNull()
+            expect(res.taskId).toBeDefined()
+            expect(taskManager.hasForeground()).toBe(false)
+            taskManager.killTask(res.taskId!)
+        })
+
+        test('listTasks and readTaskOutput report tasks and only new output', async () => {
+            const task = taskManager.addTask('npm run dev', {} as any)
+            taskManager.appendOutput(task.id, 'ready\nGET /\n')
+
+            const list = await (localOperations.bash as any).listTasks()
+            expect(list.find((t: any) => t.id === task.id)).toMatchObject({
+                type: 'shell',
+                status: 'running',
+                command: 'npm run dev',
+            })
+
+            const first = await (localOperations.bash as any).readTaskOutput(task.id)
+            expect(first.output).toBe('ready\nGET /\n')
+            const second = await (localOperations.bash as any).readTaskOutput(task.id)
+            expect(second.output).toBe('')
+
+            taskManager.appendOutput(task.id, 'GET /a\nerror: boom\n')
+            const filtered = await (localOperations.bash as any).readTaskOutput(task.id, 'error')
+            expect(filtered.output).toBe('error: boom')
+
+            await expect(
+                (localOperations.bash as any).readTaskOutput(task.id, '(')
+            ).rejects.toThrow('invalid filter regex')
         })
 
         test('killTask kills task', async () => {

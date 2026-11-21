@@ -2,6 +2,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+import { getDecemberDir, readExtensionPreferences } from '../extensions/preferences'
+
 import { parseSkillFile } from './parser'
 
 import type { DiscoveredSkill, SkillOrigin, SkillsConfigFile } from './types'
@@ -10,21 +12,39 @@ export interface SkillDiscoveryOptions {
     workspaceDir?: string
     homeDir?: string
     builtinDir?: string
+    /** Also return skills that are turned off (they carry enabled: false) */
+    includeDisabled?: boolean
+}
+
+/** A SKILL.md that was found but could not be loaded */
+export interface SkillDiscoveryError {
+    path: string
+    message: string
 }
 
 export class SkillDiscoveryEngine {
     private workspaceDir: string
     private homeDir: string
     private builtinDir?: string
+    private decemberDir: string
+    private includeDisabled: boolean
+    private explicitHomeDir?: string
+    private disabledPlugins = new Set<string>()
+    private errors: SkillDiscoveryError[] = []
 
     constructor(options: SkillDiscoveryOptions = {}) {
         this.workspaceDir = path.resolve(options.workspaceDir || process.cwd())
         this.homeDir = options.homeDir || os.homedir()
+        this.explicitHomeDir = options.homeDir
         this.builtinDir = options.builtinDir
+        this.decemberDir = getDecemberDir(options.homeDir)
+        this.includeDisabled = options.includeDisabled === true
     }
 
     public discoverAllSkills(): DiscoveredSkill[] {
         const skillMap = new Map<string, DiscoveredSkill>()
+        this.disabledPlugins.clear()
+        this.errors = []
 
         // 1. Scan Builtin Skills (Lowest Precedence)
         this.scanBuiltinSkills(skillMap)
@@ -47,14 +67,38 @@ export class SkillDiscoveryEngine {
         // 7. Scan Workspace Local Skills (.december/skills, .agents/skills) (Highest Precedence)
         this.scanWorkspaceLocalSkills(skillMap)
 
+        // Apply on/off preferences: a skill is off when it is turned off itself or
+        // when the plugin that ships it is turned off
+        const prefs = readExtensionPreferences({
+            homeDir: this.explicitHomeDir,
+            workspaceDir: this.workspaceDir,
+        })
+        const skills: DiscoveredSkill[] = []
+        for (const skill of skillMap.values()) {
+            const pluginOff =
+                skill.pluginId !== undefined &&
+                (prefs.plugins[skill.pluginId] === false ||
+                    (prefs.plugins[skill.pluginId] === undefined &&
+                        this.disabledPlugins.has(skill.pluginId)))
+            const enabled = !pluginOff && prefs.skills[skill.name] !== false
+            if (!enabled && !this.includeDisabled) continue
+            skills.push({ ...skill, enabled })
+        }
+
         // Sort alphabetically by canonical name for prompt cache stability
-        return Array.from(skillMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+        return skills.sort((a, b) => a.name.localeCompare(b.name))
+    }
+
+    /** SKILL.md files that failed to parse during the last discoverAllSkills() call */
+    public getErrors(): SkillDiscoveryError[] {
+        return [...this.errors]
     }
 
     private scanDirectoryForSkills(
         skillsDir: string,
         origin: SkillOrigin,
-        map: Map<string, DiscoveredSkill>
+        map: Map<string, DiscoveredSkill>,
+        pluginId?: string
     ) {
         if (!fs.existsSync(skillsDir)) return
 
@@ -67,7 +111,7 @@ export class SkillDiscoveryEngine {
                 // If entry is a repository/bundle with a nested skills/ directory
                 const nestedSkillsDir = path.join(skillDir, 'skills')
                 if (fs.existsSync(nestedSkillsDir) && nestedSkillsDir !== skillsDir) {
-                    this.scanDirectoryForSkills(nestedSkillsDir, origin, map)
+                    this.scanDirectoryForSkills(nestedSkillsDir, origin, map, pluginId)
                 }
 
                 let skillMdPath = path.join(skillDir, 'SKILL.md')
@@ -123,9 +167,14 @@ export class SkillDiscoveryEngine {
                             references,
                             examples,
                             resources,
+                            ...(pluginId ? { pluginId } : {}),
                         })
-                    } catch {
-                        // Intentionally swallowed: malformed or invalid skill file
+                    } catch (err: any) {
+                        // The skill is skipped; the error is kept for /skills and /check
+                        this.errors.push({
+                            path: skillMdPath,
+                            message: err?.message || String(err),
+                        })
                     }
                 }
             }
@@ -177,7 +226,7 @@ export class SkillDiscoveryEngine {
 
     private scanGlobalPluginSkills(map: Map<string, DiscoveredSkill>) {
         const legacyPlugins = path.join(this.homeDir, '.config', 'december', 'plugins')
-        const canonicalPlugins = path.join(this.homeDir, '.december', 'plugins')
+        const canonicalPlugins = path.join(this.decemberDir, 'plugins')
         const geminiPlugins = path.join(this.homeDir, '.gemini', 'config', 'plugins')
         this.scanPluginsDir(legacyPlugins, 'global-plugin', map)
         this.scanPluginsDir(canonicalPlugins, 'global-plugin', map)
@@ -255,12 +304,34 @@ export class SkillDiscoveryEngine {
             const pluginEntries = fs.readdirSync(pluginsDir, { withFileTypes: true })
             for (const p of pluginEntries) {
                 if (!p.isDirectory()) continue
+                if (this.isPluginManifestDisabled(path.join(pluginsDir, p.name))) {
+                    this.disabledPlugins.add(p.name)
+                } else {
+                    this.disabledPlugins.delete(p.name)
+                }
                 const pluginSkillsDir = path.join(pluginsDir, p.name, 'skills')
-                this.scanDirectoryForSkills(pluginSkillsDir, origin, map)
+                this.scanDirectoryForSkills(pluginSkillsDir, origin, map, p.name)
             }
         } catch {
             // Intentionally swallowed: unreadable plugins directory
         }
+    }
+
+    private isPluginManifestDisabled(pluginDir: string): boolean {
+        for (const manifestPath of [
+            path.join(pluginDir, 'plugin.json'),
+            path.join(pluginDir, '.december-plugin', 'plugin.json'),
+            path.join(pluginDir, '.claude-plugin', 'plugin.json'),
+        ]) {
+            if (!fs.existsSync(manifestPath)) continue
+            try {
+                return JSON.parse(fs.readFileSync(manifestPath, 'utf8'))?.disabled === true
+            } catch {
+                // Intentionally swallowed: a malformed manifest does not turn the plugin off
+                return false
+            }
+        }
+        return false
     }
 
     private scanDeclaredConfigFile(

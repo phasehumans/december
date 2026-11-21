@@ -166,4 +166,82 @@ describe('CLI Binary Discovery & Multi-Package-Manager Diagnostics (Unit)', () =
             await fs.rm(tmpDir, { recursive: true, force: true })
         })
     })
+
+    describe('safe cleanup rules', () => {
+        const bin = (p: string, version: string | undefined, manager: any = 'npm') => ({
+            path: p,
+            realPath: p,
+            manager,
+            version,
+            isSymlink: false,
+            isActive: false,
+            isShadowed: true,
+        })
+
+        test('leaves same, newer and unknown versions alone', async () => {
+            const { resolveAndCleanStaleBinaries } = await import('../src/utils/bin-discovery')
+            const target = bin('/a/december', '0.4.19')
+            const res = await resolveAndCleanStaleBinaries(target, [
+                target,
+                bin('/b/december', '0.4.19'),
+                bin('/c/december', '0.5.0'),
+                bin('/d/december', undefined),
+            ])
+            expect(res.cleanedOrForwarded).toEqual([])
+            expect(res.failedBinaries).toEqual([])
+            expect(res.skipped.map((s) => s.path)).toEqual([
+                '/b/december',
+                '/c/december',
+                '/d/december',
+            ])
+        })
+
+        test('never aligns installs to a development build', async () => {
+            const { resolveAndCleanStaleBinaries } = await import('../src/utils/bin-discovery')
+            const target = bin('/repo/apps/cli/dist/december', '9.9.9', 'source')
+            const res = await resolveAndCleanStaleBinaries(target, [
+                target,
+                bin('/b/december', '0.1.0'),
+            ])
+            expect(res.cleanedOrForwarded).toEqual([])
+            expect(res.skipped.length).toBe(1)
+        })
+
+        test('selectPrimaryBinary picks the newest release and skips unknown and source', async () => {
+            const { selectPrimaryBinary } = await import('../src/utils/bin-discovery')
+            expect(selectPrimaryBinary([bin('/a/december', undefined)])).toBeUndefined()
+            expect(
+                selectPrimaryBinary([
+                    bin('/a/december', '0.4.18'),
+                    bin('/b/december', '0.4.19'),
+                    bin('/repo/apps/cli/dist/december', '9.9.9', 'source'),
+                ])?.path
+            ).toBe('/b/december')
+        })
+    })
+
+    describe('findActivePathBinary', () => {
+        test('returns the first december on PATH with its version', async () => {
+            const { findActivePathBinary } = await import('../src/utils/bin-discovery')
+            const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dec-path-test-'))
+            const first = path.join(tmpDir, 'first')
+            const second = path.join(tmpDir, 'second')
+            await fs.mkdir(first)
+            await fs.mkdir(second)
+            await fs.writeFile(path.join(first, 'december'), '#!/bin/sh\necho 0.4.19\n', {
+                mode: 0o755,
+            })
+            await fs.writeFile(path.join(second, 'december'), '#!/bin/sh\necho 0.3.0\n', {
+                mode: 0o755,
+            })
+
+            const active = await findActivePathBinary({
+                envPath: [path.join(tmpDir, 'missing'), first, second].join(path.delimiter),
+            })
+            expect(active?.path).toBe(path.join(first, 'december'))
+            expect(active?.version).toBe('0.4.19')
+
+            await fs.rm(tmpDir, { recursive: true, force: true })
+        })
+    })
 })

@@ -281,6 +281,7 @@ export function anthropicProvider(
                     completionTokens,
                     cacheCreationInputTokens: cacheCreationInputTokens || undefined,
                     cacheReadInputTokens: cacheReadInputTokens || undefined,
+                    promptTokensExcludeCache: true,
                 }
             }
         }

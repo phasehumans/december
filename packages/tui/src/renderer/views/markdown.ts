@@ -31,7 +31,6 @@ function parseInlineMarkdown(
                     text: codeText,
                     style: {
                         fg: THEME.colors.brand,
-                        bg: THEME.colors.codespanBg,
                         bold: true,
                     },
                 })
@@ -44,7 +43,6 @@ function parseInlineMarkdown(
                     text: remaining,
                     style: {
                         fg: THEME.colors.brand,
-                        bg: THEME.colors.codespanBg,
                         bold: true,
                     },
                 })
@@ -164,7 +162,7 @@ function parseInlineMarkdown(
  * Long tokens (such as URLs) exceeding maxWidth are broken into chunks so
  * no line exceeds maxWidth.
  */
-function wrapSegments(segments: FormattedLine, maxWidth: number): FormattedLine[] {
+export function wrapSegments(segments: FormattedLine, maxWidth: number): FormattedLine[] {
     const lines: FormattedLine[] = []
     let currentLine: FormattedLine = []
     let currentLen = 0
@@ -231,9 +229,8 @@ function wrapSegments(segments: FormattedLine, maxWidth: number): FormattedLine[
  * (TypeScript, JavaScript, Python, JSON, Shell, SQL).
  */
 function highlightCodeLine(lineText: string, language: string): FormattedLine {
-    const bg = THEME.colors.codespanBg
     if (!lineText) {
-        return [{ text: ' ', style: { bg } }]
+        return [{ text: '', style: {} }]
     }
 
     const segments: TextSegment[] = []
@@ -248,23 +245,21 @@ function highlightCodeLine(lineText: string, language: string): FormattedLine {
         }
         const [full, comment, str, keyword, num, typeIdent, other] = match
         if (comment) {
-            segments.push({ text: comment, style: { fg: THEME.colors.dim, italic: true, bg } })
+            segments.push({ text: comment, style: { fg: THEME.colors.dim, italic: true } })
         } else if (str) {
-            segments.push({ text: str, style: { fg: THEME.colors.success, bg } })
+            segments.push({ text: str, style: { fg: THEME.colors.success } })
         } else if (keyword) {
-            segments.push({ text: keyword, style: { fg: THEME.colors.brand, bold: true, bg } })
+            segments.push({ text: keyword, style: { fg: THEME.colors.brand, bold: true } })
         } else if (num) {
-            segments.push({ text: num, style: { fg: THEME.colors.warning, bg } })
+            segments.push({ text: num, style: { fg: THEME.colors.warning } })
         } else if (typeIdent) {
-            segments.push({ text: typeIdent, style: { fg: THEME.colors.brand, bg } })
+            segments.push({ text: typeIdent, style: { fg: THEME.colors.brand } })
         } else {
-            segments.push({ text: other || full, style: { fg: THEME.colors.text, bg } })
+            segments.push({ text: other || full, style: { fg: THEME.colors.text } })
         }
     }
 
-    return segments.length > 0
-        ? segments
-        : [{ text: lineText, style: { fg: THEME.colors.text, bg } }]
+    return segments.length > 0 ? segments : [{ text: lineText, style: { fg: THEME.colors.text } }]
 }
 
 /**

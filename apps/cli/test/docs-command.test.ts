@@ -47,8 +47,8 @@ describe('CLI docs command', () => {
             expect(resolveDocsSectionPath('terms')).toBe('/terms')
         })
 
-        it('resolves changelog section to /changelog/', () => {
-            expect(resolveDocsSectionPath('changelog')).toBe('/changelog/')
+        it('resolves changelog section to /changelog', () => {
+            expect(resolveDocsSectionPath('changelog')).toBe('/changelog')
         })
 
         it('passes through unknown sections prefixed with /', () => {

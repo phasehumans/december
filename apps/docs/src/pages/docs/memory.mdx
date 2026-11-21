@@ -1,64 +1,63 @@
 ---
 layout: ../../layouts/DocsLayout.astro
-title: Workspace Memory & Rules
-description: Give December your project rules and notes that it reads in every session.
+title: Project Rules & /learn
+description: Give December project rules that it reads in every session, and save lessons with /learn.
 currentSlug: 'memory'
 ---
 
-This page helps you give December rules and notes that it reads in every session.
+This page helps you give December rules that it reads in every session.
 
 ## Overview
 
-December reads two types of files when a session starts:
+December reads its rules from one file: `AGENTS.md`. If a folder has no `AGENTS.md`, December reads `CLAUDE.md` in that folder.
 
-1. Rules: files that you write, such as `AGENTS.md`. Rules tell December your coding standards and team conventions.
-2. Memory: a short list of notes in `.december/memory.md`. Memory holds facts about your project, such as the test command.
+Rules tell December your coding standards, team conventions, and project facts, such as the test command. December adds the rules to its instructions for the session. You do not need to repeat them in each prompt.
 
-December adds both to its instructions for the session. You do not need to repeat them in each prompt.
+## Where December looks for rules
 
-## Workspace memory (`.december/memory.md`)
+December looks in your current folder. Then it looks in each parent folder, up to the root of your file system. In each folder, December reads one file:
 
-Memory is a Markdown file with one section for each category. Each entry is one bullet:
+- `AGENTS.md`
+- `CLAUDE.md`, only if the folder has no `AGENTS.md`
 
-```markdown
-## build_and_test
+December also reads a global `~/.december/AGENTS.md`. Global rules apply to every project on your computer. If you set `DECEMBER_CONFIG_DIR`, December reads `AGENTS.md` from that folder.
 
-- Run unit tests with `bun test`
-- Run `bun db:migrate:test` before integration tests
+December adds the files in this order: global rules first, then rules from the top folder down to your current folder.
 
-## conventions
+December reads rule files when the CLI starts. If you change a rule file, exit and start `december` again.
 
-- Put custom hooks in the feature folder that uses them
-```
+December does not read other rule or memory files, such as `.december/memory.md`, `.december/rules.md`, `RULES.md`, or `AGENTS.override.md`. If you have one of these files, move its content to `AGENTS.md`.
 
-The categories are `conventions`, `build_and_test`, `architecture`, `quirks`, `rules`, and `general`.
+## Save a lesson with `/learn`
 
-December can also add and remove entries itself with the `manage_memory` tool, in the terminal and in December Cloud.
+Use `/learn` when you correct December, or when you find a fact or a procedure that December must remember. December writes the lesson to a file, so that later sessions follow it.
 
-### Memory size limit (2 KB)
+There are two ways to use `/learn`:
 
-December adds at most 2,048 bytes of memory to its instructions. If your memory files are larger, December cuts the text at 2 KB. Keep each entry short, and remove entries that are out of date.
+- Type `/learn` with no text. December reads the recent conversation and finds the lesson. If there is nothing to save, December tells you and writes no file.
+- Type the lesson after the command. For example: `/learn never use axios, use the fetch wrapper in lib/http.ts`.
+
+December saves each lesson in one of two formats:
+
+| Lesson | Where December saves it |
+| :-- | :-- |
+| A rule, a convention, a preference, or a project fact | `AGENTS.md` at the root of your git repository |
+| A procedure with many steps, such as a release runbook | A new skill in `.december/skills/<name>/SKILL.md` |
+
+If the root has `CLAUDE.md` and no `AGENTS.md`, December writes to `CLAUDE.md`. If there is no rule file, December makes `AGENTS.md`. If there is no git repository, December uses your current folder.
+
+December reads the file before it writes. It puts the lesson under the heading that fits, and it updates a rule that exists instead of adding a copy. December does not ask before it writes. After it writes, December shows the file path and the lines that it changed.
+
+December applies the change from the next session. To check or undo the change, use `/diff` or `/rewind`.
+
+Note: `AGENTS.md` and skills are often committed to git. December does not write secrets, tokens, or personal data to these files.
 
 ## View rules with `/memory`
 
-Type `/memory` to see the rule files that December reads. December uses the same files and folders as the agent. See [Where December looks for rules](#where-december-looks-for-rules). If December finds more than one file, the view shows all of them. The most specific file is first in the title.
+Type `/memory` to see the rule files that December reads. If December finds more than one file, the view shows all of them. The most specific file is first in the title.
 
 - Press `↑` and `↓` to scroll the file.
 - Press `c` to make a starter `AGENTS.md` file. This key shows only when December finds no rule file. December puts the file at the root of your git repository. If there is no git repository, December puts it in your current folder. December does not replace a file that exists.
 - Press Esc to close the view.
 
-The view is read only. To change the file, edit it in your editor.
-
-## Where December looks for rules
-
-December looks for rule files in your current folder. Then it looks in each parent folder, up to the root of your file system. In each folder, it reads these files:
-
-- `AGENTS.override.md`
-- `AGENTS.md`
-- `CLAUDE.md`
-- `.december/rules.md`
-- `.december/AGENTS.md`
-
-December also reads global rules from `~/.december/rules.md` or `~/.december/AGENTS.md`. Global rules apply to every project on your computer.
-
-December adds the files in this order: global rules first, then rules from the top folder down to your current folder. December reads rule files when the CLI starts. If you change a rule file, exit and start `december` again.
+The view is read only. To change the file, edit it in your editor or use `/learn`.

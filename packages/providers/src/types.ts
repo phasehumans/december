@@ -42,6 +42,11 @@ export type ProviderStreamChunk =
           completionTokens: number
           cacheCreationInputTokens?: number
           cacheReadInputTokens?: number
+          /**
+           * true when promptTokens does not include the cache read and cache write
+           * tokens (anthropic). Default: promptTokens includes them (openai, gemini).
+           */
+          promptTokensExcludeCache?: boolean
       }
 
 export interface LLMProvider {

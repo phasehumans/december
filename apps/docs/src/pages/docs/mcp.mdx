@@ -84,13 +84,17 @@ Both files use the standard `mcpServers` format:
 
 ## Manage servers in a session (`/mcp`)
 
-Type `/mcp` to open the MCP view. The view shows each server, its scope, its status, and its tools.
+Type `/mcp` to open the MCP view. The view shows each server, its status, and its tools. Each row shows where the server comes from: `project`, `user`, or `via <plugin>`.
 
-- Press Space to start or stop the selected server.
+- Press Space to start or stop the selected server for this session.
 - Press Enter to see the details and tools of a server.
-- Press `a` to add a server. You can select a preset, such as `github`, `postgres`, or `filesystem`, or press `c` to type a custom command.
+- Press `r` to restart a server.
+- Press `a` to add a server with a custom command or URL.
 - Press `d` to remove a server.
-- Press `r` in the details view to restart a server.
+
+To turn a server off in its config file, or to install a server from a marketplace, use `/plugin`. See [Plugins & Marketplaces](/docs/plugins).
+
+A plugin owns its MCP servers. To remove one, uninstall the plugin in `/plugin`.
 
 The status bar shows the number of MCP servers, for example `· 2 MCP`.
 

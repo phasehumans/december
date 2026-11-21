@@ -27,6 +27,8 @@ export interface InputBarViewProps {
     showExitConfirm?: boolean
     toast?: { message: string; variant?: string } | null
     pendingModelFallback?: { fallbackModel: string; failedModel: string }
+    /** One-line notice shown in the empty prompt, e.g. after an update is installed */
+    restartNotice?: string
 }
 
 export function formatTokenCount(n: number): string {
@@ -285,6 +287,13 @@ export const InputBarView = {
                         maxWidth: maxInputWidth,
                         style: { fg: THEME.colors.warning, bold: true },
                     })
+                } else if (props.restartNotice) {
+                    drawText(buffer, props.restartNotice, {
+                        x: textOffsetX,
+                        y: currentY,
+                        maxWidth: maxInputWidth,
+                        style: { fg: THEME.colors.success, bold: true },
+                    })
                 } else {
                     const placeholder =
                         props.placeholder ??
@@ -384,7 +393,7 @@ export const InputBarView = {
                 const taskText =
                     runningTasks > 0
                         ? ` · ${runningTasks} running (Ctrl+T)`
-                        : ` · ${totalTasks} tasks (Ctrl+T)`
+                        : ` · ${totalTasks} task${totalTasks === 1 ? '' : 's'} (Ctrl+T)`
                 drawText(buffer, taskText, {
                     x: leftX,
                     y: statusY,

@@ -6,6 +6,7 @@ import { extractThoughtTopic } from '../../utils/thought'
 import {
     createStreamingMarkdownCache,
     formatMarkdownToLines,
+    wrapSegments,
     type FormattedLine,
     type StreamingMarkdownCache,
 } from './markdown'
@@ -250,6 +251,38 @@ interface CacheEntry {
 }
 
 export const THOUGHT_DWELL_MS = 2500
+
+/**
+ * User prompt rows: a highlighted block that spans the chat width (ending where the
+ * prompt separator ends). Long and multi-line prompts wrap under the text, not the glyph.
+ */
+export function formatUserPromptRows(text: string, width: number): FormattedLine[] {
+    const bg = THEME.colors.border
+    const style = { fg: THEME.colors.brand, bold: true, bg }
+    const glyph = `${THEME.glyphs.prompt} `
+    const rowWidth = Math.max(glyph.length + 4, width - THEME.padding.paddingRight)
+    const textWidth = rowWidth - glyph.length
+
+    const rows: string[] = []
+    for (const paragraph of text.split(/\r?\n/)) {
+        if (!paragraph.trim()) {
+            rows.push('')
+            continue
+        }
+        for (const line of wrapSegments([{ text: paragraph, style }], textWidth)) {
+            rows.push(line.map((seg) => seg.text).join(''))
+        }
+    }
+
+    return rows.map((rowText, i) => {
+        const prefix = i === 0 ? glyph : ' '.repeat(glyph.length)
+        const pad = ' '.repeat(Math.max(0, rowWidth - prefix.length - rowText.length))
+        return [
+            { text: prefix, style },
+            { text: rowText + pad, style },
+        ]
+    })
+}
 
 function isLiveMessage(m: MessageItem | undefined): boolean {
     return Boolean(m && (m.isStreaming || m.toolCall?.status === 'running'))
@@ -565,11 +598,7 @@ export class MessageLineCache {
         const lines: FormattedLine[] = []
 
         if (msg.role === 'user') {
-            const text = msg.content || msg.text || ''
-            lines.push([
-                { text: '❭ ', style: { fg: THEME.colors.brand, bold: true } },
-                { text, style: { fg: THEME.colors.brand, bold: true } },
-            ])
+            lines.push(...formatUserPromptRows(msg.content || msg.text || '', width))
             lines.push([{ text: '', style: {} }])
         } else if (msg.role === 'tool' || msg.toolCall) {
             const tc = msg.toolCall || {
@@ -1122,25 +1151,34 @@ export class MessageLineCache {
                 lines.push([{ text: '', style: {} }])
             }
         } else if (msg.role === 'compaction' || (msg as any).type === 'compaction') {
-            const rawSummary = msg.content || (msg as any).summary || ''
-            const cleanSummary = rawSummary.replace(/^\[COMPACTED HISTORY SUMMARY\]\n?/i, '').trim()
+            // one marker line where the conversation was compacted; the summary itself is not shown
+            const text = (msg.content || 'Conversation compacted').replace(/\s+/g, ' ').trim()
+            const maxText = Math.max(1, width - 4)
             lines.push([
                 { text: '⟳ ', style: { fg: THEME.colors.warning } },
                 {
-                    text: 'Context Compacted',
-                    style: { fg: THEME.colors.warning, italic: true, bold: true },
+                    text: text.length > maxText ? `${text.slice(0, maxText - 1)}…` : text,
+                    style: { fg: THEME.colors.muted, italic: true },
                 },
             ])
-            if (cleanSummary) {
-                const summaryFormatted = formatMarkdownToLines(cleanSummary, width - 4)
-                for (const l of summaryFormatted) {
-                    l.unshift({ text: '    ', style: {} })
-                    for (const seg of l) {
-                        if (!seg.style?.fg) seg.style = { fg: THEME.colors.muted }
-                    }
-                }
-                lines.push(...summaryFormatted)
-            }
+            lines.push([{ text: '', style: {} }])
+        } else if (msg.role === 'task_notice') {
+            // one line: a status dot coloured by outcome, then the notice text
+            const dotColor =
+                msg.tone === 'success'
+                    ? THEME.colors.success
+                    : msg.tone === 'error'
+                      ? THEME.colors.error
+                      : THEME.colors.muted
+            const text = (msg.content || msg.text || '').replace(/\s+/g, ' ').trim()
+            const maxText = Math.max(1, width - 2)
+            lines.push([
+                { text: `${THEME.glyphs.status} `, style: { fg: dotColor } },
+                {
+                    text: text.length > maxText ? `${text.slice(0, maxText - 1)}…` : text,
+                    style: { fg: THEME.colors.muted },
+                },
+            ])
             lines.push([{ text: '', style: {} }])
         } else if (msg.role === 'error') {
             const rawText = msg.content || msg.text || ''

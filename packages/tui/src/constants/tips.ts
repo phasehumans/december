@@ -6,15 +6,17 @@ export const TIPS: readonly string[] = [
     '/fork branches your conversation without losing history',
     '/copy copies the last assistant response to your clipboard',
     '/resume lets you browse and switch to past sessions',
-    '/usage displays your token consumption and quota',
+    '/usage shows your token usage and activity history',
     '/memory shows your project AGENTS.md',
+    '/learn saves a lesson from this chat to AGENTS.md',
     'press Ctrl+T to view running background tasks',
+    'press Ctrl+B to move a running command to the background',
     'press Tab to autocomplete slash commands and file paths',
     'press Ctrl+J or Shift+Enter to insert a newline',
     'press Ctrl+C once to cancel a running tool or command',
     'hold Shift while you drag to select and copy text',
     'place persistent project rules in AGENTS.md at repo root',
-    'install skills into .december/skills to add specialized tools',
+    'use /plugin to install plugins, skills, and MCP servers from a marketplace',
 ] as const
 
 export const TIP_COOLDOWN_MS = 3 * 60 * 1000 // 3 minutes

@@ -3,6 +3,8 @@ import readline from 'readline'
 import { runAgentLoop } from '@december/agent'
 
 import { purgeProjectEnvApiKeys } from './utils/env-sanitizer'
+import { findDenyRule } from './utils/permission-rules'
+import { recordUsage, waitForUsageWrites } from './utils/usage-tracker'
 
 import type { Agent } from '@december/agent'
 
@@ -60,6 +62,8 @@ export async function runHeadlessTask(
     } = options
 
     purgeProjectEnvApiKeys(options.cwd)
+
+    let detachTaskNotifications: (() => void) | undefined
 
     const isPrint = Boolean(options.print)
     const isRpc = options.rpc !== undefined ? Boolean(options.rpc) : !isPrint
@@ -182,6 +186,12 @@ export async function runHeadlessTask(
                 }
             }
 
+            // synchronous on purpose: the y/n prompt below must be pending before input arrives
+            const denyRule = findDenyRule(toolCall, process.cwd())
+            if (denyRule) {
+                return { block: true, reason: `Blocked by deny rule "${denyRule}".` }
+            }
+
             if (isNonInteractive || isPrint) {
                 return { block: false }
             }
@@ -266,6 +276,21 @@ export async function runHeadlessTask(
             }
         }
 
+        // hooks.json: PreToolUse, PostToolUse, Stop, SessionStart, UserPromptSubmit
+        const { setupUserHooks, appendHookContext } = await import('./utils/user-hooks-setup')
+        const userHooks = await setupUserHooks(agent, {
+            workspaceDir: options.cwd || agent.workspaceDir || process.cwd(),
+            onNotice: (message) => originalConsole.error(`[hooks] ${message}`),
+        })
+        await userHooks.runSessionStart('startup')
+        if (effectivePrompt) {
+            const hookOutcome = await userHooks.runPromptSubmit(effectivePrompt)
+            if (hookOutcome.block) {
+                throw new Error(`Prompt blocked by a UserPromptSubmit hook: ${hookOutcome.block}`)
+            }
+            effectivePrompt = appendHookContext(effectivePrompt, hookOutcome.context)
+        }
+
         if (isRpc) {
             writeJson({
                 type: 'session_init',
@@ -282,6 +307,15 @@ export async function runHeadlessTask(
 
         let totalPromptTokens = 0
         let totalCompletionTokens = 0
+
+        // tell the agent when a background task finishes during this run
+        const [{ taskManager }, { attachTaskNotifications }] = await Promise.all([
+            import('./task-manager'),
+            import('./task-notifications'),
+        ])
+        detachTaskNotifications = attachTaskNotifications(taskManager, {
+            steer: (text) => agent.steer({ role: 'user', content: text }),
+        })
 
         const stream = runAgentLoop(
             agent,
@@ -390,6 +424,7 @@ export async function runHeadlessTask(
                     break
                 }
                 case 'AgentUsage': {
+                    void recordUsage({ ...event, sessionId: agent.sessionId })
                     totalPromptTokens = event.promptTokens
                     totalCompletionTokens = event.completionTokens
                     if (!isRpc && isJson) {
@@ -430,8 +465,11 @@ export async function runHeadlessTask(
             writeOut('\n\nHeadless task complete.\n')
         }
     } finally {
+        detachTaskNotifications?.()
         restoreConsole()
         rl?.close()
+        // the caller exits the process right after this returns
+        await waitForUsageWrites()
     }
 
     return {

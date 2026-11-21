@@ -1,6 +1,8 @@
 export const DEFAULT_DEV_WEB_URL = 'http://localhost:2000'
 export const DEFAULT_PROD_WEB_URL = 'https://trydecember.com'
 
+export const CHANGELOG_URL = `${DEFAULT_PROD_WEB_URL}/docs/changelog`
+
 export const DEFAULT_DEV_APP_URL = 'http://localhost:3000'
 export const DEFAULT_PROD_APP_URL = 'https://app.trydecember.com'
 

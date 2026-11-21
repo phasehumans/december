@@ -33,13 +33,14 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         expect(lines[1][0].text).toContain('## Subheader')
     })
 
-    it('formats fenced code blocks with distinct background styling', () => {
+    it('formats fenced code blocks with syntax colors and no background', () => {
         const text = '```typescript\nconst x = 42\n```'
         const lines = formatMarkdownToLines(text, 30)
 
         expect(lines.length).toBe(1)
         expect(lines[0].map((s) => s.text).join('')).toBe('const x = 42')
-        expect(lines[0][0].style?.bg).toBeDefined()
+        expect(lines[0].every((s) => s.style?.bg === undefined)).toBe(true)
+        expect(lines[0].find((s) => s.text === 'const')?.style?.fg).toBe(THEME.colors.brand)
     })
 
     it('formats bullet lists with bullet glyph', () => {
@@ -62,7 +63,8 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         expect(boldSeg?.style?.bold).toBe(true)
 
         const codeSeg = lines[0].find((s) => s.text === 'inline_code')
-        expect(codeSeg?.style?.bg).toBeDefined()
+        expect(codeSeg?.style?.fg).toBe(THEME.colors.brand)
+        expect(codeSeg?.style?.bg).toBeUndefined()
     })
 
     it('formats markdown links and raw URLs with underline and brand styling', () => {
@@ -233,6 +235,7 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         const text = lines[0].map((s) => s.text).join('')
         expect(text).toBe('Here is streaming code')
         const codeSeg = lines[0].find((s) => s.text === 'streaming code')
-        expect(codeSeg?.style?.bg).toBe(THEME.colors.codespanBg)
+        expect(codeSeg?.style?.fg).toBe(THEME.colors.brand)
+        expect(codeSeg?.style?.bg).toBeUndefined()
     })
 })

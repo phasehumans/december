@@ -148,17 +148,14 @@ describe('Project Entity, Context Inheritance & Bounded Memory (Integration)', (
         expect(systemPrompt).toContain('</project_memory>')
     })
 
-    it('enforces strict 2KB ceiling on workspace memory file injection', async () => {
-        // Create an oversized 10KB memory file in workspace
-        const decDir = path.join(tmpDir, '.december')
-        fs.mkdirSync(decDir, { recursive: true })
-        const largeMemory = '## architecture_notes\n' + 'long instruction entry\n'.repeat(450)
-        expect(Buffer.byteLength(largeMemory, 'utf8')).toBeGreaterThan(5000)
-        fs.writeFileSync(path.join(decDir, 'memory.md'), largeMemory)
+    it('enforces strict 2KB ceiling on pinned rules injection', async () => {
+        const largeRules = '## architecture_notes\n' + 'long instruction entry\n'.repeat(450)
+        expect(Buffer.byteLength(largeRules, 'utf8')).toBeGreaterThan(5000)
 
         const conversation = new ConversationManager([], {
             workspaceRoot: tmpDir,
             systemPrompt: 'Base agent prompt.',
+            pinnedRules: largeRules,
         })
 
         const systemPrompt = conversation.messages[0]!.content

@@ -1,3 +1,5 @@
+import { CHANGELOG_URL } from '@december/shared'
+
 import { THEME } from '../../theme'
 import {
     formatBillingLabel,
@@ -10,6 +12,8 @@ import { drawText } from '../ui'
 import type { ReleaseAnnouncement } from '../../constants/announcements'
 import type { ScreenBuffer } from '../buffer'
 import type { FormattedLine } from './markdown'
+
+const UPDATE_HINT = 'Run /update to upgrade · Changelog: '
 
 export interface HeaderViewProps {
     x?: number
@@ -39,8 +43,8 @@ export const HeaderView = {
         }
 
         const lines: FormattedLine[] = []
-        const pad = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
-        const prefix = ' '.repeat(pad)
+        // The message list applies the left padding, so lines carry only the caller offset
+        const prefix = ' '.repeat(props.x ?? 0)
 
         // Top padding
         lines.push([{ text: '', style: {} }])
@@ -102,10 +106,8 @@ export const HeaderView = {
             ])
             lines.push([
                 { text: `${prefix}▎ `, style: { fg: THEME.colors.brand, bold: true } },
-                {
-                    text: 'Run /update to upgrade · Changelog: trydecember.com/docs/changelog',
-                    style: { fg: THEME.colors.muted },
-                },
+                { text: UPDATE_HINT, style: { fg: THEME.colors.muted } },
+                { text: CHANGELOG_URL, style: { fg: THEME.colors.brand } },
             ])
         } else if (props.announcement) {
             lines.push([{ text: '', style: {} }])
@@ -259,11 +261,16 @@ export const HeaderView = {
                 y,
                 style: { fg: THEME.colors.brand, bold: true },
             })
-            drawText(buffer, 'Run /update to upgrade · Changelog: trydecember.com/docs/changelog', {
+            drawText(buffer, UPDATE_HINT, {
                 x: x + 2,
                 y,
-                maxWidth: maxWidth - 2,
                 style: { fg: THEME.colors.muted },
+            })
+            drawText(buffer, CHANGELOG_URL, {
+                x: x + 2 + UPDATE_HINT.length,
+                y,
+                maxWidth: Math.max(10, maxWidth - 2 - UPDATE_HINT.length),
+                style: { fg: THEME.colors.brand },
             })
             y += 1
         } else if (props.announcement) {

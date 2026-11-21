@@ -173,13 +173,13 @@ describe('Agent core functionality (Unit)', () => {
         await agent.saveContext()
         expect(store['session-1'].length).toBe(2)
 
-        const newSessionId = await agent.forkContext('session-2')
-        expect(newSessionId).toBe('session-2')
-        expect(agent.sessionId).toBe('session-2')
-        expect(store['session-2'].length).toBe(2)
+        const newSessionId = await agent.forkContext('second try')
+        expect(newSessionId).not.toBe('session-1')
+        expect(agent.sessionId).toBe(newSessionId)
+        expect(store[newSessionId].length).toBe(2)
 
         await agent.newContext()
-        expect(agent.sessionId).not.toBe('session-2')
+        expect(agent.sessionId).not.toBe(newSessionId)
         expect(agent.messages.length).toBe(1)
 
         await agent.loadContext('session-1')
@@ -188,15 +188,18 @@ describe('Agent core functionality (Unit)', () => {
         expect(agent.messages[1]!.content).toBe('msg 1')
     })
 
-    test('forkContext sanitizes illegal path characters and prevents collisions', async () => {
-        const existing = new Set<string>(['existing-session', 'existing-session-1'])
+    test('forkContext keeps the name as a title and makes a unique internal id', async () => {
         const store: Record<string, any[]> = {}
+        const metas: Record<string, any> = {}
         const repo = {
             saveContext: async (id: string, msgs: any[]) => {
                 store[id] = [...msgs]
             },
             loadContext: async (id: string) => store[id] || [],
-            hasSession: async (id: string) => existing.has(id),
+            hasSession: async (id: string) => id in store,
+            setSessionMeta: async (id: string, meta: any) => {
+                metas[id] = meta
+            },
         }
 
         const agent = new Agent({
@@ -207,15 +210,16 @@ describe('Agent core functionality (Unit)', () => {
             sessionRepository: repo,
         })
 
-        // Sanitization of slashes and special characters
-        const sanitized = await agent.forkContext('feature/login:v2')
-        expect(sanitized).toBe('feature-login-v2')
-        expect(agent.sessionId).toBe('feature-login-v2')
+        // The name can hold any characters, because it is not a file name
+        const first = await agent.forkContext('feature/login:v2')
+        expect(first).toMatch(/^session-\d+(-\d+)?$/)
+        expect(agent.sessionTitle).toBe('feature/login:v2')
+        expect(metas[first]).toEqual({ title: 'feature/login:v2', titleSource: 'manual' })
 
-        // Collision avoidance when session already exists
-        const collisionResolved = await agent.forkContext('existing-session')
-        expect(collisionResolved).toBe('existing-session-2')
-        expect(agent.sessionId).toBe('existing-session-2')
+        // Two forks in the same millisecond still get different ids
+        const second = await agent.forkContext('feature/login:v2')
+        expect(second).not.toBe(first)
+        expect(agent.sessionId).toBe(second)
     })
 
     test('setLLM updates the llm provider', () => {
@@ -419,7 +423,7 @@ describe('Agent core functionality (Unit)', () => {
         )
     })
 
-    test('passively ingests .december/memory.md into agent systemPrompt and messages[0]', () => {
+    test('does not ingest legacy .december/memory.md into the agent systemPrompt', () => {
         const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-mem-test-'))
         try {
             const decDir = path.join(tmpDir, '.december')
@@ -437,11 +441,8 @@ describe('Agent core functionality (Unit)', () => {
                 systemPrompt: 'You are December.',
             })
 
-            expect(agent.systemPrompt).toContain('<project_memory>')
-            expect(agent.systemPrompt).toContain('## quirks')
-            expect(agent.systemPrompt).toContain('e2e tests need headless mode')
-            expect(agent.systemPrompt).toContain('</project_memory>')
-            expect(agent.messages.length).toBe(1)
+            expect(agent.systemPrompt).not.toContain('<project_memory>')
+            expect(agent.systemPrompt).not.toContain('e2e tests need headless mode')
             expect(agent.messages[0]!.content).toBe(agent.systemPrompt)
         } finally {
             fs.rmSync(tmpDir, { recursive: true, force: true })

@@ -102,10 +102,6 @@ export function getToolSummary(name: string, inputStr: string): string {
                 const action = args.action || args.actionType || args.url || ''
                 return `Browser(${action})`.trim()
             }
-            case 'manage_memory': {
-                const action = args.action || args.Action || ''
-                return `ManageMemory(${action})`.trim()
-            }
             case 'code_intelligence': {
                 const query = args.symbol || args.query || args.path || ''
                 return `CodeIntel(${query})`.trim()

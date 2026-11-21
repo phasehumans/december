@@ -7,7 +7,6 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
 import { EditFileTool } from '../../src/edit'
 import { EditDiffTool } from '../../src/edit_diff'
 import { LsTool } from '../../src/ls'
-import { ManageMemoryTool } from '../../src/manage_memory'
 import { ReadFileTool } from '../../src/read'
 import { WriteFileTool } from '../../src/write'
 import { createMockContext } from '../mock-context'
@@ -82,32 +81,5 @@ describe('Filesystem Tools Integration', () => {
         const lsResult = await LsTool.execute({ dirPath: testDir }, context)
         expect(lsResult).toContain('fileA.txt')
         expect(lsResult).toContain('fileB.txt')
-    })
-
-    test('manage_memory tool records, reads, and forgets entries in persistent filesystem storage', async () => {
-        const recordRes = await ManageMemoryTool.execute(
-            {
-                action: 'record',
-                category: 'build_and_test',
-                entry: 'run test with bun test',
-            },
-            context
-        )
-        expect(recordRes).toContain('Recorded entry')
-
-        const readRes = await ManageMemoryTool.execute(
-            { action: 'read', category: 'build_and_test' },
-            context
-        )
-        expect(readRes).toContain('run test with bun test')
-
-        const forgetRes = await ManageMemoryTool.execute(
-            { action: 'forget', entry: 'run test with bun test' },
-            context
-        )
-        expect(forgetRes).toContain('Removed entry from memory')
-
-        const afterForget = await ManageMemoryTool.execute({ action: 'read' }, context)
-        expect(afterForget).not.toContain('run test with bun test')
     })
 })

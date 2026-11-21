@@ -456,20 +456,20 @@ describe('MessageLineCache', () => {
         expect(expandedText).not.toContain('│')
     })
 
-    it('renders Context Compacted banner and summary correctly', () => {
+    it('renders a one-line compaction marker', () => {
         const cache = new MessageLineCache()
         const messages: MessageItem[] = [
             {
                 role: 'compaction' as any,
-                content:
-                    '[COMPACTED HISTORY SUMMARY]\nUser asked to refactor auth and add jwt verification.',
+                content: 'Conversation compacted · ~48.2k → ~9.1k tokens · focus: auth',
             },
         ]
 
         const lines = cache.getLines(messages, 100)
         const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(text).toContain('Context Compacted')
-        expect(text).toContain('User asked to refactor auth and add jwt verification.')
+        expect(text).toContain('⟳ Conversation compacted · ~48.2k → ~9.1k tokens · focus: auth')
+        // marker line plus one blank spacer line
+        expect(lines.filter((l) => l.some((s) => s.text.trim())).length).toBe(1)
     })
 
     it('formats stream interrupt notice with muted styling', () => {

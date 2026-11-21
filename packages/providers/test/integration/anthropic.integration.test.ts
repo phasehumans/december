@@ -97,7 +97,12 @@ describe('Anthropic Provider (Integration)', () => {
         })
         expect(chunks[3]).toEqual({ type: 'tool_call_delta', id: 'tool_1', inputDelta: '{"q":"' })
         expect(chunks[4]).toEqual({ type: 'tool_call_delta', id: 'tool_1', inputDelta: 'test"}' })
-        expect(chunks[5]).toEqual({ type: 'usage', promptTokens: 15, completionTokens: 25 })
+        expect(chunks[5]).toEqual({
+            type: 'usage',
+            promptTokens: 15,
+            completionTokens: 25,
+            promptTokensExcludeCache: true,
+        })
     })
 
     test('should correctly transform messages and tools to Anthropic format', async () => {

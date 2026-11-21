@@ -66,6 +66,18 @@ export class TerminalController {
         this.stdout.write(data)
     }
 
+    /** sets the terminal window or tab title (OSC 0). control characters are removed. */
+    setWindowTitle(title: string): void {
+        if (this.isCleanedUp || !this.stdout.isTTY) return
+        let safe = ''
+        for (const ch of title) {
+            const code = ch.charCodeAt(0)
+            safe += code < 32 || code === 127 ? ' ' : ch
+        }
+        safe = safe.trim()
+        this.write(`\x1b]0;${safe}\x07`)
+    }
+
     enterAlternateScreen(): void {
         if (this.inAlternateScreen || this.isCleanedUp) return
         this.write('\x1b[?1049h')

@@ -9,7 +9,6 @@ import { FindFilesTool } from '../../src/find'
 import { GrepSearchTool } from '../../src/grep'
 import { CORE_TOOLS, DEFERRED_TOOLS, FOUNDATIONAL_TOOLS } from '../../src/index'
 import { LsTool } from '../../src/ls'
-import { ManageMemoryTool } from '../../src/manage_memory'
 import { ManageTaskTool } from '../../src/manage_task'
 import { ReadFileTool, ReadTool } from '../../src/read'
 import { WebSearchTool } from '../../src/web_search'
@@ -31,9 +30,9 @@ describe('Tools Schema & Registration (Unit)', () => {
         expect(names).toContain('search_tools')
     })
 
-    test('DEFERRED_TOOLS includes manage_memory', () => {
+    test('DEFERRED_TOOLS does not include the removed manage_memory tool', () => {
         const names = DEFERRED_TOOLS.map((t) => t.name)
-        expect(names).toContain('manage_memory')
+        expect(names).not.toContain('manage_memory')
     })
 
     test('ReadTool and ReadFileTool are configured with aliases', () => {
@@ -95,11 +94,5 @@ describe('Tools Schema & Registration (Unit)', () => {
         expect(CodeIntelligenceTool.name).toBe('code_intelligence')
         expect(CodeIntelligenceTool.description).toBeDefined()
         expect(CodeIntelligenceTool.inputSchema).toBeDefined()
-    })
-
-    test('ManageMemoryTool has correct metadata', () => {
-        expect(ManageMemoryTool.name).toBe('manage_memory')
-        expect(ManageMemoryTool.description).toBeDefined()
-        expect(ManageMemoryTool.inputSchema).toBeDefined()
     })
 })

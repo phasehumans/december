@@ -153,6 +153,67 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('counts only output added after scrolling up as new lines', () => {
+        const app = new DifferentialApp({ terminal, width: 80, height: 12 })
+        app.start()
+        for (let i = 1; i <= 30; i++) {
+            app.state.messages.push({ role: 'assistant', content: `message line ${i}` })
+        }
+        app.render()
+
+        app.scrollUp(10)
+        const anchor = (app as any).scrollAnchor
+        expect(anchor).not.toBeNull()
+
+        // Nothing new yet: the pill must not claim new lines
+        expect((app as any).getNewLinesAnchor(80)).toBe(anchor.totalLines)
+
+        app.state.messages.push({ role: 'assistant', content: 'fresh output' })
+        app.render()
+        expect((app as any).scrollAnchor.totalLines).toBe(anchor.totalLines)
+
+        // Back at the bottom the anchor is cleared
+        app.scrollToBottom()
+        expect((app as any).scrollAnchor).toBeNull()
+
+        app.stop()
+    })
+
+    it('does not stop the agent on a quick second Esc after jumping to the bottom', () => {
+        let aborted = 0
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 10,
+            onAbort: () => {
+                aborted++
+            },
+        })
+        app.start()
+        for (let i = 1; i <= 20; i++) {
+            app.state.messages.push({ role: 'assistant', content: `message line ${i}` })
+        }
+        app.render()
+        app.state.isStreaming = true
+        app.scrollUp(5)
+
+        app.handleKey('\x1b')
+        expect(app.state.scrollOffset).toBeUndefined()
+        expect(app.state.isStreaming).toBe(true)
+
+        // Double-tap within the guard window is ignored
+        app.handleKey('\x1b')
+        expect(app.state.isStreaming).toBe(true)
+        expect(aborted).toBe(0)
+
+        // After the guard window, Esc stops the agent as before
+        ;(app as any).lastEscJumpAt = Date.now() - 2000
+        app.handleKey('\x1b')
+        expect(aborted).toBe(1)
+
+        app.stop()
+    })
+
     it('supports scrolling through message history and reading mode navigation', () => {
         const app = new DifferentialApp({
             terminal,
@@ -346,9 +407,9 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.handleKey('\x1b')
         expect(app.state.activeOverlay).toBe('none')
 
-        // Execute /skills
-        app.executeCommand('skills')
-        expect(app.state.activeOverlay).toBe('skills')
+        // /plugin opens the plugin view
+        app.executeCommand('plugin')
+        expect(app.state.activeOverlay).toBe('plugin')
 
         app.handleKey('\x1b')
         expect(app.state.activeOverlay).toBe('none')
@@ -1229,15 +1290,16 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.sessionRenameMode).toBe(false)
         expect(renamedOldId).toBe('sess-2')
         expect(renamedNewId).toBe('Refactored bug')
-        expect(app.state.sessions[1].id).toBe('Refactored bug')
+        expect(app.state.sessions[1].id).toBe('sess-2')
+        expect(app.state.sessions[1].title).toBe('Refactored bug')
 
         // 4. Press 'd' to trigger delete confirmation
         app.handleKey('d')
-        expect(app.state.sessionConfirmDeleteId).toBe('Refactored bug')
+        expect(app.state.sessionConfirmDeleteId).toBe('sess-2')
 
         // 5. Press 'y' to confirm delete
         app.handleKey('y')
-        expect(deletedSessionId).toBe('Refactored bug')
+        expect(deletedSessionId).toBe('sess-2')
         expect(app.state.sessions.length).toBe(2)
         expect(app.state.sessionConfirmDeleteId).toBeNull()
 
@@ -1255,52 +1317,61 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('handles /usage menu and triggers billing portal callback', () => {
-        let billingPortalOpened = false
+    it('handles /usage menu and triggers billing portal callback', async () => {
+        let billingUrl: string | undefined
+        let loads = 0
+        const overview = {
+            history: {
+                input: 1000,
+                output: 500,
+                cacheRead: 0,
+                cacheWrite: 0,
+                totalTokens: 1500,
+                dailyTokens: {},
+                sessions: 1,
+                activeDays: 1,
+                trackedDays: 1,
+                currentStreak: 1,
+                bestStreak: 1,
+            },
+        }
 
         const app = new DifferentialApp({
             terminal,
             width: 80,
             height: 24,
-            usageStats: { requests: 42, inputTokens: 1000, outputTokens: 500, totalTokens: 1500 },
-            onOpenBillingPortal: () => {
-                billingPortalOpened = true
+            selectedProvider: 'anthropic',
+            onLoadUsage: async () => {
+                loads++
+                return overview
+            },
+            onOpenBillingPortal: (url) => {
+                billingUrl = url
             },
         })
         app.start()
 
-        // Populate a message with token usage
-        app.state.messages.push({
-            role: 'assistant',
-            content: 'Hello world',
-            timestamp: Date.now(),
-            usage: {
-                promptTokens: 250,
-                completionTokens: 50,
-            },
-        })
-
         app.executeCommand('usage')
         expect(app.state.activeOverlay).toBe('usage')
-        // Automatically aggregates from messages
-        expect(app.state.usageStats.requests).toBe(1)
-        expect(app.state.usageStats.inputTokens).toBe(250)
-        expect(app.state.usageStats.outputTokens).toBe(50)
+        expect(app.state.usageLoading).toBe(true)
+        await Promise.resolve()
+        await Promise.resolve()
+        expect(loads).toBe(1)
+        expect(app.state.usageLoading).toBe(false)
+        expect(app.state.usageOverview).toEqual(overview)
 
-        // Press 'r' to refresh stats
-        app.handleKey('r')
-        expect(app.state.usageStats.requests).toBe(1)
-
-        // Press 'p' or 'b' to open billing portal
+        // 'b' opens the provider usage dashboard
         app.handleKey('b')
-        expect(billingPortalOpened).toBe(true)
+        expect(billingUrl).toBe('https://console.anthropic.com/settings/billing')
 
-        // Press 'm' to switch to model select overlay
+        // december cloud users get the december dashboard
+        app.state.authMethod = 'december'
+        app.handleKey('b')
+        expect(billingUrl).toBe('https://app.trydecember.com/settings/billing')
+
+        // removed shortcuts do nothing
         app.handleKey('m')
-        expect(app.state.activeOverlay).toBe('model')
-
-        // Return to usage
-        app.executeCommand('usage')
+        app.handleKey('r')
         expect(app.state.activeOverlay).toBe('usage')
 
         // Press 'q' to dismiss overlay
@@ -1310,80 +1381,196 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('handles /skills menu search, detail view navigation, and space shortcut', async () => {
-        const app = new DifferentialApp({
-            terminal,
-            width: 80,
-            height: 24,
-            skills: [
+    it('drives /plugin: skill filter, search, skill viewer, toggle, uninstall, install, marketplaces', async () => {
+        const toggled: any[] = []
+        const uninstalled: string[] = []
+        const installed: Array<{ id: string; scope: string }> = []
+        const addedMarketplaces: string[] = []
+        const skillRow = {
+            key: 'skill:tdd',
+            kind: 'skill' as const,
+            id: 'tdd',
+            name: 'tdd',
+            description: 'Test driven development workflow',
+            scope: 'project' as const,
+            enabled: true,
+            source: '.december/skills',
+            meta: '~12 tok',
+            removable: false,
+            entryFilePath: '/workspace/.december/skills/tdd/SKILL.md',
+        }
+        const pluginRow = {
+            key: 'plugin:github',
+            kind: 'plugin' as const,
+            id: 'github',
+            name: 'github',
+            description: 'GitHub tools',
+            scope: 'user' as const,
+            enabled: true,
+            source: 'december-official',
+            meta: '1 mcp',
+            removable: true,
+            updatable: true,
+            children: [
                 {
-                    name: 'tdd',
-                    description: 'Test driven development workflow',
-                    origin: 'workspace',
-                    directoryPath: '/workspace/.agents/skills/tdd',
-                    entryFilePath: '/workspace/.agents/skills/tdd/SKILL.md',
-                },
-                {
-                    name: 'code-review',
-                    description: 'Performs rigorous code review',
-                    origin: 'global',
-                    directoryPath: '/global/code-review',
-                    entryFilePath: '/global/code-review/SKILL.md',
+                    key: 'mcp:github',
+                    kind: 'mcp' as const,
+                    id: 'github',
+                    name: 'github',
+                    description: 'npx server-github',
+                    scope: 'user' as const,
+                    enabled: true,
+                    source: 'via github',
+                    meta: '12 tools',
+                    removable: false,
+                    parentPlugin: 'github',
                 },
             ],
+        }
+        const app = new DifferentialApp({
+            terminal,
+            width: 100,
+            height: 30,
+            onLoadPlugins: async () => ({
+                installed: [skillRow, pluginRow],
+                discover: [
+                    {
+                        id: 'sqlite@december-official',
+                        name: 'sqlite',
+                        description: 'Query SQLite',
+                        category: 'Database',
+                        marketplace: 'december-official',
+                        defaultScope: 'project',
+                    },
+                ],
+                marketplaces: [
+                    {
+                        name: 'december-official',
+                        source: 'built in',
+                        builtIn: true,
+                        available: 1,
+                        installedCount: 0,
+                    },
+                ],
+            }),
+            onTogglePluginItem: async (item) => {
+                toggled.push(item)
+                return { enabled: false, restartRequired: true }
+            },
+            onUninstallPlugin: async (id) => {
+                uninstalled.push(id)
+            },
+            onInstallPlugin: async (id, scope) => {
+                installed.push({ id, scope })
+                return { name: 'sqlite' }
+            },
+            onAddMarketplace: async (source) => {
+                addedMarketplaces.push(source)
+                return { name: 'acme', available: 3 }
+            },
         })
         app.start()
+        const settle = () => new Promise((resolve) => setTimeout(resolve, 10))
 
-        app.executeCommand('skills')
-        expect(app.state.activeOverlay).toBe('skills')
-        expect(app.state.skills.length).toBe(2)
+        // /plugin opens on Installed; f cycles all -> plugins -> skills
+        app.executeCommand('plugin')
+        await settle()
+        expect(app.state.activeOverlay).toBe('plugin')
+        expect(app.state.pluginActiveTab).toBe('installed')
+        app.handleKey('f')
+        app.handleKey('f')
+        expect(app.state.pluginKindFilter).toBe('skill')
+        let list = app.getPluginList()
+        expect(list.items.map((i: any) => i.row?.name)).toEqual(['tdd'])
 
-        // Search mode: press '/'
+        // f cycles the kind filter: skill -> mcp shows the plugin's server, flattened
+        app.handleKey('f')
+        list = app.getPluginList()
+        expect(app.state.pluginKindFilter).toBe('mcp')
+        expect(list.items.map((i: any) => i.row?.key)).toEqual(['mcp:github'])
+        app.handleKey('f')
+        expect(app.state.pluginKindFilter).toBe('all')
+        expect(app.getPluginList().items).toHaveLength(2)
+
+        // Search mode: '/' then type, Enter keeps the query
         app.handleKey('/')
-        expect(app.state.skillsIsSearching).toBe(true)
-
-        // Type query 'tdd'
-        app.handleKey('t')
-        app.handleKey('d')
-        app.handleKey('d')
-        expect(app.state.skillsSearchQuery).toBe('tdd')
-
-        // Confirm search with Enter
+        expect(app.state.pluginIsSearching).toBe(true)
+        for (const ch of 'tdd') app.handleKey(ch)
         app.handleKey('\r')
-        expect(app.state.skillsIsSearching).toBe(false)
-        expect(app.state.skillsSearchQuery).toBe('tdd')
+        expect(app.state.pluginIsSearching).toBe(false)
+        expect(app.state.pluginSearchQuery).toBe('tdd')
+        expect(app.getPluginList().items).toHaveLength(1)
 
-        // Space inserts '/tdd ' into prompt and closes overlay
-        app.handleKey(' ')
-        expect(app.state.activeOverlay).toBe('none')
-        expect(app.state.input).toBe('/tdd ')
-
-        // Re-open skills
-        app.executeCommand('skills')
+        // Enter on a skill opens the SKILL.md viewer; q goes back to /plugin
+        app.handleKey('\r')
         expect(app.state.activeOverlay).toBe('skills')
-
-        // Enter opens detail view
-        app.handleKey('\r')
         expect(app.state.skillsIsDetailView).toBe(true)
+        expect(app.state.skillsDetailSkill?.name).toBe('tdd')
         app.state.skillsDetailLines = ['# TDD Guide', 'Step 1: Write test', 'Step 2: Implement']
-
-        // Down arrow moves cursor line
         app.handleKey('\x1b[B')
         expect(app.state.skillsCursorLine).toBe(1)
-
-        // Up arrow moves cursor line back
-        app.handleKey('\x1b[A')
-        expect(app.state.skillsCursorLine).toBe(0)
-
-        // q returns to list view
         app.handleKey('q')
-        expect(app.state.skillsIsDetailView).toBe(false)
-        expect(app.state.activeOverlay).toBe('skills')
+        expect(app.state.activeOverlay).toBe('plugin')
 
-        // esc closes menu
+        // Space toggles the skill and reports a restart is needed
+        app.handleKey(' ')
+        await settle()
+        expect(toggled[0]).toMatchObject({ kind: 'skill', id: 'tdd', scope: 'project' })
+        expect(app.state.toast?.message).toContain('Restart December')
+
+        // Esc clears the search, then d on the plugin asks to uninstall
+        app.handleKey('\x1b')
+        expect(app.state.pluginSearchQuery).toBe('')
+        app.handleKey('\x1b[B')
+        app.handleKey('d')
+        expect(app.state.pluginConfirm?.action).toBe('uninstall')
+        app.handleKey('y')
+        await settle()
+        expect(uninstalled).toEqual(['github'])
+
+        // Enter on a plugin opens details with its actions
+        app.handleKey('\r')
+        expect(app.state.pluginScreen).toBe('details')
+        app.handleKey('\x1b')
+        expect(app.state.pluginScreen).toBe('list')
+
+        // Tab order: Discover <- Installed -> Marketplaces
+        app.handleKey('\x1b[D')
+        expect(app.state.pluginActiveTab).toBe('discover')
+        list = app.getPluginList()
+        expect(list.items[0]?.type).toBe('discover')
+        // i opens "install from path"; esc goes back to the list
+        app.handleKey('i')
+        expect(app.state.pluginScreen).toBe('input')
+        expect(app.state.pluginInputKind).toBe('install-source')
+        app.handleKey('\x1b')
+        expect(app.state.pluginScreen).toBe('list')
+        app.handleKey('\r')
+        expect(app.state.pluginScreen).toBe('install')
+        // The entry suggests project scope; up/down switches it
+        expect(app.state.pluginInstallScope).toBe('project')
+        app.handleKey('\x1b[B')
+        expect(app.state.pluginInstallScope).toBe('user')
+        app.handleKey('\r')
+        await settle()
+        expect(installed).toEqual([{ id: 'sqlite@december-official', scope: 'user' }])
+        expect(app.state.pluginScreen).toBe('list')
+
+        // Marketplaces: a opens the add input; paste and submit
+        app.handleKey('\t')
+        app.handleKey('\t')
+        expect(app.state.pluginActiveTab).toBe('marketplaces')
+        app.handleKey('a')
+        expect(app.state.pluginScreen).toBe('input')
+        expect(app.state.pluginInputKind).toBe('add-marketplace')
+        app.handleKey('\x1b[200~acme/plugins\x1b[201~')
+        expect(app.state.pluginInputValue).toBe('acme/plugins')
+        app.handleKey('\r')
+        await settle()
+        expect(addedMarketplaces).toEqual(['acme/plugins'])
+
         app.handleKey('\x1b')
         expect(app.state.activeOverlay).toBe('none')
-
         app.stop()
     })
 
@@ -1926,11 +2113,12 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.sessionSearchQuery).toBe('search-session')
         expect(app.state.input).toBe('')
 
-        // 5. Skills search paste
-        app.state.activeOverlay = 'skills'
-        app.state.skillsIsSearching = true
+        // 5. Plugin search paste
+        app.state.activeOverlay = 'plugin'
+        app.state.pluginScreen = 'list'
+        app.state.pluginIsSearching = true
         app.handleKey('\x1b[200~typescript\x1b[201~')
-        expect(app.state.skillsSearchQuery).toBe('typescript')
+        expect(app.state.pluginSearchQuery).toBe('typescript')
         expect(app.state.input).toBe('')
 
         // 7. Non-text overlay (e.g. help) ignores paste and does not leak to chat input
@@ -2288,14 +2476,12 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.handleKey('r')
         expect(restartedServer).toBe('postgres')
 
-        // 3. 'a' opens Add Preset mode
+        // 3. 'a' opens the custom server form directly (presets live in /plugin now)
         app.handleKey('a')
-        expect(app.state.mcpMode).toBe('add_preset')
-        expect(app.state.mcpPresetSelectedIndex).toBe(0)
-
-        // Press Enter on first preset (GitHub) to populate custom form
-        app.handleKey('\r')
         expect(app.state.mcpMode).toBe('add_custom')
+        for (const ch of 'github') app.handleKey(ch)
+        app.handleKey('\t')
+        for (const ch of 'npx -y @modelcontextprotocol/server-github') app.handleKey(ch)
         expect(app.state.mcpCustomName).toBe('github')
         expect(app.state.mcpCustomCommand).toContain('server-github')
 
@@ -2380,6 +2566,35 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('forwards /learn as a built-in command that a skill named learn cannot shadow', async () => {
+        const submitted: string[] = []
+        const app = new DifferentialApp({
+            onSubmit: (prompt) => {
+                submitted.push(prompt)
+            },
+            skills: [{ name: 'learn', description: 'User skill with the same name' }],
+        })
+        app.start()
+
+        // 1. /learn without text in an empty chat shows usage and sends nothing
+        app.executeCommand('learn')
+        expect(submitted.length).toBe(0)
+        expect(app.state.messages.length).toBe(0)
+        expect(app.state.toast?.message).toContain('/learn')
+
+        // 2. /learn with text sends the lesson as-is
+        app.executeCommand('learn never use axios, use lib/http.ts')
+        expect(submitted).toEqual(['/learn never use axios, use lib/http.ts'])
+        expect(app.state.messages[0].role).toBe('user')
+        expect(app.state.messages[0].content).toBe('/learn never use axios, use lib/http.ts')
+
+        // 3. /learn without text after a conversation sends a bare /learn
+        app.executeCommand('learn')
+        expect(submitted[1]).toBe('/learn')
+
+        app.stop()
+    })
+
     it('handles dynamic skill execution and /model unauthenticated notice', async () => {
         const submitted: string[] = []
         const app = new DifferentialApp({
@@ -2439,34 +2654,34 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         })
         app.start()
 
-        // 1. Skills sub-states: Detail View -> Esc -> List View -> Esc -> None
-        app.executeCommand('skills')
-        expect(app.state.activeOverlay).toBe('skills')
+        // 1. /plugin sub-states: skill viewer -> Esc -> /plugin, search -> Esc clears -> Esc closes
+        app.executeCommand('plugin')
+        expect(app.state.activeOverlay).toBe('plugin')
+        app.state.overlayHistory.push('plugin')
+        // Object.assign keeps TypeScript from narrowing activeOverlay for the rest of the test
+        Object.assign(app.state, { activeOverlay: 'skills' })
         app.state.skillsIsDetailView = true
         app.state.skillsDetailLines = ['# Flywheel', 'Description line 1']
         app.handleKey('\x1b')
         expect(app.state.skillsIsDetailView).toBe(false)
-        expect(app.state.activeOverlay).toBe('skills')
+        expect(app.state.activeOverlay as string).toBe('plugin')
 
-        // Skills search query: Search -> type query -> Esc exits search mode -> Esc clears query -> Esc closes
         app.handleKey('/')
-        expect(app.state.skillsIsSearching).toBe(true)
+        expect(app.state.pluginIsSearching).toBe(true)
         app.handleKey('f')
         app.handleKey('l')
-        expect(app.state.skillsSearchQuery).toBe('fl')
+        expect(app.state.pluginSearchQuery).toBe('fl')
         app.handleKey('\x1b')
-        expect(app.state.skillsIsSearching).toBe(false)
-        expect(app.state.skillsSearchQuery).toBe('fl')
+        expect(app.state.pluginIsSearching).toBe(false)
+        expect(app.state.pluginSearchQuery).toBe('')
+        expect(app.state.activeOverlay as string).toBe('plugin')
         app.handleKey('\x1b')
-        expect(app.state.skillsSearchQuery).toBe('')
-        expect(app.state.activeOverlay).toBe('skills')
-        app.handleKey('\x1b')
-        expect(app.state.activeOverlay).toBe('none')
+        expect(app.state.activeOverlay as string).toBe('none')
 
         // 2. Session sub-states:
         // Delete confirm -> Esc cancels confirm
         app.executeCommand('session')
-        expect(app.state.activeOverlay).toBe('session')
+        expect(app.state.activeOverlay as string).toBe('session')
         app.state.sessionConfirmDeleteId = 'session-1'
         app.handleKey('\x1b')
         expect(app.state.sessionConfirmDeleteId).toBeNull()
@@ -2517,14 +2732,13 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         })
         app.start()
 
-        // 1. /usage -> press 'm' to switch model -> in model press Esc -> returns to /usage -> press Esc -> returns to none
-        app.executeCommand('usage')
-        expect(app.state.activeOverlay).toBe('usage')
-        app.handleKey('m')
+        // 1. /settings -> Model -> search inside model, Esc steps back out of search, query, then menu
+        app.executeCommand('settings')
+        app.state.settingsSelectedIndex = 0 // 'model'
+        app.handleKey('\r')
         expect(app.state.activeOverlay).toBe('model')
-        expect(app.state.overlayHistory).toEqual(['usage'])
+        expect(app.state.overlayHistory).toEqual(['settings'])
 
-        // Inside model, type search query -> Esc exits search mode -> Esc clears query -> Esc exits to usage
         app.handleKey('/')
         app.handleKey('c')
         app.handleKey('l')
@@ -2535,7 +2749,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.handleKey('\x1b')
         expect(app.state.modelSearchQuery).toBe('')
         app.handleKey('\x1b')
-        expect(app.state.activeOverlay).toBe('usage')
+        expect(app.state.activeOverlay).toBe('settings')
         expect(app.state.overlayHistory).toEqual([])
         app.handleKey('\x1b')
         expect(app.state.activeOverlay).toBe('none')
@@ -2616,29 +2830,36 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('handles background tasks, termination via k, log inspection, and clipboard copying via c', () => {
-        let killedTaskId = ''
+    it('navigates tasks with j/k, stops a task only after y, and follows its log', () => {
+        const killed: string[] = []
         const app = new DifferentialApp({
             terminal,
             width: 80,
             height: 24,
             onKillTask: (id) => {
-                killedTaskId = id
+                killed.push(id)
             },
         })
         app.start()
 
+        const now = Date.now()
         app.updateTasks([
             {
                 id: 'task-1',
                 command: 'npm run dev',
+                type: 'shell',
                 status: 'running',
+                createdAt: now,
                 output: 'Server listening on :3000\nCompiling client...',
             },
             {
                 id: 'task-2',
                 command: 'bun test',
+                type: 'shell',
                 status: 'completed',
+                createdAt: now,
+                completedAt: now,
+                exitCode: 0,
                 output: '10 pass\n0 fail',
             },
         ])
@@ -2647,25 +2868,77 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.activeOverlay).toBe('tasks')
         expect(app.state.tasks).toHaveLength(2)
 
-        // Press 'k' on running task
-        app.state.tasksSelectedIndex = 0
+        // j / k only navigate
+        app.handleKey('j')
+        expect(app.state.tasksSelectedIndex).toBe(1)
         app.handleKey('k')
-        expect(killedTaskId).toBe('task-1')
-        expect(app.state.tasks[0].status).toBe('failed')
+        expect(app.state.tasksSelectedIndex).toBe(0)
+        expect(killed).toEqual([])
 
-        // Press enter on task to open raw log viewer
+        // d asks first; n cancels
+        app.handleKey('d')
+        expect(app.state.tasksConfirmStop).toBe('one')
+        app.handleKey('n')
+        expect(app.state.tasksConfirmStop).toBeNull()
+        expect(killed).toEqual([])
+
+        // d then Esc also cancels without closing the overlay
+        app.handleKey('d')
+        app.handleKey('\x1b')
+        expect(app.state.tasksConfirmStop).toBeNull()
+        expect(app.state.activeOverlay).toBe('tasks')
+
+        // d then y stops; the status comes from the task manager, not the view
+        app.handleKey('d')
+        app.handleKey('y')
+        expect(killed).toEqual(['task-1'])
+        expect(app.state.tasks[0]?.status).toBe('running')
+
+        // Enter opens the log at the end (following)
         app.handleKey('\r')
         expect(app.state.activeOverlay).toBe('fileview')
+        expect(app.state.fileViewTaskId).toBe('task-1')
         expect(app.state.fileViewLines).toEqual([
             'Server listening on :3000',
             'Compiling client...',
         ])
+        expect(app.state.fileViewCursorLine).toBe(1)
 
-        // Press 'c' to copy task output
+        // new output is appended and the cursor follows it
+        app.updateTasks([
+            {
+                id: 'task-1',
+                command: 'npm run dev',
+                type: 'shell',
+                status: 'running',
+                createdAt: now,
+                output: 'Server listening on :3000\nCompiling client...\nCompiled in 2s',
+            },
+        ])
+        expect(app.state.fileViewLines).toHaveLength(3)
+        expect(app.state.fileViewCursorLine).toBe(2)
+
+        // after moving up, new output no longer moves the cursor
+        app.handleKey('k')
+        expect(app.state.fileViewCursorLine).toBe(1)
+        app.updateTasks([
+            {
+                id: 'task-1',
+                command: 'npm run dev',
+                type: 'shell',
+                status: 'running',
+                createdAt: now,
+                output: 'Server listening on :3000\nCompiling client...\nCompiled in 2s\nGET /',
+            },
+        ])
+        expect(app.state.fileViewLines).toHaveLength(4)
+        expect(app.state.fileViewCursorLine).toBe(1)
+
+        // c copies the task output
         app.handleKey('c')
         expect(app.state.toast?.message).toBe('Copied task output to clipboard.')
 
-        // Press Esc to return to tasks
+        // Esc returns to the task list
         app.handleKey('\x1b')
         expect(app.state.activeOverlay).toBe('tasks')
 
@@ -2977,10 +3250,11 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('loads turns via onLoadRewindTurns and executes rollback on Enter in /rewind', async () => {
-        let rolledBackTurn: number | null = null
+    it('loads turns via onLoadRewindTurns and rewinds by snapshot id after confirming', async () => {
+        let rolledBackId: string | null = null
         const mockTurns = [
             {
+                id: 'snap-2',
                 turnIndex: 2,
                 commitHash: 'commit222',
                 prompt: 'second turn prompt',
@@ -2988,6 +3262,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
                 touchedFiles: ['file2.ts'],
             },
             {
+                id: 'snap-1',
                 turnIndex: 1,
                 commitHash: 'commit111',
                 prompt: 'initial turn prompt',
@@ -3001,28 +3276,56 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
             width: 80,
             height: 24,
             onLoadRewindTurns: async () => mockTurns,
-            onRewindTurn: (turnIndex) => {
-                rolledBackTurn = turnIndex
+            onRewindTurn: (snapshotId) => {
+                rolledBackId = snapshotId
             },
         })
         app.start()
 
-        // Execute /rewind
         app.executeCommand('rewind')
         expect(app.state.activeOverlay).toBe('rewind')
 
-        // Wait for async loadRewindTurns
         await app.loadRewindTurns()
         expect(app.state.rewindTurns.length).toBe(2)
         expect(app.state.rewindTurns[0]?.turnIndex).toBe(2)
 
-        // Press down arrow 'j' to select turn 1
         app.handleKey('j')
         expect(app.state.rewindSelectedIndex).toBe(1)
 
-        // Press Enter to rewind to turn 1
+        // Enter asks for confirmation first
         app.handleKey('\r')
-        expect(rolledBackTurn).toBe(1)
+        expect(app.state.rewindConfirming).toBe(true)
+        expect(rolledBackId).toBeNull()
+
+        // n cancels and keeps the picker open
+        app.handleKey('n')
+        expect(app.state.rewindConfirming).toBe(false)
+        expect(app.state.activeOverlay).toBe('rewind')
+
+        app.handleKey('\r')
+        app.handleKey('y')
+        expect(rolledBackId).toBe('snap-1')
+        expect(app.state.activeOverlay).toBe('none')
+
+        app.stop()
+    })
+
+    it('opens the rewind picker through the hidden /undo alias', () => {
+        const app = new DifferentialApp({ terminal, width: 80, height: 24 })
+        app.start()
+
+        app.executeCommand('undo')
+        expect(app.state.activeOverlay).toBe('rewind')
+
+        app.stop()
+    })
+
+    it('does not open the rewind picker while a turn is streaming', () => {
+        const app = new DifferentialApp({ terminal, width: 80, height: 24 })
+        app.start()
+        app.state.isStreaming = true
+
+        app.executeCommand('rewind')
         expect(app.state.activeOverlay).toBe('none')
 
         app.stop()
@@ -3321,19 +3624,45 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('supports tasks mode batch shortcuts: K (kill all), x (clear completed), c (copy log)', () => {
+    it('supports tasks mode batch shortcuts: D (stop all), x (clear done), c (copy log)', () => {
         const killed: string[] = []
+        let clearCalls = 0
+        const now = Date.now()
         const app = new DifferentialApp({
             terminal,
             width: 80,
             height: 24,
             tasks: [
-                { id: 'task-1', command: 'bun test', status: 'running', output: 'log 1' },
-                { id: 'task-2', command: 'npm build', status: 'running', output: 'log 2' },
-                { id: 'task-3', command: 'git fetch', status: 'completed', output: 'log 3' },
+                {
+                    id: 'task-1',
+                    command: 'bun test',
+                    type: 'shell',
+                    status: 'running',
+                    createdAt: now,
+                    output: 'log 1',
+                },
+                {
+                    id: 'task-2',
+                    command: 'npm build',
+                    type: 'shell',
+                    status: 'running',
+                    createdAt: now,
+                    output: 'log 2',
+                },
+                {
+                    id: 'task-3',
+                    command: 'git fetch',
+                    type: 'shell',
+                    status: 'completed',
+                    createdAt: now,
+                    output: 'log 3',
+                },
             ],
             onKillTask: (id) => {
                 killed.push(id)
+            },
+            onClearCompletedTasks: () => {
+                clearCalls++
             },
         })
         app.start()
@@ -3341,21 +3670,118 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.state.activeOverlay = 'tasks'
         app.state.tasksSelectedIndex = 0
 
-        // Press 'c' to copy task-1 log
+        // c copies the selected task log
         app.handleKey('c')
         expect(app.state.toast?.message).toBe('Copied task log to clipboard.')
 
-        // Press 'K' to kill all running tasks
-        app.handleKey('K')
+        // D asks first, y stops every running task
+        app.handleKey('D')
+        expect(app.state.tasksConfirmStop).toBe('all')
+        expect(killed).toEqual([])
+        app.handleKey('y')
         expect(killed).toEqual(['task-1', 'task-2'])
-        expect(app.state.tasks[0]?.status).toBe('failed')
-        expect(app.state.tasks[1]?.status).toBe('failed')
-        expect(app.state.toast?.message).toBe('Terminated 2 running tasks.')
+        expect(app.state.toast?.message).toBe('Stopped 2 tasks.')
 
-        // Press 'x' to clear completed/failed tasks
+        // x clears finished tasks in the task manager too
         app.handleKey('x')
-        expect(app.state.tasks.length).toBe(0)
-        expect(app.state.toast?.message).toBe('Cleared 3 finished tasks.')
+        expect(clearCalls).toBe(1)
+        expect(app.state.tasks.map((t) => t.id)).toEqual(['task-1', 'task-2'])
+        expect(app.state.toast?.message).toBe('Cleared 1 finished task.')
+
+        app.stop()
+    })
+
+    it('lists shells before subagents and keeps the cursor on the same task', () => {
+        const now = Date.now()
+        const app = new DifferentialApp({ terminal, width: 80, height: 24 })
+        app.start()
+
+        app.updateTasks([
+            {
+                id: 'sub-1',
+                command: 'find auth',
+                type: 'subagent',
+                role: 'explore',
+                depth: 1,
+                status: 'running',
+                createdAt: now,
+            },
+            {
+                id: 'task-1',
+                command: 'npm run dev',
+                type: 'shell',
+                status: 'running',
+                createdAt: now,
+            },
+        ])
+        expect(app.state.tasks.map((t) => t.id)).toEqual(['task-1', 'sub-1'])
+
+        app.state.tasksSelectedIndex = 1 // sub-1
+        app.updateTasks([
+            {
+                id: 'sub-1',
+                command: 'find auth',
+                type: 'subagent',
+                role: 'explore',
+                depth: 1,
+                status: 'running',
+                createdAt: now,
+            },
+            {
+                id: 'task-1',
+                command: 'npm run dev',
+                type: 'shell',
+                status: 'running',
+                createdAt: now,
+            },
+            { id: 'task-2', command: 'bun test', type: 'shell', status: 'running', createdAt: now },
+        ])
+        expect(app.state.tasks[app.state.tasksSelectedIndex]?.id).toBe('sub-1')
+
+        app.stop()
+    })
+
+    it('moves the foreground command to the background on Ctrl+B', () => {
+        let calls = 0
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onBackgroundForeground: () => {
+                calls++
+                return 1
+            },
+        })
+        app.start()
+
+        app.handleKey('\x02')
+        expect(calls).toBe(1)
+        expect(app.state.toast?.message).toBe('Moved 1 command to the background. Ctrl+T to view.')
+
+        app.stop()
+    })
+
+    it('holds task notices until the turn ends', () => {
+        const app = new DifferentialApp({ terminal, width: 80, height: 24 })
+        app.start()
+
+        app.state.input = 'run tests'
+        app.submitPrompt()
+        app.state.isStreaming = true
+        app.appendStreamDelta('Working on it')
+        app.appendTaskNotice('task-3 · bun test · exit 1 · 14s', 'error')
+        expect(app.state.messages.some((m) => m.role === 'task_notice')).toBe(false)
+
+        app.finishStream()
+        const last = app.state.messages[app.state.messages.length - 1]
+        expect(last?.role).toBe('task_notice')
+        expect(last?.tone).toBe('error')
+
+        // when idle the notice shows at once
+        app.appendTaskNotice('task-4 · ls · exit 0 · 1s', 'success')
+        expect(app.state.messages[app.state.messages.length - 1]?.content).toBe(
+            'task-4 · ls · exit 0 · 1s'
+        )
 
         app.stop()
     })
@@ -3544,5 +3970,143 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.activeOverlay).toBe('model')
 
         app.stop()
+    })
+
+    it('runs /update through the host callback once at a time', async () => {
+        let calls = 0
+        let release: () => void = () => {}
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onRunUpdate: () => {
+                calls++
+                return new Promise<void>((resolve) => {
+                    release = resolve
+                })
+            },
+        })
+        app.start()
+
+        app.executeCommand('/update')
+        expect(calls).toBe(1)
+        expect(app.state.toast?.message ?? '').not.toContain('Unknown command')
+
+        app.executeCommand('/update')
+        expect(calls).toBe(1)
+        expect(app.state.toast?.message).toBe('An update is already running.')
+
+        release()
+        await new Promise((r) => setTimeout(r, 0))
+        app.executeCommand('/update')
+        expect(calls).toBe(2)
+
+        release()
+        app.stop()
+    })
+
+    it('does not start /update while a turn is streaming', () => {
+        let calls = 0
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onRunUpdate: async () => {
+                calls++
+            },
+        })
+        app.start()
+        app.state.isStreaming = true
+        app.executeCommand('/update')
+        expect(calls).toBe(0)
+        expect(app.state.toast?.message).toContain('Wait for the current turn')
+        app.stop()
+    })
+
+    it('shows a lasting update status with elapsed time and holds prompts meanwhile', async () => {
+        const submitted: string[] = []
+        let release: () => void = () => {}
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSubmit: (text: string) => {
+                submitted.push(text)
+            },
+            onRunUpdate: () =>
+                new Promise<void>((resolve) => {
+                    release = resolve
+                }),
+        })
+        app.start()
+
+        app.executeCommand('/update')
+        app.setUpdateStatus('Installing v0.4.19 via npm global package')
+        expect(app.getUpdateStatusText()).toMatch(
+            /^Installing v0\.4\.19 via npm global package · \d+s$/
+        )
+
+        app.state.input = 'fix the bug'
+        app.state.cursorPos = app.state.input.length
+        app.handleKey('\r')
+        expect(submitted).toEqual([])
+        expect(app.state.input).toBe('fix the bug')
+        expect(app.state.toast?.message).toContain('Wait for the update to finish')
+
+        app.setUpdateStatus(undefined)
+        expect(app.getUpdateStatusText()).toBeUndefined()
+        release()
+        await new Promise((r) => setTimeout(r, 0))
+
+        app.handleKey('\r')
+        expect(submitted).toEqual(['fix the bug'])
+        app.stop()
+    })
+
+    it('restarts on Enter after an update, and Esc defers it to /restart', () => {
+        let restarts = 0
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onRestart: () => {
+                restarts++
+            },
+        })
+        app.start()
+
+        app.executeCommand('/restart')
+        expect(restarts).toBe(0)
+        expect(app.state.toast?.message).toContain('No update is waiting')
+
+        app.setPendingRestart('0.4.19')
+        app.handleKey('\x1b')
+        expect(app.state.pendingRestart?.dismissed).toBe(true)
+        app.handleKey('\r')
+        expect(restarts).toBe(0)
+
+        app.executeCommand('/update')
+        expect(app.state.toast?.message).toContain('already installed')
+
+        app.executeCommand('/restart')
+        expect(restarts).toBe(1)
+
+        app.setPendingRestart('0.4.19')
+        app.handleKey('\r')
+        expect(restarts).toBe(2)
+        app.stop()
+    })
+
+    it('stops painting once the terminal is handed off', () => {
+        const app = new DifferentialApp({ terminal, width: 80, height: 24 })
+        app.start()
+        app.handOffTerminal()
+        let writes = 0
+        mockStdout.on('data', () => {
+            writes++
+        })
+        app.showToast('late toast', 'info')
+        app.render()
+        expect(writes).toBe(0)
     })
 })

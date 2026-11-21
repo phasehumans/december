@@ -123,6 +123,37 @@ describe('Gemini Provider Adapter (Unit)', () => {
         ])
     })
 
+    it('reports cached content tokens as cache reads', async () => {
+        const mockClient: any = {
+            models: {
+                generateContentStream: async () =>
+                    (async function* () {
+                        yield {
+                            usageMetadata: {
+                                promptTokenCount: 1000,
+                                candidatesTokenCount: 20,
+                                cachedContentTokenCount: 800,
+                            },
+                            candidates: [{ content: { parts: [{ text: 'ok' }] } }],
+                        }
+                    })(),
+            },
+        }
+        const provider = geminiProvider('test-key', mockClient)
+        const chunks: any[] = []
+        for await (const chunk of provider.stream([{ role: 'user', content: 'hi' }], [], '', {
+            model: 'gemini-2.5-flash',
+        })) {
+            chunks.push(chunk)
+        }
+        expect(chunks.at(-1)).toEqual({
+            type: 'usage',
+            promptTokens: 1000,
+            completionTokens: 20,
+            cacheReadInputTokens: 800,
+        })
+    })
+
     it('yields thought_signature chunk and clean tool call ID when thoughtSignature is present', async () => {
         const mockClient: any = {
             models: {
