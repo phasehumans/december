@@ -1,13 +1,60 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+const education = [
+  {
+    school: 'r. c. patel institute of technology',
+    degree: 'b.tech in ai & ml',
+    period: 'aug 2023 - may 2027',
+    // Shorter dates for phones so the school name fits on one line
+    mobilePeriod: '2023 - 2027',
+  },
+];
+
+const work = [
+  {
+    company: 'aakar foundry',
+    role: 'ai engineer',
+    period: 'nov 2026 - now',
+  },
+  {
+    company: 'argon labs',
+    role: 'backend engineer',
+    period: 'nov 2025 - feb 2026',
+  },
+];
+
+const projects = [
+  {
+    name: 'december',
+    summary: 'a better coding agent',
+    label: 'trydecember.com',
+    href: 'https://trydecember.com',
+  },
+  {
+    name: 'campuslab',
+    summary: 'competitive programming platform',
+    label: 'lab.trydecember.com',
+    href: 'https://lab.trydecember.com',
+  },
+  {
+    name: 'spacetime',
+    summary: 'a benchmark for evaluating coding agents',
+    // Shorter text for phones
+    mobileSummary: 'a benchmark for coding agents',
+    label: 'github',
+    href: 'https://github.com/phasehumans/spacetime',
+  },
+];
 ---
 
 <BaseLayout
-  title="Chaitanya Sonawane | software engineer @trydecember"
+  title="Chaitanya Sonawane"
   description="Chaitanya Sonawane | software engineer @trydecember. GitHub: @phasehumans, X: @phasehumans, YouTube: @phasehumans."
   canonicalUrl="https://trydecember.com/me"
   hideHeader={true}
   hideFooter={true}
+  hideScrollbar={true}
 >
   <!-- Person Schema for Google AI Mode & Knowledge Graph -->
   <script type="application/ld+json" is:inline set:html={JSON.stringify({
@@ -16,6 +63,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     "name": "Chaitanya Sonawane",
     "alternateName": ["Chetan Sonawane", "phasehumans"],
     "jobTitle": "Software Engineer",
+    "alumniOf": {
+      "@type": "CollegeOrUniversity",
+      "name": "R. C. Patel Institute of Technology"
+    },
     "worksFor": {
       "@type": "Organization",
       "name": "December",
@@ -32,19 +83,21 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     "description": "Chaitanya Sonawane | software engineer @trydecember"
   })} />
 
-  <div class="min-h-screen w-full flex flex-col items-center justify-center p-6 text-center select-none">
-    <div class="flex flex-col items-center max-w-[280px]">
-      <!-- Line 1: Name -->
+  <div class="min-h-dvh w-full flex flex-col items-center justify-center px-6 py-8 sm:py-16">
+    <div class="w-full max-w-[520px] flex flex-col">
+    <!-- Intro: name and icons, centered -->
+    <div class="flex flex-col items-center text-center select-none">
+      <!-- Name -->
       <h1 class="text-sm sm:text-base font-medium text-[#090a0f] tracking-tight">
         Chaitanya Sonawane
       </h1>
 
-      <!-- Line 2: Role & Organization -->
-      <p class="mt-1 text-xs sm:text-[13px] font-mono text-[#71717a]">
+      <!-- Role & Organization -->
+      <p class="mt-1 text-xs sm:text-[13px] font-mono text-[#64748b]">
         software engineer <a href="/" class="text-[#090a0f] hover:text-[#87b2f4] transition-colors">@trydecember</a>
       </p>
 
-      <!-- Line 3: Social, Developer & Contact Icons (Subtle Muted Colors) -->
+      <!-- Social, Developer & Contact Icons (Subtle Muted Colors) -->
       <nav class="mt-3.5 relative flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 w-full">
         <!-- GitHub -->
         <a
@@ -83,20 +136,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         >
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
-          </svg>
-        </a>
-
-        <!-- LinkedIn -->
-        <a
-          href="https://www.linkedin.com/in/phasehumans/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="group opacity-80 hover:opacity-100 hover:scale-105 transition-all duration-150 p-0.5"
-          aria-label="LinkedIn"
-        >
-          <svg class="w-4 h-4" viewBox="-2 -2 28 28">
-            <rect width="24" height="24" rx="3.5" fill="#0A66C2"></rect>
-            <path fill="#ffffff" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452z"></path>
           </svg>
         </a>
 
@@ -147,6 +186,87 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <!--/email_off-->
       </nav>
     </div>
+
+    <!-- Section: Education -->
+    <section class="mt-10 sm:mt-14" aria-labelledby="me-education">
+      <h2 id="me-education" class="flex items-center gap-2 font-mono text-xs select-none">
+        <span class="text-[#090a0f] font-medium tracking-wider text-[13px] sm:text-sm">education</span>
+      </h2>
+      <ul class="mt-4 space-y-2.5">
+        {education.map((entry) => (
+          <li>
+            <div class="flex items-baseline justify-between gap-4">
+              <span class="min-w-0 text-[13px] sm:text-sm">
+                <span class="font-medium text-[#090a0f]">{entry.school}</span>
+                <span class="hidden sm:inline font-mono text-xs text-[#64748b]"> / {entry.degree}</span>
+              </span>
+              <span class="font-mono text-[11px] sm:text-xs text-[#64748b] shrink-0">
+                <span class="sm:hidden">{entry.mobilePeriod}</span>
+                <span class="hidden sm:inline">{entry.period}</span>
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <!-- Section: Work -->
+    <section class="mt-8 sm:mt-10" aria-labelledby="me-work">
+      <h2 id="me-work" class="flex items-center gap-2 font-mono text-xs select-none">
+        <span class="text-[#090a0f] font-medium tracking-wider text-[13px] sm:text-sm">work</span>
+      </h2>
+      <ul class="mt-4 space-y-2.5">
+        {work.map((job) => (
+          <li>
+            <div class="flex items-baseline justify-between gap-4">
+              <span class="min-w-0 text-[13px] sm:text-sm">
+                <span class="font-medium text-[#090a0f]">{job.company}</span>
+                <span class="hidden sm:inline font-mono text-xs text-[#64748b]"> / {job.role}</span>
+              </span>
+              <span class="font-mono text-[11px] sm:text-xs text-[#64748b] shrink-0">{job.period}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <!-- Section: Projects. Mobile: two lines (linked name and link text, then about text below). sm+: one line, the name link stretches over the whole row. The link text is hidden from screen readers because the name link has the same target -->
+    <section class="mt-8 sm:mt-10" aria-labelledby="me-projects">
+      <h2 id="me-projects" class="flex items-center gap-2 font-mono text-xs select-none">
+        <span class="text-[#090a0f] font-medium tracking-wider text-[13px] sm:text-sm">projects</span>
+      </h2>
+      <ul class="mt-4 space-y-3 sm:space-y-2.5">
+        {projects.map((project) => (
+          <li class="group relative flex flex-wrap sm:flex-nowrap items-baseline">
+            <a
+              href={project.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={project.summary}
+              class="order-1 font-medium text-[13px] sm:text-sm text-[#090a0f] hover:text-[#87b2f4] sm:group-hover:text-[#87b2f4] transition-colors shrink-0 sm:after:absolute sm:after:inset-0 sm:after:content-['']"
+            >{project.name}</a>
+            <span class="order-3 sm:order-2 basis-full sm:basis-auto sm:flex-1 mt-0.5 sm:mt-0 sm:ml-2 min-w-0 font-mono text-[11px] sm:text-xs text-[#64748b] sm:truncate">
+              <span class="sm:hidden">{project.mobileSummary ?? project.summary}</span>
+              <span class="hidden sm:inline">{project.summary}</span>
+            </span>
+            <a
+              href={project.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              tabindex="-1"
+              aria-hidden="true"
+              class="order-2 sm:order-3 ml-auto sm:ml-4 pl-4 sm:pl-0 inline-flex items-center gap-1 font-mono text-[11px] sm:text-xs text-[#64748b] hover:text-[#87b2f4] sm:group-hover:text-[#87b2f4] transition-colors shrink-0"
+            >
+              {project.label}
+              <svg class="sm:hidden w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M7 17 17 7M8 7h9v9" />
+              </svg>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+    </div>
   </div>
 </BaseLayout>
 
@@ -160,6 +280,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       btn.dataset.copyInitialized = 'true';
 
       btn.addEventListener('click', async (e) => {
+        // On phones, let the link open the mail app; copy to clipboard on desktop only
+        if (!window.matchMedia('(min-width: 640px)').matches) return;
         e.preventDefault();
         const email = btn.dataset.email || 'chetan@trydecember.com';
         const container = btn.closest('.me-email-container');

@@ -15,6 +15,8 @@ interface Props {
   hideHeader?: boolean;
   hideFooter?: boolean;
   showLoader?: boolean;
+  /** Hide the custom scroll indicator, for short pages that never scroll */
+  hideScrollbar?: boolean;
   /** Extra JSON-LD nodes for this page only, e.g. the landing page FAQPage */
   structuredData?: Record<string, unknown>[];
 }
@@ -27,6 +29,7 @@ const {
   hideHeader = false,
   hideFooter = false,
   showLoader = false,
+  hideScrollbar = false,
   structuredData = [],
 } = Astro.props;
 
@@ -221,8 +224,8 @@ const showCloudNudge = !hideHeader && !hideFooter && activePath === '/';
       })();
     </script>
   </head>
-  <body class="min-h-screen flex flex-col bg-white text-[#090a0f] selection:bg-[#87b2f4] selection:text-[#0a1128] overflow-x-hidden w-full max-w-[100vw]">
-    <div class="relative min-h-screen w-full flex flex-col flex-1">
+  <body class="min-h-dvh flex flex-col bg-white text-[#090a0f] selection:bg-[#87b2f4] selection:text-[#0a1128] overflow-x-hidden w-full max-w-[100vw]">
+    <div class="relative min-h-dvh w-full flex flex-col flex-1">
       {!hideHeader && !hideFooter && (
         <>
           <!-- Continuous Full-Page Left Side Gutter: Single unbroken element from top to bottom -->
@@ -240,7 +243,7 @@ const showCloudNudge = !hideHeader && !hideFooter && activePath === '/';
       )}
 
       {showLoader && <PageLoader />}
-      <CustomScrollbar />
+      {!hideScrollbar && <CustomScrollbar />}
       {!hideHeader && <Header activePath={activePath} />}
       <main class="flex-1 w-full max-w-[100vw] overflow-x-hidden relative z-10 flex flex-col">
         <slot />

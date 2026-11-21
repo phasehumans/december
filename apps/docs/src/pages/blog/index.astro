@@ -1,25 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { blogPosts } from '../../lib/blog-posts';
 
-interface BlogFrontmatter {
-  title: string;
-  description: string;
-  publishDate: string;
-  currentSlug: string;
-}
-
-// Read title, date, and slug from each post's frontmatter so this list always matches the posts
-const parsePublishDate = (date: string) => Date.parse(date.replace('Sept', 'Sep'));
-const postModules = import.meta.glob<{ frontmatter: BlogFrontmatter }>('./*.mdx', { eager: true });
-const posts = Object.values(postModules)
-  .map(({ frontmatter }) => ({
-    slug: frontmatter.currentSlug,
-    title: frontmatter.title,
-    desc: frontmatter.description,
-    date: frontmatter.publishDate,
-    timestamp: parsePublishDate(frontmatter.publishDate),
-  }))
-  .sort((a, b) => b.timestamp - a.timestamp);
+const posts = blogPosts;
 ---
 
 <BaseLayout

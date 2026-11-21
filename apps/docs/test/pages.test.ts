@@ -99,30 +99,32 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).toContain('Skills teach December your conventions and workflows')
         })
 
-        it('renders mobile github icon in header without x icon and single-line mobile footer with built-by and docs/blog', () => {
+        it('renders docs and blog in the header on all sizes and github and x icons in the single-line mobile footer', () => {
             const html = getLandingHtml()
             const headerHtml = html.slice(html.indexOf('<header'), html.indexOf('</header>'))
             const footerHtml = html.slice(html.indexOf('<footer'))
 
-            // Header mobile icons: GitHub only (no X icon on mobile)
+            // Header: docs and blog visible on mobile, no social icons
+            expect(headerHtml).toContain('<nav class="flex items-center')
+            expect(headerHtml).toContain('href="/docs"')
+            expect(headerHtml).toContain('href="/blog"')
             expect(headerHtml).not.toContain('https://x.com/phasehumans')
-            expect(headerHtml).toContain('https://github.com/phasehumans/december')
-            expect(headerHtml).toContain('aria-label="GitHub Repository"')
+            expect(headerHtml).not.toContain('https://github.com/phasehumans')
 
-            // Mobile Footer: single line with built by on left and docs & blog on right
+            // Mobile Footer: single line with built by on left and GitHub & X icons on right
             const mobileFooterHtml = footerHtml.slice(
                 footerHtml.indexOf('Mobile View'),
                 footerHtml.indexOf('Desktop View')
             )
             expect(mobileFooterHtml).toContain('built by')
             expect(mobileFooterHtml).toContain('@chaitanya')
-            expect(mobileFooterHtml).toContain('href="/docs"')
-            expect(mobileFooterHtml).toContain('href="/blog"')
+            expect(mobileFooterHtml).not.toContain('href="/docs"')
+            expect(mobileFooterHtml).not.toContain('href="/blog"')
             expect(mobileFooterHtml.indexOf('@chaitanya')).toBeLessThan(
-                mobileFooterHtml.indexOf('href="/docs"')
+                mobileFooterHtml.indexOf('aria-label="GitHub"')
             )
-            expect(mobileFooterHtml.indexOf('href="/docs"')).toBeLessThan(
-                mobileFooterHtml.indexOf('href="/blog"')
+            expect(mobileFooterHtml.indexOf('aria-label="GitHub"')).toBeLessThan(
+                mobileFooterHtml.indexOf('aria-label="X (Twitter)"')
             )
         })
 
@@ -138,7 +140,8 @@ describe('apps/docs page content & layout tests', () => {
             expect(headerHtml).toContain('id="header-auth-cta"')
             expect(headerHtml).toContain('Open app')
             expect(headerHtml).toContain('december_logged_in=1')
-            expect(html).toContain('sticky top-14')
+            expect(html).not.toContain('sticky top-14')
+            expect(html.match(/hidden sm:flex border-y/g)?.length).toBe(4)
             expect(html).toContain('Try December Cloud')
             expect(html).toContain('Try in Web')
             expect(html).not.toContain('Try in Cloud Sandbox')
@@ -263,16 +266,30 @@ describe('apps/docs page content & layout tests', () => {
     })
 
     describe('portfolio page (me/index.html)', () => {
-        it('renders minimal centered 2-line portfolio without header or footer', () => {
+        it('renders minimal portfolio with education, work, and projects without header or footer', () => {
             const html = readFileSync(join(distDir, 'me/index.html'), 'utf-8')
 
             expect(html).toContain('Chaitanya Sonawane')
+
+            // Sections in order: education, work, projects (no writing section)
+            expect(html.indexOf('id="me-education"')).toBeGreaterThan(-1)
+            expect(html.indexOf('id="me-education"')).toBeLessThan(html.indexOf('id="me-work"'))
+            expect(html.indexOf('id="me-work"')).toBeLessThan(html.indexOf('id="me-projects"'))
+            expect(html).toContain('r. c. patel institute of technology')
+            expect(html).not.toContain('id="me-writing"')
+            expect(html).toContain('aakar foundry')
+            expect(html).toContain('argon labs')
+            expect(html).toContain('https://lab.trydecember.com')
+            expect(html).toContain('https://github.com/phasehumans/spacetime')
             expect(html).toContain('software engineer')
             expect(html).toContain('@trydecember')
+            // Short page: no custom scroll indicator
+            expect(html).not.toContain('custom-scrollbar-track')
             expect(html).toContain('https://github.com/phasehumans')
             expect(html).toContain('https://www.youtube.com/@phasehumans')
             expect(html).toContain('https://x.com/phasehumans')
-            expect(html).toContain('https://www.linkedin.com/in/phasehumans/')
+            // No LinkedIn icon (the profile stays in the Person schema sameAs list)
+            expect(html).not.toContain('aria-label="LinkedIn"')
             expect(html).not.toContain('href="https://www.npmjs.com/~phasehumans"')
             expect(html).toContain('https://codeforces.com/profile/phasehumans')
             expect(html).not.toContain('href="/blog"')
