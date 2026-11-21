@@ -402,13 +402,17 @@ function planLines(items: PlanItem[], width: number): FormattedLine[] {
     const MAX_ROWS = 5
     const lines: FormattedLine[] = []
     let visible = items
+    let hidden = 0
     if (items.length > MAX_ROWS) {
         const done = items.filter((i) => i.status === 'done')
-        const rest = items.filter((i) => i.status !== 'done').slice(0, MAX_ROWS - 1)
+        const rest = items.filter((i) => i.status !== 'done')
         if (done.length > 0) {
             lines.push([{ text: `    ✓ ${done.length} done`, style: { fg: THEME.colors.dim } }])
         }
-        visible = done.length > 0 ? rest : items.slice(0, MAX_ROWS)
+        const budget = MAX_ROWS - lines.length
+        // Keep the 5-row limit: when steps do not fit, the last row says how many are hidden
+        visible = rest.length > budget ? rest.slice(0, budget - 1) : rest
+        hidden = rest.length - visible.length
     }
     const max = Math.max(10, width - 8)
     for (const item of visible) {
@@ -423,6 +427,9 @@ function planLines(items: PlanItem[], width: number): FormattedLine[] {
         } else {
             lines.push([{ text: `    ○ ${text}`, style: { fg: THEME.colors.dim } }])
         }
+    }
+    if (hidden > 0) {
+        lines.push([{ text: `    ○ … ${hidden} more`, style: { fg: THEME.colors.dim } }])
     }
     return lines
 }

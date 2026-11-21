@@ -347,6 +347,52 @@ describe('activity line (L0)', () => {
         expect(lines.length).toBe(6)
     })
 
+    const planInput = (items: { text: string; status: string }[]) =>
+        input({
+            messages: [
+                { role: 'user', content: 'x' },
+                {
+                    role: 'tool',
+                    toolCall: {
+                        id: 'p',
+                        name: 'update_plan',
+                        status: 'success',
+                        input: { items },
+                    },
+                },
+            ],
+        })
+
+    it('says how many steps are hidden when a long plan has nothing done', () => {
+        const items = Array.from({ length: 8 }, (_, i) => ({
+            text: `step ${i}`,
+            status: i === 0 ? 'in_progress' : 'pending',
+        }))
+        const lines = new ActivityTracker().getLines(planInput(items), 100)
+        expect(lines.slice(1).map(text)).toEqual([
+            '    ▸ step 0',
+            '    ○ step 1',
+            '    ○ step 2',
+            '    ○ step 3',
+            '    ○ … 4 more',
+        ])
+    })
+
+    it('says how many steps are hidden after folding done items', () => {
+        const items = Array.from({ length: 10 }, (_, i) => ({
+            text: `step ${i}`,
+            status: i < 2 ? 'done' : i === 2 ? 'in_progress' : 'pending',
+        }))
+        const lines = new ActivityTracker().getLines(planInput(items), 100)
+        expect(lines.slice(1).map(text)).toEqual([
+            '    ✓ 2 done',
+            '    ▸ step 2',
+            '    ○ step 3',
+            '    ○ step 4',
+            '    ○ … 5 more',
+        ])
+    })
+
     it('drops the rotating hint, then shortens the sentence on narrow terminals (S24)', () => {
         const lines = new ActivityTracker().getLines(
             input({
