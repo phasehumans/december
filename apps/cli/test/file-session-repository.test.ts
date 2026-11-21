@@ -72,6 +72,40 @@ describe('FileSessionRepository', () => {
             expect(appendCall2[1]).not.toContain('hello')
             expect(appendCall2[1]).toContain('how are you?')
         })
+
+        test('appends a message again only after it changes in place', async () => {
+            const repo = new FileSessionRepository()
+            mockReadFile.mockRejectedValueOnce(new Error('ENOENT'))
+
+            const user = { id: '1', role: 'user', content: 'hello' } as any
+            const assistant = {
+                id: '2',
+                role: 'assistant',
+                content: 'reading',
+                toolCalls: [{ id: 't1', name: 'read', input: '{"path":"a.ts"}' }],
+            } as any
+            const msgs: AgentMessage[] = [user, assistant]
+            await repo.saveContext('session-mut', msgs)
+
+            // Nothing changed: nothing is written
+            mockAppendFile.mockClear()
+            await repo.saveContext('session-mut', msgs)
+            expect(mockAppendFile).not.toHaveBeenCalled()
+
+            // A top-level change (e.g. the abort path marks the prompt as UI-only) is written
+            user.isUI = true
+            await repo.saveContext('session-mut', msgs)
+            expect(mockAppendFile).toHaveBeenCalledTimes(1)
+            const written = String(mockAppendFile.mock.calls[0][1]).trim().split('\n')
+            expect(written).toHaveLength(1)
+            expect(JSON.parse(written[0]!)).toMatchObject({ id: '1', isUI: true })
+
+            // A nested value replaced with an equal copy is not written again
+            mockAppendFile.mockClear()
+            assistant.toolCalls = JSON.parse(JSON.stringify(assistant.toolCalls))
+            await repo.saveContext('session-mut', msgs)
+            expect(mockAppendFile).not.toHaveBeenCalled()
+        })
     })
 
     describe('loadContext', () => {
@@ -225,14 +259,41 @@ describe('FileSessionRepository', () => {
         })
     })
 
-    describe('renameSession', () => {
-        test('renames file correctly and sanitizes', async () => {
+    describe('session meta', () => {
+        test('writes the title to a meta file next to the session and keeps the id', async () => {
             const repo = new FileSessionRepository()
-            await repo.renameSession('old-1', 'feature/new-1')
-            expect(mockRename).toHaveBeenCalled()
-            const call = mockRename.mock.calls[0]
-            expect(call[0]).toContain('old-1.jsonl')
-            expect(call[1]).toContain('feature-new-1.jsonl')
+            await repo.setSessionMeta('old-1', { title: 'Fix rewind', titleSource: 'manual' })
+            const written = mockWriteFile.mock.calls[0]
+            expect(written[0]).toContain('old-1.meta.json')
+            expect(JSON.parse(written[1])).toEqual({ title: 'Fix rewind', titleSource: 'manual' })
+            const renamed = mockRename.mock.calls[0]
+            expect(renamed[0]).toContain('old-1.meta.json.')
+            expect(renamed[1]).toMatch(/old-1\.meta\.json$/)
+            expect(String(renamed[1])).not.toContain('.jsonl')
+        })
+
+        test('reads the title back and ignores unknown title sources', async () => {
+            const repo = new FileSessionRepository()
+            mockReadFile.mockResolvedValueOnce(
+                JSON.stringify({ title: 'Fix rewind', titleSource: 'bogus' })
+            )
+            expect(await repo.getSessionMeta('old-1')).toEqual({
+                title: 'Fix rewind',
+                titleSource: undefined,
+            })
+        })
+
+        test('returns null when there is no meta file', async () => {
+            const repo = new FileSessionRepository(sessionDir)
+            mockReadFile.mockRejectedValueOnce(new Error('ENOENT'))
+            expect(await repo.getSessionMeta('old-1')).toBeNull()
+        })
+
+        test('deleteSession also removes the meta file', async () => {
+            const repo = new FileSessionRepository(sessionDir)
+            await repo.deleteSession('sess-1')
+            const paths = mockUnlink.mock.calls.map((c: any[]) => String(c[0]))
+            expect(paths.some((p: string) => p.endsWith('sess-1.meta.json'))).toBe(true)
         })
     })
 

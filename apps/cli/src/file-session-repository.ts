@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { SessionRepository } from '@december/agent'
+import { SessionMeta, SessionRepository } from '@december/agent'
 import { AgentMessage } from '@december/shared'
 
 import { getConfigDir, getLegacyConfigDir } from './config'
@@ -11,6 +11,38 @@ export interface SessionInfo {
     updatedAt: Date
     messageCount: number
     preview: string // first user message or empty
+    title?: string
+    titleSource?: SessionMeta['titleSource']
+}
+
+/**
+ * True when a message differs from the copy saved last time. Messages are only changed
+ * at the top level (isUI, content, parentId), so fields are compared by identity first.
+ * Nested values (toolCalls, usage) are serialized only when their reference differs,
+ * for example after a session file was read back from disk. This keeps a save from
+ * serializing the whole session every time.
+ */
+function hasMessageChanged(saved: AgentMessage, current: AgentMessage): boolean {
+    const savedFields = saved as unknown as Record<string, unknown>
+    const currentFields = current as unknown as Record<string, unknown>
+    const keys = Object.keys(currentFields)
+    if (keys.length !== Object.keys(savedFields).length) return true
+    for (const key of keys) {
+        const before = savedFields[key]
+        const after = currentFields[key]
+        if (Object.is(before, after)) continue
+        if (
+            before !== null &&
+            after !== null &&
+            typeof before === 'object' &&
+            typeof after === 'object' &&
+            JSON.stringify(before) === JSON.stringify(after)
+        ) {
+            continue
+        }
+        return true
+    }
+    return false
 }
 
 export class FileSessionRepository implements SessionRepository {
@@ -58,7 +90,7 @@ export class FileSessionRepository implements SessionRepository {
         for (const msg of messages) {
             if (msg.id) {
                 const cached = existing[msg.id]
-                if (!cached || JSON.stringify(cached) !== JSON.stringify(msg)) {
+                if (!cached || hasMessageChanged(cached, msg)) {
                     existing[msg.id] = { ...msg }
                     appendContent += JSON.stringify(msg) + '\n'
                 }
@@ -182,11 +214,17 @@ export class FileSessionRepository implements SessionRepository {
                                 }
                             }
 
+                            const meta = await this.readMetaFile(
+                                path.join(dirPath, `${id}.meta.json`)
+                            )
+
                             sessions.push({
                                 id,
                                 updatedAt: stat.mtime,
                                 messageCount: lines.length,
                                 preview,
+                                title: meta?.title,
+                                titleSource: meta?.titleSource,
                             })
                         } catch {
                             // Ignore unreadable session file
@@ -211,17 +249,14 @@ export class FileSessionRepository implements SessionRepository {
     }
 
     async deleteSession(sessionId: string): Promise<void> {
-        const historyPath = path.join(this.sessionDir, `${sessionId}.jsonl`)
-        try {
-            await fs.unlink(historyPath)
-        } catch (e) {
-            // ignore if it doesn't exist
-        }
-        if (this.legacySessionDir) {
-            try {
-                await fs.unlink(path.join(this.legacySessionDir, `${sessionId}.jsonl`))
-            } catch {
-                // Intentionally swallowed: legacy session already absent
+        const dirs = [this.sessionDir, ...(this.legacySessionDir ? [this.legacySessionDir] : [])]
+        for (const dir of dirs) {
+            for (const file of [`${sessionId}.jsonl`, `${sessionId}.meta.json`]) {
+                try {
+                    await fs.unlink(path.join(dir, file))
+                } catch {
+                    // Intentionally swallowed: file already absent
+                }
             }
         }
     }
@@ -245,10 +280,37 @@ export class FileSessionRepository implements SessionRepository {
         }
     }
 
-    async renameSession(oldSessionId: string, newSessionId: string): Promise<void> {
-        const sanitizedNew = newSessionId.replace(/[\\/:\*\?"<>\|]/g, '-').replace(/\.+/g, '-')
-        const oldPath = path.join(this.sessionDir, `${oldSessionId}.jsonl`)
-        const newPath = path.join(this.sessionDir, `${sanitizedNew}.jsonl`)
-        await fs.rename(oldPath, newPath)
+    async getSessionMeta(sessionId: string): Promise<SessionMeta | null> {
+        const meta = await this.readMetaFile(path.join(this.sessionDir, `${sessionId}.meta.json`))
+        if (meta || !this.legacySessionDir) return meta
+        return this.readMetaFile(path.join(this.legacySessionDir, `${sessionId}.meta.json`))
+    }
+
+    async setSessionMeta(sessionId: string, meta: SessionMeta): Promise<void> {
+        await fs.mkdir(this.sessionDir, { recursive: true })
+        const metaPath = path.join(this.sessionDir, `${sessionId}.meta.json`)
+        // write then rename, so a crash or a second december window never leaves half a file
+        const tmpPath = `${metaPath}.${process.pid}.tmp`
+        await fs.writeFile(tmpPath, JSON.stringify(meta), 'utf-8')
+        await fs.rename(tmpPath, metaPath)
+    }
+
+    private async readMetaFile(metaPath: string): Promise<SessionMeta | null> {
+        try {
+            const parsed = JSON.parse(await fs.readFile(metaPath, 'utf-8'))
+            if (!parsed || typeof parsed !== 'object') return null
+            const title = typeof parsed.title === 'string' ? parsed.title : undefined
+            const source = parsed.titleSource
+            return {
+                title,
+                titleSource:
+                    source === 'manual' || source === 'auto' || source === 'prompt'
+                        ? source
+                        : undefined,
+            }
+        } catch {
+            // Intentionally swallowed: no meta file means the session has no title yet
+            return null
+        }
     }
 }

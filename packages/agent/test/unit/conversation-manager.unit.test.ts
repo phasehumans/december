@@ -48,20 +48,16 @@ describe('ConversationManager (Unit)', () => {
         expect(firstMsg.parentId).toBe('parent-0')
     })
 
-    test('truncateToTurn removes conversation messages from target turn onwards', () => {
+    test('truncateBeforeMessage removes the target message and everything after it', () => {
         const manager = new ConversationManager()
         manager.addMessage({ role: 'system', content: 'system prompt' })
-        manager.addMessage({ role: 'user', content: 'turn 1 prompt' })
+        manager.addMessage({ role: 'user', content: 'turn 1 prompt', id: 'u1' })
         manager.addMessage({ role: 'assistant', content: 'turn 1 answer' })
-        manager.addMessage({ role: 'user', content: 'turn 2 prompt' })
+        manager.addMessage({ role: 'user', content: 'turn 2 prompt', id: 'u2' })
         manager.addMessage({ role: 'assistant', content: 'turn 2 answer' })
-        manager.addMessage({ role: 'user', content: 'turn 3 prompt' })
-        manager.addMessage({ role: 'assistant', content: 'turn 3 answer' })
+        manager.addMessage({ role: 'user', content: 'turn 3 prompt', id: 'u3' })
 
-        expect(manager.messages.length).toBe(7)
-
-        // Truncate to turn 2 (removes turn 2 and turn 3)
-        manager.truncateToTurn(2)
+        expect(manager.truncateBeforeMessage('u2')).toBe(true)
 
         expect(manager.messages.length).toBe(3)
         expect(manager.messages[0]!.role).toBe('system')
@@ -69,15 +65,13 @@ describe('ConversationManager (Unit)', () => {
         expect(manager.messages[2]!.content).toBe('turn 1 answer')
     })
 
-    test('truncateToTurn to turn 1 leaves only system prompt', () => {
+    test('truncateBeforeMessage leaves the conversation unchanged for an unknown id', () => {
         const manager = new ConversationManager()
         manager.addMessage({ role: 'system', content: 'system prompt' })
-        manager.addMessage({ role: 'user', content: 'turn 1 prompt' })
-        manager.addMessage({ role: 'assistant', content: 'turn 1 answer' })
+        manager.addMessage({ role: 'user', content: 'turn 1 prompt', id: 'u1' })
 
-        manager.truncateToTurn(1)
-        expect(manager.messages.length).toBe(1)
-        expect(manager.messages[0]!.role).toBe('system')
+        expect(manager.truncateBeforeMessage('missing')).toBe(false)
+        expect(manager.messages.length).toBe(2)
     })
 
     test('compactIfNeeded delegates to compaction utility and returns summary', async () => {
@@ -141,7 +135,7 @@ describe('ConversationManager (Unit)', () => {
         expect(llm.calls.length).toBe(0)
     })
 
-    describe('Passive Workspace Memory Ingestion', () => {
+    describe('Pinned Rules Injection', () => {
         let tmpDir: string
 
         beforeEach(() => {
@@ -152,68 +146,26 @@ describe('ConversationManager (Unit)', () => {
             fs.rmSync(tmpDir, { recursive: true, force: true })
         })
 
-        test('checks for .december/memory.md in workspace root and injects under <project_memory>', () => {
+        test('ignores legacy memory and rules files in the workspace root', () => {
             const decDir = path.join(tmpDir, '.december')
             fs.mkdirSync(decDir, { recursive: true })
-            fs.writeFileSync(
-                path.join(decDir, 'memory.md'),
-                '## quirks\n- bun test requires DB migrations first'
-            )
+            fs.writeFileSync(path.join(decDir, 'memory.md'), '## quirks\n- legacy memory entry')
+            fs.writeFileSync(path.join(decDir, 'rules.md'), '## conventions\n- legacy rules entry')
+            fs.writeFileSync(path.join(tmpDir, 'MEMORY.md'), '- legacy root memory')
+            fs.writeFileSync(path.join(tmpDir, 'RULES.md'), '- legacy root rules')
 
             const manager = new ConversationManager()
+            const originalPrompt = 'You are December.'
             const prompt = manager.initSession({
                 workspaceRoot: tmpDir,
-                systemPrompt: 'You are December.',
+                systemPrompt: originalPrompt,
             })
 
-            expect(prompt).toContain('<project_memory>')
-            expect(prompt).toContain('## quirks')
-            expect(prompt).toContain('- bun test requires DB migrations first')
-            expect(prompt).toContain('</project_memory>')
-            expect(manager.messages.length).toBe(1)
-            expect(manager.messages[0]!.content).toBe(prompt)
+            expect(prompt).toBe(originalPrompt)
+            expect(prompt).not.toContain('<project_memory>')
         })
 
-        test('falls back to .december/rules.md when memory.md is missing', () => {
-            const decDir = path.join(tmpDir, '.december')
-            fs.mkdirSync(decDir, { recursive: true })
-            fs.writeFileSync(
-                path.join(decDir, 'rules.md'),
-                '## conventions\n- lowercase commit messages only'
-            )
-
-            const manager = new ConversationManager()
-            const prompt = manager.initSession({
-                workspaceRoot: tmpDir,
-                systemPrompt: 'You are December.',
-            })
-
-            expect(prompt).toContain('<project_memory>')
-            expect(prompt).toContain('## conventions')
-            expect(prompt).toContain('- lowercase commit messages only')
-            expect(prompt).toContain('</project_memory>')
-        })
-
-        test('supports MEMORY.md and RULES.md in workspace root, combining both when present', () => {
-            fs.writeFileSync(
-                path.join(tmpDir, 'MEMORY.md'),
-                '## build_and_test\n- test with bun test packages/tools'
-            )
-            fs.writeFileSync(path.join(tmpDir, 'RULES.md'), '## rules\n- do not use em dashes')
-
-            const manager = new ConversationManager()
-            const prompt = manager.initSession({
-                workspaceRoot: tmpDir,
-                systemPrompt: 'Base system prompt.',
-            })
-
-            expect(prompt).toContain('<project_memory>')
-            expect(prompt).toContain('test with bun test packages/tools')
-            expect(prompt).toContain('do not use em dashes')
-            expect(prompt).toContain('</project_memory>')
-        })
-
-        test('handles missing memory and rules files gracefully without errors or warnings', () => {
+        test('handles a workspace without pinned rules gracefully', () => {
             const manager = new ConversationManager()
             const originalPrompt = 'You are a helpful coding agent.'
             const prompt = manager.initSession({
@@ -222,60 +174,34 @@ describe('ConversationManager (Unit)', () => {
             })
 
             expect(prompt).toBe(originalPrompt)
-            expect(prompt).not.toContain('<project_memory>')
             expect(manager.messages.length).toBe(1)
             expect(manager.messages[0]!.content).toBe(originalPrompt)
         })
 
-        test('preserves dynamic environment section at the end of system prompt', () => {
-            const decDir = path.join(tmpDir, '.december')
-            fs.mkdirSync(decDir, { recursive: true })
-            fs.writeFileSync(path.join(decDir, 'memory.md'), '## architecture\n- monorepo packages')
-
+        test('places pinned rules before the dynamic environment section', () => {
             const manager = new ConversationManager()
             const baseWithEnv = `You are December.\n\nCurrent date: 2026-10-03\nCurrent working directory: ${tmpDir}`
             const prompt = manager.initSession({
                 workspaceRoot: tmpDir,
                 systemPrompt: baseWithEnv,
+                pinnedRules: '## architecture\n- monorepo packages',
             })
 
             expect(prompt).toContain('<project_memory>')
             expect(prompt).toContain('## architecture')
-            // project_memory should come before Current date:
             const memoryIndex = prompt.indexOf('<project_memory>')
             const envIndex = prompt.indexOf('Current date:')
             expect(memoryIndex).toBeLessThan(envIndex)
             expect(prompt.endsWith(`Current working directory: ${tmpDir}`)).toBe(true)
         })
 
-        test('supports constructor options with workspaceRoot', () => {
-            const decDir = path.join(tmpDir, '.december')
-            fs.mkdirSync(decDir, { recursive: true })
-            fs.writeFileSync(path.join(decDir, 'memory.md'), '## conventions\n- always use bun')
-
+        test('enforces strict 2KB ceiling on injected pinned rules exceeding 2048 bytes', () => {
             const manager = new ConversationManager([], {
-                workspaceRoot: tmpDir,
-                systemPrompt: 'Init via constructor',
-            })
-
-            expect(manager.messages.length).toBe(1)
-            expect(manager.messages[0]!.content).toContain('<project_memory>')
-            expect(manager.messages[0]!.content).toContain('always use bun')
-        })
-
-        test('enforces strict 2KB ceiling on injected workspace memory exceeding 2048 bytes', () => {
-            const decDir = path.join(tmpDir, '.december')
-            fs.mkdirSync(decDir, { recursive: true })
-            const oversizedMemory = 'x'.repeat(5000)
-            fs.writeFileSync(path.join(decDir, 'memory.md'), oversizedMemory)
-
-            const manager = new ConversationManager([], {
-                workspaceRoot: tmpDir,
                 systemPrompt: 'Base prompt',
+                pinnedRules: 'x'.repeat(5000),
             })
 
             const prompt = manager.messages[0]!.content
-            expect(prompt).toContain('<project_memory>')
             expect(prompt).toContain('[truncated to 2KB budget]')
 
             const memoryMatch = prompt.match(/<project_memory>([\s\S]*?)<\/project_memory>/)
@@ -285,18 +211,12 @@ describe('ConversationManager (Unit)', () => {
         })
 
         test('safely truncates multi-byte UTF-8 characters without split or replacement characters', () => {
-            const decDir = path.join(tmpDir, '.december')
-            fs.mkdirSync(decDir, { recursive: true })
-            const repeatedEmojis = '🚀'.repeat(1000)
-            fs.writeFileSync(path.join(decDir, 'memory.md'), repeatedEmojis)
-
             const manager = new ConversationManager([], {
-                workspaceRoot: tmpDir,
                 systemPrompt: 'Base prompt',
+                pinnedRules: '🚀'.repeat(1000),
             })
 
             const prompt = manager.messages[0]!.content
-            expect(prompt).toContain('<project_memory>')
             expect(prompt).toContain('[truncated to 2KB budget]')
             expect(prompt).not.toContain('\uFFFD')
 

@@ -116,7 +116,7 @@ When a test fails, the agent does not start over. It keeps its verified scratchp
 December builds the Self-Refine loop into its workflow, from the terminal to the cloud:
 
 - Isolated MicroVM Verification: Every terminal action runs in a sandboxed Linux container. Tests and builds run there in real time.
-- Verifiable Git Checkpoints: Before December changes any file, it snapshots the working tree. A refinement loop can drift, or fail to converge (never reach passing tests). If that happens, run `/undo`. It restores the tree to the exact state before the run.
+- Verifiable Git Checkpoints: Before December changes any file, it snapshots the working tree. A refinement loop can drift, or fail to converge (never reach passing tests). If that happens, run `/rewind` and select the turn. It restores the tree to the exact state before the run.
 - Pruned Diagnostic Memory: December does not paste thousands of lines of terminal logs into the prompt. It parses compiler stderr into short diff hints. This keeps the prompt small and avoids context rot (the drop in accuracy as a prompt gets longer).
 
 Point test-time compute at real compiler and test output, and a coding agent stops guessing. It becomes an engineer that checks its own work.

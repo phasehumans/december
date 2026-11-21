@@ -6,6 +6,9 @@ export const DEFAULT_PI_IDENTITY = `You are an expert coding assistant operating
 
 export const DEFAULT_PI_RULES = `<rules>
 - Use bash for file operations like ls, rg, find
+- When tool calls do not depend on each other, make them all in one turn
+- Do not run the same command again when you already have its output
+- Quote commit messages, file contents, and other facts exactly as the tool output shows them
 - Be concise in your responses
 - Show file paths clearly when working with files
 </rules>`

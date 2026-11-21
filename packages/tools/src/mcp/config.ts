@@ -3,7 +3,37 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { readPluginMcpServersSync } from '../plugins/discovery'
+
 import type { LoadMcpConfigOptions, McpServerConfig } from './types'
+
+export type McpServerSourceScope = 'global' | 'project'
+
+export interface McpServerWithScope {
+    name: string
+    config: McpServerConfig
+    scope: McpServerSourceScope
+    /** Set when the server comes from a plugin instead of a config file */
+    plugin?: string
+}
+
+/** Servers from turned-on plugins. Config files override them by name. */
+function loadPluginServers(options?: LoadMcpConfigOptions): McpServerWithScope[] {
+    try {
+        return readPluginMcpServersSync({
+            workspaceDir: options?.workspaceDir,
+            homeDir: options?.homeDir,
+        }).map((entry) => ({
+            name: entry.name,
+            config: normalizeMcpServerConfig(entry.name, entry.config) || entry.config,
+            scope: entry.pluginScope === 'workspace' ? 'project' : 'global',
+            plugin: entry.pluginId,
+        }))
+    } catch {
+        // Intentionally swallowed: plugin servers are optional
+        return []
+    }
+}
 
 export function normalizeMcpServerConfig(name: string, raw: any): McpServerConfig | null {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -93,6 +123,9 @@ export async function loadMcpConfig(
     const workspace = options?.workspaceDir || process.cwd()
 
     const merged: Record<string, McpServerConfig> = {}
+    for (const server of loadPluginServers(options)) {
+        if (!merged[server.name]) merged[server.name] = server.config
+    }
 
     // 1. Load global config from ~/.december/config.json (or options.globalConfigPath)
     const globalConfigPath =
@@ -154,6 +187,9 @@ export function loadMcpConfigSync(options?: LoadMcpConfigOptions): Record<string
     const workspace = options?.workspaceDir || process.cwd()
 
     const merged: Record<string, McpServerConfig> = {}
+    for (const server of loadPluginServers(options)) {
+        if (!merged[server.name]) merged[server.name] = server.config
+    }
 
     const globalConfigPath =
         options?.globalConfigPath ||
@@ -307,7 +343,7 @@ export async function removeMcpServerConfig(
 export async function getMcpServerConfig(
     name: string,
     options?: LoadMcpConfigOptions
-): Promise<{ name: string; config: McpServerConfig; scope: 'global' | 'project' } | null> {
+): Promise<McpServerWithScope | null> {
     const list = await listMcpServersWithScope(options)
     const found = list.find((s) => s.name === name)
     return found || null
@@ -315,12 +351,14 @@ export async function getMcpServerConfig(
 
 export async function listMcpServersWithScope(
     options?: LoadMcpConfigOptions
-): Promise<Array<{ name: string; config: McpServerConfig; scope: 'global' | 'project' }>> {
+): Promise<McpServerWithScope[]> {
     const home = options?.homeDir || process.env.HOME || process.env.USERPROFILE || os.homedir()
     const workspace = options?.workspaceDir || process.cwd()
 
-    const results: Array<{ name: string; config: McpServerConfig; scope: 'global' | 'project' }> =
-        []
+    const results: McpServerWithScope[] = []
+    for (const server of loadPluginServers(options)) {
+        if (!results.some((r) => r.name === server.name)) results.push(server)
+    }
 
     // 1. Global config
     const globalConfigPath =
@@ -337,7 +375,13 @@ export async function listMcpServersWithScope(
             for (const [key, val] of Object.entries(globalServers)) {
                 const norm = normalizeMcpServerConfig(key, val)
                 if (norm) {
-                    results.push({ name: key, config: norm, scope: 'global' })
+                    const idx = results.findIndex((r) => r.name === key)
+                    const item: McpServerWithScope = { name: key, config: norm, scope: 'global' }
+                    if (idx >= 0) {
+                        results[idx] = item
+                    } else {
+                        results.push(item)
+                    }
                 }
             }
         }
@@ -364,4 +408,42 @@ export async function listMcpServersWithScope(
     }
 
     return results
+}
+
+/**
+ * Turns a config-file server on or off by setting its "disabled" flag in the
+ * file it lives in. Returns false when the server is not in that file.
+ */
+export async function setMcpServerDisabled(
+    name: string,
+    disabled: boolean,
+    options?: McpConfigMutationOptions
+): Promise<boolean> {
+    const home = options?.homeDir || process.env.HOME || process.env.USERPROFILE || os.homedir()
+    const workspace = options?.workspaceDir || process.cwd()
+    const filePath =
+        options?.scope === 'project'
+            ? path.join(workspace, '.december', 'mcp.json')
+            : options?.globalConfigPath ||
+              (process.env.DECEMBER_CONFIG_DIR
+                  ? path.join(process.env.DECEMBER_CONFIG_DIR, 'config.json')
+                  : path.join(home, '.december', 'config.json'))
+
+    let data: any
+    try {
+        data = JSON.parse(await fs.readFile(filePath, 'utf8'))
+    } catch {
+        // Intentionally swallowed: the file does not exist, so the server is not in it
+        return false
+    }
+    const servers = data?.mcpServers || (options?.scope === 'project' ? data : data?.mcp)
+    if (!servers || typeof servers !== 'object' || !servers[name]) return false
+
+    if (disabled) {
+        servers[name].disabled = true
+    } else {
+        delete servers[name].disabled
+    }
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2) + '\n', 'utf8')
+    return true
 }

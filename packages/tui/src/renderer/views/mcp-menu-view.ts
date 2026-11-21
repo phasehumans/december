@@ -2,10 +2,22 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import {
+    drawInlineConfirm,
+    drawLabelValue,
+    drawMetaParts,
+    drawOverflow,
+    drawPanelTitle,
+    metaPartsWidth,
+    statusMark,
+    toggleMark,
+    requestPanelCursor,
+} from './panel'
 
+import type { MetaPart } from './panel'
 import type { ScreenBuffer } from '../buffer'
 
-export type McpViewMode = 'list' | 'detail' | 'add_preset' | 'add_custom'
+export type McpViewMode = 'list' | 'detail' | 'add_custom'
 
 export interface McpToolItem {
     name: string
@@ -22,79 +34,9 @@ export interface McpServerMenuItem {
     error?: string
     tools?: McpToolItem[]
     resourcesCount?: number
+    /** Set when the server comes from a plugin; it is managed in /plugin */
+    plugin?: string
 }
-
-export interface McpPresetTemplate {
-    id: string
-    name: string
-    title: string
-    description: string
-    command: string
-    args?: string[]
-    defaultScope: 'global' | 'project'
-    envHint?: string
-}
-
-export const MCP_PRESET_TEMPLATES: McpPresetTemplate[] = [
-    {
-        id: 'github',
-        name: 'github',
-        title: 'GitHub',
-        description: 'Repository search, issues, pull requests, and git contents',
-        command: 'npx -y @modelcontextprotocol/server-github',
-        defaultScope: 'global',
-        envHint: 'GITHUB_PERSONAL_ACCESS_TOKEN',
-    },
-    {
-        id: 'postgres',
-        name: 'postgres',
-        title: 'PostgreSQL',
-        description: 'Database query execution, schema inspection, and query plans',
-        command: 'npx -y @modelcontextprotocol/server-postgres postgresql://localhost/db',
-        defaultScope: 'project',
-    },
-    {
-        id: 'sqlite',
-        name: 'sqlite',
-        title: 'SQLite',
-        description: 'Read and query local SQLite database files',
-        command: 'npx -y @modelcontextprotocol/server-sqlite --db ./app.db',
-        defaultScope: 'project',
-    },
-    {
-        id: 'brave-search',
-        name: 'brave-search',
-        title: 'Brave Search',
-        description: 'Real-time internet web search and content retrieval',
-        command: 'npx -y @modelcontextprotocol/server-brave-search',
-        defaultScope: 'global',
-        envHint: 'BRAVE_API_KEY',
-    },
-    {
-        id: 'fetch',
-        name: 'fetch',
-        title: 'Fetch & Web',
-        description: 'Web page scraping and markdown extraction',
-        command: 'npx -y @modelcontextprotocol/server-fetch',
-        defaultScope: 'global',
-    },
-    {
-        id: 'puppeteer',
-        name: 'puppeteer',
-        title: 'Puppeteer',
-        description: 'Browser automation and web screenshot captures',
-        command: 'npx -y @modelcontextprotocol/server-puppeteer',
-        defaultScope: 'global',
-    },
-    {
-        id: 'filesystem',
-        name: 'filesystem',
-        title: 'Filesystem Sandboxed',
-        description: 'Direct sandboxed local directory read and write access',
-        command: 'npx -y @modelcontextprotocol/server-filesystem .',
-        defaultScope: 'project',
-    },
-]
 
 export interface McpMenuViewProps {
     x?: number
@@ -108,8 +50,6 @@ export interface McpMenuViewProps {
     scrollOffset?: number
     mode?: McpViewMode
     confirmDeleteName?: string | null
-    // Add Preset props
-    presetSelectedIndex?: number
     // Add Custom props
     customName?: string
     customCommand?: string
@@ -119,18 +59,93 @@ export interface McpMenuViewProps {
     customActiveField?: number
 }
 
+/** M13: the form label column ("Command/URL  ") */
+const FORM_LABEL_WIDTH = 13
+/** M12: the label column of the details ("Tools load ") */
+const DETAIL_LABEL_WIDTH = 11
+
+/** M11: a server is on unless it is stopped; a failed server is on, with its fault in red words */
+function isServerOn(s: McpServerMenuItem): boolean {
+    return s.status !== 'disconnected'
+}
+
+/** where the server is configured: the plugin name, or "user" / "project" */
+function serverSource(s: McpServerMenuItem): string {
+    if (s.plugin) return s.plugin
+    return s.scope === 'project' ? 'project' : 'user'
+}
+
+/** M11: the meta words of a list row, "12 tools · stdio · user", with faults in red */
+function serverMetaParts(s: McpServerMenuItem): MetaPart[] {
+    const source = serverSource(s)
+    const muted = THEME.colors.muted
+    switch (s.status) {
+        case 'connected': {
+            const count = s.tools?.length ?? 0
+            return [
+                {
+                    text: `${count} tool${count === 1 ? '' : 's'} · ${s.transport} · ${source}`,
+                    color: muted,
+                },
+            ]
+        }
+        case 'connecting':
+            return [{ text: `starting… · ${s.transport} · ${source}`, color: muted }]
+        case 'error':
+            return [
+                { text: 'failed to start', color: THEME.colors.error },
+                { text: ` · ${source}`, color: muted },
+            ]
+        default:
+            return [{ text: `off · ${source}`, color: muted }]
+    }
+}
+
+/** M12: lowercase status words and the color of their dot */
+function serverStatus(s: McpServerMenuItem): { dot: string; word: string; wordColor: string } {
+    switch (s.status) {
+        case 'connected':
+            return {
+                dot: statusMark('connected').color,
+                word: 'connected',
+                wordColor: THEME.colors.text,
+            }
+        case 'connecting':
+            return {
+                dot: statusMark('running').color,
+                word: 'starting…',
+                wordColor: THEME.colors.text,
+            }
+        case 'error':
+            return { dot: statusMark('failed').color, word: 'error', wordColor: THEME.colors.error }
+        default:
+            return { dot: statusMark('off').color, word: 'stopped', wordColor: THEME.colors.dim }
+    }
+}
+
+function truncate(text: string, room: number): string {
+    if (room <= 0) return ''
+    return text.length > room ? `${text.slice(0, Math.max(0, room - 1))}…` : text
+}
+
 export const McpMenuView = {
     getHeight(mode?: McpViewMode, serverCount: number = 0, isDetailView?: boolean): number {
-        if (mode === 'add_preset') return 9
-        if (mode === 'add_custom') return 10
+        // Title, blank, 5 fields, blank, footer
+        if (mode === 'add_custom') return 9
         if (mode === 'detail' || isDetailView) return 7
-        return Math.max(serverCount, 1) + 4
+        // Title, blank, rows, blank, "More servers in /plugin", blank, footer
+        return Math.max(serverCount, 1) + 6
     },
 
     render(buffer: ScreenBuffer, props: McpMenuViewProps): void {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
         const width = props.width
+        const innerWidth = Math.max(
+            20,
+            width - (THEME.padding.paddingLeft ?? 2) - (THEME.padding.paddingRight ?? 2)
+        )
+        const right = x + innerWidth
         const footerY = (props.y ?? 0) + (props.height ?? buffer.height) - 1
         const servers = props.servers || []
         const safeIndex = Math.min(
@@ -139,174 +154,106 @@ export const McpMenuView = {
         )
         const currentServer = servers[safeIndex]
         const mode = props.mode || (props.isDetailView ? 'detail' : 'list')
+        const confirmItems = [
+            { key: 'y', label: 'remove' },
+            { key: 'n/esc', label: 'cancel' },
+        ]
 
         // ==========================================
-        // 1. ADD PRESET TEMPLATES MODE
-        // ==========================================
-        if (mode === 'add_preset') {
-            drawText(buffer, 'Add MCP Server · Preset Templates', {
-                x,
-                y,
-                style: { fg: THEME.colors.brand, bold: true },
-            })
-            y += 1
-            drawText(buffer, 'Choose a template or press [c] for custom command / URL', {
-                x,
-                y,
-                style: { fg: THEME.colors.muted },
-            })
-            y += 2
-
-            const presetIdx = Math.min(
-                Math.max(0, props.presetSelectedIndex ?? 0),
-                MCP_PRESET_TEMPLATES.length - 1
-            )
-
-            for (let i = 0; i < MCP_PRESET_TEMPLATES.length; i++) {
-                const item = MCP_PRESET_TEMPLATES[i]
-                const isSelected = i === presetIdx
-                const rowY = y + i
-
-                drawText(buffer, isSelected ? '❭ ' : '  ', {
-                    x,
-                    y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.dim },
-                })
-
-                drawText(buffer, item.title, {
-                    x: x + 2,
-                    y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
-                })
-
-                const descX = x + 2 + item.title.length + 2
-                drawText(buffer, `- ${item.description}`, {
-                    x: descX,
-                    y: rowY,
-                    maxWidth: Math.max(10, width - descX - 2),
-                    style: { fg: THEME.colors.muted },
-                })
-            }
-
-            MenuFooterView.render(buffer, {
-                x: props.x ?? 0,
-                y: footerY,
-                width,
-                items: [
-                    { key: '↑/↓', label: 'select' },
-                    { key: 'enter', label: 'use preset' },
-                    { key: 'c', label: 'custom command' },
-                    { key: 'esc', label: 'back' },
-                ],
-            })
-            return
-        }
-
-        // ==========================================
-        // 2. ADD CUSTOM SERVER MODE
+        // M13: ADD AN MCP SERVER (one row per field, no button row)
         // ==========================================
         if (mode === 'add_custom') {
-            drawText(buffer, 'Add MCP Server · Custom Configuration', {
-                x,
-                y,
-                style: { fg: THEME.colors.brand, bold: true },
-            })
-            y += 1
-            drawText(buffer, 'Configure server connection details', {
-                x,
-                y,
-                style: { fg: THEME.colors.muted },
-            })
+            drawPanelTitle(buffer, { x, y, title: 'Add an MCP server', width: innerWidth })
             y += 2
 
             const activeField = props.customActiveField ?? 0
-            const cName = props.customName || ''
-            const cCmd = props.customCommand || ''
             const cScope = props.customScope || 'global'
             const cEager = props.customEager ?? false
-            const cEnv = props.customEnv || ''
 
-            const fields = [
+            type Field =
+                | { label: string; kind: 'text'; value: string; placeholder: string }
+                | { label: string; kind: 'choice'; choices: string[]; chosen: number }
+            const fields: Field[] = [
                 {
-                    label: 'Server Name:',
-                    value: cName || '(enter name, e.g. github)',
-                    isPlaceholder: !cName,
+                    label: 'Name',
+                    kind: 'text',
+                    value: props.customName || '',
+                    placeholder: 'e.g. github',
                 },
                 {
-                    label: 'Target (Cmd/URL):',
-                    value: cCmd || '(command or sse url)',
-                    isPlaceholder: !cCmd,
+                    label: 'Command/URL',
+                    kind: 'text',
+                    value: props.customCommand || '',
+                    placeholder: 'a command, or a server URL',
                 },
                 {
-                    label: 'Scope:',
-                    value: cScope === 'global' ? '[*Global* / Project]' : '[Global / *Project*]',
-                    isPlaceholder: false,
+                    label: 'Scope',
+                    kind: 'choice',
+                    choices: ['user', 'project'],
+                    chosen: cScope === 'global' ? 0 : 1,
                 },
                 {
-                    label: 'Loading Mode:',
-                    value: cEager
-                        ? '[*Eager (turn-1)* / Deferred]'
-                        : '[Eager / *Deferred (search_tools)*]',
-                    isPlaceholder: false,
+                    label: 'Tools load',
+                    kind: 'choice',
+                    choices: ['at start', 'on demand'],
+                    chosen: cEager ? 0 : 1,
                 },
                 {
-                    label: 'Environment:',
-                    value: cEnv || '(optional KEY=val, KEY2=val2)',
-                    isPlaceholder: !cEnv,
-                },
-                {
-                    label: '[ Save & Connect Server ]',
-                    value: '',
-                    isPlaceholder: false,
+                    label: 'Env',
+                    kind: 'text',
+                    value: props.customEnv || '',
+                    placeholder: 'KEY=value, KEY2=value (optional)',
                 },
             ]
 
-            for (let i = 0; i < fields.length; i++) {
-                const f = fields[i]
+            fields.forEach((f, i) => {
+                const rowY = y + i
                 const isSelected = i === activeField
-                const rowY = y + i * 2
-
-                drawText(buffer, isSelected ? '❭ ' : '  ', {
+                drawText(buffer, isSelected ? `${THEME.glyphs.selector} ` : '  ', {
                     x,
                     y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.dim },
+                    style: { fg: THEME.colors.brand },
                 })
-
-                if (i === 5) {
-                    drawText(buffer, f.label, {
-                        x: x + 2,
-                        y: rowY,
-                        style: {
-                            fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                            bold: isSelected,
-                        },
-                    })
-                    continue
-                }
-
                 drawText(buffer, f.label, {
                     x: x + 2,
                     y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
                 })
-
-                const valX = x + 20
-                drawText(buffer, f.value, {
-                    x: valX,
+                const valX = x + 2 + FORM_LABEL_WIDTH
+                const room = Math.max(0, right - valX)
+                if (f.kind === 'choice') {
+                    let cx = valX
+                    f.choices.forEach((choice, ci) => {
+                        if (ci > 0) cx += 3
+                        drawText(buffer, choice, {
+                            x: cx,
+                            y: rowY,
+                            maxWidth: Math.max(0, right - cx),
+                            style: {
+                                fg: ci === f.chosen ? THEME.colors.brand : THEME.colors.muted,
+                            },
+                        })
+                        cx += choice.length
+                    })
+                    return
+                }
+                if (f.value) {
+                    const shown = truncate(f.value, Math.max(0, room - 1))
+                    drawText(buffer, shown, { x: valX, y: rowY, style: { fg: THEME.colors.text } })
+                    // G11: the real terminal cursor, placed by the app
+                    if (isSelected) requestPanelCursor(valX + shown.length, rowY)
+                    return
+                }
+                // Empty field: the real cursor sits at the start, then the hint in muted
+                const hintX = isSelected ? valX + 1 : valX
+                if (isSelected) requestPanelCursor(valX, rowY)
+                drawText(buffer, f.placeholder, {
+                    x: hintX,
                     y: rowY,
-                    maxWidth: Math.max(10, width - valX - 2),
-                    style: {
-                        fg: f.isPlaceholder ? THEME.colors.dim : THEME.colors.text,
-                        bold: isSelected && !f.isPlaceholder,
-                    },
+                    maxWidth: Math.max(0, right - hintX),
+                    style: { fg: THEME.colors.muted },
                 })
-            }
+            })
 
             MenuFooterView.render(buffer, {
                 x: props.x ?? 0,
@@ -324,237 +271,269 @@ export const McpMenuView = {
         }
 
         // ==========================================
-        // 3. DETAIL VIEW
+        // M12: MCP SERVER DETAILS
         // ==========================================
         if (mode === 'detail' && currentServer) {
-            drawText(buffer, `MCP Server: ${currentServer.name}`, {
-                x,
-                y,
-                style: { fg: THEME.colors.brand, bold: true },
-            })
+            const isConn = currentServer.status === 'connected'
+            const confirming = props.confirmDeleteName === currentServer.name
 
-            const scopeBadge = ` [${currentServer.scope}]`
-            drawText(buffer, scopeBadge, {
-                x: x + `MCP Server: ${currentServer.name}`.length,
+            // Title row: the server name, the inline remove confirm, then the meta
+            drawPanelTitle(buffer, { x, y, title: currentServer.name, width: innerWidth })
+            let cx = x + currentServer.name.length
+            if (confirming) {
+                const text = ' [Remove? y/n]'
+                drawInlineConfirm(buffer, { x: cx, y, text, tone: 'danger' })
+                cx += text.length
+            }
+            drawText(buffer, `MCP server · ${serverSource(currentServer)}`, {
+                x: cx + 2,
                 y,
-                style: { fg: THEME.colors.dim },
+                maxWidth: Math.max(0, right - cx - 2),
+                style: { fg: THEME.colors.muted },
             })
             y += 2
 
-            // Status and Transport
-            const isConn = currentServer.status === 'connected'
-            const statusColor = isConn
-                ? THEME.colors.success
-                : currentServer.status === 'error'
-                  ? THEME.colors.error
-                  : THEME.colors.dim
-            const statusBullet = isConn ? '● CONNECTED' : `● ${currentServer.status.toUpperCase()}`
-            drawText(buffer, statusBullet, {
+            // Status: a dot and a lowercase word
+            const status = serverStatus(currentServer)
+            drawText(buffer, 'Status', { x, y, style: { fg: THEME.colors.muted } })
+            drawText(buffer, THEME.glyphs.status, {
+                x: x + DETAIL_LABEL_WIDTH,
+                y,
+                style: { fg: status.dot },
+            })
+            drawText(buffer, status.word, {
+                x: x + DETAIL_LABEL_WIDTH + 2,
+                y,
+                style: { fg: status.wordColor },
+            })
+            y += 1
+
+            drawLabelValue(buffer, {
                 x,
                 y,
-                style: { fg: statusColor, bold: true },
+                label: 'Transport',
+                value: currentServer.transport,
+                labelWidth: DETAIL_LABEL_WIDTH,
+                width: innerWidth,
             })
+            y += 1
 
-            drawText(buffer, ` · Transport: ${currentServer.transport}`, {
-                x: x + statusBullet.length,
+            drawLabelValue(buffer, {
+                x,
+                y,
+                label: currentServer.transport === 'stdio' ? 'Command' : 'URL',
+                value: currentServer.target,
+                labelWidth: DETAIL_LABEL_WIDTH,
+                width: innerWidth,
+            })
+            y += 1
+
+            const loadWord = currentServer.eager ? 'at start' : 'on demand'
+            const loadNote = currentServer.eager ? ', in the first prompt' : ', through tool search'
+            drawLabelValue(buffer, {
+                x,
+                y,
+                label: 'Tools load',
+                value: loadWord,
+                labelWidth: DETAIL_LABEL_WIDTH,
+                width: innerWidth,
+            })
+            drawText(buffer, loadNote, {
+                x: x + DETAIL_LABEL_WIDTH + loadWord.length,
+                y,
+                maxWidth: Math.max(0, right - (x + DETAIL_LABEL_WIDTH + loadWord.length)),
+                style: { fg: THEME.colors.muted },
+            })
+            y += 1
+
+            if (currentServer.error) {
+                drawLabelValue(buffer, {
+                    x,
+                    y,
+                    label: 'Error',
+                    value: currentServer.error,
+                    labelWidth: DETAIL_LABEL_WIDTH,
+                    width: innerWidth,
+                    valueColor: THEME.colors.error,
+                })
+                y += 1
+            }
+
+            y += 1
+
+            // Tools: names in text color in one column, descriptions muted, no bullets
+            const tools = currentServer.tools || []
+            drawText(buffer, `${'Tools'.padEnd(DETAIL_LABEL_WIDTH)}${tools.length}`, {
+                x,
                 y,
                 style: { fg: THEME.colors.muted },
             })
             y += 1
 
-            // Target
-            drawText(buffer, `Target: ${currentServer.target}`, {
-                x,
-                y,
-                maxWidth: Math.max(10, width - x - 4),
-                style: { fg: THEME.colors.text },
-            })
-            y += 1
-
-            if (currentServer.eager) {
-                drawText(buffer, 'Loading: Eager (injected in turn-1 prompt)', {
-                    x,
-                    y,
-                    style: { fg: THEME.colors.brand },
-                })
-                y += 1
-            }
-
-            if (currentServer.error) {
-                drawText(buffer, `Error: ${currentServer.error}`, {
-                    x,
-                    y,
-                    style: { fg: THEME.colors.error },
-                })
-                y += 1
-            }
-
-            y += 1
-
-            // Delete confirmation prompt if active
-            if (props.confirmDeleteName === currentServer.name) {
-                drawText(buffer, `Remove MCP server "${currentServer.name}"? [y/N]`, {
-                    x,
-                    y,
-                    style: { fg: THEME.colors.error, bold: true },
-                })
-                y += 2
-            }
-
-            // Tools Section
-            const tools = currentServer.tools || []
-            drawText(buffer, `Available Tools (${tools.length}):`, {
-                x,
-                y,
-                style: { fg: THEME.colors.text, bold: true },
-            })
-            y += 1
-
-            const maxVisibleTools = Math.max(1, footerY - y - 1)
-            const scrollOffset = props.scrollOffset ?? 0
-            const visibleTools = tools.slice(scrollOffset, scrollOffset + maxVisibleTools)
-
             if (tools.length === 0) {
-                drawText(buffer, '  (No tools exposed by this server)', {
-                    x,
+                drawText(buffer, 'This server has no tools.', {
+                    x: x + 2,
                     y,
-                    style: { fg: THEME.colors.dim },
+                    style: { fg: THEME.colors.muted },
                 })
             } else {
+                // Rows up to one blank row above the footer; the last row turns into "↓ N more"
+                const room = Math.max(1, footerY - y - 1)
+                const scrollOffset = Math.max(
+                    0,
+                    Math.min(props.scrollOffset ?? 0, tools.length - 1)
+                )
+                const remaining = tools.length - scrollOffset
+                const showCount = remaining > room ? Math.max(1, room - 1) : remaining
+                const visibleTools = tools.slice(scrollOffset, scrollOffset + showCount)
+                const nameWidth = Math.min(
+                    32,
+                    Math.max(22, ...visibleTools.map((t) => t.name.length + 2))
+                )
                 for (const tool of visibleTools) {
-                    drawText(buffer, `  • ${tool.name}`, {
-                        x,
+                    drawText(buffer, truncate(tool.name, nameWidth - 2), {
+                        x: x + 2,
                         y,
-                        style: { fg: THEME.colors.brand, bold: true },
+                        style: { fg: THEME.colors.text },
                     })
                     if (tool.description) {
-                        const cleanDesc = tool.description.replace(/\s+/g, ' ').slice(0, 50)
-                        drawText(buffer, ` - ${cleanDesc}`, {
-                            x: x + tool.name.length + 4,
+                        const descX = x + 2 + nameWidth
+                        drawText(buffer, tool.description.replace(/\s+/g, ' ').trim(), {
+                            x: descX,
                             y,
-                            maxWidth: Math.max(10, width - x - tool.name.length - 8),
+                            maxWidth: Math.max(0, right - descX),
+                            ellipsis: true,
                             style: { fg: THEME.colors.muted },
                         })
                     }
                     y += 1
                 }
+                drawOverflow(buffer, x, y, remaining - visibleTools.length)
             }
 
             MenuFooterView.render(buffer, {
                 x: props.x ?? 0,
                 y: footerY,
                 width,
-                items: [
-                    { key: '↑/↓', label: 'scroll' },
-                    { key: 'space', label: isConn ? 'stop' : 'start' },
-                    { key: 'r', label: 'restart' },
-                    { key: 'd', label: 'remove' },
-                    { key: 'esc', label: 'back' },
-                ],
+                items: confirming
+                    ? confirmItems
+                    : [
+                          { key: '↑/↓', label: 'scroll' },
+                          { key: 'space', label: isConn ? 'stop' : 'start' },
+                          { key: 'r', label: 'restart' },
+                          ...(currentServer.plugin ? [] : [{ key: 'd', label: 'remove' }]),
+                          { key: 'esc', label: 'back' },
+                      ],
             })
             return
         }
 
         // ==========================================
-        // 4. LIST VIEW (MINIMAL SWITCHBOARD)
+        // M11: MCP SERVERS (list)
         // ==========================================
-        // Header Title
-        drawText(buffer, `MCP Servers (${servers.length})`, {
+        const onCount = servers.filter(isServerOn).length
+        drawPanelTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.text, bold: true },
+            title: 'MCP servers',
+            meta: servers.length > 0 ? `${onCount} of ${servers.length} on` : undefined,
+            width: innerWidth,
         })
         y += 2
 
         if (servers.length === 0) {
-            drawText(buffer, 'No servers configured. Press [a] to add a server.', {
-                x,
-                y,
-                style: { fg: THEME.colors.muted },
-            })
+            drawText(
+                buffer,
+                'No servers configured. Press a to add one, or install one from /plugin.',
+                {
+                    x,
+                    y,
+                    maxWidth: innerWidth,
+                    style: { fg: THEME.colors.muted },
+                }
+            )
             y += 1
         } else {
-            const windowSize = Math.max(1, footerY - y - 1)
-            const windowStart = props.windowStart ?? 0
-            const visibleServers = servers.slice(windowStart, windowStart + windowSize)
+            // Rows, then a blank row, the /plugin line and a blank row above the footer
+            const room = Math.max(1, footerY - y - 3)
+            const windowStart = Math.max(0, Math.min(props.windowStart ?? 0, servers.length - 1))
+            const remaining = servers.length - windowStart
+            const showCount = remaining > room ? Math.max(1, room - 1) : remaining
+            const visibleServers = servers.slice(windowStart, windowStart + showCount)
 
             for (let i = 0; i < visibleServers.length; i++) {
                 const actualIndex = windowStart + i
-                const s = visibleServers[i]
+                const s = visibleServers[i]!
                 const isSelected = actualIndex === safeIndex
-                const rowY = y + i
-                const isConn = s.status === 'connected'
+                const confirming = props.confirmDeleteName === s.name
+                const mark = toggleMark(isServerOn(s))
 
-                // Selection cursor
-                drawText(buffer, isSelected ? '❭ ' : '  ', {
+                drawText(buffer, isSelected ? `${THEME.glyphs.selector} ` : '  ', {
                     x,
-                    y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.dim },
+                    y,
+                    style: { fg: THEME.colors.brand },
                 })
+                drawText(buffer, mark.char, { x: x + 2, y, style: { fg: mark.color } })
 
-                // [x] enabled or [ ] disabled checkbox
-                const toggleCheck = isConn ? '[x] ' : '[ ] '
-                drawText(buffer, toggleCheck, {
-                    x: x + 2,
-                    y: rowY,
-                    style: {
-                        fg: isConn ? THEME.colors.success : THEME.colors.dim,
-                        bold: isConn,
-                    },
-                })
-
-                // Server name
-                let nameX = x + 6
-                drawText(buffer, s.name, {
+                const parts = serverMetaParts(s)
+                const metaWidth = metaPartsWidth(parts)
+                const confirmText = confirming ? ' [Remove? y/n]' : ''
+                const nameX = x + 4
+                const nameRoom = Math.max(4, right - nameX - metaWidth - 2 - confirmText.length)
+                const name = truncate(s.name, nameRoom)
+                drawText(buffer, name, {
                     x: nameX,
-                    y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
+                    y,
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
                 })
-                nameX += s.name.length + 2
-
-                // Tool count and transport
-                const toolCount = s.tools?.length ?? 0
-                const statusText = isConn
-                    ? `${toolCount} tool${toolCount === 1 ? '' : 's'}  [${s.transport}]`
-                    : '(stopped)'
-                drawText(buffer, statusText, {
-                    x: nameX,
-                    y: rowY,
-                    style: { fg: isConn ? THEME.colors.muted : THEME.colors.dim },
+                if (confirming) {
+                    drawInlineConfirm(buffer, {
+                        x: nameX + name.length,
+                        y,
+                        text: confirmText,
+                        tone: 'danger',
+                    })
+                }
+                drawMetaParts(buffer, {
+                    right,
+                    y,
+                    parts,
+                    minX: nameX + name.length + confirmText.length + 2,
                 })
+                y += 1
+            }
+            if (remaining > visibleServers.length) {
+                drawOverflow(buffer, x, y, remaining - visibleServers.length)
+                y += 1
             }
         }
 
-        // Inline confirmation message if user initiated delete
-        if (props.confirmDeleteName) {
-            drawText(
-                buffer,
-                `Confirm remove "${props.confirmDeleteName}"? Press [y] to confirm, [n] or [esc] to cancel`,
-                {
-                    x,
-                    y: footerY - 1,
-                    maxWidth: Math.max(10, width - x - 2),
-                    style: { fg: THEME.colors.error, bold: true },
-                }
-            )
+        // "More servers in /plugin", one blank row under the list; the empty state already says it
+        y += 1
+        if (servers.length > 0 && y < footerY - 1) {
+            const lead = 'More servers in '
+            drawText(buffer, lead, { x: x + 2, y, style: { fg: THEME.colors.muted } })
+            drawText(buffer, '/plugin', {
+                x: x + 2 + lead.length,
+                y,
+                style: { fg: THEME.colors.brand },
+            })
         }
 
-        const footerItems =
-            servers.length === 0
-                ? [
-                      { key: 'a', label: 'add server' },
-                      { key: 'esc', label: 'close' },
-                  ]
-                : [
-                      { key: 'space', label: 'toggle' },
-                      { key: 'enter', label: 'details' },
-                      { key: 'a', label: 'add' },
-                      { key: 'd', label: 'remove' },
-                      { key: 'esc', label: 'close' },
-                  ]
+        const footerItems = props.confirmDeleteName
+            ? confirmItems
+            : servers.length === 0
+              ? [
+                    { key: 'a', label: 'add server' },
+                    { key: 'esc', label: 'close' },
+                ]
+              : [
+                    { key: 'space', label: 'toggle' },
+                    { key: 'enter', label: 'details' },
+                    { key: 'a', label: 'add' },
+                    { key: 'd', label: 'remove' },
+                    { key: 'esc', label: 'close' },
+                ]
 
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,

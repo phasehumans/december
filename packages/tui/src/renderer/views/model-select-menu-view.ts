@@ -2,6 +2,13 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import {
+    drawEmpty,
+    drawListRow,
+    drawPanelTitle,
+    drawWindowOverflow,
+    requestPanelCursor,
+} from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -25,19 +32,6 @@ export interface ModelSelectMenuViewProps {
     searchQuery: string
     isSearching: boolean
 }
-
-export const DEFAULT_MODELS: ModelItem[] = [
-    { label: 'Claude 3.7 Sonnet', value: 'claude-3-7-sonnet' },
-    { label: 'Claude 3.5 Sonnet', value: 'claude-3-5-sonnet' },
-    { label: 'Claude 3.5 Haiku', value: 'claude-3-5-haiku' },
-    { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
-    { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
-    { label: 'Gemini 3.7 Flash', value: 'gemini-3.7-flash' },
-    { label: 'GPT-4o', value: 'gpt-4o' },
-    { label: 'GPT-4o Mini', value: 'gpt-4o-mini' },
-    { label: 'o3-mini', value: 'o3-mini' },
-    { label: 'Humans R1', value: 'humans-r1' },
-]
 
 export const ModelSelectMenuView = {
     getHeight(modelsCount: number, windowSize = MODEL_WINDOW_SIZE): number {
@@ -65,43 +59,62 @@ export const ModelSelectMenuView = {
         )
         const windowSize = MODEL_WINDOW_SIZE
 
-        // Title
-        const titleText = props.providerName ? `Models (${props.providerName})` : 'Models'
-        drawText(buffer, titleText, {
+        const models = props.models
+        const filtered = ModelSelectMenuView.getFilteredModels(models, props.searchQuery)
+        const provider = props.providerName ? props.providerName.toLowerCase() : undefined
+        const isFiltered = props.searchQuery.trim().length > 0
+
+        // G2: title "Model", then provider and count in muted
+        // No count when there are no models: the empty state says so below
+        const count = isFiltered
+            ? `${filtered.length} of ${models.length}`
+            : models.length === 0
+              ? ''
+              : `${models.length} ${models.length === 1 ? 'model' : 'models'}`
+        drawPanelTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.text, bold: true },
+            title: 'Model',
+            meta: [provider, count].filter(Boolean).join(' · ') || undefined,
+            width,
         })
         y += 1
 
-        // Search row matching React + Ink style
+        // G11: today's search row, label muted and hint dim, query brand while typing
         const searchLabel = 'Search: '
         drawText(buffer, searchLabel, {
             x,
             y,
             style: { fg: props.isSearching ? THEME.colors.brand : THEME.colors.muted },
         })
-        const searchHint = props.isSearching
-            ? `${props.searchQuery}█`
-            : props.searchQuery
-              ? `${props.searchQuery} [/ to filter]`
-              : '[/ to filter]'
-        drawText(buffer, searchHint, {
-            x: x + searchLabel.length,
-            y,
-            style: { fg: props.searchQuery ? THEME.colors.brand : THEME.colors.dim },
-        })
+        const qx = x + searchLabel.length
+        if (props.isSearching) {
+            drawText(buffer, props.searchQuery, { x: qx, y, style: { fg: THEME.colors.brand } })
+            // G11: the real terminal cursor, placed by the app
+            requestPanelCursor(qx + props.searchQuery.length, y)
+        } else if (props.searchQuery) {
+            drawText(buffer, props.searchQuery, { x: qx, y, style: { fg: THEME.colors.brand } })
+            drawText(buffer, ' [/ to filter]', {
+                x: qx + props.searchQuery.length,
+                y,
+                style: { fg: THEME.colors.dim },
+            })
+        } else {
+            drawText(buffer, '[/ to filter]', { x: qx, y, style: { fg: THEME.colors.dim } })
+        }
         y += 2
 
-        const models = props.models.length > 0 ? props.models : DEFAULT_MODELS
-        const filtered = ModelSelectMenuView.getFilteredModels(models, props.searchQuery)
-
-        if (filtered.length === 0) {
-            drawText(buffer, '  No models found.', {
-                x,
+        if (models.length === 0) {
+            // M5.3: no fixed list of old models
+            drawEmpty(
+                buffer,
+                x + 2,
                 y,
-                style: { fg: THEME.colors.muted },
-            })
+                `No models from ${provider ?? 'this provider'}. Check /login.`,
+                width - 2
+            )
+        } else if (filtered.length === 0) {
+            drawText(buffer, 'No models found.', { x: x + 2, y, style: { fg: THEME.colors.muted } })
         } else {
             const windowStart = Math.max(
                 0,
@@ -112,68 +125,27 @@ export const ModelSelectMenuView = {
 
             for (let i = 0; i < visible.length; i++) {
                 const item = visible[i]
-                const absIdx = windowStart + i
-                const isSelected = absIdx === props.selectedIndex
                 const isActive =
                     props.activeModel === item.value || props.activeModel === item.label
-                const rowY = y + i
-
-                // Selector indicator
-                const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, selector, {
+                // G3, G5: the current model gets the word "current", no green, no bold
+                drawListRow(buffer, {
                     x,
-                    y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                        bold: isSelected,
-                    },
+                    y: y + i,
+                    width,
+                    selected: windowStart + i === props.selectedIndex,
+                    label: item.label,
+                    tag: isActive ? 'current' : undefined,
                 })
-
-                // Model label
-                drawText(buffer, item.label, {
-                    x: x + 2,
-                    y: rowY,
-                    maxWidth: width - 4,
-                    style: {
-                        fg: isActive
-                            ? THEME.colors.success
-                            : isSelected
-                              ? THEME.colors.brand
-                              : THEME.colors.text,
-                        bold: isSelected || isActive,
-                    },
-                })
-
-                // Active badge
-                if (isActive) {
-                    const labelEnd = x + 2 + item.label.length
-                    drawText(buffer, ' (active)', {
-                        x: labelEnd,
-                        y: rowY,
-                        style: { fg: THEME.colors.success },
-                    })
-                }
             }
 
-            // Pagination overflow
             if (filtered.length > windowSize) {
-                const itemsAbove = windowStart
-                const itemsBelow = filtered.length - windowEnd
-                let statusText = ''
-                if (itemsAbove > 0 && itemsBelow > 0) {
-                    statusText = `↑ ${itemsAbove} more · ↓ ${itemsBelow} more`
-                } else if (itemsAbove > 0) {
-                    statusText = `↑ ${itemsAbove} more`
-                } else if (itemsBelow > 0) {
-                    statusText = `↓ ${itemsBelow} more`
-                }
-                if (statusText) {
-                    drawText(buffer, statusText, {
-                        x: x + 2,
-                        y: y + visible.length,
-                        style: { fg: THEME.colors.subtle },
-                    })
-                }
+                drawWindowOverflow(
+                    buffer,
+                    x,
+                    y + visible.length,
+                    windowStart,
+                    filtered.length - windowEnd
+                )
             }
         }
 

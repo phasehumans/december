@@ -2,9 +2,10 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 
 import { THEME } from '../../theme'
-import { drawHighlightedText, drawText } from '../ui'
+import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawPagerRow, drawPagerTitle } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -45,56 +46,34 @@ export const FileViewMenuView = {
         const width = props.width
         const totalLines = props.lines.length
         const gutterWidth = Math.max(3, String(totalLines).length)
-        const contentWidth = Math.max(10, width - x - gutterWidth - 5)
+        const rightEdge = (props.x ?? 0) + width - (THEME.padding.paddingRight ?? 4)
 
-        // 1. Header: File path & line count on left, search query & coordinates on right
-        let fileTitle = props.filePath || '(no file)'
+        // 1. Title row (M19.4): path, then lines, file position, and search position as meta
+        const metaParts: string[] = []
+        if (totalLines > 0) metaParts.push(`${totalLines} line${totalLines === 1 ? '' : 's'}`)
         if (props.totalFiles && props.totalFiles > 1) {
-            const fileIdx = (props.fileIndex ?? 0) + 1
-            fileTitle = `[${fileIdx}/${props.totalFiles} files] ${fileTitle}`
+            metaParts.push(`file ${(props.fileIndex ?? 0) + 1}/${props.totalFiles}`)
         }
-        drawText(buffer, fileTitle, {
-            x,
-            y,
-            style: { fg: THEME.colors.text, bold: true },
-        })
-
-        let headX = x + fileTitle.length
-        if (totalLines > 0) {
-            const countLabel = ` · ${totalLines} line${totalLines === 1 ? '' : 's'}`
-            drawText(buffer, countLabel, {
-                x: headX,
-                y,
-                style: { fg: THEME.colors.dim },
-            })
-            headX += countLabel.length
-        }
-
         if (props.searchQuery && props.matchLines && props.matchLines.length > 0) {
             const currentIdx = (props.currentMatchIndex ?? 0) + 1
-            const searchBadge = ` · "${props.searchQuery}" (${currentIdx}/${props.matchLines.length})`
-            drawText(buffer, searchBadge, {
-                x: headX,
-                y,
-                style: { fg: THEME.colors.warning, bold: true },
-            })
+            metaParts.push(`"${props.searchQuery}" ${currentIdx}/${props.matchLines.length}`)
         }
-
-        const coordLabel = `line ${props.cursorLineIndex + 1}:1`
-        const coordX = Math.max(x + 40, width - coordLabel.length - 4)
-        drawText(buffer, coordLabel, {
-            x: coordX,
+        drawPagerTitle(buffer, {
+            x,
             y,
-            style: { fg: THEME.colors.text, bold: true },
+            width: rightEdge - x,
+            title: props.filePath || '(no file)',
+            meta: metaParts.join(' · ') || undefined,
+            right: `${props.cursorLineIndex + 1}:1`,
         })
-        y += 2 // Clean 1 empty line spacing matching React/Ink marginBottom={1}
+        y += 2
 
         // 2. Viewport Lines
         const footerY = props.y + props.height - 1
         const visibleLineCount = Math.max(1, footerY - y - 1)
 
         if (props.isLoading) {
-            drawText(buffer, 'Loading file...', {
+            drawText(buffer, 'Loading file…', {
                 x,
                 y,
                 style: { fg: THEME.colors.dim },
@@ -117,73 +96,18 @@ export const FileViewMenuView = {
                 props.scrollOffset,
                 props.scrollOffset + visibleLineCount
             )
-
             for (let i = 0; i < visibleLines.length; i++) {
                 const absIdx = props.scrollOffset + i
-                const isCursor = absIdx === props.cursorLineIndex
-                const lineNum = absIdx + 1
-                const lineText = visibleLines[i] || ''
-                const rowY = y + i
-                const rowBg = isCursor ? THEME.colors.codespanBg : undefined
-
-                // Active cursor line highlight bar across the full row
-                if (isCursor) {
-                    const rowWidth = Math.max(10, width - x - 2)
-                    for (let c = 0; c < rowWidth; c++) {
-                        buffer.setChar(x + c, rowY, ' ', { bg: rowBg })
-                    }
-                }
-
-                // Selector glyph
-                const selector = isCursor ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, selector, {
+                drawPagerRow(buffer, {
                     x,
-                    y: rowY,
-                    style: { fg: THEME.colors.brand, bg: rowBg, bold: isCursor },
+                    y: y + i,
+                    width: Math.max(10, width - x - 2),
+                    lineNo: absIdx + 1,
+                    gutterWidth,
+                    text: visibleLines[i] || '',
+                    cursor: absIdx === props.cursorLineIndex,
+                    query: props.searchQuery,
                 })
-
-                // Line number in gutter
-                const paddedNum = String(lineNum).padStart(gutterWidth, ' ')
-                drawText(buffer, `${paddedNum} `, {
-                    x: x + 2,
-                    y: rowY,
-                    style: {
-                        fg: isCursor ? THEME.colors.brand : THEME.colors.dim,
-                        bg: rowBg,
-                        bold: isCursor,
-                    },
-                })
-
-                // Code text: crisp white for all code, yellow highlight on query, highlighted background for cursor line
-                const codeX = x + 2 + gutterWidth + 1
-                if (props.searchQuery) {
-                    drawHighlightedText(buffer, lineText, props.searchQuery, {
-                        x: codeX,
-                        y: rowY,
-                        maxWidth: contentWidth,
-                        normalStyle: {
-                            fg: THEME.colors.text,
-                            bg: rowBg,
-                            bold: isCursor,
-                        },
-                        highlightStyle: {
-                            fg: THEME.colors.warning,
-                            bg: rowBg,
-                            bold: true,
-                        },
-                    })
-                } else {
-                    drawText(buffer, lineText, {
-                        x: codeX,
-                        y: rowY,
-                        maxWidth: contentWidth,
-                        style: {
-                            fg: THEME.colors.text,
-                            bg: rowBg,
-                            bold: isCursor,
-                        },
-                    })
-                }
             }
         }
 

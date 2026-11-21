@@ -7,6 +7,12 @@ const bashSchema = Type.Object({
     timeout: Type.Optional(
         Type.Number({ description: 'Timeout in seconds (optional, no default timeout)' })
     ),
+    run_in_background: Type.Optional(
+        Type.Boolean({
+            description:
+                'Start the command as a background task and return at once with its task id. Use for dev servers, watchers, and long builds. You are told when it finishes.',
+        })
+    ),
 })
 
 export type BashInput = Static<typeof bashSchema>
@@ -14,7 +20,7 @@ export type BashInput = Static<typeof bashSchema>
 export const BashTool: Tool<BashInput> = {
     name: 'bash',
     description:
-        'Execute a shell command. Use this tool to run commands on the terminal (e.g., building, testing, or running scripts). Long-running commands (like dev servers) will automatically detach and run in the background.',
+        'Execute a shell command. Use this tool to run commands on the terminal (e.g., building, testing, or running scripts). Set run_in_background for dev servers, watchers, and other long-running commands. A foreground command that runs too long also moves to the background on its own. Use manage_task to read background output or stop a task.',
     inputSchema: bashSchema,
     prepareArguments: (args: any) => {
         if (!args || typeof args !== 'object') return args
@@ -30,17 +36,21 @@ export const BashTool: Tool<BashInput> = {
         }
         const cwd = context.operations.env.cwd()
 
+        const runInBackground = input.run_in_background === true
         const { exitCode, output, taskId } = await context.operations.bash.exec(command, cwd, {
             timeout: input.timeout,
             waitMsBeforeAsync: 20_000,
+            runInBackground,
             onData: (chunk: string | Buffer) => {
                 context.onStream(chunk.toString())
             },
         } as any)
 
         let msg = ''
-        if (exitCode === null) {
-            msg = `[Auto-Backgrounded] Task ID: ${taskId}. Command is still running in the background. Use manage_task tool to check status or kill it.\n`
+        if (exitCode === null && runInBackground) {
+            return `Started in background as ${taskId}. You will be told when it finishes. Use manage_task with action "output" to read new output, or "kill" to stop it.`
+        } else if (exitCode === null) {
+            msg = `[Auto-Backgrounded] Task ID: ${taskId}. Command is still running in the background. You will be told when it finishes. Use manage_task with action "output" to read new output, or "kill" to stop it.\n`
         } else if (exitCode !== 0) {
             msg = `Command failed with exit code ${exitCode}:\n`
         }

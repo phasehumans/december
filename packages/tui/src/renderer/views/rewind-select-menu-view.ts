@@ -1,14 +1,17 @@
 import { THEME } from '../../theme'
-import { drawDivider, drawText } from '../ui'
+import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
-import { formatSessionTimeAgo } from './session-select-menu-view'
+import { drawInlineConfirm, drawPanelTitle } from './panel'
+import { formatSessionTimeAgo, sanitizeSessionTitle } from './session-select-menu-view'
 
 import type { ScreenBuffer } from '../buffer'
 
 export const REWIND_WINDOW_SIZE = 7
 
 export interface RewindTurnEntry {
+    /** Snapshot id used to restore this turn. */
+    id: string
     turnIndex: number
     commitHash?: string
     prompt?: string
@@ -24,14 +27,17 @@ export interface RewindSelectMenuViewProps {
     turns: RewindTurnEntry[]
     selectedIndex: number
     windowStart: number
+    confirming?: boolean
     windowSize?: number
 }
 
 export const RewindSelectMenuView = {
     getHeight(turnsCount: number, windowSize = REWIND_WINDOW_SIZE): number {
-        const listRows = Math.min(Math.max(turnsCount, 1), windowSize)
-        // Title (1), Subtitle (1), Divider (1), List (listRows), Status (1), Divider (1), Footer (1) = 6 + listRows
-        return 6 + listRows
+        const count = turnsCount || 1
+        const visible = Math.min(windowSize, count)
+        const hasOverflow = count > windowSize
+        // Title (1) + Gap (1) + Visible + Overflow (0|1) + Gap (1) + Footer (1)
+        return 2 + visible + (hasOverflow ? 1 : 0) + 2
     },
 
     render(buffer: ScreenBuffer, props: RewindSelectMenuViewProps): void {
@@ -43,47 +49,26 @@ export const RewindSelectMenuView = {
         )
         const windowSize = props.windowSize ?? REWIND_WINDOW_SIZE
 
-        // 1. Title Row
-        drawText(buffer, 'Rewind Checkpoint / Turn Snapshot', {
+        // 1. Title row (M20): the description goes into the meta
+        drawPanelTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.brand, bold: true },
-        })
-        y += 1
-
-        // 2. Subtitle Row
-        drawText(
-            buffer,
-            'Select a previous turn to restore filesystem state and rewind conversation.',
-            {
-                x,
-                y,
-                style: { fg: THEME.colors.muted },
-            }
-        )
-        y += 1
-
-        // 3. Divider
-        drawDivider(buffer, {
-            x,
-            y,
+            title: 'Rewind',
+            meta: 'go back to the start of a turn',
             width,
-            char: '─',
-            style: { fg: THEME.colors.border },
         })
-        y += 1
+        y += 2
 
-        // 4. Turns List
+        // 2. Turn rows
         const turns = props.turns || []
         const totalItems = turns.length
 
         if (totalItems === 0) {
-            drawText(buffer, '  No checkpoints recorded in this session.', {
+            drawText(buffer, '  No turns to rewind in this conversation.', {
                 x,
                 y,
                 style: { fg: THEME.colors.muted },
             })
-            y += 1
         } else {
             const windowStart = Math.max(
                 0,
@@ -91,112 +76,110 @@ export const RewindSelectMenuView = {
             )
             const windowEnd = Math.min(windowStart + windowSize, totalItems)
             const visible = turns.slice(windowStart, windowEnd)
+            // M20.1: the turn number with no "Turn" word, then the prompt as the label
+            const numberWidth = String(Math.max(...turns.map((t) => t.turnIndex))).length + 2
 
             for (let i = 0; i < visible.length; i++) {
-                const turn = visible[i]
+                const turn = visible[i]!
                 const absIdx = windowStart + i
                 const isSelected = absIdx === props.selectedIndex
+                const isConfirming = isSelected && Boolean(props.confirming)
                 const rowY = y + i
 
-                // Indicator
-                const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, selector, {
-                    x,
-                    y: rowY,
-                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted },
-                })
-
-                // Turn badge
-                const turnTag = `Turn ${turn.turnIndex}`
-                drawText(buffer, turnTag.padEnd(8), {
-                    x: x + 2,
-                    y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
-                })
-
-                // Commit hash
-                const commitTag = turn.commitHash ? turn.commitHash.slice(0, 7) : '       '
-                drawText(buffer, commitTag, {
-                    x: x + 11,
-                    y: rowY,
-                    style: { fg: THEME.colors.muted },
-                })
-
-                // Time ago
-                const timeStr = formatSessionTimeAgo(turn.timestamp)
-                drawText(buffer, timeStr.padEnd(10), {
-                    x: x + 20,
-                    y: rowY,
-                    style: { fg: THEME.colors.muted },
-                })
-
-                // Prompt preview + files count
-                const filesCount = turn.touchedFiles?.length || 0
-                const filesTag =
-                    filesCount > 0 ? ` (${filesCount} file${filesCount === 1 ? '' : 's'})` : ''
-                const rawPrompt = (turn.prompt || 'Turn snapshot').replace(/\s+/g, ' ').trim()
-                const maxPromptWidth = Math.max(10, width - 32 - filesTag.length)
-                const promptSnippet =
-                    rawPrompt.length > maxPromptWidth
-                        ? `${rawPrompt.slice(0, maxPromptWidth - 3)}...`
-                        : rawPrompt
-
-                drawText(buffer, promptSnippet, {
-                    x: x + 31,
-                    y: rowY,
-                    maxWidth: maxPromptWidth,
-                    style: {
-                        fg: isSelected ? THEME.colors.text : THEME.colors.dim,
-                        bold: isSelected,
-                    },
-                })
-
-                if (filesTag) {
-                    drawText(buffer, filesTag, {
-                        x: x + 31 + promptSnippet.length,
+                if (isSelected) {
+                    drawText(buffer, `${THEME.glyphs.selector} `, {
+                        x,
                         y: rowY,
                         style: { fg: THEME.colors.brand },
                     })
                 }
-            }
-            y += visible.length
+                drawText(buffer, String(turn.turnIndex), {
+                    x: x + 2,
+                    y: rowY,
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.muted },
+                })
 
-            // Status bar
-            const statusText = `[${windowStart + 1}-${windowEnd} of ${totalItems} checkpoints]`
-            drawText(buffer, statusText, {
-                x: x + 2,
-                y,
-                style: { fg: THEME.colors.subtle },
-            })
-            y += 1
+                // Right aligned meta: file count and time
+                const filesCount = turn.touchedFiles?.length || 0
+                const filesTag =
+                    filesCount > 0 ? `${filesCount} file${filesCount === 1 ? '' : 's'} · ` : ''
+                const metaText = `${filesTag}${formatSessionTimeAgo(turn.timestamp)}`
+                const metaWidth = 20
+                drawText(buffer, metaText.padStart(metaWidth), {
+                    x: x + width - metaWidth,
+                    y: rowY,
+                    maxWidth: metaWidth,
+                    style: { fg: THEME.colors.muted },
+                })
+
+                // Prompt, then the inline confirm (M20.2) in yellow with no bold
+                const promptX = x + 2 + numberWidth
+                const maxPromptWidth = Math.max(10, width - 2 - numberWidth - metaWidth - 2)
+                const prompt = sanitizeSessionTitle(turn.prompt || '') || '(empty prompt)'
+                const confirmSuffix = ' [Rewind? y/n]'
+                const promptWidth = isConfirming
+                    ? Math.max(4, maxPromptWidth - confirmSuffix.length)
+                    : maxPromptWidth
+                const promptResult = drawText(buffer, prompt, {
+                    x: promptX,
+                    y: rowY,
+                    maxWidth: promptWidth,
+                    ellipsis: true,
+                    style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
+                })
+                if (isConfirming) {
+                    drawInlineConfirm(buffer, {
+                        x: promptResult.x,
+                        y: rowY,
+                        text: confirmSuffix,
+                        tone: 'warning',
+                    })
+                }
+            }
+
+            // Pagination overflow indicator
+            if (totalItems > windowSize) {
+                const itemsAbove = windowStart
+                const itemsBelow = totalItems - windowEnd
+                let statusText = ''
+                if (itemsAbove > 0 && itemsBelow > 0) {
+                    statusText = `↑ ${itemsAbove} more · ↓ ${itemsBelow} more`
+                } else if (itemsAbove > 0) {
+                    statusText = `↑ ${itemsAbove} more`
+                } else if (itemsBelow > 0) {
+                    statusText = `↓ ${itemsBelow} more`
+                }
+                if (statusText) {
+                    drawText(buffer, statusText, {
+                        x: x + 2,
+                        y: y + visible.length,
+                        style: { fg: THEME.colors.dim },
+                    })
+                }
+            }
         }
 
-        // 5. Divider
+        // 4. Navigation Footer
         const height = props.height ?? buffer.height
         const footerY = (props.y ?? 0) + height - 1
-        const bottomDividerY = (props.y ?? 0) + height - 2
+        const footerItems = props.confirming
+            ? [
+                  { key: 'y', label: 'confirm rewind' },
+                  { key: 'n/esc', label: 'cancel' },
+              ]
+            : totalItems > 0
+              ? [
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'enter', label: 'rewind' },
+                    { key: 'esc', label: 'close' },
+                ]
+              : [{ key: 'esc', label: 'close' }]
 
-        drawDivider(buffer, {
-            x,
-            y: bottomDividerY,
-            width,
-            char: '─',
-            style: { fg: THEME.colors.border },
-        })
-
-        // 6. Navigation Footer
         MenuFooterView.render(buffer, {
-            x,
+            x: props.x ?? 0,
             y: footerY,
             width,
-            items: [
-                { key: '↑/↓', label: 'navigate' },
-                { key: 'enter', label: 'rewind to turn' },
-                { key: 'esc', label: 'close' },
-            ],
+            items: footerItems,
         })
     },
 }

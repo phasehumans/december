@@ -134,6 +134,38 @@ describe('Codex Responses Provider Adapter (Unit)', () => {
         })
     })
 
+    it('reports cached input tokens as cache reads', async () => {
+        const sseData =
+            'data: {"type":"response.completed","response":{"usage":{"input_tokens":900,"output_tokens":10,"input_tokens_details":{"cached_tokens":700}}}}\n\n' +
+            'data: [DONE]\n\n'
+        const mockFetch: typeof fetch = async () =>
+            new Response(
+                new ReadableStream({
+                    start(controller) {
+                        controller.enqueue(new TextEncoder().encode(sseData))
+                        controller.close()
+                    },
+                }),
+                { status: 200, headers: { 'Content-Type': 'text/event-stream' } }
+            )
+        const payload = { 'https://api.openai.com/auth': { chatgpt_account_id: 'acc' } }
+        const token = `hdr.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`
+        const provider = codexResponsesProvider(token, { fetchFn: mockFetch })
+
+        const chunks: any[] = []
+        for await (const chunk of provider.stream([{ role: 'user', content: 'hi' }], [], '', {
+            model: 'gpt-5.5',
+        })) {
+            chunks.push(chunk)
+        }
+        expect(chunks.at(-1)).toEqual({
+            type: 'usage',
+            promptTokens: 900,
+            completionTokens: 10,
+            cacheReadInputTokens: 700,
+        })
+    })
+
     it('formats 429 usage limit reached error with plan and reset details', async () => {
         const errorJson = {
             error: {

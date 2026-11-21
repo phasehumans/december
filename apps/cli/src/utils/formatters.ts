@@ -85,6 +85,11 @@ export function getToolSummary(name: string, inputStr: string): string {
                 return `WebSearch(${args.query || args.Url || args.url || ''})`.trim()
             case 'ask_question':
                 return `AskQuestion()`
+            case 'update_plan': {
+                const items = Array.isArray(args.items) ? args.items : []
+                const done = items.filter((i: any) => i?.status === 'done').length
+                return `Plan(${done}/${items.length} done)`
+            }
             case 'manage_task':
                 return `ManageTask(${args.Action || args.action || ''})`.trim()
             case 'manage_subagent': {
@@ -101,10 +106,6 @@ export function getToolSummary(name: string, inputStr: string): string {
             case 'browser_action': {
                 const action = args.action || args.actionType || args.url || ''
                 return `Browser(${action})`.trim()
-            }
-            case 'manage_memory': {
-                const action = args.action || args.Action || ''
-                return `ManageMemory(${action})`.trim()
             }
             case 'code_intelligence': {
                 const query = args.symbol || args.query || args.path || ''

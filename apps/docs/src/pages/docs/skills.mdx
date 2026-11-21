@@ -23,32 +23,33 @@ When you run a skill, December gives the task to a subagent. A subagent is a sep
 /db-migrate add a status column to the orders table
 ```
 
-2. To see all your skills, type `/skills` in a session.
+2. To see all your skills, type `/plugin` in a session and press `f` until the list shows skills.
 
 For a plan before December edits files, use `/plan`. See [Session Artifacts & Planning](/docs/artifacts).
 
 ## Manage skills with the CLI
 
-Use the `december skill` command to list, inspect, add, and remove skills:
+Use the `december plugin` command to list, inspect, install, and turn off skills:
 
 ```bash
-# List all skills that December finds
-december skill list
+# List all plugins, skills, and MCP servers that December finds
+december plugin list
 
 # Show the description and location of a skill
-december skill info db-migrate
+december plugin info db-migrate
 
-# Add skills from a GitHub repository to this project (.december/skills)
-december skill add phasehumans/skills
+# Install a skills repository from GitHub for all your projects
+december plugin install phasehumans/skills
 
-# Add skills for all your projects (~/.december/skills)
-december skill add phasehumans/skills --global
+# Install it for this project only (.december/plugins)
+december plugin install phasehumans/skills --scope project
 
-# Remove an installed skill package
-december skill remove skills
+# Turn a skill off, or remove the installed repository
+december plugin disable db-migrate
+december plugin uninstall phasehumans-skills
 ```
 
-`december skill add` clones the repository with Git. If the folder already exists, December runs `git pull` to update it.
+`december plugin install` clones the repository with Git. If the repository has no `plugin.json`, December installs its skills as a plugin named `<owner>-<repo>`. Run `december plugin update <name>` to get the latest version.
 
 ## Where December looks for skills
 
@@ -61,7 +62,15 @@ December finds skills in these folders, in your project and in each parent folde
 
 December also finds skills in your home folder, for example in `~/.december/skills`, `~/.agents/skills`, and `~/.claude/skills`. Skills that you installed for other agents work in December too.
 
-Plugins can also add skills. Type `/plugin` to manage plugins.
+Plugins can also add skills. Type `/plugin` to manage plugins. See [Plugins & Marketplaces](/docs/plugins).
+
+## Turn a skill off
+
+1. Type `/plugin` and press `f` until the list shows skills.
+2. Select the skill and press Space.
+3. Restart December.
+
+December does not show a skill that is off to the agent. Press Space again to turn it on.
 
 ## Write a project skill
 
@@ -93,6 +102,6 @@ When you change the database schema:
 ### Frontmatter fields
 
 - `name` (required): The skill name. December uses it as the slash command.
-- `description` (required): What the skill does. December shows it in `december skill list`.
+- `description` (required): What the skill does. December shows it in `/plugin` and `december plugin info`.
 - `argument-hint`: The arguments that the skill expects, for example `[migration-name]`.
 - `allowed-tools`: The tools that the skill can use, for example `bash`.

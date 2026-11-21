@@ -28,10 +28,10 @@ const posts = Object.values(postModules)
   activePath="/blog"
   hideFooter={false}
 >
-  <!-- Page Blueprint Chassis: 1024px wide flanked by cross blue line side gutters on desktop -->
+  <!-- Page Blueprint Chassis: 1200px wide flanked by cross blue line side gutters on desktop -->
   <div class="relative w-full overflow-hidden flex-1 flex flex-col">
-    <!-- Main Container: 1024px wide centered content -->
-    <div class="relative z-10 mx-auto max-w-[1024px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24 min-w-0 bg-white border-x border-transparent lg:border-[#e2e8f0] flex-1 w-full">
+    <!-- Main Container: 1200px wide centered content -->
+    <div class="relative z-10 mx-auto max-w-[1200px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24 min-w-0 bg-white border-x border-transparent lg:border-[#e2e8f0] flex-1 w-full">
     <!-- Breadcrumb Navigation Bar -->
     <nav class="flex items-center flex-wrap font-mono text-xs text-[#64748b] mb-8">
       <div class="flex items-center flex-wrap gap-2">
@@ -47,12 +47,12 @@ const posts = Object.values(postModules)
         Blog
       </h1>
       <p class="mt-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
-        Technical notes on agent architectures, context enginerring, and evals.
+        Technical notes on agent architectures, context engineering, and evals.
       </p>
     </header>
 
     <!-- 1 Column Cards (Matching Docs Page Card Language) -->
-    <div class="grid grid-cols-1 gap-3 max-w-3xl">
+    <div class="grid grid-cols-1 gap-3">
       {posts.map((post) => (
         <a
           href={`/blog/${post.slug}`}

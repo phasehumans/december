@@ -116,7 +116,6 @@ export async function executeSkillInSubagent(
         workspaceDir: effectiveWorkspaceDir,
         modelOptions: parentAgent.modelOptions,
         thinkingLevel: parentAgent.thinkingLevel,
-        disableLogging: parentAgent.disableLogging,
     })
 
     const promptText =

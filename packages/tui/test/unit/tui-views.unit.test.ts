@@ -24,16 +24,34 @@ import { McpMenuView } from '../../src/renderer/views/mcp-menu-view'
 import { MemoryViewMenuView } from '../../src/renderer/views/memory-view-menu-view'
 import { MessageListView } from '../../src/renderer/views/message-list-view'
 import { ModelSelectMenuView } from '../../src/renderer/views/model-select-menu-view'
-import { PlanApproveMenuView } from '../../src/renderer/views/plan-approve-menu-view'
-import { PluginMenuView } from '../../src/renderer/views/plugin-menu-view'
+import { takePanelCursor } from '../../src/renderer/views/panel'
+import { PlanApproveMenuView, planFacts } from '../../src/renderer/views/plan-approve-menu-view'
+import {
+    buildPluginList,
+    ensureVisible,
+    extensionMetaText,
+    formatAge,
+    kindCounts,
+    marketplaceCounts,
+    PluginMenuView,
+    pluginSubtitle,
+    type DiscoverRow,
+    type ExtensionRow,
+    type MarketplaceRow,
+} from '../../src/renderer/views/plugin-menu-view'
 import { RewindSelectMenuView } from '../../src/renderer/views/rewind-select-menu-view'
 import { SessionSelectMenuView } from '../../src/renderer/views/session-select-menu-view'
 import { SettingsMenuView } from '../../src/renderer/views/settings-menu-view'
 import { SkillsMenuView } from '../../src/renderer/views/skills-menu-view'
 import { SwitchSelectMenuView } from '../../src/renderer/views/switch-select-menu-view'
-import { TasksModeMenuView } from '../../src/renderer/views/tasks-mode-menu-view'
+import { TasksModeMenuView, type TaskItem } from '../../src/renderer/views/tasks-mode-menu-view'
 import { ToolPermissionMenuView } from '../../src/renderer/views/tool-permission-menu-view'
-import { UsageSelectMenuView } from '../../src/renderer/views/usage-select-menu-view'
+import {
+    UsageSelectMenuView,
+    buildHeatmapGrid,
+    getHeatmapLayout,
+    layoutStatColumns,
+} from '../../src/renderer/views/usage-select-menu-view'
 import { THEME } from '../../src/theme'
 
 describe('Interactive Differential TUI Views (Renderer)', () => {
@@ -98,6 +116,28 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(line8).toContain(
                 '▎ Check out detailed changelog on https://trydecember.com/docs/changelog'
             )
+        })
+
+        it('renders update notice with the full changelog url in brand color', () => {
+            const buffer = new ScreenBuffer(100, 10)
+            HeaderView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 100,
+                cliVersion: '0.4.18',
+                latestVersion: '0.4.19',
+                cwd: '~/code/december',
+                branch: 'main',
+            })
+
+            const line6 = buffer.getLine(6)
+            expect(line6).toContain(
+                '▎ Run /update to upgrade · Changelog: https://trydecember.com/docs/changelog'
+            )
+
+            const urlX = line6.indexOf('https://')
+            expect(buffer.get(urlX, 6)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.get(urlX - 2, 6)?.fg).toBe(THEME.colors.muted)
         })
     })
 
@@ -292,13 +332,14 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(0)).toContain('general')
             expect(buffer.getLine(0)).toContain('commands')
             expect(buffer.getLine(0)).toContain('shortcuts')
-            expect(buffer.getLine(2)).toContain('December is a')
-            expect(buffer.getLine(5)).toContain('0.4.15')
-            expect(buffer.getLine(6)).toContain('dev@december.io')
-            expect(buffer.getLine(7)).toContain('Claude 3.7 Sonnet')
-            expect(buffer.getLine(8)).toContain('feature/effort-help')
-            expect(buffer.getLine(10)).toContain('sess-xyz-789')
-            expect(buffer.getLine(12)).toContain('cycle tab')
+            expect(buffer.getLine(2)).toContain('December writes code')
+            const rows = Array.from({ length: buffer.height }, (_, i) => buffer.getLine(i))
+            expect(rows.find((r) => r.includes('Version'))).toContain('0.4.15')
+            expect(rows.find((r) => r.includes('Account'))).toContain('dev@december.io')
+            expect(rows.find((r) => r.includes('Model'))).toContain('Claude 3.7 Sonnet')
+            expect(rows.find((r) => r.includes('Workspace'))).toContain('feature/effort-help')
+            expect(rows.find((r) => r.includes('Session'))).toContain('sess-xyz-789')
+            expect(rows.some((r) => r.includes('cycle tab'))).toBe(true)
             expect(buffer.getLine(12)).toContain('esc dismiss')
         })
 
@@ -380,7 +421,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(2)).toContain('Fast')
             expect(buffer.getLine(3)).toContain('❭')
             expect(buffer.getLine(3)).toContain('Deep')
-            expect(buffer.getLine(3)).toContain('(Current)')
+            expect(buffer.getLine(3)).toContain('current')
+            expect(buffer.getLine(3)).not.toContain('(Current)')
             expect(buffer.getLine(5)).toContain('navigate')
             expect(buffer.getLine(5)).toContain('enter select')
             expect(buffer.getLine(5)).toContain('esc close')
@@ -388,8 +430,9 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
 
         it('computes correct fixed height', () => {
             expect(EffortMenuView.getHeight()).toBe(6)
-            expect(EffortMenuView.getHeight('none')).toBe(6)
-            expect(EffortMenuView.getHeight('fixed')).toBe(6)
+            // A model with no reasoning setting gets one line in place of two (M7.2)
+            expect(EffortMenuView.getHeight('none')).toBe(5)
+            expect(EffortMenuView.getHeight('fixed')).toBe(5)
         })
 
         it('renders message when model does not support reasoning', () => {
@@ -405,7 +448,9 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 reasoningSupport: 'none',
             })
             expect(buffer.getLine(0)).toContain('Reasoning')
-            expect(buffer.getLine(2)).toContain('does not support')
+            expect(buffer.getLine(2)).toContain(
+                'GPT-4o has no reasoning setting. There is nothing to set.'
+            )
             expect(buffer.getLine(5)).toContain('esc close')
         })
 
@@ -500,11 +545,11 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 isSearching: false,
             })
 
-            expect(buffer.getLine(0)).toContain('Models')
+            expect(buffer.getLine(0)).toContain('Model  2 models')
             expect(buffer.getLine(1)).toContain('Search: [/ to filter]')
             expect(buffer.getLine(3)).toContain('Claude 3.7 Sonnet')
             expect(buffer.getLine(4)).toContain('Claude 3.5 Sonnet')
-            expect(buffer.getLine(4)).toContain('(active)')
+            expect(buffer.getLine(4)).toContain('current')
             expect(buffer.getLine(buffer.height - 1)).toContain('select')
         })
     })
@@ -532,13 +577,18 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 detailScrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Workspace Changes')
-            expect(buffer.getLine(0)).toContain('1 file (+120 -15)')
+            expect(buffer.getLine(0)).toContain('Changes  1 file +120 -15')
+            expect(buffer.getLine(0)).not.toContain('1/1')
+            expect(buffer.get(2, 0)?.bold).toBe(true)
+            const titleAdds = buffer.getLine(0).indexOf('+120')
+            expect(buffer.get(titleAdds, 0)?.fg).toBe(THEME.colors.success)
             expect(buffer.getLine(2)).toContain('❭')
             expect(buffer.getLine(2)).toContain('packages/tui/src/renderer/app.ts')
             expect(buffer.getLine(2)).toContain('+120')
             expect(buffer.getLine(2)).toContain('-15')
             expect(buffer.get(2, 2)?.bg).toBeUndefined()
+            expect(buffer.get(4, 2)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.get(4, 2)?.bold).toBeFalsy()
         })
 
         it('renders detailed diff lines with line numbers and syntax styling', () => {
@@ -563,14 +613,21 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 detailScrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('packages/tui/src/renderer/app.ts')
-            expect(buffer.getLine(0)).toContain('+1')
-            expect(buffer.getLine(0)).toContain('-1')
+            // At 60 columns the path is shortened in the middle so the file name stays visible
+            expect(buffer.getLine(0)).toContain('packages/…/app.ts  +1 -1')
+            expect(buffer.getLine(0)).toContain('change 1/1 · file 1/1')
             expect(buffer.getLine(2)).toContain('unchanged lines')
-            expect(buffer.getLine(3)).toContain('-')
-            expect(buffer.getLine(3)).toContain('const oldVal = 1')
-            expect(buffer.getLine(4)).toContain('+')
-            expect(buffer.getLine(4)).toContain('const newVal = 2')
+            expect(buffer.getLine(3)).toContain('- const oldVal = 1')
+            expect(buffer.getLine(4)).toContain('+ const newVal = 2')
+            // Only the sign is colored; the code stays in text color on the tint
+            const delCode = buffer.getLine(3).indexOf('const')
+            expect(buffer.get(delCode - 2, 3)?.fg).toBe(THEME.colors.error)
+            expect(buffer.get(delCode, 3)?.fg).toBe(THEME.colors.text)
+            expect(buffer.get(delCode, 3)?.bg).toBe(THEME.colors.diffDeleteBg)
+            const addCode = buffer.getLine(4).indexOf('const')
+            expect(buffer.get(addCode - 2, 4)?.fg).toBe(THEME.colors.success)
+            expect(buffer.get(addCode, 4)?.fg).toBe(THEME.colors.text)
+            expect(buffer.getLine(buffer.height - 1)).toContain('p/n change')
             expect(buffer.getLine(buffer.height - 1)).toContain('f full file')
         })
 
@@ -602,8 +659,9 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 detailScrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('packages/tui/src/renderer/app.ts')
-            expect(buffer.getLine(0)).toContain('· full file')
+            // The full-file tag takes room from the path, which is shortened in the middle
+            expect(buffer.getLine(0)).toContain('pp.ts  +1 -1 · full file')
+            expect(buffer.getLine(0)).toContain('change 1/1 · file 1/1')
             expect(buffer.getLine(2)).not.toContain('unchanged lines')
             expect(buffer.getLine(2)).toContain('line content 1')
             expect(buffer.getLine(buffer.height - 1)).toContain('f compact')
@@ -628,9 +686,10 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(0)).toContain('Settings')
             expect(buffer.getLine(2)).toContain('❭')
             expect(buffer.getLine(2)).toContain('Active Model')
-            expect(buffer.getLine(2)).toContain('[Claude 3.5 Sonnet]')
+            expect(buffer.getLine(2)).toContain('Claude 3.5 Sonnet')
+            expect(buffer.getLine(2)).not.toContain('[')
             expect(buffer.getLine(3)).toContain('PathGuard Protection')
-            expect(buffer.getLine(3)).toContain('[on]')
+            expect(buffer.getLine(3)).toContain('on')
         })
     })
 
@@ -689,93 +748,55 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
     })
 
     describe('SkillsMenuView', () => {
-        it('renders discovered skills list with descriptions', () => {
-            const buffer = new ScreenBuffer(80, 10)
-            SkillsMenuView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                height: 10,
-                selectedIndex: 0,
-                windowStart: 0,
-                skills: [{ name: 'tdd', description: 'Test driven development workflow' }],
-            })
-
-            expect(buffer.getLine(0)).toContain('Skills (1)')
-            expect(buffer.getLine(2)).toContain('❭')
-            expect(buffer.getLine(2)).toContain('tdd')
-            expect(buffer.getLine(2)).toContain('Test driven development workflow')
-        })
-
-        it('renders template guide, origin line, and search filter in full layout', () => {
-            const buffer = new ScreenBuffer(80, 20)
-            SkillsMenuView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                height: 20,
-                selectedIndex: 0,
-                windowStart: 0,
-                searchQuery: 'tdd',
-                skills: [
-                    {
-                        name: 'tdd',
-                        description: 'Test driven development workflow',
-                        origin: 'workspace',
-                        directoryPath: '/workspace/.agents/skills/tdd',
-                        entryFilePath: '/workspace/.agents/skills/tdd/SKILL.md',
-                    },
-                ],
-            })
-
-            expect(buffer.getLine(0)).toContain('Skills (1)')
-            expect(buffer.getLine(0)).toContain('1 workspace')
-            expect(buffer.getLine(2)).toContain('Create new skills')
-            expect(buffer.getLine(3)).toContain('workspace: .agents/skills/{skill_name}/SKILL.md')
-            expect(buffer.getLine(7)).toContain('Filter: tdd (1 match)')
-            expect(buffer.getLine(8)).toContain('Workspace skills')
-        })
-
-        it('renders skill detail documentation view with line numbers and cursor', () => {
+        it('renders the SKILL.md viewer with line numbers and cursor', () => {
             const buffer = new ScreenBuffer(80, 15)
             SkillsMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
                 height: 15,
-                selectedIndex: 0,
-                windowStart: 0,
-                isDetailView: true,
                 cursorLineIndex: 1,
                 scrollOffset: 0,
                 detailLines: ['# TDD Guide', 'Step 1: Write test', 'Step 2: Implement'],
-                skills: [
-                    {
-                        name: 'tdd',
-                        description: 'Test driven development workflow',
-                        origin: 'workspace',
-                        directoryPath: '/workspace/.agents/skills/tdd',
-                        entryFilePath: '/workspace/.agents/skills/tdd/SKILL.md',
-                    },
-                ],
+                skill: {
+                    name: 'tdd',
+                    description: 'Test driven development workflow',
+                    origin: 'workspace',
+                    directoryPath: '/workspace/.agents/skills/tdd',
+                    entryFilePath: '/workspace/.agents/skills/tdd/SKILL.md',
+                },
             })
 
-            expect(buffer.getLine(0)).toContain('tdd')
-            expect(buffer.getLine(0)).toContain('line 2:3')
+            expect(buffer.getLine(0)).toContain(
+                'tdd  /workspace/.agents/skills/tdd/SKILL.md · 3 lines'
+            )
+            expect(buffer.getLine(0)).toContain('2:1')
             expect(buffer.getLine(2)).toContain('1 # TDD Guide')
             expect(buffer.getLine(3)).toContain('❭')
             expect(buffer.getLine(3)).toContain('2 Step 1: Write test')
+            // G15 pager row: surface band, brand line number, regular weight
+            expect(buffer.get(2, 3)?.bg).toBe(THEME.colors.surface)
+            expect(buffer.get(buffer.getLine(3).indexOf('2 Step'), 3)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.get(2, 3)?.bold).toBeFalsy()
             expect(buffer.getLine(14)).toContain('scroll')
             expect(buffer.getLine(14)).toContain('back')
+        })
+
+        it('renders nothing without a skill', () => {
+            const buffer = new ScreenBuffer(40, 5)
+            SkillsMenuView.render(buffer, { x: 0, y: 0, width: 40, height: 5, skill: null })
+            expect(buffer.getLine(0).trim()).toBe('')
         })
     })
 
     describe('McpMenuView', () => {
         it('computes compact dynamic height based on mode and item count', () => {
-            expect(McpMenuView.getHeight('list', 0)).toBe(5)
-            expect(McpMenuView.getHeight('list', 2)).toBe(6)
+            // Title, blank, rows, blank, "More servers in /plugin", blank, footer
+            expect(McpMenuView.getHeight('list', 0)).toBe(7)
+            expect(McpMenuView.getHeight('list', 2)).toBe(8)
             expect(McpMenuView.getHeight('detail', 1)).toBe(7)
-            expect(McpMenuView.getHeight('add_preset', 0)).toBe(9)
+            // Title, blank, 5 fields, blank, footer (no button row)
+            expect(McpMenuView.getHeight('add_custom', 0)).toBe(9)
         })
 
         it('renders empty servers notice when no MCP servers configured', () => {
@@ -789,19 +810,20 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 servers: [],
             })
 
-            expect(buffer.getLine(0)).toContain('MCP Servers (0)')
+            expect(buffer.getLine(0)).toMatch(/^ {2}MCP servers\s*$/)
+            expect(buffer.get(2, 0)?.bold).toBe(true)
             expect(buffer.getLine(2)).toContain('No servers configured')
             expect(buffer.getLine(4)).toContain('add server')
             expect(buffer.getLine(4)).toContain('close')
         })
 
-        it('renders minimal list of MCP servers with [x] / [ ] toggle indicators and tool counts', () => {
-            const buffer = new ScreenBuffer(80, 7)
+        it('renders minimal list of MCP servers with ✓ / ○ toggle marks and tool counts', () => {
+            const buffer = new ScreenBuffer(80, 8)
             McpMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
-                height: 7,
+                height: 8,
                 selectedIndex: 0,
                 servers: [
                     {
@@ -824,16 +846,17 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 ],
             })
 
-            expect(buffer.getLine(0)).toContain('MCP Servers (2)')
-            expect(buffer.getLine(2)).toContain('❭')
-            expect(buffer.getLine(2)).toContain('[x]')
-            expect(buffer.getLine(2)).toContain('postgres')
-            expect(buffer.getLine(2)).toContain('1 tool')
-            expect(buffer.getLine(3)).toContain('[ ]')
-            expect(buffer.getLine(3)).toContain('sentry')
-            expect(buffer.getLine(3)).toContain('(stopped)')
-            expect(buffer.getLine(6)).toContain('toggle')
-            expect(buffer.getLine(6)).toContain('details')
+            expect(buffer.getLine(0)).toContain('MCP servers  1 of 2 on')
+            expect(buffer.getLine(2)).toContain('❭ ✓ postgres')
+            expect(buffer.get(4, 2)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.get(4, 2)?.bold).toBeFalsy()
+            expect(buffer.getLine(2)).toMatch(/1 tool · stdio · project\s*$/)
+            expect(buffer.getLine(3)).toContain('○ sentry')
+            expect(buffer.get(4, 3)?.fg).toBe(THEME.colors.dim)
+            expect(buffer.getLine(3)).toMatch(/off · user\s*$/)
+            expect(buffer.getLine(5)).toContain('More servers in /plugin')
+            expect(buffer.getLine(7)).toContain('toggle')
+            expect(buffer.getLine(7)).toContain('details')
         })
 
         it('renders detail view for a server displaying tools and command details', () => {
@@ -863,42 +886,55 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 ],
             })
 
-            expect(buffer.getLine(0)).toContain('MCP Server: github')
-            expect(buffer.getLine(0)).toContain('[global]')
-            expect(buffer.getLine(2)).toContain('● CONNECTED')
-            expect(buffer.getLine(3)).toContain('npx -y @modelcontextprotocol/server-github')
-            expect(buffer.getLine(5)).toContain('Available Tools (1):')
-            expect(buffer.getLine(6)).toContain('• mcp_github_create_issue')
-            expect(buffer.getLine(6)).toContain('Create a GitHub issue')
+            expect(buffer.getLine(0)).toMatch(/^ {2}github {2}MCP server · user/)
+            expect(buffer.getLine(2)).toContain('Status     ● connected')
+            expect(buffer.get(13, 2)?.fg).toBe(THEME.colors.success)
+            expect(buffer.getLine(3)).toContain('Transport  stdio')
+            expect(buffer.getLine(4)).toContain(
+                'Command    npx -y @modelcontextprotocol/server-github'
+            )
+            expect(buffer.getLine(5)).toContain('Tools load on demand')
+            expect(buffer.getLine(7)).toMatch(/^ {2}Tools {6}1/)
+            expect(buffer.getLine(8)).toMatch(/^ {4}mcp_github_create_issue/)
+            expect(buffer.getLine(8)).not.toContain('•')
+            expect(buffer.getLine(8)).toContain('Create a GitHub issue')
+            expect(buffer.get(4, 8)?.bold).toBeFalsy()
             expect(buffer.getLine(14)).toContain('scroll')
             expect(buffer.getLine(14)).toContain('back')
         })
 
-        it('renders preset templates mode with templates list and footer', () => {
-            const buffer = new ScreenBuffer(80, 15)
+        it('labels plugin-owned servers and hides remove in their detail view', () => {
+            const buffer = new ScreenBuffer(80, 12)
             McpMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
-                height: 15,
+                height: 12,
                 selectedIndex: 0,
-                mode: 'add_preset',
-                presetSelectedIndex: 0,
+                isDetailView: true,
+                mode: 'detail',
+                servers: [
+                    {
+                        name: 'github',
+                        scope: 'global',
+                        transport: 'stdio',
+                        status: 'connected',
+                        target: 'npx -y @modelcontextprotocol/server-github',
+                        plugin: 'github',
+                        tools: [],
+                    },
+                ],
             })
-
-            expect(buffer.getLine(0)).toContain('Add MCP Server · Preset Templates')
-            expect(buffer.getLine(3)).toContain('GitHub')
-            expect(buffer.getLine(3)).toContain('Repository search')
-            expect(buffer.getLine(14)).toContain('use preset')
-            expect(buffer.getLine(14)).toContain('custom command')
+            expect(buffer.getLine(0)).toContain('MCP server · github')
+            expect(buffer.getLine(11)).not.toContain('remove')
         })
 
         it('renders custom configuration mode with form fields and footer', () => {
-            const buffer = new ScreenBuffer(80, 20)
+            const buffer = new ScreenBuffer(100, 20)
             McpMenuView.render(buffer, {
                 x: 0,
                 y: 0,
-                width: 80,
+                width: 100,
                 height: 20,
                 selectedIndex: 0,
                 mode: 'add_custom',
@@ -909,16 +945,24 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 customActiveField: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Add MCP Server · Custom Configuration')
-            expect(buffer.getLine(3)).toContain('Server Name:')
-            expect(buffer.getLine(3)).toContain('my-server')
-            expect(buffer.getLine(5)).toContain('Target (Cmd/URL):')
-            expect(buffer.getLine(5)).toContain('npx -y my-mcp')
+            expect(buffer.getLine(0)).toMatch(/^ {2}Add an MCP server\s*$/)
+            // One row per field, no blank rows between them
+            expect(buffer.getLine(2)).toContain('❭ Name         my-server')
+            expect(buffer.getLine(3)).toContain('Command/URL  npx -y my-mcp')
+            expect(buffer.getLine(4)).toContain('Scope        user   project')
+            expect(buffer.get(buffer.getLine(4).indexOf('project'), 4)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.getLine(5)).toContain('Tools load   at start   on demand')
+            expect(buffer.get(buffer.getLine(5).indexOf('at start'), 5)?.fg).toBe(
+                THEME.colors.brand
+            )
+            expect(buffer.getLine(6)).toContain('Env')
+            expect(buffer.getLine(7).trim()).toBe('')
             expect(buffer.getLine(19)).toContain('next field')
             expect(buffer.getLine(19)).toContain('save')
+            expect(buffer.getLine(19)).toContain('esc cancel')
         })
 
-        it('renders inline delete confirmation message when confirmDeleteName is provided', () => {
+        it('renders the remove confirm inline on the row when confirmDeleteName is provided', () => {
             const buffer = new ScreenBuffer(80, 12)
             McpMenuView.render(buffer, {
                 x: 0,
@@ -938,152 +982,463 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 ],
             })
 
-            expect(buffer.getLine(10)).toContain('Confirm remove "github"')
+            expect(buffer.getLine(2)).toContain('❭ ✓ github [Remove? y/n]')
+            const cx = buffer.getLine(2).indexOf('[Remove?')
+            expect(buffer.get(cx, 2)?.fg).toBe(THEME.colors.error)
+            expect(buffer.get(cx, 2)?.bold).toBeFalsy()
+            expect(buffer.getLine(11)).toContain('y remove · n/esc cancel')
         })
     })
 
     describe('PluginMenuView', () => {
-        it('renders Installed tab with active plugins, search prompt, and keyboard footer', () => {
-            const buffer = new ScreenBuffer(80, 10)
-            PluginMenuView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                height: 10,
-                activeTab: 'installed',
-                selectedIndex: 0,
-                installedPlugins: [
+        const installed: ExtensionRow[] = [
+            {
+                key: 'skill:grill-me',
+                kind: 'skill',
+                id: 'grill-me',
+                name: 'grill-me',
+                description: 'Stress-test a plan',
+                scope: 'project',
+                enabled: true,
+                source: '.december/skills',
+                meta: '~60 tok',
+                removable: false,
+            },
+            {
+                key: 'plugin:github',
+                kind: 'plugin',
+                id: 'github',
+                name: 'github',
+                description: 'GitHub tools',
+                scope: 'user',
+                enabled: true,
+                source: 'december-official',
+                meta: '2 skills · 1 mcp',
+                removable: true,
+                updateAvailable: true,
+                children: [
                     {
-                        id: 'gmail',
-                        name: 'gmail',
-                        description: 'Search, read, draft, and send emails in Gmail.',
+                        key: 'skill:pr',
+                        kind: 'skill',
+                        id: 'pr',
+                        name: 'pr',
+                        description: 'Write PRs',
+                        scope: 'user',
                         enabled: true,
-                    },
-                    {
-                        id: 'swarm',
-                        name: 'swarm',
-                        description: 'Unlock the power of agent swarms.',
-                        scope: 'built-in',
-                        enabled: true,
-                    },
-                ],
-                discoverablePlugins: [],
-            })
-
-            expect(buffer.getLine(0)).toContain('Plugins')
-            expect(buffer.getLine(1)).toContain('Installed (2)')
-            expect(buffer.getLine(1)).toContain('Discover (0)')
-            expect(buffer.getLine(2)).toContain('Type to search plugins')
-            expect(buffer.getLine(3)).toContain('>')
-            expect(buffer.getLine(3)).toContain('[enabled]')
-            expect(buffer.getLine(3)).toContain('gmail')
-            expect(buffer.getLine(3)).toContain('Search, read, draft, and send emails')
-            expect(buffer.getLine(4)).toContain('[enabled]')
-            expect(buffer.getLine(4)).toContain('swarm')
-            expect(buffer.getLine(4)).toContain('(built-in)')
-            expect(buffer.getLine(9)).toContain('tab Cycle Tabs')
-            expect(buffer.getLine(9)).toContain('space Toggle Enable')
-        })
-
-        it('renders expanded details drawer showing bundled Skills, MCP tools, and Rules', () => {
-            const buffer = new ScreenBuffer(80, 12)
-            PluginMenuView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                height: 12,
-                activeTab: 'installed',
-                selectedIndex: 0,
-                expandedPluginId: 'gmail',
-                installedPlugins: [
-                    {
-                        id: 'gmail',
-                        name: 'gmail',
-                        description: 'Search, read, draft, and send emails in Gmail.',
-                        enabled: true,
-                        components: {
-                            skills: ['/email', '/draft'],
-                            mcpServers: ['gmail-cli (6 tools)'],
-                            rules: ['email-guardrails'],
-                        },
+                        source: 'via github',
+                        meta: '~20 tok',
+                        removable: false,
+                        parentPlugin: 'github',
                     },
                 ],
-                discoverablePlugins: [],
-            })
+            },
+            {
+                key: 'plugin:slack',
+                kind: 'plugin',
+                id: 'slack',
+                name: 'slack',
+                description: 'Slack tools',
+                scope: 'user',
+                enabled: false,
+                source: 'december-official',
+                meta: '1 mcp · off',
+                removable: true,
+            },
+        ]
+        const discover: DiscoverRow[] = [
+            {
+                id: 'github@december-official',
+                name: 'github',
+                description: 'Repository search and pull requests.',
+                category: 'Development',
+                marketplace: 'december-official',
+                installed: true,
+            },
+            {
+                id: 'sqlite@december-official',
+                name: 'sqlite',
+                description: 'Query a local SQLite file.',
+                category: 'Database',
+                marketplace: 'december-official',
+            },
+            {
+                id: 'deploy@acme',
+                name: 'deploy',
+                description: 'Ship to staging.',
+                category: 'Development',
+                marketplace: 'acme',
+            },
+        ]
+        const marketplaces: MarketplaceRow[] = [
+            {
+                name: 'december-official',
+                source: 'built in',
+                builtIn: true,
+                available: 2,
+                installedCount: 1,
+            },
+            {
+                name: 'acme',
+                source: 'https://github.com/acme/plugins.git',
+                builtIn: false,
+                available: 1,
+                installedCount: 0,
+                updatedAt: Date.now() - 2 * 3600 * 1000,
+            },
+        ]
 
-            expect(buffer.getLine(3)).toContain('v')
-            expect(buffer.getLine(3)).toContain('gmail')
-            expect(buffer.getLine(4)).toContain('Skills:')
-            expect(buffer.getLine(4)).toContain('/email, /draft')
-            expect(buffer.getLine(5)).toContain('MCP Server:')
-            expect(buffer.getLine(5)).toContain('gmail-cli (6 tools)')
-            expect(buffer.getLine(6)).toContain('Rules:')
-            expect(buffer.getLine(6)).toContain('email-guardrails')
-        })
-
-        it('renders Discover tab with available catalog plugins and install tags', () => {
-            const buffer = new ScreenBuffer(80, 10)
+        const catalog = { installed, discover, marketplaces }
+        const render = (
+            overrides: Partial<Parameters<typeof PluginMenuView.render>[1]> & { list: any },
+            height = 16
+        ) => {
+            const buffer = new ScreenBuffer(100, height)
+            const tab = overrides.activeTab || 'installed'
             PluginMenuView.render(buffer, {
                 x: 0,
                 y: 0,
-                width: 80,
-                height: 10,
+                width: 100,
+                height,
+                activeTab: tab,
+                screen: 'list',
+                selectedIndex: 0,
+                windowStart: 0,
+                subtitle: pluginSubtitle(tab, catalog),
+                marketNames: marketplaceCounts(discover).map((m) => m.name),
+                ...overrides,
+            })
+            return buffer
+        }
+
+        it('renders Installed in the December menu style', () => {
+            const list = buildPluginList({ tab: 'installed', ...catalog })
+            const buffer = render({ list })
+            // G14 tabs with the counts on the same row (no description row), Search row with filters
+            expect(buffer.getLine(0)).toContain('discover   installed   marketplaces')
+            expect(buffer.getLine(0)).toMatch(/3 installed · 1 off\s*$/)
+            expect(buffer.get(buffer.getLine(0).indexOf('installed'), 0)?.fg).toBe(
+                THEME.colors.brand
+            )
+            expect(buffer.get(buffer.getLine(0).indexOf('installed'), 0)?.bold).toBeFalsy()
+            expect(buffer.getLine(1)).toContain('Search: [/ to filter]')
+            expect(buffer.getLine(1)).toMatch(/all {3}plugins {3}skills {3}mcp\s*$/)
+            // Muted section titles, ✓ / ○ marks, right-aligned kind · fact column
+            expect(buffer.getLine(3)).toMatch(/^ {2}Project/)
+            expect(buffer.get(2, 3)?.bold).toBeFalsy()
+            expect(buffer.getLine(4)).toContain('❭ ✓ grill-me')
+            expect(buffer.getLine(4)).toMatch(/skill · ~60 tok\s*$/)
+            expect(buffer.getLine(5)).toMatch(/^ {2}User/)
+            expect(buffer.getLine(6)).toContain('✓ github')
+            expect(buffer.getLine(6)).toMatch(/plugin · 2 skills · 1 mcp · update\s*$/)
+            expect(buffer.get(buffer.getLine(6).lastIndexOf('update'), 6)?.fg).toBe(
+                THEME.colors.brand
+            )
+            expect(buffer.getLine(7)).toContain('○ slack')
+            expect(buffer.getLine(7)).toMatch(/plugin · 1 mcp · off\s*$/)
+            expect(buffer.getLine(15)).toContain('space toggle')
+            expect(buffer.getLine(15)).toContain('f filter')
+            expect(buffer.getLine(15)).not.toContain('uninstall')
+        })
+
+        it('flattens plugin parts under a kind filter', () => {
+            const skills = buildPluginList({ tab: 'installed', ...catalog, kindFilter: 'skill' })
+            expect(skills.items.map((i: any) => i.row.name)).toEqual(['grill-me', 'pr'])
+            expect(extensionMetaText((skills.items[1] as any).row)).toBe('skill · ~20 tok · github')
+            expect(kindCounts(installed)).toEqual({ all: 3, plugin: 2, skill: 2, mcp: 0 })
+        })
+
+        it('caps the list at 10 lines and shows how many more there are', () => {
+            const many: ExtensionRow[] = Array.from({ length: 30 }, (_, i) => ({
+                ...installed[0]!,
+                key: `skill:s${i}`,
+                id: `s${i}`,
+                name: `skill-${String(i).padStart(2, '0')}`,
+            }))
+            const list = buildPluginList({
+                tab: 'installed',
+                installed: many,
+                discover,
+                marketplaces,
+            })
+            expect(PluginMenuView.getHeight({ screen: 'list', list })).toBe(16)
+            const buffer = render({ list }, 16)
+            expect(buffer.getLine(3)).toContain('Project')
+            expect(buffer.getLine(12)).toContain('skill-08')
+            expect(buffer.getLine(13)).toContain('↓ 21 more')
+        })
+
+        it('shows Discover with category titles, descriptions, and the i key', () => {
+            const list = buildPluginList({ tab: 'discover', ...catalog })
+            expect(list.items.every((i) => i.type === 'discover')).toBe(true)
+            const buffer = render({ list, activeTab: 'discover' })
+            expect(buffer.getLine(0)).toMatch(/3 plugins · 2 marketplaces\s*$/)
+            expect(buffer.getLine(1)).toMatch(/all {3}december-official {3}acme\s*$/)
+            expect(buffer.getLine(3)).toMatch(/^ {2}Development/)
+            expect(buffer.getLine(4)).toContain('❭ github')
+            expect(buffer.getLine(4)).toContain('Repository search and pull requests.')
+            // An installed plugin shows a muted ✓ in the meta column
+            expect(buffer.getLine(4)).toMatch(/✓\s*$/)
+            expect(buffer.getLine(5)).toMatch(/acme\s*$/)
+            expect(buffer.getLine(6)).toContain('Database')
+            expect(buffer.getLine(15)).toContain('i install from path')
+            expect(buffer.getLine(15)).toContain('m marketplace')
+
+            const acmeOnly = buildPluginList({ tab: 'discover', ...catalog, marketFilter: 'acme' })
+            expect(acmeOnly.items).toHaveLength(1)
+            expect(pluginSubtitle('discover', catalog, 'acme')).toBe('1 plugin · acme')
+        })
+
+        it('shows Marketplaces with counts, update age, and the a key', () => {
+            const list = buildPluginList({ tab: 'marketplaces', ...catalog })
+            const buffer = render({ list, activeTab: 'marketplaces', selectedIndex: 1 })
+            expect(buffer.getLine(0)).toMatch(/2 marketplaces\s*$/)
+            expect(buffer.getLine(3)).toContain('● december-official')
+            expect(buffer.getLine(3)).toContain('built in')
+            expect(buffer.getLine(3)).toMatch(/2 plugins · 1 installed\s*$/)
+            expect(buffer.getLine(4)).toContain('❭ ● acme')
+            expect(buffer.getLine(4)).toMatch(/updated 2h ago\s*$/)
+            expect(buffer.getLine(15)).toContain('a add')
+            expect(buffer.getLine(15)).toContain('u update')
+        })
+
+        it('draws the confirm inline on the selected row and swaps the footer', () => {
+            const list = buildPluginList({ tab: 'installed', ...catalog })
+            const buffer = render({
+                list,
+                selectedIndex: 1,
+                confirm: 'Uninstall github?',
+                confirmVerb: 'uninstall',
+            })
+            expect(buffer.getLine(6)).toContain('❭ ✓ github [Uninstall? y/n]')
+            const cx = buffer.getLine(6).indexOf('[Uninstall?')
+            expect(buffer.get(cx, 6)?.fg).toBe(THEME.colors.error)
+            expect(buffer.get(cx, 6)?.bold).toBeFalsy()
+            expect(buffer.getLine(15)).toContain('y uninstall')
+            expect(buffer.getLine(15)).toContain('n/esc cancel')
+        })
+
+        it('renders the install screen as a question with Adds / Needs and scope rows', () => {
+            const buffer = render({
+                list: { lines: [], items: [] },
                 activeTab: 'discover',
-                selectedIndex: 0,
-                installedPlugins: [],
-                discoverablePlugins: [
-                    {
-                        id: 'slack',
-                        name: 'slack',
-                        description: 'Team messaging and alerts in Slack.',
-                        installed: false,
-                    },
-                    {
-                        id: 'gmail',
-                        name: 'gmail',
-                        description: 'Email integration.',
-                        installed: true,
-                    },
-                ],
+                screen: 'install',
+                installRow: { ...discover[1]!, mcpServerNames: ['sqlite'] },
+                installScope: 'project',
+                installPaths: {
+                    user: '~/.december/plugins/sqlite',
+                    project: '.december/plugins/sqlite',
+                },
+                missingEnv: ['SQLITE_TOKEN'],
             })
+            expect(buffer.getLine(0)).toMatch(/^ {2}Install sqlite\? {2}december-official/)
+            expect(buffer.getLine(1)).toContain('Query a local SQLite file.')
+            expect(buffer.getLine(3)).toContain('Adds   1 MCP server (sqlite)')
+            expect(buffer.getLine(4)).toContain('Needs  SQLITE_TOKEN is not set')
+            expect(buffer.get(buffer.getLine(4).indexOf('SQLITE_TOKEN'), 4)?.fg).toBe(
+                THEME.colors.warning
+            )
+            expect(buffer.getLine(6)).toContain('For you        ~/.december/plugins/sqlite')
+            expect(buffer.getLine(7)).toContain('❭ This project   .december/plugins/sqlite')
+            expect(buffer.getLine(7)).toContain('commit it to share')
+            expect(buffer.get(4, 7)?.bold).toBeFalsy()
+        })
 
-            expect(buffer.getLine(1)).toContain('Discover (2)')
-            expect(buffer.getLine(3)).toContain('>')
-            expect(buffer.getLine(3)).toContain('[install]')
-            expect(buffer.getLine(3)).toContain('slack')
-            expect(buffer.getLine(4)).toContain('[installed]')
-            expect(buffer.getLine(4)).toContain('gmail')
+        it('renders plugin details as a label table with actions', () => {
+            const buffer = render({
+                list: { lines: [], items: [] },
+                screen: 'details',
+                detailRow: installed[1]!,
+                detailActions: ['Turn off plugin', 'Update', 'Uninstall'],
+                actionIndex: 0,
+            })
+            expect(buffer.getLine(0)).toContain('github')
+            expect(buffer.getLine(1)).toContain('GitHub tools')
+            // G17: labels with no colon, values in one column
+            expect(buffer.getLine(3)).toContain('Source     december-official')
+            expect(buffer.getLine(4)).toContain('Scope      user')
+            expect(buffer.getLine(5)).toContain('Status     on')
+            expect(buffer.getLine(6)).toContain('Skills     pr')
+            expect(buffer.getLine(7)).toContain('MCP        none')
+            expect(buffer.getLine(9)).toContain('❭ Turn off plugin')
+            expect(buffer.get(4, 9)?.bold).toBeFalsy()
+            expect(buffer.getLine(11)).toContain('Uninstall')
+        })
+
+        it('keeps the selected line and its section title in view', () => {
+            expect(ensureVisible(0, 3, 5)).toBe(0)
+            expect(ensureVisible(0, 9, 5)).toBe(5)
+            expect(ensureVisible(6, 6, 5)).toBe(5)
+            expect(formatAge(undefined)).toBe('never updated')
         })
     })
 
     describe('TasksModeMenuView', () => {
-        it('renders background tasks with status badges and commands', () => {
-            const buffer = new ScreenBuffer(60, 10)
+        const now = 1_000_000
+        const shell = (i: number, extra: Partial<TaskItem> = {}): TaskItem => ({
+            id: `task-${i}`,
+            command: `cmd ${i}`,
+            type: 'shell',
+            status: 'running',
+            createdAt: now - 4000,
+            pid: 4000 + i,
+            ...extra,
+        })
+        const sub = (i: number): TaskItem => ({
+            id: `sub-${i}`,
+            command: `job ${i}`,
+            type: 'subagent',
+            role: 'explore',
+            depth: 1,
+            status: 'running',
+            createdAt: now - 40_000,
+        })
+
+        const renderTasks = (tasks: TaskItem[], width = 80, extra = {}) => {
+            const height = TasksModeMenuView.getHeight(tasks)
+            const buffer = new ScreenBuffer(width, height)
             TasksModeMenuView.render(buffer, {
                 x: 0,
                 y: 0,
-                width: 60,
-                height: 10,
-                tasks: [
-                    {
-                        id: 'task-1',
-                        command: 'bun test',
-                        status: 'running',
-                        duration: '4s',
-                    },
-                ],
+                width,
+                height,
+                tasks,
                 selectedTaskIndex: 0,
                 windowStart: 0,
+                now,
+                ...extra,
             })
+            const lines = Array.from({ length: height }, (_, i) => buffer.getLine(i))
+            return { lines, height }
+        }
 
-            expect(buffer.getLine(0)).toContain('Tasks (1 task)')
-            expect(buffer.getLine(2)).toContain('[RUNNING]')
-            expect(buffer.getLine(2)).toContain('bun test')
-            expect(buffer.getLine(2)).toContain('4s')
+        it('renders shells and subagents in their own sections', () => {
+            const { lines } = renderTasks([shell(1), sub(1)])
+            // Title with the running count as meta; no description row
+            expect(lines[0]).toMatch(/^ {2}Tasks {2}2 running\s*$/)
+            expect(lines[1]?.trim()).toBe('')
+            expect(lines[2]).toContain('Shells')
+            expect(lines[3]).toContain('❭ ● cmd 1')
+            expect(lines[3]).toContain('pid 4001')
+            expect(lines[3]).toContain('4s')
+            expect(lines[4]).toContain('Subagents')
+            expect(lines[5]).toContain('explore: job 1')
+            expect(lines[5]).not.toContain('depth')
+        })
+
+        it('gives the footer its own row for every list size', () => {
+            for (const tasks of [
+                [shell(1)],
+                Array.from({ length: 8 }, (_, i) => shell(i)),
+                [...Array.from({ length: 10 }, (_, i) => shell(i)), sub(1), sub(2)],
+            ]) {
+                const { lines, height } = renderTasks(tasks)
+                expect(lines[height - 1]).toContain('navigate')
+                // the row above the footer is the empty gap
+                expect(lines[height - 2]?.trim()).toBe('')
+            }
+        })
+
+        it('shows how many tasks are outside the window', () => {
+            const tasks = Array.from({ length: 12 }, (_, i) => shell(i))
+            const { lines } = renderTasks(tasks)
+            expect(lines.some((l) => l.includes('↓ 4 more'))).toBe(true)
+        })
+
+        it('draws a multi-line command on one row with an ellipsis', () => {
+            const long = `echo start\n${'x'.repeat(200)}\necho end`
+            const { lines } = renderTasks([shell(1, { command: long })], 60)
+            const row = lines[3] ?? ''
+            expect(row).toContain('echo start x')
+            expect(row).toContain('…')
+            expect(lines[4]?.trim()).toBe('')
+        })
+
+        it('shows the live turn of a running subagent and the total when done', () => {
+            const running = renderTasks([{ ...sub(1), turns: 3 }]).lines
+            expect(running[3]).toMatch(/turn 3 {2}40s\s*$/)
+            const done = renderTasks([
+                { ...sub(1), turns: 5, status: 'completed', completedAt: now },
+            ]).lines
+            expect(done[3]).toMatch(/5 turns {2}40s\s*$/)
+        })
+
+        it('shows stopped tasks as stopped, not failed', () => {
+            const { lines } = renderTasks([
+                shell(1, { status: 'killed', completedAt: now, exitCode: 130 }),
+            ])
+            expect(lines[3]).toContain('stopped')
+            expect(lines[3]).not.toContain('exit 130')
+            expect(lines[3]).not.toContain('failed')
+        })
+
+        it('asks before stopping', () => {
+            expect(renderTasks([shell(1)], 80, { confirmStop: 'one' }).lines[3]).toContain(
+                'cmd 1 [Stop? y/n]'
+            )
+            expect(renderTasks([shell(1)], 80, { confirmStop: 'all' }).lines[1]).toContain(
+                'Stop 1 running task? [y/n]'
+            )
         })
     })
 
     describe('MessageListView', () => {
+        const longMessages = [
+            {
+                id: '1',
+                role: 'assistant',
+                content: Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join('\n'),
+            },
+        ]
+
+        it('labels the scroll pill as lines below when nothing new arrived', () => {
+            const buffer = new ScreenBuffer(80, 6)
+            const { totalLines, maxScroll } = MessageListView.render(buffer, {
+                width: 80,
+                height: 6,
+                messages: longMessages,
+                scrollOffset: 0,
+                newLinesAnchor: undefined,
+            })
+            const pill = buffer.getLine(5)
+            expect(pill).toContain(`↓ ${maxScroll} lines below · esc`)
+            expect(pill).not.toContain('new line')
+
+            // An anchor equal to the current total also means nothing new
+            MessageListView.render(buffer, {
+                width: 80,
+                height: 6,
+                messages: longMessages,
+                scrollOffset: 0,
+                newLinesAnchor: totalLines,
+            })
+            expect(buffer.getLine(5)).toContain('lines below')
+        })
+
+        it('labels the scroll pill with the count of lines added since scrolling up', () => {
+            const buffer = new ScreenBuffer(80, 6)
+            const { totalLines } = MessageListView.render(buffer, {
+                width: 80,
+                height: 6,
+                messages: longMessages,
+                scrollOffset: 0,
+                newLinesAnchor: undefined,
+            })
+            MessageListView.render(buffer, {
+                width: 80,
+                height: 6,
+                messages: longMessages,
+                scrollOffset: 0,
+                newLinesAnchor: totalLines - 3,
+            })
+            expect(buffer.getLine(5)).toContain('↓ 3 new lines')
+        })
+
+        it('hides the scroll pill at the bottom', () => {
+            const buffer = new ScreenBuffer(80, 6)
+            MessageListView.render(buffer, { width: 80, height: 6, messages: longMessages })
+            expect(buffer.getLine(5)).not.toContain('jump to bottom')
+        })
+
         it('renders messages and handles scroll offset slicing', () => {
             const buffer = new ScreenBuffer(50, 4)
             const messages = [
@@ -1091,7 +1446,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 { id: '2', role: 'assistant', content: 'line 1\nline 2\nline 3\nline 4\nline 5' },
             ]
 
-            // When scrolled down to the bottom (scrollOffset = 4)
+            // Scrolled to the bottom (an offset past the end clamps to it). The history has no
+            // trailing blank row, so the last line sits on the bottom row.
             MessageListView.render(buffer, {
                 x: 0,
                 y: 0,
@@ -1101,10 +1457,9 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 scrollOffset: 4,
             })
 
-            const line0 = buffer.getLine(0)
-            const line1 = buffer.getLine(1)
-            expect(line0).toContain('line 3')
-            expect(line1).toContain('line 4')
+            expect(buffer.getLine(0)).toContain('line 2')
+            expect(buffer.getLine(1)).toContain('line 3')
+            expect(buffer.getLine(3)).toContain('line 5')
         })
 
         it('renders message content cleanly without invasive reading mode banner when scrolled up', () => {
@@ -1187,13 +1542,19 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             const item1 = buffer.getLine(3)
             const footer = buffer.getLine(9)
 
-            expect(title).toContain('Code Search')
-            expect(title).toContain('"config"')
-            expect(title).toContain('1/2')
+            expect(title).toContain('Code search  "config" · 2 matches')
+            expect(title).not.toContain('1/2')
             expect(item0).toContain('❭')
             expect(item0).toContain('src/index.ts:42')
             expect(item0).toContain('export const run = true')
             expect(buffer.get(2, 2)?.bg).toBeUndefined()
+            // The selected row is brand blue with no bold (M18.1)
+            expect(buffer.get(4, 2)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.get(4, 2)?.bold).toBeFalsy()
+            // Matches are brand blue, not yellow, and not bold
+            const matchX = item1.lastIndexOf('config')
+            expect(buffer.get(matchX, 3)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.get(matchX, 3)?.bold).toBeFalsy()
             expect(item1).toContain('src/config.ts:12')
             expect(buffer.get(2, 3)?.bg).toBeUndefined()
             expect(footer).toContain('navigate')
@@ -1241,10 +1602,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             const item0 = buffer.getLine(2)
             const item1 = buffer.getLine(3)
 
-            expect(title).toContain('Code Search')
-            expect(title).toContain('"query"')
-            expect(title).toContain('4 matches in 2 files')
-            expect(title).toContain('1/2')
+            expect(title).toContain('Code search  "query" · 4 matches in 2 files')
+            expect(title).not.toContain('1/2')
             expect(item0).toContain('src/index.ts:10')
             expect(item0).toContain('const query = "hello"')
             expect(item1).toContain('src/config.ts:5')
@@ -1270,12 +1629,13 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             const line1 = buffer.getLine(1)
             const footer = buffer.getLine(2)
 
-            expect(line0).toContain('[btw]')
-            expect(line0).toContain('what port is redis?')
+            expect(line0).toContain('▎ btw  what port is redis?')
+            // The question is regular text, not bold (M25.1)
+            const questionX = line0.indexOf('what')
+            expect(buffer.get(questionX, 0)?.fg).toBe(THEME.colors.text)
+            expect(buffer.get(questionX, 0)?.bold).toBeFalsy()
             expect(line1).toContain('Redis default port is 6379.')
-            expect(footer).toContain('tab')
-            expect(footer).toContain('focus')
-            expect(footer).toContain('dismiss')
+            expect(footer).toContain('▎ tab scroll · esc dismiss')
         })
 
         it('renders loading status correctly', () => {
@@ -1292,8 +1652,10 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 scrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('[btw]')
-            expect(buffer.getLine(1)).toContain('Thinking...')
+            expect(buffer.getLine(0)).toContain('▎ btw  cache query')
+            expect(buffer.getLine(1)).toContain('▎ ✱ Thinking it through…')
+            expect(buffer.get(buffer.getLine(1).indexOf('✱'), 1)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.getLine(2)).toContain('esc cancel')
         })
 
         it('soft-wraps long paragraphs and bullets across multiple lines without truncating', () => {
@@ -1314,7 +1676,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 scrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('[btw]')
+            expect(buffer.getLine(0)).toContain('▎ btw  explain sse')
             expect(buffer.getLine(1)).toContain('- **Unidirectional')
             // Second wrapped line should contain remaining text indented
             expect(buffer.getLine(2)).toContain('Unlike WebSockets, SSE is')
@@ -1337,7 +1699,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 scrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('[btw]')
+            expect(buffer.getLine(0)).toContain('▎ btw  explain websockets in detail')
             expect(buffer.getLine(1)).toContain('Point 1')
             expect(buffer.getLine(12)).toContain('Point 12')
             const footer = buffer.getLine(13)
@@ -1360,7 +1722,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 scrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('[btw]')
+            expect(buffer.getLine(0)).toContain('▎ btw  what are websockets')
             expect(buffer.getLine(1)).toContain('401 Incorrect API key provided')
             expect(buffer.getLine(1)).not.toContain('Error:')
             expect(buffer.getLine(2)).toContain('Authentication Failed: Invalid or missing API key')
@@ -1389,16 +1751,19 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 returnOverlay: 'codesearch',
             })
 
-            expect(buffer.getLine(0)).toContain('src/main.ts')
-            expect(buffer.getLine(0)).toContain('4 lines')
-            expect(buffer.getLine(0)).toContain('line 2:1')
+            expect(buffer.getLine(0)).toContain('src/main.ts  4 lines')
+            expect(buffer.getLine(0)).toContain('2:1')
+            expect(buffer.getLine(0)).not.toContain('line 2:1')
             expect(buffer.getLine(2)).toContain('  1 ')
             expect(buffer.getLine(2)).toContain('import { app } from "december"')
             expect(buffer.get(2, 2)?.bg).toBeUndefined()
             expect(buffer.getLine(3)).toContain('❭')
             expect(buffer.getLine(3)).toContain('  2 ')
             expect(buffer.getLine(3)).toContain('export function init() {')
-            expect(buffer.get(2, 3)?.bg).toBe(THEME.colors.codespanBg)
+            // G15 pager row: surface band, brand line number, regular weight
+            expect(buffer.get(2, 3)?.bg).toBe(THEME.colors.surface)
+            expect(buffer.get(buffer.getLine(3).indexOf('2 '), 3)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.get(buffer.getLine(3).indexOf('export'), 3)?.bold).toBeFalsy()
             expect(buffer.getLine(buffer.height - 1)).toContain('insert @file:line')
             expect(buffer.getLine(buffer.height - 1)).toContain('back')
         })
@@ -1423,7 +1788,13 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             const title = buffer.getLine(0)
             const footer = buffer.getLine(buffer.height - 1)
 
-            expect(title).toContain('"testVal" (1/3)')
+            // The search position goes into the meta (M19.2)
+            expect(title).toContain('src/main.ts  3 lines · "testVal" 1/3')
+            expect(buffer.get(title.indexOf('"testVal"'), 0)?.fg).toBe(THEME.colors.muted)
+            // The match is brand blue, not yellow and bold
+            const matchX = buffer.getLine(2).indexOf('testVal')
+            expect(buffer.get(matchX, 2)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.get(matchX, 2)?.bold).toBeFalsy()
             expect(footer).toContain('n/p next/prev match')
             expect(footer).toContain('back')
         })
@@ -1450,7 +1821,8 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             const title = buffer.getLine(0)
             const footer = buffer.getLine(buffer.height - 1)
 
-            expect(title).toContain('[1/3 files] src/main.ts')
+            expect(title).toContain('src/main.ts  2 lines · file 1/3 · "testVal" 1/2')
+            expect(title).not.toContain('[1/3 files]')
             expect(footer).toContain('←/→ cycle file')
             expect(footer).toContain('n/p next/prev match')
         })
@@ -1498,10 +1870,12 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 windowStart: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Session History')
+            expect(buffer.getLine(0)).toContain('Resume  2 sessions')
             expect(buffer.getLine(1)).toContain('Filter: [/ to search]')
-            expect(buffer.getLine(3)).toContain('❭')
-            expect(buffer.getLine(3)).toContain('Fix user authentication bug')
+            expect(buffer.get(2, 1)?.bold).toBeFalsy()
+            expect(buffer.getLine(3)).toContain('❭ Fix user authentication bug')
+            expect(buffer.get(4, 3)?.fg).toBe(THEME.colors.brand)
+            expect(buffer.get(4, 3)?.bold).toBeFalsy()
             expect(buffer.getLine(3)).toContain('1h ago')
             expect(buffer.getLine(4)).toContain('Add payment integration with Stripe')
             expect(buffer.getLine(buffer.height - 1)).toContain('resume')
@@ -1528,6 +1902,10 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(3)).toContain('[Delete? y/n]')
+            // Inline confirm in red with no bold (G10)
+            const confirmX = buffer.getLine(3).indexOf('[Delete?')
+            expect(buffer.get(confirmX, 3)?.fg).toBe(THEME.colors.error)
+            expect(buffer.get(confirmX, 3)?.bold).toBeFalsy()
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm delete')
         })
 
@@ -1562,87 +1940,239 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
     })
 
     describe('UsageSelectMenuView', () => {
-        it('renders daily sparkline bar chart and session statistics', () => {
-            const buffer = new ScreenBuffer(80, 16)
-            UsageSelectMenuView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                activeModel: 'claude-3-5-sonnet',
-                providerDisplayName: 'Anthropic',
-                sessionStats: {
-                    requests: 12,
-                    inputTokens: 45000,
-                    outputTokens: 12000,
-                    cacheReadTokens: 5000,
-                    totalTokens: 57000,
-                    cost: 0.155,
-                },
-                dailyUsage: [
-                    {
-                        date: '2026-11-01',
-                        dayName: 'Sun',
-                        formattedDate: 'Nov 1',
-                        tokens: 57000,
-                        isToday: true,
-                    },
-                    {
-                        date: '2026-10-31',
-                        dayName: 'Sat',
-                        formattedDate: 'Oct 31',
-                        tokens: 12000,
-                        isToday: false,
-                    },
-                ],
-            })
+        // Friday, Nov 20 2026 (local time)
+        const now = new Date(2026, 10, 20, 15, 0, 0)
 
-            expect(buffer.getLine(0)).toContain('Token Usage & Cost Analysis')
-            expect(buffer.getLine(0)).toContain('claude-3-5-sonnet')
-            expect(buffer.getLine(2)).toContain('Daily Volume (Past 7 Days)')
-            expect(buffer.getLine(2)).toContain('Session Statistics')
-            expect(buffer.getLine(3)).toContain('Sun Nov 1')
-            expect(buffer.getLine(3)).toContain('Today')
-            expect(buffer.getLine(3)).toContain('Requests:')
-            expect(buffer.getLine(3)).toContain('12 requests')
-            expect(buffer.getLine(7)).toContain('Estimated Cost: $0.1550')
-            expect(buffer.getLine(buffer.height - 1)).toContain('billing')
-            expect(buffer.getLine(buffer.height - 1)).toContain('refresh')
+        const history = {
+            input: 12_900,
+            output: 6_700_000,
+            cacheRead: 1_300_000_000,
+            cacheWrite: 15_100_000,
+            totalTokens: 1_321_812_900,
+            dailyTokens: {
+                '2026-11-16': 88_000_000,
+                '2026-11-17': 705_000_000,
+                '2026-11-18': 264_000_000,
+                '2026-11-19': 176_000_000,
+                '2026-11-20': 88_812_900,
+            },
+            sessions: 64,
+            topModel: 'claude-opus-5-5',
+            activeDays: 14,
+            trackedDays: 79,
+        }
+
+        const lines = (buffer: ScreenBuffer): string[] =>
+            Array.from({ length: buffer.height }, (_, i) => buffer.getLine(i))
+
+        const renderAt = (width: number, overview: any = { history }): ScreenBuffer => {
+            const height = UsageSelectMenuView.getHeight(overview, width)
+            const buffer = new ScreenBuffer(width, height)
+            UsageSelectMenuView.render(buffer, { y: 0, width, height, overview, now })
+            return buffer
+        }
+
+        it('renders a full-width heatmap with the stats spread in a grid below it', () => {
+            const buffer = renderAt(120)
+            const rows = lines(buffer)
+            const text = rows.join('\n')
+
+            expect(rows[0]!.trim()).toBe('Usage')
+            // 2-character cells: a full year spans 104 columns
+            const monRow = rows.find((line) => line.trimStart().startsWith('Mon'))!
+            expect(monRow.trimEnd().length).toBeGreaterThan(100)
+
+            const legendRow = rows.findIndex((line) => line.includes('less ░'))
+            const statsRow = rows.findIndex((line) => line.includes('Total tokens'))
+            expect(statsRow).toBe(legendRow + 2)
+            // four stat columns share the first stats row
+            expect(rows[statsRow]).toMatch(
+                /Total tokens\s+1\.3B\s+Sessions\s+64\s+Input\s+12\.9k\s+Cache read\s+1\.3B/
+            )
+            expect(rows[statsRow + 1]).toMatch(
+                /Top model\s+claude-opus-5-5\s+Active days\s+14 \/ 79\s+Output\s+6\.7M\s+Cache write\s+15\.1M/
+            )
+            expect(rows[statsRow]!.indexOf('Cache read')).toBeGreaterThan(80)
+            expect(text).not.toContain('$')
+            expect(rows[buffer.height - 1]).toContain('usage dashboard')
+        })
+
+        it('shows the december credits in the title row only when a balance is provided', () => {
+            const withCredits = { history, creditsRemainingInCents: 420 }
+            const rows = lines(renderAt(120, withCredits))
+            expect(rows[0]).toContain('Usage  $4.20 in December credits left')
+            expect(lines(renderAt(120)).join('\n')).not.toContain('credits')
+            // The credits share the title row, so the panel is no taller with them
+            expect(UsageSelectMenuView.getHeight({ history }, 120)).toBe(
+                UsageSelectMenuView.getHeight(withCredits, 120)
+            )
+        })
+
+        it('starts the footer at the same x as every other footer (B10)', () => {
+            const buffer = renderAt(120)
+            const footer = buffer.getLine(buffer.height - 1)
+            expect(footer.indexOf('b usage dashboard · esc close')).toBe(THEME.padding.paddingLeft)
+        })
+
+        it('shows an empty state before any usage is recorded', () => {
+            const empty = {
+                history: {
+                    ...history,
+                    input: 0,
+                    output: 0,
+                    cacheRead: 0,
+                    cacheWrite: 0,
+                    totalTokens: 0,
+                    dailyTokens: {},
+                    sessions: 0,
+                    topModel: undefined,
+                    activeDays: 0,
+                    trackedDays: 0,
+                },
+            }
+            const text = lines(renderAt(120, empty)).join('\n')
+            expect(text).toContain('No usage yet. Stats appear after your first request.')
+            expect(text).not.toContain('Total tokens')
+        })
+
+        it('falls back to two stat columns and 1-character cells on narrow terminals', () => {
+            const rows = lines(renderAt(60))
+            const statsRow = rows.findIndex((line) => line.includes('Total tokens'))
+            expect(rows[statsRow]).toMatch(/Total tokens\s+1\.3B\s+Sessions\s+64/)
+            expect(rows[statsRow + 2]).toMatch(/Input\s+12\.9k\s+Cache read\s+1\.3B/)
+            // 1-character cells sit next to each other with no spaces
+            expect(rows.find((line) => line.trimStart().startsWith('Mon'))).toContain('····')
+        })
+
+        it('drops the heatmap first on short terminals', () => {
+            const buffer = new ScreenBuffer(120, 9)
+            UsageSelectMenuView.render(buffer, {
+                y: 0,
+                width: 120,
+                height: 9,
+                overview: { history },
+                now,
+            })
+            const text = lines(buffer).join('\n')
+            expect(text).not.toContain('less ░')
+            expect(text).toContain('Total tokens')
+        })
+
+        it('shows a loading state until the overview arrives', () => {
+            const buffer = new ScreenBuffer(80, 10)
+            UsageSelectMenuView.render(buffer, { y: 0, width: 80, height: 10, isLoading: true })
+            expect(lines(buffer).join('\n')).toContain('Loading usage')
+        })
+
+        it('picks heatmap cell width and week count from the available width', () => {
+            expect(getHeatmapLayout(114)).toEqual({ weeks: 52, cellWidth: 2 })
+            expect(getHeatmapLayout(94)).toEqual({ weeks: 45, cellWidth: 2 })
+            expect(getHeatmapLayout(54)).toEqual({ weeks: 50, cellWidth: 1 })
+        })
+
+        it('uses the most stat columns that fit without truncating', () => {
+            const groups: [string, string][][] = [
+                [
+                    ['Total tokens', '1.3B'],
+                    ['Top model', 'claude-opus-5-5'],
+                ],
+                [
+                    ['Sessions', '64'],
+                    ['Active days', '14 / 79'],
+                ],
+                [
+                    ['Input', '12.9k'],
+                    ['Output', '6.7M'],
+                ],
+                [
+                    ['Cache read', '1.3B'],
+                    ['Cache write', '15.1M'],
+                ],
+            ]
+            expect(layoutStatColumns(groups, 114)).toHaveLength(4)
+            expect(layoutStatColumns(groups, 60)).toHaveLength(2)
+            const single = layoutStatColumns(groups, 30)
+            expect(single).toHaveLength(1)
+            expect(single[0]!.pairs).toHaveLength(8)
+        })
+
+        it('builds a week-column heatmap that ends in the current week', () => {
+            const grid = buildHeatmapGrid(history.dailyTokens, 10, now)
+            expect(grid.columns).toHaveLength(10)
+            const lastWeek = grid.columns[9]!
+            // Friday is day 5; Saturday is after today
+            expect(lastWeek[5]!.date).toBe('2026-11-20')
+            expect(lastWeek[6]!.level).toBe(-1)
+            // the heaviest day gets the darkest shade, an empty day gets none
+            expect(lastWeek[2]!.level).toBe(4)
+            expect(grid.columns[0]![0]!.level).toBe(0)
+            expect(grid.monthLabels.map((l) => l.label)).toContain('Nov')
         })
     })
 
     describe('RewindSelectMenuView', () => {
-        it('renders turn snapshots with commit hash, touched files count, and prompt preview', () => {
+        const turns = [
+            {
+                id: 'snap-3',
+                turnIndex: 3,
+                commitHash: 'abcdef1234',
+                prompt: 'Refactor TUI renderer',
+                timestamp: Date.now() - 120000,
+                touchedFiles: ['app.ts', 'screen.ts'],
+            },
+            {
+                id: 'snap-2',
+                turnIndex: 2,
+                commitHash: '1234567890',
+                prompt: 'Add diff buffer',
+                timestamp: Date.now() - 600000,
+                touchedFiles: ['diff.ts'],
+            },
+        ]
+
+        it('renders turns with prompt, touched files count, and time', () => {
             const buffer = new ScreenBuffer(80, 12)
             RewindSelectMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
-                turns: [
-                    {
-                        turnIndex: 3,
-                        commitHash: 'abcdef1234',
-                        prompt: 'Refactor TUI renderer',
-                        timestamp: Date.now() - 120000,
-                        touchedFiles: ['app.ts', 'screen.ts'],
-                    },
-                    {
-                        turnIndex: 2,
-                        commitHash: '1234567890',
-                        prompt: 'Add diff buffer',
-                        timestamp: Date.now() - 600000,
-                        touchedFiles: ['diff.ts'],
-                    },
-                ],
+                turns,
                 selectedIndex: 0,
                 windowStart: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Rewind Checkpoint / Turn Snapshot')
-            expect(buffer.getLine(3)).toContain('Turn 3')
-            expect(buffer.getLine(3)).toContain('abcdef1')
-            expect(buffer.getLine(3)).toContain('Refactor TUI renderer')
-            expect(buffer.getLine(3)).toContain('(2 files)')
-            expect(buffer.getLine(buffer.height - 1)).toContain('rewind to turn')
+            expect(buffer.getLine(0)).toContain('Rewind  go back to the start of a turn')
+            expect(buffer.getLine(2)).toContain('❭ 3  Refactor TUI renderer')
+            expect(buffer.getLine(2)).toContain('2 files')
+            expect(buffer.getLine(2)).toContain('2m ago')
+            expect(buffer.getLine(2)).not.toContain('abcdef1')
+            expect(buffer.getLine(2)).not.toContain('Turn')
+            expect(buffer.get(4, 2)?.bold).toBeFalsy()
+            expect(buffer.getLine(3)).toContain('2  Add diff buffer')
+            expect(buffer.get(4, 3)?.fg).toBe(THEME.colors.muted)
+            expect(buffer.getLine(3)).toContain('1 file')
+            expect(buffer.getLine(buffer.height - 1)).toContain('enter rewind')
+        })
+
+        it('shows an inline confirmation on the selected turn', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            RewindSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                turns,
+                selectedIndex: 1,
+                windowStart: 0,
+                confirming: true,
+            })
+
+            expect(buffer.getLine(3)).toContain('[Rewind? y/n]')
+            expect(buffer.getLine(2)).not.toContain('[Rewind? y/n]')
+            // Inline confirm in yellow with no bold (M20.2)
+            const confirmX = buffer.getLine(3).indexOf('[Rewind?')
+            expect(buffer.get(confirmX, 3)?.fg).toBe(THEME.colors.warning)
+            expect(buffer.get(confirmX, 3)?.bold).toBeFalsy()
+            expect(buffer.getLine(buffer.height - 1)).toContain('confirm rewind')
         })
     })
 
@@ -1663,12 +2193,13 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 selectedIndex: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Q1/1: Which database should we configure?')
-            expect(buffer.getLine(2)).toContain('❭')
-            expect(buffer.getLine(2)).toContain('(1) PostgreSQL')
-            expect(buffer.getLine(3)).toContain('(2) SQLite')
-            expect(buffer.getLine(4)).toContain('(3) Redis')
-            expect(buffer.getLine(buffer.height - 1)).toContain('quick select')
+            expect(buffer.getLine(0)).toContain('Which database should we configure?')
+            expect(buffer.get(THEME.padding.paddingLeft, 0)?.bold).toBe(true)
+            expect(buffer.getLine(2)).toContain('❭ PostgreSQL')
+            expect(buffer.getLine(3)).toContain('SQLite')
+            expect(buffer.getLine(4)).toContain('Redis')
+            expect(buffer.getLine(5)).toContain('Type your own answer…')
+            expect(buffer.getLine(6)).toContain('enter select · 1-3 pick · esc cancel')
         })
 
         it('renders multi-select checkboxes', () => {
@@ -1689,16 +2220,16 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 selectedMultiIndices: new Set([0, 1]),
             })
 
-            expect(buffer.getLine(2)).toContain('[x] Web')
-            expect(buffer.getLine(3)).toContain('❭')
-            expect(buffer.getLine(3)).toContain('[x] CLI')
-            expect(buffer.getLine(4)).toContain('[ ] Server')
-            expect(buffer.getLine(buffer.height - 1)).toContain('toggle')
+            expect(buffer.getLine(2)).toContain('✓ Web')
+            expect(buffer.getLine(3)).toContain('❭ ✓ CLI')
+            expect(buffer.getLine(4)).toContain('○ Server')
+            expect(buffer.getLine(5)).toContain('Type your own answer…')
+            expect(buffer.getLine(6)).toContain('space toggle')
         })
     })
 
     describe('ToolPermissionMenuView', () => {
-        it('renders tool summary, diff preview, and approval options', () => {
+        it('asks to run a command, with no git-tracked option', () => {
             const buffer = new ScreenBuffer(80, 14)
             ToolPermissionMenuView.render(buffer, {
                 x: 0,
@@ -1706,19 +2237,62 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 width: 80,
                 toolName: 'run_command',
                 toolCommandOrTarget: 'git checkout -b feature/tui',
-                diffPreviewLines: ['+ added line 1', '- removed line 2'],
                 selectedIndex: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Tool Permission Required: run_command')
-            expect(buffer.getLine(1)).toContain('git checkout -b feature/tui')
-            expect(buffer.getLine(3)).toContain('+ added line 1')
-            expect(buffer.getLine(4)).toContain('- removed line 2')
-            expect(buffer.getLine(6)).toContain('❭')
-            expect(buffer.getLine(6)).toContain('[y] Approve once')
-            expect(buffer.getLine(7)).toContain('[a] Always allow in session')
-            expect(buffer.getLine(buffer.height - 1)).toContain('approve')
-            expect(buffer.getLine(buffer.height - 1)).toContain('deny')
+            expect(buffer.getLine(0)).toContain('Run this command?')
+            expect(buffer.get(THEME.padding.paddingLeft, 0)?.bold).toBe(true)
+            expect(buffer.getLine(1)).toContain('$ git checkout -b feature/tui')
+            expect(buffer.getLine(3)).toContain('❭ Yes')
+            expect(buffer.getLine(4)).toContain(
+                'Yes, always allow this exact command in this project'
+            )
+            expect(buffer.getLine(5)).toContain('No, tell December what to do instead')
+            expect(buffer.getLine(6)).toContain('enter select · esc no · y a n')
+            expect(ToolPermissionMenuView.getHeight('run_command', [], 'git checkout -b x')).toBe(7)
+        })
+
+        it('flags risky commands in warning color', () => {
+            const buffer = new ScreenBuffer(80, 14)
+            ToolPermissionMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                toolName: 'bash',
+                toolCommandOrTarget: 'rm -rf dist && bun run build',
+                selectedIndex: 0,
+            })
+            expect(buffer.getLine(2)).toContain('! can delete files or data')
+            expect(buffer.get(THEME.padding.paddingLeft + 2, 2)?.fg).toBe(THEME.colors.warning)
+        })
+
+        it('asks to edit a file and shows a numbered diff', () => {
+            const buffer = new ScreenBuffer(80, 16)
+            const diffLines = [
+                '--- a/src/auth/session.service.ts',
+                '+++ b/src/auth/session.service.ts',
+                '@@ -41,3 +41,3 @@',
+                '   createSession(userId: string) {',
+                '-    const ttl = 3600',
+                '+    const ttl = env.SESSION_TTL',
+            ]
+            ToolPermissionMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                toolName: 'edit_file',
+                toolCommandOrTarget: 'edit_file: src/auth/session.service.ts',
+                diffPreviewLines: diffLines,
+                selectedIndex: 0,
+            })
+
+            expect(buffer.getLine(0)).toContain('Edit src/auth/session.service.ts?')
+            expect(buffer.getLine(2)).toContain('41     createSession')
+            expect(buffer.getLine(3)).toContain('42 -     const ttl = 3600')
+            expect(buffer.getLine(4)).toContain('42 +     const ttl = env.SESSION_TTL')
+            expect(buffer.getLine(6)).toContain('❭ Yes')
+            expect(buffer.getLine(8)).toContain('Yes, git-tracked files only')
+            expect(buffer.getLine(10)).toContain('y a g n')
         })
     })
 
@@ -1733,15 +2307,23 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 selectedIndex: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('[PLAN] Architectural Plan Generated')
+            expect(buffer.getLine(0)).toContain('Start with this plan?')
             expect(buffer.getLine(1)).toContain(
                 '1. Remove Ink. 2. Implement 2D buffer views. 3. Delete React.'
             )
-            expect(buffer.getLine(3)).toContain('❭')
-            expect(buffer.getLine(3)).toContain('[y] Approve & Execute')
-            expect(buffer.getLine(4)).toContain('[r] Refine Plan')
-            expect(buffer.getLine(buffer.height - 1)).toContain('approve')
-            expect(buffer.getLine(buffer.height - 1)).toContain('reject')
+            expect(buffer.getLine(3)).toContain('❭ Yes, start')
+            expect(buffer.getLine(4)).toContain('Change the plan')
+            expect(buffer.getLine(7)).toContain('enter select · esc no · y r v n')
+        })
+    })
+
+    describe('plan facts (S20)', () => {
+        it('counts numbered steps and the files a plan mentions', () => {
+            const plan =
+                '1. Move TTL to `src/auth/session.service.ts`\n2. Add env in packages/shared/src/env.ts\n3. Update test/session.test.ts\n4. Update docs/configuration.mdx'
+            expect(planFacts(plan)).toBe('4 steps · 4 files')
+            expect(planFacts('No steps here')).toBe('')
+            expect(PlanApproveMenuView.getHeight(plan)).toBe(9)
         })
     })
 
@@ -1782,93 +2364,62 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
     })
 
     describe('MemoryViewMenuView', () => {
-        it('renders project rules vs memory tabs and document line numbers', () => {
+        it('renders AGENTS.md with line numbers and no tabs', () => {
             const buffer = new ScreenBuffer(80, 12)
             MemoryViewMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
                 height: 12,
-                activeTab: 'rules',
-                ruleFiles: [
-                    {
-                        path: 'AGENTS.md',
-                        content: '# AGENTS.md\nRule 1: No Ink\nRule 2: No React',
-                    },
-                ],
-                selectedRuleIndex: 0,
-                ruleCursorLineIndex: 0,
-                ruleScrollOffset: 0,
-            })
-
-            expect(buffer.getLine(0)).toContain('memory')
-            expect(buffer.getLine(0)).toContain('rules')
-            expect(buffer.getLine(2)).toContain('AGENTS.md')
-            expect(buffer.getLine(4)).toContain('1 # AGENTS.md')
-            expect(buffer.getLine(5)).toContain('2 Rule 1: No Ink')
-            expect(buffer.getLine(buffer.height - 1)).toContain('scroll')
-            expect(buffer.getLine(buffer.height - 1)).toContain('close')
-            expect(buffer.getLine(buffer.height - 1)).not.toContain('open in editor')
-            expect(buffer.getLine(buffer.height - 1)).not.toContain('reload')
-        })
-
-        it('renders memory tab with budget stats, entries, and interactive footer', () => {
-            const buffer = new ScreenBuffer(80, 12)
-            MemoryViewMenuView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                height: 12,
-                activeTab: 'memory',
-                memoryDetails: {
-                    filePath: '.december/memory.md',
-                    totalBytes: 512,
-                    maxBytes: 2048,
-                    budgetPercent: 25,
-                    entries: [
-                        { category: 'build_and_test', text: 'bun test --bail' },
-                        { category: 'conventions', text: 'no em dashes' },
-                    ],
+                file: {
+                    path: 'AGENTS.md',
+                    content: '# AGENTS.md\nRule 1: No Ink\nRule 2: No React',
                 },
-                selectedEntryIndex: 0,
+                cursorLineIndex: 0,
                 scrollOffset: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('memory')
-            expect(buffer.getLine(0)).toContain('rules')
-            expect(buffer.getLine(2)).toContain('.december/memory.md')
-            expect(buffer.getLine(2)).toContain('2 items')
-            expect(buffer.getLine(4)).toContain('[build_and_test] bun test --bail')
-            expect(buffer.getLine(5)).toContain('[conventions] no em dashes')
-            expect(buffer.getLine(buffer.height - 1)).toContain('add')
-            expect(buffer.getLine(buffer.height - 1)).toContain('forget')
+            expect(buffer.getLine(0)).toContain('AGENTS.md  3 lines')
+            expect(buffer.getLine(0)).not.toContain('rules')
+            expect(buffer.getLine(2)).toContain('1 # AGENTS.md')
+            // G15 pager row: surface band, brand line number, code in regular text color
+            expect(buffer.get(2, 2)?.bg).toBe(THEME.colors.surface)
+            expect(buffer.get(buffer.getLine(2).indexOf('1 #'), 2)?.fg).toBe(THEME.colors.brand)
+            const codeX = buffer.getLine(2).indexOf('# AGENTS')
+            expect(buffer.get(codeX, 2)?.fg).toBe(THEME.colors.text)
+            expect(buffer.get(codeX, 2)?.bold).toBeFalsy()
+            expect(buffer.getLine(3)).toContain('2 Rule 1: No Ink')
+            expect(buffer.getLine(buffer.height - 1)).toContain('scroll')
             expect(buffer.getLine(buffer.height - 1)).toContain('close')
-            expect(buffer.getLine(buffer.height - 1)).not.toContain('open in editor')
+            expect(buffer.getLine(buffer.height - 1)).not.toContain('switch tab')
+            expect(buffer.getLine(buffer.height - 1)).not.toContain('create')
         })
 
-        it('renders inline forget confirmation tag and contextual confirmation footer', () => {
+        it('renders fallback file path such as CLAUDE.md', () => {
             const buffer = new ScreenBuffer(80, 12)
             MemoryViewMenuView.render(buffer, {
                 x: 0,
                 y: 0,
                 width: 80,
                 height: 12,
-                activeTab: 'memory',
-                memoryDetails: {
-                    filePath: '.december/memory.md',
-                    totalBytes: 512,
-                    maxBytes: 2048,
-                    budgetPercent: 25,
-                    entries: [{ category: 'build_and_test', text: 'bun test --bail' }],
-                },
-                selectedEntryIndex: 0,
-                confirmForgetText: 'bun test --bail',
+                file: { path: 'CLAUDE.md', content: 'rule' },
             })
 
-            expect(buffer.getLine(4)).toContain('[build_and_test] bun test --bail')
-            expect(buffer.getLine(4)).toContain('[Forget? (y/n)]')
-            expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
-            expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
+            expect(buffer.getLine(0)).toContain('CLAUDE.md  1 line')
+        })
+
+        it('renders empty state with create shortcut when no file exists', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            MemoryViewMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                file: null,
+            })
+
+            expect(buffer.getLine(2)).toContain('No AGENTS.md found')
+            expect(buffer.getLine(buffer.height - 1)).toContain('create AGENTS.md')
         })
 
         it('renders back label in footer when canGoBack is true', () => {
@@ -1878,40 +2429,11 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 y: 0,
                 width: 80,
                 height: 12,
-                activeTab: 'rules',
-                ruleFiles: [{ path: 'AGENTS.md', content: 'rule' }],
+                file: { path: 'AGENTS.md', content: 'rule' },
                 canGoBack: true,
             })
 
             expect(buffer.getLine(buffer.height - 1)).toContain('back')
-        })
-
-        it('renders inline add prompt when isAddingEntry is true', () => {
-            const buffer = new ScreenBuffer(80, 12)
-            MemoryViewMenuView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                height: 12,
-                activeTab: 'memory',
-                memoryDetails: {
-                    filePath: '.december/memory.md',
-                    totalBytes: 512,
-                    maxBytes: 2048,
-                    budgetPercent: 25,
-                    entries: [{ category: 'conventions', text: 'no em dashes' }],
-                },
-                isAddingEntry: true,
-                newEntryText: 'always use bun',
-                newEntryCategory: 'build_and_test',
-            })
-
-            expect(buffer.getLine(buffer.height - 3)).toContain(
-                'add memory [build_and_test] › always use bun'
-            )
-            expect(buffer.getLine(buffer.height - 1)).toContain('save')
-            expect(buffer.getLine(buffer.height - 1)).toContain('cycle category')
-            expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
         })
     })
 
@@ -1994,10 +2516,15 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 apiKeyMasked: true,
             })
 
-            expect(buffer.getLine(0)).toContain('Enter API Key for Anthropic:')
-            expect(buffer.getLine(1)).toContain("Don't have an API key? Get one at")
-            expect(buffer.getLine(1)).toContain('https://console.anthropic.com/settings/keys')
-            expect(buffer.getLine(3)).toContain('❭ •••••••••••••█')
+            expect(buffer.getLine(0)).toMatch(/^ {2}Anthropic API key\s*$/)
+            expect(buffer.get(2, 0)?.bold).toBe(true)
+            expect(buffer.getLine(1)).toContain('Get a key at console.anthropic.com/settings/keys')
+            const linkX = buffer.getLine(1).indexOf('console.anthropic.com')
+            expect(buffer.get(linkX, 1)?.fg).toBe(THEME.colors.brand)
+            // Masked key, then the real terminal cursor (G11), no drawn block
+            expect(buffer.getLine(3)).toContain('❭ •••••••••••••')
+            expect(buffer.getLine(3)).not.toContain('█')
+            expect(takePanelCursor()).toEqual({ x: 4 + 13, y: 3 })
             expect(buffer.getLine(buffer.height - 1)).toContain('submit')
             expect(buffer.getLine(buffer.height - 1)).toContain('close')
         })
@@ -2040,7 +2567,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(3)).toContain('active')
             expect(buffer.getLine(3)).toContain('[Disconnect? (y/n)]')
             expect(buffer.getLine(5)).toContain('Google (Antigravity)')
-            expect(buffer.getLine(5)).toContain('✓')
+            expect(buffer.getLine(5)).toContain('connected')
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
             expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
         })
@@ -2059,7 +2586,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(3)).toContain('Anthropic (Claude)')
-            expect(buffer.getLine(4)).toContain('GitHub (Copilot) ✓')
+            expect(buffer.getLine(4)).toContain('GitHub (Copilot) connected')
             expect(buffer.getLine(5)).toContain('Google (Antigravity) active')
 
             const labelCell = buffer.get(4, 5)
@@ -2073,9 +2600,9 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(activeBadgeCell?.fg).toBe(THEME.colors.success)
 
             const connectedLine = buffer.getLine(4)
-            const connectedIdx = connectedLine.indexOf('✓')
+            const connectedIdx = connectedLine.indexOf('connected')
             const connectedBadgeCell = buffer.get(connectedIdx, 4)
-            expect(connectedBadgeCell?.char).toBe('✓')
+            expect(connectedBadgeCell?.char).toBe('c')
             expect(connectedBadgeCell?.fg).toBe(THEME.colors.muted)
         })
 
@@ -2120,7 +2647,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 confirmDeleteValue: 'provider:openai',
             })
 
-            expect(buffer.getLine(4)).toContain('OpenAI ✓')
+            expect(buffer.getLine(4)).toContain('OpenAI connected')
             expect(buffer.getLine(4)).toContain('[Delete? (y/n)]')
             expect(buffer.getLine(buffer.height - 1)).toContain('confirm')
             expect(buffer.getLine(buffer.height - 1)).toContain('cancel')
@@ -2151,7 +2678,7 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.get(activeIdx, 4)?.fg).toBe(THEME.colors.success)
 
             const anthropicLine = buffer.getLine(3)
-            const configuredIdx = anthropicLine.indexOf('✓')
+            const configuredIdx = anthropicLine.indexOf('connected')
             expect(buffer.get(configuredIdx, 3)?.fg).toBe(THEME.colors.muted)
         })
 
@@ -2195,9 +2722,9 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 selectedIndex: 0,
             })
 
-            expect(buffer.getLine(0)).toContain('Switch Provider')
+            expect(buffer.getLine(0)).toContain('Provider  2 set up')
             expect(buffer.getLine(2)).toContain('Anthropic (Subscription)')
-            expect(buffer.getLine(2)).toContain('(Active)')
+            expect(buffer.getLine(2)).toContain('current')
             expect(buffer.getLine(3)).toContain('OpenAI (BYOK)')
             expect(buffer.getLine(buffer.height - 1)).toContain('switch')
             expect(buffer.getLine(buffer.height - 1)).toContain('delete')
@@ -2256,11 +2783,12 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             const text = Array.from({ length: buffer.height }, (_, i) => buffer.getLine(i)).join(
                 '\n'
             )
-            expect(text).toContain('Read(src/index.ts)')
-            expect(text).toContain('Thinking · analyzing token expiration threshold')
+            expect(text).toContain('● Read src/index.ts')
+            // Thoughts are not shown in the history; the activity line shows them live (L5)
+            expect(text).not.toContain('analyzing token expiration threshold')
         })
 
-        it('renders user prompt with brand color and bold styling', () => {
+        it('renders the user prompt in regular text on the surface band', () => {
             const buffer = new ScreenBuffer(80, 5)
             MessageListView.render(buffer, {
                 x: 0,
@@ -2271,13 +2799,74 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             })
 
             expect(buffer.getLine(0)).toContain('❭ hello agent')
-            const cell = buffer.get(3, 0)
+            const cell = buffer.get(THEME.padding.paddingLeft + 2, 0)
             expect(cell?.char).toBe('h')
-            expect(cell?.fg).toBe('#89B4F8')
-            expect(cell?.bold).toBe(true)
+            expect(cell?.fg).toBe(THEME.colors.text)
+            expect(cell?.bg).toBe(THEME.colors.surface)
+            expect(cell?.bold).toBeFalsy()
+            expect(buffer.get(THEME.padding.paddingLeft, 0)?.fg).toBe(THEME.colors.brand)
         })
 
-        it('renders animated spinner frame and active streaming loader', () => {
+        it('highlights the user prompt across the chat width and wraps long prompts', () => {
+            const buffer = new ScreenBuffer(60, 8)
+            MessageListView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 60,
+                height: 8,
+                messages: [
+                    {
+                        role: 'user',
+                        content: 'a long prompt that needs to wrap onto another row here\nsecond',
+                    },
+                ],
+            })
+
+            const left = THEME.padding.paddingLeft
+            const right = 60 - THEME.padding.paddingRight
+            for (const row of [0, 1, 2]) {
+                expect(buffer.get(left, row)?.bg).toBe(THEME.colors.surface)
+                expect(buffer.get(right - 1, row)?.bg).toBe(THEME.colors.surface)
+                expect(buffer.get(right, row)?.bg).toBeUndefined()
+                expect(buffer.get(left - 1, row)?.bg).toBeUndefined()
+            }
+            expect(buffer.getLine(0)).toContain('❭ a long prompt')
+            // Continuation and second paragraph align under the text, not the glyph
+            expect(buffer.getLine(1).search(/\S/)).toBe(left + 2)
+            expect(buffer.getLine(2)).toContain('second')
+            expect(buffer.getLine(2).search(/\S/)).toBe(left + 2)
+            // Blank spacer row after the prompt has no highlight
+            expect(buffer.get(left, 3)?.bg).toBeUndefined()
+        })
+
+        it('starts header, user, and assistant lines at the theme left padding', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            MessageListView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 12,
+                headerProps: { width: 80, cliVersion: '1.0.0' },
+                messages: [
+                    { role: 'user', content: 'hello agent' },
+                    { role: 'assistant', content: 'word '.repeat(40).trim() },
+                ],
+            })
+
+            const edge = THEME.padding.paddingLeft
+            const firstCol = (line: string) => line.search(/\S/)
+            const lines = Array.from({ length: 12 }, (_, i) => buffer.getLine(i)).filter((l) =>
+                l.trim()
+            )
+            expect(lines.length).toBeGreaterThan(3)
+            for (const line of lines) {
+                expect(firstCol(line)).toBe(edge)
+                // Wrapped text ends where the prompt separator ends
+                expect(line.trimEnd().length).toBeLessThanOrEqual(80 - THEME.padding.paddingRight)
+            }
+        })
+
+        it('draws no loader rows in the history while streaming (L0 lives above the prompt)', () => {
             const buffer = new ScreenBuffer(80, 5)
             MessageListView.render(buffer, {
                 x: 0,
@@ -2286,30 +2875,13 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
                 height: 5,
                 messages: [{ role: 'user', content: 'tell me a joke' }],
                 isStreaming: true,
-                spinnerFrame: 2, // '⠹'
             })
 
             expect(buffer.getLine(0)).toContain('❭ tell me a joke')
-            expect(buffer.getLine(2)).toContain('⠹ Thinking...')
+            expect(buffer.getLine(2).trim()).toBe('')
         })
 
-        it('renders status message when streaming with custom status', () => {
-            const buffer = new ScreenBuffer(80, 5)
-            MessageListView.render(buffer, {
-                x: 0,
-                y: 0,
-                width: 80,
-                height: 5,
-                messages: [{ role: 'user', content: 'test status' }],
-                isStreaming: true,
-                spinnerFrame: 1, // '⠙'
-                statusMessage: 'Gemini rate limit hit. Retrying in 4s...',
-            })
-
-            expect(buffer.getLine(2)).toContain('⠙ Gemini rate limit hit. Retrying in 4s...')
-        })
-
-        it('renders compact file edits with addition/deletion stats and command output gutter', () => {
+        it('renders file edits with change counts and a command result line', () => {
             const buffer = new ScreenBuffer(80, 10)
             MessageListView.render(buffer, {
                 x: 0,
@@ -2347,41 +2919,11 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             const text = Array.from({ length: buffer.height }, (_, i) => buffer.getLine(i)).join(
                 '\n'
             )
-            // Edited file with diff stats
-            expect(text).toContain('Edited')
-            expect(text).toContain('src/app.ts')
-            expect(text).toContain('(+4, -2)')
-
-            // Two-tone bash command in collapsed mode (zero output lines)
-            expect(text).toContain('Bash(git status)')
+            // One row per step: counts from a line diff, then the command's last line (S4, S7)
+            expect(text).toContain('● Edited src/app.ts  +2')
+            expect(text).toContain('● Ran git status')
+            expect(text).toContain('    └ nothing to commit')
             expect(text).not.toContain('On branch main')
-
-            // Expanded mode reveals output indented without pipe
-            const expandedBuffer = new ScreenBuffer(80, 10)
-            MessageListView.render(expandedBuffer, {
-                width: 80,
-                height: 10,
-                expandTools: true,
-                messages: [
-                    {
-                        role: 'tool',
-                        toolCall: {
-                            id: 'tc-bash',
-                            name: 'run_command',
-                            command: 'Bash(git status)',
-                            status: 'success',
-                            output: 'On branch main\nnothing to commit',
-                        },
-                    },
-                ],
-            })
-            const expandedText = Array.from({ length: expandedBuffer.height }, (_, i) =>
-                expandedBuffer.getLine(i)
-            ).join('\n')
-            expect(expandedText).toContain('Bash(git status)')
-            expect(expandedText).toContain('On branch main')
-            expect(expandedText).toContain('nothing to commit')
-            expect(expandedText).not.toContain('│ On branch main')
         })
     })
 })

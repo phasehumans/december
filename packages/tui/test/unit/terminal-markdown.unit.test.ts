@@ -23,23 +23,63 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         expect(combined).toContain('This is a simple paragraph')
     })
 
-    it('formats markdown headings with bold and brand styling', () => {
-        const text = '# Main Header\n## Subheader'
+    it('formats markdown headings in bold text without the # marks', () => {
+        const text = '# Main Header\n## Subheader\n### Detail'
         const lines = formatMarkdownToLines(text, 40)
 
-        expect(lines.length).toBe(2)
-        expect(lines[0][0].text).toContain('# Main Header')
+        expect(lines.length).toBe(3)
+        expect(lines[0][0].text).toBe('Main Header')
         expect(lines[0][0].style?.bold).toBe(true)
-        expect(lines[1][0].text).toContain('## Subheader')
+        expect(lines[0][0].style?.fg).toBe(THEME.colors.text)
+        expect(lines[1][0].text).toBe('Subheader')
+        expect(lines[2][0].style?.fg).toBe(THEME.colors.muted)
     })
 
-    it('formats fenced code blocks with distinct background styling', () => {
+    it('hides horizontal rules and keeps a single blank line in their place', () => {
+        const toText = (md: string) =>
+            formatMarkdownToLines(md, 40).map((l) => l.map((s) => s.text).join(''))
+
+        for (const rule of ['---', '***', '___', '- - -', '* * *', '  -----']) {
+            expect(toText(`above\n\n${rule}\n\nbelow`)).toEqual(['above', '', 'below'])
+        }
+        expect(toText('above\n---\n\nbelow')).toEqual(['above', '', 'below'])
+        expect(toText('above\n\n---\nbelow')).toEqual(['above', '', 'below'])
+    })
+
+    it('leaves table separators, short dashes, and code blocks alone', () => {
+        const table = formatMarkdownToLines('| a | b |\n|---|---|\n| 1 | 2 |', 40)
+        expect(table.length).toBeGreaterThan(0)
+
+        const short = formatMarkdownToLines('--', 20)
+        expect(short[0].map((s) => s.text).join('')).toBe('--')
+
+        const code = formatMarkdownToLines('```\n---\n```', 20)
+        expect(code[0].map((s) => s.text).join('')).toContain('---')
+    })
+
+    it('hides horizontal rules the same way when streamed through the cache', () => {
+        const full = 'above\n\n---\n\nbelow'
+        const cache = createStreamingMarkdownCache()
+        let lines = formatMarkdownToLines('', 40, cache)
+        for (let i = 1; i <= full.length; i++) {
+            // Frames never end on a newline here: that case has a separate cache issue
+            if (full[i - 1] === '\n') continue
+            lines = formatMarkdownToLines(full.slice(0, i), 40, cache)
+        }
+        expect(lines.map((l) => l.map((s) => s.text).join(''))).toEqual(
+            formatMarkdownToLines(full, 40).map((l) => l.map((s) => s.text).join(''))
+        )
+    })
+
+    it('formats fenced code blocks with syntax colors and no background', () => {
         const text = '```typescript\nconst x = 42\n```'
         const lines = formatMarkdownToLines(text, 30)
 
         expect(lines.length).toBe(1)
-        expect(lines[0].map((s) => s.text).join('')).toBe('const x = 42')
-        expect(lines[0][0].style?.bg).toBeDefined()
+        // Code blocks are indented 2 columns, with no gutter
+        expect(lines[0].map((s) => s.text).join('')).toBe('  const x = 42')
+        expect(lines[0].every((s) => s.style?.bg === undefined)).toBe(true)
+        expect(lines[0].find((s) => s.text === 'const')?.style?.fg).toBe(THEME.colors.brand)
     })
 
     it('formats bullet lists with bullet glyph', () => {
@@ -62,7 +102,8 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         expect(boldSeg?.style?.bold).toBe(true)
 
         const codeSeg = lines[0].find((s) => s.text === 'inline_code')
-        expect(codeSeg?.style?.bg).toBeDefined()
+        expect(codeSeg?.style?.fg).toBe(THEME.colors.brand)
+        expect(codeSeg?.style?.bg).toBeUndefined()
     })
 
     it('formats markdown links and raw URLs with underline and brand styling', () => {
@@ -98,7 +139,8 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
 
         expect(lines.length).toBe(2)
         const constSeg = lines[0].find((s) => s.text === 'const')
-        expect(constSeg?.style?.bold).toBe(true)
+        expect(constSeg?.style?.fg).toBe(THEME.colors.brand)
+        expect(constSeg?.style?.bold).toBeUndefined()
 
         const strSeg = lines[0].find((s) => s.text.includes('hello'))
         expect(strSeg).toBeDefined()
@@ -125,6 +167,63 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         expect(bot).toContain('└')
         expect(bot).toContain('┴')
         expect(bot).toContain('┘')
+    })
+
+    describe('tables wider than the screen', () => {
+        const toText = (lines: ReturnType<typeof formatMarkdownToLines>) =>
+            lines.map((l) => l.map((s) => s.text).join(''))
+        const wideTable = [
+            '| Aspect | Message Queue | Message Broker |',
+            '|---|---|---|',
+            '| **What it is** | A storage pattern / data structure for holding messages until consumed | A complete middleware system managing message delivery, routing, and lifecycle |',
+            '| **Communication** | Usually **Point-to-Point** | Supports `pub/sub` and topics |',
+        ].join('\n')
+
+        it('keeps every row, including the right border, inside maxWidth', () => {
+            for (const width of [118, 100, 60, 40]) {
+                const rows = toText(formatMarkdownToLines(wideTable, width)).filter(Boolean)
+                for (const row of rows) {
+                    expect(row.length).toBe(width)
+                    expect(['┐', '│', '┤', '┘']).toContain(row[row.length - 1])
+                }
+            }
+        })
+
+        it('keeps short columns whole and wraps long cells instead of cutting them', () => {
+            const rows = toText(formatMarkdownToLines(wideTable, 60))
+            expect(rows[1]).toContain('│ Aspect        │')
+            const all = rows.join('\n')
+            expect(all).not.toContain('…')
+            expect(all).toContain('consumed')
+            expect(all).toContain('lifecycle')
+        })
+
+        it('renders inline markdown in cells without the raw markers', () => {
+            const lines = formatMarkdownToLines(wideTable, 100)
+            const all = toText(lines).join('\n')
+            expect(all).not.toContain('**')
+            expect(all).not.toContain('`')
+            const bold = lines.flat().find((s) => s.text === 'What it is')
+            expect(bold?.style?.bold).toBe(true)
+        })
+
+        it('measures wide characters by terminal columns so borders line up', () => {
+            const rows = toText(
+                formatMarkdownToLines('| 名前 | 説明 |\n|---|---|\n| 東京 | 日本の首都です |', 80)
+            ).filter(Boolean)
+            const widthOf = (s: string) =>
+                [...s].reduce((w, ch) => w + (/[\u3000-\u9fff]/.test(ch) ? 2 : 1), 0)
+            const widths = new Set(rows.map(widthOf))
+            expect(widths.size).toBe(1)
+        })
+
+        it('switches to a list when columns would get too narrow', () => {
+            const rows = toText(formatMarkdownToLines(wideTable, 30))
+            expect(rows.join('\n')).not.toContain('│')
+            expect(rows[0]).toBe('What it is')
+            expect(rows[1].startsWith('  Message Queue: ')).toBe(true)
+            for (const row of rows) expect(row.length).toBeLessThanOrEqual(30)
+        })
     })
 
     it('renders mermaid flowchart diagrams into ASCII node connections', () => {
@@ -233,6 +332,7 @@ describe('Terminal Markdown Formatter (Renderer)', () => {
         const text = lines[0].map((s) => s.text).join('')
         expect(text).toBe('Here is streaming code')
         const codeSeg = lines[0].find((s) => s.text === 'streaming code')
-        expect(codeSeg?.style?.bg).toBe(THEME.colors.codespanBg)
+        expect(codeSeg?.style?.fg).toBe(THEME.colors.brand)
+        expect(codeSeg?.style?.bg).toBeUndefined()
     })
 })

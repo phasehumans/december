@@ -47,18 +47,111 @@ Sets how much the model reasons before it answers. There are two levels:
 
 Type `/effort` to open the menu, or type `/effort deep` to set the level directly. If a model does not support reasoning control, it runs in standard mode.
 
-### `/skills`
+### `/plugin`
 
-Opens the skills browser. You can search the installed skills and read the `SKILL.md` of each skill.
+Opens the plugin view. Use it to install, turn on or off, and remove plugins, skills, and MCP servers. It also manages marketplaces. See [Plugins & Marketplaces](/docs/plugins).
+
+In the **Installed** tab, press `f` to show only skills.
 
 To run a skill, type `/` and the skill name: `/<skill-name>`. You can add a task after the name.
 
-### `/memory` (or `/rules`)
+### `/memory`
 
-Opens the workspace memory and project rules menu:
+Shows your project `AGENTS.md`. If there is no `AGENTS.md`, it shows `CLAUDE.md`. Press `c` to make a starter `AGENTS.md` when December finds no file.
 
-- Memory: See what December learned about your project. December keeps it in `.december/memory.md`, with a limit of 2 KB. Press `a` to add a note. Press `d` to forget a note.
-- Rules: Read the rule files December found, such as `AGENTS.md`. Press `c` to make a starter `AGENTS.md`.
+### `/learn`
+
+Saves a lesson from the conversation, so that later sessions follow it. December writes rules and project facts to `AGENTS.md`. It writes procedures with many steps as a skill in `.december/skills/`.
+
+Type `/learn` to let December find the lesson in the recent conversation. Or type the lesson after the command: `/learn never use axios, use lib/http.ts`. See [Save a lesson with /learn](/docs/memory#save-a-lesson-with-learn).
+
+### `/plan`
+
+Makes a plan before December changes code. You approve, change, or reject the plan.
+
+- Type `/plan <goal>` to plan one task.
+- Press `shift+tab` or type `/plan` with no goal to turn plan mode on. In plan mode, each prompt starts a plan. The prompt shows `[plan]`.
+- Press `shift+tab` again to turn plan mode off.
+
+### `/compact`
+
+Summarizes the conversation now, so it uses less of the context window. December keeps the last few messages as they are.
+
+To tell December what to keep, add it after the command: `/compact keep the auth refactor details`.
+
+The conversation shows a line where the compaction happened, with the token count before and after. December also compacts on its own when the context window is 80% full. You cannot run `/compact` while December works on a turn.
+
+### `/skills`
+
+Lists your skills, grouped by where they come from: the project, your user folder, plugins, or built-in. The list also shows skills that December could not load, with the error.
+
+- Press `Enter` to read a skill.
+- Press `r` or type `/skills reload` to scan the skill folders again.
+
+After a reload, `/skill:<name>` uses the new list at once. The agent gets the new list in the next session. This keeps the prompt cache of the current session.
+
+### `/check`
+
+Checks your setup and shows the problems with a fix for each one. It checks:
+
+- The install, and the API key or login for the active provider.
+- The settings, hooks, and keybindings files.
+- Your MCP servers, and if they started.
+- Skills that December cannot load.
+- The size of `AGENTS.md`. December warns if the file is larger than 40,000 characters, because December sends it with every request.
+
+Press `r` to run the checks again. To check from the terminal, run `december doctor`.
+
+### `/permissions`
+
+Manages the allow and deny rules for tools. Press `tab` to switch between the allow rules and the deny rules.
+
+- Allow rules: In always-ask mode, December does not ask before a call that matches an allow rule.
+- Deny rules: December blocks each call that matches a deny rule. This applies in every mode, before the other checks.
+
+A rule can be:
+
+- A command: `bun test`
+- A command prefix that ends in `*`: `bun test*`
+- A tool and a file: `edit_file: src/index.ts`
+- A tool name: `web_fetch`. A rule with only `bash` blocks all commands as a deny rule. As an allow rule, December ignores it.
+
+Project rules are in `.december/settings.json`. Global rules are in `~/.december/config.json`. When you select **Always allow** in a permission prompt, December saves the exact command or file as a project rule.
+
+In `/permissions`, press `a` to add a project rule, `g` to add a global rule, `d` to remove the selected rule, and `m` to switch between always-proceed and always-ask.
+
+### `/hooks`
+
+Shows the hooks that run, grouped by event. A hook is a shell command that December runs before a tool call, when you send a prompt, or when a turn ends. See [Hooks](/docs/hooks).
+
+### `/github`
+
+Sets up the December GitHub Action for the current repository. After the setup, comment `@trydecember <task>` on an issue, and December opens a pull request.
+
+Before you start, install the GitHub CLI (`gh`) and run `gh auth login`.
+
+1. Type `/github`. December checks `gh`, the repository, the workflow file, and the secrets.
+2. Press `w` to write `.github/workflows/december.yml`.
+3. Press `k` to type an API key, or press `u` to use the key that you saved in December. December sends the key to GitHub as a repository secret.
+4. Optional: Press `s` for a Slack webhook or `i` for a Discord webhook.
+5. Commit and push the workflow file.
+
+December sends a key or webhook to GitHub only when you press `k`, `u`, `s`, or `i`. The action needs an API key. A Claude, ChatGPT, or Copilot plan does not work in GitHub Actions.
+
+### `/keybindings`
+
+Opens `~/.december/keybindings.json`. If the file does not exist, December makes it with the default keys first.
+
+```json
+{
+    "bindings": {
+        "togglePlanMode": "ctrl+g",
+        "newline": ["alt+enter", "shift+enter"]
+    }
+}
+```
+
+December applies the changes when you save the file. When you move an action to a new key, its old key stops working in the prompt. `/help` shows the keys that are in use. You cannot change `ctrl+c` and `esc`.
 
 ## Other commands
 
@@ -72,19 +165,30 @@ Opens the workspace memory and project rules menu:
 | `/diff`               | Show the git diff of your workspace.                               |
 | `/exit`               | Exit the CLI.                                                      |
 | `/feedback`           | Open the issue page to send feedback or report a bug.              |
-| `/fork`               | Start a new branch of the conversation from this point.            |
+| `/fork [title]`       | Start a new branch of the conversation from this point.            |
 | `/help`               | Show commands, keyboard shortcuts, and CLI information.            |
-| `/mcp`                | Show the connected MCP servers and their tools.                    |
+| `/mcp`                | Show the running MCP servers and their tools. Restart or stop one. |
 | `/new`                | Start a new conversation.                                          |
 | `/open <file>`        | Open a file in the file viewer.                                    |
-| `/plan <goal>`        | Make a plan first. You approve it before December changes code.    |
-| `/plugin`             | Find, install, and manage plugins.                                 |
+| `/rename [title]`     | Rename the session. With no title, December writes one for you.    |
 | `/resume`             | Find and resume an earlier conversation.                           |
 | `/rewind`             | Restore files and conversation to an earlier turn.                 |
 | `/settings`           | Open the settings.                                                 |
 | `/switch`             | Change the active provider and model.                              |
 | `/tasks`              | Show background tasks.                                             |
-| `/undo`               | Revert the files and conversation from the last turn.              |
-| `/update`             | Update the CLI to the latest version.                              |
-| `/usage`              | Show your quota usage.                                             |
+| `/update`             | Update the CLI, then press Enter or run `/restart` to use it.      |
+| `/usage`              | Show your token usage for this session and your usage history.     |
 | `/voice`              | Speak a prompt with your microphone (uses Deepgram).               |
+
+## Session titles
+
+December gives each session a title, so you can find it again in `/resume`.
+
+- When you send the first prompt, the session gets a title from that prompt.
+- After the first response, December asks your model for a short title of 3 to 6 words. This uses a small number of tokens.
+- To set your own title, run `/rename <title>`. December does not change a title that you set.
+- To get a new title from the conversation so far, run `/rename` with no title.
+- To rename an earlier session, run `/resume`, select the session, and press `r`.
+- To resume a session by its title, run `december resume <title>`.
+
+The title also shows in the window title of your terminal.

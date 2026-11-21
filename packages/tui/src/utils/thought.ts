@@ -89,8 +89,33 @@ export function extractThoughtTopic(raw: string): string {
 
     const MAX_TOPIC_LEN = 48
     if (current.length > MAX_TOPIC_LEN) {
-        current = current.substring(0, MAX_TOPIC_LEN - 3) + '...'
+        current = current.substring(0, MAX_TOPIC_LEN - 1) + '…'
     }
 
     return current
+}
+
+/**
+ * The latest sentence of a live thought, as the model wrote it, for the activity line's
+ * second line (L21). Takes the last complete sentence (a line break also ends one); until one
+ * is complete, the partial one. Markdown labels and list markers are removed.
+ */
+export function latestThoughtSentence(raw: string): string {
+    const lines = formatThought(raw || '')
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+    const pieces: { text: string; complete: boolean }[] = []
+    lines.forEach((line, i) => {
+        const parts: string[] = line.match(/[^.!?]+(?:[.!?]+|$)/g) ?? []
+        parts.forEach((part, j) => {
+            const text = part.trim()
+            if (!text) return
+            const lastOfThought = i === lines.length - 1 && j === parts.length - 1
+            pieces.push({ text, complete: /[.!?]$/.test(text) || !lastOfThought })
+        })
+    })
+    const complete = pieces.filter((p) => p.complete && p.text.length >= 8)
+    const latest = complete.length > 0 ? complete[complete.length - 1]! : pieces[pieces.length - 1]
+    return (latest?.text ?? '').replace(/[.:;,]+$/, '').trim()
 }

@@ -5,13 +5,14 @@ import { THEME, COLORS } from '../../src/theme'
 describe('THEME Contract (Unit)', () => {
     it('exports required semantic color tokens', () => {
         expect(THEME.colors.brand).toBe('#89B4F8')
-        expect(THEME.colors.text).toBe('white')
-        expect(THEME.colors.muted).toBe('#AAAAAA')
-        expect(THEME.colors.subtle).toBe('#777777')
-        expect(THEME.colors.dim).toBe('#666666')
-        expect(THEME.colors.border).toBe('#333333')
+        expect(THEME.colors.text).toBe('#E4E4E7')
+        expect(THEME.colors.muted).toBe('#A1A1AA')
+        expect(THEME.colors.dim).toBe('#71717A')
+        expect(THEME.colors.border).toBe('#3F3F46')
+        expect(THEME.colors.surface).toBe('#262629')
+        expect(THEME.colors.highlight).toBe('#FFFFFF')
         expect(THEME.colors.success).toBe('#6EE7B7')
-        expect(THEME.colors.error).toBe('#FCA5A5')
+        expect(THEME.colors.error).toBe('#F87171')
         expect(THEME.colors.warning).toBe('#FDD663')
     })
 
@@ -26,12 +27,14 @@ describe('THEME Contract (Unit)', () => {
         expect(THEME.glyphs.selector).toBe('❭')
         expect(THEME.glyphs.bullet).toBe('•')
         expect(THEME.glyphs.status).toBe('●')
+        expect(THEME.glyphs.step).toBe('●')
+        expect(THEME.glyphs.result).toBe('└')
     })
 
     it('provides backwards-compatible COLORS object mapped to semantic colors', () => {
         expect(COLORS.brand).toBe('#89B4F8')
         expect(COLORS.success).toBe('#6EE7B7')
-        expect(COLORS.error).toBe('#FCA5A5')
-        expect(COLORS.border).toBe('#333333')
+        expect(COLORS.error).toBe('#F87171')
+        expect(COLORS.border).toBe('#3F3F46')
     })
 })

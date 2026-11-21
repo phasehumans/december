@@ -71,7 +71,7 @@ export function createLocalBashOperations() {
                         detached: process.platform !== 'win32',
                         env: options.env ?? process.env,
                         shell: true,
-                        stdio: ['pipe', 'pipe', 'pipe'],
+                        stdio: ['ignore', 'pipe', 'pipe'],
                     })
 
                     if (child.pid) trackDetachedChildPid(child.pid)

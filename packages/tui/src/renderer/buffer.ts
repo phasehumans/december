@@ -1,4 +1,4 @@
-import { copyCell, getCharWidth, resetCell } from './cell'
+import { copyCell, getClusterWidth, graphemeClusters, resetCell } from './cell'
 
 import type { Cell, CellStyle } from './types'
 
@@ -55,12 +55,12 @@ export class ScreenBuffer {
         let x = startX
         let y = startY
 
-        // Handle string iterating over codepoints/graphemes cleanly
-        for (const char of text) {
+        // One cell per grapheme cluster, so ZWJ emoji and flags take the columns the terminal draws
+        for (const char of graphemeClusters(text)) {
             if (char === '\r') {
                 continue
             }
-            if (char === '\n') {
+            if (char === '\n' || char === '\r\n') {
                 y += 1
                 x = startX
                 continue
@@ -70,7 +70,7 @@ export class ScreenBuffer {
                 break
             }
 
-            const w = getCharWidth(char)
+            const w = getClusterWidth(char)
             if (w === 0) {
                 // Zero-width combining mark: attach to previous cell if exists
                 if (x > 0 && this.isInBounds(x - 1, y)) {
@@ -187,6 +187,23 @@ export class ScreenBuffer {
                     cell.dim = true
                     cell.bold = false
                 }
+            }
+        }
+    }
+
+    /**
+     * Moves rows top..bottom up by `shift` rows, as a terminal scroll inside that region
+     * does. The rows uncovered at the bottom become blank.
+     */
+    scrollRegionUp(top: number, bottom: number, shift: number): void {
+        const first = Math.max(0, top)
+        const last = Math.min(this.height - 1, bottom)
+        for (let y = first; y <= last; y++) {
+            const from = y + shift
+            for (let x = 0; x < this.width; x++) {
+                const dest = this.cells[this.getIndex(x, y)]!
+                if (from <= last) copyCell(dest, this.cells[this.getIndex(x, from)]!)
+                else resetCell(dest, ' ')
             }
         }
     }

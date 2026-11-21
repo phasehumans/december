@@ -16,12 +16,12 @@ describe('CLI changelog command', () => {
     })
 
     describe('handleChangelogCommand', () => {
-        it('calls openUrl with default https://trydecember.com/docs/changelog/', async () => {
+        it('calls openUrl with default https://trydecember.com/docs/changelog', async () => {
             const openSpy = vi.spyOn(openUtils, 'openUrl').mockResolvedValue(undefined)
 
             await handleChangelogCommand()
 
-            expect(openSpy).toHaveBeenCalledWith('https://trydecember.com/docs/changelog/')
+            expect(openSpy).toHaveBeenCalledWith('https://trydecember.com/docs/changelog')
         })
 
         it('respects WEB_URL environment variable', async () => {
@@ -30,7 +30,7 @@ describe('CLI changelog command', () => {
 
             await handleChangelogCommand()
 
-            expect(openSpy).toHaveBeenCalledWith('http://localhost:2000/docs/changelog/')
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:2000/docs/changelog')
         })
 
         it('does not crash or throw if openUrl rejects (headless server fallback)', async () => {

@@ -119,9 +119,10 @@ describe('/switch command', () => {
 })
 
 describe('/plan skill', () => {
-    test('should not register /plan in static COMMANDS because it is a builtin skill', () => {
+    test('registers /plan in COMMANDS so it shows in the slash menu and /help', () => {
+        // the builtin plan skill stays reachable as /skill:plan
         const planCmd = COMMANDS.find((c) => c.name === 'plan')
-        expect(planCmd).toBeUndefined()
+        expect(planCmd?.value).toBe('/plan')
     })
 })
 
@@ -137,7 +138,7 @@ describe('/changelog and /docs commands', () => {
         const changelogCmd = COMMANDS.find((c) => c.name === 'changelog')
         expect(changelogCmd).toBeDefined()
         expect(changelogCmd?.value).toBe('/changelog')
-        expect(changelogCmd?.description).toContain('Open December changelog in your browser')
+        expect(changelogCmd?.description).toContain('Open the changelog in your browser')
     })
 
     test('should define /docs command forwarded to chat screen', () => {
@@ -165,8 +166,15 @@ describe('/changelog and /docs commands', () => {
         const memCmd = COMMANDS.find((c) => c.name === 'memory')
         expect(memCmd).toBeDefined()
         expect(memCmd?.value).toBe('/memory')
-        expect(memCmd?.description).toContain('workspace memory')
+        expect(memCmd?.description).toContain('project rules')
         expect(memCmd?.description).toContain('AGENTS.md')
+    })
+
+    test('should define /learn command forwarded to chat screen', () => {
+        const learnCmd = COMMANDS.find((c) => c.name === 'learn')
+        expect(learnCmd).toBeDefined()
+        expect(learnCmd?.value).toBe('/learn')
+        expect(learnCmd?.description).toContain('AGENTS.md')
     })
 
     test('should define /help command with description', () => {

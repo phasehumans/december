@@ -67,17 +67,27 @@ export const docCategories: DocsNavCategory[] = [
             {
                 slug: 'slash-commands',
                 label: 'Slash Commands',
-                desc: 'Built-in commands like /undo, /model, /plan, and /login.',
+                desc: 'Built-in commands like /rewind, /model, /plan, and /login.',
             },
             {
                 slug: 'memory',
-                label: 'Workspace Memory & Rules',
-                desc: 'Autonomous learning, .december/memory.md, and the interactive /memory manager.',
+                label: 'Project Rules & /learn',
+                desc: 'AGENTS.md rules, saving lessons with /learn, and the /memory view.',
             },
             {
                 slug: 'skills',
                 label: 'Skills & Playbooks',
                 desc: 'Teach December specialized workflows for your codebase.',
+            },
+            {
+                slug: 'hooks',
+                label: 'Hooks',
+                desc: 'Run your own shell commands before tool calls, on prompts, and at the end of a turn.',
+            },
+            {
+                slug: 'plugins',
+                label: 'Plugins & Marketplaces',
+                desc: 'Install and manage plugins, skills, and MCP servers with /plugin.',
             },
             {
                 slug: 'prompting',

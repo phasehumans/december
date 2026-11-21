@@ -76,6 +76,8 @@ export interface DiffOptions {
     synchronized?: boolean
     /** Position and show/hide cursor at the end of the frame */
     cursor?: CursorPosition
+    /** Raw output sent before the cell changes, inside the synchronized block (a scroll move) */
+    prefix?: string
 }
 
 export interface TerminalOptions {
@@ -90,4 +92,9 @@ export interface DifferentialScreenOptions {
     width?: number
     height?: number
     synchronized?: boolean
+    /**
+     * Move scrolled bands of rows with a terminal scroll region instead of redrawing them.
+     * Defaults to true. DECEMBER_NO_SCROLL_REGIONS=1 turns it off.
+     */
+    scrollRegions?: boolean
 }

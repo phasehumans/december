@@ -2,6 +2,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawEmpty, drawPanelTitle } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -11,12 +12,12 @@ export const REASONING_OPTIONS: { label: string; value: 'fast' | 'deep'; desc: s
     {
         label: 'Fast',
         value: 'fast',
-        desc: 'Minimal reflection, fastest response, lowest token cost (default)',
+        desc: 'Quick answers, lowest cost',
     },
     {
         label: 'Deep',
         value: 'deep',
-        desc: 'Maximum reasoning effort for complex architecture and debugging',
+        desc: 'More reasoning for hard bugs and design work',
     },
 ]
 
@@ -80,10 +81,22 @@ export interface EffortMenuViewProps {
     reasoningSupport?: 'controllable' | 'fixed' | 'none'
 }
 
+/** M7.2: the one line for a model with no reasoning setting */
+export function fixedReasoningMessage(support: 'fixed' | 'none', modelLabel?: string): string {
+    const model = modelLabel || 'This model'
+    return support === 'fixed'
+        ? `${model} uses fixed reasoning. There is nothing to set.`
+        : `${model} has no reasoning setting. There is nothing to set.`
+}
+
+/** Description column, relative to the label: the longest label ("Fast", "Deep") plus 4 cells */
+const EFFORT_LABEL_WIDTH = 8
+
 export const EffortMenuView = {
     getHeight(reasoningSupport?: 'controllable' | 'fixed' | 'none'): number {
         if (reasoningSupport === 'none' || reasoningSupport === 'fixed') {
-            return 6
+            // Title (1) + gap (1) + message (1) + gap (1) + footer (1)
+            return 5
         }
         // Title (1) + margin (1) + options + margin (1) + footer (1)
         return 4 + REASONING_OPTIONS.length
@@ -93,58 +106,29 @@ export const EffortMenuView = {
         const x = (props.x ?? 0) + (THEME.padding.paddingLeft ?? 2)
         let y = props.y
         const width = props.width
+        const rowWidth = Math.max(0, width - x - 2)
 
-        // Title: Reasoning · Model
-        drawText(buffer, 'Reasoning', {
+        // G2: title "Reasoning", then the model in muted
+        drawPanelTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.text, bold: true },
+            title: 'Reasoning',
+            meta: props.modelLabel,
+            width: rowWidth,
         })
-        if (props.modelLabel) {
-            drawText(buffer, ` · ${props.modelLabel}`, {
-                x: x + 9,
-                y,
-                style: { fg: THEME.colors.brand },
-            })
-        }
         y += 2
 
-        // Handle models with no reasoning or fixed reasoning
-        if (props.reasoningSupport === 'none') {
-            drawText(buffer, 'This model does not support extended reasoning tokens.', {
-                x: x + 2,
+        const footerY = props.y + (props.height ?? this.getHeight(props.reasoningSupport)) - 1
+
+        // M7.2: models with no reasoning setting get one dim line
+        if (props.reasoningSupport === 'none' || props.reasoningSupport === 'fixed') {
+            drawEmpty(
+                buffer,
+                x,
                 y,
-                style: { fg: THEME.colors.muted },
-            })
-            drawText(buffer, 'Requests run in standard fast response mode.', {
-                x: x + 2,
-                y: y + 1,
-                style: { fg: THEME.colors.muted },
-            })
-
-            const footerY = props.y + (props.height ?? this.getHeight(props.reasoningSupport)) - 1
-            MenuFooterView.render(buffer, {
-                x: props.x ?? 0,
-                y: footerY,
-                width,
-                items: [{ key: 'esc', label: 'close' }],
-            })
-            return
-        }
-
-        if (props.reasoningSupport === 'fixed') {
-            drawText(buffer, 'This model has fixed reasoning built-in.', {
-                x: x + 2,
-                y,
-                style: { fg: THEME.colors.muted },
-            })
-            drawText(buffer, 'Reasoning tokens are generated automatically by the provider.', {
-                x: x + 2,
-                y: y + 1,
-                style: { fg: THEME.colors.muted },
-            })
-
-            const footerY = props.y + (props.height ?? this.getHeight(props.reasoningSupport)) - 1
+                fixedReasoningMessage(props.reasoningSupport, props.modelLabel),
+                rowWidth
+            )
             MenuFooterView.render(buffer, {
                 x: props.x ?? 0,
                 y: footerY,
@@ -162,49 +146,39 @@ export const EffortMenuView = {
             const isCurrent = opt.value === normalizedCurrent
             const rowY = y + i
 
-            // Selector indicator
-            const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
-            drawText(buffer, selector, {
+            drawText(buffer, isSelected ? `${THEME.glyphs.selector} ` : '  ', {
                 x,
                 y: rowY,
-                style: {
-                    fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                    bold: isSelected,
-                },
+                style: { fg: THEME.colors.brand },
             })
-
-            // Option Label
             drawText(buffer, opt.label, {
                 x: x + 2,
                 y: rowY,
-                style: {
-                    fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                    bold: isSelected,
-                },
+                style: { fg: isSelected ? THEME.colors.brand : THEME.colors.text },
             })
 
-            let labelOffset = x + 2 + opt.label.length
-            if (isCurrent) {
-                drawText(buffer, ' (Current)', {
-                    x: labelOffset,
-                    y: rowY,
-                    style: { fg: THEME.colors.success, bold: true },
-                })
-                labelOffset += 10
-            }
-
-            // Description
-            const descX = Math.max(labelOffset + 2, x + 20)
-            drawText(buffer, opt.desc, {
+            // M7.1: short description, then "current" at the end of the row
+            const descX = x + 2 + EFFORT_LABEL_WIDTH
+            const tag = isCurrent ? '  current' : ''
+            const descRoom = Math.max(0, x + rowWidth - descX - tag.length)
+            const desc =
+                opt.desc.length > descRoom
+                    ? `${opt.desc.slice(0, Math.max(0, descRoom - 1))}…`
+                    : opt.desc
+            drawText(buffer, desc, {
                 x: descX,
                 y: rowY,
-                maxWidth: Math.max(10, width - descX - 2),
-                style: { fg: THEME.colors.muted },
+                style: { fg: isSelected ? THEME.colors.text : THEME.colors.muted },
             })
+            if (tag) {
+                drawText(buffer, tag, {
+                    x: descX + desc.length,
+                    y: rowY,
+                    style: { fg: THEME.colors.muted },
+                })
+            }
         }
 
-        // Footer
-        const footerY = props.y + (props.height ?? this.getHeight(props.reasoningSupport)) - 1
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,
             y: footerY,

@@ -86,9 +86,6 @@ describe('formatters', () => {
             expect(getToolSummary('browser', JSON.stringify({ action: 'launch' }))).toBe(
                 'Browser(launch)'
             )
-            expect(getToolSummary('manage_memory', JSON.stringify({ action: 'recall' }))).toBe(
-                'ManageMemory(recall)'
-            )
         })
 
         test('handles unknown tools with automatic PascalCase', () => {

@@ -9,6 +9,21 @@ export function convertAgentMessagesToDifferentialMessages(messages: any[]): Mes
     for (const msg of messages) {
         if (!msg || msg.role === 'system') continue
 
+        if (
+            msg.role === 'user' &&
+            typeof msg.content === 'string' &&
+            msg.content.startsWith('<task-notification>')
+        ) {
+            // background task notes are context for the model, not prompts the user typed
+            const firstLine =
+                msg.content
+                    .replace(/^<task-notification>\s*/, '')
+                    .split('\n')[0]
+                    ?.trim() || 'Background task finished.'
+            result.push({ role: 'task_notice', content: firstLine, tone: 'muted' })
+            continue
+        }
+
         if (msg.role === 'user') {
             let userText = msg.displayText || msg.content || ''
             if (

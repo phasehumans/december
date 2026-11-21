@@ -33,8 +33,6 @@ export interface CliState {
     setAuthMode: (mode: AuthMode) => void
     helpInitialTab: 'general' | 'commands' | 'shortcuts'
     setHelpInitialTab: (tab: 'general' | 'commands' | 'shortcuts') => void
-    memoryInitialTab: 'memory' | 'rules'
-    setMemoryInitialTab: (tab: 'memory' | 'rules') => void
     logoutItems: { label: string; value: string }[]
     setLogoutItems: (items: { label: string; value: string }[]) => void
     switchItems: { label: string; value: string; model?: string; isActive?: boolean }[]
@@ -223,8 +221,6 @@ export const useCliStore = createStore<CliState>((set) => ({
     setCurrentEmail: (currentEmail) => set({ currentEmail }),
     helpInitialTab: 'general',
     setHelpInitialTab: (helpInitialTab) => set({ helpInitialTab }),
-    memoryInitialTab: 'memory',
-    setMemoryInitialTab: (memoryInitialTab) => set({ memoryInitialTab }),
     authMode: 'none',
     previousAuthMode: 'none',
     menuStack: [],

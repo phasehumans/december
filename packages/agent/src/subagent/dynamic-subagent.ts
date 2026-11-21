@@ -259,7 +259,6 @@ export async function executeDynamicSubagent(
         workspaceDir: effectiveWorkspaceDir,
         modelOptions: childModelOptions,
         thinkingLevel: parentAgent.thinkingLevel,
-        disableLogging: parentAgent.disableLogging,
         depth: childDepth,
         maxDepth,
     })

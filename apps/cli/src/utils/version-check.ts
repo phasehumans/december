@@ -1,23 +1,25 @@
+import http from 'node:http'
 import https from 'node:https'
 
 import { loadConfig, saveConfig } from '../config'
 
+import { isNewerVersion } from './semver'
+
+const DEFAULT_REGISTRY = 'https://registry.npmjs.org/'
+
+/**
+ * Registry URL for the dist-tag lookup. Respects npm_config_registry so users on a
+ * mirror or private registry query the same place `npm install` will use.
+ */
+export function getRegistryUrl(env: Record<string, string | undefined> = process.env): string {
+    const configured = env.npm_config_registry || env.NPM_CONFIG_REGISTRY || DEFAULT_REGISTRY
+    const base = configured.endsWith('/') ? configured : `${configured}/`
+    return `${base}@trydecember%2fcli/latest`
+}
+
 export const CHECK_TTL_MS = 4 * 60 * 60 * 1000 // 4 hours in milliseconds
 
-export function isNewerVersion(current: string, latest: string): boolean {
-    const cleanCurrent = current.replace(/^v/, '')
-    const cleanLatest = latest.replace(/^v/, '')
-    const p1 = cleanCurrent.split('.').map((n) => Number(n) || 0)
-    const p2 = cleanLatest.split('.').map((n) => Number(n) || 0)
-
-    for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
-        const v1 = p1[i] ?? 0
-        const v2 = p2[i] ?? 0
-        if (v2 > v1) return true
-        if (v1 > v2) return false
-    }
-    return false
-}
+export { isNewerVersion }
 
 export interface CheckVersionOptions {
     bypassCache?: boolean
@@ -66,9 +68,11 @@ export async function checkForLatestVersion(
 
 export function fetchLatestFromNpm(): Promise<string | null> {
     return new Promise((resolve) => {
-        const req = https.get(
-            'https://registry.npmjs.org/@trydecember/cli/latest',
-            { timeout: 5000 },
+        const url = getRegistryUrl()
+        const client = url.startsWith('http:') ? http : https
+        const req = client.get(
+            url,
+            { timeout: 5000, headers: { accept: 'application/json' } },
             (res) => {
                 if (res.statusCode !== 200) {
                     resolve(null)
@@ -110,6 +114,6 @@ export async function clearVersionCheckCache(): Promise<void> {
             await saveConfig(config)
         }
     } catch {
-        // ignore errors clearing cache
+        // Intentionally swallowed: a stale cache only delays the update notice
     }
 }

@@ -1,0 +1,116 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Hooks
+description: Run your own shell commands when December uses a tool, gets a prompt, or ends a turn.
+currentSlug: 'hooks'
+---
+
+This page helps you run your own shell commands at fixed points in a December session.
+
+## Overview
+
+A hook is a shell command. December runs it when an event happens, for example before a tool call. A hook can block the action, or give December more context.
+
+December reads hooks from two files:
+
+| File                     | Scope                                           |
+| :----------------------- | :---------------------------------------------- |
+| `~/.december/hooks.json` | All your projects.                              |
+| `.december/hooks.json`   | This project. Runs only in a trusted workspace. |
+
+December reads the files again for each event. You do not have to restart December after you change a file.
+
+## File format
+
+The format is the same as the Claude Code hooks format, so you can copy your existing hooks.
+
+```json
+{
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "bash|run_command",
+                "hooks": [
+                    { "type": "command", "command": "./scripts/check-command.sh", "timeout": 30 }
+                ]
+            }
+        ],
+        "Stop": [{ "hooks": [{ "type": "command", "command": "bun run typecheck" }] }]
+    }
+}
+```
+
+- `matcher`: A regular expression for the tool name. It is used only by `PreToolUse` and `PostToolUse`. If you leave it out, the hook runs for all tools.
+- `command`: The shell command to run. December runs it in the workspace folder.
+- `timeout`: The time limit in seconds. The default is 60. December stops the hook when the time is up.
+
+## Events
+
+| Event              | When it runs                                    | Exit code 2 does this                                          |
+| :----------------- | :---------------------------------------------- | :------------------------------------------------------------- |
+| `SessionStart`     | When a session starts or resumes.               | Nothing. The output goes into the next prompt as context.      |
+| `UserPromptSubmit` | Before December sends your prompt.              | Blocks the prompt. The output of exit code 0 is added to it.   |
+| `PreToolUse`       | Before a tool call, after the permission check. | Blocks the tool call.                                          |
+| `PostToolUse`      | After a tool call.                              | Sends the hook message to December with the tool result.       |
+| `Stop`             | When December is about to end its turn.         | December continues the turn. This can happen 3 times in a row. |
+
+## Input and output
+
+December sends the event to the hook as JSON on standard input. For example, a `PreToolUse` hook gets this:
+
+```json
+{
+    "hook_event_name": "PreToolUse",
+    "cwd": "/home/you/project",
+    "tool_name": "bash",
+    "tool_input": { "command": "git push" }
+}
+```
+
+The exit code tells December what to do:
+
+- `0`: Continue. For `SessionStart` and `UserPromptSubmit`, the standard output goes into the prompt as context.
+- `2`: Block, or continue the turn for `Stop`. The standard error is the reason. December shows the reason to you and to the model.
+- Any other code: December shows an error and continues.
+
+December also sets two environment variables: `DECEMBER_PROJECT_DIR` and `DECEMBER_HOOK_EVENT`.
+
+## Example: block git push
+
+1. Make the file `.december/hooks/no-push.sh`:
+
+    ```bash
+    #!/bin/sh
+    if grep -q '"git push'; then
+        echo "Do not push. Ask the user to push." >&2
+        exit 2
+    fi
+    ```
+
+2. Make the file executable: `chmod +x .december/hooks/no-push.sh`.
+3. Add the hook to `.december/hooks.json`:
+
+    ```json
+    {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "bash",
+                    "hooks": [{ "type": "command", "command": ".december/hooks/no-push.sh" }]
+                }
+            ]
+        }
+    }
+    ```
+
+## See your hooks
+
+Type `/hooks` to see the hooks that run, grouped by event. Press `p` to open the project file or `g` to open the global file.
+
+If the workspace is not trusted, `/hooks` tells you that the project hooks do not run. `/check` shows errors in your hook files.
+
+## Security
+
+A hook runs any command with your user permissions. Read a project `hooks.json` before you trust a workspace that you cloned. December does not run project hooks in a workspace that you did not trust.
+
+Hooks do not run for `/btw` side questions.

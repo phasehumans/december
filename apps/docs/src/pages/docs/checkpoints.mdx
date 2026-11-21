@@ -14,8 +14,7 @@ When you send a prompt, December saves a snapshot of your project files before i
 - Separate history: December keeps snapshots in a separate git repository in `.december/snapshots`. Your own git history and branches do not change.
 - Ignored files stay out: Snapshots skip the files in your `.gitignore`. They also skip `node_modules`, `dist`, `.git`, and `.december`.
 - Review changes: Type `/diff` to see the git diff of your workspace.
-- Undo the last turn: Type `/undo` to revert the files and the conversation from the last turn.
-- Go back further: Type `/rewind` to pick any earlier turn and restore the files and the conversation to that point.
+- Go back to a turn: Type `/rewind` and select a turn. December restores the files and the conversation to that point. The most recent turn is at the top of the list.
 
 <div class="my-8">
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -40,7 +39,7 @@ When you send a prompt, December saves a snapshot of your project files before i
   </div>
 
   <div class="mt-3 p-3 border border-[#cbd5e1] bg-white font-mono text-xs text-[#52525b]">
-    Change went wrong? Type /undo to go back one turn, or /rewind to pick a turn.
+    Change went wrong? Type /rewind and select a turn to go back to it.
   </div>
 </div>
 

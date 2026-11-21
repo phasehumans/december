@@ -10,15 +10,29 @@ import {
 import pRetry, { AbortError } from 'p-retry'
 
 import { Agent } from './agent'
-import { createRequestLogEntry, appendTurnLog } from './utils/request-logger'
+import { NoopTracer } from './telemetry/noop-tracer'
 import { trimToolSchema } from './utils/schema-trimmer'
 
 import type { AgentEvent, AgentMessage, ToolCall, ToolResult } from '@december/shared'
 
+type ThinkingLevel = 'off' | 'fast' | 'deep'
+
+/** The tracer records generations; skip building its payload when it is the no-op tracer */
+function isTracing(agent: Agent): boolean {
+    return Boolean(agent.tracer) && !(agent.tracer instanceof NoopTracer)
+}
+
+/** Applies the per-call limits (model support, thinking turned off) to the turn's level */
+function resolveThinkingLevel(agent: Agent, turnLevel: ThinkingLevel): ThinkingLevel {
+    const modelName = (agent.modelOptions as any)?.model
+    const modelSupportsThinking = modelName ? supportsModelThinking(modelName) : true
+    return modelSupportsThinking && agent.thinkingLevel !== 'off' ? turnLevel : 'off'
+}
+
 export function getAdaptiveThinkingLevel(
     messages: AgentMessage[],
     configuredLevel?: string
-): 'off' | 'fast' | 'deep' {
+): ThinkingLevel {
     const userMsgs = messages.filter((m) => m.role === 'user' && !m.isUI)
     if (userMsgs.length === 0) return 'off'
     const lastUserMsg = userMsgs[userMsgs.length - 1]
@@ -223,6 +237,8 @@ export interface AgentLoopOptions {
 }
 
 export const READ_ONLY_TOOLS = new Set([
+    // Only updates the checklist shown to the user, so it needs no snapshot and works in /plan
+    'update_plan',
     'read_file',
     'read',
     'ls',
@@ -258,21 +274,32 @@ export async function* runAgentLoop(
                 displayText: userInput.displayText,
             })
         }
-        await agent.saveContext()
+        // Saves are serialized inside the agent, so this one does not need to block the request
+        agent.saveContext().catch(() => {
+            // Intentionally swallowed: the next save in the turn writes the same messages
+        })
 
+        agent.pendingSnapshot = undefined
         if (!isReadOnly && agent.workspaceDir) {
-            try {
-                const { getSnapshotManager } = await import('@december/tools')
-                const snapshotManager = getSnapshotManager(agent.workspaceDir)
-                const turnIndex = agent.messages.filter((m) => m.role === 'user' && !m.isUI).length
-                const promptText = typeof userInput === 'string' ? userInput : userInput.content
-                await snapshotManager.createSnapshot({
-                    turnIndex,
-                    prompt: promptText,
-                })
-            } catch {
-                // Intentionally swallowed: snapshot failure should not disrupt agent loop
-            }
+            const workspaceDir = agent.workspaceDir
+            const turnIndex = agent.messages.filter((m) => m.role === 'user' && !m.isUI).length
+            const promptText = typeof userInput === 'string' ? userInput : userInput.content
+            const userMessage = agent.messages[agent.messages.length - 1]
+            // The snapshot runs while the model request starts. The model cannot change files
+            // before its first tool call, and tools that can change files wait for it.
+            agent.pendingSnapshot = (async () => {
+                try {
+                    const { getSnapshotManager } = await import('@december/tools')
+                    await getSnapshotManager(workspaceDir).createSnapshot({
+                        turnIndex,
+                        sessionId: agent.sessionId,
+                        messageId: userMessage?.id,
+                        prompt: promptText,
+                    })
+                } catch {
+                    // Intentionally swallowed: snapshot failure should not disrupt agent loop
+                }
+            })()
         }
     }
     ;(async () => {
@@ -328,6 +355,8 @@ export async function* runAgentLoop(
             eventQueue.push({ type: 'AgentEnd' })
         } finally {
             agent.activeAbortController = undefined
+            // The turn ends after its snapshot is recorded, so /rewind always sees it
+            await agent.pendingSnapshot
             if (agent.tracer) {
                 // Detached non-blocking flush in background to ensure zero stream termination latency
                 agent.tracer.flush().catch(() => {
@@ -374,6 +403,9 @@ async function runInnerLoop(
 ) {
     let isDone = false
     let turnCount = 0
+    // One thinking level for every model call of this user turn: a level change between
+    // calls in the tool loop invalidates the provider's prompt cache
+    const turnThinkingLevel = getAdaptiveThinkingLevel(agent.messages, agent.thinkingLevel)
 
     while (!isDone && turnCount < 100 && !signal.aborted) {
         turnCount++
@@ -398,12 +430,7 @@ async function runInnerLoop(
             }
         }
 
-        const modelName = (agent.modelOptions as any)?.model
-        const modelSupportsThinking = modelName ? supportsModelThinking(modelName) : true
-        const effectiveThinkingLevel =
-            modelSupportsThinking && agent.thinkingLevel !== 'off'
-                ? getAdaptiveThinkingLevel(agent.messages, agent.thinkingLevel)
-                : 'off'
+        const effectiveThinkingLevel = resolveThinkingLevel(agent, turnThinkingLevel)
         const initialStatus =
             effectiveThinkingLevel !== 'off' && effectiveThinkingLevel !== 'fast'
                 ? 'Thinking...'
@@ -413,7 +440,10 @@ async function runInnerLoop(
 
         // stream assistant response
         const { assistantMessage, toolCalls, thinking, thoughtSignature, error } =
-            await streamAssistantResponse(agent, eventQueue, signal, turnCount, options)
+            await streamAssistantResponse(agent, eventQueue, signal, turnCount, {
+                ...options,
+                turnThinkingLevel,
+            })
 
         if (error || signal.aborted) {
             break
@@ -427,6 +457,15 @@ async function runInnerLoop(
                 thoughtSignature,
             })
             isDone = true
+            if (agent.hooks?.beforeStop && !signal.aborted) {
+                const stopRes = (await agent.hooks.beforeStop()) as
+                    | { continue?: boolean; message?: string }
+                    | undefined
+                if (stopRes?.continue && stopRes.message) {
+                    agent.addMessage({ role: 'user', content: stopRes.message })
+                    isDone = false
+                }
+            }
         } else {
             agent.addMessage({
                 role: 'assistant',
@@ -533,7 +572,7 @@ async function streamAssistantResponse(
     eventQueue: AsyncQueue<AgentEvent>,
     signal: AbortSignal,
     turnCount: number = 1,
-    options?: { readOnly?: boolean }
+    options?: { readOnly?: boolean; turnThinkingLevel?: ThinkingLevel }
 ): Promise<{
     assistantMessage: string
     toolCalls: ToolCall[]
@@ -548,7 +587,6 @@ async function streamAssistantResponse(
     let lastUsage:
         | { promptTokens?: number; completionTokens?: number; totalTokens?: number }
         | undefined = undefined
-    let loggedTools: any[] = []
     let loggedMessages: any[] = []
     let loggedModel = agent.modelOptions?.model
     let attemptCount = 0
@@ -582,6 +620,8 @@ async function streamAssistantResponse(
                     eventQueue.push({
                         type: 'ContextCompacted',
                         summary: compactionResult.summary || '',
+                        tokensBefore: compactionResult.tokensBefore,
+                        tokensAfter: compactionResult.tokensAfter,
                     })
                 }
                 // In read-only mode, restrict to read-only tools. Otherwise provide all tools.
@@ -626,19 +666,17 @@ async function streamAssistantResponse(
                     }
                 }
 
-                const modelName = (agent.modelOptions as any)?.model
-                const modelSupportsThinking = modelName ? supportsModelThinking(modelName) : true
-                const effectiveThinkingLevel =
-                    modelSupportsThinking && agent.thinkingLevel !== 'off'
-                        ? getAdaptiveThinkingLevel(agent.messages, agent.thinkingLevel)
-                        : 'off'
+                const effectiveThinkingLevel = resolveThinkingLevel(
+                    agent,
+                    options?.turnThinkingLevel ??
+                        getAdaptiveThinkingLevel(agent.messages, agent.thinkingLevel)
+                )
 
                 const providerModelOptions = {
                     ...agent.modelOptions,
                     thinkingLevel: effectiveThinkingLevel,
                 }
 
-                loggedTools = activeTools
                 loggedMessages = dialogueMessages
                 loggedModel = (providerModelOptions as any).model || agent.modelOptions?.model
 
@@ -744,6 +782,7 @@ async function streamAssistantResponse(
                             completionTokens: chunk.completionTokens,
                             cacheCreationInputTokens: chunk.cacheCreationInputTokens,
                             cacheReadInputTokens: chunk.cacheReadInputTokens,
+                            promptTokensExcludeCache: chunk.promptTokensExcludeCache,
                             model: loggedModel,
                         })
                     }
@@ -831,6 +870,12 @@ async function streamAssistantResponse(
                             type: 'AgentStatus',
                             message: `${providerName} connection timed out or closed early. Retrying once... (attempt 1/2)\n`,
                         })
+                        eventQueue.push({
+                            type: 'AgentRetry',
+                            attempt: 1,
+                            maxAttempts: 2,
+                            reason: `${providerName} connection dropped`,
+                        })
                         return
                     }
 
@@ -845,6 +890,13 @@ async function streamAssistantResponse(
                         eventQueue.push({
                             type: 'AgentStatus',
                             message: `${providerName} ${hitType} hit. Retrying in ${delaySeconds}s... (attempt ${error.attemptNumber}/${maxAttempts})\n`,
+                        })
+                        eventQueue.push({
+                            type: 'AgentRetry',
+                            attempt: error.attemptNumber,
+                            maxAttempts,
+                            delayMs: delaySeconds * 1000,
+                            reason: `${providerName} ${hitType}`,
                         })
                     } else {
                         const errStr = formatError(error)
@@ -880,37 +932,21 @@ async function streamAssistantResponse(
         }
 
         const durationMs = Date.now() - startTime
-        const logEntry = createRequestLogEntry({
-            turn: turnCount,
-            sessionId: agent.sessionId,
-            model: loggedModel,
-            systemPrompt: agent.systemPrompt,
-            tools: loggedTools.length > 0 ? loggedTools : Array.from(agent.tools.values()),
-            messages:
-                loggedMessages.length > 0 ? loggedMessages : agent.convertToLlm(agent.messages),
-            assistantMessage,
-            thinking: thinkingText,
-            toolCalls,
-            usage: lastUsage,
-            durationMs,
-        })
-        if (!agent.disableLogging && process.env.DECEMBER_DISABLE_LOGGING !== 'true') {
-            await appendTurnLog(agent.sessionId, logEntry, agent.logsDir).catch(() => {
-                // Intentionally swallowed: Request logging must not block or crash agent loop
-            })
-        }
-
         try {
-            agent.tracer?.recordGeneration({
-                model: loggedModel,
-                messages:
-                    loggedMessages.length > 0 ? loggedMessages : agent.convertToLlm(agent.messages),
-                systemPrompt: agent.systemPrompt,
-                assistantMessage,
-                thinking: thinkingText || undefined,
-                usage: lastUsage,
-                durationMs,
-            })
+            if (isTracing(agent)) {
+                agent.tracer.recordGeneration({
+                    model: loggedModel,
+                    messages:
+                        loggedMessages.length > 0
+                            ? loggedMessages
+                            : agent.convertToLlm(agent.messages),
+                    systemPrompt: agent.systemPrompt,
+                    assistantMessage,
+                    thinking: thinkingText || undefined,
+                    usage: lastUsage,
+                    durationMs,
+                })
+            }
         } catch {
             // Intentionally swallowed: Telemetry generation recording must not disrupt agent loop
         }
@@ -923,39 +959,22 @@ async function streamAssistantResponse(
         let errorMsg = formatError(error)
 
         const durationMs = Date.now() - startTime
-        const logEntry = createRequestLogEntry({
-            turn: turnCount,
-            sessionId: agent.sessionId,
-            model: loggedModel,
-            systemPrompt: agent.systemPrompt,
-            tools: loggedTools.length > 0 ? loggedTools : Array.from(agent.tools.values()),
-            messages:
-                loggedMessages.length > 0 ? loggedMessages : agent.convertToLlm(agent.messages),
-            assistantMessage,
-            thinking: thinkingText,
-            toolCalls,
-            usage: lastUsage,
-            durationMs,
-            error: errorMsg,
-        })
-        if (!agent.disableLogging && process.env.DECEMBER_DISABLE_LOGGING !== 'true') {
-            await appendTurnLog(agent.sessionId, logEntry, agent.logsDir).catch(() => {
-                // Intentionally swallowed: Request logging must not block or crash agent loop
-            })
-        }
-
         try {
-            agent.tracer?.recordGeneration({
-                model: loggedModel,
-                messages:
-                    loggedMessages.length > 0 ? loggedMessages : agent.convertToLlm(agent.messages),
-                systemPrompt: agent.systemPrompt,
-                assistantMessage,
-                thinking: thinkingText || undefined,
-                usage: lastUsage,
-                durationMs,
-                error: errorMsg,
-            })
+            if (isTracing(agent)) {
+                agent.tracer.recordGeneration({
+                    model: loggedModel,
+                    messages:
+                        loggedMessages.length > 0
+                            ? loggedMessages
+                            : agent.convertToLlm(agent.messages),
+                    systemPrompt: agent.systemPrompt,
+                    assistantMessage,
+                    thinking: thinkingText || undefined,
+                    usage: lastUsage,
+                    durationMs,
+                    error: errorMsg,
+                })
+            }
         } catch {
             // Intentionally swallowed: Telemetry generation recording must not disrupt agent loop
         }
@@ -1156,8 +1175,6 @@ async function executeSingleTool(
     options?: { readOnly?: boolean }
 ): Promise<{ toolCall: ToolCall; toolResult: ToolResult; resultStr: string; errorStr?: string }> {
     const toolStartTime = Date.now()
-    eventQueue.push({ type: 'ToolCallStart', toolCall })
-
     const tool =
         agent.tools.get(toolCall.name) ||
         (toolCall.name === 'read' ? agent.tools.get('read_file') : undefined) ||
@@ -1166,6 +1183,12 @@ async function executeSingleTool(
         (toolCall.name === 'write_file' ? agent.tools.get('write') : undefined) ||
         (toolCall.name === 'edit' ? agent.tools.get('edit_file') : undefined) ||
         (toolCall.name === 'edit_file' ? agent.tools.get('edit') : undefined)
+    // MCP tools carry their server name, so the TUI does not have to guess it from the tool name
+    eventQueue.push({
+        type: 'ToolCallStart',
+        toolCall,
+        ...(tool?.mcp ? { mcpServer: tool.mcp.server, mcpTool: tool.mcp.tool } : {}),
+    })
     let resultStr = ''
     let errorStr = undefined
 
@@ -1191,7 +1214,7 @@ async function executeSingleTool(
     if (agent.operations?.ui?.requestPermission) {
         const hookRes = await agent.operations.ui.requestPermission(toolCall)
         if (hookRes?.block) {
-            errorStr = `Tool execution blocked: ${hookRes.reason || 'No reason provided'}`
+            errorStr = `Tool execution blocked: ${hookRes.reason || (hookRes as any).error || 'No reason provided'}`
             const res = { toolCallId: toolCall.id, result: '', error: errorStr }
             eventQueue.push({ type: 'ToolCallResult', result: res })
             try {
@@ -1206,6 +1229,23 @@ async function executeSingleTool(
             } catch {
                 // Intentionally swallowed: Telemetry tool execution recording must not disrupt agent loop
             }
+            return { toolCall, toolResult: res, resultStr: '', errorStr }
+        }
+    }
+
+    // Anything that can change files waits until the turn's snapshot has captured them
+    if (agent.pendingSnapshot && !READ_ONLY_TOOLS.has(toolCall.name)) {
+        await agent.pendingSnapshot
+    }
+
+    if (agent.hooks?.beforeToolCall) {
+        const beforeRes = (await agent.hooks.beforeToolCall(toolCall)) as
+            | { block?: boolean; reason?: string }
+            | undefined
+        if (beforeRes?.block) {
+            errorStr = `Tool execution blocked: ${beforeRes.reason || 'blocked by a hook'}`
+            const res = { toolCallId: toolCall.id, result: '', error: errorStr }
+            eventQueue.push({ type: 'ToolCallResult', result: res })
             return { toolCall, toolResult: res, resultStr: '', errorStr }
         }
     }

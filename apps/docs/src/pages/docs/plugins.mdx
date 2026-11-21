@@ -1,0 +1,136 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Plugins & Marketplaces
+description: Use /plugin to install, turn on or off, and remove plugins, skills, and MCP servers.
+currentSlug: 'plugins'
+---
+
+This page helps you use `/plugin` to manage everything that adds abilities to December.
+
+## Overview
+
+A plugin is a folder that adds skills, MCP servers, or rules to December. A marketplace is a list of plugins that you can install.
+
+Type `/plugin` in a session to open the plugin view. The view has three tabs:
+
+- **Discover**: Plugins from your marketplaces that you can install.
+- **Installed**: Your plugins, skills, and MCP servers in one list.
+- **Marketplaces**: The marketplaces that December reads.
+
+Press `←` and `→` or Tab to change tabs. Press `/` to search. Press Esc to close the view.
+
+## Install a plugin
+
+1. Type `/plugin` and press `←` to open **Discover**.
+2. Select a plugin and press Enter.
+3. Select where to install it:
+    - **User**: `~/.december/plugins/<name>`. The plugin works in all your projects.
+    - **Project**: `.december/plugins/<name>`. Commit the folder to share the plugin with your team.
+4. Press Enter to install.
+
+If a plugin needs an environment variable, the install screen shows its name. Set the variable before you start December.
+
+To install a plugin that is not in a marketplace, press `i` in **Discover**. Type a folder path, a git url, or `owner/repo` for a GitHub repository. A repository of skills with no `plugin.json` installs as a plugin too.
+
+MCP servers from a new plugin start at once. Restart December to give its skills to the agent.
+
+## Manage installed items
+
+The **Installed** tab shows plugins, skills, and MCP servers. It groups them by scope: **Project**, **User**, and **Built-in**.
+
+- Press Space to turn the selected item on or off.
+- Press Enter to see the details of a plugin, read the `SKILL.md` of a skill, or see the tools of an MCP server.
+- Press `f` to show all items, plugins only, skills only, or MCP servers only.
+- Press `d` to uninstall a plugin or remove an MCP server.
+
+Each row shows a status dot and, on the right, the kind of item and one fact about it, for example `plugin · 2 skills · 1 mcp` or `skill · ~60 tok`. The token count is about how many tokens the skill description adds to each turn. The dot is green when the item is on, gray when it is off, red when a server failed, and yellow when an update is available.
+
+The details screen shows where a plugin comes from, its scope, its folder, and its skills and MCP servers. Turn off the plugin to turn off all of them. Under the Skills or MCP filter, they show as separate rows with `via <plugin>`.
+
+December does not delete skill folders. To remove a skill, turn it off or delete its folder.
+
+If you turn a skill or plugin on or off, restart December to apply the change to the agent. MCP server changes apply at once.
+
+### Where December saves your choices
+
+| Item scope | File                                            |
+| :--------- | :---------------------------------------------- |
+| Project    | `.december/settings.json`                       |
+| User       | `~/.december/config.json`                       |
+| MCP server | The file that has the server, with `"disabled"` |
+
+A project choice applies to that project only.
+
+## Update a plugin
+
+If a marketplace has a newer version of a plugin, the plugin row shows **update available**.
+
+1. Select the plugin in **Installed** and press Enter.
+2. Select **Update** and press Enter.
+
+December gets the plugin again from its marketplace or source. If the update fails, December keeps the old version.
+
+## Marketplaces
+
+December has one built-in marketplace, `december-official`. It lists MCP servers for GitHub, Playwright, Postgres, SQLite, Slack, and more.
+
+To add a marketplace:
+
+1. Type `/plugin` and open **Marketplaces**.
+2. Press `a`.
+3. Type `owner/repo`, a git url, or a local folder path, and press Enter.
+
+December copies a git marketplace to `~/.december/marketplaces/<name>`. December reads a local folder where it is.
+
+On the **Marketplaces** tab:
+
+- Press Enter to see the plugins of a marketplace in **Discover**.
+- Press `u` to get the latest version of a marketplace.
+- Press `d` to remove a marketplace. Plugins that you installed from it stay installed.
+
+### Make a marketplace
+
+A marketplace is a folder or git repository with a `marketplace.json` file at its root:
+
+```json
+{
+    "name": "acme",
+    "owner": { "name": "Acme" },
+    "plugins": [
+        {
+            "name": "deploy",
+            "source": "./plugins/deploy",
+            "description": "Ship to staging and production",
+            "version": "1.0.0",
+            "category": "Development"
+        },
+        {
+            "name": "linear",
+            "source": "github:acme/linear-plugin",
+            "category": "Project Management"
+        }
+    ]
+}
+```
+
+The `source` of a plugin can be a path in the marketplace, `github:owner/repo`, or a git url. Names can use letters, numbers, `.`, `_`, and `-`.
+
+December also reads `.claude-plugin/marketplace.json`, so Claude Code marketplaces work too.
+
+## Make a plugin
+
+A plugin is a folder with this layout:
+
+```text
+my-plugin/
+  plugin.json           name, description, version
+  skills/<name>/SKILL.md
+  mcp.json              { "mcpServers": { ... } }
+  rules/*.md
+```
+
+All parts other than `plugin.json` are optional. In `mcp.json`, use `${DECEMBER_PLUGIN_ROOT}` for the path of the installed plugin folder.
+
+December also reads `.claude-plugin/plugin.json` and `.mcp.json`. Skills and MCP servers from Claude Code plugins work in December. December does not use their commands, agents, or hooks.
+
+To see how to write a skill, read [Skills & Playbooks](/docs/skills). To see the MCP server fields, read [Model Context Protocol (MCP)](/docs/mcp).

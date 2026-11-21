@@ -13,7 +13,10 @@ export type CommandContext = {
 
 export type Command = {
     name: string
+    /** Plain English, 45 characters at most, with no usage text */
     description: string
+    /** Argument hint shown after the name in the command menu, e.g. "<query>" */
+    args?: string
     value: string
     action?: (ctx: CommandContext) => void | Promise<void>
 }

@@ -115,4 +115,42 @@ describe('BashTool (Unit)', () => {
             'Error: The "command" argument is required and must be a non-empty string.'
         )
     })
+
+    test('run_in_background starts a task and returns at once', async () => {
+        const context = createMockContext()
+        context.operations.bash.exec = mock(async () => ({
+            exitCode: null,
+            output: '',
+            taskId: 'task-7',
+        }))
+
+        const result = await BashTool.execute(
+            { command: 'npm run dev', run_in_background: true },
+            context
+        )
+        expect(context.operations.bash.exec).toHaveBeenCalledWith(
+            'npm run dev',
+            '/mock/cwd',
+            expect.objectContaining({ runInBackground: true })
+        )
+        expect(result).toContain('Started in background as task-7')
+    })
+
+    test('a command moved to the background on its own keeps the auto-backgrounded note', async () => {
+        const context = createMockContext()
+        context.operations.bash.exec = mock(async () => ({
+            exitCode: null,
+            output: 'compiling',
+            taskId: 'task-8',
+        }))
+
+        const result = await BashTool.execute({ command: 'npm run build' }, context)
+        expect(context.operations.bash.exec).toHaveBeenCalledWith(
+            'npm run build',
+            '/mock/cwd',
+            expect.objectContaining({ runInBackground: false })
+        )
+        expect(result).toContain('[Auto-Backgrounded] Task ID: task-8')
+        expect(result).toContain('compiling')
+    })
 })

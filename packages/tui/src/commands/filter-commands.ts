@@ -15,17 +15,15 @@ export function formatSingleLineDescription(desc: string, maxLen: number = 70): 
     if (sentenceEnd > 15 && sentenceEnd <= maxLen) {
         return clean.slice(0, sentenceEnd + 1)
     }
-    return clean.slice(0, maxLen - 1).trimEnd() + '...'
+    return clean.slice(0, maxLen - 1).trimEnd() + '…'
 }
 
 export function getAllAvailableCommands(workspaceDir: string = process.cwd()): Command[] {
     const skillCommands: Command[] = []
-    const discoveredSkillNames = new Set<string>()
     try {
         const engine = new SkillDiscoveryEngine({ workspaceDir })
         const skills = engine.discoverAllSkills()
         for (const s of skills) {
-            discoveredSkillNames.add(s.name.toLowerCase())
             const desc = formatSingleLineDescription(s.metadata.description)
             skillCommands.push({
                 name: `skill:${s.name}`,
@@ -37,10 +35,9 @@ export function getAllAvailableCommands(workspaceDir: string = process.cwd()): C
         // Intentionally swallowed: fallback when skills cannot be discovered
     }
 
-    // Core commands come first, excluding any that collide with discovered skills
-    const coreCommands = COMMANDS.filter(
-        (c) => !discoveredSkillNames.has(c.name.toLowerCase()) && !c.name.startsWith('skill:')
-    )
+    // Built-in commands always show. A skill with the same name (for example an
+    // Antigravity "plugin" skill) is still listed as /skill:<name>, so both stay reachable.
+    const coreCommands = COMMANDS.filter((c) => !c.name.startsWith('skill:'))
 
     // Sort skills alphabetically by skill name
     skillCommands.sort((a, b) => a.name.localeCompare(b.name))

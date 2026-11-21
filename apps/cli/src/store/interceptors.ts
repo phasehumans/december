@@ -12,9 +12,18 @@ import {
 } from '@december/shared'
 import { generateUnifiedDiff } from '@december/tools'
 
-import { loadConfig, saveConfig } from '../config'
+import { loadConfig } from '../config'
+import {
+    addPermissionRule,
+    cleanupLegacyAllowRules,
+    findAllowRule,
+    findDenyRule,
+    getPermissionTarget,
+} from '../utils/permission-rules'
 
 export const globalSessionWhitelist = new SessionWhitelistStore()
+
+let legacyRulesCleaned = false
 
 async function computeToolCallDiff(toolCall: any): Promise<string | undefined> {
     if (toolCall.input?.diff) {
@@ -77,6 +86,15 @@ async function computeToolCallDiff(toolCall: any): Promise<string | undefined> {
 export function setupAgentInterceptors(agent: Agent, storeStateOrApp: any) {
     if (!agent.operations.ui) agent.operations.ui = {} as any
 
+    if (!legacyRulesCleaned) {
+        legacyRulesCleaned = true
+        try {
+            cleanupLegacyAllowRules(process.cwd())
+        } catch {
+            // Intentionally swallowed: cleanup is best-effort, matching ignores the bad rules anyway
+        }
+    }
+
     if (storeStateOrApp && typeof storeStateOrApp.askQuestion === 'function') {
         agent.operations.ui.askQuestion = (questions) => {
             return storeStateOrApp.askQuestion(questions)
@@ -136,7 +154,16 @@ export function setupAgentInterceptors(agent: Agent, storeStateOrApp: any) {
             }
         }
 
-        // 2. Classify operation
+        // 2. Deny rules apply first, in every permission mode and for every tier
+        const denyRule = findDenyRule(toolCall, process.cwd())
+        if (denyRule) {
+            return {
+                block: true,
+                error: `Blocked by deny rule "${denyRule}" (manage rules with /permissions)`,
+            }
+        }
+
+        // 3. Classify operation
         const classification = classifyOperation(toolCall)
 
         // Tier 1 (Safe Read & Inspect): Safe operations bypass UI prompts entirely, even in always-ask mode (unless accessing secret files)
@@ -144,42 +171,17 @@ export function setupAgentInterceptors(agent: Agent, storeStateOrApp: any) {
             return { block: false }
         }
 
-        // Build command string for whitelist matching
-        let cmdString = toolCall.name
-        if (toolCall.name === 'run_command' || toolCall.name === 'bash') {
-            cmdString = (toolCall.input?.CommandLine || toolCall.input?.command || toolCall.name)
-                .toString()
-                .trim()
-        } else if (
-            toolCall.input?.TargetFile ||
-            toolCall.input?.path ||
-            toolCall.input?.filePath ||
-            toolCall.input?.AbsolutePath
-        ) {
-            const target =
-                toolCall.input?.TargetFile ||
-                toolCall.input?.path ||
-                toolCall.input?.filePath ||
-                toolCall.input?.AbsolutePath
-            cmdString = `${toolCall.name}: ${target}`
-        }
+        // Command line, `<tool>: <path>`, or tool name, for allow-rule matching
+        const cmdString = getPermissionTarget(toolCall)
 
-        // Modifying operations check always-proceed or session whitelist
+        // Modifying operations check always-proceed, the session whitelist, and allow rules
         if (classification.tier === 'modifying' && !toolCall.isSecretAccess) {
             if ((config.toolPermission ?? 'always-proceed') === 'always-proceed')
                 return { block: false }
 
             if (
                 globalSessionWhitelist.isApproved(cmdString) ||
-                globalSessionWhitelist.isApproved(toolCall.name) ||
-                config.approvedTools?.includes(cmdString) ||
-                config.approvedTools?.includes(toolCall.name) ||
-                config.approvedTools?.some((pattern) => {
-                    if (pattern.endsWith('*') && cmdString.startsWith(pattern.slice(0, -1))) {
-                        return true
-                    }
-                    return false
-                })
+                findAllowRule(toolCall, process.cwd())
             ) {
                 return { block: false }
             }
@@ -221,16 +223,15 @@ export function setupAgentInterceptors(agent: Agent, storeStateOrApp: any) {
         }
 
         if (decision === 'always') {
+            // Save only the exact command or `<tool>: <path>`, for this project. Saving the
+            // bare tool name would approve every later call to the tool.
             if (!isDestructiveCommand(cmdString)) {
                 globalSessionWhitelist.add(cmdString)
-                if (!config.approvedTools) config.approvedTools = []
-                if (!config.approvedTools.includes(cmdString)) {
-                    config.approvedTools.push(cmdString)
+                try {
+                    addPermissionRule('allow', 'project', cmdString, process.cwd())
+                } catch {
+                    // Intentionally swallowed: the session whitelist still covers this session
                 }
-                if (!config.approvedTools.includes(toolCall.name)) {
-                    config.approvedTools.push(toolCall.name)
-                }
-                await saveConfig(config)
             }
             return { block: false }
         }

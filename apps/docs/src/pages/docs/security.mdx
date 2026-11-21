@@ -15,7 +15,7 @@ This page tells you how December protects your code, your files, and your API ke
 - Project folder only: File tools work only inside your project folder. To let December open files outside it, turn on Non-Workspace Access in `/settings`.
 - PathGuard: December blocks system folders such as `/etc` and `/usr`, and private key files such as `~/.ssh` and `.pem` files. December asks you before it reads a secrets file such as `.env`.
 - Approval for destructive commands: December asks you before it runs a command such as `rm -rf`, `git reset --hard`, or `git push --force`.
-- Stop and undo: Press `Ctrl + C` to stop December. Type `/undo` to revert the last turn.
+- Stop and undo: Press `Ctrl + C` to stop December. Type `/rewind` to revert to an earlier turn.
 
 If you run December with `-y` or `--print`, December approves tool calls without asking. Use these flags only in folders you trust.
 

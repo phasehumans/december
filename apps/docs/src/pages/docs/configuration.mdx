@@ -28,7 +28,7 @@ Example `AGENTS.md`:
 - Use the format `feat(scope): description`.
 ```
 
-December also reads `CLAUDE.md` and other rule files. For the full list, see [Workspace Memory & Rules](/docs/memory).
+If a folder has no `AGENTS.md`, December reads `CLAUDE.md`. See [Project Rules & /learn](/docs/memory).
 
 ## 2. Global settings (~/.december/config.json)
 
@@ -79,12 +79,10 @@ To change settings for one project only, make `.december/settings.json` in the p
 
 December reads these environment variables:
 
-| Variable                   | Description                                                        |
-| :------------------------- | :----------------------------------------------------------------- |
-| `DECEMBER_CONFIG_DIR`      | Use a different folder for `config.json` instead of `~/.december`  |
-| `DECEMBER_LOGS_DIR`        | Use a different folder for request logs                            |
-| `DECEMBER_DISABLE_LOGGING` | Set to `true` to turn off request logs                             |
-| `CLAUDE_CODE_OAUTH_TOKEN`  | Use your Claude plan, if you did not connect a model with `/login` |
+| Variable                  | Description                                                        |
+| :------------------------ | :----------------------------------------------------------------- |
+| `DECEMBER_CONFIG_DIR`     | Use a different folder for `config.json` instead of `~/.december`  |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Use your Claude plan, if you did not connect a model with `/login` |
 
 To use your own keys, run `/login` or `december key`. December saves the key in `config.json`:
 

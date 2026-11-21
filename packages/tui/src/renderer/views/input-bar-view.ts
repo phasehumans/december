@@ -14,6 +14,7 @@ export interface InputBarViewProps {
     isStreaming?: boolean
     activeModel?: string
     modelLabel?: string
+    isDeepEffort?: boolean
     isAuthenticated?: boolean
     authMethod?: string
     contextTokens?: number
@@ -26,6 +27,10 @@ export interface InputBarViewProps {
     showExitConfirm?: boolean
     toast?: { message: string; variant?: string } | null
     pendingModelFallback?: { fallbackModel: string; failedModel: string }
+    /** One-line notice shown in the empty prompt, e.g. after an update is installed */
+    restartNotice?: string
+    /** Background work such as /update, shown as plain text in the status row */
+    backgroundStatus?: string
 }
 
 export function formatTokenCount(n: number): string {
@@ -58,7 +63,7 @@ export function tokenizeInputLine(
         const cmdText = spaceIdx === -1 ? lineText : lineText.slice(0, spaceIdx)
         tokens.push({
             text: cmdText,
-            style: { fg: THEME.colors.brand, bold: true },
+            style: { fg: THEME.colors.brand },
         })
         lastIdx = cmdText.length
     }
@@ -76,7 +81,7 @@ export function tokenizeInputLine(
         if (match[1]) {
             tokens.push({
                 text: match[1],
-                style: { fg: THEME.colors.brand, bold: true },
+                style: { fg: THEME.colors.brand },
             })
         } else if (match[2]) {
             tokens.push({
@@ -263,7 +268,7 @@ export const InputBarView = {
                     drawText(buffer, tagStr, {
                         x: x + paddingLeft + promptGlyphLen,
                         y: currentY,
-                        style: { fg: THEME.colors.brand, bold: true },
+                        style: { fg: THEME.colors.brand },
                     })
                 }
             } else {
@@ -282,12 +287,19 @@ export const InputBarView = {
                         x: textOffsetX,
                         y: currentY,
                         maxWidth: maxInputWidth,
-                        style: { fg: THEME.colors.warning, bold: true },
+                        style: { fg: THEME.colors.warning },
+                    })
+                } else if (props.restartNotice) {
+                    drawText(buffer, props.restartNotice, {
+                        x: textOffsetX,
+                        y: currentY,
+                        maxWidth: maxInputWidth,
+                        style: { fg: THEME.colors.success },
                     })
                 } else {
                     const placeholder =
                         props.placeholder ??
-                        'Ask December to build features, fix bugs, or work on your code...'
+                        'Ask December to build features, fix bugs, or work on your code…'
                     drawText(buffer, placeholder, {
                         x: textOffsetX,
                         y: currentY,
@@ -348,6 +360,17 @@ export const InputBarView = {
             } else {
                 modelText = props.modelLabel || props.activeModel || 'Gemini 3.7 Flash'
             }
+            // Effort suffix: only shown for Deep. Kept visible on narrow
+            // terminals by shortening the model name first.
+            const effortText = props.isAuthenticated !== false && props.isDeepEffort ? ' deep' : ''
+            const rightReserve = props.contextTokens !== undefined ? 24 : 2
+            const maxModelWidth = Math.max(
+                8,
+                width - paddingLeft - effortText.length - rightReserve
+            )
+            if (modelText.length > maxModelWidth) {
+                modelText = `${modelText.slice(0, maxModelWidth - 1)}…`
+            }
             drawText(buffer, modelText, {
                 x: leftX,
                 y: statusY,
@@ -355,20 +378,27 @@ export const InputBarView = {
             })
             leftX += modelText.length
 
+            if (effortText) {
+                drawText(buffer, effortText, {
+                    x: leftX,
+                    y: statusY,
+                    style: { fg: THEME.colors.brand },
+                })
+                leftX += effortText.length
+            }
+
             // Tasks indicator
             const totalTasks = props.tasksCount ?? 0
             const runningTasks = props.runningTasksCount ?? 0
             if (totalTasks > 0) {
                 const taskText =
                     runningTasks > 0
-                        ? ` · ${runningTasks} running (Ctrl+T)`
-                        : ` · ${totalTasks} tasks (Ctrl+T)`
+                        ? ` · ${runningTasks} running`
+                        : ` · ${totalTasks} task${totalTasks === 1 ? '' : 's'}`
                 drawText(buffer, taskText, {
                     x: leftX,
                     y: statusY,
-                    style: {
-                        fg: runningTasks > 0 ? THEME.colors.warning : THEME.colors.muted,
-                    },
+                    style: { fg: THEME.colors.dim },
                 })
                 leftX += taskText.length
             }
@@ -380,7 +410,7 @@ export const InputBarView = {
                 drawText(buffer, mcpText, {
                     x: leftX,
                     y: statusY,
-                    style: { fg: THEME.colors.muted },
+                    style: { fg: THEME.colors.dim },
                 })
                 leftX += mcpText.length
             }
@@ -392,9 +422,21 @@ export const InputBarView = {
                 drawText(buffer, queuedText, {
                     x: leftX,
                     y: statusY,
-                    style: { fg: THEME.colors.brand },
+                    style: { fg: THEME.colors.dim },
                 })
                 leftX += queuedText.length
+            }
+
+            // Background work (L17): plain text, no loader glyph
+            if (props.backgroundStatus) {
+                const bgText = ` · ${props.backgroundStatus}`
+                drawText(buffer, bgText, {
+                    x: leftX,
+                    y: statusY,
+                    maxWidth: Math.max(10, width - leftX - 25),
+                    style: { fg: THEME.colors.dim },
+                })
+                leftX += Math.min(bgText.length, Math.max(10, width - leftX - 25))
             }
 
             // Toast message if active
@@ -418,18 +460,17 @@ export const InputBarView = {
             if (props.contextTokens !== undefined) {
                 const tokensFormatted = formatTokenCount(props.contextTokens)
                 let tokenLabel: string
-                let tokenFg: string = THEME.colors.muted
-                let tokenBold = false
+                let tokenFg: string = THEME.colors.dim
                 if (props.maxContextTokens && props.maxContextTokens > 0) {
                     const maxFormatted = formatTokenCount(props.maxContextTokens)
                     const pct = Math.min(
                         100,
                         Math.round((props.contextTokens / props.maxContextTokens) * 100)
                     )
-                    tokenLabel = `${tokensFormatted} / ${maxFormatted} (${pct}%)`
+                    // Used / max, like before, without the percentage (S26)
+                    tokenLabel = `${tokensFormatted} / ${maxFormatted}`
                     if (pct >= 90) {
                         tokenFg = THEME.colors.error
-                        tokenBold = true
                     } else if (pct >= 70) {
                         tokenFg = THEME.colors.warning
                     }
@@ -441,7 +482,7 @@ export const InputBarView = {
                 drawText(buffer, tokenLabel, {
                     x: rightX,
                     y: statusY,
-                    style: { fg: tokenFg, bold: tokenBold },
+                    style: { fg: tokenFg },
                 })
             }
         }

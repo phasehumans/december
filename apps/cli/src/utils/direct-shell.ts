@@ -52,6 +52,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
         const promoteToBackground = () => {
             if (closed || isBackground) return
             isBackground = true
+            unregisterForeground()
             if (timeoutTimer) clearTimeout(timeoutTimer)
             if (serverReadyTimer) clearTimeout(serverReadyTimer)
             const task = taskManager.addTask(command, child)
@@ -69,6 +70,9 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
                 taskId: task.id,
             })
         }
+
+        // Ctrl+B in the TUI moves this command to the background
+        const unregisterForeground = taskManager.registerForeground(promoteToBackground)
 
         const checkServerReady = (str: string) => {
             if (!isBackground && !serverReadyTimer && SERVER_READY_REGEX.test(str)) {
@@ -102,6 +106,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
         ;(child as any).on('error', (err: any) => {
             if (closed) return
             closed = true
+            unregisterForeground()
             const errStr = `\nFailed to start process: ${err?.message || err}\n`
             output += errStr
             if (onData) onData(errStr)
@@ -118,6 +123,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
         const finish = (code: any) => {
             if (closed) return
             closed = true
+            unregisterForeground()
             if (timeoutTimer) clearTimeout(timeoutTimer)
             if (serverReadyTimer) clearTimeout(serverReadyTimer)
             const finalCode = isAborted ? 130 : (code ?? 0)
@@ -150,7 +156,7 @@ export function startDirectCommand(command: string, options: DirectShellOptions 
         if (timeoutTimer) clearTimeout(timeoutTimer)
         if (serverReadyTimer) clearTimeout(serverReadyTimer)
         if (isBackground && bgTaskId) {
-            taskManager.killTask(bgTaskId)
+            taskManager.killTask(bgTaskId, 'user')
         } else {
             try {
                 if (child.pid) {

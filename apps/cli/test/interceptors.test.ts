@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 import * as configModule from '../src/config'
 import { setupAgentInterceptors, globalSessionWhitelist } from '../src/store/interceptors'
+import * as permissionRules from '../src/utils/permission-rules'
 
 describe('setupAgentInterceptors', () => {
     let mockAgent: any
@@ -11,6 +12,13 @@ describe('setupAgentInterceptors', () => {
         vi.restoreAllMocks()
         vi.spyOn(configModule, 'loadConfig').mockResolvedValue({} as any)
         vi.spyOn(configModule, 'saveConfig').mockResolvedValue(undefined as any)
+        // rules live in files; keep tests off the disk
+        vi.spyOn(permissionRules, 'readPermissionRules').mockReturnValue({
+            allow: { global: [], project: [] },
+            deny: { global: [], project: [] },
+        })
+        vi.spyOn(permissionRules, 'addPermissionRule').mockImplementation(() => {})
+        vi.spyOn(permissionRules, 'cleanupLegacyAllowRules').mockReturnValue([])
         globalSessionWhitelist.clear()
         mockAgent = {
             operations: { ui: {} },
@@ -150,14 +158,58 @@ describe('setupAgentInterceptors', () => {
             resolve({ block: false, allowAlways: true })
             await expect(p).resolves.toEqual({ block: false })
 
-            expect(configModule.saveConfig).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    approvedTools: expect.arrayContaining([
-                        'write_to_file',
-                        'write_to_file: new.ts',
-                    ]),
-                })
+            // only the exact `<tool>: <path>` is saved, for this project; never the bare tool name
+            expect(permissionRules.addPermissionRule).toHaveBeenCalledTimes(1)
+            expect(permissionRules.addPermissionRule).toHaveBeenCalledWith(
+                'allow',
+                'project',
+                'write_to_file: new.ts',
+                process.cwd()
             )
+        })
+
+        it('blocks a call that matches a deny rule, even in always-proceed mode', async () => {
+            ;(configModule.loadConfig as any).mockResolvedValue({
+                toolPermission: 'always-proceed',
+            })
+            ;(permissionRules.readPermissionRules as any).mockReturnValue({
+                allow: { global: [], project: [] },
+                deny: { global: ['git push*'], project: [] },
+            })
+            const result = await mockAgent.operations.ui.requestPermission({
+                name: 'bash',
+                input: { command: 'git push origin main' },
+            })
+            expect(result.block).toBe(true)
+            expect(result.error).toContain('git push*')
+        })
+
+        it('approves an always-ask call that matches a saved allow rule', async () => {
+            ;(configModule.loadConfig as any).mockResolvedValue({ toolPermission: 'always-ask' })
+            ;(permissionRules.readPermissionRules as any).mockReturnValue({
+                allow: { global: [], project: ['bun test*'] },
+                deny: { global: [], project: [] },
+            })
+            const result = await mockAgent.operations.ui.requestPermission({
+                name: 'bash',
+                input: { command: 'bun test packages/agent' },
+            })
+            expect(result).toEqual({ block: false })
+            expect(mockStoreState.setPendingToolCall).not.toHaveBeenCalled()
+        })
+
+        it('does not treat a bare "bash" allow rule as approval for every command', async () => {
+            ;(configModule.loadConfig as any).mockResolvedValue({ toolPermission: 'always-ask' })
+            ;(permissionRules.readPermissionRules as any).mockReturnValue({
+                allow: { global: ['bash'], project: [] },
+                deny: { global: [], project: [] },
+            })
+            mockAgent.operations.ui.requestPermission({
+                name: 'bash',
+                input: { command: 'npm publish' },
+            })
+            await new Promise((r) => setTimeout(r, 10))
+            expect(mockStoreState.setPendingToolCall).toHaveBeenCalled()
         })
 
         it('returns block=true when user denies permission', async () => {

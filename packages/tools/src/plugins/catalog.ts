@@ -1,107 +1,161 @@
-import type { DiscoverablePlugin } from './types'
+import type { MarketplaceManifest } from './types'
 
-export const DISCOVERABLE_PLUGINS_CATALOG: DiscoverablePlugin[] = [
-    {
-        id: 'gmail',
-        name: 'gmail',
-        description: 'Search, read, draft, and send emails in Gmail.',
-        category: 'Productivity',
-        author: 'December Team',
-        version: '1.0.0',
-        defaultSkills: ['gmail'],
-        defaultMcpServers: ['gmail-cli'],
-    },
-    {
-        id: 'swarm',
-        name: 'swarm',
-        description: 'Unlock the power of agent swarms working collaboratively.',
-        category: 'Multi-Agent',
-        author: 'December Team',
-        version: '1.0.0',
-        defaultSkills: ['swarm', 'swarm_monitor'],
-    },
-    {
-        id: 'github',
-        name: 'github',
-        description: 'Pull requests, code review, issues, and git repository inspection.',
-        category: 'Development',
-        author: 'GitHub',
-        version: '1.2.0',
-        defaultSkills: ['pr', 'code-review'],
-        defaultMcpServers: ['@modelcontextprotocol/server-github'],
-    },
-    {
-        id: 'postgres',
-        name: 'postgres',
-        description: 'PostgreSQL database query execution, schema inspection, and explain plans.',
-        category: 'Database',
-        author: 'PostgreSQL Community',
-        version: '0.9.0',
-        defaultSkills: ['db-migrate', 'schema'],
-        defaultMcpServers: ['@modelcontextprotocol/server-postgres'],
-    },
-    {
-        id: 'sqlite',
-        name: 'sqlite',
-        description: 'Inspect and query local SQLite database files with zero setup.',
-        category: 'Database',
-        author: 'December Community',
-        version: '1.0.0',
-        defaultMcpServers: ['@modelcontextprotocol/server-sqlite'],
-    },
-    {
-        id: 'brave-search',
-        name: 'brave-search',
-        description: 'Real-time internet web search and content retrieval.',
-        category: 'Search & Research',
-        author: 'Brave Software',
-        version: '1.0.1',
-        defaultSkills: ['research'],
-        defaultMcpServers: ['@modelcontextprotocol/server-brave-search'],
-    },
-    {
-        id: 'slack',
-        name: 'slack',
-        description: 'Team messaging, channel monitoring, and notifications in Slack.',
-        category: 'Communication',
-        author: 'Slack Community',
-        version: '0.8.0',
-        defaultMcpServers: ['@modelcontextprotocol/server-slack'],
-    },
-    {
-        id: 'jira',
-        name: 'jira',
-        description: 'Issue tracking, sprint planning, and backlog management in Atlassian Jira.',
-        category: 'Project Management',
-        author: 'Atlassian Community',
-        version: '1.1.0',
-        defaultMcpServers: ['jira-mcp-server'],
-    },
-    {
-        id: 'linear',
-        name: 'linear',
-        description: 'Streamlined issue tracking, cycles, and roadmaps in Linear.',
-        category: 'Project Management',
-        author: 'Linear Community',
-        version: '1.0.0',
-        defaultMcpServers: ['linear-mcp-server'],
-    },
-    {
-        id: 'puppeteer',
-        name: 'puppeteer',
-        description: 'Headless browser automation and full-page screenshot captures.',
-        category: 'Testing & Automation',
-        author: 'Google Chrome Team',
-        version: '1.0.0',
-        defaultMcpServers: ['@modelcontextprotocol/server-puppeteer'],
-    },
-    {
-        id: 'obsidian',
-        name: 'obsidian',
-        description: 'Search, create, and organize markdown notes in Obsidian vaults.',
-        category: 'Knowledge Base',
-        author: 'Obsidian Community',
-        version: '1.0.0',
-        defaultSkills: ['obsidian-vault'],
-    },
-]
+export const BUILT_IN_MARKETPLACE_NAME = 'december-official'
+
+/**
+ * The built-in marketplace. Each entry installs as a plugin folder with a
+ * plugin.json and an mcp.json, so it can be turned off or removed like any
+ * other plugin. Entries list real, published MCP servers only.
+ */
+export const BUILT_IN_MARKETPLACE: MarketplaceManifest = {
+    name: BUILT_IN_MARKETPLACE_NAME,
+    owner: 'December Team',
+    description: 'MCP servers and plugins maintained with December',
+    plugins: [
+        {
+            name: 'github',
+            description: 'Repository search, issues, pull requests, and file contents on GitHub.',
+            category: 'Development',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            env: ['GITHUB_PERSONAL_ACCESS_TOKEN'],
+            mcpServers: {
+                github: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
+            },
+        },
+        {
+            name: 'playwright',
+            description: 'Drive a real browser to test pages, fill forms, and take snapshots.',
+            category: 'Testing & Automation',
+            author: 'Microsoft',
+            version: '1.0.0',
+            mcpServers: {
+                playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
+            },
+        },
+        {
+            name: 'puppeteer',
+            description: 'Headless browser automation and full-page screenshots.',
+            category: 'Testing & Automation',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            mcpServers: {
+                puppeteer: {
+                    command: 'npx',
+                    args: ['-y', '@modelcontextprotocol/server-puppeteer'],
+                },
+            },
+        },
+        {
+            name: 'context7',
+            description: 'Current library and framework documentation, fetched on demand.',
+            category: 'Docs & Search',
+            author: 'Upstash',
+            version: '1.0.0',
+            mcpServers: {
+                context7: { command: 'npx', args: ['-y', '@upstash/context7-mcp'] },
+            },
+        },
+        {
+            name: 'brave-search',
+            description: 'Web and local search through the Brave Search API.',
+            category: 'Docs & Search',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            env: ['BRAVE_API_KEY'],
+            mcpServers: {
+                'brave-search': {
+                    command: 'npx',
+                    args: ['-y', '@modelcontextprotocol/server-brave-search'],
+                },
+            },
+        },
+        {
+            name: 'fetch',
+            description: 'Fetch web pages and convert them to markdown. Needs uv installed.',
+            category: 'Docs & Search',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            mcpServers: {
+                fetch: { command: 'uvx', args: ['mcp-server-fetch'] },
+            },
+        },
+        {
+            name: 'postgres',
+            description: 'Read-only PostgreSQL queries and schema inspection.',
+            category: 'Database',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            defaultScope: 'project',
+            mcpServers: {
+                postgres: {
+                    command: 'npx',
+                    args: [
+                        '-y',
+                        '@modelcontextprotocol/server-postgres',
+                        'postgresql://localhost/postgres',
+                    ],
+                },
+            },
+        },
+        {
+            name: 'sqlite',
+            description: 'Query and inspect a local SQLite file. Needs uv installed.',
+            category: 'Database',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            defaultScope: 'project',
+            mcpServers: {
+                sqlite: { command: 'uvx', args: ['mcp-server-sqlite', '--db-path', './app.db'] },
+            },
+        },
+        {
+            name: 'filesystem',
+            description: 'Read and write files inside the folders you allow.',
+            category: 'Files',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            defaultScope: 'project',
+            mcpServers: {
+                filesystem: {
+                    command: 'npx',
+                    args: ['-y', '@modelcontextprotocol/server-filesystem', '.'],
+                },
+            },
+        },
+        {
+            name: 'memory',
+            description: 'A local knowledge graph the agent can read and add to across sessions.',
+            category: 'Knowledge',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            mcpServers: {
+                memory: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
+            },
+        },
+        {
+            name: 'sequential-thinking',
+            description: 'Step-by-step problem solving with revisable thoughts.',
+            category: 'Knowledge',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            mcpServers: {
+                'sequential-thinking': {
+                    command: 'npx',
+                    args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+                },
+            },
+        },
+        {
+            name: 'slack',
+            description: 'Read channels, post messages, and reply to threads in Slack.',
+            category: 'Communication',
+            author: 'Model Context Protocol',
+            version: '1.0.0',
+            env: ['SLACK_BOT_TOKEN', 'SLACK_TEAM_ID'],
+            mcpServers: {
+                slack: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'] },
+            },
+        },
+    ],
+}

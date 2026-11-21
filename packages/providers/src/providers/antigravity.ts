@@ -258,6 +258,7 @@ export function antigravityProvider(
 
             let totalPromptTokens = 0
             let totalCompletionTokens = 0
+            let totalCachedTokens = 0
             let validChunksCount = 0
 
             if (!response.body) {
@@ -321,6 +322,7 @@ export function antigravityProvider(
                             totalPromptTokens = usage.promptTokenCount || totalPromptTokens
                             totalCompletionTokens =
                                 usage.candidatesTokenCount || totalCompletionTokens
+                            totalCachedTokens = usage.cachedContentTokenCount || totalCachedTokens
                         }
 
                         const candidate = resp.candidates?.[0] || chunk.candidates?.[0]
@@ -427,6 +429,7 @@ export function antigravityProvider(
                     type: 'usage',
                     promptTokens: totalPromptTokens,
                     completionTokens: totalCompletionTokens,
+                    ...(totalCachedTokens > 0 ? { cacheReadInputTokens: totalCachedTokens } : {}),
                 }
             }
         }

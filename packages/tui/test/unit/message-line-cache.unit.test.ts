@@ -1,730 +1,612 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
 import { describe, expect, it } from 'bun:test'
 
 import { MessageLineCache } from '../../src/renderer/views/message-line-cache'
 import { THEME } from '../../src/theme'
 
+import type { FormattedLine } from '../../src/renderer/views/markdown'
 import type { MessageItem } from '../../src/renderer/views/message-list-view'
+
+const textOf = (lines: FormattedLine[]) => lines.map((l) => l.map((s) => s.text).join(''))
+const joined = (lines: FormattedLine[]) => textOf(lines).join('\n')
+const tool = (
+    id: string,
+    name: string,
+    input: Record<string, unknown>,
+    extra: Partial<NonNullable<MessageItem['toolCall']>> = {}
+): MessageItem => ({
+    role: 'tool',
+    toolCall: { id, name, input, status: 'success', ...extra },
+})
 
 describe('MessageLineCache', () => {
     it('formats assistant markdown and caches the result', () => {
         const cache = new MessageLineCache()
         const messages: MessageItem[] = [
-            {
-                id: 'm1',
-                role: 'assistant',
-                content: 'Hello **world** from assistant',
-            },
+            { id: 'm1', role: 'assistant', content: 'Hello **world** from assistant' },
         ]
-
         const lines1 = cache.getLines(messages, 80)
-        expect(lines1.length).toBeGreaterThan(0)
-        expect(lines1[0]!.map((s) => s.text).join('')).toContain('Hello world from assistant')
-
-        // Second call with same reference should return cached lines
-        const lines2 = cache.getLines(messages, 80)
-        expect(lines2).toBe(lines1)
+        expect(textOf(lines1)[0]).toContain('Hello world from assistant')
+        expect(cache.getLines(messages, 80)).toBe(lines1)
     })
 
     it('recomputes when width changes', () => {
         const cache = new MessageLineCache()
         const messages: MessageItem[] = [
             {
-                id: 'm1',
                 role: 'assistant',
                 content:
                     'This is a long line that wraps differently across different terminal dimensions.',
             },
         ]
-
         const lines80 = cache.getLines(messages, 80)
         const lines40 = cache.getLines(messages, 40)
-
         expect(lines40).not.toBe(lines80)
         expect(lines40.length).toBeGreaterThan(lines80.length)
     })
 
-    it('recomputes when message content changes but keeps unchanged messages cached', () => {
+    it('reuses settled turns while the last turn streams', () => {
         const cache = new MessageLineCache()
         const messages: MessageItem[] = [
-            {
-                id: 'm1',
-                role: 'user',
-                content: 'First question',
-            },
-            {
-                id: 'm2',
-                role: 'assistant',
-                content: 'Chunk 1',
-                isStreaming: true,
-            },
+            { role: 'user', content: 'First question' },
+            { role: 'assistant', content: 'First answer' },
+            { role: 'user', content: 'Second question' },
+            { role: 'assistant', content: 'Chunk 1', isStreaming: true },
         ]
+        const first = cache.getLineSegments(messages, 80)
+        messages[3]!.content = 'Chunk 1 Chunk 2'
+        const second = cache.getLineSegments(messages, 80)
+        expect(second[0]).toBe(first[0])
+        expect(joined(second.flat())).toContain('Chunk 1 Chunk 2')
+    })
 
-        const firstResult = cache.getLines(messages, 80)
-        const m1LinesFirst = cache.getMessageLines(messages[0]!, 80)
-
-        // Simulate streaming next token into m2
-        messages[1]!.content = 'Chunk 1 Chunk 2'
-        const secondResult = cache.getLines(messages, 80)
-        const m1LinesSecond = cache.getMessageLines(messages[0]!, 80)
-
-        // m1 was not modified, so its cached lines are strictly preserved
-        expect(m1LinesSecond).toBe(m1LinesFirst)
-        expect(secondResult[0]).toBe(firstResult[0])
-        expect(secondResult.map((l) => l.map((s) => s.text).join('')).join('\n')).toContain(
-            'Chunk 1 Chunk 2'
+    it('hides thoughts, live or finished (L5, S2)', () => {
+        const cache = new MessageLineCache()
+        const text = joined(
+            cache.getLines(
+                [
+                    { role: 'user', content: 'why?' },
+                    { role: 'thinking', content: '**Session TTL source**\nLet me look.' },
+                    { role: 'assistant', content: 'Because.' },
+                ],
+                80
+            )
         )
+        expect(text).not.toContain('Thought')
+        expect(text).not.toContain('Session TTL source')
+        expect(text).toContain('Because.')
     })
 
-    it('formats tool calls cleanly and caches successful executions', () => {
+    it('merges a run of reads, lists and searches into one Explored row (S3)', () => {
         const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                id: 't1',
-                role: 'tool',
-                toolCall: {
-                    id: 'c1',
-                    name: 'readFile',
-                    command: 'readFile(src/index.ts)',
-                    status: 'success',
-                },
-            },
-        ]
-
-        const lines = cache.getLines(messages, 80)
-        expect(lines.length).toBeGreaterThan(0)
-        expect(lines[0]!.map((s) => s.text).join('')).toContain('readFile(src/index.ts)')
-    })
-
-    it('consolidates consecutive read tool calls when collapsed and expands with details', () => {
-        const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'r1',
-                    name: 'read_file',
-                    command: 'Read(src/a.ts)',
-                    input: { path: 'src/a.ts' },
-                    status: 'success',
-                    durationMs: 40,
-                },
-            },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'r2',
-                    name: 'read_file',
-                    command: 'Read(src/b.ts)',
-                    input: { path: 'src/b.ts' },
-                    status: 'success',
-                    durationMs: 60,
-                },
-            },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'r3',
-                    name: 'read_file',
-                    command: 'Read(src/c.ts)',
-                    input: { path: 'src/c.ts' },
-                    status: 'success',
-                    durationMs: 50,
-                },
-            },
-        ]
-
-        // Collapsed rendering: single consolidated line with +1 more and total duration
-        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
-        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('Read(src/a.ts, src/b.ts, +1 more)')
-        expect(collapsedText).toContain('(150ms)')
-
-        // Expanded rendering: header line + indented child file lines
-        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
-        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(expandedText).toContain('Read(3 files)')
-        expect(expandedText).toContain('ctrl+o to collapse')
-        expect(expandedText).not.toContain('  ● src/a.ts')
-        expect(expandedText).toContain('    src/a.ts')
-        expect(expandedText).toContain('(40ms)')
-        expect(expandedText).toContain('src/b.ts')
-        expect(expandedText).toContain('(60ms)')
-        expect(expandedText).toContain('src/c.ts')
-        expect(expandedText).toContain('(50ms)')
-    })
-
-    it('stacks consecutive tool calls with zero blank lines between them', () => {
-        const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 't1',
-                    name: 'edit_file',
-                    command: 'Edit(src/index.ts)',
-                    input: { path: 'src/index.ts' },
-                    status: 'success',
-                },
-            },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 't2',
-                    name: 'run_command',
-                    command: 'Bash(npm test)',
-                    status: 'success',
-                },
-            },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 't3',
-                    name: 'read_file',
-                    command: 'Read(package.json)',
-                    input: { path: 'package.json' },
-                    status: 'success',
-                },
-            },
-            {
-                role: 'assistant',
-                content: 'All steps completed.',
-            },
-        ]
-
-        const lines = cache.getLines(messages, 80)
-        const textLines = lines.map((l) => l.map((s) => s.text).join(''))
-
-        // Find indices of tool header lines
-        const editIdx = textLines.findIndex((t) => t.includes('Edited'))
-        const bashIdx = textLines.findIndex((t) => t.includes('Bash(npm test)'))
-        const readIdx = textLines.findIndex((t) => t.includes('Read(package.json)'))
-        const asstIdx = textLines.findIndex((t) => t.includes('All steps completed.'))
-
-        // No blank lines between consecutive tools: edit is at index 0, bash at 1, read at 2
-        expect(editIdx).toBe(0)
-        expect(bashIdx).toBe(1)
-        expect(readIdx).toBe(2)
-
-        // Trailing spacing exists between the last tool and assistant message
-        expect(textLines[3]).toBe('')
-        expect(asstIdx).toBe(4)
-    })
-
-    it('renders actual git diff additions and deletions on expand for edit_file', () => {
-        const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'edit-1',
-                    name: 'edit_file',
-                    command: 'Edit(src/config.ts)',
-                    input: {
-                        path: 'src/config.ts',
-                        Target: 'const port = 3000;\nconst host = "localhost";',
-                        Replacement:
-                            'const port = 8080;\nconst host = "0.0.0.0";\nconst debug = true;',
-                    },
-                    status: 'success',
-                },
-            },
-        ]
-
-        // Collapsed: only header, no diff lines
-        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
-        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('Edited src/config.ts (+3, -2)')
-        expect(collapsedText).not.toContain('const port = 8080')
-
-        // Expanded: diff lines with unified + and - gutter and theme background
-        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
-        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(expandedText).toContain('Edited src/config.ts (+3, -2)')
-        expect(expandedText).toContain('- const port = 3000;')
-        expect(expandedText).toContain('+ const port = 8080;')
-        expect(expandedText).toContain('+ const debug = true;')
-
-        // Theme background tokens matching /diff command view
-        const deleteLine = expandedLines.find((l) =>
-            l.some((t) => t.text.includes('const port = 3000;'))
+        const lines = cache.getLines(
+            [
+                tool('1', 'read_file', { path: 'src/a.ts' }),
+                tool('2', 'grep_search', { query: 'SESSION_TTL' }),
+                tool('3', 'list_dir', { path: 'src/auth' }),
+                tool('4', 'read_file', { path: 'src/b.ts' }),
+                tool('5', 'code_intelligence', { query: 'createSession' }),
+                { role: 'assistant', content: 'Found it.' },
+            ],
+            100
         )
-        expect(deleteLine?.[0]?.style?.bg).toBe(THEME.colors.diffDeleteBg)
-        expect(deleteLine?.[1]?.style?.bg).toBe(THEME.colors.diffDeleteBg)
-
-        const addLine = expandedLines.find((l) =>
-            l.some((t) => t.text.includes('const port = 8080;'))
-        )
-        expect(addLine?.[0]?.style?.bg).toBe(THEME.colors.diffAddBg)
-        expect(addLine?.[1]?.style?.bg).toBe(THEME.colors.diffAddBg)
+        const rows = textOf(lines)
+        expect(rows[0]).toBe('● Explored 2 files · 2 searches · 1 directory')
+        expect(lines[0]![0]!.style?.fg).toBe(THEME.colors.dim)
+        expect(rows[1]).toBe('')
+        expect(rows[2]).toContain('Found it.')
     })
 
-    it('renders subagent ticker during execution and rollup summary on completion', () => {
+    it('shows the current target while exploring, with a blinking dot', () => {
         const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            { role: 'user', content: 'go' },
+            tool('1', 'read_file', { path: 'src/a.ts' }),
+            tool('2', 'read_file', { path: 'packages/shared/src/env.ts' }, { status: 'running' }),
+        ]
+        const on = cache.getLines(messages, 100, { liveTurn: true, now: 0 })
+        const off = cache.getLines(messages, 100, { liveTurn: true, now: 600 })
+        const row = textOf(on).find((l) => l.startsWith('●'))!
+        expect(row).toBe('● Exploring · packages/shared/src/env.ts')
+        const dotOn = on.find((l) => l[0]?.text === '● ')![0]!.style?.fg
+        const dotOff = off.find((l) => l[0]?.text === '● ')![0]!.style?.fg
+        expect(dotOn).toBe(THEME.colors.brand)
+        expect(dotOff).toBe(THEME.colors.dim)
+    })
 
-        // 1. Running subagent with live stream chunk
-        const runningSubagent: MessageItem = {
-            role: 'tool',
-            toolCall: {
-                id: 'sub-1',
-                name: 'invoke_subagent',
-                input: { role: 'codebase-researcher' },
-                status: 'running',
-                output: '[SubAgent:d1:codebase-researcher] tool: read_file(src/auth.ts) (turn 2)',
-            },
-        }
-
-        const runningLines = cache.getMessageLines(runningSubagent, 100, '⠋')
-        const runningText = runningLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(runningText).toContain('Subagent: codebase-researcher')
-        expect(runningText).toContain('↳ tool: read_file(src/auth.ts) (turn 2)')
-
-        // 2. Completed subagent with rollup report
-        const rollupReport = [
-            '### [SubAgent: codebase-researcher (sub-1)] - COMPLETED',
-            '- **Role**: codebase-researcher',
-            '- **Task**: find auth guards',
-            '- **Total Turns**: 4',
-            '- **Tool Calls**: 7',
-            '- **Duration**: 2.3s',
+    it('stacks step rows with no blank lines and adds one before text', () => {
+        const cache = new MessageLineCache()
+        const rows = textOf(
+            cache.getLines(
+                [
+                    tool(
+                        '1',
+                        'bash',
+                        { command: 'bun test' },
+                        { output: '14 pass\n', durationMs: 2100 }
+                    ),
+                    tool(
+                        '2',
+                        'bash',
+                        { command: 'bun run lint' },
+                        { output: 'ok\n', durationMs: 400 }
+                    ),
+                    { role: 'assistant', content: 'Done.' },
+                ],
+                100
+            )
+        )
+        expect(rows).toEqual([
+            '● Ran bun test  2.1s',
+            '    └ 14 pass',
+            '● Ran bun run lint',
+            '    └ ok',
             '',
-            '#### Rollup Summary & Findings:',
-            'Identified AuthGuard middleware mounted in routes/auth.ts.',
-        ].join('\n')
+            'Done.',
+            '',
+        ])
+    })
 
-        const completedSubagent: MessageItem = {
-            role: 'tool',
-            toolCall: {
-                id: 'sub-1',
-                name: 'invoke_subagent',
-                input: { role: 'codebase-researcher' },
-                status: 'success',
-                durationMs: 2300,
-                output: rollupReport,
-            },
-        }
+    it('shows the live output tail with no gutter, then one result line (S7)', () => {
+        const cache = new MessageLineCache()
+        const messages: MessageItem[] = [
+            { role: 'user', content: 'test' },
+            tool(
+                '1',
+                'bash',
+                { command: 'bun test test/session' },
+                {
+                    status: 'running',
+                    output: 'a\n✓ one\n✓ two\n✓ three\n',
+                }
+            ),
+        ]
+        const running = textOf(cache.getLines(messages, 100, { liveTurn: true }))
+        expect(running).toContain('● Running bun test test/session')
+        expect(running).toContain('    ✓ three')
+        expect(running.some((l) => l.includes('│'))).toBe(false)
+        expect(running).not.toContain('    a')
 
-        // Collapsed summary stats
-        const collapsedLines = cache.getMessageLines(completedSubagent, 100, '⠋', false)
-        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('Subagent: codebase-researcher (4 turns, 7 tools, 2.3s)')
-        expect(collapsedText).toContain('ctrl+o to expand')
-        expect(collapsedText).toContain(
-            '↳ Identified AuthGuard middleware mounted in routes/auth.ts.'
+        messages[1]!.toolCall!.status = 'success'
+        messages[1]!.toolCall!.output = '✓ one\n14 pass · 0 fail\n'
+        messages[1]!.toolCall!.durationMs = 2100
+        const done = textOf(cache.getLines(messages, 100))
+        expect(done).toContain('● Ran bun test test/session  2.1s')
+        expect(done).toContain('    └ 14 pass · 0 fail')
+    })
+
+    it('marks a failed command with a red dot, the exit code and the first error (S8)', () => {
+        const cache = new MessageLineCache()
+        const lines = cache.getLines(
+            [
+                tool(
+                    '1',
+                    'bash',
+                    { command: 'bun run typecheck' },
+                    {
+                        status: 'error',
+                        durationMs: 4300,
+                        output: 'Command failed with exit code 2:\n$ tsc --noEmit\nsrc/a.ts(42,7): error TS2322: bad\nsrc/a.ts(58,3): error TS2554: worse\nsrc/b.ts(1,1): error TS1: worst\n',
+                    }
+                ),
+            ],
+            100
         )
-        expect(collapsedText).not.toContain('### [SubAgent') // Cleaned up header
-
-        // Expanded shows rollup findings
-        const expandedLines = cache.getMessageLines(completedSubagent, 100, '⠋', true)
-        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(expandedText).toContain('Identified AuthGuard middleware mounted in routes/auth.ts.')
+        const rows = textOf(lines)
+        expect(rows[0]).toBe('● Ran bun run typecheck  exit 2 · 4.3s')
+        expect(lines[0]![0]!.style?.fg).toBe(THEME.colors.error)
+        expect(rows[1]).toBe('    └ src/a.ts(42,7): error TS2322: bad')
+        expect(rows[2]).toBe('      +2 more errors')
+        expect(rows.join('\n')).not.toContain('✗')
     })
 
-    it('renders in-place background task indicator when command moves to background', () => {
+    it('shows a background command as one row (S13)', () => {
         const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'sh-1',
-                    name: 'execute_command',
-                    command: 'npm run dev',
-                    status: 'success',
-                    output: 'Starting dev server on port 3000\n[Moved to background task: task_dev_123. Use /tasks to inspect.]',
-                },
-            },
-        ]
-
-        const lines = cache.getLines(messages, 100)
-        const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(text).toContain('npm run dev')
-        expect(text).toContain('↳ Moved to background task: task_dev_123 · Use /tasks to inspect')
-    })
-
-    it('renders collapsed thinking banner when generation finishes or on session reload, and expands with formatted content on expandTools', () => {
-        const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'thinking',
-                content:
-                    '## Plan\nWe need to refactor the database schema and add indexes to optimize query performance.',
-                isStreaming: false,
-                durationMs: 2300,
-            },
-        ]
-
-        // Collapsed (default)
-        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
-        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('● Thought')
-        expect(collapsedText).not.toContain('2.3s')
-        expect(collapsedText).not.toContain('❭ Thought')
-        expect(collapsedText).toContain('ctrl+o to expand')
-        expect(collapsedText).not.toContain('We need to refactor the database schema')
-
-        // Verify warning yellow color on glyph
-        expect(collapsedLines[0]?.[0]?.style?.fg).toBe('#FDD663')
-
-        // Expanded (expandTools: true)
-        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
-        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(expandedText).toContain('● Thought')
-        expect(expandedText).not.toContain('2.3s')
-        expect(expandedText).not.toContain('❭ Thought')
-        expect(expandedText).toContain('ctrl+o to collapse')
-        expect(expandedText).toContain('We need to refactor the database schema')
-        // Header also uses warning yellow, not brand blue
-        expect(expandedLines[0]?.[0]?.style?.fg).toBe('#FDD663')
-    })
-
-    it('renders live streaming thinking with formatted thought text when expandTools is enabled', () => {
-        const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'thinking',
-                content: 'Analyzing repository structure\nFound 15 modules',
-                isStreaming: true,
-            },
-        ]
-
-        // Collapsed (default)
-        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
-        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('Thinking · found 15 modules')
-        expect(collapsedText).not.toContain('Found 15 modules\n')
-        expect(collapsedLines[0]?.[0]?.style?.fg).toBe('#FDD663')
-
-        // Expanded (expandTools: true)
-        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
-        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(expandedText).toContain('Thinking · found 15 modules')
-        expect(expandedText).toContain('Found 15 modules')
-        expect(expandedLines[0]?.[0]?.style?.fg).toBe('#FDD663')
-    })
-
-    it('stabilizes rapid topic changes via dwell latching during streaming', () => {
-        const cache = new MessageLineCache()
-        const msg: MessageItem = {
-            role: 'thinking',
-            content: 'I need to inspect routes',
-            isStreaming: true,
-        }
-
-        const t0 = 1000000
-        const topic1 = cache.getLatchedThoughtTopic(msg, t0)
-        expect(topic1).toBe('inspect routes')
-
-        // 500ms later (< 2500ms): candidate changes rapidly to "check middleware"
-        msg.content = 'I need to inspect routes\nNext I will check middleware'
-        const topic2 = cache.getLatchedThoughtTopic(msg, t0 + 500)
-        // Topic remains locked to the previous latch to avoid flicker
-        expect(topic2).toBe('inspect routes')
-
-        // 2600ms later (>= 2500ms dwell window): topic updates smoothly to new candidate
-        const topic3 = cache.getLatchedThoughtTopic(msg, t0 + 2600)
-        expect(topic3).toBe('check middleware')
-    })
-
-    it('expands truncated tool command outputs beyond the default 5-line limit when expandTools is enabled', () => {
-        const cache = new MessageLineCache()
-        const outputLines = Array.from({ length: 25 }, (_, i) => `log line ${i + 1}`)
-        const messages: MessageItem[] = [
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'sh-2',
-                    name: 'execute_command',
-                    command: 'pytest tests/',
-                    status: 'success',
-                    output: outputLines.join('\n'),
-                },
-            },
-        ]
-
-        // Collapsed (0 lines of output for clean minimal view)
-        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
-        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('pytest tests/')
-        expect(collapsedText).not.toContain('log line 1')
-
-        // Expanded (shows first 10 lines with indentation, no pipe, and truncation)
-        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
-        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(expandedText).toContain('log line 1')
-        expect(expandedText).toContain('log line 10')
-        expect(expandedText).not.toContain('log line 11')
-        expect(expandedText).toContain('... (15 more lines)')
-        expect(expandedText).not.toContain('│')
-    })
-
-    it('renders Context Compacted banner and summary correctly', () => {
-        const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'compaction' as any,
-                content:
-                    '[COMPACTED HISTORY SUMMARY]\nUser asked to refactor auth and add jwt verification.',
-            },
-        ]
-
-        const lines = cache.getLines(messages, 100)
-        const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(text).toContain('Context Compacted')
-        expect(text).toContain('User asked to refactor auth and add jwt verification.')
-    })
-
-    it('formats stream interrupt notice with muted styling', () => {
-        const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'assistant',
-                content:
-                    'I will start by reading the config file.\n\nInterrupted · What should December do instead?',
-            },
-        ]
-
-        const lines = cache.getLines(messages, 100)
-        const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(text).toContain('I will start by reading the config file.')
-        expect(text).toContain('Interrupted · What should December do instead?')
-
-        const interruptLine = lines.find((l) =>
-            l.some((s) => s.text.includes('Interrupted · What should December do instead?'))
+        const rows = textOf(
+            cache.getLines(
+                [
+                    tool(
+                        '1',
+                        'bash',
+                        { command: 'bun dev' },
+                        {
+                            output: '[Auto-Backgrounded] Task ID: t_8f2a. Command is still running in the background.',
+                        }
+                    ),
+                ],
+                100
+            )
         )
-        expect(interruptLine).toBeDefined()
-        const seg = interruptLine?.find((s) => s.text.includes('Interrupted'))
-        expect(seg?.style.italic).toBe(true)
+        expect(rows[0]).toBe('● Ran bun dev  in background · t_8f2a · /tasks')
+        expect(rows[1]).toBe('')
     })
 
-    it('displays active contextual verbs when tools are running and past tense when completed', () => {
+    it('shows subagents running and done (L9, S11)', () => {
         const cache = new MessageLineCache()
-        const runningMessages: MessageItem[] = [
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 't-edit',
-                    name: 'edit_file',
-                    input: { TargetFile: 'src/auth.ts', Target: 'a', Replacement: 'b' },
+        const messages: MessageItem[] = [
+            { role: 'user', content: 'go' },
+            tool(
+                '1',
+                'invoke_subagent',
+                { role: 'explorer' },
+                {
                     status: 'running',
-                },
-            },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 't-write',
-                    name: 'write_file',
-                    input: { TargetFile: 'src/new.ts', Content: 'code' },
-                    status: 'running',
-                },
-            },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 't-sh',
-                    name: 'run_command',
-                    command: 'run_command(npm test)',
-                    status: 'running',
-                },
-            },
+                    output: '[SubAgent:explorer] Reading src/auth/session.ts',
+                }
+            ),
         ]
+        expect(textOf(cache.getLines(messages, 100, { liveTurn: true }))).toContain(
+            '● Agent explorer · Reading src/auth/session.ts'
+        )
 
-        const runningText = cache
-            .getLines(runningMessages, 100)
-            .map((l) => l.map((s) => s.text).join(''))
-            .join('\n')
-        expect(runningText).toContain('Editing src/auth.ts')
-        expect(runningText).toContain('Creating src/new.ts')
-        expect(runningText).toContain('Executing(npm test)')
-
-        const completedMessages: MessageItem[] = [
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 't-edit',
-                    name: 'edit_file',
-                    input: { TargetFile: 'src/auth.ts', Target: 'a', Replacement: 'b' },
-                    status: 'success',
-                },
-            },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 't-write',
-                    name: 'write_file',
-                    input: { TargetFile: 'src/new.ts', Content: 'code' },
-                    status: 'success',
-                },
-            },
-        ]
-
-        const completedText = cache
-            .getLines(completedMessages, 100)
-            .map((l) => l.map((s) => s.text).join(''))
-            .join('\n')
-        expect(completedText).toContain('Edited src/auth.ts')
-        expect(completedText).toContain('Created src/new.ts')
+        messages[1]!.toolCall = {
+            ...messages[1]!.toolCall!,
+            status: 'success',
+            durationMs: 8200,
+            output: '(4 turns, 12 tools)\n#### Rollup Summary & Findings:\n- TTL is set in session.service.ts',
+        }
+        const done = textOf(cache.getLines(messages, 100))
+        expect(done).toContain('● Agent explorer  4 turns · 12 tools · 8.2s')
+        expect(done).toContain('    └ TTL is set in session.service.ts')
     })
 
-    it('rolls up long turns exceeding 25 steps into a collapsed banner and expands on expandTools: true', () => {
+    it('counts edit changes with a real line diff and merges edits to one file (S4.5)', () => {
         const cache = new MessageLineCache()
-        const toolMessages: MessageItem[] = Array.from({ length: 30 }, (_, i) => ({
-            role: 'tool',
-            toolCall: {
-                id: `tool-${i}`,
-                name: 'run_command',
-                command: `cmd_${i}()`,
-                status: 'success' as const,
-            },
-        }))
-
-        const messages: MessageItem[] = [
-            { role: 'user', content: 'Run long workflow' },
-            ...toolMessages,
-        ]
-
-        // Collapsed (default)
-        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
-        const collapsedText = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(collapsedText).toContain('[+5 earlier steps hidden · press Ctrl+O to expand]')
-        // Earlier steps (cmd_0) should be hidden
-        expect(collapsedText).not.toContain('cmd_0()')
-        // Latest step (cmd_29) should be visible
-        expect(collapsedText).toContain('cmd_29()')
-
-        // Expanded (expandTools: true)
-        const expandedLines = cache.getLines(messages, 100, { expandTools: true })
-        const expandedText = expandedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(expandedText).not.toContain('earlier steps hidden')
-        expect(expandedText).toContain('cmd_0()')
-        expect(expandedText).toContain('cmd_29()')
+        const rows = textOf(
+            cache.getLines(
+                [
+                    tool('1', 'edit_file', {
+                        path: 'src/env.ts',
+                        targetContent: 'a\nb',
+                        replacementContent: 'a\nB\nc',
+                    }),
+                    tool('2', 'edit_file', {
+                        path: 'src/env.ts',
+                        targetContent: 'x',
+                        replacementContent: 'x\ny',
+                    }),
+                ],
+                100
+            )
+        )
+        expect(rows[0]).toBe('● Edited src/env.ts  +3 -1 · 2 edits')
     })
 
-    it('renders error lines for failed discovery tools even when collapsed', () => {
-        const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'rf-1',
-                    name: 'read_file',
-                    command: 'Read(missing.ts)',
-                    input: { path: 'missing.ts' },
-                    status: 'error',
-                    output: 'Error: ENOENT: no such file or directory, open missing.ts',
+    describe('open diff (S4)', () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'december-diff-'))
+        const file = path.join(dir, 'env.ts')
+        fs.writeFileSync(
+            file,
+            'export const env = {\n    TTL: 60,\n    IDLE: 900,\n    DB: url,\n}\n'
+        )
+        const edit = (id: string, extra: Partial<NonNullable<MessageItem['toolCall']>> = {}) =>
+            tool(
+                id,
+                'edit_file',
+                {
+                    path: file,
+                    targetContent: '    TTL: 3600,',
+                    replacementContent: '    TTL: 60,\n    IDLE: 900,',
                 },
-            },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'rf-2',
-                    name: 'read_file',
-                    command: 'Read(config.ts)',
-                    input: { path: 'config.ts' },
-                    status: 'success',
-                    output: 'const x = 1',
-                },
-            },
-        ]
+                extra
+            )
 
-        const collapsedLines = cache.getLines(messages, 100, { expandTools: false })
-        const text = collapsedLines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(text).toContain('Read(missing.ts, config.ts)')
-        expect(text).toContain('missing.ts: Error: ENOENT: no such file or directory')
+        it('shows the newest edit of the live turn with line numbers and context', () => {
+            const cache = new MessageLineCache()
+            const rows = textOf(
+                cache.getLines([{ role: 'user', content: 'go' }, edit('1')], 100, {
+                    liveTurn: true,
+                })
+            )
+            const at = rows.findIndex((r) => r.startsWith('● Edited'))
+            expect(rows[at + 1]).toContain('1   export const env = {')
+            expect(rows[at + 2]).toContain('2 -     TTL: 3600,')
+            expect(rows[at + 3]).toContain('2 +     TTL: 60,')
+            expect(rows[at + 4]).toContain('3 +     IDLE: 900,')
+            expect(rows[at + 5]).toContain('4       DB: url,')
+        })
+
+        it('closes it when the next tool starts', () => {
+            const cache = new MessageLineCache()
+            const rows = textOf(
+                cache.getLines(
+                    [
+                        { role: 'user', content: 'go' },
+                        edit('1'),
+                        tool('2', 'bash', { command: 'bun test' }, { status: 'running' }),
+                    ],
+                    100,
+                    { liveTurn: true }
+                )
+            )
+            expect(rows.some((r) => r.includes('TTL: 3600'))).toBe(false)
+        })
+
+        it('keeps only the newest of several edits open', () => {
+            const cache = new MessageLineCache()
+            const rows = textOf(
+                cache.getLines(
+                    [
+                        { role: 'user', content: 'go' },
+                        tool('0', 'edit_file', {
+                            path: 'src/other.ts',
+                            targetContent: 'old',
+                            replacementContent: 'new',
+                        }),
+                        edit('1'),
+                    ],
+                    100,
+                    { liveTurn: true }
+                )
+            )
+            expect(rows.some((r) => r.includes('- old'))).toBe(false)
+            expect(rows.some((r) => r.includes('TTL: 60'))).toBe(true)
+        })
+
+        it('shows no diff after the turn ends or when the prompt already showed it', () => {
+            const settled = textOf(
+                new MessageLineCache().getLines([{ role: 'user', content: 'go' }, edit('1')], 100)
+            )
+            expect(settled.some((r) => r.includes('TTL: 60'))).toBe(false)
+            const previewed = textOf(
+                new MessageLineCache().getLines([{ role: 'user', content: 'go' }, edit('1')], 100, {
+                    liveTurn: true,
+                    previewedPaths: new Set([file]),
+                })
+            )
+            expect(previewed.some((r) => r.includes('TTL: 60'))).toBe(false)
+        })
+
+        it('cuts a long diff at 12 rows with a pointer to /diff', () => {
+            const cache = new MessageLineCache()
+            const big = Array.from({ length: 30 }, (_, i) => `line ${i}`).join('\n')
+            const rows = textOf(
+                cache.getLines(
+                    [
+                        { role: 'user', content: 'go' },
+                        tool('1', 'edit_file', {
+                            path: 'nope.ts',
+                            targetContent: '',
+                            replacementContent: big,
+                        }),
+                    ],
+                    100,
+                    { liveTurn: true }
+                )
+            )
+            expect(rows.filter((r) => r.includes('+ line')).length).toBe(12)
+            expect(rows).toContain('         … 18 more lines · /diff')
+        })
     })
 
-    it('renders Failed editing and Failed creating labels when tool status is error', () => {
+    it('shows a new file with its first 8 lines while open (S6)', () => {
         const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'edit-1',
-                    name: 'edit_file',
-                    command: 'Edit(src/auth.ts)',
-                    input: { TargetFile: 'src/auth.ts', Target: 'old', Replacement: 'new' },
-                    status: 'error',
-                    output: 'Error executing tool: target content not found in file',
-                },
-            },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'write-1',
-                    name: 'write_file',
-                    command: 'Create(src/read-only.ts)',
-                    input: { TargetFile: 'src/read-only.ts', Content: 'code' },
-                    status: 'error',
-                    output: 'Error executing tool: EACCES permission denied',
-                },
-            },
-        ]
-
-        const lines = cache.getLines(messages, 100, { expandTools: false })
-        const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(text).toContain('Failed editing src/auth.ts')
-        expect(text).toContain('Failed creating src/read-only.ts')
-        expect(text).toContain('target content not found')
-        expect(text).toContain('EACCES permission denied')
+        const content = Array.from({ length: 24 }, (_, i) => `row ${i}`).join('\n')
+        const rows = textOf(
+            cache.getLines(
+                [
+                    { role: 'user', content: 'go' },
+                    tool('1', 'write_file', { path: 'src/x.ts', content }),
+                ],
+                100,
+                {
+                    liveTurn: true,
+                }
+            )
+        )
+        expect(rows).toContain('● Created src/x.ts  24 lines')
+        expect(rows.filter((r) => r.includes('+ row')).length).toBe(8)
+        expect(rows).toContain('         … 16 more lines · /diff')
     })
 
-    it('reuses cached prior turn lines across consecutive stream ticks of the active message', () => {
+    it('labels a failed edit with a red dot and the reason', () => {
         const cache = new MessageLineCache()
-        const messages: MessageItem[] = [
-            { role: 'user', content: 'Design an interface' },
-            {
-                role: 'tool',
-                toolCall: {
-                    id: 'r-1',
-                    name: 'read_file',
-                    status: 'success',
-                    output: 'interface Foo {}',
-                },
-            },
-            { role: 'assistant', content: 'Here is the ', isStreaming: true },
-        ]
-
-        // Stream tick 1
-        const t1 = cache.getLines(messages, 80)
-        const t1Text = t1.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(t1Text).toContain('Design an interface')
-        expect(t1Text).toContain('Here is the')
-
-        // Stream tick 2: assistant content expands
-        messages[2].content = 'Here is the updated design for the interface.'
-        const t2 = cache.getLines(messages, 80)
-        const t2Text = t2.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(t2Text).toContain('Design an interface')
-        expect(t2Text).toContain('Here is the updated design for the interface.')
-
-        // Stream tick 3: stream completes
-        messages[2].isStreaming = false
-        const t3 = cache.getLines(messages, 80)
-        const t3Text = t3.map((l) => l.map((s) => s.text).join('')).join('\n')
-        expect(t3Text).toContain('Here is the updated design for the interface.')
+        const lines = cache.getLines(
+            [
+                tool(
+                    '1',
+                    'edit_file',
+                    { path: 'src/auth.ts' },
+                    { status: 'error', output: 'Failed to edit file: target text not found' }
+                ),
+            ],
+            100
+        )
+        expect(textOf(lines).slice(0, 2)).toEqual([
+            '● Edit src/auth.ts',
+            '    └ target text not found',
+        ])
+        expect(lines[0]![0]!.style?.fg).toBe(THEME.colors.error)
     })
 
-    it('renders error role messages cleanly without Error, Action, or Details prefixes', () => {
+    it('hides update_plan calls from the chat (L19)', () => {
+        const cache = new MessageLineCache()
+        const text = joined(
+            cache.getLines(
+                [
+                    tool('1', 'update_plan', { items: [{ text: 'a', status: 'pending' }] }),
+                    { role: 'assistant', content: 'ok' },
+                ],
+                100
+            )
+        )
+        expect(text).not.toContain('update_plan')
+        expect(text).toContain('ok')
+    })
+
+    it('folds earlier steps of a long live turn, keeping the last 12 (S12)', () => {
         const cache = new MessageLineCache()
         const messages: MessageItem[] = [
-            {
-                role: 'error',
-                content:
-                    '402 Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing',
-                cause: '402 Payment Required: zero balance',
-            } as any,
+            { role: 'user', content: 'migrate' },
+            { role: 'assistant', content: 'I will migrate.' },
         ]
+        for (let i = 0; i < 30; i++) {
+            messages.push(tool(`b${i}`, 'bash', { command: `step ${i}` }, { output: 'ok' }))
+            messages.push({ role: 'assistant', content: `note ${i}` })
+        }
+        const rows = textOf(cache.getLines(messages, 100, { liveTurn: true }))
+        expect(rows).toContain('● 18 earlier steps · 18 commands')
+        expect(rows.filter((r) => r.startsWith('● Ran')).length).toBe(12)
+        expect(rows[2]).toContain('I will migrate.')
 
-        const lines = cache.getLines(messages, 100, { expandTools: false })
-        const text = lines.map((l) => l.map((s) => s.text).join('')).join('\n')
+        // A finished turn keeps every step
+        const settled = textOf(new MessageLineCache().getLines(messages, 100))
+        expect(settled.filter((r) => r.startsWith('● Ran')).length).toBe(30)
+    })
 
+    it('shows the step an approval prompt asks about as a yellow pending row (L10)', () => {
+        const cache = new MessageLineCache()
+        const lines = cache.getLines(
+            [
+                { role: 'user', content: 'clean' },
+                tool(
+                    '1',
+                    'bash',
+                    { command: 'rm -rf dist && bun run build' },
+                    { status: 'running' }
+                ),
+            ],
+            100,
+            { liveTurn: true, awaitingApproval: true }
+        )
+        const row = lines.find((l) => l[0]?.text === '● ')!
+        expect(row.map((s) => s.text).join('')).toBe('● Run rm -rf dist && bun run build')
+        expect(row[0]!.style?.fg).toBe(THEME.colors.warning)
+    })
+
+    it('renders a one-line compaction marker (S15)', () => {
+        const cache = new MessageLineCache()
+        const lines = cache.getLines(
+            [
+                {
+                    role: 'compaction',
+                    content: 'Conversation compacted automatically · ~182.0k → ~24.0k tokens',
+                },
+            ],
+            100
+        )
+        expect(textOf(lines)).toEqual(['⟳ Context compacted · 182k → 24k tokens', ''])
+        expect(lines[0]![0]!.style?.fg).toBe(THEME.colors.dim)
+    })
+
+    it('attaches the interrupt notice under the last step (L15, S27)', () => {
+        const cache = new MessageLineCache()
+        const rows = textOf(
+            cache.getLines(
+                [
+                    tool('1', 'edit_file', {
+                        path: 'src/a.ts',
+                        targetContent: 'a',
+                        replacementContent: 'b',
+                    }),
+                    {
+                        role: 'assistant',
+                        content: 'Interrupted · What should December do instead?',
+                    },
+                ],
+                100
+            )
+        )
+        expect(rows.slice(0, 2)).toEqual([
+            '● Edited src/a.ts  +1 -1',
+            '    └ Interrupted · tell December what to do instead',
+        ])
+    })
+
+    it('renders the end-of-turn summary line (L16)', () => {
+        const cache = new MessageLineCache()
+        const lines = cache.getLines(
+            [
+                {
+                    role: 'turn_summary',
+                    summary: {
+                        durationMs: 72_000,
+                        outputTokens: 8400,
+                        files: [
+                            { path: 'a.ts', added: 2, removed: 1 },
+                            { path: 'b.ts', added: 2, removed: 0 },
+                        ],
+                    },
+                },
+            ],
+            100
+        )
+        expect(textOf(lines)[0]).toBe(
+            '✱ Worked for 1m 12s · 8.4k tokens · 2 files changed +4 -1 · /diff'
+        )
+    })
+
+    it('shows the time and the changes for a quick turn that edited files', () => {
+        const lines = new MessageLineCache().getLines(
+            [
+                {
+                    role: 'turn_summary',
+                    summary: { durationMs: 3000, files: [{ path: 'a.ts', added: 1, removed: 0 }] },
+                },
+            ],
+            100
+        )
+        expect(textOf(lines)[0]).toBe('✱ Worked for 3s · 1 file changed +1 · /diff')
+    })
+
+    it('shows provider errors with a red dot and no bold (S16)', () => {
+        const cache = new MessageLineCache()
+        const lines = cache.getLines(
+            [
+                {
+                    role: 'error',
+                    content:
+                        '402 Insufficient credits in December Wallet. Please add credits at https://app.trydecember.com/settings/billing',
+                    cause: '402 Payment Required: zero balance',
+                } as any,
+            ],
+            100
+        )
+        const text = joined(lines)
+        expect(text).toContain('● ')
         expect(text).toContain('Insufficient credits in December Wallet.')
-        expect(text).toContain('Please add credits at https://app.trydecember.com/settings/billing')
         expect(text).toContain('402 Payment Required: zero balance')
-
-        // Verify prefixes are stripped
-        expect(text).not.toContain('**Error:**')
         expect(text).not.toContain('Error:')
-        expect(text).not.toContain('**Action:**')
-        expect(text).not.toContain('Action:')
-        expect(text).not.toContain('Details:')
+        expect(text).not.toContain('✗')
+        expect(lines.every((l) => l.every((s) => !s.style?.bold))).toBe(true)
+    })
+
+    it('shows web search, fetch and MCP calls as one row each (S17, S18)', () => {
+        const cache = new MessageLineCache()
+        const rows = textOf(
+            cache.getLines(
+                [
+                    tool(
+                        '1',
+                        'search_web',
+                        { query: 'bun 1.2 release notes' },
+                        {
+                            durationMs: 1200,
+                            output: 'Search Results for "x":\n\n1. A\n   URL: a\n\n2. B\n   URL: b\n',
+                        }
+                    ),
+                    tool(
+                        '2',
+                        'fetch',
+                        { url: 'https://bun.sh/blog/bun-v1.2' },
+                        { output: 'x'.repeat(43_000) }
+                    ),
+                    tool(
+                        '3',
+                        'github__create_issue',
+                        { title: 'Session TTL ignores env' },
+                        { durationMs: 900, output: 'acme/api#482 opened' }
+                    ),
+                ],
+                100
+            )
+        )
+        expect(rows[0]).toBe('● Searched web "bun 1.2 release notes"  2 results · 1.2s')
+        expect(rows[1]).toBe('● Fetched bun.sh/blog/bun-v1.2  42 KB')
+        expect(rows[2]).toBe('● github · create issue "Session TTL ignores env"')
+        expect(rows[3]).toBe('    └ acme/api#482 opened')
     })
 })

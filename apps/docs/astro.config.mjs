@@ -10,6 +10,22 @@ const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.en
 dotenv.config({ path: path.join(rootDir, envFile) })
 dotenv.config({ path: path.join(rootDir, '.env') })
 
+const SHELL_LANGS = new Set(['bash', 'sh', 'shell', 'zsh', 'powershell'])
+
+const hastText = (node) =>
+    node.type === 'text' ? node.value : (node.children ?? []).map(hastText).join('')
+
+// Marks command lines in shell code blocks so the docs CSS can draw a `$` prompt before them.
+// Blank lines and `#` comment lines get no prompt.
+const shellPromptTransformer = {
+    name: 'december-shell-prompt',
+    line(node) {
+        if (!SHELL_LANGS.has(this.options.lang)) return
+        const text = hastText(node).trim()
+        if (text && !text.startsWith('#')) this.addClassToHast(node, 'cmd-line')
+    },
+}
+
 export default defineConfig({
     site: 'https://trydecember.com',
     output: 'static',
@@ -37,6 +53,7 @@ export default defineConfig({
     markdown: {
         shikiConfig: {
             theme: 'github-light',
+            transformers: [shellPromptTransformer],
         },
     },
     vite: {

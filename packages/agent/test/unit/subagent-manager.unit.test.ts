@@ -132,12 +132,20 @@ describe('SubagentManager (Unit)', () => {
 
     it('should forward events to custom tracker if configured', async () => {
         const outputs: string[] = []
+        const turnUpdates: number[] = []
+        let registered: any = null
         let completedCode: number | null = null
 
         const mockTracker = {
-            registerSubagentTask: () => ({ id: 'mock-task' }),
+            registerSubagentTask: (opts: any) => {
+                registered = opts
+                return { id: 'mock-task' }
+            },
             appendOutput: (_id: string, chunk: string) => {
                 outputs.push(chunk)
+            },
+            setTurns: (_id: string, turns: number) => {
+                turnUpdates.push(turns)
             },
             markCompleted: (_id: string, code: number) => {
                 completedCode = code
@@ -168,5 +176,10 @@ describe('SubagentManager (Unit)', () => {
         await handle.promise
         expect(completedCode).toBe(0)
         expect(outputs.length).toBeGreaterThan(0)
+        // the role is passed as-is, with depth and background as their own fields
+        expect(registered).toMatchObject({ role: 'tracker-role', depth: 1, background: true })
+        // live turn count: 1 when the first turn starts, then the final count
+        expect(turnUpdates[0]).toBe(1)
+        expect(turnUpdates[turnUpdates.length - 1]).toBeGreaterThanOrEqual(1)
     })
 })

@@ -156,4 +156,64 @@ Instructions here.`
         expect(skills[0].references.length).toBe(1)
         expect(skills[0].references[0]).toContain('spec.md')
     })
+
+    test('skips skills that are turned off, or whose plugin is turned off, unless asked for them', () => {
+        createSkill(path.join(tmpDir, '.december', 'skills'), 'grill-me', 'Stress-test a plan.')
+        const pluginDir = path.join(tmpDir, '.december', 'plugins', 'github')
+        fs.mkdirSync(pluginDir, { recursive: true })
+        fs.writeFileSync(path.join(pluginDir, 'plugin.json'), JSON.stringify({ name: 'github' }))
+        createSkill(path.join(pluginDir, 'skills'), 'pr', 'Write pull requests.')
+
+        const options = { workspaceDir: tmpDir, homeDir: mockHomeDir }
+        let names = new SkillDiscoveryEngine(options).discoverAllSkills().map((s) => s.name)
+        expect(names).toContain('grill-me')
+        expect(names).toContain('pr')
+        const pr = new SkillDiscoveryEngine(options)
+            .discoverAllSkills()
+            .find((s) => s.name === 'pr')
+        expect(pr?.pluginId).toBe('github')
+
+        // Project settings turn off one skill and one plugin
+        fs.writeFileSync(
+            path.join(tmpDir, '.december', 'settings.json'),
+            JSON.stringify({
+                skills: { 'grill-me': { enabled: false } },
+                plugins: { github: false },
+            })
+        )
+        names = new SkillDiscoveryEngine(options).discoverAllSkills().map((s) => s.name)
+        expect(names).not.toContain('grill-me')
+        expect(names).not.toContain('pr')
+
+        const all = new SkillDiscoveryEngine({
+            ...options,
+            includeDisabled: true,
+        }).discoverAllSkills()
+        expect(all.find((s) => s.name === 'grill-me')?.enabled).toBe(false)
+        expect(all.find((s) => s.name === 'pr')?.enabled).toBe(false)
+    })
+
+    test('treats a plugin with "disabled": true in plugin.json as off until turned on', () => {
+        const pluginDir = path.join(tmpDir, '.december', 'plugins', 'quiet')
+        fs.mkdirSync(pluginDir, { recursive: true })
+        fs.writeFileSync(
+            path.join(pluginDir, 'plugin.json'),
+            JSON.stringify({ name: 'quiet', disabled: true })
+        )
+        createSkill(path.join(pluginDir, 'skills'), 'hush', 'Stay quiet.')
+
+        const options = { workspaceDir: tmpDir, homeDir: mockHomeDir }
+        expect(
+            new SkillDiscoveryEngine(options).discoverAllSkills().map((s) => s.name)
+        ).not.toContain('hush')
+
+        fs.mkdirSync(path.join(mockHomeDir, '.december'), { recursive: true })
+        fs.writeFileSync(
+            path.join(mockHomeDir, '.december', 'config.json'),
+            JSON.stringify({ plugins: { quiet: { enabled: true } } })
+        )
+        expect(new SkillDiscoveryEngine(options).discoverAllSkills().map((s) => s.name)).toContain(
+            'hush'
+        )
+    })
 })

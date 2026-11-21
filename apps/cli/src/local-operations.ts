@@ -10,10 +10,28 @@ import { getWorkspaceIgnores, isPathIgnored } from '@december/shared'
 import { createLocalBashOperations, killProcessGroup } from '@december/tools'
 import fg from 'fast-glob'
 
-import { taskManager } from './task-manager'
+import { getDisplayOutput, taskManager, type BackgroundTask } from './task-manager'
+
+import type { BackgroundTaskInfo } from '@december/shared'
 
 const execAsync = promisify(exec)
 const localBashOps = createLocalBashOperations()
+
+export function toTaskInfo(task: BackgroundTask): BackgroundTaskInfo {
+    const end = task.completedAt ? task.completedAt.getTime() : Date.now()
+    return {
+        id: task.id,
+        type: task.type === 'subagent' ? 'subagent' : 'shell',
+        command: task.command,
+        status: task.status,
+        exitCode: task.exitCode,
+        pid: task.pid,
+        role: task.role,
+        depth: task.depth,
+        turns: task.turns,
+        elapsedMs: Math.max(0, end - task.createdAt.getTime()),
+    }
+}
 
 export let activeScopeDir: string | undefined
 
@@ -322,7 +340,7 @@ export const localOperations: PlatformAdapter = {
                     detached: process.platform !== 'win32',
                     env: actualOptions.env ?? process.env,
                     shell: true,
-                    stdio: ['pipe', 'pipe', 'pipe'],
+                    stdio: ['ignore', 'pipe', 'pipe'],
                 })
 
                 let output = ''
@@ -333,6 +351,12 @@ export const localOperations: PlatformAdapter = {
                 const promoteToBackground = () => {
                     if (resolved || isBackground) return
                     isBackground = true
+                    unregisterForeground()
+                    // a background task outlives the turn that started it: Esc no longer
+                    // stops it, only /tasks, manage_task, or its own timeout do
+                    if (actualOptions.signal) {
+                        actualOptions.signal.removeEventListener('abort', onAbort)
+                    }
                     const task = taskManager.addTask(command, child)
                     bgTaskId = task.id
                     if (output) {
@@ -341,6 +365,8 @@ export const localOperations: PlatformAdapter = {
                     resolved = true
                     resolve({ exitCode: null, output, taskId: task.id })
                 }
+                // Ctrl+B in the TUI moves this command to the background
+                const unregisterForeground = taskManager.registerForeground(promoteToBackground)
 
                 let serverReadyTimer: NodeJS.Timeout | undefined
                 const checkServerReady = (text: string) => {
@@ -370,7 +396,7 @@ export const localOperations: PlatformAdapter = {
                     timeoutHandle = setTimeout(() => {
                         if (child.pid) killProcessGroup(child.pid)
                         if (isBackground && bgTaskId) {
-                            taskManager.killTask(bgTaskId)
+                            taskManager.killTask(bgTaskId, 'timeout')
                         } else {
                             try {
                                 child.kill('SIGKILL')
@@ -381,16 +407,14 @@ export const localOperations: PlatformAdapter = {
                     }, actualOptions.timeout * 1000)
                 }
 
-                const onAbort = () => {
+                // only reached while the command is in the foreground: moving it to the
+                // background removes this listener
+                function onAbort() {
                     if (child.pid) killProcessGroup(child.pid)
-                    if (isBackground && bgTaskId) {
-                        taskManager.killTask(bgTaskId)
-                    } else {
-                        try {
-                            child.kill('SIGKILL')
-                        } catch {
-                            // Intentionally swallowed: child kill fallback
-                        }
+                    try {
+                        child.kill('SIGKILL')
+                    } catch {
+                        // Intentionally swallowed: child kill fallback
                     }
                 }
 
@@ -406,7 +430,12 @@ export const localOperations: PlatformAdapter = {
                           }, fallbackTimeoutMs)
                         : undefined
 
+                if (actualOptions.runInBackground) {
+                    promoteToBackground()
+                }
+
                 const cleanup = () => {
+                    unregisterForeground()
                     if (serverReadyTimer) clearTimeout(serverReadyTimer)
                     if (bgTimeout) clearTimeout(bgTimeout)
                     if (timeoutHandle) clearTimeout(timeoutHandle)
@@ -446,11 +475,31 @@ export const localOperations: PlatformAdapter = {
         },
         getTaskStatus: async (taskId) => {
             const task = taskManager.getTask(taskId)
-            if (!task) return { status: 'failed', output: 'Task not found' }
-            return { status: task.status, output: task.output }
+            if (!task) throw new Error(`no task with id ${taskId}. Use action "list".`)
+            return { ...toTaskInfo(task), output: getDisplayOutput(task) }
         },
         killTask: async (taskId) => {
-            return taskManager.killTask(taskId)
+            return taskManager.killTask(taskId, 'agent')
+        },
+        listTasks: async () => taskManager.getTasks().map(toTaskInfo),
+        readTaskOutput: async (taskId, filter) => {
+            const task = taskManager.getTask(taskId)
+            if (!task) throw new Error(`no task with id ${taskId}. Use action "list".`)
+            let regex: RegExp | undefined
+            if (filter) {
+                try {
+                    regex = new RegExp(filter)
+                } catch (err: any) {
+                    throw new Error(`invalid filter regex: ${err?.message || err}`, { cause: err })
+                }
+            }
+            const result = taskManager.readNewOutput(taskId, regex)
+            return {
+                status: task.status,
+                exitCode: task.exitCode,
+                output: result?.output ?? '',
+                missedChars: result?.missedChars ?? 0,
+            }
         },
     } as any,
     fs: {
@@ -599,6 +648,7 @@ export const localOperations: PlatformAdapter = {
     subagentTracker: {
         registerSubagentTask: (opts) => taskManager.addSubagentTask(opts),
         appendOutput: (id, chunk) => taskManager.appendOutput(id, chunk),
+        setTurns: (id, turns) => taskManager.setTurns(id, turns),
         markCompleted: (id, code) => taskManager.markCompleted(id, code),
         getTask: (id) => taskManager.getTask(id),
         killTask: (id) => taskManager.killTask(id),

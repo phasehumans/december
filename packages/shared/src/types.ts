@@ -48,6 +48,8 @@ export interface Tool<TInput = any> {
     name: string
     description: string
     inputSchema: any
+    /** Set for tools that come from an MCP server, so a UI can name the server */
+    mcp?: { server: string; tool: string }
     executionMode?: 'sequential' | 'parallel'
     prepareArguments?: (args: any) => any
     execute: (input: TInput, context: ToolExecuteContext) => Promise<string>
@@ -60,6 +62,11 @@ export interface AgentHooks {
         result: ToolResult
     ) => Promise<{ result?: string; error?: string } | void>
     shouldStopAfterTurn?: () => Promise<boolean>
+    /**
+     * Runs when the agent is about to end its turn (no more tool calls). Returning
+     * `{ continue: true, message }` adds `message` as a user message and keeps going.
+     */
+    beforeStop?: () => Promise<{ continue?: boolean; message?: string } | void>
     getSteeringMessages?: () => Promise<AgentMessage[]>
     prepareNextTurn?: () => Promise<{ modelOptions?: any; systemPrompt?: string } | void>
 }
@@ -88,6 +95,9 @@ export interface ThinkingChunkEvent {
 export interface ToolCallStartEvent {
     type: 'ToolCallStart'
     toolCall: ToolCall
+    /** MCP server and original tool name, when the tool comes from an MCP server */
+    mcpServer?: string
+    mcpTool?: string
 }
 
 export interface ToolExecutionUpdateEvent {
@@ -110,12 +120,25 @@ export interface AgentStatusEvent {
     message: string
 }
 
+/** A provider call failed and the loop retries it; sent next to the AgentStatus text */
+export interface AgentRetryEvent {
+    type: 'AgentRetry'
+    attempt: number
+    maxAttempts?: number
+    /** Wait before the next attempt, when the loop backs off */
+    delayMs?: number
+    /** Short reason, e.g. "Opus 5.5 rate limit" */
+    reason: string
+}
+
 export interface AgentUsageEvent {
     type: 'AgentUsage'
     promptTokens: number
     completionTokens: number
     cacheCreationInputTokens?: number
     cacheReadInputTokens?: number
+    /** true when promptTokens does not include the cache read and cache write tokens */
+    promptTokensExcludeCache?: boolean
     model?: string
 }
 
@@ -137,6 +160,9 @@ export interface AgentErrorEvent {
 export interface ContextCompactedEvent {
     type: 'ContextCompacted'
     summary: string
+    /** estimated tokens of the conversation before and after compaction */
+    tokensBefore?: number
+    tokensAfter?: number
 }
 
 export interface TerminalDataEvent {
@@ -168,6 +194,7 @@ export type AgentEvent =
     | AgentErrorEvent
     | AgentInterruptEvent
     | AgentStatusEvent
+    | AgentRetryEvent
     | AgentUsageEvent
     | ContextCompactedEvent
     | TerminalDataEvent
@@ -214,34 +241,6 @@ export interface RequestLogSystemPromptDecomposition {
     dynamicEnv: string
     dynamicEnvTokens: number
     totalTokens: number
-}
-
-export interface RequestLogEntry {
-    turn: number
-    timestamp: string
-    sessionId: string
-    model?: string
-    request: {
-        systemPrompt: string
-        systemPromptDecomposition: RequestLogSystemPromptDecomposition
-        tools: RequestLogToolEntry[]
-        messages: any[]
-        toolTokens: number
-        messagesTokens: number
-        totalEstimatedTokens: number
-    }
-    response: {
-        assistantMessage: string
-        thinking?: string
-        toolCalls: ToolCall[]
-        usage?: {
-            promptTokens?: number
-            completionTokens?: number
-            totalTokens?: number
-        }
-        durationMs: number
-        error?: string
-    }
 }
 
 export interface ContextDecomposition {

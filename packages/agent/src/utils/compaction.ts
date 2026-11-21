@@ -200,7 +200,7 @@ export function formatFileManifestsXml(manifests: FileManifests): string {
     return parts.join('\n\n')
 }
 
-function estimateTokens(messages: Message[]): number {
+export function estimateTokens(messages: Message[]): number {
     return messages.reduce((acc, msg) => {
         const text = msg.content || ''
         const toolInput = msg.toolCalls?.map((t) => t.input).join('') || ''
@@ -290,7 +290,14 @@ export interface CompactionOptions {
     maxTurns?: number
     minTokens?: number
     onStatus?: (status: string) => void
+    /** compact now, without waiting for the context or turn threshold (used by /compact) */
+    force?: boolean
+    /** extra instructions for the summary, e.g. "keep the auth refactor details" */
+    focus?: string
 }
+
+/** messages kept as-is after a forced compaction (about two turns) */
+export const FORCED_PROTECTED_TAIL = 4
 
 export async function compactContextIfNeeded(
     messages: Message[],
@@ -318,19 +325,23 @@ export async function compactContextIfNeeded(
         typeof maxTurns === 'number' && userTurnCount > maxTurns && currentTokens >= minTokens
     const exceedsTokenThreshold = currentTokens >= limit * 0.8 && currentTokens >= minTokens
 
+    const force = options?.force === true
+
     // trigger at 80% capacity or when exceeding maxTurns threshold (if explicitly configured)
-    if (!exceedsTokenThreshold && !exceedsTurnThreshold) {
+    if (!force && !exceedsTokenThreshold && !exceedsTurnThreshold) {
         return messages
     }
 
-    // always protect system prompt (index 0) and the last 20 messages (approx 10 turns)
+    // always protect system prompt (index 0) and the last 20 messages (approx 10 turns).
+    // a forced compaction keeps only the last few messages.
     const PROTECTED_TAIL = 20
-    const protectedCount =
-        messages.length > PROTECTED_TAIL + 1
-            ? PROTECTED_TAIL
-            : exceedsTurnThreshold
-              ? Math.max(2, Math.floor(messages.length / 2))
-              : PROTECTED_TAIL
+    const protectedCount = force
+        ? FORCED_PROTECTED_TAIL
+        : messages.length > PROTECTED_TAIL + 1
+          ? PROTECTED_TAIL
+          : exceedsTurnThreshold
+            ? Math.max(2, Math.floor(messages.length / 2))
+            : PROTECTED_TAIL
 
     if (messages.length <= protectedCount + 1) {
         return messages // not enough messages to compact
@@ -467,7 +478,11 @@ Use this EXACT format:
 
 Keep each section concise. You MUST preserve exact file paths, function names, line numbers, and error logs.`
 
-    const userPrompt = `${historyText}\n\n${hasPreviousSummary ? UPDATE_SUMMARY_PROMPT : INITIAL_SUMMARY_PROMPT}`
+    const focus = options?.focus?.trim()
+    const focusPrompt = focus
+        ? `\n\nThe user asked this summary to focus on: ${focus}\nKeep every detail about it in full, and shorten the rest.`
+        : ''
+    const userPrompt = `${historyText}\n\n${hasPreviousSummary ? UPDATE_SUMMARY_PROMPT : INITIAL_SUMMARY_PROMPT}${focusPrompt}`
 
     const compactionMessages: Message[] = [
         { role: 'system', content: SYSTEM_PROMPT },

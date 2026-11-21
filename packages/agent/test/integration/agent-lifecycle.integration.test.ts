@@ -100,16 +100,17 @@ describe('Agent Full Lifecycle & Session Persistence (Integration)', () => {
             // Intentionally consume generator events
         }
 
-        const forkedId = await agent.forkContext('child-session')
-        expect(forkedId).toBe('child-session')
-        expect(agent.sessionId).toBe('child-session')
+        const forkedId = await agent.forkContext('child session')
+        expect(forkedId).not.toBe('parent-session')
+        expect(agent.sessionId).toBe(forkedId)
+        expect(agent.sessionTitle).toBe('child session')
 
         for await (const _ of runAgentLoop(agent, 'Child only message')) {
             // Intentionally consume generator events
         }
 
         const parentSaved = sessionStore.get('parent-session')!
-        const childSaved = sessionStore.get('child-session')!
+        const childSaved = sessionStore.get(forkedId)!
 
         expect(parentSaved.length).toBe(3) // system, parent user, parent assistant
         expect(childSaved.length).toBe(5) // system, parent user, parent assistant, child user, child assistant

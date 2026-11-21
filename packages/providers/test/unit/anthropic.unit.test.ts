@@ -211,7 +211,12 @@ describe('Anthropic Provider Adapter (Unit)', () => {
             { type: 'text', text: ' Done' },
             { type: 'tool_call_delta', id: 'call_1', name: 'read_file', inputDelta: '' },
             { type: 'tool_call_delta', id: 'call_1', inputDelta: '{"path":"a.ts"}' },
-            { type: 'usage', promptTokens: 40, completionTokens: 15 },
+            {
+                type: 'usage',
+                promptTokens: 40,
+                completionTokens: 15,
+                promptTokensExcludeCache: true,
+            },
         ])
     })
 

@@ -31,23 +31,26 @@ If you pass a prompt, December runs it without the interactive session. By defau
 | `december`                       | Start an interactive session.                                          |
 | `december "<prompt>"`            | Run one prompt without the interactive session.                        |
 | `december ask "<question>"`      | Ask a question about the code. December only reads files.              |
-| `december resume [session-id]`   | Resume the last session, or the session with this ID.                  |
+| `december resume [title]`        | Resume the last session, or the session with this title or ID.         |
 | `december login [provider]`      | Sign in with December. Add a provider name to link a plan.             |
 | `december link <provider>`       | Link a plan: `claude`, `chatgpt`, `copilot`, `gemini`, or `amazon-q`.  |
 | `december key <provider> [key]`  | Save your own API key for a provider.                                  |
 | `december logout [provider]`     | Remove saved sign-in data and keys.                                    |
 | `december switch [provider]`     | Change the active provider.                                            |
 | `december auth [status\|import]` | Show sign-in status, or import plans from other CLIs on this computer. |
-| `december skill list`            | List the installed skills.                                             |
-| `december skill add <repo>`      | Install skills from GitHub (for example `phasehumans/skills`).         |
-| `december skill info <name>`     | Show the details of a skill.                                           |
-| `december skill remove <name>`   | Remove a skill.                                                        |
+| `december plugin list`           | List the installed plugins, skills, and MCP servers.                   |
+| `december plugin discover`       | List the plugins in your marketplaces.                                 |
+| `december plugin install <src>`  | Install a plugin by name, folder, git url, or `owner/repo`.            |
+| `december plugin info <name>`    | Show the details of a plugin or skill.                                 |
+| `december plugin disable <name>` | Turn off a plugin or skill. Use `enable` to turn it on.                |
+| `december plugin uninstall <n>`  | Uninstall a plugin.                                                    |
+| `december plugin marketplace`    | List marketplaces. Add `add`, `update`, or `remove` and a name.        |
 | `december mcp [list]`            | Show the configured MCP servers.                                       |
 | `december rewind [turn\|list]`   | List saved turns, or restore your files to a turn.                     |
-| `december doctor [--fix]`        | Check the install. Add `--fix` to repair `PATH` problems.              |
+| `december doctor [--fix]`        | Check the install and setup. Add `--fix` to repair `PATH` problems.    |
 | `december docs [section]`        | Open the documentation in your browser.                                |
 | `december changelog`             | Open the changelog in your browser.                                    |
-| `december update`                | Install the latest CLI release.                                        |
+| `december update [--check]`      | Install the latest release. `--check` only shows the version.          |
 
 ## Flags
 
@@ -73,6 +76,7 @@ If you pass a prompt, December runs it without the interactive session. By defau
 - `Ctrl + L`: Open or close the slash command menu.
 - `Ctrl + O`: Show or hide tool output.
 - `Ctrl + T`: Show or hide background tasks.
+- `Ctrl + B`: Move the running shell command to the background. In tmux, press `Ctrl + B` two times.
 - `@` and a file name: Add a file to the prompt.
 - `!` and a command: Run a shell command directly, for example `!git status`.
 
@@ -85,7 +89,8 @@ In a session, type `/` to see the slash commands. These are the most common:
 - `/login`: Link a plan, sign in with December, or add your own keys.
 - `/model`: Pick a model from your connected provider.
 - `/clear`: Clear the conversation history.
-- `/memory`: Manage workspace memory (`.december/memory.md`) and project rules (`AGENTS.md`).
+- `/memory`: Show your project rules (`AGENTS.md`, or `CLAUDE.md` if there is no `AGENTS.md`).
+- `/learn [lesson]`: Save a lesson from the conversation to `AGENTS.md` or a skill.
 - `/plan <goal>`: Make a plan that you approve before December changes code.
 - `/<skill-name>`: Run an installed skill.
 - `/docs`: Open the documentation in your browser.

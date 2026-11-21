@@ -11,6 +11,7 @@ export interface ParsedCliArgs {
     print: boolean
     fix: boolean
     force: boolean
+    check: boolean
     isGlobal: boolean
     isLocal: boolean
     resume: boolean
@@ -28,6 +29,8 @@ export interface ParsedCliArgs {
     env?: string[]
     header?: string[]
     eager?: boolean
+    /** Show the performance overlay (frame time, output bytes, first-token time) */
+    perf: boolean
     positionals: string[]
 }
 
@@ -105,12 +108,14 @@ function defaultParsedArgs(): ParsedCliArgs {
         print: false,
         fix: false,
         force: false,
+        check: false,
         isGlobal: false,
         isLocal: false,
         resume: false,
         isInline: false,
         turn: undefined,
         list: false,
+        perf: false,
         positionals: [],
     }
 }
@@ -119,6 +124,9 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
     if (args[0] === 'mcp' && args[1] === 'add') {
         return parseMcpAddArgs(args)
     }
+
+    // `-perf` would otherwise parse as `-p erf` (provider "erf")
+    args = args.map((arg) => (arg === '-perf' ? '--perf' : arg))
 
     try {
         const { values, positionals } = parseArgs({
@@ -132,6 +140,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 print: { type: 'boolean' },
                 fix: { type: 'boolean' },
                 force: { type: 'boolean', short: 'f' },
+                check: { type: 'boolean' },
                 global: { type: 'boolean', short: 'g' },
                 local: { type: 'boolean', short: 'l' },
                 resume: { type: 'boolean', short: 'r' },
@@ -147,6 +156,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 env: { type: 'string', short: 'e', multiple: true },
                 header: { type: 'string', short: 'H', multiple: true },
                 eager: { type: 'boolean' },
+                perf: { type: 'boolean' },
             },
             allowPositionals: true,
             strict: false,
@@ -160,6 +170,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
         const print = Boolean(values.print)
         const fix = Boolean(values.fix)
         const force = Boolean(values.force)
+        const check = Boolean(values.check)
         const isGlobal = Boolean(values.global)
         const isLocal = Boolean(values.local)
         const isResume = Boolean(values.resume)
@@ -184,6 +195,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
                 : [values.header as string]
             : undefined
         const eager = Boolean(values.eager)
+        const perf = Boolean(values.perf)
 
         const knownCommands = [
             'login',
@@ -198,6 +210,8 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             'changelog',
             'docs',
             'ask',
+            'plugin',
+            'plugins',
             'skill',
             'skills',
             'mcp',
@@ -229,6 +243,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             print,
             fix,
             force,
+            check,
             isGlobal,
             isLocal,
             resume: isResume || command === 'resume',
@@ -245,6 +260,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
             env,
             header,
             eager,
+            perf,
             positionals,
         }
     } catch {
@@ -278,15 +294,16 @@ Usage:
   december                          Launch interactive TUI session
   december "<prompt>"               Execute headless agent task
   december ask "<question>"         Ask a question about the codebase (read-only Q&A mode)
-  december resume [session-id]      Resume the most recent session or specified session ID
+  december resume [name]            Resume the most recent session, or one by title or ID
   december auth [status|import]     Inspect active subscriptions and authentication status
   december link <provider>          Link AI subscription (copilot, claude, chatgpt, gemini, etc.)
   december key <provider> [key]     Save BYOK API key (openai, anthropic, deepseek, etc.) [--base-url <url>]
   december login [provider]         Log in to December Cloud or subscription
   december logout [provider]        Remove saved authentication credentials
   december switch [provider]        Switch active provider and restore remembered model
+  december plugin [list|install]    Manage plugins, skills, MCP servers, and marketplaces
   december mcp [status|list]        Inspect configured and connected MCP servers and tools
-  december update                   Update December CLI to the latest version
+  december update [--check]         Update December CLI to the latest version (--check only reports)
   december doctor [--fix]           Inspect installations, health, and resolve PATH collisions
   december changelog                Open changelog in your browser
   december docs [section]           Open documentation in your browser
@@ -306,5 +323,6 @@ Options:
   --session-id <id>                 Specify session ID
   --scope <dir>                     Confine agent searches and tools to a specific subpackage
   --cwd <dir>                       Set the working directory root
+  --perf                            Show render and latency stats in the top-right corner
 `
 }

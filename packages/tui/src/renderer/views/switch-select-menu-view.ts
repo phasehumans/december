@@ -2,6 +2,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
+import { drawInlineConfirm, drawListRow, drawPanelTitle } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -36,11 +37,13 @@ export const SwitchSelectMenuView = {
         const items = props.items
         const safeIndex = Math.min(props.selectedIndex, Math.max(0, items.length - 1))
 
-        // Title
-        drawText(buffer, 'Switch Provider', {
+        // G2: title "Provider", then how many are set up in muted
+        drawPanelTitle(buffer, {
             x,
             y,
-            style: { fg: THEME.colors.text, bold: true },
+            title: 'Provider',
+            meta: items.length > 0 ? `${items.length} set up` : undefined,
+            width: Math.max(0, width - x - 2),
         })
         y += 2
 
@@ -50,53 +53,30 @@ export const SwitchSelectMenuView = {
                 y,
                 style: { fg: THEME.colors.muted },
             })
-            y += 1
         } else {
             for (let i = 0; i < items.length; i++) {
                 const item = items[i]
                 const isSelected = i === safeIndex
-                const isConfirmingDelete = item.value === props.confirmDeleteValue
                 const rowY = y + i
 
-                // Selector
-                const selector = isSelected ? `${THEME.glyphs.selector} ` : '  '
-                drawText(buffer, selector, {
+                // G3, G5: "current" as a muted word, no green, no bold
+                drawListRow(buffer, {
                     x,
                     y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.muted,
-                        bold: isSelected,
-                    },
+                    width: Math.max(0, width - x - 2),
+                    selected: isSelected,
+                    label: item.label,
+                    tag: item.isActive ? 'current' : undefined,
                 })
 
-                // Label
-                drawText(buffer, item.label, {
-                    x: x + 2,
-                    y: rowY,
-                    style: {
-                        fg: isSelected ? THEME.colors.brand : THEME.colors.text,
-                        bold: isSelected,
-                    },
-                })
-
-                let labelEnd = x + 2 + item.label.length
-
-                // Active badge
-                if (item.isActive) {
-                    drawText(buffer, ' (Active)', {
-                        x: labelEnd,
+                // M6.1: the delete confirm stays inline on the row, red, no bold
+                if (item.value === props.confirmDeleteValue) {
+                    const tagWidth = item.isActive ? '  current'.length : 0
+                    drawInlineConfirm(buffer, {
+                        x: x + 2 + item.label.length + tagWidth,
                         y: rowY,
-                        style: { fg: THEME.colors.success },
-                    })
-                    labelEnd += ' (Active)'.length
-                }
-
-                // Delete confirmation prompt
-                if (isConfirmingDelete) {
-                    drawText(buffer, ' [Delete? (y/n)]', {
-                        x: labelEnd,
-                        y: rowY,
-                        style: { fg: THEME.colors.error, bold: true },
+                        text: ' [Delete? (y/n)]',
+                        tone: 'danger',
                     })
                 }
             }

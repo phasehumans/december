@@ -308,6 +308,12 @@ export function codexResponsesProvider(
                                     type: 'usage',
                                     promptTokens: usage.input_tokens || 0,
                                     completionTokens: usage.output_tokens || 0,
+                                    ...(usage.input_tokens_details?.cached_tokens
+                                        ? {
+                                              cacheReadInputTokens:
+                                                  usage.input_tokens_details.cached_tokens,
+                                          }
+                                        : {}),
                                 }
                             }
                         }

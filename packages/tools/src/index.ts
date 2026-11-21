@@ -4,10 +4,10 @@ import { BrowserActionTool } from './browser_action'
 import { defaultDeferredRegistry } from './deferred-registry'
 import { EditFileTool } from './edit'
 import { EditDiffTool } from './edit_diff'
-import { ManageMemoryTool } from './manage_memory'
 import { ManageTaskTool } from './manage_task'
 import { ReadFileTool } from './read'
 import { SearchToolsTool } from './search_tools'
+import { UpdatePlanTool } from './update_plan'
 import { WebSearchTool } from './web_search'
 import { EnterWorktreeTool, ExitWorktreeTool } from './worktree'
 import { WriteFileTool } from './write'
@@ -25,7 +25,7 @@ export * from './find'
 export * from './grep'
 export * from './ask_question'
 export * from './manage_task'
-export * from './manage_memory'
+export * from './update_plan'
 export * from './browser'
 export * from './browser_action'
 export * from './web_search'
@@ -43,7 +43,14 @@ export { Type, type Static } from '@sinclair/typebox'
 export const FOUNDATIONAL_TOOLS = [ReadFileTool, WriteFileTool, EditFileTool, BashTool]
 
 // search_tools is the only way the agent can activate DEFERRED_TOOLS and non-eager MCP tools
-export const CORE_TOOLS = [ReadFileTool, WriteFileTool, EditFileTool, BashTool, SearchToolsTool]
+export const CORE_TOOLS = [
+    ReadFileTool,
+    WriteFileTool,
+    EditFileTool,
+    BashTool,
+    SearchToolsTool,
+    UpdatePlanTool,
+]
 
 export const DEFERRED_TOOLS = [
     ManageTaskTool,
@@ -51,7 +58,6 @@ export const DEFERRED_TOOLS = [
     BrowserActionTool,
     WebSearchTool,
     EditDiffTool,
-    ManageMemoryTool,
 ]
 
 // Pre-register standard deferred tools in defaultDeferredRegistry
@@ -81,10 +87,6 @@ defaultDeferredRegistry.register(WebSearchTool, {
 defaultDeferredRegistry.register(ManageTaskTool, {
     category: 'task',
     keywords: ['task', 'background', 'kill', 'status', 'process', 'pid', 'manage_task'],
-})
-defaultDeferredRegistry.register(ManageMemoryTool, {
-    category: 'memory',
-    keywords: ['memory', 'rules', 'conventions', 'quirks', 'manage_memory', 'remember', 'forget'],
 })
 defaultDeferredRegistry.register(EnterWorktreeTool, {
     category: 'git',

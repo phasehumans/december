@@ -210,7 +210,7 @@ describe('taskManager', () => {
             },
         })
 
-        expect(task.command).toBe('[subagent: researcher] Analyze module architecture')
+        expect(task.command).toBe('Analyze module architecture')
         expect(task.status).toBe('running')
         expect(task.type).toBe('subagent')
         expect(task.role).toBe('researcher')
@@ -220,5 +220,84 @@ describe('taskManager', () => {
         expect(aborted).toBe(true)
         expect(onKillCalled).toBe(true)
         expect(taskManager.getTask(task.id)?.status).toBe('killed')
+    })
+
+    test('readNewOutput returns only output since the last read', () => {
+        const task = taskManager.addTask('tail -f log', {} as ChildProcess)
+        taskManager.appendOutput(task.id, 'a\nb\n')
+        expect(taskManager.readNewOutput(task.id)?.output).toBe('a\nb\n')
+        expect(taskManager.readNewOutput(task.id)?.output).toBe('')
+        taskManager.appendOutput(task.id, 'c\n')
+        expect(taskManager.readNewOutput(task.id)).toEqual({ output: 'c\n', missedChars: 0 })
+        expect(taskManager.readNewOutput('missing')).toBeUndefined()
+    })
+
+    test('readNewOutput filters lines but still marks everything as read', () => {
+        const task = taskManager.addTask('server', {} as ChildProcess)
+        taskManager.appendOutput(task.id, 'info: ok\nerror: bad\ninfo: ok\n')
+        expect(taskManager.readNewOutput(task.id, /error/)?.output).toBe('error: bad')
+        expect(taskManager.readNewOutput(task.id)?.output).toBe('')
+    })
+
+    test('readNewOutput keeps its place when old output is dropped', () => {
+        const task = taskManager.addTask('noisy', {} as ChildProcess)
+        taskManager.appendOutput(task.id, 'x'.repeat(1_000_000))
+        taskManager.readNewOutput(task.id)
+        taskManager.appendOutput(task.id, 'y'.repeat(1_100_000))
+        expect(task.droppedChars).toBeGreaterThan(0)
+        const result = taskManager.readNewOutput(task.id)
+        expect(result?.missedChars).toBe(0)
+        expect(result?.output).toBe('y'.repeat(1_100_000))
+    })
+
+    test('records why a task was killed', () => {
+        const task = taskManager.addTask('sleep 100', {
+            kill: () => true,
+        } as unknown as ChildProcess)
+        taskManager.killTask(task.id, 'timeout')
+        expect(task.status).toBe('killed')
+        expect(task.killReason).toBe('timeout')
+    })
+
+    test('backgroundForeground runs and clears registered promotions', () => {
+        let promoted = 0
+        const unregister = taskManager.registerForeground(() => {
+            promoted++
+        })
+        const unregistered = taskManager.registerForeground(() => {
+            promoted += 10
+        })
+        unregistered()
+        expect(taskManager.hasForeground()).toBe(true)
+        expect(taskManager.backgroundForeground()).toBe(1)
+        expect(promoted).toBe(1)
+        expect(taskManager.backgroundForeground()).toBe(0)
+        unregister()
+    })
+
+    test('subagent tasks keep depth and background flags', () => {
+        const task = taskManager.addSubagentTask({
+            role: 'explore',
+            task: 'find auth',
+            depth: 2,
+            background: false,
+        })
+        expect(task.depth).toBe(2)
+        expect(task.background).toBe(false)
+        expect(task.type).toBe('subagent')
+    })
+
+    test('setTurns records subagent progress and emits change', () => {
+        const task = taskManager.addSubagentTask({ role: 'explore', task: 'find auth' })
+        let changes = 0
+        const onChange = () => {
+            changes++
+        }
+        taskManager.on('change', onChange)
+        taskManager.setTurns(task.id, 3)
+        taskManager.setTurns(task.id, 3)
+        taskManager.off('change', onChange)
+        expect(task.turns).toBe(3)
+        expect(changes).toBe(1)
     })
 })

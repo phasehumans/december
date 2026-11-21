@@ -4,7 +4,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 
 import { getReasoningSupportType } from '@december/providers'
-import { PROVIDER_BILLING_LINKS } from '@december/shared'
+import { CHANGELOG_URL, PROVIDER_BILLING_LINKS, SkillDiscoveryEngine } from '@december/shared'
 
 import { COMMANDS } from '../commands/commands'
 import {
@@ -16,6 +16,7 @@ import {
     formatProviderName,
 } from '../constants/providers'
 import { getNextTip } from '../constants/tips'
+import { Keymap, defaultKeybindingsFileContent } from '../keybindings'
 import { THEME } from '../theme'
 import { writeToClipboard } from '../utils/clipboard'
 import {
@@ -30,13 +31,16 @@ import {
     type ChangeBlock,
     parseUnifiedDiffToRows,
 } from '../utils/diff'
+import { toolCallChanges } from '../utils/edit-diff'
 import { getFileQueryMatch, scoreAndSortFiles, type ScoredFile } from '../utils/fuzzy'
 import { expandPastes, storePaste } from '../utils/paste-manager'
+import { toRelativePath } from '../utils/terminal-link'
 
-import { ButterflowQueue } from './butterflow'
+import { sliceToWidth } from './cell'
 import { splitInputSequences } from './input-lexer'
 import { DifferentialScreen } from './screen'
 import { TerminalController } from './terminal'
+import { ActivityTracker, planStepsFromText } from './views/activity-line-view'
 import { AskQuestionMenuView, type QuestionItem } from './views/ask-question-menu-view'
 import {
     AuthMenuView,
@@ -60,62 +64,83 @@ import {
 import { FileAutocompleteMenuView, FILE_WINDOW_SIZE } from './views/file-autocomplete-menu-view'
 import { FileViewMenuView } from './views/file-view-menu-view'
 import { HeaderView, type HeaderViewProps } from './views/header-view'
-import { HelpMenuView, type HelpTab, SHORTCUTS } from './views/help-menu-view'
+import { HelpMenuView, type HelpTab, resolveShortcuts } from './views/help-menu-view'
 import { InputBarView, wrapInputText, getWrappedCursorPosition } from './views/input-bar-view'
 import { LoginMenuView, LOGIN_OPTIONS } from './views/login-menu-view'
-import {
-    McpMenuView,
-    type McpServerMenuItem,
-    type McpViewMode,
-    MCP_PRESET_TEMPLATES,
-} from './views/mcp-menu-view'
-import {
-    MemoryViewMenuView,
-    MEMORY_CATEGORIES,
-    type MemoryTab,
-    type MemoryDocument,
-    type MemoryDetailsProps,
-    type RuleFileViewItem,
-} from './views/memory-view-menu-view'
+import { McpMenuView, type McpServerMenuItem, type McpViewMode } from './views/mcp-menu-view'
+import { MemoryViewMenuView, type AgentsFileViewItem } from './views/memory-view-menu-view'
+import { type MenuFooterItem } from './views/menu-footer-view'
 import { MessageLineCache } from './views/message-line-cache'
 import { MessageListView, type MessageItem } from './views/message-list-view'
 import {
     ModelSelectMenuView,
     MODEL_WINDOW_SIZE,
     type ModelItem,
-    DEFAULT_MODELS,
 } from './views/model-select-menu-view'
+import { takePanelCursor } from './views/panel'
 import { PlanApproveMenuView, PLAN_APPROVE_OPTIONS } from './views/plan-approve-menu-view'
-import { PluginMenuView, type PluginTab, type PluginItemViewProps } from './views/plugin-menu-view'
+import {
+    buildPluginList,
+    ensureVisible,
+    lineIndexOf,
+    marketplaceCounts,
+    PLUGIN_KIND_FILTERS,
+    PLUGIN_TABS,
+    PluginMenuView,
+    pluginSubtitle,
+    type DiscoverRow,
+    type ExtensionRow,
+    type MarketplaceRow,
+    type PluginInputKind,
+    type PluginInstallScope,
+    type PluginKindFilter,
+    type PluginList,
+    type PluginScreen,
+    type PluginSelectable,
+    type PluginTab,
+} from './views/plugin-menu-view'
+import {
+    ReportView,
+    clampReportScroll,
+    firstSelectableRow,
+    getReportViewportHeight,
+    nextSelectableRow,
+    type ReportRow,
+} from './views/report-view'
 import {
     RewindSelectMenuView,
     type RewindTurnEntry,
     REWIND_WINDOW_SIZE,
 } from './views/rewind-select-menu-view'
 import {
+    getSessionDisplayTitle,
     SessionSelectMenuView,
     type SessionItem,
     SESSION_WINDOW_SIZE,
 } from './views/session-select-menu-view'
-import { SettingsMenuView, type SettingItem } from './views/settings-menu-view'
-import { SkillsMenuView, loadWorkspaceSkills, type SkillItem } from './views/skills-menu-view'
+import { SettingsMenuView, formatSettingValue, type SettingItem } from './views/settings-menu-view'
+import { SkillsMenuView, toTildePath, type SkillItem } from './views/skills-menu-view'
 import { SwitchSelectMenuView, type SwitchItem } from './views/switch-select-menu-view'
-import { TasksModeMenuView, type TaskItem } from './views/tasks-mode-menu-view'
 import {
-    ToolPermissionMenuView,
-    DEFAULT_PERMISSION_OPTIONS,
-} from './views/tool-permission-menu-view'
+    TASKS_WINDOW_SIZE,
+    TasksModeMenuView,
+    getTaskLogLines,
+    getTaskLogTitle,
+    orderTasks,
+    type TaskItem,
+    type TasksConfirmStop,
+} from './views/tasks-mode-menu-view'
+import { ToolPermissionMenuView, getPermissionOptions } from './views/tool-permission-menu-view'
 import {
     UsageSelectMenuView,
-    calculateUsageCost,
+    type UsageOverview,
     type UsageStats,
-    type DailyUsageEntry,
-    type WeeklyStats,
 } from './views/usage-select-menu-view'
 
 import type { DifferentialScreenOptions } from './types'
 import type { ReleaseAnnouncement } from '../constants/announcements'
 import type { BtwState } from '../types'
+import type { FormattedLine } from './views/markdown'
 
 export type OverlayType =
     | 'none'
@@ -141,6 +166,39 @@ export type OverlayType =
     | 'switch'
     | 'mcp'
     | 'plugin'
+    | 'report'
+
+/** State of the shared full-screen report overlay (/check, /skills, /hooks, /permissions, /github) */
+export interface ReportState {
+    kind: 'check' | 'skills' | 'hooks' | 'permissions' | 'github'
+    title: string
+    subtitle?: string
+    rows: ReportRow[]
+    selectedIndex: number
+    scrollOffset: number
+    isLoading: boolean
+    loadingText?: string
+    emptyText?: string
+    tabs?: { label: string; active: boolean }[]
+    /** single-line text input; enter calls onSubmit, esc cancels it */
+    input?: { prompt: string; value: string; mask?: boolean; onSubmit: (value: string) => void }
+    footer: MenuFooterItem[]
+    /** enter on the selected row */
+    onEnter?: (row: ReportRow | undefined) => void
+    /** other keys; return true when handled */
+    onKey?: (key: string, row: ReportRow | undefined) => boolean
+}
+
+export interface PluginCatalogData {
+    installed: ExtensionRow[]
+    discover: DiscoverRow[]
+    marketplaces: MarketplaceRow[]
+}
+
+export type PluginConfirmAction =
+    | { action: 'uninstall'; id: string; message: string }
+    | { action: 'remove-mcp'; id: string; scope: 'global' | 'project'; message: string }
+    | { action: 'remove-marketplace'; id: string; message: string }
 
 export interface PendingModelFallback {
     provider: string
@@ -158,11 +216,17 @@ export interface DifferentialAppState {
     scrollOffset?: number
     isReadingMode: boolean
     isStreaming: boolean
+    /** Plan mode: plain prompts are sent as /plan <prompt> (toggle with shift+tab or /plan) */
+    planMode: boolean
+    report: ReportState | null
     promptQueue: string[]
     spinnerFrame: number
     statusMessage?: string
+    /** Background update in progress, shown as a lasting status line with elapsed time */
+    updateStatus?: { message: string; startedAt: number }
+    /** A new version is installed; the running session still uses the old one */
+    pendingRestart?: { version: string; dismissed: boolean }
     activeTip?: string | null
-    expandTools: boolean
     activeModel?: string
     modelLabel?: string
     authMethod?: string
@@ -213,17 +277,16 @@ export interface DifferentialAppState {
     tasks: TaskItem[]
     tasksSelectedIndex: number
     tasksWindowStart: number
+    tasksConfirmStop: TasksConfirmStop
+    /** id of the task whose log is open in the file view (it follows new output) */
+    fileViewTaskId: string | null
 
     // Settings view state
     settingsSelectedIndex: number
     settings: SettingItem[]
 
-    // Skills view state
-    skillsSelectedIndex: number
-    skillsWindowStart: number
-    skills: SkillItem[]
-    skillsSearchQuery: string
-    skillsIsSearching: boolean
+    // Skill detail (SKILL.md viewer, opened from /plugin)
+    skillsDetailSkill: SkillItem | null
     skillsIsDetailView: boolean
     skillsDetailContent: string | null
     skillsDetailLines: string[]
@@ -282,38 +345,29 @@ export interface DifferentialAppState {
 
     // Usage view state
     usageStats: UsageStats
-    dailyUsage: DailyUsageEntry[]
-    weeklyStats?: WeeklyStats
-    balance?: { supported: boolean; balance?: string; currency?: string; error?: string }
+    usageOverview?: UsageOverview
+    usageLoading: boolean
 
-    // Memory view state
-    memoryTab: MemoryTab
-    memoryInitialTab: MemoryTab
+    // Memory view state (AGENTS.md viewer)
     memoryReturnOverlay: OverlayType
-    memoryDocuments: MemoryDocument[]
-    workspaceMemoryDetails: MemoryDetailsProps | null
-    memoryRuleFiles: RuleFileViewItem[]
-    memoryActiveDocIndex: number
+    memoryFile: AgentsFileViewItem | null
     memoryCursorLine: number
     memoryScrollOffset: number
-    memoryRuleScrollOffset: number
-    memorySelectedIndex: number
-    memoryConfirmForgetText: string | null
-    isAddingMemory: boolean
-    memoryNewEntryText: string
-    memoryNewEntryCategoryIndex: number
     memoryIsLoading: boolean
 
     // Rewind view state
     rewindTurns: RewindTurnEntry[]
     rewindSelectedIndex: number
     rewindWindowStart: number
+    rewindConfirming: boolean
 
     // Ask question interactive state
     pendingQuestions: QuestionItem[] | null
     currentQuestionIndex: number
     questionSelectedIndex: number
     questionSelectedMulti: Set<number>
+    /** Text typed into the "Type your own answer…" row; null when not typing (S21) */
+    questionCustomText: string | null
 
     // Tool permission interactive state
     pendingToolCall: {
@@ -364,7 +418,8 @@ export interface DifferentialAppState {
     mcpScrollOffset: number
     mcpMode: McpViewMode
     mcpConfirmDeleteName: string | null
-    mcpPresetSelectedIndex: number
+    /** Opened on one server from /plugin: esc returns to /plugin instead of the list */
+    mcpDetailOnly: boolean
     mcpCustomName: string
     mcpCustomCommand: string
     mcpCustomScope: 'global' | 'project'
@@ -374,22 +429,38 @@ export interface DifferentialAppState {
 
     // Plugin view state
     pluginActiveTab: PluginTab
+    pluginScreen: PluginScreen
     pluginSearchQuery: string
+    pluginIsSearching: boolean
+    pluginKindFilter: PluginKindFilter
+    pluginMarketFilter: string | null
     pluginSelectedIndex: number
     pluginWindowStart: number
-    pluginExpandedId: string | null
-    pluginConfirmUninstallId: string | null
-    installedPlugins: PluginItemViewProps[]
-    discoverablePlugins: PluginItemViewProps[]
+    pluginDetailKey: string | null
+    pluginActionIndex: number
+    pluginInstallId: string | null
+    pluginInstallScope: PluginInstallScope
+    pluginInputKind: PluginInputKind
+    pluginInputValue: string
+    pluginConfirm: PluginConfirmAction | null
+    pluginBusy: string | null
+    pluginLoading: boolean
+    pluginCatalog: PluginCatalogData
 
     pendingModelFallback?: PendingModelFallback
 
     sessionId?: string
+    sessionTitle?: string
     configPath?: string
 }
 
 export interface DifferentialAppOptions extends DifferentialScreenOptions {
-    butterflow?: boolean
+    /**
+     * Queues a frame callback. render() coalesces every state change made in the same
+     * tick into one painted frame. Defaults to setImmediate, or synchronous painting
+     * under test so assertions can read the screen right after a state change.
+     */
+    scheduleFrame?: (callback: () => void) => void
     cliVersion?: string
     latestVersion?: string
     modelLabel?: string
@@ -408,6 +479,10 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     onLoadMcpServers?: () => Promise<McpServerMenuItem[]>
     onToggleMcpServer?: (name: string) => Promise<void>
     onRestartMcpServer?: (name: string) => Promise<void>
+    /** Runs `december update` in the background; progress and result are reported by the host */
+    onRunUpdate?: () => Promise<void>
+    /** Hands the terminal to a freshly started December that resumes this session */
+    onRestart?: () => Promise<void> | void
     onRemoveMcpServer?: (name: string, scope: 'global' | 'project') => Promise<void>
     onAddMcpServer?: (data: {
         name: string
@@ -416,20 +491,30 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
         eager?: boolean
         env?: Record<string, string>
     }) => Promise<void>
-    onLoadPlugins?: () => Promise<{
-        installed: PluginItemViewProps[]
-        discoverable: PluginItemViewProps[]
-    }>
-    onTogglePlugin?: (id: string) => Promise<void>
-    onInstallPlugin?: (id: string) => Promise<void>
+    onLoadPlugins?: () => Promise<PluginCatalogData>
+    /** Turns a plugin, skill, or MCP server on or off and saves the choice */
+    onTogglePluginItem?: (
+        item: Pick<ExtensionRow, 'kind' | 'id' | 'scope' | 'mcpScope' | 'parentPlugin'>
+    ) => Promise<{ enabled: boolean; restartRequired: boolean }>
+    onInstallPlugin?: (id: string, scope: PluginInstallScope) => Promise<{ name: string }>
+    onInstallPluginFromSource?: (
+        source: string,
+        scope: PluginInstallScope
+    ) => Promise<{ name: string }>
+    onUpdatePlugin?: (id: string) => Promise<{ name: string; version?: string }>
     onUninstallPlugin?: (id: string) => Promise<void>
+    onAddMarketplace?: (source: string) => Promise<{ name: string; available: number }>
+    onUpdateMarketplace?: (name: string) => Promise<void>
+    onRemoveMarketplace?: (name: string) => Promise<void>
     onModelFallback?: (fallbackModel: string, failedModel: string, prompt: string) => void
+    /** Skills for /skill:<name> lookups; discovered from the workspace when omitted */
+    skills?: SkillItem[]
     announcement?: ReleaseAnnouncement | null
     models?: ModelItem[]
     tasks?: TaskItem[]
-    skills?: SkillItem[]
     thinkingLevel?: string
     sessionId?: string
+    sessionTitle?: string
     configPath?: string
     onSubmit?: (prompt: string) => void
     onAbort?: () => void
@@ -459,22 +544,16 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     ) => void
     onSessionSelect?: (sessionId: string) => Promise<void> | void
     onSessionDelete?: (sessionId: string) => Promise<void> | void
-    onSessionRename?: (sessionId: string, newName: string) => Promise<void> | void
-    onRewindTurn?: (turnIndex: number) => Promise<void> | void
+    onSessionRename?: (sessionId: string, newTitle: string) => Promise<void> | void
+    /** `/rename <title>` sets the title. `/rename` with no title asks the model for one. */
+    onRenameSession?: (title?: string) => Promise<string | void> | string | void
+    onRewindTurn?: (snapshotId: string) => Promise<void> | void
     onOpenBillingPortal?: (url?: string) => void
     sessionRepository?: any
     sessions?: SessionItem[]
     usageStats?: UsageStats
-    dailyUsage?: DailyUsageEntry[]
     rewindTurns?: RewindTurnEntry[]
-    memoryDocuments?: MemoryDocument[]
-    onLoadMemoryDetails?: () => Promise<MemoryDetailsProps | null>
-    onLoadProjectRules?: () => Promise<RuleFileViewItem[]>
-    onRecordMemory?: (
-        text: string,
-        category: string
-    ) => Promise<{ success: boolean; message: string }>
-    onForgetMemory?: (text: string) => Promise<{ success: boolean; message: string }>
+    onLoadAgentsFile?: () => Promise<AgentsFileViewItem | null>
     onScaffoldRules?: () => Promise<{ success: boolean; message: string }>
     onOpenEditor?: (filePath: string) => Promise<void>
     workspaceFiles?: string[]
@@ -484,15 +563,107 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     onSwitchSelect?: (value: string) => Promise<void> | void
     onDeleteProvider?: (value: string) => Promise<void> | void
     onExecuteDirectCommand?: (command: string) => Promise<void> | void
-    onUndo?: () => Promise<void> | void
     authRequiredNotice?: string
     settings?: SettingItem[]
     onSettingChange?: (settingId: string, newValue: string) => Promise<void> | void
     onKillTask?: (taskId: string) => boolean | void
+    /** removes finished tasks from the task manager (not only from the view) */
+    onClearCompletedTasks?: () => void
+    /** moves the commands running in the foreground to the background; returns how many */
+    onBackgroundForeground?: () => number
     onClearContext?: () => Promise<void> | void
     onNewContext?: () => Promise<string | void> | string | void
     onForkContext?: (newSessionId?: string) => Promise<string | void> | string | void
     onLoadRewindTurns?: () => Promise<RewindTurnEntry[]> | RewindTurnEntry[]
+    onLoadUsage?: () => Promise<UsageOverview | undefined>
+    /** `/compact [focus]`: summarizes the conversation now */
+    onCompact?: (focus?: string) => Promise<CompactOutcome>
+    /** `/check`: health checks for keys, settings, MCP servers, skills, and rules */
+    onRunChecks?: () => Promise<CheckItem[]>
+    /** `/permissions`: allow and deny rules from the global and project files */
+    onLoadPermissions?: () => Promise<PermissionsData>
+    onChangePermissionRule?: (change: PermissionRuleChange) => Promise<void>
+    /** `/github`: status of the December GitHub Action setup for this repo */
+    onLoadGithubSetup?: () => Promise<GithubSetupData>
+    /** runs one setup step; resolves to a message for the toast */
+    onGithubSetupAction?: (action: GithubSetupAction) => Promise<string>
+    /** `/hooks`: hooks from the global and project hooks.json */
+    onLoadHooks?: () => Promise<HooksData>
+    /** ~/.december/keybindings.json; without it the default keys are used */
+    keybindingsPath?: string
+}
+
+export interface HooksData {
+    hooks: {
+        event: string
+        matcher: string
+        command: string
+        timeoutSeconds: number
+        source: 'global' | 'project'
+    }[]
+    globalPath: string
+    projectPath: string
+    /** absolute paths, for opening in an editor */
+    globalFile: string
+    projectFile: string
+    /** project hooks exist but do not run because the workspace is not trusted */
+    projectSkipped: boolean
+    problems: string[]
+}
+
+export interface GithubSetupData {
+    ghInstalled: boolean
+    ghAuthed: boolean
+    ghAuthDetail?: string
+    repo?: string
+    defaultBranch: string
+    inGitRepo: boolean
+    workflowExists: boolean
+    workflowPath?: string
+    /** provider the action runs with, and the secret that holds its key */
+    provider: string
+    secretName: string
+    providerNote?: string
+    secretSet: boolean
+    slackSet: boolean
+    discordSet: boolean
+    secretsError?: string
+    /** set when a saved BYOK key for `provider` can be sent as the secret */
+    savedKeyAvailable: boolean
+}
+
+export type GithubSetupAction =
+    | { type: 'write-workflow'; overwrite: boolean }
+    | { type: 'set-secret'; name: string; value: string }
+    | { type: 'use-saved-key' }
+
+export interface PermissionsData {
+    allow: { global: string[]; project: string[] }
+    deny: { global: string[]; project: string[] }
+    toolPermission: 'always-proceed' | 'always-ask'
+    globalPath: string
+    projectPath: string
+}
+
+export interface PermissionRuleChange {
+    action: 'add' | 'remove'
+    kind: 'allow' | 'deny'
+    scope: 'global' | 'project'
+    pattern: string
+}
+
+export interface CheckItem {
+    group: string
+    label: string
+    status: 'ok' | 'warn' | 'fail'
+    detail?: string
+    fix?: string
+}
+
+export interface CompactOutcome {
+    compacted: boolean
+    tokensBefore?: number
+    tokensAfter?: number
 }
 
 export function openBrowserUrl(url: string): void {
@@ -518,17 +689,19 @@ export function openBrowserUrl(url: string): void {
     }
 }
 
+/** Esc presses within this window after a jump-to-bottom do not stop the agent. */
+const ESC_ABORT_GUARD_MS = 1000
+
 export const DEFAULT_SETTINGS: SettingItem[] = [
-    { id: 'provider', title: 'Active Provider', value: 'Claude' },
-    { id: 'model', title: 'Active Model', value: 'Claude 3.5 Sonnet' },
-    { id: 'butterflow', title: 'Butterflow Streaming', value: 'on' },
-    { id: 'tool_permission', title: 'Tool Permission', value: 'always-proceed' },
-    { id: 'pathguard', title: 'PathGuard Protection', value: 'on' },
-    { id: 'non_workspace', title: 'Non-Workspace Access', value: 'off' },
-    { id: 'thinking_level', title: 'Thinking Level', value: 'auto' },
-    { id: 'steering_mode', title: 'Steering Mode', value: 'all' },
-    { id: 'follow_up_mode', title: 'Follow-Up Mode', value: 'all' },
-    { id: 'browser_visible', title: 'Browser Visible', value: 'off' },
+    { id: 'provider', title: 'Provider', value: 'none' },
+    { id: 'model', title: 'Model', value: 'none' },
+    { id: 'tool_permission', title: 'Tool permission', value: 'always-proceed' },
+    { id: 'pathguard', title: 'Path guard', value: 'on' },
+    { id: 'non_workspace', title: 'Files outside workspace', value: 'off' },
+    { id: 'thinking_level', title: 'Thinking level', value: 'auto' },
+    { id: 'steering_mode', title: 'Steering', value: 'all' },
+    { id: 'follow_up_mode', title: 'Follow-up', value: 'all' },
+    { id: 'browser_visible', title: 'Browser window', value: 'off' },
 ]
 
 export class DifferentialApp {
@@ -541,12 +714,49 @@ export class DifferentialApp {
     private lineCache = new MessageLineCache()
     private isBatchingInput = false
     private maxScroll = 0
+    /** Line count and layout key captured when the user scrolled away from the bottom. */
+    private scrollAnchor: { totalLines: number; layoutKey: string } | null = null
+    /** Time of the last Esc that jumped to the bottom, used to guard against an accidental abort. */
+    private lastEscJumpAt = 0
     private exitTimer: any = null
     private toastTimer: any = null
+    private updateInProgress = false
+    private updateStatusTimer: ReturnType<typeof setInterval> | null = null
+    /** Set once the terminal is handed to another process; no more painting after that */
+    private isDetached = false
     private spinnerTimer: any = null
     private streamStartTime = 0
+    /** Activity line (L0): phase latch and timing for the current turn */
+    private readonly activityTracker = new ActivityTracker()
+    private lastStreamActivityAt = 0
+    private firstTokenAt = 0
+    private statusSetAt = 0
+    private turnPausedMs = 0
+    private turnPauseStartedAt: number | undefined
+    private hasReceivedToken = false
+    private btwLoaderTimer: ReturnType<typeof setInterval> | null = null
+    /** Queued prompt (as sent) to the input as typed, so ↑ restores paste placeholders (L14) */
+    private queuedRawInputs = new Map<string, string>()
+    /** The latest retry from the agent's AgentRetry event (F1); cleared when output resumes */
+    private retryInfo:
+        | { attempt: number; max?: number; reason: string; nextAt?: number }
+        | undefined
+    /** Checklist made from an approved /plan until the agent sends its own (F2) */
+    private seededPlan:
+        | { items: { text: string; status: 'pending' | 'in_progress' | 'done' }[]; at: number }
+        | undefined
+    /** Output tokens of the current turn, for the end-of-turn line (L16) */
+    private turnOutputTokens = 0
+    /** Files whose diff an approval prompt showed this turn, so the chat does not repeat it (S4.8) */
+    private readonly previewedPaths = new Set<string>()
     private onSettingChangeCallback?: (settingId: string, newValue: string) => Promise<void> | void
     private onKillTaskCallback?: (taskId: string) => boolean | void
+    private onClearCompletedTasksCallback?: () => void
+    private onBackgroundForegroundCallback?: () => number
+    /** re-renders running task durations once a second while the tasks overlay is open */
+    private tasksTicker: ReturnType<typeof setInterval> | null = null
+    /** task notices that arrived mid-turn; shown when the turn ends */
+    private pendingTaskNotices: MessageItem[] = []
     private onSubmitCallback?: (prompt: string) => void
     private onAbortCallback?: () => void
     private onExitCallback?: () => void
@@ -568,8 +778,9 @@ export class DifferentialApp {
     private onDeleteProviderCallback?: (value: string) => Promise<void> | void
     private onSessionSelectCallback?: (sessionId: string) => Promise<void> | void
     private onSessionDeleteCallback?: (sessionId: string) => Promise<void> | void
-    private onSessionRenameCallback?: (sessionId: string, newName: string) => Promise<void> | void
-    private onRewindTurnCallback?: (turnIndex: number) => Promise<void> | void
+    private onSessionRenameCallback?: (sessionId: string, newTitle: string) => Promise<void> | void
+    private onRenameSessionCallback?: (title?: string) => Promise<string | void> | string | void
+    private onRewindTurnCallback?: (snapshotId: string) => Promise<void> | void
     private onOpenBillingPortalCallback?: (url?: string) => void
     private questionResolveCallback?: (answers: string | string[]) => void
     sessionRepository?: any
@@ -596,13 +807,13 @@ export class DifferentialApp {
         }
     ) => void
     private onExecuteDirectCommandCallback?: (command: string) => Promise<void> | void
-    private onUndoCallback?: () => Promise<void> | void
     private onClearContextCallback?: () => Promise<void> | void
     private onNewContextCallback?: () => Promise<string | void> | string | void
     private onForkContextCallback?: (
         newSessionId?: string
     ) => Promise<string | void> | string | void
     private onLoadRewindTurnsCallback?: () => Promise<RewindTurnEntry[]> | RewindTurnEntry[]
+    private onLoadUsageCallback?: () => Promise<UsageOverview | undefined>
     private authRequiredNotice?: string
     private pasteBuffer: string | null = null
     private streamRenderTimer: ReturnType<typeof setTimeout> | null = null
@@ -611,8 +822,32 @@ export class DifferentialApp {
     private toolRenderTimer: ReturnType<typeof setTimeout> | null = null
     private lastToolRenderTime = 0
     private static readonly TOOL_THROTTLE_MS = 33 // ~30fps max for tool output updates
-    private readonly butterflowQueue: ButterflowQueue
     private renderScheduled = false
+    private readonly scheduleFrame: ((callback: () => void) => void) | null
+    /** Lay out only the newest turns while following the bottom (off under synchronous tests) */
+    private readonly virtualizeHistory: boolean
+    /** An idle pass is queued to lay out older turns the last frame skipped */
+    private historyLayoutScheduled = false
+    /** A frame was skipped because the terminal had not taken the last one yet */
+    private paintOnDrain = false
+    private unsubscribeDrain?: () => void
+    /** Earliest time for the next paint when the terminal is slow to take output */
+    private nextPaintAt = 0
+    /** A frame write slower than this means the terminal is behind */
+    private static readonly SLOW_WRITE_MS = 4
+    private static readonly MAX_FRAME_DELAY_MS = 250
+    /** DECEMBER_PERF=1 draws frame, output and first-token stats in the top-right corner */
+    private readonly perfHud = process.env.DECEMBER_PERF === '1'
+    private readonly perfStats = {
+        frameMs: 0,
+        avgFrameMs: 0,
+        maxFrameMs: 0,
+        frameBytes: 0,
+        slowWrites: 0,
+        droppedFrames: 0,
+        ttftMs: 0,
+    }
+    private static readonly HISTORY_LAYOUT_BUDGET_MS = 8
 
     constructor(options?: DifferentialAppOptions) {
         this.terminal = options?.terminal ?? new TerminalController()
@@ -623,19 +858,11 @@ export class DifferentialApp {
             synchronized: options?.synchronized,
         })
 
-        const butterflowEnabled =
-            options?.butterflow !== undefined
-                ? options.butterflow
-                : process.env.NODE_ENV !== 'test' && !process.env.BUN_TEST
-
-        this.butterflowQueue = new ButterflowQueue({
-            enabled: butterflowEnabled,
-            onDrip: (delta) => {
-                this.applyDrippedDelta(delta)
-            },
-        })
-
         this.options = options
+        const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.BUN_TEST)
+        this.scheduleFrame =
+            options?.scheduleFrame ?? (isTestEnv ? null : (callback) => setImmediate(callback))
+        this.virtualizeHistory = this.scheduleFrame !== null
         this.onSubmitCallback = options?.onSubmit
         this.onAbortCallback = options?.onAbort
         this.onExitCallback = options?.onExit
@@ -653,19 +880,22 @@ export class DifferentialApp {
         this.onSessionSelectCallback = options?.onSessionSelect
         this.onSessionDeleteCallback = options?.onSessionDelete
         this.onSessionRenameCallback = options?.onSessionRename
+        this.onRenameSessionCallback = options?.onRenameSession
         this.onRewindTurnCallback = options?.onRewindTurn
         this.onOpenBillingPortalCallback = options?.onOpenBillingPortal
         this.sessionRepository = options?.sessionRepository
         this.onSaveApiKeyCallback = options?.onSaveApiKey
         this.onOpenEditorCallback = options?.onOpenEditor
         this.onExecuteDirectCommandCallback = options?.onExecuteDirectCommand
-        this.onUndoCallback = options?.onUndo
         this.onSettingChangeCallback = options?.onSettingChange
         this.onKillTaskCallback = options?.onKillTask
+        this.onClearCompletedTasksCallback = options?.onClearCompletedTasks
+        this.onBackgroundForegroundCallback = options?.onBackgroundForeground
         this.onClearContextCallback = options?.onClearContext
         this.onNewContextCallback = options?.onNewContext
         this.onForkContextCallback = options?.onForkContext
         this.onLoadRewindTurnsCallback = options?.onLoadRewindTurns
+        this.onLoadUsageCallback = options?.onLoadUsage
         this.authRequiredNotice = options?.authRequiredNotice
         this.workspaceFiles = options?.workspaceFiles ? [...options.workspaceFiles] : []
         this.recentFiles = options?.recentFiles ? new Set(options.recentFiles) : new Set<string>()
@@ -681,11 +911,14 @@ export class DifferentialApp {
             historyIndex: -1,
             isReadingMode: false,
             isStreaming: false,
+            planMode: false,
+            report: null,
             promptQueue: [],
             spinnerFrame: 0,
             statusMessage: undefined,
+            updateStatus: undefined,
+            pendingRestart: undefined,
             activeTip: null,
-            expandTools: false,
             cliVersion: options?.cliVersion || '0.4.15',
             latestVersion: options?.latestVersion,
             modelLabel: options?.modelLabel || 'Gemini 3.7 Flash',
@@ -736,36 +969,27 @@ export class DifferentialApp {
                 outputTokens: 0,
                 totalTokens: 0,
             },
-            dailyUsage: options?.dailyUsage || [],
+            usageLoading: false,
 
-            // Memory view state
-            memoryTab: 'memory',
-            memoryInitialTab: 'memory',
+            // Memory view state (AGENTS.md viewer)
             memoryReturnOverlay: 'none',
-            memoryDocuments: options?.memoryDocuments || [],
-            workspaceMemoryDetails: null,
-            memoryRuleFiles: [],
-            memoryActiveDocIndex: 0,
+            memoryFile: null,
             memoryCursorLine: 0,
             memoryScrollOffset: 0,
-            memoryRuleScrollOffset: 0,
-            memorySelectedIndex: 0,
-            memoryConfirmForgetText: null,
-            isAddingMemory: false,
-            memoryNewEntryText: '',
-            memoryNewEntryCategoryIndex: 0,
             memoryIsLoading: false,
 
             // Rewind view state
             rewindTurns: options?.rewindTurns || [],
             rewindSelectedIndex: 0,
             rewindWindowStart: 0,
+            rewindConfirming: false,
 
             // Ask question interactive state
             pendingQuestions: null,
             currentQuestionIndex: 0,
             questionSelectedIndex: 0,
             questionSelectedMulti: new Set(),
+            questionCustomText: null,
 
             // Tool permission interactive state
             pendingToolCall: null,
@@ -795,12 +1019,13 @@ export class DifferentialApp {
             isFileAutocompleteVisible: false,
 
             sessionId: options?.sessionId,
+            sessionTitle: options?.sessionTitle,
             configPath: options?.configPath,
 
             commandSelectedIndex: 0,
             commandWindowStart: 0,
 
-            models: options?.models || DEFAULT_MODELS,
+            models: options?.models || [],
             modelSearchQuery: '',
             modelSelectedIndex: 0,
             modelWindowStart: 0,
@@ -816,18 +1041,16 @@ export class DifferentialApp {
             diffFilePositions: {},
             diffFullContents: {},
 
-            tasks: options?.tasks || [],
+            tasks: orderTasks(options?.tasks || []),
             tasksSelectedIndex: 0,
             tasksWindowStart: 0,
+            tasksConfirmStop: null,
+            fileViewTaskId: null,
 
             settingsSelectedIndex: 0,
             settings: options?.settings ? [...options.settings] : [...DEFAULT_SETTINGS],
 
-            skillsSelectedIndex: 0,
-            skillsWindowStart: 0,
-            skills: options?.skills || loadWorkspaceSkills(),
-            skillsSearchQuery: '',
-            skillsIsSearching: false,
+            skillsDetailSkill: null,
             skillsIsDetailView: false,
             skillsDetailContent: null,
             skillsDetailLines: [],
@@ -867,7 +1090,7 @@ export class DifferentialApp {
             mcpScrollOffset: 0,
             mcpMode: 'list',
             mcpConfirmDeleteName: null,
-            mcpPresetSelectedIndex: 0,
+            mcpDetailOnly: false,
             mcpCustomName: '',
             mcpCustomCommand: '',
             mcpCustomScope: 'global',
@@ -876,13 +1099,23 @@ export class DifferentialApp {
             mcpCustomActiveField: 0,
 
             pluginActiveTab: 'installed',
+            pluginScreen: 'list',
             pluginSearchQuery: '',
+            pluginIsSearching: false,
+            pluginKindFilter: 'all',
+            pluginMarketFilter: null,
             pluginSelectedIndex: 0,
             pluginWindowStart: 0,
-            pluginExpandedId: null,
-            pluginConfirmUninstallId: null,
-            installedPlugins: [],
-            discoverablePlugins: [],
+            pluginDetailKey: null,
+            pluginActionIndex: 0,
+            pluginInstallId: null,
+            pluginInstallScope: 'user',
+            pluginInputKind: 'install-source',
+            pluginInputValue: '',
+            pluginConfirm: null,
+            pluginBusy: null,
+            pluginLoading: false,
+            pluginCatalog: { installed: [], discover: [], marketplaces: [] },
         }
 
         this.refreshModelsForProvider(this.state.selectedProvider)
@@ -898,6 +1131,11 @@ export class DifferentialApp {
         this.isRunning = true
 
         this.screen.start()
+        this.unsubscribeDrain = this.terminal.onDrain(() => {
+            if (!this.paintOnDrain) return
+            this.paintOnDrain = false
+            this.render()
+        })
 
         this.stdinListener = (data) => {
             let str = data.toString()
@@ -972,8 +1210,18 @@ export class DifferentialApp {
     stop(): void {
         if (!this.isRunning) return
         this.isRunning = false
+        this.unsubscribeDrain?.()
+        this.unsubscribeDrain = undefined
 
         this.stopSpinner()
+        if (this.btwLoaderTimer) {
+            clearInterval(this.btwLoaderTimer)
+            this.btwLoaderTimer = null
+        }
+        if (this.tasksTicker) {
+            clearInterval(this.tasksTicker)
+            this.tasksTicker = null
+        }
 
         if (this.exitTimer) {
             clearTimeout(this.exitTimer)
@@ -987,8 +1235,10 @@ export class DifferentialApp {
             clearTimeout(this.streamRenderTimer)
             this.streamRenderTimer = null
         }
-
-        this.butterflowQueue.destroy()
+        if (this.updateStatusTimer) {
+            clearInterval(this.updateStatusTimer)
+            this.updateStatusTimer = null
+        }
 
         if (
             this.stdinListener &&
@@ -1002,11 +1252,23 @@ export class DifferentialApp {
         this.screen.stop()
     }
 
-    getAllCommands(): { name: string; description: string }[] {
+    getAllCommands(): { name: string; description: string; args?: string }[] {
         return COMMANDS.map((c) => ({
             name: c.name,
             description: c.description,
+            args: c.args,
         })).sort((a, b) => a.name.localeCompare(b.name))
+    }
+
+    /**
+     * sets the display title of the active session and mirrors it to the
+     * terminal window title. pass undefined for an untitled session.
+     */
+    setSessionTitle(title?: string): void {
+        this.state.sessionTitle = title || undefined
+        const active = this.state.sessions.find((s) => s.id === this.state.sessionId)
+        if (active && title) active.title = title
+        this.terminal.setWindowTitle?.(title ? `december · ${title}` : 'december')
     }
 
     showToast(message: string, variant: 'success' | 'error' | 'info' = 'info'): void {
@@ -1035,21 +1297,12 @@ export class DifferentialApp {
             ) {
                 this.state.activeTip = getNextTip()
             }
-            // Only force an independent spinner redraw if a spinner glyph is actually rendered on screen
-            const lastMsg = this.state.messages[this.state.messages.length - 1]
-            const isWaitingForFirstToken =
-                !lastMsg ||
-                lastMsg.role === 'user' ||
-                (lastMsg.role === 'assistant' && !lastMsg.content)
-            const hasVisibleSpinner =
-                Boolean(this.state.statusMessage) ||
-                isWaitingForFirstToken ||
-                this.state.messages.some(
-                    (m) =>
-                        (m.role === 'thinking' && m.isStreaming) || m.toolCall?.status === 'running'
-                )
+            // Redraw only while something animates: the activity line, or a running step's dot
+            const hasAnimation =
+                this.state.isStreaming ||
+                this.state.messages.some((m) => m.toolCall?.status === 'running')
 
-            if (hasVisibleSpinner) {
+            if (hasAnimation) {
                 this.render()
             }
         }, 80)
@@ -1063,13 +1316,91 @@ export class DifferentialApp {
         this.state.spinnerFrame = 0
     }
 
+    /**
+     * Show or clear the lasting update status line. The elapsed time ticks once per
+     * second so long installs never look stuck.
+     */
+    setUpdateStatus(message?: string): void {
+        if (!message) {
+            this.state.updateStatus = undefined
+            if (this.updateStatusTimer) {
+                clearInterval(this.updateStatusTimer)
+                this.updateStatusTimer = null
+            }
+            this.render()
+            return
+        }
+        const startedAt = this.state.updateStatus?.startedAt ?? Date.now()
+        this.state.updateStatus = { message, startedAt }
+        if (!this.updateStatusTimer) {
+            this.updateStatusTimer = setInterval(() => this.render(), 1000)
+        }
+        this.render()
+    }
+
+    getUpdateStatusText(): string | undefined {
+        const status = this.state.updateStatus
+        if (!status) return undefined
+        const seconds = Math.floor((Date.now() - status.startedAt) / 1000)
+        // Shown as plain text in the status row: "updating to v0.4.16 12s" (L17)
+        const message = status.message.charAt(0).toLowerCase() + status.message.slice(1)
+        return `${message} ${seconds}s`
+    }
+
+    setPendingRestart(version?: string): void {
+        this.state.pendingRestart = version ? { version, dismissed: false } : undefined
+        this.render()
+    }
+
+    /**
+     * Stop drawing and release the terminal for good. Used before another process
+     * takes over the screen, so late timers in this process cannot paint over it.
+     */
+    handOffTerminal(): void {
+        this.stop()
+        this.isDetached = true
+    }
+
+    private requestRestart(): void {
+        if (!this.options?.onRestart) {
+            this.showToast('Exit with /exit and run "december --resume" to restart.', 'info')
+            return
+        }
+        const res = this.options.onRestart()
+        if (res && typeof (res as Promise<void>).catch === 'function') {
+            ;(res as Promise<void>).catch((err: any) => {
+                this.showToast(`Could not restart: ${err?.message || err}`, 'error')
+            })
+        }
+    }
+
     setStatusMessage(msg?: string): void {
         if (this.state.statusMessage === msg) return
         this.state.statusMessage = msg
+        this.statusSetAt = Date.now()
+        this.render()
+    }
+
+    /** Shows a retry in the activity line from the agent's typed AgentRetry event (F1) */
+    setRetry(info?: {
+        attempt: number
+        maxAttempts?: number
+        delayMs?: number
+        reason: string
+    }): void {
+        this.retryInfo = info
+            ? {
+                  attempt: info.attempt,
+                  max: info.maxAttempts,
+                  reason: info.reason,
+                  nextAt: info.delayMs !== undefined ? Date.now() + info.delayMs : undefined,
+              }
+            : undefined
         this.render()
     }
 
     clearStatusMessage(): void {
+        this.retryInfo = undefined
         if (this.state.statusMessage === undefined) return
         this.state.statusMessage = undefined
         this.render()
@@ -1085,6 +1416,7 @@ export class DifferentialApp {
     ): Promise<void> {
         this.state.activeOverlay = 'fileview'
         this.state.fileViewPath = filePath
+        this.state.fileViewTaskId = null
         this.state.fileViewReturnOverlay = returnOverlay
         this.state.fileViewSearchQuery = searchQuery
         this.state.fileViewMatchLines = matchLines || []
@@ -1186,21 +1518,12 @@ export class DifferentialApp {
             }
         }
 
-        const totalTokens = inputTokens + outputTokens
-        const cost = calculateUsageCost(
-            this.state.activeModel,
-            inputTokens,
-            outputTokens,
-            cacheReadTokens
-        )
-
         this.state.usageStats = {
             requests,
             inputTokens,
             outputTokens,
             cacheReadTokens,
-            totalTokens,
-            cost,
+            totalTokens: inputTokens + outputTokens,
         }
     }
 
@@ -1229,81 +1552,34 @@ export class DifferentialApp {
         return 0
     }
 
-    async loadUsageTrackerData(): Promise<void> {
-        try {
-            const configDir =
-                process.env.DECEMBER_CONFIG_DIR || path.join(os.homedir(), '.december')
-            const usagePath = path.join(configDir, 'usage.json')
-            const raw = await fs.promises.readFile(usagePath, 'utf8')
-            const parsed = JSON.parse(raw)
-            if (parsed && parsed.version === 1 && parsed.days) {
-                const now = new Date()
-                const items: DailyUsageEntry[] = []
-                let inputTokens = 0
-                let outputTokens = 0
-                let cacheReadTokens = 0
-                let requests = 0
-                let activeDays = 0
-                const modelTokensMap: Record<string, number> = {}
-
-                for (let i = 6; i >= 0; i--) {
-                    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
-                    const dateKey = d.toISOString().slice(0, 10)
-                    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' })
-                    const formattedDate = d.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                    })
-                    const day = parsed.days[dateKey]
-                    const dayTokens = day ? (day.inputTokens || 0) + (day.outputTokens || 0) : 0
-
-                    if (day && (day.requests > 0 || dayTokens > 0)) {
-                        activeDays++
-                        inputTokens += day.inputTokens || 0
-                        outputTokens += day.outputTokens || 0
-                        cacheReadTokens += day.cacheReadTokens || 0
-                        requests += day.requests || 0
-                        if (day.models) {
-                            for (const [modelName, bucket] of Object.entries(
-                                day.models as Record<string, any>
-                            )) {
-                                const modelTotal =
-                                    (bucket.inputTokens || 0) + (bucket.outputTokens || 0)
-                                modelTokensMap[modelName] =
-                                    (modelTokensMap[modelName] || 0) + modelTotal
-                            }
-                        }
-                    }
-
-                    items.push({
-                        date: dateKey,
-                        dayName,
-                        formattedDate,
-                        tokens: dayTokens,
-                        isToday: i === 0,
-                    })
-                }
-
-                const totalTokens = inputTokens + outputTokens
-                const topModels = Object.entries(modelTokensMap)
-                    .map(([model, tokens]) => ({
-                        model,
-                        totalTokens: tokens,
-                        percentage: totalTokens > 0 ? Math.round((tokens / totalTokens) * 100) : 0,
-                    }))
-                    .sort((a, b) => b.totalTokens - a.totalTokens)
-
-                this.state.dailyUsage = items
-                this.state.weeklyStats = {
-                    totalTokens,
-                    activeDays,
-                    topModels,
-                }
-                this.render()
-            }
-        } catch {
-            // Intentionally swallowed: fallback to generated default daily usage
+    async loadUsageOverview(): Promise<void> {
+        if (!this.onLoadUsageCallback) {
+            this.state.usageLoading = false
+            this.render()
+            return
         }
+        this.state.usageLoading = true
+        try {
+            const overview = await this.onLoadUsageCallback()
+            if (overview) this.state.usageOverview = overview
+        } catch {
+            // Intentionally swallowed: the view keeps the last overview or shows its unavailable state
+        } finally {
+            this.state.usageLoading = false
+            this.render()
+        }
+    }
+
+    private getUsageDashboard(): { name: string; url: string } {
+        const name =
+            this.state.authMethod === 'december'
+                ? 'december'
+                : (this.state.selectedProvider || 'december').toLowerCase()
+        const url =
+            PROVIDER_BILLING_LINKS[name] ||
+            PROVIDER_BILLING_LINKS.december ||
+            'https://app.trydecember.com/settings/billing'
+        return { name, url }
     }
 
     async loadRewindTurns(): Promise<void> {
@@ -1324,6 +1600,7 @@ export class DifferentialApp {
     }
 
     async openSkillDetail(skill: SkillItem): Promise<void> {
+        this.state.skillsDetailSkill = skill
         this.state.skillsIsDetailView = true
         this.state.skillsCursorLine = 0
         this.state.skillsScrollOffset = 0
@@ -1354,7 +1631,7 @@ export class DifferentialApp {
         this.render()
     }
 
-    async openMcpView(): Promise<void> {
+    async openMcpView(focusServer?: string): Promise<void> {
         this.state.activeOverlay = 'mcp'
         this.state.mcpSelectedIndex = 0
         this.state.mcpWindowStart = 0
@@ -1362,7 +1639,7 @@ export class DifferentialApp {
         this.state.mcpScrollOffset = 0
         this.state.mcpMode = 'list'
         this.state.mcpConfirmDeleteName = null
-        this.state.mcpPresetSelectedIndex = 0
+        this.state.mcpDetailOnly = false
         this.state.mcpCustomName = ''
         this.state.mcpCustomCommand = ''
         this.state.mcpCustomScope = 'global'
@@ -1371,12 +1648,26 @@ export class DifferentialApp {
         this.state.mcpCustomActiveField = 0
         this.render()
         await this.loadMcpServers()
+        if (focusServer) {
+            const index = this.state.mcpServersList.findIndex((s) => s.name === focusServer)
+            if (index >= 0) {
+                this.state.mcpSelectedIndex = index
+                this.state.mcpIsDetailView = true
+                this.state.mcpMode = 'detail'
+                this.state.mcpDetailOnly = true
+                this.render()
+            }
+        }
     }
 
     async loadMcpServers(): Promise<void> {
         if (this.options?.onLoadMcpServers) {
             try {
-                this.state.mcpServersList = await this.options.onLoadMcpServers()
+                const groupOrder = (s: McpServerMenuItem) =>
+                    s.plugin ? 2 : s.scope === 'project' ? 0 : 1
+                this.state.mcpServersList = (await this.options.onLoadMcpServers()).sort(
+                    (a, b) => groupOrder(a) - groupOrder(b) || a.name.localeCompare(b.name)
+                )
                 this.state.mcpServersCount = this.state.mcpServersList.filter(
                     (s) => s.status === 'connected'
                 ).length
@@ -1387,29 +1678,630 @@ export class DifferentialApp {
         }
     }
 
-    async openPluginView(): Promise<void> {
+    async openPluginView(options?: {
+        tab?: PluginTab
+        kindFilter?: PluginKindFilter
+    }): Promise<void> {
         this.state.activeOverlay = 'plugin'
-        this.state.pluginActiveTab = 'installed'
+        this.state.pluginActiveTab = options?.tab || 'installed'
+        this.state.pluginKindFilter = options?.kindFilter || 'all'
+        this.state.pluginMarketFilter = null
+        this.state.pluginScreen = 'list'
         this.state.pluginSearchQuery = ''
+        this.state.pluginIsSearching = false
         this.state.pluginSelectedIndex = 0
         this.state.pluginWindowStart = 0
-        this.state.pluginExpandedId = null
-        this.state.pluginConfirmUninstallId = null
+        this.state.pluginDetailKey = null
+        this.state.pluginConfirm = null
+        this.state.pluginBusy = null
         this.render()
         await this.loadPlugins()
     }
 
     async loadPlugins(): Promise<void> {
-        if (this.options?.onLoadPlugins) {
+        if (!this.options?.onLoadPlugins) return
+        this.state.pluginLoading = true
+        try {
+            this.state.pluginCatalog = await this.options.onLoadPlugins()
+            const total = this.getPluginList().items.length
+            this.state.pluginSelectedIndex = Math.min(
+                this.state.pluginSelectedIndex,
+                Math.max(0, total - 1)
+            )
+        } catch (err: any) {
+            this.showToast(`Failed to load plugins: ${err?.message || err}`, 'error')
+        } finally {
+            this.state.pluginLoading = false
+            this.render()
+        }
+    }
+
+    /** The rows the current /plugin tab shows, after search and filters */
+    getPluginList(): PluginList {
+        return buildPluginList({
+            tab: this.state.pluginActiveTab,
+            installed: this.state.pluginCatalog.installed,
+            discover: this.state.pluginCatalog.discover,
+            marketplaces: this.state.pluginCatalog.marketplaces,
+            query: this.state.pluginSearchQuery,
+            kindFilter: this.state.pluginKindFilter,
+            marketFilter: this.state.pluginMarketFilter,
+        })
+    }
+
+    private enabledSkillsCache: SkillItem[] | null = null
+
+    /** Turned-on skills, for /skill:<name> lookups. Hosts and tests can inject them. */
+    private getEnabledSkills(): SkillItem[] {
+        if (this.options?.skills) return this.options.skills
+        if (!this.enabledSkillsCache) {
             try {
-                const res = await this.options.onLoadPlugins()
-                this.state.installedPlugins = res.installed || []
-                this.state.discoverablePlugins = res.discoverable || []
-                this.render()
+                this.enabledSkillsCache = new SkillDiscoveryEngine({
+                    workspaceDir: this.state.cwd || process.cwd(),
+                })
+                    .discoverAllSkills()
+                    .map((s) => ({
+                        name: s.name,
+                        description: s.metadata?.description || '',
+                        origin: s.origin,
+                        directoryPath: s.directoryPath,
+                        entryFilePath: s.entryFilePath,
+                    }))
             } catch {
-                // Intentionally swallowed: ignore plugin load error
+                // Intentionally swallowed: no skills when discovery fails
+                this.enabledSkillsCache = []
             }
         }
+        return this.enabledSkillsCache
+    }
+
+    private findInstalledRow(key: string | null): ExtensionRow | null {
+        if (!key) return null
+        for (const row of this.state.pluginCatalog.installed) {
+            if (row.key === key) return row
+            const child = row.children?.find((c) => c.key === key)
+            if (child) return child
+        }
+        return null
+    }
+
+    private pluginDetailActions(row: ExtensionRow): Array<{ id: string; label: string }> {
+        const actions = [
+            { id: 'toggle', label: row.enabled ? 'Turn off plugin' : 'Turn on plugin' },
+        ]
+        if (row.updatable) {
+            actions.push({
+                id: 'update',
+                label:
+                    row.updateAvailable && row.latestVersion
+                        ? `Update to v${row.latestVersion}`
+                        : 'Update',
+            })
+        }
+        if (row.removable) actions.push({ id: 'uninstall', label: 'Uninstall' })
+        return actions
+    }
+
+    private pluginInstallPaths(name: string): Record<PluginInstallScope, string> {
+        return {
+            user: `~/.december/plugins/${name}`,
+            project: `.december/plugins/${name}`,
+        }
+    }
+
+    private setPluginTab(tab: PluginTab): void {
+        this.state.pluginActiveTab = tab
+        this.state.pluginSelectedIndex = 0
+        this.state.pluginWindowStart = 0
+        this.state.pluginSearchQuery = ''
+        this.state.pluginIsSearching = false
+        this.state.pluginScreen = 'list'
+        this.render()
+    }
+
+    /** Runs a plugin action with a busy line, a result toast, and a reload */
+    private runPluginTask(
+        busy: string,
+        task: () => Promise<string | void>,
+        options?: { backToList?: boolean }
+    ): void {
+        if (this.state.pluginBusy) return
+        this.state.pluginBusy = busy
+        this.render()
+        task()
+            .then(async (message) => {
+                this.state.pluginBusy = null
+                if (options?.backToList) this.state.pluginScreen = 'list'
+                await this.loadPlugins()
+                if (message) this.showToast(message, 'success')
+            })
+            .catch((err: any) => {
+                this.state.pluginBusy = null
+                this.showToast(err?.message || String(err), 'error')
+                this.render()
+            })
+    }
+
+    private pluginRestartNote(restartRequired?: boolean): string {
+        return restartRequired ? ' Restart December to apply it to the agent.' : ''
+    }
+
+    private runPluginConfirm(confirm: PluginConfirmAction): void {
+        const opts = this.options
+        if (confirm.action === 'uninstall' && opts?.onUninstallPlugin) {
+            const uninstall = opts.onUninstallPlugin
+            this.runPluginTask(
+                `Uninstalling ${confirm.id}`,
+                async () => {
+                    await uninstall(confirm.id)
+                    return `Uninstalled ${confirm.id}.${this.pluginRestartNote(true)}`
+                },
+                { backToList: true }
+            )
+        } else if (confirm.action === 'remove-mcp' && opts?.onRemoveMcpServer) {
+            const remove = opts.onRemoveMcpServer
+            this.runPluginTask(`Removing ${confirm.id}`, async () => {
+                await remove(confirm.id, confirm.scope)
+                return `Removed MCP server ${confirm.id}.`
+            })
+        } else if (confirm.action === 'remove-marketplace' && opts?.onRemoveMarketplace) {
+            const remove = opts.onRemoveMarketplace
+            this.runPluginTask(`Removing ${confirm.id}`, async () => {
+                await remove(confirm.id)
+                return `Removed marketplace ${confirm.id}. Plugins you installed from it stay installed.`
+            })
+        } else {
+            this.render()
+        }
+    }
+
+    private updatePluginById(id: string, name: string): void {
+        const update = this.options?.onUpdatePlugin
+        if (!update) return
+        this.runPluginTask(`Updating ${name}`, async () => {
+            const result = await update(id)
+            const version = result.version ? ` to v${result.version}` : ''
+            return `Updated ${result.name}${version}.${this.pluginRestartNote(true)}`
+        })
+    }
+
+    private openPluginInput(kind: PluginInputKind): void {
+        this.state.pluginScreen = 'input'
+        this.state.pluginInputKind = kind
+        this.state.pluginInputValue = ''
+        this.state.pluginInstallScope = 'user'
+        this.render()
+    }
+
+    private openPluginRow(item: PluginSelectable): void {
+        if (item.type === 'marketplace') {
+            this.state.pluginMarketFilter = item.row.name
+            this.setPluginTab('discover')
+            return
+        }
+
+        if (item.type === 'discover') {
+            const row = item.row
+            if (row.installed) {
+                if (row.updateAvailable) {
+                    this.updatePluginById(row.name, row.name)
+                } else {
+                    this.showToast(
+                        `${row.name} is already installed. Manage it in Installed.`,
+                        'info'
+                    )
+                }
+                return
+            }
+            this.state.pluginInstallId = row.id
+            this.state.pluginInstallScope = row.defaultScope || 'user'
+            this.state.pluginScreen = 'install'
+            this.render()
+            return
+        }
+
+        const row = item.row
+        if (row.kind === 'plugin') {
+            this.state.pluginDetailKey = row.key
+            this.state.pluginActionIndex = 0
+            this.state.pluginScreen = 'details'
+            this.render()
+            return
+        }
+        if (row.kind === 'skill') {
+            this.state.overlayHistory.push('plugin')
+            this.state.activeOverlay = 'skills'
+            this.openSkillDetail({
+                name: row.name,
+                description: row.description,
+                entryFilePath: row.entryFilePath,
+                directoryPath: row.path,
+            }).catch(() => {
+                // Intentionally swallowed: openSkillDetail shows read errors in the viewer
+            })
+            return
+        }
+        if (!row.enabled) {
+            this.showToast(`${row.name} is off. Press space to turn it on first.`, 'info')
+            return
+        }
+        this.state.overlayHistory.push('plugin')
+        this.openMcpView(row.id).catch(() => {
+            // Intentionally swallowed: openMcpView reports load errors itself
+        })
+    }
+
+    private askToRemovePluginRow(row: ExtensionRow): void {
+        if (row.kind === 'plugin' && row.removable) {
+            this.state.pluginConfirm = {
+                action: 'uninstall',
+                id: row.id,
+                message: `Uninstall ${row.name}?`,
+            }
+        } else if (row.kind === 'mcp' && row.parentPlugin) {
+            this.showToast(
+                `${row.name} comes from the ${row.parentPlugin} plugin. Uninstall the plugin instead.`,
+                'info'
+            )
+            return
+        } else if (row.kind === 'mcp' && row.mcpScope) {
+            this.state.pluginConfirm = {
+                action: 'remove-mcp',
+                id: row.id,
+                scope: row.mcpScope,
+                message: `Remove MCP server ${row.name}?`,
+            }
+        } else if (row.kind === 'skill') {
+            this.showToast(
+                `Skills are not removed from here. Turn it off, or delete its folder: ${row.path || row.source}`,
+                'info'
+            )
+            return
+        }
+        this.render()
+    }
+
+    private submitPluginInput(): void {
+        const value = this.state.pluginInputValue.trim()
+        if (!value) {
+            this.showToast('Enter a folder path, git url, or owner/repo.', 'error')
+            return
+        }
+        if (this.state.pluginInputKind === 'install-source') {
+            const install = this.options?.onInstallPluginFromSource
+            if (!install) return
+            const scope = this.state.pluginInstallScope
+            this.runPluginTask(
+                `Installing from ${value}`,
+                async () => {
+                    const result = await install(value, scope)
+                    this.state.pluginInputValue = ''
+                    return `Installed ${result.name}.${this.pluginRestartNote(true)}`
+                },
+                { backToList: true }
+            )
+            return
+        }
+        const add = this.options?.onAddMarketplace
+        if (!add) return
+        this.runPluginTask(
+            `Adding ${value}`,
+            async () => {
+                const result = await add(value)
+                this.state.pluginInputValue = ''
+                return `Added ${result.name} with ${result.available} plugins. Find them in Discover.`
+            },
+            { backToList: true }
+        )
+    }
+
+    private handlePluginKey(key: string): void {
+        const isEnter = key === '\r' || key === '\n'
+        const isUp = key === '\x1b[A'
+        const isDown = key === '\x1b[B'
+        const isBackspace = key === '\x7f' || key === '\b'
+        const isPrintable = key.length === 1 && key >= ' ' && key !== '\x7f'
+
+        if (this.state.pluginBusy) return
+
+        if (this.state.pluginConfirm) {
+            if (key === 'y' || key === 'Y') {
+                const confirm = this.state.pluginConfirm
+                this.state.pluginConfirm = null
+                this.runPluginConfirm(confirm)
+            } else if (key === 'n' || key === 'N') {
+                this.state.pluginConfirm = null
+                this.render()
+            }
+            return
+        }
+
+        const screen = this.state.pluginScreen
+
+        if (screen === 'input') {
+            if (isEnter) {
+                this.submitPluginInput()
+            } else if (key === '\t' || key === '\x1b[Z') {
+                if (this.state.pluginInputKind === 'install-source') {
+                    this.state.pluginInstallScope =
+                        this.state.pluginInstallScope === 'user' ? 'project' : 'user'
+                    this.render()
+                }
+            } else if (isBackspace) {
+                this.state.pluginInputValue = this.state.pluginInputValue.slice(0, -1)
+                this.render()
+            } else if (isPrintable) {
+                this.state.pluginInputValue += key
+                this.render()
+            }
+            return
+        }
+
+        if (screen === 'install') {
+            const row = this.state.pluginCatalog.discover.find(
+                (d) => d.id === this.state.pluginInstallId
+            )
+            if (isUp || isDown || key === '\t') {
+                this.state.pluginInstallScope =
+                    this.state.pluginInstallScope === 'user' ? 'project' : 'user'
+                this.render()
+            } else if (isEnter && row && this.options?.onInstallPlugin) {
+                const install = this.options.onInstallPlugin
+                const scope = this.state.pluginInstallScope
+                this.runPluginTask(
+                    `Installing ${row.name}`,
+                    async () => {
+                        const result = await install(row.id, scope)
+                        return `Installed ${result.name}.${this.pluginRestartNote(true)}`
+                    },
+                    { backToList: true }
+                )
+            }
+            return
+        }
+
+        if (screen === 'details') {
+            const row = this.findInstalledRow(this.state.pluginDetailKey)
+            if (!row) {
+                this.state.pluginScreen = 'list'
+                this.render()
+                return
+            }
+            const actions = this.pluginDetailActions(row)
+            if (isUp || key === 'k') {
+                this.state.pluginActionIndex = Math.max(0, this.state.pluginActionIndex - 1)
+                this.render()
+            } else if (isDown || key === 'j') {
+                this.state.pluginActionIndex = Math.min(
+                    actions.length - 1,
+                    this.state.pluginActionIndex + 1
+                )
+                this.render()
+            } else if (isEnter) {
+                const action = actions[this.state.pluginActionIndex]
+                if (action?.id === 'toggle') this.togglePluginRow(row)
+                if (action?.id === 'update') this.updatePluginById(row.id, row.name)
+                if (action?.id === 'uninstall') this.askToRemovePluginRow(row)
+            }
+            return
+        }
+
+        const list = this.getPluginList()
+        const total = list.items.length
+        const current = list.items[this.state.pluginSelectedIndex]
+        const resetSelection = () => {
+            this.state.pluginSelectedIndex = 0
+            this.state.pluginWindowStart = 0
+        }
+
+        if (this.state.pluginIsSearching && !isUp && !isDown) {
+            if (isEnter) {
+                this.state.pluginIsSearching = false
+            } else if (isBackspace) {
+                this.state.pluginSearchQuery = this.state.pluginSearchQuery.slice(0, -1)
+                resetSelection()
+            } else if (isPrintable) {
+                this.state.pluginSearchQuery += key
+                resetSelection()
+            } else {
+                return
+            }
+            this.render()
+            return
+        }
+
+        const tabIndex = PLUGIN_TABS.indexOf(this.state.pluginActiveTab)
+        if (key === '\t' || key === '\x1b[C') {
+            this.state.pluginMarketFilter = null
+            this.setPluginTab(PLUGIN_TABS[(tabIndex + 1) % PLUGIN_TABS.length]!)
+            return
+        }
+        if (key === '\x1b[Z' || key === '\x1b[D') {
+            this.state.pluginMarketFilter = null
+            this.setPluginTab(
+                PLUGIN_TABS[(tabIndex - 1 + PLUGIN_TABS.length) % PLUGIN_TABS.length]!
+            )
+            return
+        }
+        if (isUp || key === 'k') {
+            if (this.state.pluginSelectedIndex > 0) {
+                this.state.pluginSelectedIndex -= 1
+                this.render()
+            }
+            return
+        }
+        if (isDown || key === 'j') {
+            if (this.state.pluginSelectedIndex < total - 1) {
+                this.state.pluginSelectedIndex += 1
+                this.render()
+            }
+            return
+        }
+        if (key === '/') {
+            this.state.pluginIsSearching = true
+            this.render()
+            return
+        }
+
+        const tab = this.state.pluginActiveTab
+        if (isEnter) {
+            if (current) this.openPluginRow(current)
+            return
+        }
+
+        if (tab === 'installed') {
+            if (key === ' ' && current?.type === 'extension') {
+                const row = current.row
+                if (row.kind === 'mcp' && row.parentPlugin) {
+                    this.showToast(
+                        `${row.name} comes from the ${row.parentPlugin} plugin. Turn the plugin off, or stop it for this session in /mcp.`,
+                        'info'
+                    )
+                    return
+                }
+                this.togglePluginRow(row)
+                return
+            }
+            if (key === 'f' || key === 'F') {
+                const i = PLUGIN_KIND_FILTERS.indexOf(this.state.pluginKindFilter)
+                this.state.pluginKindFilter =
+                    PLUGIN_KIND_FILTERS[(i + 1) % PLUGIN_KIND_FILTERS.length]!
+                resetSelection()
+                this.render()
+                return
+            }
+            if ((key === 'd' || key === 'D') && current?.type === 'extension') {
+                this.askToRemovePluginRow(current.row)
+            }
+            return
+        }
+
+        if (tab === 'discover') {
+            if (key === ' ' && current) {
+                this.openPluginRow(current)
+                return
+            }
+            if (key === 'i' || key === 'I') {
+                this.openPluginInput('install-source')
+                return
+            }
+            if (key === 'm' || key === 'M') {
+                const names = [
+                    null,
+                    ...marketplaceCounts(this.state.pluginCatalog.discover).map((m) => m.name),
+                ]
+                const i = names.indexOf(this.state.pluginMarketFilter)
+                this.state.pluginMarketFilter = names[(i + 1) % names.length] ?? null
+                resetSelection()
+                this.render()
+            }
+            return
+        }
+
+        if (key === 'a' || key === 'A') {
+            this.openPluginInput('add-marketplace')
+            return
+        }
+        if (current?.type === 'marketplace' && !current.row.builtIn) {
+            const name = current.row.name
+            if ((key === 'u' || key === 'U') && this.options?.onUpdateMarketplace) {
+                const update = this.options.onUpdateMarketplace
+                this.runPluginTask(`Updating ${name}`, async () => {
+                    await update(name)
+                    return `Updated marketplace ${name}.`
+                })
+                return
+            }
+            if (key === 'd' || key === 'D') {
+                this.state.pluginConfirm = {
+                    action: 'remove-marketplace',
+                    id: name,
+                    message: `Remove marketplace ${name}?`,
+                }
+                this.render()
+            }
+        }
+    }
+
+    private pluginDetailActionLabels(): string[] {
+        const row = this.findInstalledRow(this.state.pluginDetailKey)
+        return row ? this.pluginDetailActions(row).map((a) => a.label) : []
+    }
+
+    private renderPluginOverlay(y: number, width: number, height: number): void {
+        const list = this.getPluginList()
+        const total = list.items.length
+        if (this.state.pluginSelectedIndex > Math.max(0, total - 1)) {
+            this.state.pluginSelectedIndex = Math.max(0, total - 1)
+        }
+        this.state.pluginWindowStart = ensureVisible(
+            this.state.pluginWindowStart,
+            lineIndexOf(list, this.state.pluginSelectedIndex),
+            PluginMenuView.visibleListLines(height, list.lines.length)
+        )
+        const catalog = this.state.pluginCatalog
+        const installRow =
+            this.state.pluginScreen === 'install'
+                ? catalog.discover.find((d) => d.id === this.state.pluginInstallId) || null
+                : null
+        const detailRow = this.findInstalledRow(this.state.pluginDetailKey)
+        const pathName =
+            installRow?.name ||
+            (this.state.pluginScreen === 'input' ? '<name>' : detailRow?.name || '<name>')
+
+        PluginMenuView.render(this.screen.backBuffer, {
+            x: 0,
+            y,
+            width,
+            height,
+            activeTab: this.state.pluginActiveTab,
+            screen: this.state.pluginScreen,
+            list,
+            selectedIndex: this.state.pluginSelectedIndex,
+            windowStart: this.state.pluginWindowStart,
+            query: this.state.pluginSearchQuery,
+            isSearching: this.state.pluginIsSearching,
+            kindFilter: this.state.pluginKindFilter,
+            marketFilter: this.state.pluginMarketFilter,
+            marketNames: marketplaceCounts(catalog.discover).map((m) => m.name),
+            subtitle: pluginSubtitle(
+                this.state.pluginActiveTab,
+                catalog,
+                this.state.pluginMarketFilter
+            ),
+            loading: this.state.pluginLoading,
+            busy: this.state.pluginBusy,
+            confirm: this.state.pluginConfirm?.message || null,
+            confirmVerb: this.state.pluginConfirm?.action === 'uninstall' ? 'uninstall' : 'remove',
+            detailRow,
+            detailActions: this.pluginDetailActionLabels(),
+            actionIndex: this.state.pluginActionIndex,
+            installRow,
+            installScope: this.state.pluginInstallScope,
+            installPaths: this.pluginInstallPaths(pathName),
+            missingEnv: installRow?.env?.filter((name) => !process.env[name]) || [],
+            inputKind: this.state.pluginInputKind,
+            inputValue: this.state.pluginInputValue,
+        })
+    }
+
+    private togglePluginRow(row: ExtensionRow): void {
+        if (!this.options?.onTogglePluginItem) return
+        const toggle = this.options.onTogglePluginItem
+        const verb = row.enabled ? 'Turning off' : 'Turning on'
+        this.runPluginTask(`${verb} ${row.name}`, async () => {
+            const result = await toggle({
+                kind: row.kind,
+                id: row.id,
+                scope: row.scope,
+                mcpScope: row.mcpScope,
+                parentPlugin: row.parentPlugin,
+            })
+            const state = result.enabled ? 'on' : 'off'
+            return result.restartRequired
+                ? `Turned ${state} ${row.name}. Restart December to apply it to the agent.`
+                : `Turned ${state} ${row.name}.`
+        })
     }
 
     setPendingModelFallback(fallback?: PendingModelFallback): void {
@@ -1417,39 +2309,26 @@ export class DifferentialApp {
         this.render()
     }
 
-    async openMemoryView(
-        initialTab: MemoryTab = 'memory',
-        returnOverlay: OverlayType = 'none'
-    ): Promise<void> {
+    async openMemoryView(returnOverlay: OverlayType = 'none'): Promise<void> {
         this.state.activeOverlay = 'memory'
-        this.state.memoryTab = initialTab
-        this.state.memoryInitialTab = initialTab
         this.state.memoryReturnOverlay = returnOverlay
-        this.state.memorySelectedIndex = 0
-        this.state.memoryConfirmForgetText = null
         this.state.memoryScrollOffset = 0
         this.state.memoryCursorLine = 0
-        this.state.memoryRuleScrollOffset = 0
-        this.state.isAddingMemory = false
-        this.state.memoryNewEntryText = ''
         this.state.memoryIsLoading = true
         this.render()
 
-        await this.loadMemoryAndRules()
+        await this.loadAgentsFile()
     }
 
-    async loadMemoryAndRules(): Promise<void> {
+    async loadAgentsFile(): Promise<void> {
         this.state.memoryIsLoading = true
         this.render()
         try {
-            if (this.options?.onLoadMemoryDetails) {
-                this.state.workspaceMemoryDetails = await this.options.onLoadMemoryDetails()
-            }
-            if (this.options?.onLoadProjectRules) {
-                this.state.memoryRuleFiles = await this.options.onLoadProjectRules()
+            if (this.options?.onLoadAgentsFile) {
+                this.state.memoryFile = await this.options.onLoadAgentsFile()
             }
         } catch {
-            // Intentionally swallowed: ignore memory loading error
+            // Intentionally swallowed: show empty state when AGENTS.md cannot be read
         } finally {
             this.state.memoryIsLoading = false
             this.render()
@@ -1463,7 +2342,7 @@ export class DifferentialApp {
         const msgIndex = this.state.messages.length
         this.state.messages.push({
             role: 'assistant',
-            content: 'Generating December login code...',
+            content: 'Generating December login code…',
         })
         this.render()
 
@@ -1485,7 +2364,7 @@ export class DifferentialApp {
 
                 this.state.messages[msgIndex] = {
                     role: 'assistant',
-                    content: `Confirm code: \`${code}\`\nOpen URL: [${fullUrl}](${fullUrl})\n\nWaiting for approval in your browser...`,
+                    content: `Confirm code: \`${code}\`\nOpen URL: [${fullUrl}](${fullUrl})\n\nWaiting for approval in your browser…`,
                 }
                 this.render()
                 openBrowserUrl(fullUrl)
@@ -1554,9 +2433,8 @@ export class DifferentialApp {
                 return
             }
         }
-        if (!this.state.models || this.state.models.length === 0) {
-            this.state.models = DEFAULT_MODELS
-        }
+        // No fixed fallback list: the model panel shows its empty state (B13)
+        if (!this.state.models) this.state.models = []
     }
 
     async startSubscriptionLogin(provider: string, label?: string): Promise<void> {
@@ -1567,7 +2445,7 @@ export class DifferentialApp {
         const msgIndex = this.state.messages.length
         this.state.messages.push({
             role: 'assistant',
-            content: `Initiating ${displayLabel} subscription verification...`,
+            content: `Initiating ${displayLabel} subscription verification…`,
         })
         this.render()
 
@@ -1588,10 +2466,10 @@ export class DifferentialApp {
 
                 if (isBrowserAuth) {
                     writeToClipboard(targetUrl)
-                    promptText = `Opening browser to authorize ${displayLabel} subscription...\n(Link copied to clipboard - paste in browser if it did not open automatically)\n\nAuthorization URL:\n${targetUrl}\n\nWaiting for authorization and subscription verification...`
+                    promptText = `Opening browser to authorize ${displayLabel} subscription…\n(Link copied to clipboard - paste in browser if it did not open automatically)\n\nAuthorization URL:\n${targetUrl}\n\nWaiting for authorization and subscription verification…`
                 } else {
                     writeToClipboard(code)
-                    promptText = `To authorize ${displayLabel}:\n1. Open: ${targetUrl}\n2. Enter code: \`${code}\` (code copied to clipboard)\n\nWaiting for authorization and subscription verification...`
+                    promptText = `To authorize ${displayLabel}:\n1. Open: ${targetUrl}\n2. Enter code: \`${code}\` (code copied to clipboard)\n\nWaiting for authorization and subscription verification…`
                 }
 
                 this.state.messages[msgIndex] = {
@@ -1703,6 +2581,7 @@ export class DifferentialApp {
             this.state.currentQuestionIndex = 0
             this.state.questionSelectedIndex = 0
             this.state.questionSelectedMulti = new Set()
+            this.state.questionCustomText = null
             this.pendingQuestionAnswers = {}
             this.pendingQuestionResolver = resolve
             this.state.activeOverlay = 'ask_question'
@@ -1715,6 +2594,10 @@ export class DifferentialApp {
         commandOrTarget?: string
         diffLines?: string[]
     }): Promise<'approve' | 'always' | 'git_tracked' | 'deny'> {
+        if (call.diffLines && call.diffLines.length > 0 && call.commandOrTarget) {
+            const target = call.commandOrTarget.match(/^[\w-]+:\s*(.+)$/)?.[1]
+            if (target) this.previewedPaths.add(toRelativePath(target.trim()))
+        }
         return new Promise((resolve) => {
             this.state.pendingToolCall = {
                 toolName: call.toolName,
@@ -1730,11 +2613,118 @@ export class DifferentialApp {
     }
 
     updateTasks(tasks: TaskItem[]): void {
-        this.state.tasks = tasks
-        if (this.state.tasksSelectedIndex >= tasks.length) {
-            this.state.tasksSelectedIndex = Math.max(0, tasks.length - 1)
+        // keep the cursor on the same task when tasks are added, removed or reordered
+        const selectedId = this.state.tasks[this.state.tasksSelectedIndex]?.id
+        const ordered = orderTasks(tasks)
+        this.state.tasks = ordered
+        const newIndex = selectedId ? ordered.findIndex((t) => t.id === selectedId) : -1
+        if (newIndex >= 0) this.state.tasksSelectedIndex = newIndex
+        else if (this.state.tasksConfirmStop === 'one') this.state.tasksConfirmStop = null
+        this.clampTasksSelection()
+        if (this.state.tasksConfirmStop === 'all' && !ordered.some((t) => t.status === 'running')) {
+            this.state.tasksConfirmStop = null
         }
+        if (this.state.tasksConfirmStop === 'one') {
+            const selected = ordered[this.state.tasksSelectedIndex]
+            if (!selected || selected.status !== 'running') this.state.tasksConfirmStop = null
+        }
+        this.refreshTaskLogView()
         this.render()
+    }
+
+    /** keeps the selected task and the scroll window inside the task list */
+    private clampTasksSelection(): void {
+        const count = this.state.tasks.length
+        this.state.tasksSelectedIndex = Math.max(
+            0,
+            Math.min(this.state.tasksSelectedIndex, count - 1)
+        )
+        const maxStart = Math.max(0, count - TASKS_WINDOW_SIZE)
+        let start = Math.min(this.state.tasksWindowStart, maxStart)
+        if (this.state.tasksSelectedIndex < start) start = this.state.tasksSelectedIndex
+        if (this.state.tasksSelectedIndex >= start + TASKS_WINDOW_SIZE) {
+            start = this.state.tasksSelectedIndex - TASKS_WINDOW_SIZE + 1
+        }
+        this.state.tasksWindowStart = Math.max(0, start)
+    }
+
+    /**
+     * if a task log is open, swaps in the latest output. When the cursor was on the
+     * last line, it stays on the last line (follow mode); otherwise it keeps its place.
+     */
+    private refreshTaskLogView(): void {
+        const taskId = this.state.fileViewTaskId
+        if (!taskId || this.state.activeOverlay !== 'fileview') return
+        const task = this.state.tasks.find((t) => t.id === taskId)
+        if (!task) return
+
+        const lines = getTaskLogLines(task)
+        const previous = this.state.fileViewLines
+        if (
+            lines.length === previous.length &&
+            lines[lines.length - 1] === previous[previous.length - 1]
+        ) {
+            return
+        }
+        const wasFollowing = this.isTaskLogFollowing()
+        this.state.fileViewLines = lines
+        if (wasFollowing) {
+            this.state.fileViewCursorLine = Math.max(0, lines.length - 1)
+            this.state.fileViewScrollOffset = Math.max(
+                0,
+                lines.length - this.getFileViewVisibleLineCount()
+            )
+        } else {
+            this.state.fileViewCursorLine = Math.min(
+                this.state.fileViewCursorLine,
+                Math.max(0, lines.length - 1)
+            )
+        }
+        // the file view title (following / paused) is refreshed on every paint
+    }
+
+    private getFileViewVisibleLineCount(): number {
+        return Math.max(5, this.screen.height - 4)
+    }
+
+    private isTaskLogFollowing(): boolean {
+        return this.state.fileViewCursorLine >= this.state.fileViewLines.length - 1
+    }
+
+    /**
+     * shows a one-line notice in the transcript that a background task finished.
+     * During a turn it waits for the turn to end, so it never splits streamed text.
+     */
+    appendTaskNotice(text: string, tone: 'success' | 'error' | 'muted'): void {
+        const notice: MessageItem = { role: 'task_notice', content: text, tone }
+        if (this.state.isStreaming) {
+            this.pendingTaskNotices.push(notice)
+            return
+        }
+        this.state.messages.push(notice)
+        if (!this.state.isReadingMode) this.state.scrollOffset = undefined
+        this.render()
+    }
+
+    private flushTaskNotices(): void {
+        if (this.pendingTaskNotices.length === 0) return
+        this.state.messages.push(...this.pendingTaskNotices)
+        this.pendingTaskNotices = []
+        if (!this.state.isReadingMode) this.state.scrollOffset = undefined
+    }
+
+    /** runs a 1s re-render while the tasks overlay shows a running task */
+    private syncTasksTicker(): void {
+        const shouldTick =
+            this.state.activeOverlay === 'tasks' &&
+            this.state.tasks.some((t) => t.status === 'running')
+        if (shouldTick && !this.tasksTicker) {
+            this.tasksTicker = setInterval(() => this.render(), 1000)
+            this.tasksTicker.unref?.()
+        } else if (!shouldTick && this.tasksTicker) {
+            clearInterval(this.tasksTicker)
+            this.tasksTicker = null
+        }
     }
 
     setInput(text: string): void {
@@ -1767,6 +2757,7 @@ export class DifferentialApp {
         if (!currentQ) return
 
         this.pendingQuestionAnswers[currentQ.question] = answer
+        this.state.questionCustomText = null
 
         if (this.state.currentQuestionIndex < qList.length - 1) {
             this.state.currentQuestionIndex += 1
@@ -1808,6 +2799,10 @@ export class DifferentialApp {
             return
         }
 
+        if (decision === 'approve') {
+            const items = planStepsFromText(plan?.fullPlan || plan?.summary || '')
+            this.seededPlan = items.length > 0 ? { items, at: Date.now() } : undefined
+        }
         const res = this.pendingPlanApprovalResolver || this.state.pendingPlan?.resolve
         this.pendingPlanApprovalResolver = undefined
         this.state.pendingPlan = null
@@ -1897,20 +2892,20 @@ export class DifferentialApp {
                 }
             }
 
-            if (overlay === 'memory' && this.state.isAddingMemory) {
-                const entryChunk = cleaned.replace(/[\r\n]+/g, ' ')
-                this.state.memoryNewEntryText += entryChunk
-                this.render()
-                return
-            }
-
-            if (overlay === 'skills' && this.state.skillsIsSearching) {
-                const searchChunk = cleaned.replace(/[\r\n]+/g, ' ')
-                this.state.skillsSearchQuery += searchChunk
-                this.state.skillsSelectedIndex = 0
-                this.state.skillsWindowStart = 0
-                this.render()
-                return
+            if (overlay === 'plugin') {
+                const chunk = cleaned.replace(/[\r\n]+/g, ' ')
+                if (this.state.pluginScreen === 'input') {
+                    this.state.pluginInputValue += chunk.trim()
+                    this.render()
+                    return
+                }
+                if (this.state.pluginScreen === 'list' && this.state.pluginIsSearching) {
+                    this.state.pluginSearchQuery += chunk
+                    this.state.pluginSelectedIndex = 0
+                    this.state.pluginWindowStart = 0
+                    this.render()
+                    return
+                }
             }
 
             // Overlay is active but not in a text-input mode: ignore paste to prevent leaking into prompt input
@@ -1935,7 +2930,7 @@ export class DifferentialApp {
         this.render()
     }
 
-    handleKey(key: string): void {
+    handleKey(key: string, alreadyMapped = false): void {
         // Bracketed paste: \x1b[200~ <pasted text> \x1b[201~
         if (key.startsWith('\x1b[200~') && key.endsWith('\x1b[201~')) {
             const pastedContent = key.slice(6, -6)
@@ -1943,18 +2938,14 @@ export class DifferentialApp {
             return
         }
 
-        // Ctrl+O: Toggle tool execution details / command logs
-        if (key === '\x0f') {
-            this.state.expandTools = !this.state.expandTools
-            this.lineCache.clear()
-            this.showToast(
-                this.state.expandTools
-                    ? 'Tool outputs expanded (Ctrl+O to collapse)'
-                    : 'Tool outputs collapsed (Ctrl+O to expand)',
-                'info'
-            )
-            this.render()
-            return
+        // User keybindings: run the bound action's default key instead, or ignore a moved default
+        if (!alreadyMapped) {
+            const mapped = this.getKeymap().translate(key, this.state.activeOverlay === 'none')
+            if (mapped === null) return
+            if (mapped !== key) {
+                this.handleKey(mapped, true)
+                return
+            }
         }
 
         // Ctrl+C
@@ -2003,6 +2994,18 @@ export class DifferentialApp {
             return
         }
 
+        // Ctrl+B: move the command running in the foreground to the background
+        if (key === '\x02') {
+            const moved = this.onBackgroundForegroundCallback?.() ?? 0
+            this.showToast(
+                moved > 0
+                    ? `Moved ${moved} command${moved === 1 ? '' : 's'} to the background. Ctrl+T to view.`
+                    : 'No running command to move to the background.',
+                'info'
+            )
+            return
+        }
+
         // Esc: Close overlay, cancel exit confirm, dismiss btw, stop streaming, or clear input
         if (key === '\x1b') {
             if (this.state.showExitConfirm) {
@@ -2014,6 +3017,17 @@ export class DifferentialApp {
             if (this.state.pendingModelFallback) {
                 this.state.pendingModelFallback = undefined
                 this.render()
+                return
+            }
+
+            if (
+                this.state.pendingRestart &&
+                !this.state.pendingRestart.dismissed &&
+                this.state.activeOverlay === 'none' &&
+                !this.state.input
+            ) {
+                this.state.pendingRestart.dismissed = true
+                this.showToast('Restart later with /restart.', 'info')
                 return
             }
 
@@ -2061,14 +3075,18 @@ export class DifferentialApp {
             if (this.state.isStreaming) {
                 if (this.state.isReadingMode || this.state.scrollOffset !== undefined) {
                     this.scrollToBottom()
+                    this.lastEscJumpAt = Date.now()
                     return
                 }
+                // A quick second Esc after a jump is a double-tap, not a request to stop
+                if (Date.now() - this.lastEscJumpAt < ESC_ABORT_GUARD_MS) return
                 this.handleAbortStream()
                 return
             }
 
             if (this.state.isReadingMode || this.state.scrollOffset !== undefined) {
                 this.scrollToBottom()
+                this.lastEscJumpAt = Date.now()
                 return
             }
             return
@@ -2360,6 +3378,17 @@ export class DifferentialApp {
                 }
             }
 
+            // L14: with an empty prompt during a turn, ↑ takes the last queued message back to edit
+            if (!this.state.input && this.state.isStreaming && this.state.promptQueue.length > 0) {
+                const queued = this.state.promptQueue.pop() || ''
+                // Put back the input as typed, with its paste placeholders, not the expanded text
+                this.state.input = this.queuedRawInputs.get(queued) ?? queued
+                this.queuedRawInputs.delete(queued)
+                this.state.cursorPos = this.state.input.length
+                this.render()
+                return
+            }
+
             if (!this.state.input && this.state.messages.length > 0) {
                 this.scrollUp(2)
             } else if (this.state.promptHistory.length > 0) {
@@ -2432,6 +3461,8 @@ export class DifferentialApp {
                 this.state.cursorPos = 0
                 this.render()
             } else if (this.state.messages.length > 0) {
+                // Read maxScroll only after older turns are laid out
+                this.ensureHistoryLaidOut()
                 this.scrollUp(this.maxScroll)
             }
             return
@@ -2445,6 +3476,12 @@ export class DifferentialApp {
             } else {
                 this.scrollToBottom()
             }
+            return
+        }
+
+        // Shift+Tab: Toggle plan mode
+        if (key === '\x1b[Z') {
+            this.togglePlanMode()
             return
         }
 
@@ -2471,6 +3508,10 @@ export class DifferentialApp {
         // Enter: Submit prompt or execute slash command
         if (key === '\r' || key === '\n') {
             const trimmed = this.state.input.trim()
+            if (!trimmed && this.state.pendingRestart && !this.state.pendingRestart.dismissed) {
+                this.requestRestart()
+                return
+            }
             if (trimmed) {
                 if (trimmed.startsWith('/')) {
                     this.executeCommand(trimmed.slice(1))
@@ -2771,7 +3812,7 @@ export class DifferentialApp {
 
         if (cmd === 'plan') {
             if (!args) {
-                this.showToast('Usage: /plan <goal> (e.g. /plan refactor authentication)', 'info')
+                this.togglePlanMode()
                 return
             }
             this.state.promptHistory.push(`/${raw}`)
@@ -2787,6 +3828,32 @@ export class DifferentialApp {
             return
         }
 
+        // Built-in, so a user skill named "learn" cannot shadow it
+        if (cmd === 'learn') {
+            const hasConversation = this.state.messages.some(
+                (m) => m.role === 'user' || m.role === 'assistant'
+            )
+            if (!args && !hasConversation) {
+                this.showToast(
+                    'Usage: /learn [lesson] (e.g. /learn never use axios, use lib/http.ts)',
+                    'info'
+                )
+                return
+            }
+            const command = args ? `/learn ${args}` : '/learn'
+            this.state.promptHistory.push(`/${raw}`)
+            this.state.historyIndex = -1
+            this.state.messages.push({
+                role: 'user',
+                content: command,
+            })
+            this.render()
+            if (this.onSubmitCallback) {
+                this.onSubmitCallback(command)
+            }
+            return
+        }
+
         if (cmd === 'exit') {
             if (this.onExitCallback) {
                 this.onExitCallback()
@@ -2794,6 +3861,47 @@ export class DifferentialApp {
                 this.stop()
                 process.exit(0)
             }
+            return
+        }
+
+        if (cmd === 'compact') {
+            this.runCompact(args || undefined)
+            return
+        }
+
+        // 'doctor' is a hidden alias of 'check'
+        if (cmd === 'check' || cmd === 'doctor') {
+            this.openCheckReport()
+            return
+        }
+
+        if (cmd === 'permissions' || cmd === 'allowed-tools') {
+            this.openPermissionsReport('allow')
+            return
+        }
+
+        if (cmd === 'github') {
+            this.openGithubReport()
+            return
+        }
+
+        if (cmd === 'keybindings') {
+            this.openKeybindingsFile()
+            return
+        }
+
+        if (cmd === 'hooks') {
+            this.openHooksReport()
+            return
+        }
+
+        if (cmd === 'skills') {
+            const sub = args.toLowerCase()
+            if (sub && sub !== 'reload') {
+                this.showToast('Usage: /skills or /skills reload', 'info')
+                return
+            }
+            this.openSkillsReport(sub === 'reload')
             return
         }
 
@@ -2844,7 +3952,7 @@ export class DifferentialApp {
                             if (newSessionId) {
                                 this.state.sessionId = newSessionId
                                 this.showToast(
-                                    `Forked conversation into a new branch: ${newSessionId}.`,
+                                    `Forked conversation into a new branch: ${this.state.sessionTitle || newSessionId}.`,
                                     'success'
                                 )
                                 this.render()
@@ -2859,13 +3967,45 @@ export class DifferentialApp {
                         })
                 } else if (typeof res === 'string') {
                     this.state.sessionId = res
-                    this.showToast(`Forked conversation into a new branch: ${res}.`, 'success')
+                    this.showToast(
+                        `Forked conversation into a new branch: ${this.state.sessionTitle || res}.`,
+                        'success'
+                    )
                     this.render()
                 }
             } else {
                 this.showToast('Forked conversation into a new branch.', 'success')
                 this.render()
             }
+            return
+        }
+
+        if (cmd === 'rename') {
+            const requested = args ? args.trim() : ''
+            if (!this.onRenameSessionCallback) {
+                this.showToast('Renaming is not available in this session.', 'error')
+                return
+            }
+            if (!requested) {
+                this.showToast('Generating a session title…', 'info')
+            }
+            Promise.resolve(this.onRenameSessionCallback(requested || undefined))
+                .then((title) => {
+                    if (title) {
+                        this.setSessionTitle(title)
+                        this.showToast(`Renamed session to "${title}".`, 'success')
+                    } else if (!requested) {
+                        this.showToast(
+                            'Could not generate a title. Use /rename <title> to set one.',
+                            'error'
+                        )
+                    }
+                    this.render()
+                })
+                .catch((err) => {
+                    this.showToast(`Failed to rename session: ${err?.message || err}`, 'error')
+                    this.render()
+                })
             return
         }
 
@@ -2883,8 +4023,7 @@ export class DifferentialApp {
         }
 
         if (cmd === 'changelog') {
-            const url = 'https://trydecember.com/docs/changelog'
-            openBrowserUrl(url)
+            openBrowserUrl(CHANGELOG_URL)
             this.showToast('Opened changelog in browser.', 'success')
             return
         }
@@ -3017,26 +4156,6 @@ export class DifferentialApp {
             return
         }
 
-        if (cmd === 'skills' || cmd === 'skill' || cmd === 'skills list') {
-            this.state.activeOverlay = 'skills'
-            this.state.skillsSelectedIndex = 0
-            this.state.skillsWindowStart = 0
-            if (!this.state.skills || this.state.skills.length === 0) {
-                this.state.skills = loadWorkspaceSkills()
-            }
-            this.state.skillsSearchQuery = ''
-            this.state.skillsIsSearching = false
-            this.state.skillsIsDetailView = false
-            this.state.skillsDetailContent = null
-            this.state.skillsDetailLines = []
-            this.state.skillsDetailLoading = false
-            this.state.skillsDetailError = null
-            this.state.skillsCursorLine = 0
-            this.state.skillsScrollOffset = 0
-            this.render()
-            return
-        }
-
         if (cmd === 'switch') {
             this.state.activeOverlay = 'switch'
             this.state.switchSelectedIndex = 0
@@ -3109,6 +4228,7 @@ export class DifferentialApp {
             this.state.activeOverlay = 'tasks'
             this.state.tasksSelectedIndex = 0
             this.state.tasksWindowStart = 0
+            this.state.tasksConfirmStop = null
             this.render()
             return
         }
@@ -3127,6 +4247,7 @@ export class DifferentialApp {
                     .then((sessions: any[]) => {
                         this.state.sessions = sessions.map((s) => ({
                             id: s.id,
+                            title: s.title,
                             preview: s.preview || s.id,
                             updatedAt: s.updatedAt || Date.now(),
                             messageCount: s.messageCount,
@@ -3143,18 +4264,16 @@ export class DifferentialApp {
 
         if (cmd === 'usage' || cmd === 'cost') {
             this.state.activeOverlay = 'usage'
-            this.refreshUsageStats()
-            this.loadUsageTrackerData().catch(() => {
-                // Intentionally swallowed: ignore usage tracker load failure
-            })
+            this.state.usageLoading = Boolean(this.onLoadUsageCallback)
             this.render()
+            void this.loadUsageOverview()
             return
         }
 
-        if (cmd === 'memory' || cmd === 'rules') {
+        if (cmd === 'memory') {
             const returnOverlay =
                 this.state.activeOverlay !== 'none' ? this.state.activeOverlay : 'none'
-            this.openMemoryView(cmd === 'rules' ? 'rules' : 'memory', returnOverlay).catch(() => {
+            this.openMemoryView(returnOverlay).catch(() => {
                 // Intentionally swallowed: openMemoryView error
             })
             return
@@ -3174,25 +4293,66 @@ export class DifferentialApp {
             return
         }
 
-        if (cmd === 'undo') {
-            if (this.onUndoCallback) {
-                this.onUndoCallback()
-            } else {
-                this.state.activeOverlay = 'rewind'
-                this.state.rewindSelectedIndex = 0
-                this.state.rewindWindowStart = 0
-                this.loadRewindTurns().catch(() => {
-                    // Intentionally swallowed: fail silently on loading rewind turns
-                })
-                this.render()
+        // 'undo' is a hidden alias of 'rewind' (not listed in the slash menu)
+        if (cmd === 'restart') {
+            if (!this.state.pendingRestart) {
+                this.showToast(
+                    'No update is waiting. Run /update to install the latest version.',
+                    'info'
+                )
+                return
             }
+            if (this.state.isStreaming) {
+                this.showToast('Wait for the current turn to finish, then run /restart.', 'info')
+                return
+            }
+            this.requestRestart()
             return
         }
 
-        if (cmd === 'rewind') {
+        if (cmd === 'update') {
+            if (this.state.pendingRestart) {
+                this.showToast(
+                    `v${this.state.pendingRestart.version} is already installed. Run /restart to use it.`,
+                    'info'
+                )
+                return
+            }
+            if (this.state.isStreaming) {
+                this.showToast('Wait for the current turn to finish, then run /update.', 'info')
+                return
+            }
+            if (this.updateInProgress) {
+                this.showToast('An update is already running.', 'info')
+                return
+            }
+            if (!this.options?.onRunUpdate) {
+                this.showToast('Run "december update" in your terminal to update.', 'info')
+                return
+            }
+            this.updateInProgress = true
+            this.options
+                .onRunUpdate()
+                .catch((err: any) => {
+                    this.showToast(`Update failed: ${err?.message || err}`, 'error')
+                })
+                .finally(() => {
+                    this.updateInProgress = false
+                })
+            return
+        }
+
+        if (cmd === 'rewind' || cmd === 'undo') {
+            if (this.state.isStreaming) {
+                this.showToast('Wait for the current turn to finish, then rewind.', 'info')
+                this.render()
+                return
+            }
             this.state.activeOverlay = 'rewind'
+            this.state.rewindTurns = []
             this.state.rewindSelectedIndex = 0
             this.state.rewindWindowStart = 0
+            this.state.rewindConfirming = false
             this.loadRewindTurns().catch(() => {
                 // Intentionally swallowed: fail silently on loading rewind turns
             })
@@ -3248,7 +4408,7 @@ export class DifferentialApp {
                 this.showToast('Usage: /codesearch <query>', 'info')
                 return
             }
-            this.showToast(`Searching for "${args}"...`, 'info')
+            this.showToast(`Searching for "${args}"…`, 'info')
             this.state.codeSearchQuery = args
             this.state.codeSearchResults = []
             this.state.codeSearchGroups = []
@@ -3292,6 +4452,7 @@ export class DifferentialApp {
             }
             this.state.btwScrollOffset = 0
             this.render()
+            this.startBtwLoaderTimer()
 
             if (this.onSideQuestionCallback) {
                 const controller = new AbortController()
@@ -3337,7 +4498,7 @@ export class DifferentialApp {
         }
 
         // Check if command matches an installed skill (e.g. /skill:tdd or /tdd [args])
-        const skills = this.state.skills.length > 0 ? this.state.skills : loadWorkspaceSkills()
+        const skills = this.getEnabledSkills()
         let skillLookup = cmd
         if (skillLookup.startsWith('skill:')) {
             skillLookup = skillLookup.slice('skill:'.length)
@@ -3444,10 +4605,26 @@ export class DifferentialApp {
             this.state.activeOverlay = 'none'
         }
         this.render()
+        // Coming back from a skill or MCP server view: show what changed there
+        if (this.state.activeOverlay === 'plugin') {
+            this.loadPlugins().catch(() => {
+                // Intentionally swallowed: loadPlugins reports its own errors
+            })
+        }
     }
 
     private handleOverlayEsc(): void {
         const overlay = this.state.activeOverlay
+
+        if (overlay === 'report') {
+            if (this.state.report?.input) {
+                this.state.report.input = undefined
+                this.render()
+                return
+            }
+            this.closeReport()
+            return
+        }
 
         if (overlay === 'diff') {
             if (this.state.isDiffDetailView) {
@@ -3468,24 +4645,16 @@ export class DifferentialApp {
         }
 
         if (overlay === 'skills') {
-            if (this.state.skillsIsSearching) {
-                this.state.skillsIsSearching = false
-                this.render()
-                return
-            }
-            if (this.state.skillsIsDetailView) {
-                this.state.skillsIsDetailView = false
-                this.render()
-                return
-            }
-            if (this.state.skillsSearchQuery) {
-                this.state.skillsSearchQuery = ''
-                this.state.skillsSelectedIndex = 0
-                this.state.skillsWindowStart = 0
-                this.render()
-                return
-            }
+            // The skill viewer is opened from /plugin; esc goes back there
+            this.state.skillsIsDetailView = false
+            this.state.skillsDetailSkill = null
             this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'tasks' && this.state.tasksConfirmStop) {
+            this.state.tasksConfirmStop = null
+            this.render()
             return
         }
 
@@ -3607,17 +4776,6 @@ export class DifferentialApp {
         }
 
         if (overlay === 'memory') {
-            if (this.state.isAddingMemory) {
-                this.state.isAddingMemory = false
-                this.state.memoryNewEntryText = ''
-                this.render()
-                return
-            }
-            if (this.state.memoryTab === 'rules' && this.state.memoryInitialTab === 'memory') {
-                this.state.memoryTab = 'memory'
-                this.render()
-                return
-            }
             if (this.state.memoryReturnOverlay && this.state.memoryReturnOverlay !== 'none') {
                 const ret = this.state.memoryReturnOverlay
                 this.state.memoryReturnOverlay = 'none'
@@ -3638,6 +4796,12 @@ export class DifferentialApp {
                 return
             }
             this.closeOrPopOverlay()
+            return
+        }
+
+        if (overlay === 'ask_question' && this.state.questionCustomText !== null) {
+            this.state.questionCustomText = null
+            this.render()
             return
         }
 
@@ -3667,11 +4831,6 @@ export class DifferentialApp {
                 return
             }
             if (this.state.mcpMode === 'add_custom') {
-                this.state.mcpMode = 'add_preset'
-                this.render()
-                return
-            }
-            if (this.state.mcpMode === 'add_preset') {
                 this.state.mcpMode = 'list'
                 this.render()
                 return
@@ -3680,6 +4839,11 @@ export class DifferentialApp {
                 this.state.mcpIsDetailView = false
                 this.state.mcpMode = 'list'
                 this.state.mcpScrollOffset = 0
+                if (this.state.mcpDetailOnly) {
+                    this.state.mcpDetailOnly = false
+                    this.closeOrPopOverlay()
+                    return
+                }
                 this.render()
                 return
             }
@@ -3688,17 +4852,20 @@ export class DifferentialApp {
         }
 
         if (overlay === 'plugin') {
-            if (this.state.pluginConfirmUninstallId) {
-                this.state.pluginConfirmUninstallId = null
+            if (this.state.pluginConfirm) {
+                this.state.pluginConfirm = null
                 this.render()
                 return
             }
-            if (this.state.pluginExpandedId) {
-                this.state.pluginExpandedId = null
+            if (this.state.pluginScreen !== 'list') {
+                this.state.pluginScreen = 'list'
+                this.state.pluginDetailKey = null
+                this.state.pluginInstallId = null
                 this.render()
                 return
             }
-            if (this.state.pluginSearchQuery) {
+            if (this.state.pluginIsSearching || this.state.pluginSearchQuery) {
+                this.state.pluginIsSearching = false
                 this.state.pluginSearchQuery = ''
                 this.state.pluginSelectedIndex = 0
                 this.state.pluginWindowStart = 0
@@ -3726,6 +4893,11 @@ export class DifferentialApp {
             this.state.activeOverlay = 'none'
             this.state.overlayHistory = []
             this.render()
+            return
+        }
+
+        if (overlay === 'report') {
+            this.handleReportKey(key)
             return
         }
 
@@ -3803,7 +4975,10 @@ export class DifferentialApp {
                 }
 
                 if (key === '\x1b[B' || key === 'j') {
-                    if (this.state.helpShortcutSelectedIndex < SHORTCUTS.length - 1) {
+                    if (
+                        this.state.helpShortcutSelectedIndex <
+                        resolveShortcuts(this.keymap).length - 1
+                    ) {
                         this.state.helpShortcutSelectedIndex += 1
                         if (
                             this.state.helpShortcutSelectedIndex >=
@@ -4014,10 +5189,7 @@ export class DifferentialApp {
                     else if (current.value === 'always-ask') current.value = 'always-proceed'
                     else if (current.value === 'all') current.value = 'one-at-a-time'
                     else if (current.value === 'one-at-a-time') current.value = 'all'
-                    if (current.id === 'butterflow') {
-                        this.butterflowQueue.enabled = current.value === 'on'
-                    }
-                    this.showToast(`Updated ${current.title}: [${current.value}]`, 'success')
+                    this.showToast(`${current.title}: ${formatSettingValue(current)}`, 'success')
                     if (this.onSettingChangeCallback) {
                         try {
                             const res = this.onSettingChangeCallback(current.id, current.value)
@@ -4378,62 +5550,21 @@ export class DifferentialApp {
         }
 
         if (overlay === 'skills') {
-            const query = (this.state.skillsSearchQuery || '').toLowerCase().trim()
-            const skills = query
-                ? this.state.skills.filter(
-                      (s) =>
-                          s.name.toLowerCase().includes(query) ||
-                          (s.description || '').toLowerCase().includes(query)
-                  )
-                : this.state.skills
-
-            // 1. Searching mode (inline search query typing)
-            if (this.state.skillsIsSearching) {
-                if (key === '\r' || key === '\n') {
-                    this.state.skillsIsSearching = false
-                    this.render()
-                    return
-                }
-                if (key === '\x1b') {
-                    this.state.skillsIsSearching = false
-                    this.state.skillsSearchQuery = ''
-                    this.state.skillsSelectedIndex = 0
-                    this.state.skillsWindowStart = 0
-                    this.render()
-                    return
-                }
-                if (key === '\x7f' || key === '\b') {
-                    this.state.skillsSearchQuery = this.state.skillsSearchQuery.slice(0, -1)
-                    this.state.skillsSelectedIndex = 0
-                    this.state.skillsWindowStart = 0
-                    this.render()
-                    return
-                }
-                if (key.length === 1 && key >= ' ') {
-                    this.state.skillsSearchQuery += key
-                    this.state.skillsSelectedIndex = 0
-                    this.state.skillsWindowStart = 0
-                    this.render()
-                    return
-                }
-                return
-            }
-
-            // 2. Detail View (SKILL.md documentation reader)
-            if (this.state.skillsIsDetailView) {
+            // SKILL.md viewer
+            {
                 const totalLines = this.state.skillsDetailLines.length
                 const visibleLineCount = Math.max(5, this.screen.height - 4)
 
-                if (key === '\x1b' || key === 'q' || key === 'Q') {
-                    this.state.skillsIsDetailView = false
-                    this.render()
+                if (key === 'q' || key === 'Q') {
+                    this.handleOverlayEsc()
                     return
                 }
 
                 if (key === ' ' || key === '\t') {
-                    const currentSkill = skills[this.state.skillsSelectedIndex]
+                    const currentSkill = this.state.skillsDetailSkill
                     if (currentSkill) {
                         this.state.activeOverlay = 'none'
+                        this.state.overlayHistory = []
                         this.state.skillsIsDetailView = false
                         this.state.input = `/${currentSkill.name} `
                         this.state.cursorPos = this.state.input.length
@@ -4502,70 +5633,6 @@ export class DifferentialApp {
                     return
                 }
 
-                return
-            }
-
-            // 3. List Mode
-            if (key === '/') {
-                this.state.skillsIsSearching = true
-                this.render()
-                return
-            }
-
-            if (key === '\r' || key === '\n') {
-                const currentSkill = skills[this.state.skillsSelectedIndex]
-                if (currentSkill) {
-                    this.openSkillDetail(currentSkill).catch(() => {
-                        // Intentionally swallowed: skill detail load failure
-                    })
-                }
-                return
-            }
-
-            if (key === ' ' || key === '\t') {
-                const currentSkill = skills[this.state.skillsSelectedIndex]
-                if (currentSkill) {
-                    this.state.activeOverlay = 'none'
-                    this.state.input = `/${currentSkill.name} `
-                    this.state.cursorPos = this.state.input.length
-                    this.showToast(`Selected skill /${currentSkill.name}`, 'info')
-                    this.render()
-                }
-                return
-            }
-
-            if (key === '\x1b') {
-                if (this.state.skillsSearchQuery) {
-                    this.state.skillsSearchQuery = ''
-                    this.state.skillsSelectedIndex = 0
-                    this.state.skillsWindowStart = 0
-                    this.render()
-                    return
-                }
-                this.state.activeOverlay = 'none'
-                this.render()
-                return
-            }
-
-            if (key === '\x1b[A' || key === 'k') {
-                if (this.state.skillsSelectedIndex > 0) {
-                    this.state.skillsSelectedIndex -= 1
-                    if (this.state.skillsSelectedIndex < this.state.skillsWindowStart) {
-                        this.state.skillsWindowStart = this.state.skillsSelectedIndex
-                    }
-                    this.render()
-                }
-                return
-            }
-
-            if (key === '\x1b[B' || key === 'j') {
-                if (this.state.skillsSelectedIndex < skills.length - 1) {
-                    this.state.skillsSelectedIndex += 1
-                    if (this.state.skillsSelectedIndex >= this.state.skillsWindowStart + 6) {
-                        this.state.skillsWindowStart = this.state.skillsSelectedIndex - 5
-                    }
-                    this.render()
-                }
                 return
             }
 
@@ -4684,67 +5751,16 @@ export class DifferentialApp {
                 return
             }
 
-            // 2. Add Preset mode
-            if (this.state.mcpMode === 'add_preset') {
-                if (key === '\x1b[A' || key === 'k') {
-                    this.state.mcpPresetSelectedIndex = Math.max(
-                        0,
-                        this.state.mcpPresetSelectedIndex - 1
-                    )
-                    this.render()
-                    return
-                }
-                if (key === '\x1b[B' || key === 'j') {
-                    this.state.mcpPresetSelectedIndex = Math.min(
-                        MCP_PRESET_TEMPLATES.length - 1,
-                        this.state.mcpPresetSelectedIndex + 1
-                    )
-                    this.render()
-                    return
-                }
-                if (key === 'c' || key === 'C') {
-                    this.state.mcpMode = 'add_custom'
-                    this.state.mcpCustomName = ''
-                    this.state.mcpCustomCommand = ''
-                    this.state.mcpCustomScope = 'global'
-                    this.state.mcpCustomEager = false
-                    this.state.mcpCustomEnv = ''
-                    this.state.mcpCustomActiveField = 0
-                    this.render()
-                    return
-                }
-                if (key === '\r' || key === '\n') {
-                    const template = MCP_PRESET_TEMPLATES[this.state.mcpPresetSelectedIndex]
-                    if (template) {
-                        this.state.mcpMode = 'add_custom'
-                        this.state.mcpCustomName = template.name
-                        this.state.mcpCustomCommand =
-                            template.command + (template.args ? ' ' + template.args.join(' ') : '')
-                        this.state.mcpCustomScope = template.defaultScope
-                        this.state.mcpCustomEager = false
-                        this.state.mcpCustomEnv = template.envHint ? `${template.envHint}=` : ''
-                        this.state.mcpCustomActiveField = 0
-                        this.render()
-                    }
-                    return
-                }
-                if (key === '\x1b') {
-                    this.state.mcpMode = 'list'
-                    this.render()
-                    return
-                }
-                return
-            }
-
             // 3. Add Custom mode
             if (this.state.mcpMode === 'add_custom') {
                 if (key === '\t' || key === '\x1b[B') {
-                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField + 1) % 6
+                    // M13: 5 fields, no button row (enter adds from any field)
+                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField + 1) % 5
                     this.render()
                     return
                 }
                 if (key === '\x1b[Z' || key === '\x1b[A') {
-                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField - 1 + 6) % 6
+                    this.state.mcpCustomActiveField = (this.state.mcpCustomActiveField - 1 + 5) % 5
                     this.render()
                     return
                 }
@@ -4843,11 +5859,6 @@ export class DifferentialApp {
                     this.render()
                     return
                 }
-                if (key === '\x1b') {
-                    this.state.mcpMode = 'add_preset'
-                    this.render()
-                    return
-                }
                 return
             }
 
@@ -4903,7 +5914,12 @@ export class DifferentialApp {
                     return
                 }
                 if (key === 'd' || key === 'D') {
-                    if (curServer) {
+                    if (curServer?.plugin) {
+                        this.showToast(
+                            `${curServer.name} comes from the ${curServer.plugin} plugin. Uninstall it in /plugin.`,
+                            'info'
+                        )
+                    } else if (curServer) {
                         this.state.mcpConfirmDeleteName = curServer.name
                         this.render()
                     }
@@ -4997,14 +6013,24 @@ export class DifferentialApp {
             }
 
             if (key === 'a' || key === 'A') {
-                this.state.mcpMode = 'add_preset'
-                this.state.mcpPresetSelectedIndex = 0
+                this.state.mcpMode = 'add_custom'
+                this.state.mcpCustomName = ''
+                this.state.mcpCustomCommand = ''
+                this.state.mcpCustomScope = 'global'
+                this.state.mcpCustomEager = false
+                this.state.mcpCustomEnv = ''
+                this.state.mcpCustomActiveField = 0
                 this.render()
                 return
             }
 
             if (key === 'd' || key === 'D') {
-                if (curServer) {
+                if (curServer?.plugin) {
+                    this.showToast(
+                        `${curServer.name} comes from the ${curServer.plugin} plugin. Uninstall it in /plugin.`,
+                        'info'
+                    )
+                } else if (curServer) {
                     this.state.mcpConfirmDeleteName = curServer.name
                     this.render()
                 }
@@ -5020,185 +6046,12 @@ export class DifferentialApp {
         }
 
         if (overlay === 'plugin') {
-            const rawItems =
-                this.state.pluginActiveTab === 'installed'
-                    ? this.state.installedPlugins
-                    : this.state.discoverablePlugins
-            const query = this.state.pluginSearchQuery.trim().toLowerCase()
-            const items = query
-                ? rawItems.filter(
-                      (p) =>
-                          p.name.toLowerCase().includes(query) ||
-                          p.description.toLowerCase().includes(query)
-                  )
-                : rawItems
-            const total = items.length
-            const curPlugin = items[this.state.pluginSelectedIndex]
-
-            // If confirm uninstall is active
-            if (this.state.pluginConfirmUninstallId) {
-                if (key === 'y' || key === 'Y' || key === '\x13') {
-                    const toUninstall = this.state.pluginConfirmUninstallId
-                    this.state.pluginConfirmUninstallId = null
-                    this.render()
-                    if (this.options?.onUninstallPlugin) {
-                        this.options
-                            .onUninstallPlugin(toUninstall)
-                            .then(() => this.loadPlugins())
-                            .catch(() => {
-                                // Intentionally swallowed: uninstall error handled
-                            })
-                    }
-                    return
-                }
-                if (key === 'n' || key === 'N' || key === '\x1b') {
-                    this.state.pluginConfirmUninstallId = null
-                    this.render()
-                    return
-                }
-                return
-            }
-
-            // Tab / Shift+Tab cycles between Installed and Discover tabs
-            if (key === '\t' || key === '\x1b[Z') {
-                this.state.pluginActiveTab =
-                    this.state.pluginActiveTab === 'installed' ? 'discover' : 'installed'
-                this.state.pluginSelectedIndex = 0
-                this.state.pluginWindowStart = 0
-                this.state.pluginExpandedId = null
-                this.render()
-                return
-            }
-
-            // Left arrow switch to installed, Right arrow switch to discover
-            if (key === '\x1b[D' && this.state.pluginActiveTab !== 'installed') {
-                this.state.pluginActiveTab = 'installed'
-                this.state.pluginSelectedIndex = 0
-                this.state.pluginWindowStart = 0
-                this.state.pluginExpandedId = null
-                this.render()
-                return
-            }
-            if (key === '\x1b[C' && this.state.pluginActiveTab !== 'discover') {
-                this.state.pluginActiveTab = 'discover'
-                this.state.pluginSelectedIndex = 0
-                this.state.pluginWindowStart = 0
-                this.state.pluginExpandedId = null
-                this.render()
-                return
-            }
-
-            // Up arrow
-            if (key === '\x1b[A') {
-                if (this.state.pluginSelectedIndex > 0) {
-                    this.state.pluginSelectedIndex -= 1
-                    if (this.state.pluginSelectedIndex < this.state.pluginWindowStart) {
-                        this.state.pluginWindowStart = this.state.pluginSelectedIndex
-                    }
-                    this.render()
-                }
-                return
-            }
-
-            // Down arrow
-            if (key === '\x1b[B') {
-                const maxWin = 5
-                if (this.state.pluginSelectedIndex < total - 1) {
-                    this.state.pluginSelectedIndex += 1
-                    if (this.state.pluginSelectedIndex >= this.state.pluginWindowStart + maxWin) {
-                        this.state.pluginWindowStart += 1
-                    }
-                    this.render()
-                }
-                return
-            }
-
-            // Space: Toggle enable/disable (installed) or install (discover)
-            if (key === ' ') {
-                if (curPlugin) {
-                    if (this.state.pluginActiveTab === 'installed') {
-                        if (this.options?.onTogglePlugin) {
-                            this.options
-                                .onTogglePlugin(curPlugin.id)
-                                .then(() => this.loadPlugins())
-                                .catch(() => {
-                                    // Intentionally swallowed: toggle plugin error
-                                })
-                        }
-                    } else {
-                        if (this.options?.onInstallPlugin) {
-                            this.options
-                                .onInstallPlugin(curPlugin.id)
-                                .then(() => this.loadPlugins())
-                                .catch(() => {
-                                    // Intentionally swallowed: install plugin error
-                                })
-                        }
-                    }
-                }
-                return
-            }
-
-            // Enter: Expand details (installed) or install (discover)
-            if (key === '\r' || key === '\n') {
-                if (curPlugin) {
-                    if (this.state.pluginActiveTab === 'installed') {
-                        this.state.pluginExpandedId =
-                            this.state.pluginExpandedId === curPlugin.id ? null : curPlugin.id
-                        this.render()
-                    } else {
-                        if (this.options?.onInstallPlugin) {
-                            this.options
-                                .onInstallPlugin(curPlugin.id)
-                                .then(() => this.loadPlugins())
-                                .catch(() => {
-                                    // Intentionally swallowed: install plugin error
-                                })
-                        }
-                    }
-                }
-                return
-            }
-
-            // Ctrl+S: Uninstall
-            if (key === '\x13') {
-                if (curPlugin && this.state.pluginActiveTab === 'installed') {
-                    this.state.pluginConfirmUninstallId = curPlugin.id
-                    this.render()
-                }
-                return
-            }
-
-            // Backspace: Search query
-            if (key === '\x7f' || key === '\b') {
-                if (this.state.pluginSearchQuery.length > 0) {
-                    this.state.pluginSearchQuery = this.state.pluginSearchQuery.slice(0, -1)
-                    this.state.pluginSelectedIndex = 0
-                    this.state.pluginWindowStart = 0
-                    this.render()
-                }
-                return
-            }
-
-            // Typing characters into search filter
-            if (key.length === 1 && key >= ' ' && key <= '~') {
-                this.state.pluginSearchQuery += key
-                this.state.pluginSelectedIndex = 0
-                this.state.pluginWindowStart = 0
-                this.render()
-                return
-            }
-
-            if (key === '\x1b') {
-                this.handleOverlayEsc()
-                return
-            }
-
+            this.handlePluginKey(key)
             return
         }
 
         if (overlay === 'model') {
-            const models = this.state.models.length > 0 ? this.state.models : DEFAULT_MODELS
+            const models = this.state.models
             const filtered = ModelSelectMenuView.getFilteredModels(
                 models,
                 this.state.modelSearchQuery
@@ -5598,12 +6451,39 @@ export class DifferentialApp {
 
         if (overlay === 'tasks') {
             const tasks = this.state.tasks
-            if (key === '\x1b[A') {
+            const selectedTask = tasks[this.state.tasksSelectedIndex]
+
+            // Stop confirmation: y stops, anything else cancels
+            if (this.state.tasksConfirmStop) {
+                const mode = this.state.tasksConfirmStop
+                this.state.tasksConfirmStop = null
+                if (key === 'y' || key === 'Y') {
+                    const targets =
+                        mode === 'all'
+                            ? tasks.filter((t) => t.status === 'running')
+                            : selectedTask && selectedTask.status === 'running'
+                              ? [selectedTask]
+                              : []
+                    for (const t of targets) {
+                        this.onKillTaskCallback?.(t.id)
+                    }
+                    if (targets.length > 0) {
+                        this.showToast(
+                            mode === 'all'
+                                ? `Stopped ${targets.length} task${targets.length === 1 ? '' : 's'}.`
+                                : `Stopped ${targets[0]!.id}.`,
+                            'info'
+                        )
+                    }
+                }
+                this.render()
+                return
+            }
+
+            if (key === '\x1b[A' || key === 'k') {
                 if (this.state.tasksSelectedIndex > 0) {
                     this.state.tasksSelectedIndex -= 1
-                    if (this.state.tasksSelectedIndex < this.state.tasksWindowStart) {
-                        this.state.tasksWindowStart = this.state.tasksSelectedIndex
-                    }
+                    this.clampTasksSelection()
                     this.render()
                 }
                 return
@@ -5611,49 +6491,40 @@ export class DifferentialApp {
             if (key === '\x1b[B' || key === 'j') {
                 if (this.state.tasksSelectedIndex < tasks.length - 1) {
                     this.state.tasksSelectedIndex += 1
-                    if (this.state.tasksSelectedIndex >= this.state.tasksWindowStart + 8) {
-                        this.state.tasksWindowStart = this.state.tasksSelectedIndex - 7
-                    }
+                    this.clampTasksSelection()
                     this.render()
                 }
                 return
             }
-            if (key === 'K') {
-                const running = tasks.filter((t) => t.status === 'running')
-                if (running.length > 0) {
-                    for (const t of running) {
-                        if (this.onKillTaskCallback) {
-                            this.onKillTaskCallback(t.id)
-                        }
-                        t.status = 'failed'
-                    }
-                    this.showToast(`Terminated ${running.length} running tasks.`, 'info')
+            if (key === 'd') {
+                if (selectedTask && selectedTask.status === 'running') {
+                    this.state.tasksConfirmStop = 'one'
+                    this.render()
+                } else if (selectedTask) {
+                    this.showToast(`${selectedTask.id} is not running.`, 'info')
+                }
+                return
+            }
+            if (key === 'D') {
+                if (tasks.some((t) => t.status === 'running')) {
+                    this.state.tasksConfirmStop = 'all'
                     this.render()
                 } else {
-                    this.showToast('No running tasks to terminate.', 'info')
-                }
-                return
-            }
-            if (key === 'k') {
-                const currentTask = tasks[this.state.tasksSelectedIndex]
-                if (currentTask && currentTask.status === 'running') {
-                    if (this.onKillTaskCallback) {
-                        this.onKillTaskCallback(currentTask.id)
-                    }
-                    currentTask.status = 'failed'
-                    this.showToast(`Terminated task: ${currentTask.command}`, 'info')
-                    this.render()
+                    this.showToast('No running tasks to stop.', 'info')
                 }
                 return
             }
             if (key === 'x' || key === 'X') {
-                const remaining = tasks.filter((t) => t.status === 'running')
-                const cleared = tasks.length - remaining.length
-                this.state.tasks = remaining
-                this.state.tasksSelectedIndex = Math.min(
-                    this.state.tasksSelectedIndex,
-                    Math.max(0, remaining.length - 1)
-                )
+                const cleared = tasks.filter((t) => t.status !== 'running').length
+                if (cleared === 0) {
+                    this.showToast('No finished tasks to clear.', 'info')
+                    return
+                }
+                // the task manager owns the list: clearing only the view would let the
+                // next sync bring the tasks back
+                this.onClearCompletedTasksCallback?.()
+                this.state.tasks = tasks.filter((t) => t.status === 'running')
+                this.clampTasksSelection()
                 this.showToast(
                     `Cleared ${cleared} finished task${cleared === 1 ? '' : 's'}.`,
                     'info'
@@ -5662,9 +6533,8 @@ export class DifferentialApp {
                 return
             }
             if (key === 'c' || key === 'C') {
-                const currentTask = tasks[this.state.tasksSelectedIndex]
-                if (currentTask && currentTask.output) {
-                    writeToClipboard(currentTask.output)
+                if (selectedTask && selectedTask.output) {
+                    writeToClipboard(selectedTask.output)
                     this.showToast('Copied task log to clipboard.', 'success')
                 } else {
                     this.showToast('No task log to copy.', 'info')
@@ -5672,19 +6542,23 @@ export class DifferentialApp {
                 return
             }
             if (key === '\r' || key === '\n' || key === ' ') {
-                const currentTask = tasks[this.state.tasksSelectedIndex]
-                if (currentTask) {
-                    const lines = (
-                        currentTask.output || '(no output recorded for this task)'
-                    ).split(/\r?\n/)
-                    this.openFileView(
-                        `Task Output: ${currentTask.id} (${currentTask.command})`,
-                        1,
+                if (selectedTask) {
+                    const lines = getTaskLogLines(selectedTask)
+                    // open at the end so the log follows new output
+                    void this.openFileView(
+                        getTaskLogTitle(selectedTask, true),
+                        lines.length,
                         'tasks',
                         undefined,
                         undefined,
                         lines
                     )
+                    this.state.fileViewTaskId = selectedTask.id
+                    this.state.fileViewScrollOffset = Math.max(
+                        0,
+                        lines.length - this.getFileViewVisibleLineCount()
+                    )
+                    this.render()
                 }
                 return
             }
@@ -5706,7 +6580,7 @@ export class DifferentialApp {
                     if (this.onSessionDeleteCallback) {
                         this.onSessionDeleteCallback(idToDelete)
                     }
-                    this.showToast(`Deleted session ${idToDelete}.`, 'info')
+                    this.showToast('Deleted session.', 'info')
                     this.render()
                     return
                 }
@@ -5726,13 +6600,19 @@ export class DifferentialApp {
                     )
                     const cur = filtered[this.state.sessionSelectedIndex]
                     if (cur) {
-                        const rawNewName = this.state.sessionRenameValue.trim().replace(/\//g, '-')
-                        if (rawNewName && rawNewName !== cur.id) {
-                            const oldId = cur.id
-                            cur.id = rawNewName
-                            cur.preview = rawNewName
+                        const newTitle = this.state.sessionRenameValue.replace(/\s+/g, ' ').trim()
+                        if (newTitle && newTitle !== cur.title) {
+                            cur.title = newTitle
+                            if (cur.id === this.state.sessionId) {
+                                this.setSessionTitle(newTitle)
+                            }
                             if (this.onSessionRenameCallback) {
-                                this.onSessionRenameCallback(oldId, rawNewName)
+                                const res = this.onSessionRenameCallback(cur.id, newTitle)
+                                if (res && typeof (res as Promise<void>).catch === 'function') {
+                                    ;(res as Promise<void>).catch(() => {
+                                        // Intentionally swallowed: the CLI callback reports its own errors
+                                    })
+                                }
                             }
                             this.showToast('Renamed session.', 'success')
                         }
@@ -5800,7 +6680,7 @@ export class DifferentialApp {
                 const cur = filtered[this.state.sessionSelectedIndex]
                 if (cur) {
                     this.state.sessionRenameMode = true
-                    this.state.sessionRenameValue = cur.preview || cur.id
+                    this.state.sessionRenameValue = getSessionDisplayTitle(cur)
                     this.render()
                 }
                 return
@@ -5863,36 +6743,14 @@ export class DifferentialApp {
         }
 
         if (overlay === 'usage') {
-            if (key === 'b' || key === 'B' || key === 'p' || key === 'P') {
-                const providerKey = (this.state.selectedProvider || 'google').toLowerCase()
-                const url =
-                    PROVIDER_BILLING_LINKS[providerKey] ||
-                    'https://trydecember.com/settings/billing'
+            if (key === 'b' || key === 'B') {
+                const dashboard = this.getUsageDashboard()
                 if (this.onOpenBillingPortalCallback) {
-                    this.onOpenBillingPortalCallback(url)
+                    this.onOpenBillingPortalCallback(dashboard.url)
                 } else {
-                    openBrowserUrl(url)
+                    openBrowserUrl(dashboard.url)
                 }
-                this.showToast(`Opening ${providerKey} billing portal in browser...`, 'info')
-                return
-            }
-            if (key === 'm' || key === 'M') {
-                this.state.overlayHistory.push('usage')
-                this.state.activeOverlay = 'model'
-                this.state.modelSelectedIndex = 0
-                this.state.modelWindowStart = 0
-                this.state.modelSearchQuery = ''
-                this.state.isModelSearching = false
-                this.render()
-                return
-            }
-            if (key === 'r' || key === 'R') {
-                this.refreshUsageStats()
-                this.loadUsageTrackerData().catch(() => {
-                    // Intentionally swallowed: ignore usage tracker load failure
-                })
-                this.showToast('Usage statistics refreshed', 'info')
-                this.render()
+                this.showToast(`Opening ${dashboard.name} usage dashboard in browser…`, 'info')
                 return
             }
             if (key === 'q' || key === 'Q' || key === '\r' || key === '\n' || key === '\x1b') {
@@ -5904,6 +6762,31 @@ export class DifferentialApp {
 
         if (overlay === 'rewind') {
             const turns = this.state.rewindTurns
+
+            if (this.state.rewindConfirming) {
+                if (key === 'y' || key === 'Y' || key === '\r' || key === '\n') {
+                    const turn = turns[this.state.rewindSelectedIndex]
+                    this.state.rewindConfirming = false
+                    this.state.activeOverlay = 'none'
+                    if (turn && this.onRewindTurnCallback) {
+                        const res = this.onRewindTurnCallback(turn.id)
+                        if (res && typeof (res as Promise<any>).catch === 'function') {
+                            ;(res as Promise<any>).catch((err: any) => {
+                                this.showToast(`Failed to rewind: ${err.message || err}`, 'error')
+                                this.render()
+                            })
+                        }
+                    }
+                    this.render()
+                    return
+                }
+                if (key === 'n' || key === 'N' || key === '\x1b') {
+                    this.state.rewindConfirming = false
+                    this.render()
+                }
+                return
+            }
+
             if (key === '\x1b[A' || key === 'k') {
                 if (this.state.rewindSelectedIndex > 0) {
                     this.state.rewindSelectedIndex -= 1
@@ -5929,23 +6812,8 @@ export class DifferentialApp {
                 return
             }
             if (key === '\r' || key === '\n') {
-                const turn = turns[this.state.rewindSelectedIndex]
-                if (turn) {
-                    this.state.activeOverlay = 'none'
-                    if (this.onRewindTurnCallback) {
-                        const res = this.onRewindTurnCallback(turn.turnIndex)
-                        if (res && typeof (res as Promise<any>).catch === 'function') {
-                            ;(res as Promise<any>).catch((err: any) => {
-                                this.showToast(`Failed to rewind: ${err.message || err}`, 'error')
-                                this.render()
-                            })
-                        }
-                    } else {
-                        this.showToast(
-                            `Rewound conversation to checkpoint ${turn.turnIndex}.`,
-                            'success'
-                        )
-                    }
+                if (turns[this.state.rewindSelectedIndex]) {
+                    this.state.rewindConfirming = true
                     this.render()
                 }
                 return
@@ -5959,214 +6827,56 @@ export class DifferentialApp {
         }
 
         if (overlay === 'memory') {
-            if (this.state.isAddingMemory) {
-                if (key === '\t') {
-                    this.state.memoryNewEntryCategoryIndex =
-                        (this.state.memoryNewEntryCategoryIndex + 1) % MEMORY_CATEGORIES.length
-                    this.render()
-                    return
-                }
-                if (key === '\r' || key === '\n') {
-                    const text = this.state.memoryNewEntryText.trim()
-                    const category =
-                        MEMORY_CATEGORIES[this.state.memoryNewEntryCategoryIndex] || 'general'
-                    if (text && this.options?.onRecordMemory) {
-                        this.options
-                            .onRecordMemory(text, category)
-                            .then(async (res) => {
-                                if (res.success) {
-                                    this.showToast(
-                                        `Saved to memory under "${category}".`,
-                                        'success'
-                                    )
-                                    await this.loadMemoryAndRules()
-                                } else {
-                                    this.showToast(res.message || 'Failed to save entry.', 'error')
-                                }
-                            })
-                            .catch(() => {
-                                // Intentionally swallowed: ignore save error
-                            })
-                    }
-                    this.state.isAddingMemory = false
-                    this.state.memoryNewEntryText = ''
-                    this.render()
-                    return
-                }
-                if (key === '\x7f' || key === '\b' || key === '\x08') {
-                    if (this.state.memoryNewEntryText.length > 0) {
-                        this.state.memoryNewEntryText = this.state.memoryNewEntryText.slice(0, -1)
-                        this.render()
-                    }
-                    return
-                }
-                if (key.length === 1 && key >= ' ') {
-                    this.state.memoryNewEntryText += key
-                    this.render()
-                    return
-                }
-                return
-            }
-
-            // Confirmation to forget entry
-            if (this.state.memoryConfirmForgetText) {
-                if (key === 'y' || key === 'Y') {
-                    const textToForget = this.state.memoryConfirmForgetText
-                    this.state.memoryConfirmForgetText = null
-                    if (this.options?.onForgetMemory) {
-                        this.options
-                            .onForgetMemory(textToForget)
-                            .then(async (res) => {
-                                if (res.success) {
-                                    this.showToast('Removed entry from memory.', 'success')
-                                    await this.loadMemoryAndRules()
-                                    const newLen =
-                                        this.state.workspaceMemoryDetails?.entries?.length || 0
-                                    if (this.state.memorySelectedIndex >= newLen) {
-                                        this.state.memorySelectedIndex = Math.max(0, newLen - 1)
-                                    }
-                                } else {
-                                    this.showToast(
-                                        res.message || 'Failed to remove entry.',
-                                        'error'
-                                    )
-                                }
-                            })
-                            .catch(() => {
-                                // Intentionally swallowed: ignore forget error
-                            })
-                    }
-                    this.render()
-                    return
-                }
-                if (key === 'n' || key === 'N' || key === '\x1b') {
-                    this.state.memoryConfirmForgetText = null
-                    this.render()
-                    return
-                }
-                // Any navigation or other key clears confirmation
-                this.state.memoryConfirmForgetText = null
-            }
-
-            // Tab navigation: toggle between memory and rules
-            if (key === '\t' || key === '\x1b[C' || key === '\x1b[D') {
-                this.state.memoryConfirmForgetText = null
-                this.state.memoryTab = this.state.memoryTab === 'rules' ? 'memory' : 'rules'
-                this.state.memoryActiveDocIndex = 0
-                this.state.memoryCursorLine = 0
-                this.state.memoryRuleScrollOffset = 0
-                this.render()
-                return
-            }
-
-            // Switch rule document in rules tab
-            if (key === '[' || key === ']') {
-                const rulesCount = this.state.memoryRuleFiles.length
-                if (this.state.memoryTab === 'rules' && rulesCount > 0) {
-                    const delta = key === '[' ? -1 : 1
-                    this.state.memoryActiveDocIndex =
-                        (this.state.memoryActiveDocIndex + delta + rulesCount) % rulesCount
-                    this.state.memoryCursorLine = 0
-                    this.state.memoryRuleScrollOffset = 0
-                    this.render()
-                }
-                return
-            }
-
             // Arrow Up / k
             if (key === '\x1b[A' || key === 'k') {
-                this.state.memoryConfirmForgetText = null
-                if (this.state.memoryTab === 'memory') {
-                    if (this.state.memorySelectedIndex > 0) {
-                        this.state.memorySelectedIndex -= 1
-                        if (this.state.memorySelectedIndex < this.state.memoryScrollOffset) {
-                            this.state.memoryScrollOffset = this.state.memorySelectedIndex
-                        }
-                        this.render()
+                if (this.state.memoryCursorLine > 0) {
+                    this.state.memoryCursorLine -= 1
+                    if (this.state.memoryCursorLine < this.state.memoryScrollOffset) {
+                        this.state.memoryScrollOffset = this.state.memoryCursorLine
                     }
-                } else {
-                    if (this.state.memoryCursorLine > 0) {
-                        this.state.memoryCursorLine -= 1
-                        if (this.state.memoryCursorLine < this.state.memoryRuleScrollOffset) {
-                            this.state.memoryRuleScrollOffset = this.state.memoryCursorLine
-                        }
-                        this.render()
-                    }
+                    this.render()
                 }
                 return
             }
 
             // Arrow Down / j
             if (key === '\x1b[B' || key === 'j') {
-                this.state.memoryConfirmForgetText = null
                 const visibleRows = Math.max(5, this.screen.height - 6)
-                if (this.state.memoryTab === 'memory') {
-                    const entries = this.state.workspaceMemoryDetails?.entries || []
-                    if (this.state.memorySelectedIndex < entries.length - 1) {
-                        this.state.memorySelectedIndex += 1
-                        if (
-                            this.state.memorySelectedIndex >=
-                            this.state.memoryScrollOffset + visibleRows
-                        ) {
-                            this.state.memoryScrollOffset =
-                                this.state.memorySelectedIndex - visibleRows + 1
-                        }
-                        this.render()
+                const content = this.state.memoryFile?.content || ''
+                const totalLines = content ? content.split('\n').length : 0
+                if (this.state.memoryCursorLine < totalLines - 1) {
+                    this.state.memoryCursorLine += 1
+                    if (
+                        this.state.memoryCursorLine >=
+                        this.state.memoryScrollOffset + visibleRows
+                    ) {
+                        this.state.memoryScrollOffset =
+                            this.state.memoryCursorLine - visibleRows + 1
                     }
-                } else {
-                    const activeRule = this.state.memoryRuleFiles[this.state.memoryActiveDocIndex]
-                    const totalLines = activeRule ? activeRule.content.split('\n').length : 0
-                    if (this.state.memoryCursorLine < totalLines - 1) {
-                        this.state.memoryCursorLine += 1
-                        if (
-                            this.state.memoryCursorLine >=
-                            this.state.memoryRuleScrollOffset + visibleRows
-                        ) {
-                            this.state.memoryRuleScrollOffset =
-                                this.state.memoryCursorLine - visibleRows + 1
-                        }
-                        this.render()
-                    }
-                }
-                return
-            }
-
-            // [a]: Add new memory entry
-            if (key === 'a' || key === 'A') {
-                if (this.state.memoryTab === 'memory') {
-                    this.state.isAddingMemory = true
-                    this.state.memoryNewEntryText = ''
                     this.render()
                 }
                 return
             }
 
-            // [d]: Trigger confirmation to forget selected memory entry
-            if (key === 'd' || key === 'D') {
-                if (this.state.memoryTab === 'memory') {
-                    const entries = this.state.workspaceMemoryDetails?.entries || []
-                    const selectedItem = entries[this.state.memorySelectedIndex]
-                    if (selectedItem) {
-                        this.state.memoryConfirmForgetText = selectedItem.text
-                        this.render()
-                    }
-                }
-                return
-            }
-
-            // [c]: Scaffold starter AGENTS.md
+            // [c]: Create starter AGENTS.md, only once loading finished and no rule file was found
             if (key === 'c' || key === 'C') {
-                if (this.state.memoryTab === 'rules' && this.options?.onScaffoldRules) {
-                    this.options
-                        .onScaffoldRules()
+                const canScaffold =
+                    !this.state.memoryIsLoading &&
+                    this.state.memoryFile === null &&
+                    Boolean(this.options?.onScaffoldRules)
+                if (canScaffold) {
+                    this.options!.onScaffoldRules!()
                         .then(async (res) => {
                             if (res.success) {
                                 this.showToast('Created starter AGENTS.md.', 'success')
-                                await this.loadMemoryAndRules()
+                                await this.loadAgentsFile()
+                            } else {
+                                this.showToast(res.message, 'error')
                             }
                         })
-                        .catch(() => {
-                            // Intentionally swallowed: ignore scaffold error
+                        .catch((error: unknown) => {
+                            const reason = error instanceof Error ? error.message : String(error)
+                            this.showToast(`Could not create AGENTS.md: ${reason}`, 'error')
                         })
                 }
                 return
@@ -6174,13 +6884,9 @@ export class DifferentialApp {
 
             // [q]: Back / close memory viewer
             if (key === 'q' || key === 'Q') {
-                if (this.state.memoryTab === 'rules' && this.state.memoryInitialTab === 'memory') {
-                    this.state.memoryTab = 'memory'
-                    this.render()
-                    return
-                }
                 this.state.activeOverlay = this.state.memoryReturnOverlay || 'none'
                 this.render()
+                this.state.memoryReturnOverlay = 'none'
                 return
             }
             return
@@ -6193,6 +6899,41 @@ export class DifferentialApp {
             if (!currentQ) return
             const optionsCount = currentQ.options.length
             const isMulti = Boolean(currentQ.is_multi_select)
+            // The last row is "Type your own answer…" (S21)
+            const customIndex = optionsCount
+
+            if (this.state.questionCustomText !== null) {
+                const typed = this.state.questionCustomText
+                if (key === '\r' || key === '\n') {
+                    const answer = typed.trim()
+                    if (!answer) return
+                    if (isMulti) {
+                        const chosen = Array.from(this.state.questionSelectedMulti)
+                            .map((i) => currentQ.options[i])
+                            .filter(Boolean) as string[]
+                        this.submitCurrentQuestionAnswer([...chosen, answer])
+                    } else {
+                        this.submitCurrentQuestionAnswer(answer)
+                    }
+                    return
+                }
+                if (key === '\x7f' || key === '\b') {
+                    this.state.questionCustomText = typed.slice(0, -1)
+                    this.render()
+                    return
+                }
+                if (key === '\x1b[A') {
+                    this.state.questionCustomText = null
+                    this.state.questionSelectedIndex = Math.max(0, customIndex - 1)
+                    this.render()
+                    return
+                }
+                if (!key.startsWith('\x1b') && [...key].every((c) => c.charCodeAt(0) >= 32)) {
+                    this.state.questionCustomText = typed + key
+                    this.render()
+                }
+                return
+            }
 
             if (key === '\x1b[A' || key === 'k') {
                 if (this.state.questionSelectedIndex > 0) {
@@ -6202,13 +6943,21 @@ export class DifferentialApp {
                 return
             }
             if (key === '\x1b[B' || key === 'j') {
-                if (this.state.questionSelectedIndex < optionsCount - 1) {
+                if (this.state.questionSelectedIndex < customIndex) {
                     this.state.questionSelectedIndex += 1
                     this.render()
                 }
                 return
             }
-            if (key === ' ' && isMulti) {
+            if (
+                (key === '\r' || key === '\n') &&
+                this.state.questionSelectedIndex === customIndex
+            ) {
+                this.state.questionCustomText = ''
+                this.render()
+                return
+            }
+            if (key === ' ' && isMulti && this.state.questionSelectedIndex < customIndex) {
                 if (this.state.questionSelectedMulti.has(this.state.questionSelectedIndex)) {
                     this.state.questionSelectedMulti.delete(this.state.questionSelectedIndex)
                 } else {
@@ -6255,7 +7004,10 @@ export class DifferentialApp {
         }
 
         if (overlay === 'tool_permission') {
-            const opts = DEFAULT_PERMISSION_OPTIONS
+            const opts = getPermissionOptions(
+                this.state.pendingToolCall?.toolName || '',
+                this.state.pendingToolCall?.commandOrTarget
+            )
             if (
                 key === '\x1b[A' ||
                 key === '\x1b[D' ||
@@ -6288,7 +7040,7 @@ export class DifferentialApp {
                 this.resolveToolPermission('always')
                 return
             }
-            if (key === 'g' || key === 'G') {
+            if ((key === 'g' || key === 'G') && opts.some((o) => o.value === 'git_tracked')) {
                 this.resolveToolPermission('git_tracked')
                 return
             }
@@ -6298,8 +7050,7 @@ export class DifferentialApp {
             }
             if (key === '\r' || key === '\n' || key === ' ') {
                 const opt = opts[this.state.toolPermissionSelectedIndex]
-                const val = (opt?.value as any) || 'deny'
-                this.resolveToolPermission(val === 'git-tracked' ? 'git_tracked' : val)
+                this.resolveToolPermission(opt?.value || 'deny')
                 return
             }
             return
@@ -6815,6 +7566,12 @@ export class DifferentialApp {
     submitPrompt(overridePrompt?: string): void {
         const raw = (overridePrompt ?? this.state.input).trim()
         if (!raw) return
+        if (this.updateInProgress) {
+            // npm is replacing this package's files; a new turn could load parts of
+            // the app that are mid-replacement. Keep the text so nothing is lost.
+            this.showToast('Wait for the update to finish, then send your prompt.', 'info')
+            return
+        }
         const text = expandPastes(raw)
 
         // Direct shell command (!<command>)
@@ -6836,6 +7593,7 @@ export class DifferentialApp {
 
             if (this.state.isStreaming) {
                 this.state.promptQueue.push(text)
+                this.queuedRawInputs.set(text, raw)
                 this.showToast(
                     `Command queued (#${this.state.promptQueue.length}). Will run after turn finishes.`,
                     'info'
@@ -6864,6 +7622,9 @@ export class DifferentialApp {
             return
         }
 
+        // Plan mode: the prompt starts a plan, same as /plan <prompt>
+        const outgoing = this.state.planMode ? `/plan ${text}` : text
+
         this.state.promptHistory.push(raw)
         this.state.historyIndex = -1
 
@@ -6875,7 +7636,8 @@ export class DifferentialApp {
         this.state.isFileAutocompleteVisible = false
 
         if (this.state.isStreaming) {
-            this.state.promptQueue.push(text)
+            this.state.promptQueue.push(outgoing)
+            this.queuedRawInputs.set(outgoing, raw)
             this.showToast(
                 `Prompt queued (#${this.state.promptQueue.length}). Will run after turn finishes.`,
                 'info'
@@ -6886,14 +7648,958 @@ export class DifferentialApp {
 
         this.state.messages.push({
             role: 'user',
-            content: text,
+            content: outgoing,
         })
 
         this.render()
 
         if (this.onSubmitCallback) {
-            this.onSubmitCallback(text)
+            this.onSubmitCallback(outgoing)
         }
+    }
+
+    /** `/compact [focus]`: summarizes the conversation now and marks the point in the transcript. */
+    runCompact(focus?: string): void {
+        if (this.state.isStreaming) {
+            this.showToast('Wait for the current turn to finish, then run /compact.', 'info')
+            return
+        }
+        const onCompact = this.options?.onCompact
+        if (!onCompact) {
+            this.showToast('Compaction is not available in this session.', 'error')
+            return
+        }
+        this.state.isStreaming = true
+        this.startSpinner()
+        this.setStatusMessage('Compacting conversation…')
+        onCompact(focus)
+            .then((res) => {
+                if (res.compacted) {
+                    this.appendCompactionMarker({
+                        manual: true,
+                        focus,
+                        tokensBefore: res.tokensBefore,
+                        tokensAfter: res.tokensAfter,
+                    })
+                } else {
+                    this.showToast('Nothing to compact yet. The conversation is too short.', 'info')
+                }
+            })
+            .catch((err: any) => {
+                const message = err?.message || String(err)
+                this.showToast(
+                    message === 'Aborted'
+                        ? 'Compaction cancelled.'
+                        : `Compaction failed: ${message}`,
+                    message === 'Aborted' ? 'info' : 'error'
+                )
+            })
+            .finally(() => {
+                this.finishStream()
+            })
+    }
+
+    /** Shows a one-line marker in the transcript where the conversation was compacted. */
+    appendCompactionMarker(info: {
+        manual?: boolean
+        focus?: string
+        tokensBefore?: number
+        tokensAfter?: number
+    }): void {
+        const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
+        let text = info.manual ? 'Conversation compacted' : 'Conversation compacted automatically'
+        if (info.tokensBefore !== undefined && info.tokensAfter !== undefined) {
+            text += ` · ~${fmt(info.tokensBefore)} → ~${fmt(info.tokensAfter)} tokens`
+        }
+        if (info.focus) text += ` · focus: ${info.focus}`
+        this.state.messages.push({ role: 'compaction', content: text })
+        if (info.tokensAfter !== undefined) this.state.contextTokens = info.tokensAfter
+        if (!this.state.isReadingMode) this.state.scrollOffset = undefined
+        this.render()
+    }
+
+    /**
+     * /skills: lists every skill grouped by where it comes from, with skills that failed to load.
+     * `reload` scans again. The agent keeps its skill list until the next session, so the
+     * system prompt (and its prompt cache) does not change in the middle of a session.
+     */
+    openSkillsReport(reload = false): void {
+        const previous = new Set(this.getEnabledSkills().map((s) => s.name))
+        let discovered: ReturnType<SkillDiscoveryEngine['discoverAllSkills']>
+        let errors: { path: string; message: string }[]
+        try {
+            const engine = new SkillDiscoveryEngine({
+                workspaceDir: this.state.cwd || process.cwd(),
+                includeDisabled: true,
+            })
+            discovered = engine.discoverAllSkills()
+            errors = engine.getErrors()
+        } catch (err: any) {
+            discovered = []
+            errors = [{ path: 'skills', message: err?.message || String(err) }]
+        }
+
+        const enabled = discovered.filter((s) => s.enabled !== false)
+        if (reload && !this.options?.skills) {
+            this.enabledSkillsCache = enabled.map((s) => ({
+                name: s.name,
+                description: s.metadata?.description || '',
+                origin: s.origin,
+                directoryPath: s.directoryPath,
+                entryFilePath: s.entryFilePath,
+            }))
+        }
+
+        const groups: { label: string; origins: string[] }[] = [
+            { label: 'Project', origins: ['workspace', 'declared'] },
+            { label: 'Project plugins', origins: ['workspace-plugin'] },
+            { label: 'User', origins: ['global'] },
+            { label: 'User plugins', origins: ['global-plugin'] },
+            { label: 'Built-in', origins: ['builtin'] },
+        ]
+        const rows: ReportRow[] = []
+        for (const group of groups) {
+            const items = discovered.filter((s) => group.origins.includes(s.origin))
+            if (items.length === 0) continue
+            if (rows.length > 0) rows.push({ text: '' })
+            rows.push({ text: `${group.label} (${items.length})`, tone: 'heading' })
+            for (const skill of items) {
+                const off = skill.enabled === false
+                rows.push({
+                    id: `skill:${skill.name}`,
+                    text: skill.name,
+                    tone: off ? 'muted' : 'normal',
+                    detail: `${off ? '(off) ' : ''}${skill.metadata?.description || ''}`,
+                })
+            }
+        }
+        if (errors.length > 0) {
+            if (rows.length > 0) rows.push({ text: '' })
+            rows.push({ text: `Could not load (${errors.length})`, tone: 'heading' })
+            for (const e of errors) {
+                rows.push({ text: toTildePath(e.path), tone: 'fail', detail: e.message })
+            }
+        }
+
+        const byId = new Map(discovered.map((s) => [`skill:${s.name}`, s]))
+        this.openReport({
+            kind: 'skills',
+            title: 'Skills',
+            subtitle: `${enabled.length} on${discovered.length > enabled.length ? `, ${discovered.length - enabled.length} off` : ''}`,
+            rows,
+            isLoading: false,
+            emptyText:
+                'No skills found. Add one in .december/skills/<name>/SKILL.md or install a plugin with /plugin.',
+            footer: [
+                { key: '↑/↓', label: 'select' },
+                { key: 'enter', label: 'view' },
+                { key: 'r', label: 'reload' },
+                { key: 'esc', label: 'close' },
+            ],
+            onEnter: (row) => {
+                const skill = row?.id ? byId.get(row.id) : undefined
+                if (!skill) return
+                this.state.overlayHistory.push('report')
+                this.state.activeOverlay = 'skills'
+                this.openSkillDetail({
+                    name: skill.name,
+                    description: skill.metadata?.description || '',
+                    origin: skill.origin,
+                    directoryPath: skill.directoryPath,
+                    entryFilePath: skill.entryFilePath,
+                }).catch(() => {
+                    // Intentionally swallowed: openSkillDetail shows its own error state
+                })
+            },
+            onKey: (key) => {
+                if (key !== 'r') return false
+                this.openSkillsReport(true)
+                return true
+            },
+        })
+
+        if (reload) {
+            const now = new Set(enabled.map((s) => s.name))
+            const added = [...now].filter((n) => !previous.has(n)).length
+            const removed = [...previous].filter((n) => !now.has(n)).length
+            const change =
+                added || removed ? ` (${added} new, ${removed} removed)` : ' (no changes)'
+            this.showToast(
+                `Found ${now.size} skills${change}. /skill:<name> uses the new list now; the agent picks it up in the next session.`,
+                'info'
+            )
+        }
+    }
+
+    /** /check: runs the host's health checks and shows them grouped, with fixes for problems. */
+    openCheckReport(): void {
+        const onRunChecks = this.options?.onRunChecks
+        const footer = [
+            { key: '↑/↓', label: 'scroll' },
+            { key: 'r', label: 'run again' },
+            { key: 'esc', label: 'close' },
+        ]
+        const onKey = (key: string) => {
+            if (key !== 'r') return false
+            this.openCheckReport()
+            return true
+        }
+        this.openReport({
+            kind: 'check',
+            title: 'Check',
+            rows: [],
+            isLoading: true,
+            loadingText: 'Running checks…',
+            footer,
+            onKey,
+        })
+        if (!onRunChecks) {
+            this.updateReport('check', {
+                isLoading: false,
+                emptyText: 'Run `december doctor` in your terminal.',
+            })
+            return
+        }
+        onRunChecks()
+            .then((checks) => {
+                const rows: ReportRow[] = []
+                const groups: string[] = []
+                for (const c of checks) if (!groups.includes(c.group)) groups.push(c.group)
+                for (const group of groups) {
+                    if (rows.length > 0) rows.push({ text: '' })
+                    rows.push({ text: group, tone: 'heading' })
+                    for (const c of checks.filter((x) => x.group === group)) {
+                        rows.push({ text: c.label, tone: c.status, detail: c.detail })
+                        if (c.fix && c.status !== 'ok') {
+                            rows.push({ text: `└ ${c.fix}`, tone: 'muted' })
+                        }
+                    }
+                }
+                const fails = checks.filter((c) => c.status === 'fail').length
+                const warns = checks.filter((c) => c.status === 'warn').length
+                this.updateReport('check', {
+                    isLoading: false,
+                    rows,
+                    subtitle:
+                        fails + warns === 0
+                            ? 'all checks passed'
+                            : `${fails} problem${fails === 1 ? '' : 's'}, ${warns} warning${warns === 1 ? '' : 's'}`,
+                })
+            })
+            .catch((err: any) => {
+                this.updateReport('check', {
+                    isLoading: false,
+                    rows: [{ text: 'Checks failed to run', tone: 'fail', detail: err?.message }],
+                })
+            })
+    }
+
+    /**
+     * /permissions: allow and deny rules from the project and global files.
+     * tab switches lists, a / g add a project / global rule, d removes the selected rule,
+     * m switches between always-proceed and always-ask.
+     */
+    openPermissionsReport(kind: 'allow' | 'deny', keepSelection = false): void {
+        const onLoad = this.options?.onLoadPermissions
+        const onChange = this.options?.onChangePermissionRule
+        const previous =
+            keepSelection && this.state.report?.kind === 'permissions'
+                ? {
+                      selected: this.state.report.selectedIndex,
+                      scroll: this.state.report.scrollOffset,
+                  }
+                : null
+
+        const footer = [
+            { key: 'tab', label: kind === 'allow' ? 'deny rules' : 'allow rules' },
+            { key: 'a', label: 'add project rule' },
+            { key: 'g', label: 'add global rule' },
+            { key: 'd', label: 'remove' },
+            { key: 'm', label: 'mode' },
+            { key: 'esc', label: 'close' },
+        ]
+        const tabs = [
+            { label: 'Allow', active: kind === 'allow' },
+            { label: 'Deny', active: kind === 'deny' },
+        ]
+        this.openReport({
+            kind: 'permissions',
+            title: 'Permissions',
+            tabs,
+            rows: [],
+            isLoading: true,
+            footer,
+        })
+        if (!onLoad) {
+            this.updateReport('permissions', {
+                isLoading: false,
+                emptyText: 'Permissions are not available in this session.',
+            })
+            return
+        }
+
+        const apply = async (change: PermissionRuleChange, done: string) => {
+            if (!onChange) return
+            try {
+                await onChange(change)
+                this.showToast(done, 'success')
+            } catch (err: any) {
+                this.showToast(err?.message || String(err), 'error')
+            }
+            this.openPermissionsReport(kind, true)
+        }
+
+        const promptRule = (scope: 'global' | 'project') => {
+            const report = this.state.report
+            if (!report || report.kind !== 'permissions') return
+            report.input = {
+                prompt: `Add ${scope} ${kind} rule:`,
+                value: '',
+                onSubmit: (value) => {
+                    const pattern = value.trim()
+                    if (!pattern) return
+                    void apply(
+                        { action: 'add', kind, scope, pattern },
+                        `Added ${scope} ${kind} rule "${pattern}".`
+                    )
+                },
+            }
+            this.render()
+        }
+
+        onLoad()
+            .then((data) => {
+                const rows: ReportRow[] = []
+                const modeText =
+                    data.toolPermission === 'always-ask'
+                        ? 'always-ask: edits and commands ask first, unless an allow rule matches'
+                        : 'always-proceed: edits and commands run without asking'
+                rows.push({ text: 'Mode', tone: 'heading', detail: modeText })
+                if (kind === 'allow' && data.toolPermission === 'always-proceed') {
+                    rows.push({
+                        text: 'Allow rules only matter in always-ask mode (press m to switch).',
+                        tone: 'muted',
+                    })
+                }
+                if (kind === 'deny') {
+                    rows.push({
+                        text: 'Deny rules block matching calls in every mode, before anything else.',
+                        tone: 'muted',
+                    })
+                }
+                rows.push({
+                    text: 'Rule format: a command (bun test), a prefix (bun test*), <tool>: <path>, or a tool name.',
+                    tone: 'muted',
+                })
+                for (const scope of ['project', 'global'] as const) {
+                    const list = data[kind][scope]
+                    rows.push({ text: '' })
+                    rows.push({
+                        text: `${scope === 'project' ? 'Project' : 'Global'} (${list.length})`,
+                        tone: 'heading',
+                        detail: scope === 'project' ? data.projectPath : data.globalPath,
+                    })
+                    if (list.length === 0) {
+                        rows.push({ text: 'No rules', tone: 'muted' })
+                    }
+                    for (const pattern of list) {
+                        rows.push({ id: `${scope}\u0000${pattern}`, text: pattern })
+                    }
+                }
+
+                const report = this.state.report
+                if (!report || report.kind !== 'permissions') return
+                report.rows = rows
+                report.isLoading = false
+                report.subtitle = data.toolPermission
+                const firstRule = firstSelectableRow(rows)
+                report.selectedIndex =
+                    previous && rows[previous.selected]?.id
+                        ? previous.selected
+                        : previous
+                          ? nextSelectableRow(
+                                rows,
+                                Math.min(previous.selected, rows.length - 1),
+                                -1
+                            )
+                          : firstRule
+                if (!rows[report.selectedIndex]?.id) report.selectedIndex = firstRule
+                report.scrollOffset = previous?.scroll ?? 0
+                report.onKey = (key, row) => {
+                    if (key === '\t' || key === '\x1b[Z' || key === '\x1b[C' || key === '\x1b[D') {
+                        this.openPermissionsReport(kind === 'allow' ? 'deny' : 'allow')
+                        return true
+                    }
+                    if (key === 'a') {
+                        promptRule('project')
+                        return true
+                    }
+                    if (key === 'g') {
+                        promptRule('global')
+                        return true
+                    }
+                    if ((key === 'd' || key === 'x' || key === '\x7f') && row?.id) {
+                        const [scope, pattern] = row.id.split('\u0000') as [
+                            'global' | 'project',
+                            string,
+                        ]
+                        void apply(
+                            { action: 'remove', kind, scope, pattern },
+                            `Removed ${scope} ${kind} rule "${pattern}".`
+                        )
+                        return true
+                    }
+                    if (key === 'm') {
+                        const next =
+                            data.toolPermission === 'always-ask' ? 'always-proceed' : 'always-ask'
+                        const setting = this.state.settings.find((s) => s.id === 'tool_permission')
+                        if (setting) setting.value = next
+                        Promise.resolve(this.options?.onSettingChange?.('tool_permission', next))
+                            .then(() => {
+                                this.showToast(`Tool permission mode: ${next}.`, 'success')
+                                this.openPermissionsReport(kind, true)
+                            })
+                            .catch((err: any) => {
+                                this.showToast(err?.message || String(err), 'error')
+                            })
+                        return true
+                    }
+                    return false
+                }
+                this.render()
+            })
+            .catch((err: any) => {
+                this.updateReport('permissions', {
+                    isLoading: false,
+                    rows: [{ text: 'Could not load rules', tone: 'fail', detail: err?.message }],
+                })
+            })
+    }
+
+    /**
+     * /github: checks gh, the repo, the workflow file, and the secrets, then runs each step
+     * on a key press: w writes the workflow, k / u set the API key secret, s / i set the
+     * Slack / Discord webhook secrets. Secrets are sent to GitHub only on these key presses.
+     */
+    openGithubReport(keepSelection = false): void {
+        const onLoad = this.options?.onLoadGithubSetup
+        const onAction = this.options?.onGithubSetupAction
+        const previousScroll =
+            keepSelection && this.state.report?.kind === 'github'
+                ? this.state.report.scrollOffset
+                : 0
+        let confirmOverwrite = false
+
+        this.openReport({
+            kind: 'github',
+            title: 'GitHub Action',
+            rows: [],
+            isLoading: true,
+            loadingText: 'Checking gh, the repository, and its secrets…',
+            footer: [{ key: 'esc', label: 'close' }],
+        })
+        if (!onLoad || !onAction) {
+            this.updateReport('github', {
+                isLoading: false,
+                emptyText: 'GitHub setup is not available in this session.',
+            })
+            return
+        }
+
+        const run = (action: GithubSetupAction) => {
+            this.updateReport('github', { isLoading: true, loadingText: 'Working…' })
+            onAction(action)
+                .then((message) => {
+                    this.showToast(message, 'success')
+                    this.openGithubReport(true)
+                })
+                .catch((err: any) => {
+                    this.showToast(err?.message || String(err), 'error')
+                    this.openGithubReport(true)
+                })
+        }
+
+        const askSecret = (name: string, prompt: string) => {
+            const report = this.state.report
+            if (!report || report.kind !== 'github') return
+            report.input = {
+                prompt,
+                value: '',
+                mask: true,
+                onSubmit: (value) => {
+                    if (!value.trim()) return
+                    run({ type: 'set-secret', name, value })
+                },
+            }
+            this.render()
+        }
+
+        onLoad()
+            .then((data) => {
+                const rows: ReportRow[] = []
+                const footer: MenuFooterItem[] = []
+                rows.push({ text: 'Setup', tone: 'heading' })
+                rows.push(
+                    data.ghInstalled
+                        ? { text: 'GitHub CLI (gh)', tone: 'ok', detail: 'installed' }
+                        : { text: 'GitHub CLI (gh)', tone: 'fail', detail: 'not found' }
+                )
+                if (!data.ghInstalled) {
+                    rows.push({ text: '└ Install it from https://cli.github.com', tone: 'muted' })
+                } else {
+                    rows.push(
+                        data.ghAuthed
+                            ? { text: 'Signed in to GitHub', tone: 'ok' }
+                            : {
+                                  text: 'Signed in to GitHub',
+                                  tone: 'fail',
+                                  detail: data.ghAuthDetail || 'not signed in',
+                              }
+                    )
+                    if (!data.ghAuthed) {
+                        rows.push({ text: '└ Run `!gh auth login`, then press r', tone: 'muted' })
+                    }
+                }
+                if (!data.inGitRepo) {
+                    rows.push({ text: 'Repository', tone: 'fail', detail: 'not a git repository' })
+                } else if (data.ghAuthed) {
+                    rows.push(
+                        data.repo
+                            ? { text: 'Repository', tone: 'ok', detail: data.repo }
+                            : {
+                                  text: 'Repository',
+                                  tone: 'fail',
+                                  detail: 'no GitHub remote found for this repository',
+                              }
+                    )
+                }
+
+                const ready = data.ghInstalled && data.ghAuthed && Boolean(data.repo)
+                if (data.inGitRepo) {
+                    rows.push(
+                        data.workflowExists
+                            ? { text: 'Workflow file', tone: 'ok', detail: data.workflowPath }
+                            : { text: 'Workflow file', tone: 'warn', detail: 'not created' }
+                    )
+                    footer.push({
+                        key: 'w',
+                        label: data.workflowExists ? 'rewrite workflow' : 'write workflow',
+                    })
+                }
+
+                if (ready) {
+                    rows.push(
+                        data.secretSet
+                            ? { text: `Secret ${data.secretName}`, tone: 'ok', detail: 'set' }
+                            : {
+                                  text: `Secret ${data.secretName}`,
+                                  tone: 'warn',
+                                  detail: data.secretsError || 'not set',
+                              }
+                    )
+                    if (data.providerNote)
+                        rows.push({ text: `└ ${data.providerNote}`, tone: 'muted' })
+                    rows.push({
+                        text: 'Slack / Discord alerts (optional)',
+                        tone: data.slackSet || data.discordSet ? 'ok' : 'muted',
+                        detail:
+                            [data.slackSet ? 'Slack set' : '', data.discordSet ? 'Discord set' : '']
+                                .filter(Boolean)
+                                .join(', ') || 'not set',
+                    })
+                    footer.push({ key: 'k', label: 'set API key' })
+                    if (data.savedKeyAvailable) footer.push({ key: 'u', label: 'use saved key' })
+                    footer.push({ key: 's', label: 'Slack' }, { key: 'i', label: 'Discord' })
+                    rows.push({ text: '' })
+                    rows.push({
+                        text: 'Keys and webhooks are sent to GitHub as repository secrets only when you press k, u, s, or i.',
+                        tone: 'muted',
+                    })
+                }
+
+                rows.push({ text: '' })
+                rows.push({ text: 'Next steps', tone: 'heading' })
+                rows.push({
+                    text: `1. Commit and push .github/workflows/december.yml to ${data.defaultBranch}`,
+                    tone: 'normal',
+                })
+                rows.push({
+                    text: '2. Comment "@trydecember <task>" on an issue or pull request',
+                    tone: 'normal',
+                })
+                footer.push({ key: 'r', label: 'refresh' }, { key: 'esc', label: 'close' })
+
+                const report = this.state.report
+                if (!report || report.kind !== 'github') return
+                report.rows = rows
+                report.footer = footer
+                report.isLoading = false
+                report.subtitle = data.repo
+                report.scrollOffset = previousScroll
+                report.onKey = (key) => {
+                    if (key === 'r') {
+                        this.openGithubReport(true)
+                        return true
+                    }
+                    if (key === 'w' && data.inGitRepo) {
+                        if (data.workflowExists && !confirmOverwrite) {
+                            confirmOverwrite = true
+                            this.showToast(
+                                'december.yml exists. Press w again to overwrite it.',
+                                'info'
+                            )
+                            return true
+                        }
+                        run({ type: 'write-workflow', overwrite: data.workflowExists })
+                        return true
+                    }
+                    if (!ready) return false
+                    if (key === 'k') {
+                        askSecret(data.secretName, `${data.secretName}:`)
+                        return true
+                    }
+                    if (key === 'u' && data.savedKeyAvailable) {
+                        run({ type: 'use-saved-key' })
+                        return true
+                    }
+                    if (key === 's') {
+                        askSecret('DECEMBER_SLACK_WEBHOOK', 'Slack webhook URL:')
+                        return true
+                    }
+                    if (key === 'i') {
+                        askSecret('DECEMBER_DISCORD_WEBHOOK', 'Discord webhook URL:')
+                        return true
+                    }
+                    return false
+                }
+                this.render()
+            })
+            .catch((err: any) => {
+                this.updateReport('github', {
+                    isLoading: false,
+                    rows: [
+                        { text: 'Could not check the setup', tone: 'fail', detail: err?.message },
+                    ],
+                })
+            })
+    }
+
+    /** /hooks: active hooks grouped by event, with their source file. Editing is done in the file. */
+    openHooksReport(): void {
+        const onLoad = this.options?.onLoadHooks
+        this.openReport({
+            kind: 'hooks',
+            title: 'Hooks',
+            rows: [],
+            isLoading: true,
+            footer: [{ key: 'esc', label: 'close' }],
+        })
+        if (!onLoad) {
+            this.updateReport('hooks', {
+                isLoading: false,
+                emptyText: 'Hooks are not available in this session.',
+            })
+            return
+        }
+        onLoad()
+            .then((data) => {
+                const rows: ReportRow[] = []
+                const events = [
+                    'SessionStart',
+                    'UserPromptSubmit',
+                    'PreToolUse',
+                    'PostToolUse',
+                    'Stop',
+                ]
+                for (const event of events) {
+                    const list = data.hooks.filter((h) => h.event === event)
+                    if (list.length === 0) continue
+                    if (rows.length > 0) rows.push({ text: '' })
+                    rows.push({ text: `${event} (${list.length})`, tone: 'heading' })
+                    for (const h of list) {
+                        const match =
+                            event === 'PreToolUse' || event === 'PostToolUse'
+                                ? `${h.matcher && h.matcher !== '*' ? h.matcher : 'all tools'} · `
+                                : ''
+                        rows.push({
+                            text: h.command,
+                            detail: `${match}${h.source} · ${h.timeoutSeconds}s`,
+                        })
+                    }
+                }
+                if (data.projectSkipped) {
+                    if (rows.length > 0) rows.push({ text: '' })
+                    rows.push({
+                        text: `Project hooks in ${data.projectPath} do not run: this workspace is not trusted.`,
+                        tone: 'warn',
+                    })
+                }
+                if (data.problems.length > 0) {
+                    if (rows.length > 0) rows.push({ text: '' })
+                    rows.push({ text: 'Problems', tone: 'heading' })
+                    for (const p of data.problems) rows.push({ text: p, tone: 'fail' })
+                }
+                rows.push({ text: '' })
+                rows.push({
+                    text: 'Exit code 2 blocks a tool call or prompt (stderr is the reason). The event is sent as JSON on stdin.',
+                    tone: 'muted',
+                })
+
+                const openFile = (file: string) => {
+                    const onOpenEditor = this.options?.onOpenEditor
+                    if (!onOpenEditor) return
+                    try {
+                        fs.mkdirSync(path.dirname(file), { recursive: true })
+                        if (!fs.existsSync(file)) {
+                            fs.writeFileSync(file, '{\n    "hooks": {}\n}\n', 'utf-8')
+                        }
+                    } catch (err: any) {
+                        this.showToast(err?.message || String(err), 'error')
+                        return
+                    }
+                    onOpenEditor(file)
+                        .then(() =>
+                            this.showToast(
+                                `Opened ${file}. Changes apply to the next event.`,
+                                'info'
+                            )
+                        )
+                        .catch((err: any) => this.showToast(err?.message || String(err), 'error'))
+                }
+
+                const report = this.state.report
+                if (!report || report.kind !== 'hooks') return
+                report.rows = rows
+                report.isLoading = false
+                report.subtitle = `${data.hooks.length} active`
+                report.emptyText = undefined
+                report.footer = [
+                    { key: '↑/↓', label: 'scroll' },
+                    { key: 'p', label: `edit ${data.projectPath}` },
+                    { key: 'g', label: `edit ${data.globalPath}` },
+                    { key: 'r', label: 'reload' },
+                    { key: 'esc', label: 'close' },
+                ]
+                report.onKey = (key) => {
+                    if (key === 'r') {
+                        this.openHooksReport()
+                        return true
+                    }
+                    if (key === 'p') {
+                        openFile(data.projectFile)
+                        return true
+                    }
+                    if (key === 'g') {
+                        openFile(data.globalFile)
+                        return true
+                    }
+                    return false
+                }
+                if (data.hooks.length === 0 && data.problems.length === 0 && !data.projectSkipped) {
+                    report.rows = [{ text: 'No hooks yet.', tone: 'muted' }, { text: '' }, ...rows]
+                }
+                this.render()
+            })
+            .catch((err: any) => {
+                this.updateReport('hooks', {
+                    isLoading: false,
+                    rows: [{ text: 'Could not load hooks', tone: 'fail', detail: err?.message }],
+                })
+            })
+    }
+
+    private keymap = new Keymap()
+    private keymapMtime = -1
+    private keymapCheckedAt = 0
+
+    /** the keymap from keybindings.json, read again (at most once a second) when the file changes */
+    private getKeymap(): Keymap {
+        const filePath = this.options?.keybindingsPath
+        if (!filePath) return this.keymap
+        const now = Date.now()
+        if (now - this.keymapCheckedAt < 1000) return this.keymap
+        this.keymapCheckedAt = now
+        let mtime: number
+        try {
+            mtime = fs.statSync(filePath).mtimeMs
+        } catch {
+            // Intentionally swallowed: no file means the default keys
+            mtime = 0
+        }
+        if (mtime !== this.keymapMtime) {
+            this.keymapMtime = mtime
+            this.keymap = mtime ? Keymap.fromFile(filePath) : new Keymap()
+            if (this.keymap.problems.length > 0) {
+                this.showToast(
+                    `keybindings.json: ${this.keymap.problems[0]}${this.keymap.problems.length > 1 ? ` (+${this.keymap.problems.length - 1} more, see /check)` : ''}`,
+                    'error'
+                )
+            }
+        }
+        return this.keymap
+    }
+
+    /** /keybindings: opens keybindings.json, creating it with the default keys first */
+    openKeybindingsFile(): void {
+        const filePath = this.options?.keybindingsPath
+        const onOpenEditor = this.options?.onOpenEditor
+        if (!filePath || !onOpenEditor) {
+            this.showToast('Keybindings are not available in this session.', 'error')
+            return
+        }
+        try {
+            if (!fs.existsSync(filePath)) {
+                fs.mkdirSync(path.dirname(filePath), { recursive: true })
+                fs.writeFileSync(filePath, defaultKeybindingsFileContent(), 'utf-8')
+            }
+        } catch (err: any) {
+            this.showToast(`Could not create ${filePath}: ${err?.message || err}`, 'error')
+            return
+        }
+        onOpenEditor(filePath)
+            .then(() => {
+                this.showToast(
+                    `Opened ${filePath}. Saved changes apply right away; /help shows the keys in use.`,
+                    'info'
+                )
+            })
+            .catch((err: any) => {
+                this.showToast(`Could not open ${filePath}: ${err?.message || err}`, 'error')
+            })
+    }
+
+    /** Opens the shared report overlay. Later changes go through updateReport. */
+    openReport(report: Omit<ReportState, 'selectedIndex' | 'scrollOffset'>): void {
+        this.state.report = {
+            ...report,
+            selectedIndex: firstSelectableRow(report.rows),
+            scrollOffset: 0,
+        }
+        this.state.activeOverlay = 'report'
+        this.render()
+    }
+
+    /** Changes the open report. Ignored when the user closed it or opened another kind. */
+    updateReport(kind: ReportState['kind'], patch: Partial<ReportState>): void {
+        const report = this.state.report
+        if (!report || report.kind !== kind || this.state.activeOverlay !== 'report') return
+        Object.assign(report, patch)
+        if (patch.rows) {
+            const current = report.rows[report.selectedIndex]
+            if (!current?.id) report.selectedIndex = firstSelectableRow(report.rows)
+            report.selectedIndex = Math.min(
+                report.selectedIndex,
+                Math.max(0, report.rows.length - 1)
+            )
+        }
+        this.render()
+    }
+
+    closeReport(): void {
+        this.state.report = null
+        this.closeOrPopOverlay()
+    }
+
+    private handleReportKey(key: string): void {
+        const report = this.state.report
+        if (!report) {
+            this.state.activeOverlay = 'none'
+            this.render()
+            return
+        }
+
+        // Text input mode
+        if (report.input) {
+            const input = report.input
+            if (key === '\r' || key === '\n') {
+                const value = input.value
+                report.input = undefined
+                this.render()
+                input.onSubmit(value)
+                return
+            }
+            if (key === '\x7f' || key === '\b') {
+                input.value = input.value.slice(0, -1)
+                this.render()
+                return
+            }
+            if (key === '\x15') {
+                input.value = ''
+                this.render()
+                return
+            }
+            // printable text, including a paste
+            const printable = [...key].every((ch) => ch.charCodeAt(0) >= 0x20 && ch !== '\x7f')
+            if (printable && key.length > 0) {
+                input.value += key
+                this.render()
+            }
+            return
+        }
+
+        const viewport = getReportViewportHeight(
+            this.screen.rows,
+            Boolean(report.tabs?.length),
+            false
+        )
+        const hasSelectable = report.rows.some((r) => r.id)
+        const isUp = key === '\x1b[A' || key === 'k'
+        const isDown = key === '\x1b[B' || key === 'j'
+
+        if (isUp || isDown) {
+            if (hasSelectable) {
+                report.selectedIndex = nextSelectableRow(
+                    report.rows,
+                    report.selectedIndex,
+                    isUp ? -1 : 1
+                )
+                // show the heading above the first selectable row
+                const target = isUp ? Math.max(0, report.selectedIndex - 1) : report.selectedIndex
+                report.scrollOffset = clampReportScroll(target, report.scrollOffset, viewport)
+            } else {
+                const maxScroll = Math.max(0, report.rows.length - viewport)
+                report.scrollOffset = Math.max(
+                    0,
+                    Math.min(maxScroll, report.scrollOffset + (isUp ? -1 : 1))
+                )
+            }
+            this.render()
+            return
+        }
+
+        if (key === '\x1b[5~' || key === '\x1b[6~') {
+            const maxScroll = Math.max(0, report.rows.length - viewport)
+            const delta = key === '\x1b[5~' ? -viewport : viewport
+            report.scrollOffset = Math.max(0, Math.min(maxScroll, report.scrollOffset + delta))
+            this.render()
+            return
+        }
+
+        const row = report.rows[report.selectedIndex]
+        const selectedRow = row?.id ? row : undefined
+
+        if (key === '\r' || key === '\n') {
+            report.onEnter?.(selectedRow)
+            return
+        }
+
+        if (report.onKey?.(key, selectedRow)) return
+
+        if (key === 'q') {
+            this.closeReport()
+        }
+    }
+
+    /** Turns plan mode on or off. In plan mode, plain prompts are sent as /plan <prompt>. */
+    togglePlanMode(): void {
+        this.state.planMode = !this.state.planMode
+        this.showToast(
+            this.state.planMode
+                ? 'Plan mode on. Prompts start a plan for your review (shift+tab to turn off).'
+                : 'Plan mode off.',
+            'info'
+        )
+        this.render()
     }
 
     drainPromptQueue(): boolean {
@@ -6920,7 +8626,116 @@ export class DifferentialApp {
         return true
     }
 
+    private static readonly APPROVAL_OVERLAYS = new Set([
+        'tool_permission',
+        'ask_question',
+        'plan_approve',
+    ])
+
+    /**
+     * The activity block (L0) for this frame. `turn` (the activity line and the plan
+     * checklist) is drawn at the end of the chat (L20); `queued` stays above the prompt box.
+     * Also settles the paused time while an approval prompt is open.
+     */
+    private getActivityBlock(
+        width: number,
+        hideHint = false
+    ): { turn: FormattedLine[]; queued: FormattedLine[] } {
+        const now = Date.now()
+        const waiting =
+            this.state.isStreaming &&
+            DifferentialApp.APPROVAL_OVERLAYS.has(this.state.activeOverlay)
+        if (waiting && this.turnPauseStartedAt === undefined) this.turnPauseStartedAt = now
+        if (!waiting && this.turnPauseStartedAt !== undefined) {
+            this.turnPausedMs += now - this.turnPauseStartedAt
+            this.turnPauseStartedAt = undefined
+        }
+        const locale = process.env.LC_ALL || process.env.LC_CTYPE || process.env.LANG || ''
+        return this.activityTracker.getBlock(
+            {
+                messages: this.state.messages,
+                isStreaming: this.state.isStreaming,
+                statusMessage: this.state.statusMessage,
+                statusSetAt: this.statusSetAt,
+                waitingForUser: waiting,
+                now,
+                turnStartedAt: this.streamStartTime || now,
+                pausedMs: this.turnPausedMs,
+                pauseStartedAt: this.turnPauseStartedAt,
+                lastActivityAt: this.lastStreamActivityAt,
+                firstTokenAt: this.firstTokenAt,
+                isColdStart: !this.hasReceivedToken,
+                tip: this.state.activeTip,
+                queued: this.state.promptQueue,
+                contextTokens: this.getEffectiveContextTokens(),
+                retry: this.retryInfo,
+                seededPlan: this.seededPlan?.items,
+                hideHint,
+                reduceMotion: Boolean(process.env.NO_COLOR || process.env.DECEMBER_REDUCE_MOTION),
+                wideAmbiguous: /^(zh|ja|ko)/i.test(locale),
+            },
+            Math.max(10, width - THEME.padding.paddingLeft - THEME.padding.paddingRight)
+        )
+    }
+
+    private drawActivityLines(lines: FormattedLine[], y: number, width: number): void {
+        const buffer = this.screen.backBuffer
+        lines.forEach((line, i) => {
+            let x: number = THEME.padding.paddingLeft
+            for (const seg of line) {
+                const room = width - x
+                if (room <= 0) break
+                // Clip by terminal columns, so wide characters (CJK, emoji) do not overflow
+                x = buffer.write(x, y + i, sliceToWidth(seg.text, room), seg.style).x
+            }
+        })
+    }
+
+    /** Redraws while /btw waits for its first token, so its ✱ breathes (M25, Q8 A) */
+    private startBtwLoaderTimer(): void {
+        if (this.btwLoaderTimer) return
+        this.btwLoaderTimer = setInterval(() => {
+            if (this.state.btwState?.status !== 'loading') {
+                clearInterval(this.btwLoaderTimer!)
+                this.btwLoaderTimer = null
+                return
+            }
+            this.render()
+        }, 130)
+    }
+
+    /** Records stream or tool activity for the activity line's stall and first-token checks */
+    private markStreamActivity(): void {
+        const now = Date.now()
+        this.lastStreamActivityAt = now
+        if (this.firstTokenAt === 0) {
+            this.firstTokenAt = now
+            if (this.streamStartTime > 0) this.perfStats.ttftMs = now - this.streamStartTime
+        }
+        this.hasReceivedToken = true
+        // Output resumed (text, thinking or a tool), so a retry in progress is over
+        this.retryInfo = undefined
+    }
+
+    private resetActivityTiming(): void {
+        this.activityTracker.reset()
+        this.lastStreamActivityAt = 0
+        this.firstTokenAt = 0
+        this.statusSetAt = 0
+        this.turnPausedMs = 0
+        this.turnPauseStartedAt = undefined
+        this.previewedPaths.clear()
+        this.retryInfo = undefined
+        this.turnOutputTokens = 0
+    }
+
+    /** Adds one model call's output tokens to the current turn (shown in the L16 line) */
+    addTurnOutputTokens(tokens: number): void {
+        if (Number.isFinite(tokens) && tokens > 0) this.turnOutputTokens += tokens
+    }
+
     scheduleStreamRender(): void {
+        this.markStreamActivity()
         const now = performance.now()
         const elapsed = now - this.lastStreamRenderTime
 
@@ -6942,7 +8757,6 @@ export class DifferentialApp {
     }
 
     flushStream(): void {
-        this.butterflowQueue.flush()
         if (this.streamRenderTimer) {
             clearTimeout(this.streamRenderTimer)
             this.streamRenderTimer = null
@@ -6963,12 +8777,64 @@ export class DifferentialApp {
         this.render()
     }
 
+    /** End-of-turn line (L16): only for turns over 10s, or turns that changed files */
+    private appendTurnSummary(): void {
+        if (!this.streamStartTime) return
+        const now = Date.now()
+        const paused =
+            this.turnPausedMs + (this.turnPauseStartedAt ? now - this.turnPauseStartedAt : 0)
+        const durationMs = Math.max(0, now - this.streamStartTime - paused)
+        const messages = this.state.messages
+        let start = messages.length
+        while (start > 0 && messages[start - 1]?.role !== 'user') start--
+        const turn = messages.slice(start)
+        if (turn.length === 0) return
+        // An interrupted turn already ends with the interrupt notice
+        if (
+            turn.some(
+                (m) =>
+                    m.role === 'assistant' &&
+                    (m.content || '').includes('Interrupted · What should December do instead?')
+            )
+        )
+            return
+
+        const files = new Map<string, { path: string; added: number; removed: number }>()
+        let outputTokens = this.turnOutputTokens
+        for (const m of turn) {
+            if (!this.turnOutputTokens) outputTokens += m.usage?.completionTokens || 0
+            if (!m.toolCall || m.toolCall.status === 'error') continue
+            const change = toolCallChanges(m.toolCall)
+            if (!change || !change.path) continue
+            const entry = files.get(change.path) ?? { path: change.path, added: 0, removed: 0 }
+            entry.added += change.added
+            entry.removed += change.removed
+            files.set(change.path, entry)
+        }
+        if (durationMs <= 10_000 && files.size === 0) return
+        messages.push({
+            role: 'turn_summary',
+            summary: {
+                durationMs,
+                outputTokens: outputTokens || undefined,
+                files: [...files.values()],
+            },
+        })
+    }
+
     finishStream(): void {
         this.flushStream()
+        this.appendTurnSummary()
+        // The seeded checklist lasts until the turn that carries out the plan ends (F2)
+        if (this.seededPlan && this.streamStartTime && this.seededPlan.at <= this.streamStartTime) {
+            this.seededPlan = undefined
+        }
         this.clearStatusMessage()
         this.stopSpinner()
         this.state.isStreaming = false
+        this.flushTaskNotices()
         this.streamStartTime = 0
+        this.resetActivityTiming()
         this.state.activeTip = null
         this.refreshUsageStats()
         this.render()
@@ -6980,18 +8846,26 @@ export class DifferentialApp {
             clearTimeout(this.toolRenderTimer)
             this.toolRenderTimer = null
         }
-        this.butterflowQueue.reset()
         this.flushStream()
         this.stopSpinner()
         this.state.isStreaming = false
+        this.flushTaskNotices()
         this.streamStartTime = 0
+        this.resetActivityTiming()
         this.state.activeTip = null
         this.state.promptQueue = []
         this.clearStatusMessage()
         if (this.onAbortCallback) {
             this.onAbortCallback()
         } else {
-            this.applyDrippedDelta('\n\nInterrupted · What should December do instead?')
+            this.applyStreamDelta('\n\nInterrupted · What should December do instead?')
+            // The notice is final text, not a live stream: settle it so nothing stays live
+            const notice = this.state.messages[this.state.messages.length - 1]
+            if (notice) notice.isStreaming = false
+            if (this.streamRenderTimer) {
+                clearTimeout(this.streamRenderTimer)
+                this.streamRenderTimer = null
+            }
         }
         this.showToast('Aborted.', 'info')
         this.render()
@@ -7012,10 +8886,10 @@ export class DifferentialApp {
             }
         }
 
-        this.butterflowQueue.enqueue(delta)
+        this.applyStreamDelta(delta)
     }
 
-    private applyDrippedDelta(delta: string): void {
+    private applyStreamDelta(delta: string): void {
         if (!delta) return
 
         const lastMsg = this.state.messages[this.state.messages.length - 1]
@@ -7064,7 +8938,14 @@ export class DifferentialApp {
         this.render()
     }
 
-    appendToolCall(toolCall: { id: string; name: string; input?: any; command?: string }): void {
+    appendToolCall(toolCall: {
+        id: string
+        name: string
+        input?: any
+        command?: string
+        mcpServer?: string
+        mcpTool?: string
+    }): void {
         // Finalize any in-progress thinking block before tool execution
         for (let i = this.state.messages.length - 1; i >= 0; i--) {
             const m = this.state.messages[i]
@@ -7074,6 +8955,7 @@ export class DifferentialApp {
             }
         }
 
+        this.markStreamActivity()
         const fallbackSummary = toolCall.command || `${toolCall.name}()`
 
         this.state.messages.push({
@@ -7086,6 +8968,9 @@ export class DifferentialApp {
                 status: 'running',
                 output: '',
                 startTime: Date.now(),
+                ...(toolCall.mcpServer
+                    ? { mcpServer: toolCall.mcpServer, mcpTool: toolCall.mcpTool }
+                    : {}),
             },
         })
 
@@ -7097,10 +8982,9 @@ export class DifferentialApp {
     }
 
     updateToolExecution(toolCallId: string, chunk: string): void {
-        const msg = this.state.messages.find(
-            (m) => m.role === 'tool' && m.toolCall?.id === toolCallId
-        )
+        const msg = this.findToolMessage(toolCallId)
         if (msg && msg.toolCall) {
+            this.markStreamActivity()
             const prev = msg.toolCall.output || ''
             if (prev.length > 200_000) {
                 msg.toolCall.output = prev.slice(-100_000) + chunk
@@ -7136,9 +9020,7 @@ export class DifferentialApp {
             clearTimeout(this.toolRenderTimer)
             this.toolRenderTimer = null
         }
-        const msg = this.state.messages.find(
-            (m) => m.role === 'tool' && m.toolCall?.id === toolCallId
-        )
+        const msg = this.findToolMessage(toolCallId)
         if (msg && msg.toolCall) {
             msg.toolCall.status = result.isError ? 'error' : 'success'
             if (result.output) {
@@ -7156,25 +9038,46 @@ export class DifferentialApp {
         }
     }
 
-    requestRender(): void {
-        if (this.renderScheduled || !this.isRunning) return
-        this.renderScheduled = true
-
-        if (process.env.NODE_ENV === 'test' || process.env.BUN_TEST) {
-            this.renderScheduled = false
-            this.render()
-            return
+    /** The running tool is almost always near the end, so search from there */
+    private findToolMessage(toolCallId: string): MessageItem | undefined {
+        const messages = this.state.messages
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const m = messages[i]!
+            if (m.role === 'tool' && m.toolCall?.id === toolCallId) return m
         }
+        return undefined
+    }
 
+    requestRender(): void {
+        this.render()
+    }
+
+    /**
+     * Older turns may not be laid out yet (virtualized history). Scrolling needs the real
+     * line count, so finish the layout and repaint before reading maxScroll.
+     */
+    private ensureHistoryLaidOut(): void {
+        if (this.lineCache.isComplete()) return
+        this.lineCache.layoutPending(Number.POSITIVE_INFINITY)
+        if (this.isRunning && !this.isDetached) this.paint()
+    }
+
+    /** Lays out skipped older turns in small idle slices, so input stays responsive */
+    private scheduleHistoryLayout(): void {
+        if (this.historyLayoutScheduled) return
+        this.historyLayoutScheduled = true
         setImmediate(() => {
-            this.renderScheduled = false
-            if (this.isRunning) {
-                this.render()
-            }
+            this.historyLayoutScheduled = false
+            if (!this.isRunning) return
+            const done = this.lineCache.layoutPending(DifferentialApp.HISTORY_LAYOUT_BUDGET_MS)
+            // A finished pass changes only the line count (and the header above the oldest
+            // turn), which matter once the user scrolls; ensureHistoryLaidOut() covers that
+            if (!done) this.scheduleHistoryLayout()
         })
     }
 
     scrollUp(delta = 1): void {
+        this.ensureHistoryLaidOut()
         const current = this.state.scrollOffset ?? this.maxScroll
         const next = Math.max(0, current - delta)
         this.state.scrollOffset = next
@@ -7183,6 +9086,7 @@ export class DifferentialApp {
     }
 
     scrollDown(delta = 1): void {
+        this.ensureHistoryLaidOut()
         const current = this.state.scrollOffset ?? this.maxScroll
         const next = Math.min(this.maxScroll, current + delta)
         if (next >= this.maxScroll) {
@@ -7195,16 +9099,26 @@ export class DifferentialApp {
         this.requestRender()
     }
 
-    setButterflow(enabled: boolean): void {
-        this.butterflowQueue.enabled = enabled
-        const setting = this.state.settings.find((s) => s.id === 'butterflow')
-        if (setting) {
-            setting.value = enabled ? 'on' : 'off'
-        }
+    /** Line layout depends on width and tool expansion; a change re-anchors the new-lines count. */
+    private getScrollLayoutKey(width: number): string {
+        return `${width}`
     }
 
-    isButterflowEnabled(): boolean {
-        return this.butterflowQueue.enabled
+    private getNewLinesAnchor(width: number): number | undefined {
+        if (this.state.scrollOffset === undefined || !this.scrollAnchor) return undefined
+        if (this.scrollAnchor.layoutKey !== this.getScrollLayoutKey(width)) return undefined
+        return this.scrollAnchor.totalLines
+    }
+
+    private updateScrollAnchor(width: number, totalLines: number): void {
+        if (this.state.scrollOffset === undefined) {
+            this.scrollAnchor = null
+            return
+        }
+        const layoutKey = this.getScrollLayoutKey(width)
+        if (!this.scrollAnchor || this.scrollAnchor.layoutKey !== layoutKey) {
+            this.scrollAnchor = { totalLines, layoutKey }
+        }
     }
 
     scrollToBottom(): void {
@@ -7230,25 +9144,107 @@ export class DifferentialApp {
         })
     }
 
+    /**
+     * Requests a frame. All calls in the same tick are coalesced into one paint, so
+     * call sites can mark the UI dirty freely without each one costing a full frame.
+     */
     render(): void {
-        this.renderScheduled = false
-        if (this.isBatchingInput) return
+        if (this.isBatchingInput || this.isDetached) return
 
+        if (!this.scheduleFrame) {
+            this.paint()
+            return
+        }
+
+        if (this.renderScheduled || !this.isRunning) return
+        this.renderScheduled = true
+        const scheduleFrame = this.scheduleFrame
+        const run = () => {
+            this.renderScheduled = false
+            if (!this.isRunning) return
+            // The terminal has not taken the last frame: paint the latest state once it drains
+            if (this.terminal.isBlocked) {
+                this.paintOnDrain = true
+                this.perfStats.droppedFrames++
+                return
+            }
+            this.terminal.lastWriteMs = 0
+            const startedAt = performance.now()
+            const bytesBefore = this.terminal.bytesWritten
+            this.paint()
+            if (this.perfHud) this.recordFrame(performance.now() - startedAt, bytesBefore)
+            this.paceNextFrame()
+        }
+        const wait = this.nextPaintAt - performance.now()
+        if (wait > 1) {
+            setTimeout(() => scheduleFrame(run), wait)
+        } else {
+            scheduleFrame(run)
+        }
+    }
+
+    /**
+     * TTY writes block on Linux and macOS until the terminal takes them. When a frame write
+     * was slow, wait about as long before the next paint, so frames never queue up behind
+     * input on a slow terminal (for example WSL with ConPTY). Fast terminals keep full rate.
+     */
+    private recordFrame(frameMs: number, bytesBefore: number): void {
+        const stats = this.perfStats
+        stats.frameMs = frameMs
+        stats.avgFrameMs = stats.avgFrameMs ? stats.avgFrameMs * 0.9 + frameMs * 0.1 : frameMs
+        stats.maxFrameMs = Math.max(stats.maxFrameMs * 0.995, frameMs)
+        stats.frameBytes = this.terminal.bytesWritten - bytesBefore
+        if (this.terminal.lastWriteMs > DifferentialApp.SLOW_WRITE_MS) stats.slowWrites++
+    }
+
+    /** Sends the back buffer to the terminal, with the performance overlay when enabled */
+    private flushFrame(): void {
+        if (this.perfHud) {
+            const s = this.perfStats
+            const ttft = s.ttftMs ? `${(s.ttftMs / 1000).toFixed(2)}s` : '-'
+            const text =
+                ` frame ${s.frameMs.toFixed(1)}ms avg ${s.avgFrameMs.toFixed(1)} max ${s.maxFrameMs.toFixed(1)}` +
+                ` · ${s.frameBytes}B · slow ${s.slowWrites} · drop ${s.droppedFrames} · ttft ${ttft} `
+            const x = Math.max(0, this.screen.columns - text.length)
+            this.screen.backBuffer.write(x, 0, text.slice(0, this.screen.columns), {
+                fg: THEME.colors.muted,
+                bg: THEME.colors.surface,
+            })
+        }
+        this.screen.render()
+    }
+
+    private paceNextFrame(): void {
+        const writeMs = this.terminal.lastWriteMs
+        this.nextPaintAt =
+            writeMs > DifferentialApp.SLOW_WRITE_MS
+                ? performance.now() + Math.min(writeMs, DifferentialApp.MAX_FRAME_DELAY_MS)
+                : 0
+    }
+
+    private paint(): void {
         const width = this.screen.columns
         const height = this.screen.rows
+        this.syncTasksTicker()
+        if (this.state.activeOverlay === 'fileview' && this.state.fileViewTaskId) {
+            const task = this.state.tasks.find((t) => t.id === this.state.fileViewTaskId)
+            if (task) this.state.fileViewPath = getTaskLogTitle(task, this.isTaskLogFollowing())
+        }
 
         this.screen.backBuffer.clear()
+        // A panel asks for the real cursor while it draws (G11); start each frame with none
+        takePanelCursor()
 
         const overlay = this.state.activeOverlay
         const isPagerMode =
             overlay === 'fileview' ||
             overlay === 'memory' ||
             (overlay === 'diff' && this.state.isDiffDetailView) ||
-            (overlay === 'skills' && this.state.skillsIsDetailView) ||
+            overlay === 'skills' ||
+            overlay === 'report' ||
             (overlay === 'mcp' &&
                 (this.state.mcpIsDetailView ||
                     this.state.mcpMode === 'detail' ||
-                    this.state.mcpMode === 'add_preset' ||
                     this.state.mcpMode === 'add_custom'))
 
         // 1. TRUE 100% FULL SCREEN PAGER MODE (LESS / VIM STYLE)
@@ -7306,12 +9302,7 @@ export class DifferentialApp {
                     y: 0,
                     width,
                     height,
-                    selectedIndex: this.state.skillsSelectedIndex,
-                    windowStart: this.state.skillsWindowStart,
-                    skills: this.state.skills,
-                    searchQuery: this.state.skillsSearchQuery,
-                    isSearching: this.state.skillsIsSearching,
-                    isDetailView: true,
+                    skill: this.state.skillsDetailSkill,
                     detailLines: this.state.skillsDetailLines,
                     cursorLineIndex: this.state.skillsCursorLine,
                     scrollOffset: this.state.skillsScrollOffset,
@@ -7322,7 +9313,6 @@ export class DifferentialApp {
                 overlay === 'mcp' &&
                 (this.state.mcpIsDetailView ||
                     this.state.mcpMode === 'detail' ||
-                    this.state.mcpMode === 'add_preset' ||
                     this.state.mcpMode === 'add_custom')
             ) {
                 McpMenuView.render(this.screen.backBuffer, {
@@ -7337,7 +9327,6 @@ export class DifferentialApp {
                     scrollOffset: this.state.mcpScrollOffset,
                     mode: this.state.mcpMode,
                     confirmDeleteName: this.state.mcpConfirmDeleteName,
-                    presetSelectedIndex: this.state.mcpPresetSelectedIndex,
                     customName: this.state.mcpCustomName,
                     customCommand: this.state.mcpCustomCommand,
                     customScope: this.state.mcpCustomScope,
@@ -7345,37 +9334,40 @@ export class DifferentialApp {
                     customEnv: this.state.mcpCustomEnv,
                     customActiveField: this.state.mcpCustomActiveField,
                 })
+            } else if (overlay === 'report' && this.state.report) {
+                const report = this.state.report
+                ReportView.render(this.screen.backBuffer, {
+                    x: 0,
+                    y: 0,
+                    width,
+                    height,
+                    title: report.title,
+                    subtitle: report.subtitle,
+                    rows: report.rows,
+                    selectedIndex: report.selectedIndex,
+                    scrollOffset: report.scrollOffset,
+                    isLoading: report.isLoading,
+                    loadingText: report.loadingText,
+                    emptyText: report.emptyText,
+                    tabs: report.tabs,
+                    input: report.input,
+                    footer: report.footer,
+                })
             } else if (overlay === 'memory') {
-                const currentCat =
-                    MEMORY_CATEGORIES[this.state.memoryNewEntryCategoryIndex] || 'general'
                 MemoryViewMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: 0,
                     width,
                     height,
-                    activeTab: this.state.memoryTab,
-                    memoryDetails: this.state.workspaceMemoryDetails,
-                    selectedEntryIndex: this.state.memorySelectedIndex,
-                    confirmForgetText: this.state.memoryConfirmForgetText,
+                    file: this.state.memoryFile,
+                    cursorLineIndex: this.state.memoryCursorLine,
                     scrollOffset: this.state.memoryScrollOffset,
-                    isAddingEntry: this.state.isAddingMemory,
-                    newEntryText: this.state.memoryNewEntryText,
-                    newEntryCategory: currentCat,
-                    ruleFiles: this.state.memoryRuleFiles,
-                    selectedRuleIndex: this.state.memoryActiveDocIndex,
-                    ruleScrollOffset: this.state.memoryRuleScrollOffset,
-                    ruleCursorLineIndex: this.state.memoryCursorLine,
                     isLoading: this.state.memoryIsLoading,
-                    documents: this.state.memoryDocuments,
-                    canGoBack: Boolean(
-                        (this.state.memoryTab === 'rules' &&
-                            this.state.memoryInitialTab === 'memory') ||
-                        (this.state.memoryReturnOverlay &&
-                            this.state.memoryReturnOverlay !== 'none')
-                    ),
+                    canGoBack: this.state.memoryReturnOverlay !== 'none',
                 })
             }
-            this.screen.render()
+            this.placePanelCursor()
+            this.flushFrame()
             return
         }
 
@@ -7430,33 +9422,51 @@ export class DifferentialApp {
                 btwHeight = BtwOverlayView.getHeight(this.state.btwState, undefined, contentWidth)
             }
 
-            // 4. Message List View (full height above interactive area)
+            // 4. Activity block (L0). The activity line and the plan end the chat (L20); queued
+            // messages stay above the prompt box and any floating menu, one blank row above it
+            const activity = this.getActivityBlock(width)
+            const activityLines = activity.queued
+            const activityHeight = activityLines.length > 0 ? activityLines.length + 1 : 0
+
+            // 5. Message List View (full height above interactive area)
             // Insert a 1-line separation gap above the interactive area (both floating menus and the prompt box)
             const bottomFloating = Math.max(fileMenuHeight, commandMenuHeight)
             const interactiveGap = height >= 10 ? 1 : 0
-            const topOfInteractive = inputY - bottomFloating - btwHeight - interactiveGap
+            const topOfInteractive =
+                inputY - bottomFloating - btwHeight - activityHeight - interactiveGap
             const bodyHeight = Math.max(1, topOfInteractive)
 
-            const { maxScroll } = MessageListView.render(this.screen.backBuffer, {
-                x: 0,
-                y: 0,
-                width,
-                height: bodyHeight,
-                messages: this.state.messages,
-                scrollOffset: this.state.scrollOffset,
-                isStreaming: this.state.isStreaming,
-                spinnerFrame: this.state.spinnerFrame,
-                statusMessage: this.state.statusMessage,
-                headerProps,
-                lineCache: this.lineCache,
-                expandTools: this.state.expandTools,
-                tip: this.state.activeTip,
-            })
+            const { maxScroll, totalLines, complete } = MessageListView.render(
+                this.screen.backBuffer,
+                {
+                    x: 0,
+                    y: 0,
+                    width,
+                    height: bodyHeight,
+                    newLinesAnchor: this.getNewLinesAnchor(width),
+                    messages: this.state.messages,
+                    scrollOffset: this.state.scrollOffset,
+                    isStreaming: this.state.isStreaming,
+                    headerProps,
+                    lineCache: this.lineCache,
+                    previewedPaths: this.previewedPaths,
+                    virtualize: this.virtualizeHistory,
+                    trailingLines: activity.turn,
+                }
+            )
             this.maxScroll = maxScroll
+            this.updateScrollAnchor(width, totalLines)
+            if (!complete) this.scheduleHistoryLayout()
 
             // Clear the 1-row separator line so chat text does not bleed into the gap
             if (interactiveGap > 0 && topOfInteractive >= 0 && topOfInteractive < height) {
                 this.screen.backBuffer.clearArea(0, topOfInteractive, width, 1)
+            }
+
+            if (activityHeight > 0) {
+                const activityY = Math.max(0, inputY - bottomFloating - btwHeight - activityHeight)
+                this.screen.backBuffer.clearArea(0, activityY, width, activityHeight)
+                this.drawActivityLines(activityLines, activityY, width)
             }
 
             // 5. Render floating overlays on top of chat area (with clearArea)
@@ -7469,6 +9479,7 @@ export class DifferentialApp {
                     width,
                     state: this.state.btwState,
                     scrollOffset: this.state.btwScrollOffset,
+                    now: Date.now(),
                 })
             }
 
@@ -7506,19 +9517,33 @@ export class DifferentialApp {
                 width,
                 input: this.state.input,
                 cursorPos: this.state.cursorPos,
+                modeTag: this.state.planMode ? 'plan' : undefined,
                 isStreaming: this.state.isStreaming,
+                // L21: the Esc hint lives here during a turn, not in the activity line
+                placeholder: this.state.isStreaming
+                    ? 'Type to queue a message · esc to interrupt'
+                    : undefined,
                 activeModel: this.state.activeModel,
                 modelLabel: this.state.modelLabel,
                 isAuthenticated: this.state.isAuthenticated,
+                isDeepEffort:
+                    normalizeReasoningLevel(this.state.thinkingLevel) === 'deep' &&
+                    getReasoningSupportType(this.state.activeModel || this.state.modelLabel) ===
+                        'controllable',
                 authMethod: this.state.authMethod,
                 contextTokens: this.getEffectiveContextTokens(),
                 maxContextTokens: this.state.maxContextTokens,
                 tasksCount: this.state.tasks.length,
                 runningTasksCount: this.state.tasks.filter((t) => t.status === 'running').length,
                 queuedPromptsCount: this.state.promptQueue.length,
+                backgroundStatus: this.getUpdateStatusText(),
                 showExitConfirm: this.state.showExitConfirm,
                 toast: this.state.toast,
                 pendingModelFallback: this.state.pendingModelFallback,
+                restartNotice:
+                    this.state.pendingRestart && !this.state.pendingRestart.dismissed
+                        ? `Updated to v${this.state.pendingRestart.version} · [Enter] restart now · [Esc] later`
+                        : undefined,
             })
 
             // Position terminal cursor in input box
@@ -7540,13 +9565,7 @@ export class DifferentialApp {
             } else if (overlay === 'model') {
                 naturalHeight = ModelSelectMenuView.getHeight(this.state.models.length)
             } else if (overlay === 'tasks') {
-                naturalHeight = TasksModeMenuView.getHeight(this.state.tasks.length)
-            } else if (overlay === 'skills') {
-                naturalHeight = SkillsMenuView.getHeight(
-                    this.state.skills.length,
-                    6,
-                    this.state.skillsIsDetailView
-                )
+                naturalHeight = TasksModeMenuView.getHeight(this.state.tasks)
             } else if (overlay === 'mcp') {
                 naturalHeight = McpMenuView.getHeight(
                     this.state.mcpMode,
@@ -7554,23 +9573,12 @@ export class DifferentialApp {
                     this.state.mcpIsDetailView
                 )
             } else if (overlay === 'plugin') {
-                const rawItems =
-                    this.state.pluginActiveTab === 'installed'
-                        ? this.state.installedPlugins
-                        : this.state.discoverablePlugins
-                const q = this.state.pluginSearchQuery.trim().toLowerCase()
-                const itemsCount = q
-                    ? rawItems.filter(
-                          (p) =>
-                              p.name.toLowerCase().includes(q) ||
-                              p.description.toLowerCase().includes(q)
-                      ).length
-                    : rawItems.length
-                naturalHeight = PluginMenuView.getHeight(
-                    this.state.pluginActiveTab,
-                    itemsCount,
-                    Boolean(this.state.pluginExpandedId)
-                )
+                naturalHeight = PluginMenuView.getHeight({
+                    screen: this.state.pluginScreen,
+                    list: this.getPluginList(),
+                    detailRow: this.findInstalledRow(this.state.pluginDetailKey),
+                    detailActions: this.pluginDetailActionLabels(),
+                })
             } else if (overlay === 'codesearch') {
                 const count =
                     this.state.codeSearchGroups.length > 0
@@ -7593,7 +9601,7 @@ export class DifferentialApp {
                 )
                 naturalHeight = SessionSelectMenuView.getHeight(filtered.length)
             } else if (overlay === 'usage') {
-                naturalHeight = UsageSelectMenuView.getHeight()
+                naturalHeight = UsageSelectMenuView.getHeight(this.state.usageOverview, width)
             } else if (overlay === 'rewind') {
                 naturalHeight = RewindSelectMenuView.getHeight(this.state.rewindTurns.length)
             } else if (overlay === 'ask_question') {
@@ -7601,10 +9609,12 @@ export class DifferentialApp {
                 naturalHeight = AskQuestionMenuView.getHeight(q?.options?.length || 0)
             } else if (overlay === 'tool_permission') {
                 naturalHeight = ToolPermissionMenuView.getHeight(
-                    this.state.pendingToolCall?.diffLines?.length || 0
+                    this.state.pendingToolCall?.toolName || '',
+                    this.state.pendingToolCall?.diffLines || [],
+                    this.state.pendingToolCall?.commandOrTarget
                 )
             } else if (overlay === 'plan_approve') {
-                naturalHeight = PlanApproveMenuView.getHeight()
+                naturalHeight = PlanApproveMenuView.getHeight(this.state.pendingPlan?.fullPlan)
             } else if (overlay === 'auth') {
                 naturalHeight = AuthMenuView.getHeight(
                     this.state.authViewMode,
@@ -7620,31 +9630,46 @@ export class DifferentialApp {
                 Math.max(5, height - overlayGap - 1)
             )
             const overlayY = Math.max(overlayGap, height - clampedOverlayHeight)
+            // L20: during a turn the activity line ends the chat above the panel. An approval
+            // prompt shows "Waiting for you" (L10); other panels hide the hint (Esc closes them).
+            const isApproval = DifferentialApp.APPROVAL_OVERLAYS.has(overlay)
+            const overlayActivity = this.state.isStreaming
+                ? this.getActivityBlock(width, !isApproval).turn.slice(0, 1)
+                : []
             const chatHeight = Math.max(0, overlayY - overlayGap)
 
             // Render messages above the overlay card
             if (chatHeight > 0) {
-                const { maxScroll } = MessageListView.render(this.screen.backBuffer, {
-                    x: 0,
-                    y: 0,
-                    width,
-                    height: chatHeight,
-                    messages: this.state.messages,
-                    scrollOffset: this.state.scrollOffset,
-                    isStreaming: this.state.isStreaming,
-                    spinnerFrame: this.state.spinnerFrame,
-                    statusMessage: this.state.statusMessage,
-                    headerProps,
-                    lineCache: this.lineCache,
-                    expandTools: this.state.expandTools,
-                    tip: this.state.activeTip,
-                })
+                const { maxScroll, totalLines, complete } = MessageListView.render(
+                    this.screen.backBuffer,
+                    {
+                        x: 0,
+                        y: 0,
+                        width,
+                        height: chatHeight,
+                        newLinesAnchor: this.getNewLinesAnchor(width),
+                        messages: this.state.messages,
+                        scrollOffset: this.state.scrollOffset,
+                        isStreaming: this.state.isStreaming,
+                        headerProps,
+                        lineCache: this.lineCache,
+                        previewedPaths: this.previewedPaths,
+                        awaitingApproval:
+                            this.state.isStreaming &&
+                            DifferentialApp.APPROVAL_OVERLAYS.has(overlay),
+                        virtualize: this.virtualizeHistory,
+                        trailingLines: overlayActivity,
+                    }
+                )
                 this.maxScroll = maxScroll
+                this.updateScrollAnchor(width, totalLines)
+                if (!complete) this.scheduleHistoryLayout()
             }
 
             // Clear the 1-line separation gap so no residual chat cells remain in the gap
-            if (overlayGap > 0 && overlayY - overlayGap >= 0) {
-                this.screen.backBuffer.clearArea(0, overlayY - overlayGap, width, overlayGap)
+            const gapY = overlayY - overlayGap
+            if (overlayGap > 0 && gapY >= 0) {
+                this.screen.backBuffer.clearArea(0, gapY, width, overlayGap)
             }
 
             // Clear overlay region completely so no residual chat cells remain
@@ -7667,11 +9692,12 @@ export class DifferentialApp {
                     cwd: this.state.cwd,
                     branch: this.state.branch,
                     sessionId: this.state.sessionId,
+                    sessionTitle: this.state.sessionTitle,
                     configPath: this.state.configPath,
                     commands: this.getAllCommands(),
                     cmdSelectedIndex: this.state.helpCmdSelectedIndex,
                     cmdWindowStart: this.state.helpCmdWindowStart,
-                    shortcuts: SHORTCUTS,
+                    shortcuts: resolveShortcuts(this.keymap),
                     shortcutSelectedIndex: this.state.helpShortcutSelectedIndex,
                     shortcutWindowStart: this.state.helpShortcutWindowStart,
                 })
@@ -7723,24 +9749,7 @@ export class DifferentialApp {
                     tasks: this.state.tasks,
                     selectedTaskIndex: this.state.tasksSelectedIndex,
                     windowStart: this.state.tasksWindowStart,
-                })
-            } else if (overlay === 'skills') {
-                SkillsMenuView.render(this.screen.backBuffer, {
-                    x: 0,
-                    y: overlayY,
-                    width,
-                    height: clampedOverlayHeight,
-                    selectedIndex: this.state.skillsSelectedIndex,
-                    windowStart: this.state.skillsWindowStart,
-                    skills: this.state.skills,
-                    searchQuery: this.state.skillsSearchQuery,
-                    isSearching: this.state.skillsIsSearching,
-                    isDetailView: this.state.skillsIsDetailView,
-                    detailLines: this.state.skillsDetailLines,
-                    cursorLineIndex: this.state.skillsCursorLine,
-                    scrollOffset: this.state.skillsScrollOffset,
-                    isLoadingDetail: this.state.skillsDetailLoading,
-                    detailError: this.state.skillsDetailError,
+                    confirmStop: this.state.tasksConfirmStop,
                 })
             } else if (overlay === 'mcp') {
                 McpMenuView.render(this.screen.backBuffer, {
@@ -7755,7 +9764,6 @@ export class DifferentialApp {
                     scrollOffset: this.state.mcpScrollOffset,
                     mode: this.state.mcpMode,
                     confirmDeleteName: this.state.mcpConfirmDeleteName,
-                    presetSelectedIndex: this.state.mcpPresetSelectedIndex,
                     customName: this.state.mcpCustomName,
                     customCommand: this.state.mcpCustomCommand,
                     customScope: this.state.mcpCustomScope,
@@ -7764,20 +9772,7 @@ export class DifferentialApp {
                     customActiveField: this.state.mcpCustomActiveField,
                 })
             } else if (overlay === 'plugin') {
-                PluginMenuView.render(this.screen.backBuffer, {
-                    x: 0,
-                    y: overlayY,
-                    width,
-                    height: clampedOverlayHeight,
-                    activeTab: this.state.pluginActiveTab,
-                    searchQuery: this.state.pluginSearchQuery,
-                    selectedIndex: this.state.pluginSelectedIndex,
-                    windowStart: this.state.pluginWindowStart,
-                    expandedPluginId: this.state.pluginExpandedId,
-                    confirmUninstallId: this.state.pluginConfirmUninstallId,
-                    installedPlugins: this.state.installedPlugins,
-                    discoverablePlugins: this.state.discoverablePlugins,
-                })
+                this.renderPluginOverlay(overlayY, width, clampedOverlayHeight)
             } else if (overlay === 'codesearch') {
                 const groups =
                     this.state.codeSearchGroups.length > 0
@@ -7841,7 +9836,7 @@ export class DifferentialApp {
                     authMethod: this.state.authMethod,
                 })
             } else if (overlay === 'session') {
-                SessionSelectMenuView.render(this.screen.backBuffer, {
+                const sessionProps = {
                     x: 0,
                     y: overlayY,
                     width,
@@ -7854,24 +9849,19 @@ export class DifferentialApp {
                     renameMode: this.state.sessionRenameMode,
                     renameValue: this.state.sessionRenameValue,
                     confirmDeleteId: this.state.sessionConfirmDeleteId,
-                })
+                }
+                SessionSelectMenuView.render(this.screen.backBuffer, sessionProps)
+                // G11, M21.2: the real terminal cursor while searching or renaming
+                const sessionCursor = SessionSelectMenuView.getCursorPosition(sessionProps)
+                if (sessionCursor) this.screen.setCursor(sessionCursor.x, sessionCursor.y, true)
             } else if (overlay === 'usage') {
-                const providerKey = (this.state.selectedProvider || 'google').toLowerCase()
-                const billingUrl =
-                    PROVIDER_BILLING_LINKS[providerKey] ||
-                    'https://trydecember.com/settings/billing'
                 UsageSelectMenuView.render(this.screen.backBuffer, {
                     x: 0,
                     y: overlayY,
                     width,
                     height: clampedOverlayHeight,
-                    activeModel: this.state.activeModel,
-                    providerDisplayName: this.state.selectedProvider,
-                    billingUrl,
-                    sessionStats: this.state.usageStats,
-                    weeklyStats: this.state.weeklyStats,
-                    dailyUsage: this.state.dailyUsage,
-                    balance: this.state.balance,
+                    overview: this.state.usageOverview,
+                    isLoading: this.state.usageLoading,
                 })
             } else if (overlay === 'rewind') {
                 RewindSelectMenuView.render(this.screen.backBuffer, {
@@ -7882,6 +9872,7 @@ export class DifferentialApp {
                     turns: this.state.rewindTurns,
                     selectedIndex: this.state.rewindSelectedIndex,
                     windowStart: this.state.rewindWindowStart,
+                    confirming: this.state.rewindConfirming,
                 })
             } else if (overlay === 'ask_question') {
                 if (this.state.pendingQuestions) {
@@ -7894,6 +9885,7 @@ export class DifferentialApp {
                         currentQuestionIndex: this.state.currentQuestionIndex,
                         selectedIndex: this.state.questionSelectedIndex,
                         selectedMultiIndices: this.state.questionSelectedMulti,
+                        customText: this.state.questionCustomText,
                     })
                 }
             } else if (overlay === 'tool_permission') {
@@ -7914,6 +9906,7 @@ export class DifferentialApp {
                     width,
                     height: clampedOverlayHeight,
                     planSummary: this.state.pendingPlan?.summary,
+                    planText: this.state.pendingPlan?.fullPlan,
                     selectedIndex: this.state.planApproveSelectedIndex,
                 })
             } else if (overlay === 'auth') {
@@ -7976,7 +9969,14 @@ export class DifferentialApp {
             }
         }
 
+        this.placePanelCursor()
         // Diff and flush to stdout
-        this.screen.render()
+        this.flushFrame()
+    }
+
+    /** G11: shows the real terminal cursor where a panel's text field asked for it */
+    private placePanelCursor(): void {
+        const cursor = takePanelCursor()
+        if (cursor) this.screen.setCursor(cursor.x, cursor.y, true)
     }
 }
