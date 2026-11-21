@@ -1,9 +1,9 @@
 {
-    "version": "0.4.19",
-    "title": "What's New in v0.4.19",
+    "version": "0.4.20",
+    "title": "What's New in v0.4.20",
     "bullets": [
-        "Add in-tui lifecycle management, presets wizard, and dynamic tool binding",
-        "Automated github bot and action with issue-to-pr and notifications"
+        "Simplify /memory into a read-only rules viewer",
+        "Refresh landing page, docs code blocks, and cloud nudge"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

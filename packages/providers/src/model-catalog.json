@@ -878,7 +878,7 @@
                 {
                     "id": "mimo-v2.5-pro",
                     "label": "MiMo-V2.5-Pro",
-                    "contextWindow": 1024000,
+                    "contextWindow": 262144,
                     "thinking": true
                 },
                 {

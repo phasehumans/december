@@ -1,3 +1,29 @@
+## [0.4.20] - 2026-11-21
+
+### Features
+
+- _(tui,cli,docs)_ Simplify /memory into a read-only rules viewer
+- _(docs,web)_ Refresh landing page, docs code blocks, and cloud nudge
+- _(cli,tui,agent,tools,docs)_ Add plugins, hooks, keybindings, and new slash commands
+- _(tui,cli,agent,tools)_ Redesign the chat tui, menus, and activity line
+- _(tui,cli,agent,tools)_ Redesign the chat tui, menus, and activity line (#620)
+
+### Bug Fixes
+
+- _(tui)_ Report mouse wheel as sgr events instead of arrow keys
+- _(tui)_ Validate cached history and settle the abort notice
+- _(tui,agent)_ Address review findings on the tui redesign
+
+### Performance
+
+- _(tui)_ Remove butterflow drip so streamed text paints on the next frame
+- _(tui)_ Coalesce render calls into one frame per tick
+- _(tui)_ Keep frame cost flat as the session grows
+
+### Miscellaneous Tasks
+
+- _(docs,web,cli)_ Drop (so much) from tagline, use a better coding agent
+
 ## [0.4.19] - 2026-11-18
 
 ### Features
@@ -17,6 +43,10 @@
 ### Testing
 
 - _(docs)_ Match docs nav list with or without trailing semicolon
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.19
 
 ## [0.4.18] - 2026-11-13
 
