@@ -237,6 +237,8 @@ export interface AgentLoopOptions {
 }
 
 export const READ_ONLY_TOOLS = new Set([
+    // Only updates the checklist shown to the user, so it needs no snapshot and works in /plan
+    'update_plan',
     'read_file',
     'read',
     'ls',

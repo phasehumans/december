@@ -37,7 +37,12 @@ const RISKY_COMMAND = [
 /** Kept for callers that still import the static list */
 export const DEFAULT_PERMISSION_OPTIONS: ToolPermissionOption[] = [
     { label: 'Yes', value: 'approve', keyHint: 'y' },
-    { label: 'Yes, allow edits this session', value: 'always', keyHint: 'a' },
+    // 'always' saves `<tool>: <path>` as an allow rule for this project (interceptors.ts)
+    {
+        label: 'Yes, always allow edits to this file in this project',
+        value: 'always',
+        keyHint: 'a',
+    },
     { label: 'Yes, git-tracked files only', value: 'git_tracked', keyHint: 'g' },
     { label: 'No, tell December what to do instead', value: 'deny', keyHint: 'n' },
 ]
@@ -60,10 +65,14 @@ export function getPermissionOptions(
     commandOrTarget?: string
 ): ToolPermissionOption[] {
     if (isCommandPermission(toolName)) {
-        const program = permissionTarget(toolName, commandOrTarget).split(' ')[0] || 'this command'
+        // 'always' saves the exact command as an allow rule for this project (interceptors.ts)
         return [
             { label: 'Yes', value: 'approve', keyHint: 'y' },
-            { label: `Yes, allow ${program} in this session`, value: 'always', keyHint: 'a' },
+            {
+                label: 'Yes, always allow this exact command in this project',
+                value: 'always',
+                keyHint: 'a',
+            },
             { label: 'No, tell December what to do instead', value: 'deny', keyHint: 'n' },
         ]
     }

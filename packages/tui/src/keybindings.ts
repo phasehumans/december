@@ -48,6 +48,9 @@ export const KEYBINDING_ACTIONS = {
 
 export type KeybindingActionName = keyof typeof KEYBINDING_ACTIONS
 
+/** Actions that no longer exist: toggleToolOutput (ctrl+o) went with inline expand (S25-B) */
+const REMOVED_ACTIONS = new Set(['toggleToolOutput'])
+
 const NAMED_KEYS: Record<string, string[]> = {
     enter: ['\r', '\n'],
     tab: ['\t'],
@@ -116,6 +119,8 @@ export function loadKeybindings(filePath: string): KeymapLoadResult {
     }
 
     for (const [action, value] of Object.entries(raw)) {
+        // Removed actions are ignored with no warning, so old keybindings.json files still load
+        if (REMOVED_ACTIONS.has(action)) continue
         if (!(action in KEYBINDING_ACTIONS)) {
             problems.push(`unknown action "${action}"`)
             continue

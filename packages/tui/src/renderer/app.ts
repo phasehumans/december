@@ -36,6 +36,7 @@ import { getFileQueryMatch, scoreAndSortFiles, type ScoredFile } from '../utils/
 import { expandPastes, storePaste } from '../utils/paste-manager'
 import { toRelativePath } from '../utils/terminal-link'
 
+import { sliceToWidth } from './cell'
 import { splitInputSequences } from './input-lexer'
 import { DifferentialScreen } from './screen'
 import { TerminalController } from './terminal'
@@ -734,6 +735,8 @@ export class DifferentialApp {
     private turnPauseStartedAt: number | undefined
     private hasReceivedToken = false
     private btwLoaderTimer: ReturnType<typeof setInterval> | null = null
+    /** Queued prompt (as sent) to the input as typed, so ↑ restores paste placeholders (L14) */
+    private queuedRawInputs = new Map<string, string>()
     /** The latest retry from the agent's AgentRetry event (F1); cleared when output resumes */
     private retryInfo:
         | { attempt: number; max?: number; reason: string; nextAt?: number }
@@ -3377,7 +3380,10 @@ export class DifferentialApp {
 
             // L14: with an empty prompt during a turn, ↑ takes the last queued message back to edit
             if (!this.state.input && this.state.isStreaming && this.state.promptQueue.length > 0) {
-                this.state.input = this.state.promptQueue.pop() || ''
+                const queued = this.state.promptQueue.pop() || ''
+                // Put back the input as typed, with its paste placeholders, not the expanded text
+                this.state.input = this.queuedRawInputs.get(queued) ?? queued
+                this.queuedRawInputs.delete(queued)
                 this.state.cursorPos = this.state.input.length
                 this.render()
                 return
@@ -7587,6 +7593,7 @@ export class DifferentialApp {
 
             if (this.state.isStreaming) {
                 this.state.promptQueue.push(text)
+                this.queuedRawInputs.set(text, raw)
                 this.showToast(
                     `Command queued (#${this.state.promptQueue.length}). Will run after turn finishes.`,
                     'info'
@@ -7630,6 +7637,7 @@ export class DifferentialApp {
 
         if (this.state.isStreaming) {
             this.state.promptQueue.push(outgoing)
+            this.queuedRawInputs.set(outgoing, raw)
             this.showToast(
                 `Prompt queued (#${this.state.promptQueue.length}). Will run after turn finishes.`,
                 'info'
@@ -8673,13 +8681,12 @@ export class DifferentialApp {
     private drawActivityLines(lines: FormattedLine[], y: number, width: number): void {
         const buffer = this.screen.backBuffer
         lines.forEach((line, i) => {
-            let x = THEME.padding.paddingLeft
+            let x: number = THEME.padding.paddingLeft
             for (const seg of line) {
                 const room = width - x
                 if (room <= 0) break
-                const text = seg.text.length > room ? seg.text.slice(0, room) : seg.text
-                buffer.write(x, y + i, text, seg.style)
-                x += text.length
+                // Clip by terminal columns, so wide characters (CJK, emoji) do not overflow
+                x = buffer.write(x, y + i, sliceToWidth(seg.text, room), seg.style).x
             }
         })
     }
@@ -8706,6 +8713,8 @@ export class DifferentialApp {
             if (this.streamStartTime > 0) this.perfStats.ttftMs = now - this.streamStartTime
         }
         this.hasReceivedToken = true
+        // Output resumed (text, thinking or a tool), so a retry in progress is over
+        this.retryInfo = undefined
     }
 
     private resetActivityTiming(): void {

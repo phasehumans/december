@@ -2244,7 +2244,9 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.get(THEME.padding.paddingLeft, 0)?.bold).toBe(true)
             expect(buffer.getLine(1)).toContain('$ git checkout -b feature/tui')
             expect(buffer.getLine(3)).toContain('❭ Yes')
-            expect(buffer.getLine(4)).toContain('Yes, allow git in this session')
+            expect(buffer.getLine(4)).toContain(
+                'Yes, always allow this exact command in this project'
+            )
             expect(buffer.getLine(5)).toContain('No, tell December what to do instead')
             expect(buffer.getLine(6)).toContain('enter select · esc no · y a n')
             expect(ToolPermissionMenuView.getHeight('run_command', [], 'git checkout -b x')).toBe(7)
