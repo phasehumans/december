@@ -24,6 +24,8 @@ export interface UserHooksController {
     runPromptSubmit(prompt: string): Promise<{ block?: string; context?: string }>
     /** runs SessionStart hooks; their output is added to the next prompt */
     runSessionStart(source: 'startup' | 'resume'): Promise<void>
+    /** #617: runs Notification hooks when December waits for the user or a long turn finishes */
+    runNotification(reason: string, message: string): Promise<void>
     /** the hooks that run now (project hooks only when the workspace is trusted) */
     listHooks(): UserHook[]
     projectHooksSkipped(): boolean
@@ -156,6 +158,9 @@ export async function setupUserHooks(
             for (const r of results) {
                 if (r.exitCode === 0 && r.stdout) pendingContext.push(r.stdout)
             }
+        },
+        async runNotification(reason, message) {
+            await run('Notification', { reason, message })
         },
         async runPromptSubmit(prompt) {
             stopContinues = 0

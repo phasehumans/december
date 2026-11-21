@@ -236,4 +236,61 @@ describe('new slash commands', () => {
             fs.rmSync(dir, { recursive: true, force: true })
         })
     })
+
+    describe('/diff session filter (#618)', () => {
+        const sessionFile = {
+            path: 'src/edited-by-december.ts',
+            additions: 2,
+            deletions: 0,
+            status: 'modified' as const,
+            diff: '@@ -1 +1,3 @@\n a\n+b\n+c',
+        }
+
+        async function openDiff(app: DifferentialApp) {
+            app.executeCommand('diff')
+            expect(app.state.isDiffLoading).toBe(true)
+            for (let i = 0; i < 200 && app.state.isDiffLoading; i++) {
+                await new Promise((r) => setTimeout(r, 10))
+            }
+            expect(app.state.isDiffLoading).toBe(false)
+        }
+
+        it('opens on this session when it changed files, and s switches views', async () => {
+            const { app } = makeApp({ onLoadSessionChanges: async () => [sessionFile] })
+            await openDiff(app)
+            expect(app.state.diffScope).toBe('session')
+            expect(app.state.diffFiles).toEqual([sessionFile])
+
+            app.handleKey('s')
+            expect(app.state.diffScope).toBe('all')
+            expect(app.state.diffFiles).toBe(app.state.diffAllFiles)
+
+            app.handleKey('s')
+            expect(app.state.diffScope).toBe('session')
+            expect(app.state.diffFiles).toEqual([sessionFile])
+            expect(app.state.diffSelectedIndex).toBe(0)
+        })
+
+        it('opens on all changes when the session has no snapshot or no changes', async () => {
+            for (const result of [null, []]) {
+                const { app } = makeApp({ onLoadSessionChanges: async () => result })
+                await openDiff(app)
+                expect(app.state.diffScope).toBe('all')
+                app.handleKey('s')
+                expect(app.state.diffScope).toBe('session')
+                expect(app.state.diffFiles).toEqual([])
+            }
+        })
+
+        it('falls back to all changes when loading the session changes fails', async () => {
+            const { app } = makeApp({
+                onLoadSessionChanges: async () => {
+                    throw new Error('no git')
+                },
+            })
+            await openDiff(app)
+            expect(app.state.diffScope).toBe('all')
+            expect(app.state.diffSessionFiles).toBeNull()
+        })
+    })
 })

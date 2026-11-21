@@ -132,6 +132,28 @@ describe.skipIf(process.platform === 'win32')('running hooks', () => {
         })
     })
 
+    test('Notification hooks get the reason and message (#617)', async () => {
+        const out = path.join(dir, 'notification.json')
+        const file = writeHooks('hooks.json', {
+            hooks: { Notification: [{ hooks: [{ command: `cat > "${out}"` }] }] },
+        })
+        const { hooks, problems } = parseUserHooksFile(file, 'global')
+        expect(problems).toEqual([])
+        expect(hookMatches(hooks[0]!, 'Notification')).toBe(true)
+        await runUserHooks(
+            hooks,
+            'Notification',
+            { reason: 'tool_permission', message: 'December needs your approval to run a tool' },
+            { cwd: dir }
+        )
+        expect(JSON.parse(fs.readFileSync(out, 'utf-8'))).toEqual({
+            hook_event_name: 'Notification',
+            cwd: dir,
+            reason: 'tool_permission',
+            message: 'December needs your approval to run a tool',
+        })
+    })
+
     test('a hook that runs too long is stopped', async () => {
         const file = writeHooks('hooks.json', {
             hooks: { Stop: [{ hooks: [{ command: 'sleep 5', timeout: 0.2 }] }] },

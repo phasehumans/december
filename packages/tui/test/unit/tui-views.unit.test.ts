@@ -666,6 +666,77 @@ describe('Interactive Differential TUI Views (Renderer)', () => {
             expect(buffer.getLine(2)).toContain('line content 1')
             expect(buffer.getLine(buffer.height - 1)).toContain('f compact')
         })
+
+        const sessionFile = {
+            path: 'src/a.ts',
+            additions: 4,
+            deletions: 1,
+            status: 'modified' as const,
+            diff: '@@ -1 +1 @@\n-a\n+b',
+        }
+
+        it('names the view in the title row and offers the other one on s (#618)', () => {
+            const buffer = new ScreenBuffer(100, 10)
+            DiffViewMenuView.render(buffer, {
+                y: 0,
+                width: 100,
+                height: 10,
+                files: [sessionFile],
+                scope: 'session',
+                selectedFileIndex: 0,
+                windowStart: 0,
+                isDetailView: false,
+                detailScrollOffset: 0,
+            })
+            expect(buffer.getLine(0)).toContain('Changes  this session · 1 file +4 -1')
+            const adds = buffer.getLine(0).indexOf('+4')
+            expect(buffer.get(adds, 0)?.fg).toBe(THEME.colors.success)
+            expect(buffer.getLine(9)).toContain('s all changes')
+
+            const all = new ScreenBuffer(100, 10)
+            DiffViewMenuView.render(all, {
+                y: 0,
+                width: 100,
+                height: 10,
+                files: [sessionFile],
+                scope: 'all',
+                selectedFileIndex: 0,
+                windowStart: 0,
+                isDetailView: false,
+                detailScrollOffset: 0,
+            })
+            expect(all.getLine(0)).toContain('Changes  all changes · 1 file +4 -1')
+            expect(all.getLine(9)).toContain('s this session')
+        })
+
+        it('shows the empty and loading states of each view', () => {
+            const render = (props: { scope: 'session' | 'all'; isLoading?: boolean }) => {
+                const buffer = new ScreenBuffer(80, 8)
+                DiffViewMenuView.render(buffer, {
+                    y: 0,
+                    width: 80,
+                    height: 8,
+                    files: [],
+                    selectedFileIndex: 0,
+                    windowStart: 0,
+                    isDetailView: false,
+                    detailScrollOffset: 0,
+                    ...props,
+                })
+                return buffer
+            }
+
+            const session = render({ scope: 'session' })
+            expect(session.getLine(0)).toContain('Changes  this session')
+            expect(session.getLine(2)).toContain('No changes in this session.')
+            expect(session.getLine(7)).toContain('s all changes')
+
+            expect(render({ scope: 'all' }).getLine(2)).toContain('No changed files in workspace.')
+
+            const loading = render({ scope: 'all', isLoading: true })
+            expect(loading.getLine(2)).toContain('Loading changes…')
+            expect(loading.getLine(7)).not.toContain('s this session')
+        })
     })
 
     describe('SettingsMenuView', () => {

@@ -26,15 +26,15 @@ export interface SettingsMenuViewProps {
 
 /** M4.3: short descriptions, used when a setting has no `description` of its own */
 export const SETTING_DESCRIPTIONS: Record<string, string> = {
-    provider: 'The provider December sends requests to. /switch changes it.',
-    model: 'The model December uses for new turns.',
-    tool_permission: 'Run tools at once, or ask before each one.',
-    pathguard: 'Blocks tools from system, credential and secret files.',
-    non_workspace: 'Lets tools read and write files outside this folder.',
-    thinking_level: 'How much the model reasons before it answers.',
-    steering_mode: 'How messages you send during a turn are delivered.',
-    follow_up_mode: 'How queued follow-up messages are sent after a turn.',
-    browser_visible: 'Show the browser window when December opens a page.',
+    provider: 'Which backend runs the model.',
+    model: 'The model used for new turns.',
+    tool_permission: 'Proceed runs tools at once, ask prompts first. Secret files always prompt.',
+    pathguard: 'Blocks system and credential paths, and asks before touching secret files.',
+    non_workspace: 'Lets file tools work outside this folder. Shell commands are not limited.',
+    thinking_level: 'Fast or deep reasoning.',
+    steering_mode: 'Messages sent mid-turn are added all at once or one per step.',
+    browser_visible: 'Show the browser window or run it hidden.',
+    notify: 'Ring the bell or send a desktop notification when December needs you.',
 }
 
 /**
@@ -123,7 +123,7 @@ export const SettingsMenuView = {
             width,
             items: [
                 { key: '↑/↓', label: 'navigate' },
-                { key: 'enter', label: 'toggle' },
+                { key: 'enter', label: 'select' },
                 { key: 'esc', label: 'dismiss' },
             ],
         })

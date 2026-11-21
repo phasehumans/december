@@ -18,6 +18,8 @@ import fs from 'node:fs'
  *
  * Each command gets the event as JSON on stdin. Exit code 2 blocks (PreToolUse,
  * UserPromptSubmit) or asks the agent to keep going (Stop); stderr is the reason.
+ * Notification runs when December waits for the user or a long turn finishes; its JSON
+ * has a `reason` and a `message`, and its exit code does nothing.
  */
 
 export const USER_HOOK_EVENTS = [
@@ -26,6 +28,7 @@ export const USER_HOOK_EVENTS = [
     'UserPromptSubmit',
     'Stop',
     'SessionStart',
+    'Notification',
 ] as const
 
 export type UserHookEvent = (typeof USER_HOOK_EVENTS)[number]

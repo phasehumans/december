@@ -18,6 +18,16 @@ export interface SnapshotRecord {
     touchedFiles: string[]
 }
 
+/** One file that differs between a snapshot and the workspace now. */
+export interface SnapshotFileChange {
+    path: string
+    status: 'added' | 'modified' | 'deleted'
+    additions: number
+    deletions: number
+    /** Unified diff of the file, starting at its "diff --git" line. */
+    diff: string
+}
+
 export interface RollbackResult {
     success: boolean
     targetTurn: number
@@ -228,6 +238,91 @@ export class SnapshotManager {
 
     public getSnapshotById(id: string): SnapshotRecord | undefined {
         return this.records.find((r) => r.id === id)
+    }
+
+    /** The oldest snapshot of a session: the workspace before the session's first turn. */
+    public getFirstSnapshotForSession(sessionId: string): SnapshotRecord | undefined {
+        return this.records.find((r) => r.sessionId === sessionId)
+    }
+
+    /**
+     * Files that differ between a snapshot and the workspace now, with their diffs.
+     * The workspace is staged into a copy of the shadow index, so a turn snapshot that
+     * runs at the same time does not see a locked index.
+     */
+    public async diffSinceSnapshot(commitHash: string): Promise<SnapshotFileChange[]> {
+        await this.init()
+
+        const tmpIndex = path.join(
+            this.snapshotsDir,
+            `index.diff-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        )
+        try {
+            // Start from the shadow index so unchanged files keep their cached stat data
+            await fs.copyFile(path.join(this.snapshotsDir, 'index'), tmpIndex)
+        } catch {
+            // Intentionally swallowed: without an index git stages every file from scratch
+        }
+
+        const git = async (args: string[]): Promise<string> => {
+            const { stdout } = await execFileAsync(
+                'git',
+                ['--git-dir', this.snapshotsDir, '--work-tree', this.workspaceDir, ...args],
+                {
+                    cwd: this.workspaceDir,
+                    env: { ...process.env, GIT_INDEX_FILE: tmpIndex },
+                    maxBuffer: 64 * 1024 * 1024,
+                }
+            )
+            return stdout
+        }
+
+        try {
+            await git(['add', '-A'])
+            const diffArgs = ['diff', '--cached', '--no-renames', '--no-color']
+            const [nameStatusOut, numstatOut, patchOut] = await Promise.all([
+                git([...diffArgs, '--name-status', '-z', commitHash]),
+                git([...diffArgs, '--numstat', '-z', commitHash]),
+                git([...diffArgs, '--no-ext-diff', commitHash]),
+            ])
+
+            const counts = new Map<string, { additions: number; deletions: number }>()
+            for (const entry of numstatOut.split('\0')) {
+                // "adds\tdels\tpath"; a binary file has "-" for both counts
+                const match = /^(-|\d+)\t(-|\d+)\t(.+)$/.exec(entry)
+                if (!match) continue
+                counts.set(match[3]!, {
+                    additions: Number.parseInt(match[1]!, 10) || 0,
+                    deletions: Number.parseInt(match[2]!, 10) || 0,
+                })
+            }
+
+            // git lists files in the same order in every diff format, so the n-th
+            // "diff --git" block belongs to the n-th name-status entry
+            const patches = patchOut.split(/^(?=diff --git )/m).filter((p) => p.startsWith('diff'))
+
+            const changes: SnapshotFileChange[] = []
+            const tokens = nameStatusOut.split('\0')
+            for (let i = 0; i + 1 < tokens.length; i += 2) {
+                const code = tokens[i]
+                const filePath = tokens[i + 1]
+                if (!code || !filePath) continue
+                const status = code === 'A' ? 'added' : code === 'D' ? 'deleted' : 'modified'
+                const count = counts.get(filePath)
+                changes.push({
+                    path: filePath,
+                    status,
+                    additions: count?.additions ?? 0,
+                    deletions: count?.deletions ?? 0,
+                    diff: (patches[changes.length] ?? '').trimEnd(),
+                })
+            }
+            return changes
+        } finally {
+            await fs.rm(tmpIndex, { force: true }).catch(() => {
+                // Intentionally swallowed: a leftover temp index is harmless
+            })
+        }
     }
 
     /** Rewinds the workspace to the most recent snapshot recorded for a turn number. */

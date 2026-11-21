@@ -960,7 +960,11 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         })
         app.start()
 
-        // Populate sample diff files
+        // Open diff overlay
+        app.executeCommand('diff')
+        expect(app.state.activeOverlay).toBe('diff')
+
+        // Populate sample diff files (opening /diff clears the list while it loads)
         app.state.diffFiles = [
             {
                 path: 'src/config.ts',
@@ -977,10 +981,6 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
                 diff: '@@ -1,2 +1,4 @@\n+line 1\n+line 2\n',
             },
         ]
-
-        // Open diff overlay
-        app.executeCommand('diff')
-        expect(app.state.activeOverlay).toBe('diff')
         expect(app.state.isDiffDetailView).toBe(false)
         expect(app.state.diffSelectedIndex).toBe(0)
 
@@ -1044,7 +1044,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('handles /effort command, direct argument setting, and interactive menu navigation', () => {
+    it('handles /effort command, direct argument setting, and interactive menu navigation', async () => {
         let selectedLevel: string | null = null
         const app = new DifferentialApp({
             terminal,
@@ -1062,6 +1062,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.thinkingLevel).toBe('deep')
         expect(selectedLevel).toBe('deep')
         expect(app.state.activeOverlay).toBe('none')
+        await new Promise((r) => setTimeout(r, 0))
         expect(app.state.toast?.message).toBe('Reasoning set to Deep.')
 
         // 2. Open interactive effort menu: /effort
@@ -1079,6 +1080,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.activeOverlay).toBe('none')
         expect(app.state.thinkingLevel).toBe('fast')
         expect(selectedLevel).toBe('fast')
+        await new Promise((r) => setTimeout(r, 0))
         expect(app.state.toast?.message).toBe('Reasoning set to Fast.')
 
         // 3. /reasoning alias with argument (backward compatible 'low' normalizes to 'fast')
@@ -1090,6 +1092,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.state.activeModel = 'openai/gpt-4o'
         app.executeCommand('effort deep')
         expect(app.state.thinkingLevel).toBe('deep')
+        await new Promise((r) => setTimeout(r, 0))
         expect(app.state.toast?.message).toContain('runs in standard mode')
 
         // 5. Switching model to controllable reasoning model auto-initializes reasoning to fast if unset/off
@@ -2735,7 +2738,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         // 1. /settings -> Model -> search inside model, Esc steps back out of search, query, then menu
         app.executeCommand('settings')
-        app.state.settingsSelectedIndex = 0 // 'model'
+        app.state.settingsSelectedIndex = app.state.settings.findIndex((s) => s.id === 'model')
         app.handleKey('\r')
         expect(app.state.activeOverlay).toBe('model')
         expect(app.state.overlayHistory).toEqual(['settings'])
@@ -2758,7 +2761,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         // 2. /settings -> select Model -> in model press Esc -> returns to /settings -> Esc -> none
         app.executeCommand('settings')
         expect(app.state.activeOverlay).toBe('settings')
-        app.state.settingsSelectedIndex = 0 // 'model'
+        app.state.settingsSelectedIndex = app.state.settings.findIndex((s) => s.id === 'model')
         app.handleKey('\r')
         expect(app.state.activeOverlay).toBe('model')
         expect(app.state.overlayHistory).toEqual(['settings'])
@@ -2825,8 +2828,147 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         const browserIdx = app.state.settings.findIndex((s) => s.id === 'browser_visible')
         app.state.settingsSelectedIndex = browserIdx
         app.handleKey('\r')
-        expect(app.state.settings[browserIdx].value).toBe('on')
-        expect(changes).toContainEqual({ id: 'browser_visible', value: 'on' })
+        expect(app.state.settings[browserIdx].value).toBe('off')
+        expect(changes).toContainEqual({ id: 'browser_visible', value: 'off' })
+
+        app.stop()
+    })
+
+    it('opens /switch from the provider row, comes back on esc, and closes on select', () => {
+        const switched: string[] = []
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            switchItems: [
+                { label: 'Anthropic', value: 'byok:anthropic', isActive: true },
+                { label: 'OpenAI', value: 'byok:openai', isActive: false },
+            ] as any,
+            onSwitchSelect: (value) => {
+                switched.push(value)
+            },
+        })
+        app.start()
+
+        app.executeCommand('settings')
+        app.state.settingsSelectedIndex = app.state.settings.findIndex((s) => s.id === 'provider')
+        app.handleKey('\r')
+        expect(app.state.activeOverlay).toBe('switch')
+        expect(app.state.overlayHistory).toEqual(['settings'])
+
+        app.handleKey('\x1b')
+        expect(app.state.activeOverlay).toBe('settings')
+        expect(app.state.overlayHistory).toEqual([])
+
+        app.handleKey('\r')
+        app.handleKey('j')
+        app.handleKey('\r')
+        expect(switched).toEqual(['byok:openai'])
+        expect(app.state.activeOverlay).toBe('none')
+        expect(app.state.overlayHistory).toEqual([])
+
+        app.stop()
+    })
+
+    it('shows the live provider and model in the settings rows after a switch', () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            selectedProvider: 'anthropic',
+            activeModel: 'claude-sonnet-4.6',
+            modelLabel: 'Claude Sonnet 4.6',
+            settings: [
+                { id: 'provider', title: 'Provider', value: 'anthropic' },
+                { id: 'model', title: 'Model', value: 'Claude Sonnet 4.6' },
+            ],
+        })
+        app.start()
+
+        // What the cli does when a /switch completes
+        app.state.selectedProvider = 'openai'
+        app.state.activeModel = 'gpt-5.5'
+        app.state.modelLabel = 'GPT-5.5'
+
+        app.executeCommand('settings')
+        const screen = Array.from({ length: 24 }, (_, y) => app.screen.backBuffer.getLine(y)).join(
+            '\n'
+        )
+        expect(screen).toContain('OpenAI')
+        expect(screen).toContain('GPT-5.5')
+        expect(screen).not.toContain('Claude Sonnet 4.6')
+
+        app.stop()
+    })
+
+    it('reverts a settings row and shows an error toast when the save fails', async () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSettingChange: async () => {
+                throw new Error('disk full')
+            },
+        })
+        app.start()
+
+        app.executeCommand('settings')
+        const pathGuardIdx = app.state.settings.findIndex((s) => s.id === 'pathguard')
+        app.state.settingsSelectedIndex = pathGuardIdx
+        app.handleKey('\r')
+        await new Promise((r) => setTimeout(r, 0))
+
+        expect(app.state.settings[pathGuardIdx].value).toBe('on')
+        expect(app.state.toast?.variant).toBe('error')
+        expect(app.state.toast?.message).toBe('Could not save path guard: disk full')
+
+        app.stop()
+    })
+
+    it('shows the success toast for a settings row only after the save', async () => {
+        let finishSave: () => void = () => {}
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSettingChange: () =>
+                new Promise<void>((resolve) => {
+                    finishSave = resolve
+                }),
+        })
+        app.start()
+
+        app.executeCommand('settings')
+        app.state.settingsSelectedIndex = app.state.settings.findIndex((s) => s.id === 'pathguard')
+        app.handleKey('\r')
+        expect(app.state.toast).toBeNull()
+
+        finishSave()
+        await new Promise((r) => setTimeout(r, 0))
+        expect(app.state.toast?.message).toBe('Path guard: off')
+
+        app.stop()
+    })
+
+    it('reverts the thinking level and shows an error toast when the save fails', async () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            thinkingLevel: 'fast',
+            onEffortSelect: async () => {
+                throw new Error('read-only config')
+            },
+        })
+        app.start()
+
+        app.executeCommand('effort deep')
+        await new Promise((r) => setTimeout(r, 0))
+
+        expect(app.state.thinkingLevel).toBe('fast')
+        expect(app.state.settings.find((s) => s.id === 'thinking_level')?.value).toBe('fast')
+        expect(app.state.toast?.variant).toBe('error')
+        expect(app.state.toast?.message).toBe('Could not save thinking level: read-only config')
 
         app.stop()
     })

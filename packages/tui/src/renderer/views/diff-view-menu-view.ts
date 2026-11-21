@@ -11,12 +11,23 @@ import type { ScreenBuffer } from '../buffer'
 
 export const DIFF_WINDOW_SIZE = 7
 
+/** Which changes /diff shows: since the session's first turn, or every git change (#618) */
+export type DiffScope = 'session' | 'all'
+
+const SCOPE_LABEL: Record<DiffScope, string> = {
+    session: 'this session',
+    all: 'all changes',
+}
+
 export interface DiffViewMenuViewProps {
     x?: number
     y: number
     width: number
     height: number
     files: DiffFileEntry[]
+    /** The view shown; the title row names it and `s` switches to the other one */
+    scope?: DiffScope
+    isLoading?: boolean
     selectedFileIndex: number
     windowStart: number
     isDetailView: boolean
@@ -72,10 +83,23 @@ export const DiffViewMenuView = {
         const windowSize = DIFF_WINDOW_SIZE
         const footerY = props.y + props.height - 1
 
+        const scope = props.scope
+        const scopeLabel = scope ? SCOPE_LABEL[scope] : undefined
+        /** `s` names the view it switches to, as `f` does in the diff (full file / compact) */
+        const scopeKey =
+            scope && !props.isLoading
+                ? [{ key: 's', label: SCOPE_LABEL[scope === 'session' ? 'all' : 'session'] }]
+                : []
+
         if (files.length === 0) {
-            drawPanelTitle(buffer, { x, y, title: 'Changes' })
+            drawPanelTitle(buffer, { x, y, title: 'Changes', meta: scopeLabel })
             y += 2
-            drawText(buffer, 'No changed files in workspace.', {
+            const emptyText = props.isLoading
+                ? 'Loading changes…'
+                : scope === 'session'
+                  ? 'No changes in this session.'
+                  : 'No changed files in workspace.'
+            drawText(buffer, emptyText, {
                 x,
                 y,
                 style: { fg: THEME.colors.muted },
@@ -84,7 +108,7 @@ export const DiffViewMenuView = {
                 x: props.x ?? 0,
                 y: footerY,
                 width,
-                items: [{ key: 'esc', label: 'dismiss' }],
+                items: [...scopeKey, { key: 'esc', label: 'dismiss' }],
             })
             return
         }
@@ -97,11 +121,13 @@ export const DiffViewMenuView = {
             const totalAdditions = files.reduce((acc, f) => acc + (f.additions || 0), 0)
             const totalDeletions = files.reduce((acc, f) => acc + (f.deletions || 0), 0)
             const filesText = `${files.length} file${files.length === 1 ? '' : 's'}`
+            // Title row: Changes  this session · 2 files +4 -1
+            const meta = scopeLabel ? `${scopeLabel} · ${filesText}` : filesText
 
-            drawPanelTitle(buffer, { x, y, title: 'Changes', meta: filesText })
+            drawPanelTitle(buffer, { x, y, title: 'Changes', meta })
             drawCounts(
                 buffer,
-                x + 'Changes'.length + 2 + filesText.length + 1,
+                x + 'Changes'.length + 2 + meta.length + 1,
                 y,
                 countParts(totalAdditions, totalDeletions)
             )
@@ -184,6 +210,7 @@ export const DiffViewMenuView = {
                     { key: '↑/↓', label: 'navigate' },
                     { key: 'enter', label: 'view diff' },
                     { key: 'tab', label: 'insert context' },
+                    ...scopeKey,
                     { key: 'esc', label: 'dismiss' },
                 ],
             })

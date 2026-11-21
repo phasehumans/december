@@ -1,3 +1,5 @@
+import { normalizeNotifyMode } from '@december/tui'
+
 import { ensureValidModelForProvider, getModelLabel } from './utils/models'
 
 import type { DecemberConfig } from './config'
@@ -44,5 +46,6 @@ export function buildSettingsFromConfig(
             // Same rule as the browser runner: unset means visible
             value: cfg.browserVisible === false ? 'off' : 'on',
         },
+        { id: 'notify', title: 'Notify me', value: normalizeNotifyMode(cfg.notify) },
     ]
 }

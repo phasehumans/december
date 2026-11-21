@@ -46,13 +46,14 @@ The format is the same as the Claude Code hooks format, so you can copy your exi
 
 ## Events
 
-| Event              | When it runs                                    | Exit code 2 does this                                          |
-| :----------------- | :---------------------------------------------- | :------------------------------------------------------------- |
-| `SessionStart`     | When a session starts or resumes.               | Nothing. The output goes into the next prompt as context.      |
-| `UserPromptSubmit` | Before December sends your prompt.              | Blocks the prompt. The output of exit code 0 is added to it.   |
-| `PreToolUse`       | Before a tool call, after the permission check. | Blocks the tool call.                                          |
-| `PostToolUse`      | After a tool call.                              | Sends the hook message to December with the tool result.       |
-| `Stop`             | When December is about to end its turn.         | December continues the turn. This can happen 3 times in a row. |
+| Event              | When it runs                                      | Exit code 2 does this                                          |
+| :----------------- | :------------------------------------------------ | :------------------------------------------------------------- |
+| `SessionStart`     | When a session starts or resumes.                 | Nothing. The output goes into the next prompt as context.      |
+| `UserPromptSubmit` | Before December sends your prompt.                | Blocks the prompt. The output of exit code 0 is added to it.   |
+| `PreToolUse`       | Before a tool call, after the permission check.   | Blocks the tool call.                                          |
+| `PostToolUse`      | After a tool call.                                | Sends the hook message to December with the tool result.       |
+| `Stop`             | When December is about to end its turn.           | December continues the turn. This can happen 3 times in a row. |
+| `Notification`     | When December waits for you, or a long turn ends. | Nothing.                                                       |
 
 ## Input and output
 
@@ -66,6 +67,19 @@ December sends the event to the hook as JSON on standard input. For example, a `
     "tool_input": { "command": "git push" }
 }
 ```
+
+A `Notification` hook runs when December shows a permission prompt, a question, or a plan to approve. It also runs when a turn of more than 30 seconds ends without an error. It runs even when the `notify` setting is off. The JSON has a `reason` (`tool_permission`, `ask_question`, `plan_approve` or `turn_finished`) and a short `message`:
+
+```json
+{
+    "hook_event_name": "Notification",
+    "cwd": "/home/you/project",
+    "reason": "tool_permission",
+    "message": "December needs your approval to run a tool"
+}
+```
+
+Use it to send the notification where you want it. For example, on Linux: `notify-send December "$(jq -r .message)"`.
 
 The exit code tells December what to do:
 

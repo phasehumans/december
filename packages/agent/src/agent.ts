@@ -20,7 +20,7 @@ import type { PlatformAdapter } from './platform-adapter'
 import type { AgentTracer } from './telemetry/tracer.types'
 import type { LLMProvider } from '@december/providers'
 import type { AgentMessage, Message, Tool, AgentHooks } from '@december/shared'
-import type { SnapshotRecord } from '@december/tools'
+import type { SnapshotFileChange, SnapshotRecord } from '@december/tools'
 
 export interface AgentConfig {
     sessionId?: string
@@ -541,6 +541,21 @@ export class Agent {
             .filter((r) => r.messageId && turnByMessageId.has(r.messageId))
             .map((r) => ({ ...r, turnIndex: turnByMessageId.get(r.messageId!)! }))
             .sort((a, b) => b.turnIndex - a.turnIndex)
+    }
+
+    /**
+     * Files changed since this session's first turn began, compared with the workspace now.
+     * Null when the session has no snapshot yet (no turn has run, or every turn was rewound).
+     */
+    public async getSessionChanges(): Promise<SnapshotFileChange[] | null> {
+        // A running turn records its snapshot first; wait so its first turn counts
+        await this.pendingSnapshot
+        const { getSnapshotManager } = await import('@december/tools')
+        const snapshotManager = getSnapshotManager(this.workspaceDir)
+        await snapshotManager.init()
+        const first = snapshotManager.getFirstSnapshotForSession(this.sessionId)
+        if (!first) return null
+        return snapshotManager.diffSinceSnapshot(first.commitHash)
     }
 
     /** Restores files and conversation to the state before the snapshot's turn. */

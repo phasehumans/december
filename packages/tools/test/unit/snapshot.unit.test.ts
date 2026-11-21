@@ -255,4 +255,73 @@ describe('SnapshotManager (Unit)', () => {
         expect(await fs.readFile(file, 'utf8')).toBe('original')
         await expect(fs.access(added)).rejects.toThrow()
     })
+
+    it('finds the first snapshot of a session', async () => {
+        const manager = new SnapshotManager(tempDir)
+        await manager.createSnapshot({ turnIndex: 1, sessionId: 'other' })
+        const first = await manager.createSnapshot({ turnIndex: 1, sessionId: 'mine' })
+        await manager.createSnapshot({ turnIndex: 2, sessionId: 'mine' })
+
+        expect(manager.getFirstSnapshotForSession('mine')?.id).toBe(first.id)
+        expect(manager.getFirstSnapshotForSession('missing')).toBeUndefined()
+    })
+
+    it('diffs the workspace against a snapshot, with counts and one diff per file', async () => {
+        const manager = new SnapshotManager(tempDir)
+        await fs.writeFile(path.join(tempDir, 'kept.txt'), 'same\n', 'utf8')
+        await fs.writeFile(path.join(tempDir, 'edited.ts'), 'a\nb\nc\n', 'utf8')
+        await fs.writeFile(path.join(tempDir, 'removed.md'), 'bye\n', 'utf8')
+        const base = await manager.createSnapshot({ turnIndex: 1, sessionId: 's1' })
+
+        await fs.writeFile(path.join(tempDir, 'edited.ts'), 'a\nB\nc\nd\n', 'utf8')
+        await fs.rm(path.join(tempDir, 'removed.md'))
+        await fs.writeFile(path.join(tempDir, 'new file.txt'), 'one\ntwo\n', 'utf8')
+
+        const changes = await manager.diffSinceSnapshot(base.commitHash)
+        const byPath = Object.fromEntries(changes.map((c) => [c.path, c]))
+
+        expect(Object.keys(byPath).sort()).toEqual(['edited.ts', 'new file.txt', 'removed.md'])
+        expect(byPath['edited.ts']).toMatchObject({
+            status: 'modified',
+            additions: 2,
+            deletions: 1,
+        })
+        expect(byPath['edited.ts']!.diff).toStartWith('diff --git a/edited.ts b/edited.ts')
+        expect(byPath['edited.ts']!.diff).toContain('+B')
+        expect(byPath['new file.txt']).toMatchObject({
+            status: 'added',
+            additions: 2,
+            deletions: 0,
+        })
+        expect(byPath['new file.txt']!.diff).toContain('+two')
+        expect(byPath['removed.md']).toMatchObject({
+            status: 'deleted',
+            additions: 0,
+            deletions: 1,
+        })
+        expect(byPath['removed.md']!.diff).toContain('-bye')
+    })
+
+    it('leaves the shadow index alone and no temp index behind when diffing', async () => {
+        const manager = new SnapshotManager(tempDir)
+        await fs.writeFile(path.join(tempDir, 'a.txt'), '1\n', 'utf8')
+        const base = await manager.createSnapshot({ turnIndex: 1 })
+        const snapshotsDir = path.join(tempDir, '.december', 'snapshots')
+        const indexBefore = await fs.readFile(path.join(snapshotsDir, 'index'))
+
+        await fs.writeFile(path.join(tempDir, 'a.txt'), '2\n', 'utf8')
+        const changes = await manager.diffSinceSnapshot(base.commitHash)
+
+        expect(changes.map((c) => c.path)).toEqual(['a.txt'])
+        expect(await fs.readFile(path.join(snapshotsDir, 'index'))).toEqual(indexBefore)
+        const leftovers = (await fs.readdir(snapshotsDir)).filter((f) => f.startsWith('index.'))
+        expect(leftovers).toEqual([])
+    })
+
+    it('returns no changes when the workspace matches the snapshot', async () => {
+        const manager = new SnapshotManager(tempDir)
+        await fs.writeFile(path.join(tempDir, 'a.txt'), '1\n', 'utf8')
+        const base = await manager.createSnapshot({ turnIndex: 1 })
+        expect(await manager.diffSinceSnapshot(base.commitHash)).toEqual([])
+    })
 })

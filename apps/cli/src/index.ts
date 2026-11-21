@@ -893,6 +893,11 @@ async function main() {
 
     differentialApp = new DifferentialApp({
         settings: buildSettingsFromConfig(config, activeProvider, initialModel),
+        notifyMode: config.notify,
+        // #617: the hooks load after the app, so read userHooks when the event fires
+        onAttention: ({ reason, message }) => {
+            void userHooks?.runNotification(reason, message)
+        },
         tasks: mapBackgroundTasksToTaskItems(taskManager.getTasks()),
         onKillTask: (taskId: string) => {
             taskManager.killTask(taskId, 'user')
@@ -1009,6 +1014,8 @@ async function main() {
                 cfg.steeringMode = newValue as 'all' | 'one-at-a-time'
             } else if (settingId === 'browser_visible') {
                 cfg.browserVisible = newValue === 'on'
+            } else if (settingId === 'notify') {
+                cfg.notify = newValue as 'off' | 'bell' | 'desktop'
             }
             await saveConfig(cfg)
 
@@ -1016,6 +1023,8 @@ async function main() {
                 applyThinkingLevel(newValue)
             } else if (settingId === 'steering_mode' && agent?.steeringQueue) {
                 agent.steeringQueue.mode = newValue as 'all' | 'one-at-a-time'
+            } else if (settingId === 'notify') {
+                differentialApp.setNotifyMode(newValue)
             }
         },
         onModelSelect: async (selected) => {
@@ -1441,6 +1450,16 @@ async function main() {
                 // Intentionally swallowed: the picker shows its empty state
                 return []
             }
+        },
+        onLoadSessionChanges: async () => {
+            const changes = await agent.getSessionChanges()
+            if (!changes) return null
+            // Snapshot paths are relative to the workspace; /diff reads files from the cwd
+            const workspaceDir = agent.workspaceDir || process.cwd()
+            return changes.map((c) => ({
+                ...c,
+                path: path.relative(process.cwd(), path.resolve(workspaceDir, c.path)),
+            }))
         },
         onClearContext: async () => {
             if (agent) {

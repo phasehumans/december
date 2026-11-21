@@ -204,6 +204,8 @@ export interface DecemberConfig {
     lastSeenVersion?: string
     showChangelogBanner?: boolean
     browserVisible?: boolean
+    /** #617: bell or desktop notification when December needs the user */
+    notify?: 'off' | 'bell' | 'desktop'
     mcpServers?: Record<string, any>
     customBaseUrl?: string
     providerBaseUrls?: Record<string, string>

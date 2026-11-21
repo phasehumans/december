@@ -36,6 +36,14 @@ import { getFileQueryMatch, scoreAndSortFiles, type ScoredFile } from '../utils/
 import { expandPastes, storePaste } from '../utils/paste-manager'
 import { toRelativePath } from '../utils/terminal-link'
 
+import {
+    AttentionNotifier,
+    nextNotifyMode,
+    normalizeNotifyMode,
+    type AttentionEvent,
+    type AttentionReason,
+    type NotifyMode,
+} from './attention-notifier'
 import { sliceToWidth } from './cell'
 import { splitInputSequences } from './input-lexer'
 import { DifferentialScreen } from './screen'
@@ -54,7 +62,7 @@ import { BtwOverlayView, BTW_EXPANDED_MAX_VISIBLE_LINES } from './views/btw-over
 import { CodeSearchMenuView, CODE_SEARCH_WINDOW_SIZE } from './views/code-search-menu-view'
 import { CommandMenuView, WINDOW_SIZE as CMD_WINDOW_SIZE } from './views/command-menu-view'
 import { ContextMenuView } from './views/context-menu-view'
-import { DiffViewMenuView, DIFF_WINDOW_SIZE } from './views/diff-view-menu-view'
+import { DiffViewMenuView, DIFF_WINDOW_SIZE, type DiffScope } from './views/diff-view-menu-view'
 import {
     EffortMenuView,
     type ReasoningLevel,
@@ -118,7 +126,7 @@ import {
     type SessionItem,
     SESSION_WINDOW_SIZE,
 } from './views/session-select-menu-view'
-import { SettingsMenuView, type SettingItem } from './views/settings-menu-view'
+import { SettingsMenuView, formatSettingValue, type SettingItem } from './views/settings-menu-view'
 import { SkillsMenuView, toTildePath, type SkillItem } from './views/skills-menu-view'
 import { SwitchSelectMenuView, type SwitchItem } from './views/switch-select-menu-view'
 import {
@@ -260,7 +268,16 @@ export interface DifferentialAppState {
     isModelSearching: boolean
 
     // Diff view state
+    /** The files of the view shown: diffSessionFiles or diffAllFiles */
     diffFiles: DiffFileEntry[]
+    /** Which changes /diff shows: this session's (since its first turn) or all git changes */
+    diffScope: DiffScope
+    /** All git changes in the workspace */
+    diffAllFiles: DiffFileEntry[]
+    /** Changes since the session's first turn; null when the session has no snapshot */
+    diffSessionFiles: DiffFileEntry[] | null
+    /** True while /diff fetches its changes */
+    isDiffLoading: boolean
     diffSelectedIndex: number
     diffWindowStart: number
     isDiffDetailView: boolean
@@ -521,7 +538,7 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     onExit?: () => void
     onModelSelect?: (model: ModelItem) => void
     getProviderModels?: (provider: string) => ModelItem[]
-    onEffortSelect?: (level: ReasoningLevel) => void
+    onEffortSelect?: (level: ReasoningLevel) => Promise<void> | void
     onLogin?: (
         onCode: (code: string, url: string) => void,
         signal?: AbortSignal
@@ -566,6 +583,10 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     authRequiredNotice?: string
     settings?: SettingItem[]
     onSettingChange?: (settingId: string, newValue: string) => Promise<void> | void
+    /** #617: the bell or desktop notification when December needs the user. Default "off". */
+    notifyMode?: NotifyMode
+    /** #617: December waits on the user, or a long turn finished (runs the Notification hook) */
+    onAttention?: (event: AttentionEvent) => void
     onKillTask?: (taskId: string) => boolean | void
     /** removes finished tasks from the task manager (not only from the view) */
     onClearCompletedTasks?: () => void
@@ -575,6 +596,8 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     onNewContext?: () => Promise<string | void> | string | void
     onForkContext?: (newSessionId?: string) => Promise<string | void> | string | void
     onLoadRewindTurns?: () => Promise<RewindTurnEntry[]> | RewindTurnEntry[]
+    /** `/diff`: files changed since the session's first turn; null when it has no snapshot */
+    onLoadSessionChanges?: () => Promise<DiffFileEntry[] | null>
     onLoadUsage?: () => Promise<UsageOverview | undefined>
     /** `/compact [focus]`: summarizes the conversation now */
     onCompact?: (focus?: string) => Promise<CompactOutcome>
@@ -701,6 +724,7 @@ export const DEFAULT_SETTINGS: SettingItem[] = [
     { id: 'thinking_level', title: 'Thinking level', value: 'fast' },
     { id: 'steering_mode', title: 'Steering', value: 'all' },
     { id: 'browser_visible', title: 'Browser window', value: 'on' },
+    { id: 'notify', title: 'Notify me', value: 'off' },
 ]
 
 export class DifferentialApp {
@@ -725,6 +749,14 @@ export class DifferentialApp {
     private isDetached = false
     private spinnerTimer: any = null
     private streamStartTime = 0
+    /** #617: bell, desktop notification and Notification hook when December needs the user */
+    private readonly attention: AttentionNotifier
+    /** start and end of the last finished turn, for a plan approval that opens after it */
+    private lastTurnStartedAt = 0
+    private lastTurnEndedAt = 0
+    /** the window title without the waiting marker, and whether the marker shows */
+    private windowTitle = 'december'
+    private waitingTitleShown = false
     /** Activity line (L0): phase latch and timing for the current turn */
     private readonly activityTracker = new ActivityTracker()
     private lastStreamActivityAt = 0
@@ -764,7 +796,7 @@ export class DifferentialApp {
     private onCodeSearchCallback?: (query: string) => Promise<CodeSearchResultItem[]>
     private onOpenCodeSearchResultCallback?: (item: CodeSearchResultItem) => void
     private onInsertContextCallback?: (file: string, line?: number) => void
-    private onEffortSelectCallback?: (level: ReasoningLevel) => void
+    private onEffortSelectCallback?: (level: ReasoningLevel) => Promise<void> | void
     private onLoginCallback?: (
         onCode: (code: string, url: string) => void,
         signal?: AbortSignal
@@ -812,6 +844,9 @@ export class DifferentialApp {
         newSessionId?: string
     ) => Promise<string | void> | string | void
     private onLoadRewindTurnsCallback?: () => Promise<RewindTurnEntry[]> | RewindTurnEntry[]
+    private onLoadSessionChangesCallback?: () => Promise<DiffFileEntry[] | null>
+    /** Counts /diff loads, so a slow load does not overwrite a newer one */
+    private diffLoadId = 0
     private onLoadUsageCallback?: () => Promise<UsageOverview | undefined>
     private authRequiredNotice?: string
     private pasteBuffer: string | null = null
@@ -887,6 +922,13 @@ export class DifferentialApp {
         this.onOpenEditorCallback = options?.onOpenEditor
         this.onExecuteDirectCommandCallback = options?.onExecuteDirectCommand
         this.onSettingChangeCallback = options?.onSettingChange
+        this.attention = new AttentionNotifier({
+            write: (data) => {
+                if (this.terminal.stdout?.isTTY) this.terminal.write(data)
+            },
+            onAttention: options?.onAttention,
+        })
+        this.attention.mode = normalizeNotifyMode(options?.notifyMode)
         this.onKillTaskCallback = options?.onKillTask
         this.onClearCompletedTasksCallback = options?.onClearCompletedTasks
         this.onBackgroundForegroundCallback = options?.onBackgroundForeground
@@ -894,6 +936,7 @@ export class DifferentialApp {
         this.onNewContextCallback = options?.onNewContext
         this.onForkContextCallback = options?.onForkContext
         this.onLoadRewindTurnsCallback = options?.onLoadRewindTurns
+        this.onLoadSessionChangesCallback = options?.onLoadSessionChanges
         this.onLoadUsageCallback = options?.onLoadUsage
         this.authRequiredNotice = options?.authRequiredNotice
         this.workspaceFiles = options?.workspaceFiles ? [...options.workspaceFiles] : []
@@ -1031,6 +1074,10 @@ export class DifferentialApp {
             isModelSearching: false,
 
             diffFiles: [],
+            diffScope: 'all',
+            diffAllFiles: [],
+            diffSessionFiles: null,
+            isDiffLoading: false,
             diffSelectedIndex: 0,
             diffWindowStart: 0,
             isDiffDetailView: false,
@@ -1047,7 +1094,8 @@ export class DifferentialApp {
             fileViewTaskId: null,
 
             settingsSelectedIndex: 0,
-            settings: options?.settings ? [...options.settings] : [...DEFAULT_SETTINGS],
+            // Copy each row: toggles change rows in place, and must not leak into the caller's array
+            settings: (options?.settings ?? DEFAULT_SETTINGS).map((item) => ({ ...item })),
 
             skillsDetailSkill: null,
             skillsIsDetailView: false,
@@ -1267,7 +1315,38 @@ export class DifferentialApp {
         this.state.sessionTitle = title || undefined
         const active = this.state.sessions.find((s) => s.id === this.state.sessionId)
         if (active && title) active.title = title
-        this.terminal.setWindowTitle?.(title ? `december · ${title}` : 'december')
+        this.windowTitle = title ? `december · ${title}` : 'december'
+        this.terminal.setWindowTitle?.(
+            this.waitingTitleShown ? `● ${this.windowTitle}` : this.windowTitle
+        )
+    }
+
+    /** #617: sets how December tells the user it needs them (the "Notify me" setting) */
+    setNotifyMode(mode: string): void {
+        this.attention.mode = normalizeNotifyMode(mode)
+    }
+
+    /**
+     * #617: an approval prompt opened. Fires the Notification hook, and the bell or desktop
+     * notification when the setting and focus allow it.
+     */
+    private notifyAttention(reason: AttentionReason): void {
+        const now = Date.now()
+        let elapsedMs = 0
+        if (this.streamStartTime) elapsedMs = now - this.streamStartTime
+        // A plan approval opens right after its turn ends: count that turn
+        else if (this.lastTurnEndedAt && now - this.lastTurnEndedAt < 5_000) {
+            elapsedMs = this.lastTurnEndedAt - this.lastTurnStartedAt
+        }
+        this.attention.notify(reason, elapsedMs)
+    }
+
+    /** #617: "● " in front of the window title while an approval prompt waits */
+    private syncWaitingTitle(): void {
+        const waiting = DifferentialApp.APPROVAL_OVERLAYS.has(this.state.activeOverlay)
+        if (waiting === this.waitingTitleShown) return
+        this.waitingTitleShown = waiting
+        this.terminal.setWindowTitle?.(waiting ? `● ${this.windowTitle}` : this.windowTitle)
     }
 
     showToast(message: string, variant: 'success' | 'error' | 'info' = 'info'): void {
@@ -2585,6 +2664,7 @@ export class DifferentialApp {
             this.pendingQuestionResolver = resolve
             this.state.activeOverlay = 'ask_question'
             this.render()
+            this.notifyAttention('ask_question')
         })
     }
 
@@ -2608,6 +2688,7 @@ export class DifferentialApp {
             this.pendingToolPermissionResolver = resolve
             this.state.activeOverlay = 'tool_permission'
             this.render()
+            this.notifyAttention('tool_permission')
         })
     }
 
@@ -2746,6 +2827,7 @@ export class DifferentialApp {
             this.pendingPlanApprovalResolver = resolve
             this.state.activeOverlay = 'plan_approve'
             this.render()
+            this.notifyAttention('plan_approve')
         })
     }
 
@@ -2930,6 +3012,9 @@ export class DifferentialApp {
     }
 
     handleKey(key: string, alreadyMapped = false): void {
+        // #617: focus in/out reports (CSI ?1004h) are not keys
+        if (this.attention.handleFocusSequence(key)) return
+
         // Bracketed paste: \x1b[200~ <pasted text> \x1b[201~
         if (key.startsWith('\x1b[200~') && key.endsWith('\x1b[201~')) {
             const pastedContent = key.slice(6, -6)
@@ -4086,28 +4171,23 @@ export class DifferentialApp {
                 ]
                 if (validArgs.includes(lower)) {
                     const normalized = normalizeReasoningLevel(lower)
-                    this.state.thinkingLevel = normalized
-                    const idx = REASONING_OPTIONS.findIndex((opt) => opt.value === normalized)
-                    if (idx >= 0) this.state.effortSelectedIndex = idx
-                    const setting = this.state.settings.find((s) => s.id === 'thinking_level')
-                    if (setting) setting.value = normalized
-                    if (this.onEffortSelectCallback) {
-                        this.onEffortSelectCallback(normalized)
-                    }
                     const label = normalized.charAt(0).toUpperCase() + normalized.slice(1)
-                    if (support === 'none') {
-                        this.showToast(
-                            `Reasoning set to ${label} (${rawModel || 'Active model'} runs in standard mode).`,
-                            'info'
-                        )
-                    } else if (support === 'fixed') {
-                        this.showToast(
-                            `Reasoning set to ${label} (${rawModel || 'Active model'} uses fixed provider reasoning).`,
-                            'info'
-                        )
-                    } else {
-                        this.showToast(`Reasoning set to ${label}.`, 'success')
-                    }
+                    void this.commitThinkingLevel(normalized).then((saved) => {
+                        if (!saved) return
+                        if (support === 'none') {
+                            this.showToast(
+                                `Reasoning set to ${label} (${rawModel || 'Active model'} runs in standard mode).`,
+                                'info'
+                            )
+                        } else if (support === 'fixed') {
+                            this.showToast(
+                                `Reasoning set to ${label} (${rawModel || 'Active model'} uses fixed provider reasoning).`,
+                                'info'
+                            )
+                        } else {
+                            this.showToast(`Reasoning set to ${label}.`, 'success')
+                        }
+                    })
                     return
                 } else {
                     this.showToast('Invalid reasoning level. Valid options: fast, deep', 'error')
@@ -4211,14 +4291,7 @@ export class DifferentialApp {
             this.state.diffSelectedIndex = 0
             this.state.diffWindowStart = 0
             this.state.diffCursorLineIndex = 0
-            fetchGitStatusFiles()
-                .then((files) => {
-                    this.state.diffFiles = files
-                    this.render()
-                })
-                .catch(() => {
-                    // Intentionally swallowed: ignore background git fetch failure
-                })
+            this.loadDiffFiles()
             this.render()
             return
         }
@@ -4572,6 +4645,52 @@ export class DifferentialApp {
         this.render()
     }
 
+    /**
+     * Fetches both /diff views. It opens on this session's changes when there are any,
+     * and on all git changes otherwise (#618).
+     */
+    private loadDiffFiles(): void {
+        const loadId = ++this.diffLoadId
+        this.state.diffFiles = []
+        this.state.diffAllFiles = []
+        this.state.diffSessionFiles = null
+        this.state.diffFilePositions = {}
+        this.state.diffFullContents = {}
+        this.state.isDiffLoading = true
+
+        const all = fetchGitStatusFiles().catch(() => {
+            // Intentionally swallowed: the view shows no git changes
+            return [] as DiffFileEntry[]
+        })
+        const session = this.onLoadSessionChangesCallback
+            ? this.onLoadSessionChangesCallback().catch(() => {
+                  // Intentionally swallowed: without a snapshot only all changes are shown
+                  return null
+              })
+            : Promise.resolve(null)
+
+        void Promise.all([all, session]).then(([allFiles, sessionFiles]) => {
+            if (loadId !== this.diffLoadId) return
+            this.state.diffAllFiles = allFiles
+            this.state.diffSessionFiles = sessionFiles
+            this.state.isDiffLoading = false
+            this.setDiffScope(sessionFiles && sessionFiles.length > 0 ? 'session' : 'all')
+            this.render()
+        })
+    }
+
+    /** Shows the files of one /diff view, from the top of its list */
+    private setDiffScope(scope: DiffScope): void {
+        this.state.diffScope = scope
+        this.state.diffFiles =
+            scope === 'session' ? (this.state.diffSessionFiles ?? []) : this.state.diffAllFiles
+        this.state.diffSelectedIndex = 0
+        this.state.diffWindowStart = 0
+        // The two views can show different diffs of the same path
+        this.state.diffFilePositions = {}
+        this.state.diffFullContents = {}
+    }
+
     getDiffFullContent(filePath: string): string | null {
         if (!filePath) return null
         if (this.state.diffFullContents[filePath] !== undefined) {
@@ -4595,6 +4714,67 @@ export class DifferentialApp {
             // Intentionally swallowed: file cannot be read from disk
         }
         return null
+    }
+
+    /**
+     * The settings rows as shown. Provider and model come from the live session state, so the
+     * rows are correct after /switch, /model or a fallback, without a settings refresh.
+     */
+    private getSettingsForDisplay(): SettingItem[] {
+        const { selectedProvider, activeModel, modelLabel } = this.state
+        return this.state.settings.map((item) => {
+            if (item.id === 'provider' && selectedProvider) {
+                return { ...item, value: selectedProvider }
+            }
+            if (item.id === 'model' && activeModel && modelLabel) {
+                return { ...item, value: modelLabel }
+            }
+            return item
+        })
+    }
+
+    /** Show a reasoning level in the state, the effort menu and the settings row */
+    private showThinkingLevel(level: string): void {
+        this.state.thinkingLevel = level
+        const idx = REASONING_OPTIONS.findIndex((opt) => opt.value === level)
+        if (idx >= 0) this.state.effortSelectedIndex = idx
+        const setting = this.state.settings.find((s) => s.id === 'thinking_level')
+        if (setting) setting.value = level
+    }
+
+    /**
+     * Apply a reasoning level and save it. When the save fails, the old level comes back, an
+     * error toast shows, and the result is false.
+     */
+    private async commitThinkingLevel(level: ReasoningLevel): Promise<boolean> {
+        const previous = this.state.thinkingLevel
+        this.showThinkingLevel(level)
+        this.render()
+        try {
+            await this.onEffortSelectCallback?.(level)
+            return true
+        } catch (err: any) {
+            // A later change wins: only revert if the level is still the one that failed
+            if (this.state.thinkingLevel === level) this.showThinkingLevel(previous)
+            this.showToast(`Could not save thinking level: ${err?.message || String(err)}`, 'error')
+            return false
+        }
+    }
+
+    /** Save a toggled settings row. When the save fails, the row gets its old value back. */
+    private async saveSettingChange(item: SettingItem, previous: string): Promise<void> {
+        const attempted = item.value
+        try {
+            await this.onSettingChangeCallback?.(item.id, attempted)
+            this.showToast(`${item.title}: ${formatSettingValue(item)}`, 'success')
+        } catch (err: any) {
+            // A later toggle wins: only revert if the row still shows the value that failed
+            if (item.value === attempted) item.value = previous
+            this.showToast(
+                `Could not save ${item.title.toLowerCase()}: ${err?.message || String(err)}`,
+                'error'
+            )
+        }
     }
 
     closeOrPopOverlay(): void {
@@ -5030,15 +5210,11 @@ export class DifferentialApp {
             if (key === '\r' || key === '\n' || key === ' ') {
                 const selected = REASONING_OPTIONS[this.state.effortSelectedIndex]
                 if (selected) {
-                    this.state.thinkingLevel = selected.value
-                    const setting = this.state.settings.find((s) => s.id === 'thinking_level')
-                    if (setting) setting.value = selected.value
-                    if (this.onEffortSelectCallback) {
-                        this.onEffortSelectCallback(selected.value)
-                    }
                     this.state.activeOverlay = 'none'
                     this.state.overlayHistory = []
-                    this.showToast(`Reasoning set to ${selected.label}.`, 'success')
+                    void this.commitThinkingLevel(selected.value).then((saved) => {
+                        if (saved) this.showToast(`Reasoning set to ${selected.label}.`, 'success')
+                    })
                 }
                 return
             }
@@ -5192,7 +5368,9 @@ export class DifferentialApp {
                         return
                     }
                     const previous = current.value
-                    if (current.value === 'on') current.value = 'off'
+                    // #617: off -> bell -> desktop -> off
+                    if (current.id === 'notify') current.value = nextNotifyMode(current.value)
+                    else if (current.value === 'on') current.value = 'off'
                     else if (current.value === 'off') current.value = 'on'
                     else if (current.value === 'always-proceed') current.value = 'always-ask'
                     else if (current.value === 'always-ask') current.value = 'always-proceed'
@@ -5700,6 +5878,7 @@ export class DifferentialApp {
                         )
                     }
                     this.state.activeOverlay = 'none'
+                    this.state.overlayHistory = []
                     this.showToast(`Switched to ${currentItem.label}.`, 'success')
                     this.render()
                 }
@@ -6127,16 +6306,7 @@ export class DifferentialApp {
                     const support = getReasoningSupportType(selected.value)
                     if (support === 'controllable') {
                         if (!this.state.thinkingLevel || this.state.thinkingLevel === 'off') {
-                            this.state.thinkingLevel = 'fast'
-                            const idx = REASONING_OPTIONS.findIndex((opt) => opt.value === 'fast')
-                            if (idx >= 0) this.state.effortSelectedIndex = idx
-                            const setting = this.state.settings.find(
-                                (s) => s.id === 'thinking_level'
-                            )
-                            if (setting) setting.value = 'fast'
-                            if (this.onEffortSelectCallback) {
-                                this.onEffortSelectCallback('fast')
-                            }
+                            void this.commitThinkingLevel('fast')
                         }
                     }
 
@@ -6434,6 +6604,15 @@ export class DifferentialApp {
                         this.state.diffScrollOffset = 0
                         this.state.diffCursorLineIndex = 0
                     }
+                    this.render()
+                }
+                return
+            }
+
+            // s: switch between this session's changes and all changes
+            if (key === 's' || key === 'S') {
+                if (!this.state.isDiffLoading) {
+                    this.setDiffScope(this.state.diffScope === 'session' ? 'all' : 'session')
                     this.render()
                 }
                 return
@@ -8052,6 +8231,7 @@ export class DifferentialApp {
                         const next =
                             data.toolPermission === 'always-ask' ? 'always-proceed' : 'always-ask'
                         const setting = this.state.settings.find((s) => s.id === 'tool_permission')
+                        const previous = setting?.value
                         if (setting) setting.value = next
                         Promise.resolve(this.options?.onSettingChange?.('tool_permission', next))
                             .then(() => {
@@ -8059,6 +8239,9 @@ export class DifferentialApp {
                                 this.openPermissionsReport(kind, true)
                             })
                             .catch((err: any) => {
+                                if (setting && previous !== undefined && setting.value === next) {
+                                    setting.value = previous
+                                }
                                 this.showToast(err?.message || String(err), 'error')
                             })
                         return true
@@ -8309,6 +8492,7 @@ export class DifferentialApp {
                     'PreToolUse',
                     'PostToolUse',
                     'Stop',
+                    'Notification',
                 ]
                 for (const event of events) {
                     const list = data.hooks.filter((h) => h.event === event)
@@ -8776,6 +8960,23 @@ export class DifferentialApp {
         this.render()
     }
 
+    /** #617: the current turn has no error and was not interrupted */
+    private turnEndedNormally(): boolean {
+        const messages = this.state.messages
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const m = messages[i]!
+            if (m.role === 'user') return true
+            if (m.role === 'error') return false
+            if (
+                m.role === 'assistant' &&
+                (m.content || '').includes('Interrupted · What should December do instead?')
+            ) {
+                return false
+            }
+        }
+        return true
+    }
+
     /** End-of-turn line (L16): only for turns over 10s, or turns that changed files */
     private appendTurnSummary(): void {
         if (!this.streamStartTime) return
@@ -8824,6 +9025,15 @@ export class DifferentialApp {
     finishStream(): void {
         this.flushStream()
         this.appendTurnSummary()
+        if (this.streamStartTime) {
+            const now = Date.now()
+            this.lastTurnStartedAt = this.streamStartTime
+            this.lastTurnEndedAt = now
+            // #617: a queued prompt starts the next turn at once, so the user is not needed yet
+            if (this.turnEndedNormally() && this.state.promptQueue.length === 0) {
+                this.attention.notify('turn_finished', now - this.streamStartTime)
+            }
+        }
         // The seeded checklist lasts until the turn that carries out the plan ends (F2)
         if (this.seededPlan && this.streamStartTime && this.seededPlan.at <= this.streamStartTime) {
             this.seededPlan = undefined
@@ -9149,6 +9359,7 @@ export class DifferentialApp {
      */
     render(): void {
         if (this.isBatchingInput || this.isDetached) return
+        this.syncWaitingTitle()
 
         if (!this.scheduleFrame) {
             this.paint()
@@ -9285,6 +9496,8 @@ export class DifferentialApp {
                     width,
                     height,
                     files: this.state.diffFiles,
+                    scope: this.state.diffScope,
+                    isLoading: this.state.isDiffLoading,
                     selectedFileIndex: this.state.diffSelectedIndex,
                     windowStart: this.state.diffWindowStart,
                     isDetailView: true,
@@ -9720,7 +9933,7 @@ export class DifferentialApp {
                     width,
                     height: clampedOverlayHeight,
                     selectedIndex: this.state.settingsSelectedIndex,
-                    settings: this.state.settings,
+                    settings: this.getSettingsForDisplay(),
                 })
             } else if (overlay === 'model') {
                 const providerLabel = this.state.selectedProvider
@@ -9796,6 +10009,8 @@ export class DifferentialApp {
                     width,
                     height: clampedOverlayHeight,
                     files: this.state.diffFiles,
+                    scope: this.state.diffScope,
+                    isLoading: this.state.isDiffLoading,
                     selectedFileIndex: this.state.diffSelectedIndex,
                     windowStart: this.state.diffWindowStart,
                     isDetailView: this.state.isDiffDetailView,

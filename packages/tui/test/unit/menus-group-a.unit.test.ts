@@ -216,8 +216,8 @@ describe('menus group A', () => {
             expect(all).not.toContain('[')
             const value = findText(buffer, ' on')!
             expect(buffer.get(value.x + 1, value.y)?.fg).toBe(THEME.colors.text)
-            expect(buffer.getLine(6)).toContain('The provider December sends requests to.')
-            expect(buffer.getLine(8)).toContain('↑/↓ navigate · enter toggle · esc dismiss')
+            expect(buffer.getLine(6)).toContain('Which backend runs the model.')
+            expect(buffer.getLine(8)).toContain('↑/↓ navigate · enter select · esc dismiss')
             expect(noBoldExcept(buffer, [0])).toBe(true)
         })
 
