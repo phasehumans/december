@@ -22,7 +22,7 @@ export const landingFaq: FaqEntry[] = [
         question: 'Is December free?',
         answer: [
             'Yes. The CLI is free and open source. With your own API keys, you only pay your model provider, with no markup.',
-            'December Cloud is optional and uses monthly credits.',
+            'December Cloud is optional. It uses December credits.',
         ],
     },
     {
