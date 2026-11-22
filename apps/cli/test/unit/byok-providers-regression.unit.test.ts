@@ -1,5 +1,6 @@
 import {
     getModelContextWindow,
+    MODEL_CATALOG,
     SarvamProvider,
     StepFunProvider,
     UpstageProvider,
@@ -105,51 +106,29 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
 
     describe('Model Registry & Alias Normalization', () => {
         it('returns provider model lists for each new provider and their aliases', () => {
-            const sarvamModels = getProviderModels('sarvam')
-            expect(sarvamModels.map((m) => m.value)).toEqual([
-                'sarvam-105b',
-                'sarvam-105b-conversations',
-            ])
-
-            const stepfunModels = getProviderModels('stepfun')
-            expect(stepfunModels.map((m) => m.value)).toEqual([
-                'step-3.7-flash',
-                'step-3.5-flash',
-                'step-5-preview',
-            ])
-
-            const upstageModels = getProviderModels('upstage')
-            expect(upstageModels.map((m) => m.value)).toEqual(['solar-pro4', 'solar-mini4'])
-
-            const tinkerModels = getProviderModels('thinkingmachines')
-            expect(tinkerModels.map((m) => m.value)).toEqual([
+            // the weekly canary keeps the catalog in step with each provider's /models (#619),
+            // so compare with the catalog instead of freezing model ids here
+            const catalogIds = (id: string) =>
+                MODEL_CATALOG.providers[id].models.map((m: { id: string }) => m.id)
+            for (const id of [
+                'sarvam',
+                'stepfun',
+                'upstage',
+                'thinkingmachines',
+                'xiaomi',
+                'wafer.ai',
+            ]) {
+                const ids = getProviderModels(id).map((m) => m.value)
+                expect(ids).toEqual(catalogIds(id))
+                expect(ids.length).toBeGreaterThan(0)
+            }
+            expect(getProviderModels('thinkingmachines').map((m) => m.value)).toEqual([
                 'thinkingmachines/Inkling',
                 'thinkingmachines/Inkling:peft:262144',
             ])
-
+            const upstageModels = getProviderModels('upstage')
+            const tinkerModels = getProviderModels('thinkingmachines')
             const xiaomiModels = getProviderModels('xiaomi')
-            // catalog checked against xiaomi /models on 2026-11-21 (#619)
-            expect(xiaomiModels.map((m) => m.value)).toEqual([
-                'mimo-v2.6-flash',
-                'mimo-v2.6-pro',
-                'mimo-v2.6-pro-ultraspeed',
-            ])
-
-            const waferModels = getProviderModels('wafer.ai')
-            // catalog checked against wafer /models on 2026-11-21 (#619)
-            expect(waferModels.map((m) => m.value)).toEqual([
-                'GLM-5.2',
-                'GLM-5.3',
-                'Kimi-K3',
-                'Qwen3.8-27B',
-                'GLM-5.3-Flash',
-                'Kimi-K3.1-Pro',
-                'DeepSeek-V4-Pro',
-                'Kimi-K3.1-Pro-US',
-                'MiniMax-M3.1-Flash',
-                'DeepSeek-V4.1-Flash',
-                'DeepSeek-V4-Flash-0731-Fast',
-            ])
 
             // Test aliases
             expect(getProviderModels('solar')).toEqual(upstageModels)

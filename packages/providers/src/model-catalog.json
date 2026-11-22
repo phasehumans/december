@@ -945,17 +945,12 @@
         "sambanova": {
             "id": "sambanova",
             "name": "Sambanova",
-            "defaultModel": "Meta-Llama-3.3-70B-Instruct",
+            "defaultModel": "GLM-5.3",
             "models": [
-                {
-                    "id": "Meta-Llama-3.3-70B-Instruct",
-                    "label": "Llama 3.3 70B Instruct",
-                    "contextWindow": 131072
-                },
                 {
                     "id": "GLM-5.3",
                     "label": "GLM 5.3",
-                    "contextWindow": 131072
+                    "contextWindow": 1048576
                 },
                 {
                     "id": "MiniMax-M3.1-Flash",
@@ -965,7 +960,7 @@
                 {
                     "id": "gemma-4-31B-it",
                     "label": "Gemma 4 31B It",
-                    "contextWindow": 262144
+                    "contextWindow": 131072
                 },
                 {
                     "id": "gpt-oss-120b",
@@ -1725,7 +1720,8 @@
             "models": [
                 {
                     "id": "route-llm-code",
-                    "label": "RouteLLM (Code)"
+                    "label": "RouteLLM (Code)",
+                    "contextWindow": 1000000
                 },
                 {
                     "id": "claude-sonnet-4-6",
@@ -2185,11 +2181,6 @@
                     "id": "Kimi-K3",
                     "label": "Kimi K3",
                     "contextWindow": 262144
-                },
-                {
-                    "id": "Qwen3.8-27B",
-                    "label": "Qwen3.8 27B",
-                    "contextWindow": 131072
                 },
                 {
                     "id": "GLM-5.3-Flash",

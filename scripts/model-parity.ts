@@ -67,7 +67,7 @@ const APPLY_RULES = {
     snapshot: /-(\d{6,8}|\d{4})$|-\d{4}-\d{2}-\d{2}$|-latest$|-preview-\d|-v\d+(\.\d+)?$/,
     /** ids the list returns that are not chat models, where the list has no type field */
     notChat: {
-        upstage: /^solar-(jev|decide)|^syn-/,
+        upstage: /^solar-(jev|decide)|^syn-|-contributor$/,
     } as Record<string, RegExp>,
 }
 
