@@ -25,10 +25,12 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     <div class="relative z-10 mx-auto max-w-[1200px] border-x border-transparent lg:border-[#cbd5e1] bg-white">
       
       <!-- Hero Section -->
-      <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 pb-8 sm:pb-16">
+      <!-- overflow-x-clip keeps the dither inside the side rails -->
+      <section class="relative overflow-x-clip px-6 sm:px-8 md:px-10 lg:px-12">
         <HeroDither />
-        <!-- First screen: fills the viewport below the header, so the demo video starts below the fold -->
-        <div class="flex min-h-[calc(100svh-3.5rem)] flex-col justify-center pt-8 pb-16 sm:pt-10 sm:pb-24">
+        <!-- First screen: from md up it fills the viewport below the header, so the demo video starts below the fold.
+             On phones the hero keeps its natural height, so there is no empty space around it. -->
+        <div class="flex md:min-h-[calc(100svh-3.5rem)] flex-col justify-center pt-8 pb-8 sm:pt-10 md:pb-24">
         <!-- Centered Hero Header & CLI Script -->
         <div data-dither-source class="text-center max-w-3xl mx-auto flex flex-col items-center">
           <!-- Release Changelog Badge with Signature Corner Brackets (hidden on mobile) -->
@@ -212,7 +214,23 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </div>
         </div>
 
-      <!-- Hero Video Area (below the fold, seen on scroll) -->
+    </section>
+
+    <SectionDivider hideOnMobile />
+
+    <!-- Demo Section (below the fold, seen on scroll) -->
+    <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-8 sm:py-16">
+      <div class="w-full mb-6 sm:mb-8">
+        <h2 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f] leading-snug">
+          See December ship a real change.
+        </h2>
+        <div class="mt-3 space-y-2 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+          <p>
+            You describe the task in one prompt. December plans the change, edits the files, and runs your tests until they pass.
+          </p>
+        </div>
+      </div>
+
       <div
         id="hero-media-placeholder"
         class="corner-brackets relative w-full mx-auto border border-[#e2e8f0] bg-[#090a0f] shadow-xs aspect-video"
@@ -238,8 +256,9 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             decoding="async"
           />
           <span class="absolute inset-0 flex items-center justify-center">
-            <span class="inline-flex items-center justify-center gap-2 w-10 h-10 sm:w-auto sm:px-4 bg-white/90 sm:bg-white text-[#090a0f] sm:border sm:border-[#e2e8f0] group-focus-visible:border-[#87b2f4] font-mono text-xs font-medium shadow-xs">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            <!-- Same see-through white as on mobile. Mobile shows the play icon, sm+ shows the text only -->
+            <span class="inline-flex items-center justify-center w-10 h-10 sm:w-auto sm:px-4 bg-white/90 group-hover:bg-white backdrop-blur-sm text-[#090a0f] border border-transparent group-focus-visible:border-[#87b2f4] font-mono text-xs font-medium shadow-xs transition-colors">
+              <svg class="w-3.5 h-3.5 sm:hidden" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
               <span class="hidden sm:inline">Watch the demo</span>
             </span>
           </span>
