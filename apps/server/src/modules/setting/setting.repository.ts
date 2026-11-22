@@ -70,9 +70,10 @@ async function findOnboardingSource(id: string) {
                 orderBy: { createdAt: 'asc' },
                 take: 1,
             },
+            // the key saved last (save sets verifiedAt), so "Change" shows the new key
             providerCredentials: {
                 select: { provider: true, keyHint: true },
-                orderBy: { createdAt: 'asc' },
+                orderBy: { verifiedAt: 'desc' },
                 take: 1,
             },
         },

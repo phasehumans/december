@@ -148,6 +148,23 @@ export const clearPersistedQueryCache = (storageKey = DEFAULT_PERSIST_KEY): void
 }
 
 /**
+ * Forgets everything cached for the last signed-in user, in memory and in localStorage.
+ * Call it when a user signs in or out: the persisted cache only gets rewritten on query
+ * updates, so a removed query would otherwise come back from localStorage on the next load
+ * (for example the previous account's profile, which would skip the onboarding redirect).
+ */
+export const resetUserQueryCache = (
+    queryClient: QueryClient,
+    storageKey = DEFAULT_PERSIST_KEY,
+    whitelist = DEFAULT_PERSIST_WHITELIST
+): void => {
+    for (const key of [...whitelist, 'onboarding', 'sessions']) {
+        queryClient.removeQueries({ queryKey: [key] })
+    }
+    clearPersistedQueryCache(storageKey)
+}
+
+/**
  * Initializes query cache persistence with debounced sync on query updates.
  */
 export const initQueryCachePersistence = (

@@ -5,6 +5,7 @@ import { authAPI } from '@/features/auth/api/auth'
 import { githubOAuth } from '@/features/auth/githubOAuth'
 import { Icons } from '@/shared/components/ui/Icons'
 import { LogoLoader } from '@/shared/components/ui/LogoLoader'
+import { clearPersistedQueryCache } from '@/shared/lib/query-cache'
 
 export const GithubCallback = () => {
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
@@ -50,6 +51,8 @@ export const GithubCallback = () => {
         const exchangeCode = async () => {
             try {
                 await authAPI.github({ code })
+                // the next page load must not restore a previous account's cached profile
+                clearPersistedQueryCache()
                 setStatus('success')
                 window.location.href = returnPath
             } catch (err: any) {

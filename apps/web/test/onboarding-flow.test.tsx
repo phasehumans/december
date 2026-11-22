@@ -41,10 +41,23 @@ const renderOnboarding = (state: OnboardingState, entry = '/onboarding') => {
     queryClient.setQueryData(['byok'], {
         providers: [
             { id: 'openai', name: 'OpenAI', keyUrl: '' },
-            { id: 'anthropic', name: 'Anthropic', keyUrl: '' },
+            {
+                id: 'anthropic',
+                name: 'Anthropic',
+                keyUrl: 'https://platform.claude.com/settings/keys',
+            },
             { id: 'groq', name: 'Groq', keyUrl: '' },
         ],
-        credentials: [],
+        credentials: [
+            {
+                provider: 'anthropic',
+                keyHint: 'a9F2',
+                models: ['claude-sonnet', 'claude-haiku'],
+                defaultModel: 'claude-sonnet',
+                verifiedAt: '2026-11-22T10:00:00.000Z',
+                lastUsedAt: null,
+            },
+        ],
     })
     queryClient.setQueryData(['profile'], { id: 'u1', name: 'Test', email: 't@example.com' })
 
@@ -196,6 +209,49 @@ describe('OnboardingPage', () => {
         expect(queryByText('OpenAI')).toBeNull()
         expect(getByText('Groq')).not.toBeNull()
         expect(getByText('Save key')).not.toBeNull()
+    })
+
+    test('the provider list works with the keyboard and offers a key link', () => {
+        const { getByText, getByLabelText, getAllByRole, queryAllByRole } = renderOnboarding(
+            newUserState({ step: 'models' })
+        )
+
+        fireEvent.click(getByText('Use your own API key'))
+        expect(getByText('Get key').closest('a')?.getAttribute('target')).toBe('_blank')
+
+        fireEvent.click(getByText('Anthropic'))
+        // popular providers first: Anthropic, OpenAI, then the rest
+        expect(getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'Anthropic',
+            'OpenAI',
+            'Groq',
+        ])
+
+        const search = getByLabelText('Search providers')
+        fireEvent.keyDown(search, { key: 'ArrowDown' })
+        fireEvent.keyDown(search, { key: 'ArrowDown' })
+        fireEvent.keyDown(search, { key: 'ArrowUp' })
+        fireEvent.keyDown(search, { key: 'Enter' })
+
+        expect(getByText('OpenAI')).not.toBeNull()
+        expect(queryAllByRole('option')).toHaveLength(0)
+    })
+
+    test('a saved key shows its models and can be changed', () => {
+        const { getByText } = renderOnboarding(
+            newUserState({
+                step: 'models',
+                steps: { models: true, github: false },
+                ownKey: { provider: 'anthropic', keyHint: 'a9F2' },
+            })
+        )
+
+        expect(getByText(/····a9F2 · 2 models/)).not.toBeNull()
+        fireEvent.click(getByText('Change'))
+        expect(getByText('Save key')).not.toBeNull()
+
+        fireEvent.click(getByText('Keep current key'))
+        expect(getByText('Start building')).not.toBeNull()
     })
 
     test('a user who already pays sees the done state and Start building', () => {

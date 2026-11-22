@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronDown } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronDown } from 'lucide-react'
 import React from 'react'
 
 import { OnboardingProviderPicker } from './OnboardingProviderPicker'
@@ -18,6 +18,7 @@ import {
     useRazorpayCheckout,
 } from '@/features/billing/hooks/useRazorpayCheckout'
 import { onboardingQueryKey } from '@/features/onboarding/hooks/useOnboarding'
+import { detectProviderFromKey, sortProviders } from '@/features/onboarding/providerKeys'
 import { useByokList, useByokMutations } from '@/features/profile/hooks/useByokData'
 
 const TOP_UP_AMOUNTS = [1, 5, 10]
@@ -61,8 +62,12 @@ export const OnboardingModelsStep: React.FC<OnboardingModelsStepProps> = ({
     const [provider, setProvider] = React.useState('')
     const [apiKey, setApiKey] = React.useState('')
     const [keyError, setKeyError] = React.useState<string | null>(null)
+    // "Change" on the saved key reopens the form without losing the saved key
+    const [isChangingKey, setIsChangingKey] = React.useState(false)
 
-    const { data: byok } = useByokList(openOption === 'key' || state.ownKey !== null)
+    const { data: byok } = useByokList(
+        openOption === 'key' || state.ownKey !== null || isChangingKey
+    )
     const { saveKey, updateModelSource } = useByokMutations()
     const { startCheckout, isProcessing, error: paymentError } = useRazorpayCheckout()
     const { data: overview } = useBillingOverview(openOption === 'credits')
@@ -76,8 +81,9 @@ export const OnboardingModelsStep: React.FC<OnboardingModelsStepProps> = ({
             ? 'Add credits'
             : `Add $${amount} (about ₹${Math.round(amount * usdToInr).toLocaleString('en-IN')})`
 
-    const providers = React.useMemo(() => byok?.providers ?? [], [byok])
+    const providers = React.useMemo(() => sortProviders(byok?.providers ?? []), [byok])
     const providerName = (id: string) => providers.find((item) => item.id === id)?.name || id
+    const selectedProvider = providers.find((item) => item.id === provider)
 
     React.useEffect(() => {
         if (!provider && providers.length > 0) {
@@ -89,6 +95,22 @@ export const OnboardingModelsStep: React.FC<OnboardingModelsStepProps> = ({
     const toggle = (option: Exclude<OpenOption, null>) =>
         setOpenOption((current) => (current === option ? null : option))
 
+    // a pasted key often says which provider it is for (sk-ant-, sk-or-, AIza, ...)
+    const handleKeyChange = (value: string) => {
+        setApiKey(value)
+        const detected = detectProviderFromKey(value)
+        if (detected && detected !== provider && providers.some((item) => item.id === detected)) {
+            setProvider(detected)
+        }
+    }
+
+    const startChangingKey = () => {
+        if (state.ownKey) setProvider(state.ownKey.provider)
+        setKeyError(null)
+        setOpenOption('key')
+        setIsChangingKey(true)
+    }
+
     const handleSaveKey = async (event: React.FormEvent) => {
         event.preventDefault()
         if (!provider || !apiKey.trim()) return
@@ -98,22 +120,49 @@ export const OnboardingModelsStep: React.FC<OnboardingModelsStepProps> = ({
             // a user who brings a key should run on it, not on an empty wallet
             await updateModelSource.mutateAsync('OWN_KEY')
             setApiKey('')
+            setIsChangingKey(false)
             await queryClient.invalidateQueries({ queryKey: onboardingQueryKey })
         } catch (err) {
             setKeyError(errorText(err, 'December could not save this key. Try again.'))
         }
     }
 
-    if (state.steps.models) {
-        const summary = state.ownKey
-            ? `${providerName(state.ownKey.provider)} key ····${state.ownKey.keyHint}`
-            : `${formatUsd(state.wallet.balanceInCents)} in your wallet`
+    if (state.steps.models && !isChangingKey) {
+        const savedKey = state.ownKey
+        const modelCount = savedKey
+            ? byok?.credentials.find((item) => item.provider === savedKey.provider)?.models.length
+            : undefined
 
         return (
             <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2.5 h-9 px-3.5 rounded-md border border-[#2A2A2A] bg-[#1e1e1e] text-[13px]">
-                    <span className="font-medium text-white truncate">{summary}</span>
+                <div className="flex items-center gap-2.5 h-9 px-3.5 rounded-md border border-[#2A2A2A] bg-[#1e1e1e] text-[13px]">
                     <Check size={14} className="text-[#4fc98a] shrink-0" aria-label="Done" />
+                    <span className="flex-1 min-w-0 truncate">
+                        {savedKey ? (
+                            <>
+                                <span className="font-medium text-white">
+                                    {providerName(savedKey.provider)}
+                                </span>
+                                <span className="text-[#888888]">
+                                    {` ····${savedKey.keyHint}`}
+                                    {modelCount ? ` · ${modelCount} models` : ''}
+                                </span>
+                            </>
+                        ) : (
+                            <span className="font-medium text-white">
+                                {`${formatUsd(state.wallet.balanceInCents)} in your wallet`}
+                            </span>
+                        )}
+                    </span>
+                    {savedKey && (
+                        <button
+                            type="button"
+                            onClick={startChangingKey}
+                            className="shrink-0 text-xs text-[#888888] hover:text-white transition-colors cursor-pointer"
+                        >
+                            Change
+                        </button>
+                    )}
                 </div>
                 <button
                     type="button"
@@ -246,17 +295,31 @@ export const OnboardingModelsStep: React.FC<OnboardingModelsStepProps> = ({
                             onChange={setProvider}
                             disabled={saveKey.isPending}
                         />
-                        <input
-                            type="password"
-                            aria-label="API key"
-                            autoComplete="off"
-                            spellCheck={false}
-                            placeholder="Paste your API key"
-                            value={apiKey}
-                            onChange={(event) => setApiKey(event.target.value)}
-                            disabled={saveKey.isPending}
-                            className={`${authInputClass} font-mono`}
-                        />
+                        <div className="relative">
+                            <input
+                                type="password"
+                                aria-label="API key"
+                                autoComplete="off"
+                                spellCheck={false}
+                                placeholder="Paste your API key"
+                                value={apiKey}
+                                onChange={(event) => handleKeyChange(event.target.value)}
+                                disabled={saveKey.isPending}
+                                className={`${authInputClass} font-mono pr-20!`}
+                            />
+                            {selectedProvider?.keyUrl && (
+                                <a
+                                    href={selectedProvider.keyUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={`Get a ${selectedProvider.name} API key`}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 font-sans text-xs text-[#888888] hover:text-white transition-colors"
+                                >
+                                    Get key
+                                    <ArrowUpRight size={12} />
+                                </a>
+                            )}
+                        </div>
                         {keyError && (
                             <p className="font-sans text-xs text-red-400 px-1 text-center">
                                 {keyError}
@@ -275,11 +338,11 @@ export const OnboardingModelsStep: React.FC<OnboardingModelsStepProps> = ({
 
             <button
                 type="button"
-                onClick={onSkip}
+                onClick={isChangingKey ? () => setIsChangingKey(false) : onSkip}
                 disabled={isFinishing}
                 className="mt-5 self-center font-sans text-xs text-[#888888] hover:text-white transition-colors cursor-pointer disabled:opacity-50"
             >
-                Skip for now
+                {isChangingKey ? 'Keep current key' : 'Skip for now'}
             </button>
         </div>
     )

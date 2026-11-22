@@ -15,7 +15,7 @@ const cardClass =
 
 // the dark window images sit on a warm stone ground so they stand out on the dark page
 const shotClass =
-    'relative h-[180px] overflow-hidden border-b border-[#2A2A2A] bg-gradient-to-b from-[#efede8] to-[#e3e0d9]'
+    'relative h-[120px] sm:h-[180px] overflow-hidden border-b border-[#2A2A2A] bg-gradient-to-b from-[#efede8] to-[#e3e0d9]'
 
 interface OnboardingStartStepProps {
     onContinueWithWeb: () => void
@@ -89,7 +89,7 @@ export const OnboardingStartStep: React.FC<OnboardingStartStepProps> = ({ onCont
                 </div>
             </div>
 
-            <div className={cardClass}>
+            <div className={`${cardClass} order-first sm:order-none`}>
                 <div className={shotClass}>
                     <img
                         src={onboardingWebWebp}

@@ -10,6 +10,7 @@ import { OnboardingPage } from './features/onboarding/components/OnboardingPage'
 
 import { LogoLoader } from '@/shared/components/ui/LogoLoader'
 import { getWebUrl } from '@/shared/config/env'
+import { resetUserQueryCache } from '@/shared/lib/query-cache'
 
 const App: React.FC = () => {
     const {
@@ -66,8 +67,8 @@ const App: React.FC = () => {
                         onAuthSuccess={() => {
                             setIsAuthenticated(true)
                             setShowAuthModal(false)
-                            queryClient.invalidateQueries({ queryKey: ['sessions'] })
-                            queryClient.invalidateQueries({ queryKey: ['profile'] })
+                            // drop anything cached for a previous account before loading this one
+                            resetUserQueryCache(queryClient)
                             const searchParams = new URLSearchParams(window.location.search)
                             const redirectTarget = searchParams.get('redirect')
                             if (githubOAuth.isSafeReturnPath(redirectTarget)) {
@@ -122,8 +123,7 @@ const App: React.FC = () => {
                     onAuthSuccess={() => {
                         setIsAuthenticated(true)
                         setShowAuthModal(false)
-                        queryClient.invalidateQueries({ queryKey: ['sessions'] })
-                        queryClient.invalidateQueries({ queryKey: ['profile'] })
+                        resetUserQueryCache(queryClient)
                     }}
                 />
 

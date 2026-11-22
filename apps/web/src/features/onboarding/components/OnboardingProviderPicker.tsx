@@ -10,7 +10,10 @@ interface OnboardingProviderPickerProps {
     disabled?: boolean
 }
 
-/** provider field for step 3: looks like a sign-up input, opens a searchable list */
+/**
+ * provider field for step 3: looks like a sign-up input, opens a searchable list.
+ * Keyboard: Up and Down move through the list, Enter picks, Escape closes.
+ */
 export const OnboardingProviderPicker: React.FC<OnboardingProviderPickerProps> = ({
     providers,
     value,
@@ -19,8 +22,12 @@ export const OnboardingProviderPicker: React.FC<OnboardingProviderPickerProps> =
 }) => {
     const [isOpen, setIsOpen] = React.useState(false)
     const [query, setQuery] = React.useState('')
+    const [activeIndex, setActiveIndex] = React.useState(0)
     const rootRef = React.useRef<HTMLDivElement | null>(null)
+    const triggerRef = React.useRef<HTMLButtonElement | null>(null)
+    const optionRefs = React.useRef<(HTMLButtonElement | null)[]>([])
     const listId = React.useId()
+    const optionId = (index: number) => `${listId}-option-${index}`
 
     const selected = providers.find((provider) => provider.id === value)
 
@@ -35,9 +42,17 @@ export const OnboardingProviderPicker: React.FC<OnboardingProviderPickerProps> =
             : providers
     }, [providers, query])
 
-    const close = React.useCallback(() => {
+    const open = () => {
+        // start on the selected provider so Up and Down move from there
+        const selectedIndex = providers.findIndex((provider) => provider.id === value)
+        setActiveIndex(selectedIndex === -1 ? 0 : selectedIndex)
+        setIsOpen(true)
+    }
+
+    const close = React.useCallback((returnFocus = false) => {
         setIsOpen(false)
         setQuery('')
+        if (returnFocus) triggerRef.current?.focus()
     }, [])
 
     // close on a click outside the picker
@@ -52,16 +67,71 @@ export const OnboardingProviderPicker: React.FC<OnboardingProviderPickerProps> =
         return () => document.removeEventListener('mousedown', handlePointer)
     }, [isOpen, close])
 
+    // keep the highlighted row visible while moving with the keyboard
+    React.useEffect(() => {
+        if (!isOpen) return
+        optionRefs.current[activeIndex]?.scrollIntoView({ block: 'nearest' })
+    }, [activeIndex, isOpen])
+
     const pick = (providerId: string) => {
         onChange(providerId)
-        close()
+        close(true)
+    }
+
+    const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        switch (event.key) {
+            case 'ArrowDown': {
+                event.preventDefault()
+                setActiveIndex((index) => Math.min(index + 1, filtered.length - 1))
+                break
+            }
+            case 'ArrowUp': {
+                event.preventDefault()
+                setActiveIndex((index) => Math.max(index - 1, 0))
+                break
+            }
+            case 'Home': {
+                event.preventDefault()
+                setActiveIndex(0)
+                break
+            }
+            case 'End': {
+                event.preventDefault()
+                setActiveIndex(Math.max(filtered.length - 1, 0))
+                break
+            }
+            case 'Enter': {
+                event.preventDefault()
+                const target = filtered[activeIndex]
+                if (target) pick(target.id)
+                break
+            }
+            case 'Escape': {
+                event.preventDefault()
+                close(true)
+                break
+            }
+            case 'Tab': {
+                close()
+                break
+            }
+            default:
+                break
+        }
     }
 
     return (
         <div ref={rootRef} className="relative">
             <button
+                ref={triggerRef}
                 type="button"
-                onClick={() => (isOpen ? close() : setIsOpen(true))}
+                onClick={() => (isOpen ? close() : open())}
+                onKeyDown={(event) => {
+                    if (!isOpen && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+                        event.preventDefault()
+                        open()
+                    }
+                }}
                 disabled={disabled || providers.length === 0}
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
@@ -90,34 +160,46 @@ export const OnboardingProviderPicker: React.FC<OnboardingProviderPickerProps> =
                         <input
                             type="text"
                             autoFocus
+                            role="combobox"
                             aria-label="Search providers"
+                            aria-expanded={isOpen}
+                            aria-controls={listId}
+                            aria-activedescendant={
+                                filtered[activeIndex] ? optionId(activeIndex) : undefined
+                            }
                             placeholder={`Search ${providers.length} providers`}
                             value={query}
-                            onChange={(event) => setQuery(event.target.value)}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Escape') close()
-                                if (event.key === 'Enter' && filtered[0]) {
-                                    event.preventDefault()
-                                    pick(filtered[0].id)
-                                }
+                            onChange={(event) => {
+                                setQuery(event.target.value)
+                                setActiveIndex(0)
                             }}
+                            onKeyDown={handleSearchKeyDown}
                             className="w-full h-9 pl-8 pr-3 bg-transparent font-sans text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none"
                         />
                     </div>
                     <div id={listId} role="listbox" className="max-h-[216px] overflow-y-auto p-1">
-                        {filtered.map((provider) => {
+                        {filtered.map((provider, index) => {
                             const isSelected = provider.id === value
+                            const isActive = index === activeIndex
                             return (
                                 <button
                                     key={provider.id}
+                                    id={optionId(index)}
+                                    ref={(node) => {
+                                        optionRefs.current[index] = node
+                                    }}
                                     type="button"
                                     role="option"
+                                    tabIndex={-1}
                                     aria-selected={isSelected}
                                     onClick={() => pick(provider.id)}
+                                    onMouseMove={() => setActiveIndex(index)}
                                     className={`w-full h-8 px-2.5 flex items-center justify-between gap-2 rounded font-sans text-xs sm:text-[13px] text-left transition-colors cursor-pointer ${
-                                        isSelected
+                                        isActive
                                             ? 'bg-[#252525] text-white'
-                                            : 'text-[#d4d4d4] hover:bg-[#222222] hover:text-white'
+                                            : isSelected
+                                              ? 'text-white'
+                                              : 'text-[#d4d4d4]'
                                     }`}
                                 >
                                     <span className="truncate">{provider.name}</span>
