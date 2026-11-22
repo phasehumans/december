@@ -33,7 +33,6 @@ async function updateUserGithub(data: {
             githubUsername: username,
             githubToken: accessToken,
             githubConnected: true,
-            githubCardDone: true,
         },
         select: {
             id: true,

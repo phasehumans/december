@@ -1,51 +1,52 @@
 import React from 'react'
 
-import type { AuthModalOtpStepProps } from '@/features/auth/types'
+import { AuthModalBrand } from './AuthModalBrand'
+import { authPrimaryButtonClass, authTextLinkClass } from './authModalStyles'
 
-import { Icons } from '@/shared/components/ui/Icons'
+import type { AuthModalOtpStepProps } from '@/features/auth/types'
 
 export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
     email,
     otp,
     errorMessage,
     isPending,
+    isResendPending,
     onChangeOtp,
     onKeyDown,
     onPaste,
     onSubmit,
+    onResend,
     onBack,
     setOtpInputRef,
 }) => {
     return (
         <div className="flex flex-col">
             <div className="flex flex-col items-center text-center mb-6">
-                <div className="mb-5 text-white">
-                    <Icons.DecemberLogo className="w-[42px] h-[42px] text-white" />
-                </div>
-                <h2 className="text-[22px] sm:text-[24px] font-medium text-white tracking-[-0.025em] leading-snug mb-1.5">
-                    Verify your email
-                </h2>
-                <p className="text-[13px] text-[#A1A1A6] leading-relaxed">
-                    We sent a verification code to{' '}
-                    <span className="text-white font-sans font-medium">{email}</span>.
+                <AuthModalBrand />
+                <p className="mt-3 font-sans text-xs sm:text-[13px] text-[#888888] leading-relaxed">
+                    Enter the code we sent to{' '}
+                    <span className="text-white font-medium break-all">{email}</span>
                 </p>
             </div>
 
-            <form onSubmit={onSubmit} className="flex flex-col gap-4">
-                {/* Monospace OTP input boxes with unified rounded corners */}
-                <div className="flex gap-2 sm:gap-2.5 justify-center my-1">
+            <form onSubmit={onSubmit} className="flex flex-col gap-3">
+                <div className="flex gap-2 justify-center">
                     {otp.map((digit, index) => (
                         <input
                             key={index}
                             ref={(element) => setOtpInputRef(index, element)}
                             type="text"
+                            inputMode="numeric"
+                            autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                            aria-label={`Digit ${index + 1}`}
                             maxLength={1}
                             value={digit}
                             onChange={(event) => onChangeOtp(index, event.target.value)}
                             onKeyDown={(event) => onKeyDown(index, event)}
                             onPaste={index === 0 ? onPaste : undefined}
                             disabled={isPending}
-                            className="w-11 h-12 sm:w-12 sm:h-13 text-center font-mono text-xl font-medium bg-[#141414] border border-[#2A2A2A] rounded-lg text-white caret-[#87b2f4] outline-none focus:border-[#87b2f4] transition-all"
+                            autoFocus={index === 0}
+                            className="w-10 h-11 text-center font-mono text-lg font-medium bg-[#141414] border border-[#2A2A2A] rounded-md text-white caret-[#87b2f4] outline-none focus:border-[#87b2f4] transition-all"
                         />
                     ))}
                 </div>
@@ -59,22 +60,33 @@ export const AuthModalOtpStep: React.FC<AuthModalOtpStepProps> = ({
                 <button
                     type="submit"
                     disabled={otp.some((digit) => !digit) || isPending}
-                    className="w-full bg-[#EDEDED] hover:bg-white text-[#090a0f] font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 mt-1"
+                    className={`${authPrimaryButtonClass} mt-1`}
                 >
-                    {isPending ? 'Verifying code...' : 'Verify & Continue'}
+                    {isPending ? 'Verifying...' : 'Continue'}
                 </button>
+            </form>
 
-                <div className="mt-4 flex justify-center">
+            <div className="mt-5 flex flex-col items-center gap-2 font-sans text-xs text-[#888888]">
+                <span>
+                    Didn't get it?{' '}
                     <button
                         type="button"
-                        onClick={onBack}
-                        className="font-sans text-xs text-[#888888] hover:text-[#87b2f4] transition-colors cursor-pointer"
-                        disabled={isPending}
+                        onClick={onResend}
+                        disabled={isPending || isResendPending}
+                        className={authTextLinkClass}
                     >
-                        Back to Sign Up
+                        {isResendPending ? 'Sending...' : 'Resend code'}
                     </button>
-                </div>
-            </form>
+                </span>
+                <button
+                    type="button"
+                    onClick={onBack}
+                    disabled={isPending}
+                    className="hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                >
+                    Use a different email
+                </button>
+            </div>
         </div>
     )
 }

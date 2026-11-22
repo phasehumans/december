@@ -20,11 +20,7 @@ export type Profile = {
     rules?: string | null
     avatarUrl?: string | null
     creditBalance?: number
-    hasCompletedOnboarding?: boolean
-    hasPassword?: boolean
-    welcomeCardDone?: boolean
-    githubCardDone?: boolean
-    feedbackCardDone?: boolean
+    onboardingCompletedAt?: string | null
     canvasWaitlist?: boolean
     defaultModelSource?: 'CREDITS' | 'OWN_KEY'
 }
@@ -48,11 +44,6 @@ type UpdateNameInput = {
 
 type UpdateAvatarUrlInput = {
     avatarUrl: string
-}
-
-type ChangePasswordInput = {
-    currentPassword?: string
-    newPassword: string
 }
 
 type UpdateNotificationInput = {
@@ -84,13 +75,6 @@ const updateName = (data: UpdateNameInput) => {
 
 const updateAvatarUrl = (data: UpdateAvatarUrlInput) => {
     return apiRequest<BackendProfile>('/setting/avatar', {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-    })
-}
-
-const changePassword = (data: ChangePasswordInput) => {
-    return apiRequest<BackendProfile>('/setting/password', {
         method: 'PATCH',
         body: JSON.stringify(data),
     })
@@ -199,19 +183,6 @@ const getGithubConnectUrl = (userId: string) => {
     return `https://github.com/apps/${appName}/installations/new?state=${encodeURIComponent(stateVal)}`
 }
 
-const completeOnboarding = () => {
-    return apiRequest<BackendProfile>('/setting/onboarding', {
-        method: 'PATCH',
-    })
-}
-
-const dismissOnboardingCard = (card: 'welcome' | 'github' | 'feedback') => {
-    return apiRequest<BackendProfile>('/setting/onboarding/dismiss', {
-        method: 'POST',
-        body: JSON.stringify({ card }),
-    })
-}
-
 const submitFeedback = (data: { rating: 'sad' | 'neutral' | 'happy' | null; feedback: string }) => {
     return apiRequest<{ message: string }>('/setting/feedback', {
         method: 'POST',
@@ -240,7 +211,6 @@ export const profileAPI = {
     getProfile,
     updateName,
     updateAvatarUrl,
-    changePassword,
     updateNotifications,
     updateModelSource,
     getQuickInfo,
@@ -252,8 +222,6 @@ export const profileAPI = {
     deleteMemories,
     getGithubRepos,
     getGithubConnectUrl,
-    completeOnboarding,
-    dismissOnboardingCard,
     submitFeedback,
     createGithubRepo,
     syncGithubRepo,

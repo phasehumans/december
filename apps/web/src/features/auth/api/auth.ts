@@ -1,16 +1,10 @@
 import { apiRequest } from '@/shared/api/client'
 
-type SignupInput = {
+type EmailAuthStartInput = {
     email: string
-    password: string
 }
 
-type LoginInput = {
-    email: string
-    password: string
-}
-
-type VerifyOtpInput = {
+type EmailAuthVerifyInput = {
     email: string
     otp: string
 }
@@ -24,37 +18,21 @@ type GithubInput = {
     code: string
 }
 
-type ForgotPasswordRequestInput = {
-    email: string
+type AuthResult = {
+    isNewUser?: boolean
 }
 
-type ForgotPasswordVerifyInput = {
-    email: string
-    otp: string
-}
-
-type ForgotPasswordResetInput = ForgotPasswordVerifyInput & {
-    newPassword: string
-}
-
-const signup = (data: SignupInput) => {
-    return apiRequest<{ message: string }>('/auth/signup', {
+// Email sign-up and log-in are one flow: send a code, then verify it.
+const startEmailAuth = (data: EmailAuthStartInput) => {
+    return apiRequest<{ message: string }>('/auth/email/start', {
         method: 'POST',
         includeAuth: false,
         body: JSON.stringify(data),
     })
 }
 
-const verifyOtp = (data: VerifyOtpInput) => {
-    return apiRequest<void>('/auth/verify', {
-        method: 'POST',
-        includeAuth: false,
-        body: JSON.stringify(data),
-    })
-}
-
-const login = (data: LoginInput) => {
-    return apiRequest<void>('/auth/login', {
+const verifyEmailAuth = (data: EmailAuthVerifyInput) => {
+    return apiRequest<AuthResult>('/auth/email/verify', {
         method: 'POST',
         includeAuth: false,
         body: JSON.stringify(data),
@@ -69,36 +47,8 @@ const google = (data: GoogleInput) => {
     })
 }
 
-type GithubResult = {
-    isNewUser?: boolean
-}
-
 const github = (data: GithubInput) => {
-    return apiRequest<GithubResult>('/auth/github', {
-        method: 'POST',
-        includeAuth: false,
-        body: JSON.stringify(data),
-    })
-}
-
-const requestPasswordReset = (data: ForgotPasswordRequestInput) => {
-    return apiRequest<void>('/auth/forgot-password/request', {
-        method: 'POST',
-        includeAuth: false,
-        body: JSON.stringify(data),
-    })
-}
-
-const verifyPasswordResetOtp = (data: ForgotPasswordVerifyInput) => {
-    return apiRequest<void>('/auth/forgot-password/verify', {
-        method: 'POST',
-        includeAuth: false,
-        body: JSON.stringify(data),
-    })
-}
-
-const resetPassword = (data: ForgotPasswordResetInput) => {
-    return apiRequest<void>('/auth/forgot-password/reset', {
+    return apiRequest<AuthResult>('/auth/github', {
         method: 'POST',
         includeAuth: false,
         body: JSON.stringify(data),
@@ -106,12 +56,8 @@ const resetPassword = (data: ForgotPasswordResetInput) => {
 }
 
 export const authAPI = {
-    signup,
-    verifyOtp,
-    login,
-    requestPasswordReset,
-    verifyPasswordResetOtp,
-    resetPassword,
+    startEmailAuth,
+    verifyEmailAuth,
     google,
     github,
 }

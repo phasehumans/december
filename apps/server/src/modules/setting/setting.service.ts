@@ -1,5 +1,3 @@
-import bcrypt from 'bcrypt'
-
 import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
 
@@ -22,10 +20,7 @@ export const settingSelect = {
 
     creditBalance: true,
     isDeleted: true,
-    hasCompletedOnboarding: true,
-    welcomeCardDone: true,
-    githubCardDone: true,
-    feedbackCardDone: true,
+    onboardingCompletedAt: true,
     defaultModelSource: true,
 }
 
@@ -33,10 +28,12 @@ import type {
     GetMe,
     GetProfile,
     UpdateName,
-    ChangePassword,
     UpdateNotifications,
+    GetOnboarding,
+    UpdateOnboarding,
     CompleteOnboarding,
-    DismissOnboardingCard,
+    OnboardingState,
+    OnboardingStep,
     UpdateModelSource,
     SubmitFeedback,
 } from './setting.types'
@@ -73,11 +70,7 @@ const getProfile = async (data: GetProfile) => {
             throw new AppError('user not found', 404)
         }
 
-        const { password, ...rest } = profile
-        return {
-            ...rest,
-            hasPassword: password !== null,
-        }
+        return profile
     })
 }
 
@@ -94,49 +87,6 @@ const updateName = async (data: UpdateName) => {
     await invalidateUserSettingCache(userId)
 
     return updatedUser
-}
-
-const changePassword = async (data: ChangePassword) => {
-    const { currentPassword, newPassword, userId } = data
-
-    const existingUser = await settingRepository.findUserPasswordById(userId)
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    if (!existingUser.password) {
-        // oauth only user setting password for the first time
-        const hashPassword = await bcrypt.hash(newPassword, 10)
-
-        await settingRepository.updatePassword(userId, hashPassword)
-        await invalidateUserSettingCache(userId)
-
-        return { success: true }
-    }
-
-    if (!currentPassword) {
-        throw new AppError('current password is required', 400)
-    }
-
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, existingUser.password)
-
-    if (!isCurrentPasswordValid) {
-        throw new AppError('current password is incorrect', 401)
-    }
-
-    const isSamePassword = await bcrypt.compare(newPassword, existingUser.password)
-
-    if (isSamePassword) {
-        throw new AppError('new password must be different from current password', 400)
-    }
-
-    const hashPassword = await bcrypt.hash(newPassword, 10)
-
-    await settingRepository.updatePassword(userId, hashPassword)
-    await invalidateUserSettingCache(userId)
-
-    return { success: true }
 }
 
 const updateModelSource = async (data: UpdateModelSource) => {
@@ -190,6 +140,49 @@ const updateNotifications = async (data: UpdateNotifications) => {
     return updatedUser
 }
 
+const ONBOARDING_STEPS: OnboardingStep[] = ['github', 'start', 'models']
+
+const toOnboardingStep = (value: string | null): OnboardingStep | null =>
+    ONBOARDING_STEPS.find((step) => step === value) ?? null
+
+// not cached: a payment, a saved key or a GitHub install must show right away
+const getOnboarding = async (data: GetOnboarding): Promise<OnboardingState> => {
+    const { userId } = data
+    const source = await settingRepository.findOnboardingSource(userId)
+
+    if (!source) {
+        throw new AppError('user not found', 404)
+    }
+
+    const installation = source.githubInstallations[0] ?? null
+    const ownKey = source.providerCredentials[0] ?? null
+
+    return {
+        completedAt: source.onboardingCompletedAt,
+        step: toOnboardingStep(source.onboardingStep),
+        steps: {
+            models: ownKey !== null || source.creditBalance > 0,
+            github: installation !== null,
+        },
+        github: installation ? { accountLogin: installation.accountLogin } : null,
+        wallet: { balanceInCents: source.creditBalance },
+        ownKey: ownKey ? { provider: ownKey.provider, keyHint: ownKey.keyHint } : null,
+    }
+}
+
+const updateOnboarding = async (data: UpdateOnboarding) => {
+    const { userId, step } = data
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
+
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    await settingRepository.updateOnboardingStep(userId, step)
+
+    return getOnboarding({ userId })
+}
+
 const completeOnboarding = async (data: CompleteOnboarding) => {
     const { userId } = data
     const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
@@ -198,32 +191,10 @@ const completeOnboarding = async (data: CompleteOnboarding) => {
         throw new AppError('user not found', 404)
     }
 
-    const updatedUser = await settingRepository.updateCompleteOnboarding(userId)
+    await settingRepository.markOnboardingCompleted(userId)
     await invalidateUserSettingCache(userId)
 
-    return updatedUser
-}
-
-const dismissOnboardingCard = async (data: DismissOnboardingCard) => {
-    const { userId, card } = data
-    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
-
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    let updatedUser
-    if (card === 'welcome') {
-        updatedUser = await settingRepository.updateWelcomeCardDone(userId)
-    } else if (card === 'github') {
-        updatedUser = await settingRepository.updateGithubCardDone(userId)
-    } else if (card === 'feedback') {
-        updatedUser = await settingRepository.updateFeedbackCardDone(userId)
-    }
-
-    await invalidateUserSettingCache(userId)
-
-    return updatedUser
+    return getOnboarding({ userId })
 }
 
 const submitFeedback = async (data: SubmitFeedback) => {
@@ -234,24 +205,19 @@ const submitFeedback = async (data: SubmitFeedback) => {
         throw new AppError('user not found', 404)
     }
 
-    // Save feedback to DB
-    await settingRepository.createFeedback(userId, rating, feedback)
+    const created = await settingRepository.createFeedback(userId, rating, feedback)
 
-    // Mark feedback card as done
-    const updatedUser = await settingRepository.updateFeedbackCardDone(userId)
-    await invalidateUserSettingCache(userId)
-
-    return updatedUser
+    return { id: created.id }
 }
 
 export const settingService = {
     getMe,
     getProfile,
     updateName,
-    changePassword,
     updateNotifications,
     updateModelSource,
+    getOnboarding,
+    updateOnboarding,
     completeOnboarding,
-    dismissOnboardingCard,
     submitFeedback,
 }

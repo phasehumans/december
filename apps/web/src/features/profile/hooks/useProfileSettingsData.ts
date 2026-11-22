@@ -10,7 +10,6 @@ type UseProfileSettingsDataOptions = {
     setProfileActionError: (message: string | null) => void
     onNameMutate: () => void
     onNameSuccess: () => void
-    onPasswordSuccess: () => void
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -50,7 +49,6 @@ export const useProfileSettingsData = ({
     setProfileActionError,
     onNameMutate,
     onNameSuccess,
-    onPasswordSuccess,
 }: UseProfileSettingsDataOptions) => {
     const queryClient = useQueryClient()
 
@@ -94,17 +92,6 @@ export const useProfileSettingsData = ({
         },
     })
 
-    const updatePasswordMutation = useMutation({
-        mutationFn: profileAPI.changePassword,
-        onSuccess: () => {
-            setProfileActionError(null)
-            onPasswordSuccess()
-        },
-        onError: (error) => {
-            setProfileActionError(getErrorMessage(error, 'Failed to update password'))
-        },
-    })
-
     const updateNotificationMutation = useMutation({
         mutationFn: profileAPI.updateNotifications,
         onMutate: async (variables) => {
@@ -132,41 +119,10 @@ export const useProfileSettingsData = ({
         },
     })
 
-    const completeOnboardingMutation = useMutation({
-        mutationFn: profileAPI.completeOnboarding,
-        onMutate: async () => {
-            setProfileActionError(null)
-
-            await queryClient.cancelQueries({ queryKey: profileQueryKey })
-
-            const previousProfile = queryClient.getQueryData<Profile>(profileQueryKey)
-
-            queryClient.setQueryData<Profile>(profileQueryKey, (currentProfile) =>
-                currentProfile
-                    ? { ...currentProfile, hasCompletedOnboarding: true }
-                    : currentProfile
-            )
-
-            return { previousProfile }
-        },
-        onError: (error, _variables, context) => {
-            if (context?.previousProfile) {
-                queryClient.setQueryData(profileQueryKey, context.previousProfile)
-            }
-
-            setProfileActionError(getErrorMessage(error, 'Failed to complete onboarding'))
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: profileQueryKey })
-        },
-    })
-
     return {
         profile,
         profileQuery,
         updateNameMutation,
-        updatePasswordMutation,
         updateNotificationMutation,
-        completeOnboardingMutation,
     }
 }

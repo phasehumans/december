@@ -8,12 +8,8 @@ import { sendSuccess } from '../../shared/response'
 
 import { authCookie } from './auth.cookie'
 import {
-    forgotPasswordRequestSchema,
-    forgotPasswordResetSchema,
-    forgotPasswordVerifySchema,
-    loginSchema,
-    signupSchema,
-    verifyOtpSchema,
+    emailAuthStartSchema,
+    emailAuthVerifySchema,
     googleAuthSchema,
     githubAuthSchema,
     pollDeviceTokenSchema,
@@ -24,56 +20,22 @@ import { authService } from './auth.service'
 
 import type { Request, Response } from 'express'
 
-const signup = asyncHandler(async (req: Request, res: Response) => {
-    const parseData = signupSchema.parse(req.body)
-    const result = await authService.signup(parseData)
-    return sendSuccess(res, 'otp sent to email', result, 201)
+const startEmailAuth = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = emailAuthStartSchema.parse(req.body)
+    const result = await authService.startEmailAuth(parseData)
+    return sendSuccess(res, 'otp sent to email', result)
 })
 
-const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
-    const parseData = verifyOtpSchema.parse(req.body)
-    const { email, otp } = parseData
+const verifyEmailAuth = asyncHandler(async (req: Request, res: Response) => {
+    const parseData = emailAuthVerifySchema.parse(req.body)
 
     const userAgent = req.get('user-agent') || 'unknown'
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
-    const result = await authService.verifyOtp({ email, otp, userAgent, ipAddress })
-    authCookie.setAuthCookies(res, result.accessToken)
-
-    return sendSuccess(res, 'email verified successfully', result)
-})
-
-const login = asyncHandler(async (req: Request, res: Response) => {
-    const parseData = loginSchema.parse(req.body)
-
-    const userAgent = req.get('user-agent') || 'unknown'
-    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
-
-    const result = await authService.login({ ...parseData, userAgent, ipAddress })
+    const result = await authService.verifyEmailAuth({ ...parseData, userAgent, ipAddress })
     authCookie.setAuthCookies(res, result.accessToken)
 
     return sendSuccess(res, 'login successful', result)
-})
-
-const requestPasswordReset = asyncHandler(async (req: Request, res: Response) => {
-    const parseData = forgotPasswordRequestSchema.parse(req.body)
-    await authService.requestPasswordReset(parseData)
-
-    return sendSuccess(res, 'if an account exists, a reset code has been sent')
-})
-
-const verifyPasswordResetOtp = asyncHandler(async (req: Request, res: Response) => {
-    const parseData = forgotPasswordVerifySchema.parse(req.body)
-    await authService.verifyPasswordResetOtp(parseData)
-
-    return sendSuccess(res, 'otp verified successfully')
-})
-
-const resetPassword = asyncHandler(async (req: Request, res: Response) => {
-    const parseData = forgotPasswordResetSchema.parse(req.body)
-    await authService.resetPassword(parseData)
-
-    return sendSuccess(res, 'password reset successfully')
 })
 
 const google = asyncHandler(async (req: Request, res: Response) => {
@@ -370,12 +332,8 @@ const getDeviceStatus = asyncHandler(async (req: Request, res: Response) => {
 })
 
 export const authController = {
-    signup,
-    verifyOtp,
-    login,
-    requestPasswordReset,
-    verifyPasswordResetOtp,
-    resetPassword,
+    startEmailAuth,
+    verifyEmailAuth,
     google,
     github,
     refreshSession,

@@ -47,7 +47,7 @@ const getOverview = async (data: GetOverview) => {
             : claims.reduce((sum: number, claim: any) => sum + claim.amountInCents, 0)
     const USD_TO_INR_RATE = process.env.USD_TO_INR_RATE
         ? Number(process.env.USD_TO_INR_RATE)
-        : (env.USD_TO_INR_RATE ?? 95.26)
+        : (env.USD_TO_INR_RATE ?? 92.68)
 
     return {
         creditBalance: user.creditBalance,
@@ -79,7 +79,7 @@ const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
     // convert usd cents to inr paise using configurable USD_TO_INR_RATE.
     const USD_TO_INR_RATE = process.env.USD_TO_INR_RATE
         ? Number(process.env.USD_TO_INR_RATE)
-        : (env.USD_TO_INR_RATE ?? 95.26)
+        : (env.USD_TO_INR_RATE ?? 92.68)
     const amountInPaise = Math.round(amountInCents * USD_TO_INR_RATE)
     const keyId = getRazorpayKeyId()
 

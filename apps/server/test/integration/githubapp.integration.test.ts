@@ -11,21 +11,16 @@ import { cleanupTestUser, getRandomIP } from '../helpers'
 describe('GitHubApp Module Integration Tests', () => {
     let testUserId: string
     let testEmail: string
-    const testPassword = 'Password123!'
     let accessToken: string
 
     beforeAll(async () => {
         const timestamp = Date.now()
         testEmail = `ghapp-${timestamp}@example.com`
 
-        const bcrypt = await import('bcrypt')
-        const hashedPassword = await bcrypt.hash(testPassword, env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 name: 'GitHub App Test User',
                 email: testEmail,
-                password: hashedPassword,
                 emailVerified: true,
             },
         })

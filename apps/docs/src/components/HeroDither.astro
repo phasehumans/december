@@ -20,13 +20,13 @@
 //   "text"     the boxes of each line of text in the element
 //   "children" the bounding box of each direct child
 //
-// Hidden below the md breakpoint. Still (no motion) with prefers-reduced-motion.
+// Hidden below the lg breakpoint (phones and tablets). Still (no motion) with prefers-reduced-motion.
 ---
 
 <canvas
   data-hero-dither
   aria-hidden="true"
-  class="pointer-events-none absolute top-0 left-0 -z-10 hidden md:block"
+  class="pointer-events-none absolute top-0 left-0 -z-10 hidden lg:block"
 ></canvas>
 
 <style>
@@ -126,7 +126,7 @@
     const ctx = canvas.getContext('2d');
     if (!section || !ctx) return null;
 
-    const desktop = window.matchMedia('(min-width: 768px)');
+    const desktop = window.matchMedia('(min-width: 1024px)');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     let cols = 0;

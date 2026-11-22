@@ -20,15 +20,12 @@ import {
 } from './auth.utils'
 
 import type {
-    VerifyOtp,
-    Login,
+    StartEmailAuth,
+    VerifyEmailAuth,
+    IssueSession,
     Google,
     Github,
-    Signup,
     RefreshSession,
-    RequestPasswordReset,
-    VerifyPasswordResetOtp,
-    ResetPassword,
     Signout,
     SignoutAll,
     DeleteAccount,
@@ -41,302 +38,147 @@ import type {
     PurgeSessions,
 } from './auth.types'
 
-const signup = async (data: Signup) => {
-    const { email, password } = data
+const OTP_TTL_MS = 10 * 60 * 1000
+const OTP_RESEND_COOLDOWN_MS = 30 * 1000
+const OTP_MAX_ATTEMPTS = 5
+
+const clearedOtp = { otpHash: null, otpExpiresAt: null, otpAttempts: 0 }
+
+const issueSession = async (data: IssueSession) => {
+    const { userId, userAgent, ipAddress } = data
+
+    const sessionId = crypto.randomUUID()
+    const accessToken = generateAccessToken({ userId, sessionId })
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+    await authRepository.createSession({
+        id: sessionId,
+        userId,
+        refreshTokenHash: hashRefreshToken(accessToken),
+        userAgent,
+        ipAddress,
+        expiresAt,
+    })
+
+    await sessionCache.set(sessionId, {
+        id: sessionId,
+        userId,
+        isRevoked: false,
+        expiresAt,
+        user: {
+            id: userId,
+            isDeleted: false,
+        },
+    })
+
+    return { accessToken, token: accessToken }
+}
+
+// Email sign-in and sign-up are one flow: send a 6-digit code, create the user if they are new.
+const startEmailAuth = async (data: StartEmailAuth) => {
+    const { email } = data
 
     const existingUser = await authRepository.findUserByEmail(email)
 
-    if (existingUser) {
-        if (existingUser.deletedAt || existingUser.isDeleted) {
-            throw new AppError('account has been deleted', 403)
-        }
-        if (!existingUser.password) {
-            throw new AppError('account exists with social login', 400)
-        }
-        if (existingUser.emailVerified) {
-            throw new AppError('email already exists', 409)
-        }
-
-        const hashPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS)
-        const otp = crypto.randomInt(100000, 1000000).toString()
-        const otpHash = await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS)
-
-        await authRepository.updateUser(existingUser.id, {
-            password: hashPassword,
-            otpHash,
-            otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        })
-
-        await sendOTP(existingUser.email, otp, 'signup')
-
-        return { message: 'otp sent successfully' }
+    if (existingUser && (existingUser.deletedAt || existingUser.isDeleted)) {
+        throw new AppError('account has been deleted', 403)
     }
 
-    const name = email.split('@')[0]?.replace(/\d+/g, '') || 'User'
+    if (existingUser?.otpExpiresAt) {
+        const sentAt = existingUser.otpExpiresAt.getTime() - OTP_TTL_MS
+        if (Date.now() - sentAt < OTP_RESEND_COOLDOWN_MS) {
+            throw new AppError('please wait a few seconds before requesting a new code', 429)
+        }
+    }
 
-    const hashPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS)
     const otp = crypto.randomInt(100000, 1000000).toString()
-    const otpHash = await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS)
+    const otpFields = {
+        otpHash: await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS),
+        otpExpiresAt: new Date(Date.now() + OTP_TTL_MS),
+        otpAttempts: 0,
+    }
 
-    const newUser = await authRepository.createUser({
-        name: name,
-        email: email,
-        password: hashPassword,
-        emailVerified: false,
-        otpHash: otpHash,
-        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-    })
+    if (existingUser) {
+        await authRepository.updateUser(existingUser.id, otpFields)
+    } else {
+        await authRepository.createUser({
+            name: email.split('@')[0]?.replace(/\d+/g, '') || 'User',
+            email,
+            emailVerified: false,
+            ...otpFields,
+        })
+    }
 
-    await sendOTP(newUser.email, otp, 'signup')
+    await sendOTP(email, otp, existingUser?.emailVerified ? 'login' : 'signup')
 
     return { message: 'otp sent successfully' }
 }
 
-const verifyOtp = async (data: VerifyOtp) => {
+const verifyEmailAuth = async (data: VerifyEmailAuth) => {
     const { email, otp, userAgent, ipAddress } = data
 
     const user = await authRepository.findUserByEmail(email)
 
-    if (!user) {
-        throw new AppError('user not found', 404)
-    }
-
-    if (user.deletedAt || user.isDeleted) {
+    if (user && (user.deletedAt || user.isDeleted)) {
         throw new AppError('account has been deleted', 403)
     }
 
-    if (user.emailVerified) {
-        throw new AppError('email already verified', 400)
-    }
-
-    if (!user.otpHash || !user.otpExpiresAt) {
-        throw new AppError('otp not found, request new one', 400)
+    if (!user || !user.otpHash || !user.otpExpiresAt) {
+        throw new AppError('invalid or expired code, request a new one', 401)
     }
 
     if (user.otpExpiresAt < new Date()) {
-        await authRepository.updateUser(user.id, {
-            otpHash: null,
-            otpExpiresAt: null,
-        })
+        await authRepository.updateUser(user.id, clearedOtp)
+        throw new AppError('code expired, request a new one', 401)
+    }
 
-        throw new AppError('otp expired', 401)
+    // Count the attempt before comparing, so parallel guesses cannot share one attempt.
+    const { otpAttempts } = await authRepository.updateUser(user.id, {
+        otpAttempts: { increment: 1 },
+    })
+
+    if (otpAttempts > OTP_MAX_ATTEMPTS) {
+        await authRepository.updateUser(user.id, clearedOtp)
+        throw new AppError('too many attempts, request a new code', 429)
     }
 
     const isValid = await bcrypt.compare(otp, user.otpHash)
 
     if (!isValid) {
-        throw new AppError('invalid otp', 401)
+        if (otpAttempts >= OTP_MAX_ATTEMPTS) {
+            await authRepository.updateUser(user.id, clearedOtp)
+            throw new AppError('too many attempts, request a new code', 429)
+        }
+        throw new AppError('invalid code', 401)
     }
 
-    await authRepository.updateUser(user.id, {
-        emailVerified: true,
-        otpHash: null,
-        otpExpiresAt: null,
-    })
+    const isNewUser = !user.emailVerified
 
-    const sessionId = crypto.randomUUID()
+    await authRepository.updateUser(user.id, { ...clearedOtp, emailVerified: true })
 
-    const accessToken = generateAccessToken({
-        userId: user.id,
-        sessionId,
-    })
+    const tokens = await issueSession({ userId: user.id, userAgent, ipAddress })
 
-    const tokenHash = hashRefreshToken(accessToken)
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    if (isNewUser) {
+        try {
+            await notificationService.sendNotificationToUser({
+                userId: user.id,
+                title: 'Welcome to December',
+                message:
+                    'Your account has been created successfully. You can now start building apps and turn your ideas into reality with December.',
+                type: 'SUCCESS',
+            })
+        } catch (error) {
+            console.error('failed to send welcome notification:', error)
+        }
 
-    await authRepository.createSession({
-        id: sessionId,
-        userId: user.id,
-        refreshTokenHash: tokenHash,
-        userAgent: userAgent,
-        ipAddress: ipAddress,
-        expiresAt,
-    })
-
-    await sessionCache.set(sessionId, {
-        id: sessionId,
-        userId: user.id,
-        isRevoked: false,
-        expiresAt,
-        user: {
-            id: user.id,
-            isDeleted: false,
-        },
-    })
-
-    try {
-        await notificationService.sendNotificationToUser({
-            userId: user.id,
-            title: 'Welcome to December',
-            message:
-                'Your account has been created successfully. You can now start building apps and turn your ideas into reality with December.',
-            type: 'SUCCESS',
-        })
-    } catch (error) {
-        console.error('failed to send welcome notification:', error)
+        try {
+            await sendWelcomeEmail(user.email, user.name || '')
+        } catch (error) {
+            console.error('failed to send welcome email:', error)
+        }
     }
 
-    try {
-        await sendWelcomeEmail(user.email, user.name || '')
-    } catch (error) {
-        console.error('failed to send welcome email:', error)
-    }
-    return {
-        accessToken,
-        token: accessToken,
-    }
-}
-
-const login = async (data: Login) => {
-    const { email, password, userAgent, ipAddress } = data
-
-    const existingUser = await authRepository.findUserByEmail(email)
-
-    if (!existingUser) {
-        throw new AppError('invalid email or password', 401)
-    }
-
-    if (existingUser.deletedAt || existingUser.isDeleted) {
-        throw new AppError('account has been deleted', 401)
-    }
-
-    if (!existingUser.emailVerified) {
-        throw new AppError('please verify your email', 401)
-    }
-
-    if (!existingUser.password) {
-        const provider =
-            existingUser.githubId && !existingUser.googleId
-                ? 'github'
-                : existingUser.googleId && !existingUser.githubId
-                  ? 'google'
-                  : 'google or github'
-        throw new AppError(`please continue with ${provider} login`, 401)
-    }
-
-    const isPasswordMatch = await bcrypt.compare(password, existingUser.password)
-
-    if (!isPasswordMatch) {
-        throw new AppError('invalid email or password', 401)
-    }
-
-    const sessionId = crypto.randomUUID()
-
-    const accessToken = generateAccessToken({
-        userId: existingUser.id,
-        sessionId,
-    })
-
-    const tokenHash = hashRefreshToken(accessToken)
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-
-    await authRepository.createSession({
-        id: sessionId,
-        userId: existingUser.id,
-        refreshTokenHash: tokenHash,
-        userAgent: userAgent,
-        ipAddress: ipAddress,
-        expiresAt,
-    })
-
-    await sessionCache.set(sessionId, {
-        id: sessionId,
-        userId: existingUser.id,
-        isRevoked: false,
-        expiresAt,
-        user: {
-            id: existingUser.id,
-            isDeleted: false,
-        },
-    })
-
-    return {
-        accessToken,
-        token: accessToken,
-    }
-}
-
-const requestPasswordReset = async (data: RequestPasswordReset) => {
-    const { email } = data
-    const user = await authRepository.findUserByEmail(email)
-
-    if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
-        return
-    }
-
-    const otp = crypto.randomInt(100000, 1000000).toString()
-    const otpHash = await bcrypt.hash(otp, env.BCRYPT_SALT_ROUNDS)
-
-    await authRepository.updateUser(user.id, {
-        otpHash,
-        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-    })
-
-    await sendOTP(user.email, otp, 'password_reset')
-}
-
-const verifyPasswordResetOtp = async (data: VerifyPasswordResetOtp) => {
-    const { email, otp } = data
-    const user = await authRepository.findUserByEmail(email)
-
-    if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    if (!user.otpHash || !user.otpExpiresAt) {
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    if (user.otpExpiresAt < new Date()) {
-        await authRepository.updateUser(user.id, {
-            otpHash: null,
-            otpExpiresAt: null,
-        })
-
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    const isValid = await bcrypt.compare(otp, user.otpHash)
-
-    if (!isValid) {
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    return user
-}
-
-const resetPassword = async (data: ResetPassword) => {
-    const { email, otp, newPassword } = data
-
-    const user = await authRepository.findUserByEmail(email)
-
-    if (!user || user.deletedAt || user.isDeleted || !user.emailVerified) {
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    if (!user.otpHash || !user.otpExpiresAt) {
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    if (user.otpExpiresAt < new Date()) {
-        await authRepository.updateUser(user.id, {
-            otpHash: null,
-            otpExpiresAt: null,
-        })
-
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    const isValid = await bcrypt.compare(otp, user.otpHash)
-
-    if (!isValid) {
-        throw new AppError('invalid or expired reset code', 401)
-    }
-
-    const password = await bcrypt.hash(newPassword, env.BCRYPT_SALT_ROUNDS)
-
-    await authRepository.resetPasswordAndRevokeSessions(user.id, password)
-    await sessionCache.invalidateUser(user.id)
+    return { ...tokens, isNewUser }
 }
 
 const google = async (data: Google) => {
@@ -376,10 +218,7 @@ const google = async (data: Google) => {
         user = await authRepository.updateUser(user.id, {
             googleId: sub,
             emailVerified: true,
-            otpHash: null,
-            otpExpiresAt: null,
-            // an unverified password was never proven to belong to the email owner
-            ...(user.emailVerified ? {} : { password: null }),
+            ...clearedOtp,
         })
     } else if (user.googleId !== sub) {
         throw new AppError('google id mismatch', 400)
@@ -465,10 +304,7 @@ const github = async (data: Github) => {
             githubId: sub,
             githubUsername: ghUsername || user.githubUsername,
             emailVerified: true,
-            otpHash: null,
-            otpExpiresAt: null,
-            // an unverified password was never proven to belong to the email owner
-            ...(user.emailVerified ? {} : { password: null }),
+            ...clearedOtp,
         })
     } else if (user.githubId !== sub) {
         throw new AppError('github id mismatch', 400)
@@ -508,7 +344,7 @@ const github = async (data: Github) => {
         },
     })
 
-    // never return the user row: it holds the password hash and stored tokens
+    // never return the user row: it holds stored tokens
     return {
         accessToken,
         token: accessToken,
@@ -909,12 +745,8 @@ const purgeExpiredAndRevokedSessions = async (_data: PurgeSessions = {}) => {
 }
 
 export const authService = {
-    signup,
-    verifyOtp,
-    login,
-    requestPasswordReset,
-    verifyPasswordResetOtp,
-    resetPassword,
+    startEmailAuth,
+    verifyEmailAuth,
     google,
     github,
     refreshSession,

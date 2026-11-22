@@ -1,6 +1,10 @@
 import { prisma } from '@december/database'
+import bcrypt from 'bcrypt'
+import request from 'supertest'
 
-import type { Request, Response } from 'express'
+import { env } from '../src/env'
+
+import type { Express, Request, Response } from 'express'
 
 /**
  * Clean up test data for a given user email or ID.
@@ -82,4 +86,26 @@ export function createMockRequest(options: {
  */
 export function getRandomIP(): string {
     return `${Math.floor(Math.random() * 200 + 1)}.${Math.floor(Math.random() * 200 + 1)}.${Math.floor(Math.random() * 200 + 1)}.${Math.floor(Math.random() * 200 + 1)}`
+}
+
+const TEST_OTP = '135790'
+
+/**
+ * Sign an existing user in the way the app does: set a known email code, then verify it.
+ * Returns the supertest response (token in body.data.accessToken, auth cookies in set-cookie).
+ */
+export async function signInWithEmailCode(app: Express, email: string) {
+    await prisma.user.update({
+        where: { email },
+        data: {
+            otpHash: await bcrypt.hash(TEST_OTP, env.BCRYPT_SALT_ROUNDS),
+            otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            otpAttempts: 0,
+        },
+    })
+
+    return request(app)
+        .post('/api/v1/auth/email/verify')
+        .set('x-forwarded-for', getRandomIP())
+        .send({ email, otp: TEST_OTP })
 }

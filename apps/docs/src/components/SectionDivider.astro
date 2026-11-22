@@ -5,7 +5,7 @@
 // direct child of a column container (the element that draws the rails with border-x).
 // edge: when set, the divider overlays the top or bottom edge of its container
 // and takes no space. When not set, it sits in the normal flow (1px tall).
-// hideOnMobile: hide the divider below the sm breakpoint.
+// hideOnMobile: hide the divider below the lg breakpoint (phones and tablets).
 
 interface Props {
   edge?: 'top' | 'bottom';
@@ -20,7 +20,7 @@ const rootClass = edge === 'top'
     ? 'absolute inset-x-0 bottom-0'
     : 'relative w-full';
 
-const visibilityClass = hideOnMobile ? 'hidden sm:block' : '';
+const visibilityClass = hideOnMobile ? 'hidden lg:block' : '';
 
 // Marks sit on the rails, which are 1px outside this box. Show them only when the gutters are wide enough.
 const markClass = 'hidden min-[1320px]:block absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full bg-white p-px text-[#87b2f4]';

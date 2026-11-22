@@ -7,6 +7,8 @@ import { getViewForPath, toProjectSlug, type ViewState } from '@/app/types'
 import { githubOAuth } from '@/features/auth/githubOAuth'
 import { useChatController } from '@/features/chat/hooks/useChatController'
 import { useNavigationController } from '@/features/navigation/hooks/useNavigationController'
+import { ONBOARDING_PATH } from '@/features/onboarding/constants'
+import { getOnboardingRedirect } from '@/features/onboarding/gate'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
 import { sessionAPI } from '@/features/sessions/api/session'
@@ -120,15 +122,33 @@ export const useAppController = () => {
 
         if (location.pathname !== '/login' && location.pathname !== '/signup') {
             const redirectTarget = encodeURIComponent(location.pathname + location.search)
-            navigate(`/login?redirect=${redirectTarget}`, { replace: true })
+            navigate(`/signup?redirect=${redirectTarget}`, { replace: true })
         }
     }, [isAuthRestored, isAuthenticated, location.pathname, location.search, navigate])
 
-    const { data: profile } = useQuery({
+    const { data: profile, isError: isProfileError } = useQuery({
         queryKey: ['profile'],
         queryFn: profileAPI.getProfile,
         enabled: isAuthenticated,
     })
+
+    // every user goes through /onboarding once. A profile that fails to load does not
+    // block the app: the gate only acts on a loaded profile with no completion date.
+    const needsOnboarding = Boolean(profile) && !profile?.onboardingCompletedAt
+    const isOnboardingRoute = location.pathname === ONBOARDING_PATH
+    const isCheckingOnboarding = isAuthenticated && !profile && !isProfileError
+    const onboardingRedirect = getOnboardingRedirect({
+        isAuthenticated,
+        profile,
+        pathname: location.pathname,
+        search: location.search,
+    })
+
+    React.useEffect(() => {
+        if (onboardingRedirect) {
+            navigate(onboardingRedirect, { replace: true })
+        }
+    }, [onboardingRedirect, navigate])
 
     const isNavigatingHomeRef = React.useRef(false)
 
@@ -470,5 +490,8 @@ export const useAppController = () => {
         handleDownloadProject,
         handleOpenFile: setActiveGeneratedFilePath,
         resetImportState: handleResetImportState,
+        needsOnboarding,
+        isOnboardingRoute,
+        isCheckingOnboarding,
     }
 }

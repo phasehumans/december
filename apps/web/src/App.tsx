@@ -6,8 +6,9 @@ import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { useAppController } from './app/hooks/useAppController'
 import { AuthModal } from './features/auth/components/AuthModal'
 import { githubOAuth } from './features/auth/githubOAuth'
+import { OnboardingPage } from './features/onboarding/components/OnboardingPage'
 
-import { Icons } from '@/shared/components/ui/Icons'
+import { LogoLoader } from '@/shared/components/ui/LogoLoader'
 import { getWebUrl } from '@/shared/config/env'
 
 const App: React.FC = () => {
@@ -37,24 +38,16 @@ const App: React.FC = () => {
         handleDownloadProject,
         handleOpenFile,
         resetImportState,
+        needsOnboarding,
+        isOnboardingRoute,
+        isCheckingOnboarding,
     } = useAppController()
 
     const location = useLocation()
     const navigate = useNavigate()
 
     if (!isAuthRestored) {
-        return (
-            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#141414] select-none">
-                <div className="flex flex-col items-center justify-center gap-3">
-                    <div className="flex items-center justify-center animate-pulse">
-                        <Icons.DecemberLogo
-                            className="w-10 h-10 md:w-12 md:h-12 text-[#3A3A3A]"
-                            strokeWidth={1.2}
-                        />
-                    </div>
-                </div>
-            </div>
-        )
+        return <LogoLoader />
     }
 
     if (!isAuthenticated) {
@@ -88,32 +81,25 @@ const App: React.FC = () => {
             )
         }
 
-        return (
-            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#141414] select-none">
-                <div className="flex items-center justify-center animate-pulse">
-                    <Icons.DecemberLogo
-                        className="w-10 h-10 md:w-12 md:h-12 text-[#3A3A3A]"
-                        strokeWidth={1.2}
-                    />
-                </div>
-            </div>
-        )
+        return <LogoLoader />
+    }
+
+    // wait for the profile so home never flashes before the onboarding redirect
+    if (isCheckingOnboarding) {
+        return <LogoLoader />
+    }
+
+    if (isOnboardingRoute) {
+        return <OnboardingPage />
+    }
+
+    if (needsOnboarding) {
+        return <LogoLoader />
     }
 
     return (
         <>
-            {isProjectOpening && (
-                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#141414] select-none">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                        <div className="flex items-center justify-center animate-pulse">
-                            <Icons.DecemberLogo
-                                className="w-10 h-10 md:w-12 md:h-12 text-[#3A3A3A]"
-                                strokeWidth={1.2}
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
+            {isProjectOpening && <LogoLoader />}
             <div className="flex w-full h-dvh bg-background text-textMain overflow-hidden font-sans">
                 <AppSideNavigation
                     showSidebar={showSidebar}

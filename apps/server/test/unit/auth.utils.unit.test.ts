@@ -138,7 +138,7 @@ describe('Auth Utils - Unit Tests', () => {
                     sendOTP('test@example.com', '123456', 'signup')
                 ).resolves.toBeUndefined()
                 await expect(
-                    sendOTP('test@example.com', '123456', 'password_reset')
+                    sendOTP('test@example.com', '123456', 'login')
                 ).resolves.toBeUndefined()
             } finally {
                 emailService.sendOtpEmail = originalSendOtp

@@ -1,6 +1,27 @@
 import { renderBaseEmail } from './base.template'
 
-export type OtpType = 'signup' | 'password_reset' | 'verification'
+// 'signup' is a new user verifying their email, 'login' is a returning user signing in.
+export type OtpType = 'signup' | 'login'
+
+const OTP_COPY: Record<
+    OtpType,
+    { subject: string; codeLabel: string; heading: string; description: string; notice: string }
+> = {
+    signup: {
+        subject: 'Your December verification code',
+        codeLabel: 'Your verification code',
+        heading: 'Verify your email',
+        description: 'Use the code below to finish creating your December account.',
+        notice: 'If you didn’t try to sign up for December, you can safely ignore this email.',
+    },
+    login: {
+        subject: 'Your December sign-in code',
+        codeLabel: 'Your sign-in code',
+        heading: 'Sign in to December',
+        description: 'Use the code below to sign in to December.',
+        notice: 'If you didn’t try to sign in, you can safely ignore this email. Nobody can sign in without this code.',
+    },
+}
 
 export interface RenderOtpEmailOptions {
     otp: string
@@ -17,29 +38,16 @@ export interface RenderedEmail {
 
 export const renderOtpEmail = ({
     otp,
-    type = 'verification',
+    type = 'signup',
     supportEmail,
     webUrl,
 }: RenderOtpEmailOptions): RenderedEmail => {
-    const isPasswordReset = type === 'password_reset'
-
-    const subject = isPasswordReset
-        ? `Reset your December password: ${otp}`
-        : `Your December verification code: ${otp}`
-
-    const previewText = isPasswordReset
-        ? `Your password reset code is ${otp}. Valid for 10 minutes.`
-        : `Your verification code is ${otp}. Valid for 10 minutes.`
-
-    const heading = isPasswordReset ? 'Reset your password' : 'Verify your email'
-
-    const description = isPasswordReset
-        ? 'Use the verification code below to reset your December password.'
-        : 'Use the verification code below to continue to December.'
-
-    const securityNotice = isPasswordReset
-        ? 'If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.'
-        : 'If you didn’t request this code, you can safely ignore this email.'
+    const copy = OTP_COPY[type] ?? OTP_COPY.signup
+    const subject = `${copy.subject}: ${otp}`
+    const previewText = `${copy.codeLabel} is ${otp}. Valid for 10 minutes.`
+    const heading = copy.heading
+    const description = copy.description
+    const securityNotice = copy.notice
 
     const htmlContent = `
       <!-- Heading -->
@@ -86,25 +94,11 @@ export const renderOtpEmail = ({
         webUrl,
     })
 
-    const text = isPasswordReset
-        ? `Reset your December password
+    const text = `${heading}
 
 ${description}
 
-Your verification code: ${otp}
-
-This code expires in 10 minutes.
-
-${securityNotice}
-
----
-December: ${webUrl}
-Questions? Reach out to ${supportEmail}`
-        : `Verify your email for December
-
-${description}
-
-Your verification code: ${otp}
+${copy.codeLabel}: ${otp}
 
 This code expires in 10 minutes.
 

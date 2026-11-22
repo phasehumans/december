@@ -8,22 +8,16 @@ import { cleanupTestUser, getRandomIP } from '../helpers'
 describe('Setting Module Integration Tests', () => {
     let testUserId: string
     let testEmail: string
-    const testPassword = 'Password123!'
     let accessToken: string
 
     beforeAll(async () => {
         const timestamp = Date.now()
         testEmail = `settingtest-${timestamp}@example.com`
 
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const hashedPassword = await bcrypt.hash(testPassword, env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 name: 'Setting Test User',
                 email: testEmail,
-                password: hashedPassword,
                 emailVerified: true,
             },
         })
@@ -79,7 +73,8 @@ describe('Setting Module Integration Tests', () => {
         expect(res.status).toBe(200)
         expect(res.body.data.id).toBe(testUserId)
         expect(res.body.data.email).toBe(testEmail)
-        expect(res.body.data.hasPassword).toBe(true)
+        expect(res.body.data).not.toHaveProperty('hasPassword')
+        expect(res.body.data).not.toHaveProperty('password')
     })
 
     it('4. PATCH /api/v1/setting/name - updates display name', async () => {
@@ -113,25 +108,68 @@ describe('Setting Module Integration Tests', () => {
         expect(res.body.data.notifySecurityAlerts).toBe(false)
     })
 
-    it('7. PATCH /api/v1/setting/onboarding - marks onboarding complete', async () => {
+    it('7. a new user starts with onboarding not done', async () => {
+        const profile = await request(app)
+            .get('/api/v1/setting')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(profile.status).toBe(200)
+        expect(profile.body.data.onboardingCompletedAt).toBeNull()
+
+        const res = await request(app)
+            .get('/api/v1/setting/onboarding')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.completedAt).toBeNull()
+        expect(res.body.data.step).toBeNull()
+        expect(res.body.data.steps).toEqual({ models: false, github: false })
+    })
+
+    it('8. PATCH /api/v1/setting/onboarding - saves the step to resume at', async () => {
         const res = await request(app)
             .patch('/api/v1/setting/onboarding')
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', `Bearer ${accessToken}`)
+            .send({ step: 'start' })
 
         expect(res.status).toBe(200)
-        expect(res.body.data.hasCompletedOnboarding).toBe(true)
-    })
+        expect(res.body.data.step).toBe('start')
 
-    it('8. POST /api/v1/setting/onboarding/dismiss - dismisses an onboarding card', async () => {
-        const res = await request(app)
-            .post('/api/v1/setting/onboarding/dismiss')
+        const bad = await request(app)
+            .patch('/api/v1/setting/onboarding')
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', `Bearer ${accessToken}`)
-            .send({ card: 'welcome' })
+            .send({ step: 'welcome' })
 
-        expect(res.status).toBe(200)
-        expect(res.body.data.welcomeCardDone).toBe(true)
+        expect(bad.status).toBe(400)
+    })
+
+    it('9. POST /api/v1/setting/onboarding/complete - sets the date once', async () => {
+        const first = await request(app)
+            .post('/api/v1/setting/onboarding/complete')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(first.status).toBe(200)
+        expect(first.body.data.completedAt).not.toBeNull()
+
+        const second = await request(app)
+            .post('/api/v1/setting/onboarding/complete')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(second.status).toBe(200)
+        expect(second.body.data.completedAt).toBe(first.body.data.completedAt)
+
+        const profile = await request(app)
+            .get('/api/v1/setting')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(profile.body.data.onboardingCompletedAt).toBe(first.body.data.completedAt)
     })
 
     it('10. POST /api/v1/setting/feedback - submits user feedback', async () => {
@@ -145,26 +183,11 @@ describe('Setting Module Integration Tests', () => {
             })
 
         expect(res.status).toBe(200)
-        expect(res.body.data.feedbackCardDone).toBe(true)
+        expect(res.body.data.id).toBeDefined()
 
         const fb = await prisma.feedback.findFirst({ where: { userId: testUserId } })
         expect(fb).not.toBeNull()
         expect(fb?.rating).toBe('happy')
         expect(fb?.feedback).toBe('Everything works smoothly!')
-    })
-
-    it('11. PATCH /api/v1/setting/password - updates user password', async () => {
-        const newPassword = 'NewPassword456!'
-        const res = await request(app)
-            .patch('/api/v1/setting/password')
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${accessToken}`)
-            .send({
-                currentPassword: testPassword,
-                newPassword,
-            })
-
-        expect(res.status).toBe(200)
-        expect(res.body.data.success).toBe(true)
     })
 })

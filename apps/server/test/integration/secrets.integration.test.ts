@@ -7,21 +7,15 @@ import app from '../../src/app'
 describe('Secrets Module API Endpoints', () => {
     let testUserId: string
     let testEmail: string
-    const testPassword = 'Password123!'
     let accessToken: string
 
     beforeAll(async () => {
         testEmail = `secretstest-${Date.now()}@example.com`
 
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const hashedPassword = await bcrypt.hash(testPassword, env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 name: 'Secrets Test User',
                 email: testEmail,
-                password: hashedPassword,
                 emailVerified: true,
             },
         })

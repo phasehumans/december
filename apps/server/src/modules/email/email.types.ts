@@ -1,6 +1,6 @@
 import type { JobsOptions } from 'bullmq'
 
-export type OtpType = 'signup' | 'verification' | 'password_reset'
+export type OtpType = 'signup' | 'login'
 
 export type SendOtpEmailParams = {
     to: string

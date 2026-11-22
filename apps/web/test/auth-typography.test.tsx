@@ -2,17 +2,17 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
-import { describe, expect, it, afterEach } from 'bun:test'
+import { describe, expect, it, afterEach, mock } from 'bun:test'
 import React from 'react'
 
 if (!globalThis.document) {
     GlobalRegistrator.register()
 }
 
-const { render, screen, cleanup } = await import('@testing-library/react')
+const { render, screen, cleanup, fireEvent } = await import('@testing-library/react')
 
 import { AuthModalAuthStep } from '@/features/auth/components/AuthModalAuthStep'
-import { AuthModalForgotEmailStep } from '@/features/auth/components/AuthModalForgotEmailStep'
+import { AuthModalOtpStep } from '@/features/auth/components/AuthModalOtpStep'
 
 describe('Auth Flow Typography & Landing Page Font Alignment', () => {
     afterEach(() => {
@@ -33,100 +33,116 @@ describe('Auth Flow Typography & Landing Page Font Alignment', () => {
         expect(css).toContain("--font-mono: 'Geist Mono'")
     })
 
-    it('AuthModalAuthStep matches landing page heading typography for login', () => {
-        render(
-            <AuthModalAuthStep
-                authMode="login"
-                email=""
-                password=""
-                errorMessage={null}
-                isAuthPending={false}
-                isGooglePending={false}
-                isGithubPending={false}
-                onEmailChange={() => {}}
-                onPasswordChange={() => {}}
-                onGoogleLogin={() => {}}
-                onGithubLogin={() => {}}
-                onSubmit={() => {}}
-                onToggleAuthMode={() => {}}
-                onForgotPassword={() => {}}
-                onClose={() => {}}
-            />
-        )
-
-        const loginHeading = screen.getByRole('heading', { level: 2 })
-        expect(loginHeading.textContent).toBe('Sign in to continue building')
-        expect(loginHeading.className).toContain('font-medium')
-        expect(loginHeading.className).toContain('tracking-[-0.025em]')
-        expect(loginHeading.className).toContain('text-white')
-
-        // Option A: Clean Geist Sans and rounded-lg on interactive controls
-        const githubBtn = screen.getByRole('button', { name: /Continue with GitHub/i })
-        expect(githubBtn.className).toContain('font-sans')
-        expect(githubBtn.className).toContain('rounded-lg')
-        expect(githubBtn.className).not.toContain('font-mono')
-        expect(githubBtn.className).not.toContain('rounded-none')
-
-        const googleBtn = screen.getByRole('button', { name: /Continue with Google/i })
-        expect(googleBtn.className).toContain('font-sans')
-        expect(googleBtn.className).toContain('rounded-lg')
-        expect(googleBtn.className).not.toContain('font-mono')
-        expect(googleBtn.className).not.toContain('rounded-none')
-
-        const emailInput = screen.getByPlaceholderText(/Enter your email/i)
-        expect(emailInput.className).toContain('font-sans')
-        expect(emailInput.className).toContain('rounded-lg')
-
-        const submitBtn = screen.getByRole('button', { name: /Continue with email/i })
-        expect(submitBtn.className).toContain('font-sans')
-        expect(submitBtn.className).toContain('rounded-lg')
-    })
-
-    it('AuthModalAuthStep matches landing page heading typography for signup', () => {
+    const renderAuthStep = (
+        overrides: Partial<React.ComponentProps<typeof AuthModalAuthStep>> = {}
+    ) =>
         render(
             <AuthModalAuthStep
                 authMode="signup"
                 email=""
-                password=""
                 errorMessage={null}
                 isAuthPending={false}
                 isGooglePending={false}
                 isGithubPending={false}
                 onEmailChange={() => {}}
-                onPasswordChange={() => {}}
                 onGoogleLogin={() => {}}
                 onGithubLogin={() => {}}
                 onSubmit={() => {}}
                 onToggleAuthMode={() => {}}
-                onForgotPassword={() => {}}
-                onClose={() => {}}
+                {...overrides}
             />
         )
 
-        const signupHeading = screen.getByRole('heading', { level: 2 })
-        expect(signupHeading.textContent).toBe('Create an account')
-        expect(signupHeading.className).toContain('font-medium')
-        expect(signupHeading.className).toContain('tracking-[-0.025em]')
-        expect(signupHeading.className).toContain('text-white')
+    it('AuthModalAuthStep shows the December mark with the log in link under it', () => {
+        const { container } = renderAuthStep()
+
+        const heading = screen.getByRole('heading', { level: 2 })
+        expect(heading.textContent).toBe('December')
+        expect(heading.className).toContain('tracking-[-0.025em]')
+        expect(heading.className).toContain('text-white')
+        expect(container.querySelector('button[type="submit"]')?.textContent).toBe('Sign up')
+
+        for (const name of ['Terms', 'Privacy Policy']) {
+            const link = screen.getByRole('link', { name })
+            expect(link.className).toContain('text-white')
+            expect(link.className).not.toContain('hover:')
+            expect(link.className).not.toContain('transition')
+        }
+
+        const loginLink = screen.getByRole('button', { name: 'Log in' })
+        expect(loginLink.className).toContain('text-white')
+        expect(loginLink.className).not.toContain('text-[#87b2f4]')
     })
 
-    it('AuthModalForgotEmailStep matches landing page heading typography for Forgot password', () => {
+    it('AuthModalAuthStep orders GitHub, ChatGPT, Google with one compact style', () => {
+        renderAuthStep()
+
+        const buttons = [
+            /Continue with GitHub/i,
+            /Continue with ChatGPT/i,
+            /Continue with Google/i,
+        ].map((name) => screen.getByRole('button', { name }))
+        for (let i = 0; i < buttons.length - 1; i++) {
+            expect(
+                buttons[i]!.compareDocumentPosition(buttons[i + 1]!) &
+                    Node.DOCUMENT_POSITION_FOLLOWING
+            ).toBeTruthy()
+        }
+        for (const button of buttons) {
+            expect(button.className).toBe(buttons[0]!.className)
+            expect(button.className).toContain('font-sans')
+            expect(button.className).toContain('h-9')
+            expect(button.className).toContain('rounded-md')
+            expect(button.className).not.toContain('bg-white')
+        }
+    })
+
+    it('AuthModalAuthStep asks only for an email, no password', () => {
+        const { container } = renderAuthStep({ authMode: 'login' })
+
+        expect(screen.getByLabelText(/Email address/i)).toBeDefined()
+        expect(container.querySelector('input[type="password"]')).toBeNull()
+        expect(screen.queryByText(/Forgot password/i)).toBeNull()
+        expect(screen.getByRole('button', { name: 'Sign up' })).toBeDefined()
+        expect(container.querySelector('button[type="submit"]')?.textContent).toBe('Log in')
+        expect(screen.getByText(/By continuing, you agree to our/i)).toBeDefined()
+    })
+
+    it('Continue with ChatGPT says coming soon and does not start a sign-in', () => {
+        const onGoogleLogin = mock(() => {})
+        const onGithubLogin = mock(() => {})
+        renderAuthStep({ onGoogleLogin, onGithubLogin })
+
+        const chatgptBtn = screen.getByRole('button', { name: /Continue with ChatGPT/i })
+        fireEvent.click(chatgptBtn)
+        expect(chatgptBtn.textContent).toContain('coming soon')
+        expect(onGoogleLogin).not.toHaveBeenCalled()
+        expect(onGithubLogin).not.toHaveBeenCalled()
+    })
+
+    it('AuthModalOtpStep shows the email and offers resend and a different email', () => {
+        const onResend = mock(() => {})
         render(
-            <AuthModalForgotEmailStep
-                email=""
+            <AuthModalOtpStep
+                email="you@example.com"
+                otp={['', '', '', '', '', '']}
                 errorMessage={null}
                 isPending={false}
-                onEmailChange={() => {}}
+                isResendPending={false}
+                onChangeOtp={() => {}}
+                onKeyDown={() => {}}
+                onPaste={() => {}}
                 onSubmit={() => {}}
+                onResend={onResend}
                 onBack={() => {}}
+                setOtpInputRef={() => {}}
             />
         )
 
-        const forgotHeading = screen.getByRole('heading', { level: 2 })
-        expect(forgotHeading.textContent).toBe('Forgot password')
-        expect(forgotHeading.className).toContain('font-medium')
-        expect(forgotHeading.className).toContain('tracking-[-0.025em]')
-        expect(forgotHeading.className).toContain('text-white')
+        expect(screen.getByText('you@example.com')).toBeDefined()
+        fireEvent.click(screen.getByRole('button', { name: 'Resend code' }))
+        expect(onResend).toHaveBeenCalled()
+        expect(screen.getByRole('button', { name: 'Use a different email' })).toBeDefined()
     })
 
     it('GithubCallback error state matches minimal auth modal layout and typography', async () => {

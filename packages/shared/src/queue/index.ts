@@ -52,7 +52,7 @@ export type EmailJobData =
           type: 'otp'
           to: string
           otp: string
-          otpType?: 'signup' | 'verification' | 'password_reset'
+          otpType?: 'signup' | 'login'
       }
     | {
           type: 'welcome'

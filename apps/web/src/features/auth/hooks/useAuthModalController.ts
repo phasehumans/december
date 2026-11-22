@@ -20,10 +20,7 @@ export const useAuthModalController = ({
     const [authMode, setAuthMode] = React.useState<AuthMode>(initialMode)
     const [step, setStep] = React.useState<AuthStep>('auth')
     const [email, setEmail] = React.useState('')
-    const [password, setPassword] = React.useState('')
     const [otp, setOtp] = React.useState(['', '', '', '', '', ''])
-    const [newPassword, setNewPassword] = React.useState('')
-    const [confirmPassword, setConfirmPassword] = React.useState('')
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
     const inputRefs = React.useRef<(HTMLInputElement | null)[]>([])
     const pushedHistoryRef = React.useRef(false)
@@ -77,38 +74,23 @@ export const useAuthModalController = ({
             setAuthMode(initialMode)
             setStep('auth')
             setEmail('')
-            setPassword('')
-            setNewPassword('')
-            setConfirmPassword('')
             setErrorMessage(null)
             setOtp(['', '', '', '', '', ''])
         }
     }, [isOpen, initialMode])
 
     const {
-        signupMutation,
-        loginMutation,
-        verifyOtpMutation,
-        requestPasswordResetMutation,
-        verifyPasswordResetOtpMutation,
-        resetPasswordMutation,
+        emailStartMutation,
+        emailVerifyMutation,
         googleMutation,
         googleLogin,
         githubMutation,
         githubLogin,
         isAuthPending,
     } = useAuthMutations({
-        onRequireOtp: () => setStep('otp'),
-        onRequireForgotOtp: () => setStep('forgot-otp'),
-        onRequireForgotReset: () => setStep('forgot-reset'),
-        onRequireGoogleMerge: () => setStep('google-merge'),
-        onPasswordResetSuccess: () => {
-            setPassword('')
-            setNewPassword('')
-            setConfirmPassword('')
+        onCodeSent: () => {
             setOtp(['', '', '', '', '', ''])
-            setStep('auth')
-            setAuthMode('login')
+            setStep('otp')
         },
         onAuthSuccess,
         setErrorMessage,
@@ -117,13 +99,12 @@ export const useAuthModalController = ({
     const handleAuthSubmit = (event: React.FormEvent) => {
         event.preventDefault()
         setErrorMessage(null)
+        emailStartMutation.mutate({ email })
+    }
 
-        if (authMode === 'signup') {
-            signupMutation.mutate({ email, password })
-            return
-        }
-
-        loginMutation.mutate({ email, password })
+    const handleResendCode = () => {
+        setErrorMessage(null)
+        emailStartMutation.mutate({ email })
     }
 
     const handleOtpChange = (index: number, value: string) => {
@@ -165,52 +146,9 @@ export const useAuthModalController = ({
     const handleOtpSubmit = (event: React.FormEvent) => {
         event.preventDefault()
         setErrorMessage(null)
-        verifyOtpMutation.mutate({
+        emailVerifyMutation.mutate({
             email,
             otp: otp.join(''),
-        })
-    }
-
-    const handleForgotPasswordStart = () => {
-        setErrorMessage(null)
-        setPassword('')
-        setOtp(['', '', '', '', '', ''])
-        setStep('forgot-email')
-    }
-
-    const handleForgotEmailSubmit = (event: React.FormEvent) => {
-        event.preventDefault()
-        setErrorMessage(null)
-        requestPasswordResetMutation.mutate({ email })
-    }
-
-    const handleForgotOtpSubmit = (event: React.FormEvent) => {
-        event.preventDefault()
-        setErrorMessage(null)
-        verifyPasswordResetOtpMutation.mutate({
-            email,
-            otp: otp.join(''),
-        })
-    }
-
-    const handleForgotResetSubmit = (event: React.FormEvent) => {
-        event.preventDefault()
-
-        if (!newPassword.trim()) {
-            setErrorMessage('Please enter a new password')
-            return
-        }
-
-        if (newPassword !== confirmPassword) {
-            setErrorMessage('New password and confirm password do not match')
-            return
-        }
-
-        setErrorMessage(null)
-        resetPasswordMutation.mutate({
-            email,
-            otp: otp.join(''),
-            newPassword,
         })
     }
 
@@ -224,24 +162,8 @@ export const useAuthModalController = ({
         setStep('auth')
     }
 
-    const handleBackToForgotEmail = () => {
-        setErrorMessage(null)
-        setOtp(['', '', '', '', '', ''])
-        setStep('forgot-email')
-    }
-
-    const handleBackToForgotOtp = () => {
-        setErrorMessage(null)
-        setStep('forgot-otp')
-    }
-
     const setOtpInputRef = (index: number, element: HTMLInputElement | null) => {
         inputRefs.current[index] = element
-    }
-
-    const handleCreatePassword = () => {
-        setErrorMessage(null)
-        requestPasswordResetMutation.mutate({ email })
     }
 
     return {
@@ -249,12 +171,6 @@ export const useAuthModalController = ({
         step,
         email,
         setEmail,
-        password,
-        setPassword,
-        newPassword,
-        setNewPassword,
-        confirmPassword,
-        setConfirmPassword,
         otp,
         errorMessage,
         googleLogin,
@@ -262,24 +178,16 @@ export const useAuthModalController = ({
         isAuthPending,
         isGooglePending: googleMutation.isPending,
         isGithubPending: githubMutation.isPending,
-        isOtpPending: verifyOtpMutation.isPending,
-        isForgotEmailPending: requestPasswordResetMutation.isPending,
-        isForgotOtpPending: verifyPasswordResetOtpMutation.isPending,
-        isForgotResetPending: resetPasswordMutation.isPending,
+        isOtpPending: emailVerifyMutation.isPending,
+        isResendPending: emailStartMutation.isPending,
         handleAuthSubmit,
+        handleResendCode,
         handleOtpChange,
         handleOtpKeyDown,
         handleOtpPaste,
         handleOtpSubmit,
-        handleForgotPasswordStart,
-        handleForgotEmailSubmit,
-        handleForgotOtpSubmit,
-        handleForgotResetSubmit,
         handleToggleAuthMode,
         handleBackToAuth,
-        handleBackToForgotEmail,
-        handleBackToForgotOtp,
         setOtpInputRef,
-        handleCreatePassword,
     }
 }

@@ -1,43 +1,27 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import React, { useState } from 'react'
 
-import { billingAPI } from '@/features/billing/api/billing'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
-import { profileAPI } from '@/features/profile/api/profile'
+import { useRazorpayCheckout } from '@/features/billing/hooks/useRazorpayCheckout'
 import { Modal } from '@/shared/components/ui/Modal'
 
 interface AddCreditsModalProps {
     onClose: () => void
 }
 
-const loadRazorpayScript = () => {
-    return new Promise<boolean>((resolve) => {
-        if ((window as any).Razorpay) {
-            resolve(true)
-            return
-        }
-        const script = document.createElement('script')
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-        script.onload = () => resolve(true)
-        script.onerror = () => resolve(false)
-        document.body.appendChild(script)
-    })
-}
-
 export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => {
-    const queryClient = useQueryClient()
-    const { data: profile } = useQuery({
-        queryKey: ['profile'],
-        queryFn: profileAPI.getProfile,
-        staleTime: 60000,
-    })
     const { data: overview } = useBillingOverview()
-    const usdToInrRate = overview?.usdToInrRate ?? 95.26
+    const usdToInrRate = overview?.usdToInrRate ?? 92.68
     const [amountStr, setAmountStr] = useState('10')
-    const [error, setError] = useState<string | null>(null)
-    const [isProcessing, setIsProcessing] = useState(false)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
+    const { startCheckout, isProcessing, error, setError } = useRazorpayCheckout({
+        onPaid: (amount) => {
+            setSuccessMessage(`Successfully added $${amount}.00 credits to your wallet!`)
+            setTimeout(() => {
+                onClose()
+            }, 2500)
+        },
+    })
 
     const handleAmountChange = (val: string) => {
         // enforce whole numbers only by stripping any non-digits
@@ -62,86 +46,7 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
             return
         }
 
-        const amount = parseInt(amountStr, 10)
-        if (isNaN(amount) || amount < 1 || amount > 50) {
-            setError('Amount must be a whole number between $1 and $50.')
-            return
-        }
-
-        const amountInCents = amount * 100
-        setIsProcessing(true)
-        setError(null)
-
-        try {
-            const scriptLoaded = await loadRazorpayScript()
-            if (!scriptLoaded) {
-                throw new Error(
-                    'Failed to load Razorpay payment SDK. Check your internet connection.'
-                )
-            }
-
-            const order = await billingAPI.createRazorpayOrder({ amountInCents })
-
-            const options = {
-                key: order.keyId,
-                amount: order.amount,
-                currency: order.currency,
-                name: 'December',
-                description: `Add $${amount} Credits to Wallet`,
-                order_id: order.orderId,
-                handler: async function (response: any) {
-                    setIsProcessing(true)
-                    try {
-                        const verifyRes = await billingAPI.verifyRazorpayPayment({
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature,
-                        })
-
-                        if (verifyRes.success) {
-                            setSuccessMessage(
-                                `Successfully added $${amount}.00 credits to your wallet!`
-                            )
-                            await Promise.all([
-                                queryClient.invalidateQueries({
-                                    queryKey: ['billing-overview'],
-                                }),
-                                queryClient.invalidateQueries({ queryKey: ['profile'] }),
-                            ])
-                            setTimeout(() => {
-                                onClose()
-                            }, 2500)
-                        } else {
-                            throw new Error('Verification failed. Please contact support.')
-                        }
-                    } catch (err: any) {
-                        setError(err?.message || 'Failed to verify payment signature.')
-                    } finally {
-                        setIsProcessing(false)
-                    }
-                },
-                modal: {
-                    ondismiss: function () {
-                        setIsProcessing(false)
-                    },
-                },
-                prefill: {
-                    name: profile?.name || '',
-                    email: profile?.email || '',
-                },
-                theme: {
-                    color: '#FFFFFF',
-                },
-            }
-
-            const rzp = new (window as any).Razorpay(options)
-            rzp.open()
-        } catch (err: any) {
-            setError(
-                err?.message || err?.errors || 'An error occurred during payment initialization.'
-            )
-            setIsProcessing(false)
-        }
+        await startCheckout(parseInt(amountStr, 10))
     }
 
     const amountNum = parseInt(amountStr, 10)

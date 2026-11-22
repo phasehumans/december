@@ -54,29 +54,6 @@ async function updateSession(id: string, data: Prisma.AuthSessionUpdateInput) {
     })
 }
 
-async function resetPasswordAndRevokeSessions(userId: string, passwordHash: string) {
-    return prisma.$transaction([
-        prisma.user.update({
-            where: { id: userId },
-            data: {
-                password: passwordHash,
-                otpHash: null,
-                otpExpiresAt: null,
-            },
-        }),
-        prisma.authSession.updateMany({
-            where: {
-                userId,
-                isRevoked: false,
-            },
-            data: {
-                isRevoked: true,
-                revokedAt: new Date(),
-            },
-        }),
-    ])
-}
-
 async function revokeSession(sessionId: string) {
     return prisma.authSession.update({
         where: { id: sessionId },
@@ -198,7 +175,6 @@ export const authRepository = {
     findSessionById,
     deleteSessionsBySessionId,
     updateSession,
-    resetPasswordAndRevokeSessions,
     revokeSession,
     revokeAllSessions,
     findUserByIdForDeleteCheck,

@@ -4,12 +4,11 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { cliDispatcher } from '../../src/modules/cli/cli.dispatcher'
-import { cleanupTestUser, getRandomIP } from '../helpers'
+import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Search Mode Integration Tests (#454, #455, #457)', () => {
     const userEmail = `searchtest-${Date.now()}@example.com`
     const brokeUserEmail = `searchbroke-${Date.now()}@example.com`
-    const password = 'Password123!'
 
     let userId: string
     let brokeUserId: string
@@ -50,9 +49,6 @@ describe('Search Mode Integration Tests (#454, #455, #457)', () => {
             providerName: 'gemini',
             model: 'gemini-3.6-flash',
         })
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const passHash = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS)
 
         const timestamp = Date.now()
         // Create User with credits
@@ -60,7 +56,6 @@ describe('Search Mode Integration Tests (#454, #455, #457)', () => {
             data: {
                 email: userEmail,
                 name: 'Search Test User',
-                password: passHash,
                 emailVerified: true,
                 creditBalance: 500, // 500 cents ($5.00)
             },
@@ -72,7 +67,6 @@ describe('Search Mode Integration Tests (#454, #455, #457)', () => {
             data: {
                 email: brokeUserEmail,
                 name: 'Broke Search User',
-                password: passHash,
                 emailVerified: true,
                 creditBalance: 0,
             },
@@ -80,17 +74,11 @@ describe('Search Mode Integration Tests (#454, #455, #457)', () => {
         brokeUserId = bu.id
 
         // Login User 1
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: userEmail, password })
+        const loginRes = await signInWithEmailCode(app, userEmail)
         userToken = loginRes.body.data.accessToken
 
         // Login Broke User
-        const brokeLoginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: brokeUserEmail, password })
+        const brokeLoginRes = await signInWithEmailCode(app, brokeUserEmail)
         brokeUserToken = brokeLoginRes.body.data.accessToken
     })
 

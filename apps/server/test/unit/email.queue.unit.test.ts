@@ -49,13 +49,13 @@ describe('Email Queue - Unit Tests', () => {
         })
     })
 
-    it('should default otpType to verification if omitted', async () => {
+    it('should default otpType to signup if omitted', async () => {
         const result: any = await enqueueOtpJob({
             to: 'user@example.com',
             otp: '654321',
         })
 
-        expect(result.data.otpType).toBe('verification')
+        expect(result.data.otpType).toBe('signup')
         expect(result.opts.priority).toBe(1)
     })
 

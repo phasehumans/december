@@ -3,11 +3,10 @@ import { describe, it, expect, afterAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP } from '../helpers'
+import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
-describe('Auth Flow Integration Tests (Signup, Verify, Login, CLI Token, Signout)', () => {
+describe('Auth Flow Integration Tests (Email code sign up, Log in, CLI Token, Signout)', () => {
     const testEmail = `flowtest-${Date.now()}@example.com`
-    const testPassword = 'Password123!'
     let testUserId: string
     let accessToken: string
     let refreshToken: string
@@ -18,13 +17,13 @@ describe('Auth Flow Integration Tests (Signup, Verify, Login, CLI Token, Signout
         }
     })
 
-    it('1. POST /api/v1/auth/signup - creates unverified user', async () => {
+    it('1. POST /api/v1/auth/email/start - creates unverified user', async () => {
         const res = await request(app)
-            .post('/api/v1/auth/signup')
+            .post('/api/v1/auth/email/start')
             .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+            .send({ email: testEmail })
 
-        expect(res.status).toBe(201)
+        expect(res.status).toBe(200)
         expect(res.body.message).toBe('otp sent to email')
 
         const user = await prisma.user.findUnique({ where: { email: testEmail } })
@@ -33,7 +32,7 @@ describe('Auth Flow Integration Tests (Signup, Verify, Login, CLI Token, Signout
         testUserId = user!.id
     })
 
-    it('2. POST /api/v1/auth/verify - verifies OTP and issues tokens', async () => {
+    it('2. POST /api/v1/auth/email/verify - verifies OTP and issues tokens', async () => {
         const bcrypt = await import('bcrypt')
         const { env } = await import('../../src/env')
         const otpHash = await bcrypt.hash('654321', env.BCRYPT_SALT_ROUNDS)
@@ -47,7 +46,7 @@ describe('Auth Flow Integration Tests (Signup, Verify, Login, CLI Token, Signout
         })
 
         const res = await request(app)
-            .post('/api/v1/auth/verify')
+            .post('/api/v1/auth/email/verify')
             .set('x-forwarded-for', getRandomIP())
             .send({ email: testEmail, otp: '654321' })
 
@@ -60,11 +59,8 @@ describe('Auth Flow Integration Tests (Signup, Verify, Login, CLI Token, Signout
         expect(user?.emailVerified).toBe(true)
     })
 
-    it('3. POST /api/v1/auth/login - authenticates verified user', async () => {
-        const res = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+    it('3. POST /api/v1/auth/email/verify - logs a verified user in again with a new code', async () => {
+        const res = await signInWithEmailCode(app, testEmail)
 
         expect(res.status).toBe(200)
         expect(res.body.data.accessToken).toBeDefined()
