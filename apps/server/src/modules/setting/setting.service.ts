@@ -2,6 +2,7 @@ import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
 
 import { settingRepository } from './setting.repository'
+import { toOnboardingStep } from './setting.utils'
 
 export const settingSelect = {
     id: true,
@@ -33,7 +34,6 @@ import type {
     UpdateOnboarding,
     CompleteOnboarding,
     OnboardingState,
-    OnboardingStep,
     UpdateModelSource,
     SubmitFeedback,
 } from './setting.types'
@@ -140,11 +140,6 @@ const updateNotifications = async (data: UpdateNotifications) => {
     return updatedUser
 }
 
-const ONBOARDING_STEPS: OnboardingStep[] = ['github', 'start', 'models']
-
-const toOnboardingStep = (value: string | null): OnboardingStep | null =>
-    ONBOARDING_STEPS.find((step) => step === value) ?? null
-
 // not cached: a payment, a saved key or a GitHub install must show right away
 const getOnboarding = async (data: GetOnboarding): Promise<OnboardingState> => {
     const { userId } = data
@@ -162,9 +157,17 @@ const getOnboarding = async (data: GetOnboarding): Promise<OnboardingState> => {
         step: toOnboardingStep(source.onboardingStep),
         steps: {
             models: ownKey !== null || source.creditBalance > 0,
-            github: installation !== null,
+            // the github app install, or a github oauth connection: both give repo access
+            github:
+                installation !== null ||
+                Boolean(source.githubAppInstall) ||
+                Boolean(source.githubConnected),
         },
-        github: installation ? { accountLogin: installation.accountLogin } : null,
+        github: installation
+            ? { accountLogin: installation.accountLogin }
+            : source.githubConnected
+              ? { accountLogin: source.githubUsername }
+              : null,
         wallet: { balanceInCents: source.creditBalance },
         ownKey: ownKey ? { provider: ownKey.provider, keyHint: ownKey.keyHint } : null,
     }

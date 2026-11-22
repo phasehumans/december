@@ -65,6 +65,9 @@ async function findOnboardingSource(id: string) {
             onboardingCompletedAt: true,
             onboardingStep: true,
             creditBalance: true,
+            githubAppInstall: true,
+            githubConnected: true,
+            githubUsername: true,
             githubInstallations: {
                 select: { accountLogin: true },
                 orderBy: { createdAt: 'asc' },

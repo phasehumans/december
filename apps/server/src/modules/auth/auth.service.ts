@@ -43,6 +43,8 @@ const OTP_RESEND_COOLDOWN_MS = 30 * 1000
 const OTP_MAX_ATTEMPTS = 5
 
 const clearedOtp = { otpHash: null, otpExpiresAt: null, otpAttempts: 0 }
+// an expired code is removed but its try count stays, so it cannot be reset by expiry
+const expiredOtp = { otpHash: null, otpExpiresAt: null }
 
 const issueSession = async (data: IssueSession) => {
     const { userId, userAgent, ipAddress } = data
@@ -101,12 +103,20 @@ const startEmailAuth = async (data: StartEmailAuth) => {
     if (existingUser) {
         await authRepository.updateUser(existingUser.id, otpFields)
     } else {
-        await authRepository.createUser({
-            name: email.split('@')[0]?.replace(/\d+/g, '') || 'User',
-            email,
-            emailVerified: false,
-            ...otpFields,
-        })
+        try {
+            await authRepository.createUser({
+                name: email.split('@')[0]?.replace(/\d+/g, '') || 'User',
+                email,
+                emailVerified: false,
+                ...otpFields,
+            })
+        } catch (error: any) {
+            // two starts for a new email at once: the other one created the user and sent a code
+            if (error?.code === 'P2002') {
+                throw new AppError('please wait a few seconds before requesting a new code', 429)
+            }
+            throw error
+        }
     }
 
     await sendOTP(email, otp, existingUser?.emailVerified ? 'login' : 'signup')
@@ -128,25 +138,30 @@ const verifyEmailAuth = async (data: VerifyEmailAuth) => {
     }
 
     if (user.otpExpiresAt < new Date()) {
-        await authRepository.updateUser(user.id, clearedOtp)
+        await authRepository.updateUser(user.id, expiredOtp)
         throw new AppError('code expired, request a new one', 401)
     }
 
-    // Count the attempt before comparing, so parallel guesses cannot share one attempt.
-    const { otpAttempts } = await authRepository.updateUser(user.id, {
-        otpAttempts: { increment: 1 },
-    })
-
-    if (otpAttempts > OTP_MAX_ATTEMPTS) {
-        await authRepository.updateUser(user.id, clearedOtp)
+    // Count the guess before comparing. The count is tied to the code read above, so guesses
+    // sent in parallel cannot get more than OTP_MAX_ATTEMPTS tries at one code.
+    const hasAttemptLeft = await authRepository.claimOtpAttempt(
+        user.id,
+        user.otpHash,
+        OTP_MAX_ATTEMPTS
+    )
+    if (!hasAttemptLeft) {
         throw new AppError('too many attempts, request a new code', 429)
     }
 
     const isValid = await bcrypt.compare(otp, user.otpHash)
 
     if (!isValid) {
-        if (otpAttempts >= OTP_MAX_ATTEMPTS) {
-            await authRepository.updateUser(user.id, clearedOtp)
+        const isExhausted = await authRepository.clearExhaustedOtp(
+            user.id,
+            user.otpHash,
+            OTP_MAX_ATTEMPTS
+        )
+        if (isExhausted) {
             throw new AppError('too many attempts, request a new code', 429)
         }
         throw new AppError('invalid code', 401)
@@ -154,7 +169,12 @@ const verifyEmailAuth = async (data: VerifyEmailAuth) => {
 
     const isNewUser = !user.emailVerified
 
-    await authRepository.updateUser(user.id, { ...clearedOtp, emailVerified: true })
+    // A correct code still has to be the stored one: a code cleared by a lockout or used by
+    // another request cannot sign in.
+    const isConsumed = await authRepository.consumeOtp(user.id, user.otpHash)
+    if (!isConsumed) {
+        throw new AppError('invalid or expired code, request a new one', 401)
+    }
 
     const tokens = await issueSession({ userId: user.id, userAgent, ipAddress })
 

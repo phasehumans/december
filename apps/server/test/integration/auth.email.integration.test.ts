@@ -38,9 +38,10 @@ describe('Email code auth (one flow for sign up and log in)', () => {
     const newEmail = `emailauth-new-${Date.now()}@example.com`
     const socialEmail = `emailauth-social-${Date.now()}@example.com`
     const lockEmail = `emailauth-lock-${Date.now()}@example.com`
+    const raceEmail = `emailauth-race-${Date.now()}@example.com`
 
     afterAll(async () => {
-        for (const email of [newEmail, socialEmail, lockEmail]) {
+        for (const email of [newEmail, socialEmail, lockEmail, raceEmail]) {
             await cleanupTestUser({ email })
         }
     })
@@ -121,6 +122,29 @@ describe('Email code auth (one flow for sign up and log in)', () => {
 
         const user = await prisma.user.findUnique({ where: { email: lockEmail } })
         expect(user?.otpHash).toBeNull()
+    })
+
+    it('counts guesses sent in parallel against the same 5-try limit', async () => {
+        await prisma.user.create({
+            data: { name: 'race', email: raceEmail, emailVerified: true },
+        })
+        await setKnownCode(raceEmail)
+
+        const results = await Promise.all(
+            Array.from({ length: 15 }, () => verify(raceEmail, '000000'))
+        )
+        const statuses = results.map((res) => res.status)
+
+        // at most 5 guesses were checked against the code, the rest were refused
+        expect(statuses.filter((status) => status === 401).length).toBeLessThanOrEqual(4)
+        expect(statuses.every((status) => status === 401 || status === 429)).toBe(true)
+
+        const user = await prisma.user.findUnique({ where: { email: raceEmail } })
+        expect(user?.otpAttempts).toBe(5)
+        expect(user?.otpHash).toBeNull()
+
+        // the right code cannot sign in once the code is used up
+        expect((await verify(raceEmail, CODE)).status).not.toBe(200)
     })
 
     it('rejects a code for an unknown email', async () => {

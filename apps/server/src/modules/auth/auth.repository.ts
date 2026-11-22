@@ -31,6 +31,34 @@ async function updateUser(id: string, data: Prisma.UserUpdateInput) {
     })
 }
 
+// Counts one guess against the code the caller read. It only succeeds while that same code
+// is still stored and has tries left, so parallel guesses cannot outrun the limit.
+async function claimOtpAttempt(id: string, otpHash: string, maxAttempts: number) {
+    const { count } = await prisma.user.updateMany({
+        where: { id, otpHash, otpAttempts: { lt: maxAttempts } },
+        data: { otpAttempts: { increment: 1 } },
+    })
+    return count === 1
+}
+
+// Clears a code that has used all its tries. The try count stays, so late guesses stay refused.
+async function clearExhaustedOtp(id: string, otpHash: string, maxAttempts: number) {
+    const { count } = await prisma.user.updateMany({
+        where: { id, otpHash, otpAttempts: { gte: maxAttempts } },
+        data: { otpHash: null, otpExpiresAt: null },
+    })
+    return count === 1
+}
+
+// Uses up a correct code. Only one request can do this, and only while the code is still stored.
+async function consumeOtp(id: string, otpHash: string) {
+    const { count } = await prisma.user.updateMany({
+        where: { id, otpHash },
+        data: { otpHash: null, otpExpiresAt: null, otpAttempts: 0, emailVerified: true },
+    })
+    return count === 1
+}
+
 async function createSession(data: Prisma.AuthSessionUncheckedCreateInput) {
     return prisma.authSession.create({ data })
 }
@@ -166,6 +194,9 @@ async function findActiveDeviceSession(userId: string) {
 }
 
 export const authRepository = {
+    claimOtpAttempt,
+    clearExhaustedOtp,
+    consumeOtp,
     findUserByEmail,
     findUserByGithubId,
     findUserById,

@@ -80,6 +80,104 @@ describe('Auth Service - Unit Tests', () => {
         })
     })
 
+    describe('verifyEmailAuth attempt limit', () => {
+        const otpHash = '$2b$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01'
+
+        const withUser = async (
+            overrides: Partial<typeof authRepository>,
+            run: () => Promise<void>
+        ) => {
+            const originals = {
+                findUserByEmail: authRepository.findUserByEmail,
+                claimOtpAttempt: authRepository.claimOtpAttempt,
+                clearExhaustedOtp: authRepository.clearExhaustedOtp,
+                consumeOtp: authRepository.consumeOtp,
+            }
+            authRepository.findUserByEmail = (async () => ({
+                id: 'user-otp',
+                email: 'otp@example.com',
+                otpHash,
+                otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+                emailVerified: true,
+            })) as any
+            Object.assign(authRepository, overrides)
+            try {
+                await run()
+            } finally {
+                Object.assign(authRepository, originals)
+            }
+        }
+
+        it('refuses a guess when the code has no tries left, without comparing it', async () => {
+            let compared = false
+            await withUser(
+                {
+                    claimOtpAttempt: (async () => false) as any,
+                    clearExhaustedOtp: (async () => {
+                        compared = true
+                        return false
+                    }) as any,
+                },
+                async () => {
+                    await expect(
+                        authService.verifyEmailAuth({ email: 'otp@example.com', otp: '123456' })
+                    ).rejects.toThrow(new AppError('too many attempts, request a new code', 429))
+                    expect(compared).toBe(false)
+                }
+            )
+        })
+
+        it('returns 429 when a wrong guess uses the last try', async () => {
+            await withUser(
+                {
+                    claimOtpAttempt: (async () => true) as any,
+                    clearExhaustedOtp: (async () => true) as any,
+                },
+                async () => {
+                    await expect(
+                        authService.verifyEmailAuth({ email: 'otp@example.com', otp: '123456' })
+                    ).rejects.toThrow(new AppError('too many attempts, request a new code', 429))
+                }
+            )
+        })
+
+        it('returns 401 for a wrong guess with tries left', async () => {
+            await withUser(
+                {
+                    claimOtpAttempt: (async () => true) as any,
+                    clearExhaustedOtp: (async () => false) as any,
+                },
+                async () => {
+                    await expect(
+                        authService.verifyEmailAuth({ email: 'otp@example.com', otp: '123456' })
+                    ).rejects.toThrow(new AppError('invalid code', 401))
+                }
+            )
+        })
+    })
+
+    describe('startEmailAuth race', () => {
+        it('returns 429, not 500, when another start created the user first', async () => {
+            const originalFind = authRepository.findUserByEmail
+            const originalCreate = authRepository.createUser
+            authRepository.findUserByEmail = (async () => null) as any
+            authRepository.createUser = (async () => {
+                throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })
+            }) as any
+
+            try {
+                await expect(
+                    authService.startEmailAuth({ email: 'race@example.com' })
+                ).rejects.toThrow(
+                    new AppError('please wait a few seconds before requesting a new code', 429)
+                )
+            } finally {
+                authRepository.findUserByEmail = originalFind
+                authRepository.createUser = originalCreate
+            }
+        })
+    })
+
     describe('social account linking', () => {
         // stubs every repository and cache call the social login path makes
         const withSocialStubs = async (

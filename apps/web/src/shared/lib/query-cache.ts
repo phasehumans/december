@@ -155,12 +155,10 @@ export const clearPersistedQueryCache = (storageKey = DEFAULT_PERSIST_KEY): void
  */
 export const resetUserQueryCache = (
     queryClient: QueryClient,
-    storageKey = DEFAULT_PERSIST_KEY,
-    whitelist = DEFAULT_PERSIST_WHITELIST
+    storageKey = DEFAULT_PERSIST_KEY
 ): void => {
-    for (const key of [...whitelist, 'onboarding', 'sessions']) {
-        queryClient.removeQueries({ queryKey: [key] })
-    }
+    // every query is per user (profile, billing, keys, sessions...), so drop them all
+    queryClient.removeQueries()
     clearPersistedQueryCache(storageKey)
 }
 
