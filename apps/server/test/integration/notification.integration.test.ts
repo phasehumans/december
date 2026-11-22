@@ -4,35 +4,26 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { notificationService } from '../../src/modules/notification/notification.service'
-import { cleanupTestUser, getRandomIP } from '../helpers'
+import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Notification Integration Tests', () => {
     const testEmail = `notiftest-${Date.now()}@example.com`
-    const testPassword = 'Password123!'
     let testUserId: string
     let accessToken: string
     let notif1Id: string
     let notif2Id: string
 
     beforeAll(async () => {
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const passHash = await bcrypt.hash(testPassword, env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 email: testEmail,
                 name: 'Notif Test User',
-                password: passHash,
                 emailVerified: true,
             },
         })
         testUserId = user.id
 
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        const loginRes = await signInWithEmailCode(app, testEmail)
 
         accessToken = loginRes.body.data.accessToken
 

@@ -7,18 +7,6 @@ export const updateNameSchema = z.object({
         .max(20, 'name must be at most 20 characters'),
 })
 
-export const changePasswordSchema = z.object({
-    currentPassword: z
-        .string()
-        .max(20, 'current password must be at most 20 characters')
-        .optional()
-        .or(z.literal('')),
-    newPassword: z
-        .string({ message: 'new password is required' })
-        .min(6, 'new password must be at least 6 characters')
-        .max(20, 'new password must be at most 20 characters'),
-})
-
 export const updateNotificationSchema = z.object({
     notifyProjectActivity: z
         .boolean({ message: 'notifyProjectActivity must be a boolean' })
@@ -31,8 +19,10 @@ export const updateNotificationSchema = z.object({
         .optional(),
 })
 
-export const dismissOnboardingCardSchema = z.object({
-    card: z.enum(['welcome', 'github', 'feedback'], { message: 'invalid onboarding card' }),
+export const updateOnboardingSchema = z.object({
+    step: z.enum(['github', 'start', 'models'], {
+        message: 'step must be github, start or models',
+    }),
 })
 
 export const submitFeedbackSchema = z.object({

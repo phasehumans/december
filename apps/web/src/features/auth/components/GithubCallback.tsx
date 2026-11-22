@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { authAPI } from '@/features/auth/api/auth'
 import { githubOAuth } from '@/features/auth/githubOAuth'
 import { Icons } from '@/shared/components/ui/Icons'
+import { LogoLoader } from '@/shared/components/ui/LogoLoader'
+import { clearPersistedQueryCache } from '@/shared/lib/query-cache'
 
 export const GithubCallback = () => {
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
@@ -49,6 +51,8 @@ export const GithubCallback = () => {
         const exchangeCode = async () => {
             try {
                 await authAPI.github({ code })
+                // the next page load must not restore a previous account's cached profile
+                clearPersistedQueryCache()
                 setStatus('success')
                 window.location.href = returnPath
             } catch (err: any) {
@@ -104,14 +108,5 @@ export const GithubCallback = () => {
         )
     }
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#141414]">
-            <div className="flex items-center justify-center animate-pulse">
-                <Icons.DecemberLogo
-                    className="w-10 h-10 md:w-14 md:h-14 text-[#212121]"
-                    strokeWidth={1.2}
-                />
-            </div>
-        </div>
-    )
+    return <LogoLoader />
 }

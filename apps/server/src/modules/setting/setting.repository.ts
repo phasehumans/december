@@ -15,10 +15,7 @@ async function findUserByIdForInfo(id: string) {
 async function findUserByIdForProfile(id: string, selectFields: Prisma.UserSelect) {
     return prisma.user.findUnique({
         where: { id },
-        select: {
-            ...selectFields,
-            password: true,
-        },
+        select: selectFields,
     })
 }
 
@@ -37,26 +34,6 @@ async function updateUserName(id: string, name: string) {
         data: { name },
         select: {
             name: true,
-        },
-    })
-}
-
-async function findUserPasswordById(id: string) {
-    return prisma.user.findUnique({
-        where: { id },
-        select: {
-            id: true,
-            password: true,
-        },
-    })
-}
-
-async function updatePassword(id: string, passwordHash: string) {
-    return prisma.user.update({
-        where: { id },
-        data: { password: passwordHash },
-        select: {
-            id: true,
         },
     })
 }
@@ -81,47 +58,44 @@ async function updateModelSource(id: string, defaultModelSource: 'CREDITS' | 'OW
     })
 }
 
-async function updateCompleteOnboarding(id: string) {
-    return prisma.user.update({
+async function findOnboardingSource(id: string) {
+    return prisma.user.findUnique({
         where: { id },
-        data: { hasCompletedOnboarding: true },
         select: {
-            id: true,
-            hasCompletedOnboarding: true,
+            onboardingCompletedAt: true,
+            onboardingStep: true,
+            creditBalance: true,
+            githubAppInstall: true,
+            githubConnected: true,
+            githubUsername: true,
+            githubInstallations: {
+                select: { accountLogin: true },
+                orderBy: { createdAt: 'asc' },
+                take: 1,
+            },
+            // the key saved last (save sets verifiedAt), so "Change" shows the new key
+            providerCredentials: {
+                select: { provider: true, keyHint: true },
+                orderBy: { verifiedAt: 'desc' },
+                take: 1,
+            },
         },
     })
 }
 
-async function updateWelcomeCardDone(id: string) {
+async function updateOnboardingStep(id: string, onboardingStep: string) {
     return prisma.user.update({
         where: { id },
-        data: { welcomeCardDone: true },
-        select: {
-            id: true,
-            welcomeCardDone: true,
-        },
+        data: { onboardingStep },
+        select: { id: true },
     })
 }
 
-async function updateGithubCardDone(id: string) {
-    return prisma.user.update({
-        where: { id },
-        data: { githubCardDone: true },
-        select: {
-            id: true,
-            githubCardDone: true,
-        },
-    })
-}
-
-async function updateFeedbackCardDone(id: string) {
-    return prisma.user.update({
-        where: { id },
-        data: { feedbackCardDone: true },
-        select: {
-            id: true,
-            feedbackCardDone: true,
-        },
+// sets the date only once: a second call keeps the first date
+async function markOnboardingCompleted(id: string) {
+    return prisma.user.updateMany({
+        where: { id, onboardingCompletedAt: null },
+        data: { onboardingCompletedAt: new Date() },
     })
 }
 
@@ -151,15 +125,12 @@ export const settingRepository = {
     findUserByIdForExistCheck,
     updateUserName,
 
-    findUserPasswordById,
-    updatePassword,
     updateNotifications,
     updateModelSource,
 
-    updateCompleteOnboarding,
-    updateWelcomeCardDone,
-    updateGithubCardDone,
-    updateFeedbackCardDone,
+    findOnboardingSource,
+    updateOnboardingStep,
+    markOnboardingCompleted,
     createFeedback,
     findUserByEmail,
 }

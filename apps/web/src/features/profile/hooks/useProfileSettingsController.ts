@@ -7,12 +7,6 @@ import { profileAPI } from '@/features/profile/api/profile'
 export const useProfileSettingsController = () => {
     const [nameModalOpen, setNameModalOpen] = React.useState(false)
     const [tempName, setTempName] = React.useState('')
-    const [passwordModalOpen, setPasswordModalOpen] = React.useState(false)
-    const [showCurrentPass, setShowCurrentPass] = React.useState(false)
-    const [showNewPass, setShowNewPass] = React.useState(false)
-    const [currentPassword, setCurrentPassword] = React.useState('')
-    const [newPassword, setNewPassword] = React.useState('')
-    const [confirmPassword, setConfirmPassword] = React.useState('')
     const [profileActionError, setProfileActionError] = React.useState<string | null>(null)
 
     const {
@@ -23,19 +17,12 @@ export const useProfileSettingsController = () => {
             error: profileError,
         },
         updateNameMutation,
-        updatePasswordMutation,
         updateNotificationMutation,
     } = useProfileSettingsData({
         setProfileActionError,
         onNameMutate: () => {},
         onNameSuccess: () => {
             setNameModalOpen(false)
-        },
-        onPasswordSuccess: () => {
-            setPasswordModalOpen(false)
-            setCurrentPassword('')
-            setNewPassword('')
-            setConfirmPassword('')
         },
     })
 
@@ -51,40 +38,12 @@ export const useProfileSettingsController = () => {
         setNameModalOpen(true)
     }
 
-    const openPasswordModal = () => {
-        setProfileActionError(null)
-        setPasswordModalOpen(true)
-    }
-
     const handleSaveName = () => {
         if (!tempName.trim()) {
             return
         }
 
         updateNameMutation.mutate({ name: tempName.trim() })
-    }
-
-    const handleUpdatePassword = () => {
-        if (!newPassword.trim()) {
-            setProfileActionError('Please enter a new password')
-            return
-        }
-
-        if (profile?.hasPassword && !currentPassword.trim()) {
-            setProfileActionError('Please enter your current password')
-            return
-        }
-
-        if (newPassword !== confirmPassword) {
-            setProfileActionError('New password and confirm password do not match')
-            return
-        }
-
-        setProfileActionError(null)
-        updatePasswordMutation.mutate({
-            currentPassword: profile?.hasPassword ? currentPassword : '',
-            newPassword,
-        })
     }
 
     const handleNotificationToggle = (
@@ -114,22 +73,9 @@ export const useProfileSettingsController = () => {
         setProfileActionError,
         nameModalOpen,
         tempName,
-        passwordModalOpen,
-        showCurrentPass,
-        showNewPass,
-        currentPassword,
-        newPassword,
-        confirmPassword,
         setNameModalOpen,
         setTempName,
-        setPasswordModalOpen,
-        setShowCurrentPass,
-        setShowNewPass,
-        setCurrentPassword,
-        setNewPassword,
-        setConfirmPassword,
         updateNameMutation,
-        updatePasswordMutation,
         updateNotificationMutation,
         isGithubConnected,
         emailNotifications,
@@ -137,9 +83,7 @@ export const useProfileSettingsController = () => {
         securityAlerts,
         resolvedName,
         openNameModal,
-        openPasswordModal,
         handleSaveName,
-        handleUpdatePassword,
         handleNotificationToggle,
         connectGithub,
     }

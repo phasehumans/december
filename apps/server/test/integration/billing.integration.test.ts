@@ -12,7 +12,6 @@ describe('Billing Integration Tests', () => {
     let testEmail: string
     let testUserBId: string
     let testEmailB: string
-    const testPassword = 'Password123!'
     let accessToken: string
     let accessTokenB: string
     const razorpaySecret = 'test_razorpay_secret_key_123'
@@ -24,15 +23,10 @@ describe('Billing Integration Tests', () => {
         testEmail = `billingtest-${Date.now()}@example.com`
         testEmailB = `billingtest-b-${Date.now()}@example.com`
 
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const hashedPassword = await bcrypt.hash(testPassword, env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 name: 'Billing Test User',
                 email: testEmail,
-                password: hashedPassword,
                 emailVerified: true,
                 creditBalance: 1000, // $10 initial balance
             },
@@ -43,7 +37,6 @@ describe('Billing Integration Tests', () => {
             data: {
                 name: 'Billing Test User B',
                 email: testEmailB,
-                password: hashedPassword,
                 emailVerified: true,
                 creditBalance: 500, // $5 initial balance
             },

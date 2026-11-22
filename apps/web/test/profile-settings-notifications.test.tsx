@@ -46,7 +46,6 @@ describe('Profile Settings Notifications Tab Placement', () => {
                             receiveNotification: true,
                             googleId: null,
                             githubConnected: false,
-                            hasPassword: true,
                         }}
                         resolvedName="Test User"
                         hasProfile={true}
@@ -57,7 +56,6 @@ describe('Profile Settings Notifications Tab Placement', () => {
                         isNotificationPending={false}
                         onOpenNameModal={() => {}}
                         onOpenUsernameModal={() => {}}
-                        onOpenPasswordModal={() => {}}
                         onNotificationToggle={handleNotificationToggle}
                         onConnectGithub={() => {}}
                         onSignOut={() => {}}

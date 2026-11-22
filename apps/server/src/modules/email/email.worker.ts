@@ -15,7 +15,7 @@ export const processEmailJob = async (job: Job<EmailJobData>): Promise<ProcessEm
     const webUrl = (env.WEB_URL || 'https://trydecember.com').replace(/\/+$/, '')
 
     if (data.type === 'otp') {
-        const { to, otp, otpType = 'verification' } = data
+        const { to, otp, otpType = 'signup' } = data
         const { subject, html, text } = renderOtpEmail({
             otp,
             type: otpType,

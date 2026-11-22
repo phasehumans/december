@@ -11,16 +11,10 @@ export interface Profile {
     googleId: string | null
     githubConnected: boolean
     githubUsername?: string
-    hasPassword?: boolean
 }
 
 export interface UpdateNameInput {
     name: string
-}
-
-export interface ChangePasswordInput {
-    currentPassword?: string
-    newPassword: string
 }
 
 export interface UpdateNotificationInput {
@@ -42,25 +36,6 @@ export interface ProfileNameModalProps {
     onClose: () => void
     onChange: (value: string) => void
     onSave: () => void
-}
-
-export interface ProfilePasswordModalProps {
-    isOpen: boolean
-    isPending: boolean
-    currentPassword: string
-    newPassword: string
-    confirmPassword: string
-    showCurrentPass: boolean
-    showNewPass: boolean
-    errorMessage?: string | null
-    onClose: () => void
-    onUpdatePassword: () => void
-    onCurrentPasswordChange: (value: string) => void
-    onNewPasswordChange: (value: string) => void
-    onConfirmPasswordChange: (value: string) => void
-    onToggleShowCurrentPass: () => void
-    onToggleShowNewPass: () => void
-    hasPassword?: boolean
 }
 
 export interface SettingsRowProps {

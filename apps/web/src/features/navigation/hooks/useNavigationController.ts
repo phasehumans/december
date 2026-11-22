@@ -7,6 +7,7 @@ import { getPathForView, type ViewState } from '@/app/types'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
 import { getWebUrl } from '@/shared/config/env'
+import { resetUserQueryCache } from '@/shared/lib/query-cache'
 import { clearLoggedInCookie } from '@/shared/utils/logged-in-cookie'
 
 export const useNavigationController = () => {
@@ -108,8 +109,8 @@ export const useNavigationController = () => {
         }
         setIsAuthRestored(false)
         setIsAuthenticated(false)
-        queryClient.removeQueries({ queryKey: ['sessions'] })
-        queryClient.removeQueries({ queryKey: ['profile'] })
+        // also clears localStorage, so the next account never starts with this one's profile
+        resetUserQueryCache(queryClient)
         if (typeof window !== 'undefined') {
             window.location.replace(landingUrl)
         }

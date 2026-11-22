@@ -1,10 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Laptop } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 import { HomeHeader } from './HomeHeader'
-import { OnboardingModal } from './OnboardingModal'
 import PromptInput from './PromptInput'
 
 import type { HomeHeroProps } from '@/features/home/types'
@@ -12,13 +9,7 @@ import type { HomeHeroProps } from '@/features/home/types'
 import { useAppStore } from '@/app/store'
 import { OutOfCreditsModal } from '@/features/billing/components/OutOfCreditsModal'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
-import { profileAPI } from '@/features/profile/api/profile'
-import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { Icons } from '@/shared/components/ui/Icons'
-import { getGithubAppName, getWebUrl } from '@/shared/config/env'
-
-// Toggle to temporarily disable onboarding / welcome modal for users until turned back on
-const SHOW_ONBOARDING_MODAL = false
 
 export const HomeHero: React.FC<HomeHeroProps> = ({
     onPromptSubmit,
@@ -35,101 +26,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         setShowOutOfCreditsModal,
     } = useAppStore()
     const { data: overview } = useBillingOverview(Boolean(isAuthenticated))
-    const navigate = useNavigate()
     const [prompt, setPrompt] = React.useState('')
     const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-
-    const queryClient = useQueryClient()
-    const { data: profile } = useQuery({
-        queryKey: ['profile'],
-        queryFn: profileAPI.getProfile,
-        enabled: isAuthenticated,
-    })
-
-    const completeOnboardingMutation = useMutation({
-        mutationFn: profileAPI.completeOnboarding,
-        onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: ['profile'] })
-        },
-    })
-
-    const [showOnboarding, setShowOnboarding] = useState(false)
-    const [showFeedbackModal, setShowFeedbackModal] = useState(false)
-    const [unauthDismissedCards, setUnauthDismissedCards] = useState<{
-        github?: boolean
-        docs?: boolean
-        feedback?: boolean
-    }>({})
-
-    const dismissCardMutation = useMutation({
-        mutationFn: profileAPI.dismissOnboardingCard,
-        onMutate: async (card) => {
-            await queryClient.cancelQueries({ queryKey: ['profile'] })
-            const previousProfile = queryClient.getQueryData<any>(['profile'])
-            queryClient.setQueryData<any>(['profile'], (old: any) => {
-                if (!old) return old
-                if (card === 'welcome') return { ...old, welcomeCardDone: true }
-                if (card === 'github') return { ...old, githubCardDone: true }
-                if (card === 'feedback') return { ...old, feedbackCardDone: true }
-                return old
-            })
-            return { previousProfile }
-        },
-        onError: (_err, _vars, context) => {
-            if (context?.previousProfile) {
-                queryClient.setQueryData(['profile'], context.previousProfile)
-            }
-        },
-        onSettled: () => {
-            void queryClient.invalidateQueries({ queryKey: ['profile'] })
-        },
-    })
-
-    const handleDismissCard = (card: 'github' | 'docs' | 'feedback') => {
-        if (isAuthenticated) {
-            dismissCardMutation.mutate(card === 'docs' ? 'welcome' : card)
-        } else {
-            setUnauthDismissedCards((prev) => ({ ...prev, [card]: true }))
-        }
-    }
-
-    const isGithubDone = isAuthenticated
-        ? Boolean(profile?.githubAppInstall || profile?.githubConnected || profile?.githubCardDone)
-        : Boolean(unauthDismissedCards.github)
-    const isDocsDone = isAuthenticated
-        ? Boolean(profile?.welcomeCardDone)
-        : Boolean(unauthDismissedCards.docs)
-    const isFeedbackDone = isAuthenticated
-        ? Boolean(profile?.feedbackCardDone)
-        : Boolean(unauthDismissedCards.feedback)
-
-    const handleConnectGithub = () => {
-        if (isAuthenticated && profile?.id) {
-            window.location.href = profileAPI.getGithubConnectUrl(profile.id)
-        } else {
-            const appName = getGithubAppName() || 'trydecember'
-            window.location.href = `https://github.com/apps/${appName}`
-        }
-    }
-
-    useEffect(() => {
-        let timer: any = null
-        if (
-            SHOW_ONBOARDING_MODAL &&
-            isAuthenticated &&
-            profile &&
-            profile.hasCompletedOnboarding === false
-        ) {
-            timer = setTimeout(() => {
-                setShowOnboarding(true)
-            }, 800)
-        } else {
-            setShowOnboarding(false)
-        }
-        return () => {
-            if (timer) clearTimeout(timer)
-        }
-    }, [isAuthenticated, profile])
 
     useEffect(() => {
         const handleNewSession = () => {
@@ -185,8 +83,10 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         value={prompt}
                         onChange={setPrompt}
                         onSubmit={(submittedPrompt, options) => {
+                            // own-key runs are paid by the user's provider, so an empty wallet is fine
                             if (
                                 isAuthenticated &&
+                                options?.billingSource !== 'OWN_KEY' &&
                                 overview !== undefined &&
                                 (overview.creditBalance ?? 0) <= 0
                             ) {
@@ -201,115 +101,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         onOpenAuth={onOpenAuth}
                         mode="agent"
                     />
-
-                    {/* Get Started Section - Desktop View */}
-                    {(!isGithubDone || !isDocsDone || !isFeedbackDone) && (
-                        <div className="mt-8 w-full hidden md:flex flex-col gap-3.5 select-none animate-in fade-in duration-300">
-                            <div className="flex flex-col gap-0.5 text-left px-1.5">
-                                <h3 className="text-[13px] md:text-[14px] font-sans font-medium text-[#D6D5D4] tracking-tight">
-                                    Get Started
-                                </h3>
-                                <p className="text-[11px] md:text-[11.5px] font-sans text-[#8F8E8D] leading-tight">
-                                    Start your journey with December by completing your onboarding
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                                {/* Card 1: Connect GitHub */}
-                                {!isGithubDone && (
-                                    <div className="relative flex flex-col justify-between p-4 rounded-[15px] bg-[#141414] border border-dashed border-[#333333] min-h-[190px] text-left">
-                                        <button
-                                            onClick={() => handleDismissCard('github')}
-                                            className="absolute top-3 right-3 text-[#8F8E8D] hover:text-white transition-colors cursor-pointer"
-                                            title="Dismiss card"
-                                        >
-                                            <Icons.X className="w-3.5 h-3.5" />
-                                        </button>
-                                        <div className="flex flex-col gap-1.5 pr-4">
-                                            <h4 className="text-[13px] font-sans font-medium text-[#E8E8E8]">
-                                                Connect GitHub
-                                            </h4>
-                                            <p className="text-[11px] font-sans text-[#8F8E8D] leading-normal font-normal">
-                                                Connect your repositories so that December can open
-                                                Pull Requests and review code.
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={
-                                                isAuthenticated ? handleConnectGithub : onOpenAuth
-                                            }
-                                            className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] hover:border-[#3A3A3A] text-[#9A9998] hover:text-[#EDEDED] text-[11.5px] font-sans font-medium text-center cursor-pointer select-none transition-all active:scale-[0.98] active:translate-y-[0.5px]"
-                                        >
-                                            {isAuthenticated
-                                                ? 'Install Integration'
-                                                : 'Sign In to Connect'}
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* Card 2: Read Docs */}
-                                {!isDocsDone && (
-                                    <div className="relative flex flex-col justify-between p-4 rounded-[15px] bg-[#141414] border border-dashed border-[#333333] min-h-[190px] text-left">
-                                        <button
-                                            onClick={() => handleDismissCard('docs')}
-                                            className="absolute top-3 right-3 text-[#8F8E8D] hover:text-white transition-colors cursor-pointer"
-                                            title="Dismiss card"
-                                        >
-                                            <Icons.X className="w-3.5 h-3.5" />
-                                        </button>
-                                        <div className="flex flex-col gap-1.5 pr-4">
-                                            <h4 className="text-[13px] font-sans font-medium text-[#E8E8E8]">
-                                                Read documentation
-                                            </h4>
-                                            <p className="text-[11px] font-sans text-[#8F8E8D] leading-normal font-normal">
-                                                Explore how December works, read guides, and learn
-                                                CLI & agent capabilities.
-                                            </p>
-                                        </div>
-                                        <a
-                                            href={`${getWebUrl()}/docs`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] hover:border-[#3A3A3A] text-[#9A9998] hover:text-[#EDEDED] text-[11.5px] font-sans font-medium text-center cursor-pointer block select-none transition-all active:scale-[0.98] active:translate-y-[0.5px]"
-                                        >
-                                            Read Docs
-                                        </a>
-                                    </div>
-                                )}
-
-                                {/* Card 3: Feedback */}
-                                {!isFeedbackDone && (
-                                    <div className="relative flex flex-col justify-between p-4 rounded-[15px] bg-[#141414] border border-dashed border-[#333333] min-h-[190px] text-left">
-                                        <button
-                                            onClick={() => handleDismissCard('feedback')}
-                                            className="absolute top-3 right-3 text-[#8F8E8D] hover:text-white transition-colors cursor-pointer"
-                                            title="Dismiss card"
-                                        >
-                                            <Icons.X className="w-3.5 h-3.5" />
-                                        </button>
-                                        <div className="flex flex-col gap-1.5 pr-4">
-                                            <h4 className="text-[13px] font-sans font-medium text-[#E8E8E8]">
-                                                Give feedback
-                                            </h4>
-                                            <p className="text-[11px] font-sans text-[#8F8E8D] leading-normal font-normal">
-                                                Help us improve December by sharing your thoughts
-                                                and feature requests.
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={
-                                                isAuthenticated
-                                                    ? () => setShowFeedbackModal(true)
-                                                    : onOpenAuth
-                                            }
-                                            className="mt-6 w-full py-1.5 rounded-[7px] bg-[#191919] border border-[#262626] hover:border-[#3A3A3A] text-[#9A9998] hover:text-[#EDEDED] text-[11.5px] font-sans font-medium text-center cursor-pointer select-none transition-all active:scale-[0.98] active:translate-y-[0.5px]"
-                                        >
-                                            Share feedback
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -325,25 +116,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                     setShowOutOfCreditsModal(false)
                     setShowUpgradeModal(false)
                 }}
-            />
-
-            {SHOW_ONBOARDING_MODAL && (
-                <OnboardingModal
-                    isOpen={showOnboarding}
-                    onClose={() => {
-                        completeOnboardingMutation.mutate()
-                        setShowOnboarding(false)
-                    }}
-                    onConfirm={() => {
-                        completeOnboardingMutation.mutate()
-                        setShowOnboarding(false)
-                    }}
-                />
-            )}
-
-            <ProfileFeedbackModal
-                isOpen={showFeedbackModal}
-                onClose={() => setShowFeedbackModal(false)}
             />
         </main>
     )

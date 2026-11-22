@@ -11,8 +11,7 @@
 //      arm still up for a few steps,
 //      and walks off to the right. After a short pause the race starts again.
 //
-// The start and finish lines are the side rails of the page column (lg and up). On narrower
-// screens they sit at 15% and 85% of the width.
+// The start and finish lines are the side rails of the page column.
 //
 // The motion is real: the gallop and the walk are Muybridge's photos and drawings (public
 // domain), sampled onto a grid of round dots, like an LED sign. See
@@ -22,14 +21,14 @@
 //
 // Place it as a direct child of the footer column container (the element that holds the
 // top SectionDivider). It sits on top of that line and takes no space.
-// Hidden below the sm breakpoint, like the footer divider. With prefers-reduced-motion the
+// Hidden below the lg breakpoint (phones and tablets), like the footer divider. With prefers-reduced-motion the
 // horse stands still at the start line.
 ---
 
 <canvas
   data-footer-rider
   aria-hidden="true"
-  class="pointer-events-none absolute bottom-full left-1/2 hidden h-12 w-screen max-w-none -translate-x-1/2 sm:block"
+  class="pointer-events-none absolute bottom-full left-1/2 hidden h-12 w-screen max-w-none -translate-x-1/2 lg:block"
 ></canvas>
 
 <script>
@@ -130,7 +129,7 @@
     const markEls = Array.from(column.querySelectorAll<SVGElement>(':scope > div[aria-hidden="true"] > svg'));
 
     const railed = window.matchMedia('(min-width: 1024px)');
-    const smUp = window.matchMedia('(min-width: 640px)');
+    const lgUp = window.matchMedia('(min-width: 1024px)');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     let width = 0;
@@ -308,7 +307,7 @@
 
     const start = () => {
       stop();
-      if (!onScreen || !smUp.matches) return;
+      if (!onScreen || !lgUp.matches) return;
       measure();
       if (reducedMotion.matches) {
         render({ x: startX, frame: SET0 });
@@ -334,7 +333,7 @@
 
     window.addEventListener('resize', onResize);
     railed.addEventListener('change', start);
-    smUp.addEventListener('change', start);
+    lgUp.addEventListener('change', start);
     reducedMotion.addEventListener('change', start);
 
     cleanup = () => {
@@ -343,7 +342,7 @@
       observer.disconnect();
       window.removeEventListener('resize', onResize);
       railed.removeEventListener('change', start);
-      smUp.removeEventListener('change', start);
+      lgUp.removeEventListener('change', start);
       reducedMotion.removeEventListener('change', start);
     };
   };

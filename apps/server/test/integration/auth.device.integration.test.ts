@@ -3,7 +3,7 @@ import { describe, it, expect, afterAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP } from '../helpers'
+import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Auth Device CLI Flow Integration Tests', () => {
     const testEmail = `devicetest-${Date.now()}@example.com`
@@ -19,24 +19,16 @@ describe('Auth Device CLI Flow Integration Tests', () => {
     })
 
     it('setup: create authenticated user for device verification', async () => {
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const passHash = await bcrypt.hash('Password123!', env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 email: testEmail,
                 name: 'Device Test User',
-                password: passHash,
                 emailVerified: true,
             },
         })
         testUserId = user.id
 
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: 'Password123!' })
+        const loginRes = await signInWithEmailCode(app, testEmail)
 
         userAccessToken = loginRes.body.data.accessToken
     })

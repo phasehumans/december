@@ -8,185 +8,172 @@ import { notificationService } from '../../src/modules/notification/notification
 import { AppError } from '../../src/shared/appError'
 
 describe('Auth Service - Unit Tests', () => {
-    describe('signup', () => {
-        it('should throw AppError 400 if user exists with social login (no password)', async () => {
+    describe('startEmailAuth', () => {
+        it('should throw AppError 403 if the account was deleted', async () => {
             const originalFind = authRepository.findUserByEmail
             authRepository.findUserByEmail = (async () => ({
                 id: 'user-1',
-                email: 'social@example.com',
-                password: null,
-                emailVerified: true,
-            })) as any
-
-            try {
-                await expect(
-                    authService.signup({ email: 'social@example.com', password: 'Password123!' })
-                ).rejects.toThrow(new AppError('account exists with social login', 400))
-            } finally {
-                authRepository.findUserByEmail = originalFind
-            }
-        })
-
-        it('should throw AppError 409 if user exists and email is already verified', async () => {
-            const originalFind = authRepository.findUserByEmail
-            authRepository.findUserByEmail = (async () => ({
-                id: 'user-2',
-                email: 'verified@example.com',
-                password: 'hashed-password',
-                emailVerified: true,
-            })) as any
-
-            try {
-                await expect(
-                    authService.signup({ email: 'verified@example.com', password: 'Password123!' })
-                ).rejects.toThrow(new AppError('email already exists', 409))
-            } finally {
-                authRepository.findUserByEmail = originalFind
-            }
-        })
-    })
-
-    describe('verifyOtp', () => {
-        it('should throw AppError 404 if user not found', async () => {
-            const originalFind = authRepository.findUserByEmail
-            authRepository.findUserByEmail = (async () => null) as any
-
-            try {
-                await expect(
-                    authService.verifyOtp({ email: 'unknown@example.com', otp: '123456' })
-                ).rejects.toThrow(new AppError('user not found', 404))
-            } finally {
-                authRepository.findUserByEmail = originalFind
-            }
-        })
-
-        it('should throw AppError 403 if user is marked as deleted', async () => {
-            const originalFind = authRepository.findUserByEmail
-            authRepository.findUserByEmail = (async () => ({
-                id: 'deleted-user',
                 email: 'deleted@example.com',
                 isDeleted: true,
             })) as any
 
             try {
                 await expect(
-                    authService.verifyOtp({ email: 'deleted@example.com', otp: '123456' })
+                    authService.startEmailAuth({ email: 'deleted@example.com' })
                 ).rejects.toThrow(new AppError('account has been deleted', 403))
             } finally {
                 authRepository.findUserByEmail = originalFind
             }
         })
 
-        it('should throw AppError 400 if user email is already verified', async () => {
+        it('should throw AppError 429 if a code was sent less than 30 seconds ago', async () => {
             const originalFind = authRepository.findUserByEmail
             authRepository.findUserByEmail = (async () => ({
-                id: 'verified-user',
-                email: 'verified@example.com',
-                isDeleted: false,
-                emailVerified: true,
+                id: 'user-2',
+                email: 'recent@example.com',
+                otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000 - 5 * 1000),
             })) as any
 
             try {
                 await expect(
-                    authService.verifyOtp({ email: 'verified@example.com', otp: '123456' })
-                ).rejects.toThrow(new AppError('email already verified', 400))
-            } finally {
-                authRepository.findUserByEmail = originalFind
-            }
-        })
-
-        it('should throw AppError 400 if OTP is not found', async () => {
-            const originalFind = authRepository.findUserByEmail
-            authRepository.findUserByEmail = (async () => ({
-                id: 'no-otp-user',
-                email: 'nootp@example.com',
-                isDeleted: false,
-                emailVerified: false,
-                otpHash: null,
-                otpExpiresAt: null,
-            })) as any
-
-            try {
-                await expect(
-                    authService.verifyOtp({ email: 'nootp@example.com', otp: '123456' })
-                ).rejects.toThrow(new AppError('otp not found, request new one', 400))
+                    authService.startEmailAuth({ email: 'recent@example.com' })
+                ).rejects.toThrow(
+                    new AppError('please wait a few seconds before requesting a new code', 429)
+                )
             } finally {
                 authRepository.findUserByEmail = originalFind
             }
         })
     })
 
-    describe('login', () => {
-        it('should throw AppError 401 for non-existent user email', async () => {
+    describe('verifyEmailAuth', () => {
+        it('should throw AppError 401 if no user or code exists', async () => {
             const originalFind = authRepository.findUserByEmail
             authRepository.findUserByEmail = (async () => null) as any
 
             try {
                 await expect(
-                    authService.login({
-                        email: 'nonexistent@example.com',
-                        password: 'Password123!',
-                    })
-                ).rejects.toThrow(new AppError('invalid email or password', 401))
+                    authService.verifyEmailAuth({ email: 'unknown@example.com', otp: '123456' })
+                ).rejects.toThrow(new AppError('invalid or expired code, request a new one', 401))
             } finally {
                 authRepository.findUserByEmail = originalFind
             }
         })
 
-        it('should throw AppError 401 if email is unverified', async () => {
+        it('should throw AppError 403 if the account was deleted', async () => {
             const originalFind = authRepository.findUserByEmail
             authRepository.findUserByEmail = (async () => ({
-                id: 'unverified-user',
-                email: 'unverified@example.com',
-                emailVerified: false,
+                id: 'user-3',
+                email: 'deleted@example.com',
+                deletedAt: new Date(),
+                otpHash: 'hash',
+                otpExpiresAt: new Date(Date.now() + 60 * 1000),
             })) as any
 
             try {
                 await expect(
-                    authService.login({ email: 'unverified@example.com', password: 'Password123!' })
-                ).rejects.toThrow(new AppError('please verify your email', 401))
+                    authService.verifyEmailAuth({ email: 'deleted@example.com', otp: '123456' })
+                ).rejects.toThrow(new AppError('account has been deleted', 403))
             } finally {
                 authRepository.findUserByEmail = originalFind
             }
         })
+    })
 
-        it('should tell a github-only user to continue with github', async () => {
-            const originalFind = authRepository.findUserByEmail
+    describe('verifyEmailAuth attempt limit', () => {
+        const otpHash = '$2b$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01'
+
+        const withUser = async (
+            overrides: Partial<typeof authRepository>,
+            run: () => Promise<void>
+        ) => {
+            const originals = {
+                findUserByEmail: authRepository.findUserByEmail,
+                claimOtpAttempt: authRepository.claimOtpAttempt,
+                clearExhaustedOtp: authRepository.clearExhaustedOtp,
+                consumeOtp: authRepository.consumeOtp,
+            }
             authRepository.findUserByEmail = (async () => ({
-                id: 'gh-user',
-                email: 'gh@example.com',
+                id: 'user-otp',
+                email: 'otp@example.com',
+                otpHash,
+                otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
                 emailVerified: true,
-                password: null,
-                githubId: '42',
-                googleId: null,
             })) as any
-
+            Object.assign(authRepository, overrides)
             try {
-                await expect(
-                    authService.login({ email: 'gh@example.com', password: 'Password123!' })
-                ).rejects.toThrow(new AppError('please continue with github login', 401))
+                await run()
             } finally {
-                authRepository.findUserByEmail = originalFind
+                Object.assign(authRepository, originals)
             }
+        }
+
+        it('refuses a guess when the code has no tries left, without comparing it', async () => {
+            let compared = false
+            await withUser(
+                {
+                    claimOtpAttempt: (async () => false) as any,
+                    clearExhaustedOtp: (async () => {
+                        compared = true
+                        return false
+                    }) as any,
+                },
+                async () => {
+                    await expect(
+                        authService.verifyEmailAuth({ email: 'otp@example.com', otp: '123456' })
+                    ).rejects.toThrow(new AppError('too many attempts, request a new code', 429))
+                    expect(compared).toBe(false)
+                }
+            )
         })
 
-        it('should tell a google-only user to continue with google', async () => {
+        it('returns 429 when a wrong guess uses the last try', async () => {
+            await withUser(
+                {
+                    claimOtpAttempt: (async () => true) as any,
+                    clearExhaustedOtp: (async () => true) as any,
+                },
+                async () => {
+                    await expect(
+                        authService.verifyEmailAuth({ email: 'otp@example.com', otp: '123456' })
+                    ).rejects.toThrow(new AppError('too many attempts, request a new code', 429))
+                }
+            )
+        })
+
+        it('returns 401 for a wrong guess with tries left', async () => {
+            await withUser(
+                {
+                    claimOtpAttempt: (async () => true) as any,
+                    clearExhaustedOtp: (async () => false) as any,
+                },
+                async () => {
+                    await expect(
+                        authService.verifyEmailAuth({ email: 'otp@example.com', otp: '123456' })
+                    ).rejects.toThrow(new AppError('invalid code', 401))
+                }
+            )
+        })
+    })
+
+    describe('startEmailAuth race', () => {
+        it('returns 429, not 500, when another start created the user first', async () => {
             const originalFind = authRepository.findUserByEmail
-            authRepository.findUserByEmail = (async () => ({
-                id: 'google-user',
-                email: 'google@example.com',
-                emailVerified: true,
-                password: null,
-                githubId: null,
-                googleId: 'g-1',
-            })) as any
+            const originalCreate = authRepository.createUser
+            authRepository.findUserByEmail = (async () => null) as any
+            authRepository.createUser = (async () => {
+                throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })
+            }) as any
 
             try {
                 await expect(
-                    authService.login({ email: 'google@example.com', password: 'Password123!' })
-                ).rejects.toThrow(new AppError('please continue with google login', 401))
+                    authService.startEmailAuth({ email: 'race@example.com' })
+                ).rejects.toThrow(
+                    new AppError('please wait a few seconds before requesting a new code', 429)
+                )
             } finally {
                 authRepository.findUserByEmail = originalFind
+                authRepository.createUser = originalCreate
             }
         })
     })
@@ -245,41 +232,24 @@ describe('Auth Service - Unit Tests', () => {
             username: 'victim',
         }
 
-        it('github clears a password set on an unverified account before linking', async () => {
+        it('github links an unverified account, verifies it and clears its pending code', async () => {
             await withSocialStubs(
                 {
                     byEmail: {
-                        id: 'squatted',
+                        id: 'pending',
                         email: 'victim@example.com',
                         emailVerified: false,
-                        password: 'attacker-hash',
+                        otpHash: 'pending-code',
                         githubId: null,
                     },
                 },
                 async ({ updates }) => {
                     await authService.github(githubLogin)
                     expect(updates).toHaveLength(1)
-                    expect(updates[0].password).toBeNull()
                     expect(updates[0].githubId).toBe('42')
-                }
-            )
-        })
-
-        it('github keeps the password of a verified account when linking', async () => {
-            await withSocialStubs(
-                {
-                    byEmail: {
-                        id: 'owner',
-                        email: 'victim@example.com',
-                        emailVerified: true,
-                        password: 'owner-hash',
-                        githubId: null,
-                    },
-                },
-                async ({ updates }) => {
-                    await authService.github(githubLogin)
-                    expect(updates).toHaveLength(1)
-                    expect('password' in updates[0]).toBe(false)
+                    expect(updates[0].emailVerified).toBe(true)
+                    expect(updates[0].otpHash).toBeNull()
+                    expect(updates[0].otpAttempts).toBe(0)
                 }
             )
         })
@@ -319,14 +289,14 @@ describe('Auth Service - Unit Tests', () => {
             })
         })
 
-        it('google clears a password set on an unverified account before linking', async () => {
+        it('google links an unverified account, verifies it and clears its pending code', async () => {
             await withSocialStubs(
                 {
                     byEmail: {
-                        id: 'squatted',
+                        id: 'pending',
                         email: 'victim@example.com',
                         emailVerified: false,
-                        password: 'attacker-hash',
+                        otpHash: 'pending-code',
                         googleId: null,
                     },
                 },
@@ -337,7 +307,9 @@ describe('Auth Service - Unit Tests', () => {
                         sub: 'g-1',
                     })
                     expect(updates).toHaveLength(1)
-                    expect(updates[0].password).toBeNull()
+                    expect(updates[0].googleId).toBe('g-1')
+                    expect(updates[0].emailVerified).toBe(true)
+                    expect(updates[0].otpHash).toBeNull()
                 }
             )
         })

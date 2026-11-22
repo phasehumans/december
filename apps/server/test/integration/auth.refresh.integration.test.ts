@@ -3,11 +3,10 @@ import { describe, it, expect, afterAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP } from '../helpers'
+import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Auth Refresh Token & Rotation Integration Tests', () => {
     const testEmail = `refreshtest-${Date.now()}@example.com`
-    const testPassword = 'Password123!'
     let testUserId: string
     let refreshToken: string
 
@@ -18,24 +17,16 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
     })
 
     it('setup: signup & verify user', async () => {
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const passHash = await bcrypt.hash(testPassword, env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 email: testEmail,
                 name: 'Refresh Test User',
-                password: passHash,
                 emailVerified: true,
             },
         })
         testUserId = user.id
 
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
         refreshToken = loginRes.body.data.accessToken
@@ -75,10 +66,7 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
 
     it('3. POST /api/v1/auth/refresh - rotates tokens atomically and updates previousRefreshTokenHash and rotatedAt', async () => {
         // Log in to get fresh active session
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
         const activeToken = loginRes.body.data.accessToken
@@ -104,10 +92,7 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
 
     it('4. POST /api/v1/auth/refresh - handles concurrent multi-tab refresh within 30-second grace window', async () => {
         // Log in to get fresh active session
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
         const sharedTabToken = loginRes.body.data.accessToken
@@ -140,10 +125,7 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
 
     it('5. POST /api/v1/auth/refresh - detects token reuse outside 30-second grace window and revokes session', async () => {
         // Log in to get fresh active session
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
         const oldToken = loginRes.body.data.accessToken
@@ -181,10 +163,7 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
     })
 
     it('6. authMiddleware - authenticates via HTTP-only accessToken cookie', async () => {
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
         const cookies = loginRes.headers['set-cookie']

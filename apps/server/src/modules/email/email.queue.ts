@@ -46,7 +46,7 @@ export const enqueueOtpJob = async (data: SendOtpEmailParams) => {
             type: 'otp',
             to: data.to,
             otp: data.otp,
-            otpType: data.type || 'verification',
+            otpType: data.type || 'signup',
         },
         {
             priority: 1,

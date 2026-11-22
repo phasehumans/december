@@ -8,7 +8,6 @@ import { cleanupTestUser, getRandomIP } from '../helpers'
 describe('Platform Module Integration Tests', () => {
     let testUserId: string
     let testEmail: string
-    const testPassword = 'Password123!'
     let accessToken: string
     let testSessionId: string
 
@@ -16,15 +15,10 @@ describe('Platform Module Integration Tests', () => {
         const timestamp = Date.now()
         testEmail = `platformtest-${timestamp}@example.com`
 
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const hashedPassword = await bcrypt.hash(testPassword, env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 name: 'Platform Test User',
                 email: testEmail,
-                password: hashedPassword,
                 emailVerified: true,
                 githubConnected: false,
             },

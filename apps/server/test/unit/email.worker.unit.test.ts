@@ -81,7 +81,7 @@ describe('Email Worker - Unit Tests', () => {
                 type: 'otp',
                 to: 'fail@example.com',
                 otp: '123456',
-                otpType: 'verification',
+                otpType: 'login',
             },
         }
 
@@ -101,7 +101,7 @@ describe('Email Worker - Unit Tests', () => {
                 type: 'otp',
                 to: 'dev@example.com',
                 otp: '999111',
-                otpType: 'password_reset',
+                otpType: 'signup',
             },
         }
 

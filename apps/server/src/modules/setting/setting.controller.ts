@@ -3,10 +3,9 @@ import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import {
-    changePasswordSchema,
     updateNameSchema,
     updateNotificationSchema,
-    dismissOnboardingCardSchema,
+    updateOnboardingSchema,
     updateModelSourceSchema,
     submitFeedbackSchema,
 } from './setting.schema'
@@ -50,24 +49,6 @@ const updateName = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'name updated successfully', result)
 })
 
-const changePassword = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parseData = changePasswordSchema.parse(req.body)
-    const { currentPassword, newPassword } = parseData
-
-    const result = await settingService.changePassword({
-        userId,
-        currentPassword,
-        newPassword,
-    })
-    return sendSuccess(res, 'password changed successfully', result)
-})
-
 const updateNotifications = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
@@ -99,6 +80,30 @@ const updateModelSource = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'default model source updated', result)
 })
 
+const getOnboarding = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await settingService.getOnboarding({ userId })
+    return sendSuccess(res, 'onboarding fetched successfully', result)
+})
+
+const updateOnboarding = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { step } = updateOnboardingSchema.parse(req.body)
+
+    const result = await settingService.updateOnboarding({ userId, step })
+    return sendSuccess(res, 'onboarding updated successfully', result)
+})
+
 const completeOnboarding = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
@@ -108,20 +113,6 @@ const completeOnboarding = asyncHandler(async (req: Request, res: Response) => {
 
     const result = await settingService.completeOnboarding({ userId })
     return sendSuccess(res, 'onboarding completed successfully', result)
-})
-
-const dismissOnboardingCard = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parseData = dismissOnboardingCardSchema.parse(req.body)
-    const { card } = parseData
-
-    const result = await settingService.dismissOnboardingCard({ userId, card })
-    return sendSuccess(res, 'onboarding card dismissed successfully', result)
 })
 
 const submitFeedback = asyncHandler(async (req: Request, res: Response) => {
@@ -142,10 +133,10 @@ export const settingController = {
     getMe,
     getProfile,
     updateName,
-    changePassword,
     updateNotifications,
     updateModelSource,
+    getOnboarding,
+    updateOnboarding,
     completeOnboarding,
-    dismissOnboardingCard,
     submitFeedback,
 }

@@ -14,7 +14,6 @@ describe('Usage Module Integration Tests', () => {
     let testEmail: string
     let testUserBId: string
     let testEmailB: string
-    const testPassword = 'Password123!'
     let accessToken: string
     let accessTokenB: string
     const razorpaySecret = 'test_razorpay_secret_key_123'
@@ -27,15 +26,10 @@ describe('Usage Module Integration Tests', () => {
         testEmail = `usagetest-${timestamp}@example.com`
         testEmailB = `usagetest-b-${timestamp}@example.com`
 
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const hashedPassword = await bcrypt.hash(testPassword, env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 name: 'Usage Test User',
                 email: testEmail,
-                password: hashedPassword,
                 emailVerified: true,
                 creditBalance: 500, // 500 cents = $5.00
             },
@@ -46,7 +40,6 @@ describe('Usage Module Integration Tests', () => {
             data: {
                 name: 'Usage Test User B',
                 email: testEmailB,
-                password: hashedPassword,
                 emailVerified: true,
                 creditBalance: 200, // 200 cents = $2.00
             },

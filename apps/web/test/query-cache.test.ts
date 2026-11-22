@@ -8,6 +8,7 @@ import {
     restoreQueryCache,
     clearPersistedQueryCache,
     initQueryCachePersistence,
+    resetUserQueryCache,
 } from '../src/shared/lib/query-cache'
 
 describe('Client-Side Query Cache - Unit Tests', () => {
@@ -122,5 +123,24 @@ describe('Client-Side Query Cache - Unit Tests', () => {
 
         expect(typeof unsubscribe).toBe('function')
         unsubscribe()
+    })
+
+    it('resetUserQueryCache forgets the last account in memory and in localStorage', () => {
+        const client = new QueryClient()
+        client.setQueryData(['profile'], { id: 'old-user', onboardingCompletedAt: '2026-11-22' })
+        client.setQueryData(['onboarding'], { completedAt: '2026-11-22' })
+        persistQueryCache(client)
+        expect(mockStorage['december_query_cache']).toBeDefined()
+
+        resetUserQueryCache(client)
+
+        expect(client.getQueryData(['profile'])).toBeUndefined()
+        expect(client.getQueryData(['onboarding'])).toBeUndefined()
+        expect(mockStorage['december_query_cache']).toBeUndefined()
+
+        // a fresh load must not bring the old profile back
+        const nextLoad = new QueryClient()
+        expect(restoreQueryCache(nextLoad)).toBe(false)
+        expect(nextLoad.getQueryData(['profile'])).toBeUndefined()
     })
 })

@@ -1,4 +1,3 @@
-import bcrypt from 'bcrypt'
 import { describe, it, expect, beforeEach } from 'bun:test'
 
 import { settingRepository } from '../../src/modules/setting/setting.repository'
@@ -75,12 +74,11 @@ describe('Setting Service - Unit Tests', () => {
             }
         })
 
-        it('should return profile without password and with hasPassword boolean', async () => {
+        it('should return the profile row', async () => {
             const original = settingRepository.findUserByIdForProfile
             settingRepository.findUserByIdForProfile = (async () => ({
                 id: 'u1',
                 email: 'alice@example.com',
-                password: 'hashed-password-123',
                 name: 'Alice',
             })) as any
 
@@ -88,8 +86,7 @@ describe('Setting Service - Unit Tests', () => {
                 const res = await settingService.getProfile({ userId: 'u1' })
                 expect(res.id).toBe('u1')
                 expect(res.email).toBe('alice@example.com')
-                expect((res as any).password).toBeUndefined()
-                expect(res.hasPassword).toBe(true)
+                expect(res).not.toHaveProperty('hasPassword')
             } finally {
                 settingRepository.findUserByIdForProfile = original
             }
@@ -126,128 +123,6 @@ describe('Setting Service - Unit Tests', () => {
             } finally {
                 settingRepository.findUserByIdForExistCheck = originalExist
                 settingRepository.updateUserName = originalUpdate
-            }
-        })
-    })
-
-    describe('changePassword', () => {
-        it('should allow OAuth user without password to set new password without currentPassword', async () => {
-            const originalFind = settingRepository.findUserPasswordById
-            const originalUpdate = settingRepository.updatePassword
-
-            let updatedHash = ''
-            settingRepository.findUserPasswordById = (async () => ({
-                id: 'u1',
-                password: null,
-            })) as any
-            settingRepository.updatePassword = (async (_userId, hash) => {
-                updatedHash = hash
-                return {} as any
-            }) as any
-
-            try {
-                const res = await settingService.changePassword({
-                    userId: 'u1',
-                    newPassword: 'MyNewPassword123!',
-                })
-                expect(res).toEqual({ success: true })
-                expect(await bcrypt.compare('MyNewPassword123!', updatedHash)).toBe(true)
-            } finally {
-                settingRepository.findUserPasswordById = originalFind
-                settingRepository.updatePassword = originalUpdate
-            }
-        })
-
-        it('should throw AppError 400 if currentPassword is missing for user with existing password', async () => {
-            const originalFind = settingRepository.findUserPasswordById
-            const hashed = await bcrypt.hash('ExistingPass123!', 10)
-            settingRepository.findUserPasswordById = (async () => ({
-                id: 'u1',
-                password: hashed,
-            })) as any
-
-            try {
-                await expect(
-                    settingService.changePassword({
-                        userId: 'u1',
-                        newPassword: 'NewPass123!',
-                    })
-                ).rejects.toThrow(new AppError('current password is required', 400))
-            } finally {
-                settingRepository.findUserPasswordById = originalFind
-            }
-        })
-
-        it('should throw AppError 401 if currentPassword is wrong', async () => {
-            const originalFind = settingRepository.findUserPasswordById
-            const hashed = await bcrypt.hash('ExistingPass123!', 10)
-            settingRepository.findUserPasswordById = (async () => ({
-                id: 'u1',
-                password: hashed,
-            })) as any
-
-            try {
-                await expect(
-                    settingService.changePassword({
-                        userId: 'u1',
-                        currentPassword: 'WrongPassword!',
-                        newPassword: 'NewPass123!',
-                    })
-                ).rejects.toThrow(new AppError('current password is incorrect', 401))
-            } finally {
-                settingRepository.findUserPasswordById = originalFind
-            }
-        })
-
-        it('should throw AppError 400 if new password is same as current password', async () => {
-            const originalFind = settingRepository.findUserPasswordById
-            const hashed = await bcrypt.hash('SamePassword123!', 10)
-            settingRepository.findUserPasswordById = (async () => ({
-                id: 'u1',
-                password: hashed,
-            })) as any
-
-            try {
-                await expect(
-                    settingService.changePassword({
-                        userId: 'u1',
-                        currentPassword: 'SamePassword123!',
-                        newPassword: 'SamePassword123!',
-                    })
-                ).rejects.toThrow(
-                    new AppError('new password must be different from current password', 400)
-                )
-            } finally {
-                settingRepository.findUserPasswordById = originalFind
-            }
-        })
-
-        it('should update password successfully with valid current and new password', async () => {
-            const originalFind = settingRepository.findUserPasswordById
-            const originalUpdate = settingRepository.updatePassword
-            const hashed = await bcrypt.hash('OldPassword123!', 10)
-
-            let newHash = ''
-            settingRepository.findUserPasswordById = (async () => ({
-                id: 'u1',
-                password: hashed,
-            })) as any
-            settingRepository.updatePassword = (async (_userId, hash) => {
-                newHash = hash
-                return {} as any
-            }) as any
-
-            try {
-                const res = await settingService.changePassword({
-                    userId: 'u1',
-                    currentPassword: 'OldPassword123!',
-                    newPassword: 'NewPassword123!',
-                })
-                expect(res).toEqual({ success: true })
-                expect(await bcrypt.compare('NewPassword123!', newHash)).toBe(true)
-            } finally {
-                settingRepository.findUserPasswordById = originalFind
-                settingRepository.updatePassword = originalUpdate
             }
         })
     })
@@ -300,80 +175,131 @@ describe('Setting Service - Unit Tests', () => {
     })
 
     describe('onboarding and feedback', () => {
-        it('completeOnboarding should update onboarding status', async () => {
-            const originalExist = settingRepository.findUserByIdForExistCheck
-            const originalUpdate = settingRepository.updateCompleteOnboarding
+        const baseSource = {
+            onboardingCompletedAt: null,
+            onboardingStep: null,
+            creditBalance: 0,
+            githubInstallations: [],
+            providerCredentials: [],
+        }
 
-            settingRepository.findUserByIdForExistCheck = (async () => ({ id: 'u1' })) as any
-            settingRepository.updateCompleteOnboarding = (async () => ({
-                id: 'u1',
-                hasCompletedOnboarding: true,
-            })) as any
+        it('getOnboarding should report every step as open for a new user', async () => {
+            const originalFind = settingRepository.findOnboardingSource
+            settingRepository.findOnboardingSource = (async () => baseSource) as any
 
             try {
-                const res = await settingService.completeOnboarding({ userId: 'u1' })
-                expect(res.hasCompletedOnboarding).toBe(true)
+                const state = await settingService.getOnboarding({ userId: 'u1' })
+                expect(state.completedAt).toBeNull()
+                expect(state.step).toBeNull()
+                expect(state.steps).toEqual({ models: false, github: false })
             } finally {
-                settingRepository.findUserByIdForExistCheck = originalExist
-                settingRepository.updateCompleteOnboarding = originalUpdate
+                settingRepository.findOnboardingSource = originalFind
             }
         })
 
-        it('dismissOnboardingCard should update appropriate card done flag', async () => {
-            const originalExist = settingRepository.findUserByIdForExistCheck
-            const originalWelcome = settingRepository.updateWelcomeCardDone
-            const originalGithub = settingRepository.updateGithubCardDone
-            const originalFeedback = settingRepository.updateFeedbackCardDone
-
-            settingRepository.findUserByIdForExistCheck = (async () => ({ id: 'u1' })) as any
-            settingRepository.updateWelcomeCardDone = (async () => ({
-                welcomeCardDone: true,
-            })) as any
-            settingRepository.updateGithubCardDone = (async () => ({ githubCardDone: true })) as any
-            settingRepository.updateFeedbackCardDone = (async () => ({
-                feedbackCardDone: true,
+        it('getOnboarding should mark steps done from real data', async () => {
+            const originalFind = settingRepository.findOnboardingSource
+            settingRepository.findOnboardingSource = (async () => ({
+                ...baseSource,
+                onboardingStep: 'models',
+                githubInstallations: [{ accountLogin: 'octo' }],
+                providerCredentials: [{ provider: 'anthropic', keyHint: 'a9F2' }],
             })) as any
 
             try {
-                const r1 = await settingService.dismissOnboardingCard({
-                    userId: 'u1',
-                    card: 'welcome',
-                })
-                expect((r1 as any).welcomeCardDone).toBe(true)
-
-                const r2 = await settingService.dismissOnboardingCard({
-                    userId: 'u1',
-                    card: 'github',
-                })
-                expect((r2 as any).githubCardDone).toBe(true)
-
-                const r3 = await settingService.dismissOnboardingCard({
-                    userId: 'u1',
-                    card: 'feedback',
-                })
-                expect((r3 as any).feedbackCardDone).toBe(true)
+                const state = await settingService.getOnboarding({ userId: 'u1' })
+                expect(state.step).toBe('models')
+                expect(state.steps).toEqual({ models: true, github: true })
+                expect(state.github).toEqual({ accountLogin: 'octo' })
+                expect(state.ownKey).toEqual({ provider: 'anthropic', keyHint: 'a9F2' })
             } finally {
-                settingRepository.findUserByIdForExistCheck = originalExist
-                settingRepository.updateWelcomeCardDone = originalWelcome
-                settingRepository.updateGithubCardDone = originalGithub
-                settingRepository.updateFeedbackCardDone = originalFeedback
+                settingRepository.findOnboardingSource = originalFind
             }
         })
 
-        it('submitFeedback should store feedback and mark card done', async () => {
+        it('getOnboarding should count a positive balance as paying for models', async () => {
+            const originalFind = settingRepository.findOnboardingSource
+            settingRepository.findOnboardingSource = (async () => ({
+                ...baseSource,
+                creditBalance: 500,
+            })) as any
+
+            try {
+                const state = await settingService.getOnboarding({ userId: 'u1' })
+                expect(state.steps.models).toBe(true)
+                expect(state.wallet.balanceInCents).toBe(500)
+                expect(state.ownKey).toBeNull()
+            } finally {
+                settingRepository.findOnboardingSource = originalFind
+            }
+        })
+
+        it('getOnboarding should ignore an unknown saved step', async () => {
+            const originalFind = settingRepository.findOnboardingSource
+            settingRepository.findOnboardingSource = (async () => ({
+                ...baseSource,
+                onboardingStep: 'welcome',
+            })) as any
+
+            try {
+                const state = await settingService.getOnboarding({ userId: 'u1' })
+                expect(state.step).toBeNull()
+            } finally {
+                settingRepository.findOnboardingSource = originalFind
+            }
+        })
+
+        it('completeOnboarding should mark the user done and return the state', async () => {
+            const originalExist = settingRepository.findUserByIdForExistCheck
+            const originalMark = settingRepository.markOnboardingCompleted
+            const originalFind = settingRepository.findOnboardingSource
+            const completedAt = new Date()
+            let marked = false
+
+            settingRepository.findUserByIdForExistCheck = (async () => ({ id: 'u1' })) as any
+            settingRepository.markOnboardingCompleted = (async () => {
+                marked = true
+                return { count: 1 }
+            }) as any
+            settingRepository.findOnboardingSource = (async () => ({
+                ...baseSource,
+                onboardingCompletedAt: completedAt,
+            })) as any
+
+            try {
+                const state = await settingService.completeOnboarding({ userId: 'u1' })
+                expect(marked).toBe(true)
+                expect(state.completedAt).toEqual(completedAt)
+            } finally {
+                settingRepository.findUserByIdForExistCheck = originalExist
+                settingRepository.markOnboardingCompleted = originalMark
+                settingRepository.findOnboardingSource = originalFind
+            }
+        })
+
+        it('completeOnboarding should throw 404 for a missing user', async () => {
+            const originalExist = settingRepository.findUserByIdForExistCheck
+            settingRepository.findUserByIdForExistCheck = (async () => null) as any
+
+            try {
+                await expect(settingService.completeOnboarding({ userId: 'nope' })).rejects.toThrow(
+                    'user not found'
+                )
+            } finally {
+                settingRepository.findUserByIdForExistCheck = originalExist
+            }
+        })
+
+        it('submitFeedback should store feedback', async () => {
             const originalExist = settingRepository.findUserByIdForExistCheck
             const originalCreateFb = settingRepository.createFeedback
-            const originalFeedbackDone = settingRepository.updateFeedbackCardDone
 
             let fbCreated = false
             settingRepository.findUserByIdForExistCheck = (async () => ({ id: 'u1' })) as any
             settingRepository.createFeedback = (async () => {
                 fbCreated = true
-                return {} as any
+                return { id: 'f1' } as any
             }) as any
-            settingRepository.updateFeedbackCardDone = (async () => ({
-                feedbackCardDone: true,
-            })) as any
 
             try {
                 const res = await settingService.submitFeedback({
@@ -382,11 +308,10 @@ describe('Setting Service - Unit Tests', () => {
                     feedback: 'Loving the app!',
                 })
                 expect(fbCreated).toBe(true)
-                expect((res as any).feedbackCardDone).toBe(true)
+                expect(res).toEqual({ id: 'f1' })
             } finally {
                 settingRepository.findUserByIdForExistCheck = originalExist
                 settingRepository.createFeedback = originalCreateFb
-                settingRepository.updateFeedbackCardDone = originalFeedbackDone
             }
         })
     })
@@ -403,7 +328,6 @@ describe('Setting Service - Unit Tests', () => {
                 return {
                     id: 'u1',
                     name: 'Initial Name',
-                    password: null,
                 }
             }) as any
             settingRepository.findUserByIdForExistCheck = (async () => ({ id: 'u1' })) as any
@@ -429,7 +353,6 @@ describe('Setting Service - Unit Tests', () => {
                     return {
                         id: 'u1',
                         name: 'Updated Name',
-                        password: null,
                     }
                 }) as any
 

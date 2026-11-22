@@ -7,13 +7,9 @@ import { ApiError } from '@/shared/api/client'
 import { getGithubClientId } from '@/shared/config/env'
 
 type UseAuthMutationsOptions = {
-    onRequireOtp: () => void
-    onRequireForgotOtp: () => void
-    onRequireForgotReset: () => void
-    onPasswordResetSuccess: () => void
+    onCodeSent: () => void
     onAuthSuccess: () => void
     setErrorMessage: (message: string | null) => void
-    onRequireGoogleMerge: () => void
 }
 
 const getErrorMessage = (error: unknown) => {
@@ -40,7 +36,8 @@ const getErrorMessage = (error: unknown) => {
 
     if (error instanceof ApiError) {
         if (error.status === 429) {
-            return 'Too many requests. Please wait a moment and try again.'
+            // The server says why: too many wrong codes, resend wait, or the rate limit.
+            return error.message || 'Too many requests. Please wait a moment and try again.'
         }
         return error.message
     }
@@ -59,45 +56,23 @@ const getErrorMessage = (error: unknown) => {
 }
 
 export const useAuthMutations = ({
-    onRequireOtp,
-    onRequireForgotOtp,
-    onRequireForgotReset,
-    onPasswordResetSuccess,
+    onCodeSent,
     onAuthSuccess,
     setErrorMessage,
-    onRequireGoogleMerge,
 }: UseAuthMutationsOptions) => {
-    const signupMutation = useMutation({
-        mutationFn: authAPI.signup,
+    const emailStartMutation = useMutation({
+        mutationFn: authAPI.startEmailAuth,
         onSuccess: () => {
             setErrorMessage(null)
-            onRequireOtp()
-        },
-        onError: (error: any) => {
-            if (
-                error?.message === 'google_account_exists' ||
-                error?.details === 'google_account_exists'
-            ) {
-                onRequireGoogleMerge()
-            } else {
-                setErrorMessage(getErrorMessage(error))
-            }
-        },
-    })
-
-    const loginMutation = useMutation({
-        mutationFn: authAPI.login,
-        onSuccess: () => {
-            setErrorMessage(null)
-            onAuthSuccess()
+            onCodeSent()
         },
         onError: (error) => {
             setErrorMessage(getErrorMessage(error))
         },
     })
 
-    const verifyOtpMutation = useMutation({
-        mutationFn: authAPI.verifyOtp,
+    const emailVerifyMutation = useMutation({
+        mutationFn: authAPI.verifyEmailAuth,
         onSuccess: () => {
             setErrorMessage(null)
             onAuthSuccess()
@@ -123,39 +98,6 @@ export const useAuthMutations = ({
         onSuccess: () => {
             setErrorMessage(null)
             onAuthSuccess()
-        },
-        onError: (error) => {
-            setErrorMessage(getErrorMessage(error))
-        },
-    })
-
-    const requestPasswordResetMutation = useMutation({
-        mutationFn: authAPI.requestPasswordReset,
-        onSuccess: () => {
-            setErrorMessage(null)
-            onRequireForgotOtp()
-        },
-        onError: (error) => {
-            setErrorMessage(getErrorMessage(error))
-        },
-    })
-
-    const verifyPasswordResetOtpMutation = useMutation({
-        mutationFn: authAPI.verifyPasswordResetOtp,
-        onSuccess: () => {
-            setErrorMessage(null)
-            onRequireForgotReset()
-        },
-        onError: (error) => {
-            setErrorMessage(getErrorMessage(error))
-        },
-    })
-
-    const resetPasswordMutation = useMutation({
-        mutationFn: authAPI.resetPassword,
-        onSuccess: () => {
-            setErrorMessage(null)
-            onPasswordResetSuccess()
         },
         onError: (error) => {
             setErrorMessage(getErrorMessage(error))
@@ -203,18 +145,11 @@ export const useAuthMutations = ({
     }
 
     const isAuthPending =
-        signupMutation.isPending ||
-        loginMutation.isPending ||
-        googleMutation.isPending ||
-        githubMutation.isPending
+        emailStartMutation.isPending || googleMutation.isPending || githubMutation.isPending
 
     return {
-        signupMutation,
-        loginMutation,
-        verifyOtpMutation,
-        requestPasswordResetMutation,
-        verifyPasswordResetOtpMutation,
-        resetPasswordMutation,
+        emailStartMutation,
+        emailVerifyMutation,
         googleMutation,
         googleLogin,
         githubMutation,

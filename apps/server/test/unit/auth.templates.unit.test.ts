@@ -23,7 +23,7 @@ describe('Auth Email Templates - Unit Tests', () => {
     })
 
     describe('renderOtpEmail', () => {
-        it('should render verification OTP email correctly with html and plain text', () => {
+        it('should render the sign-up email correctly with html and plain text', () => {
             const { subject, html, text } = renderOtpEmail({
                 otp: '849201',
                 type: 'signup',
@@ -36,29 +36,27 @@ describe('Auth Email Templates - Unit Tests', () => {
             expect(html).toContain('849201')
             expect(html).toContain('10 minutes')
 
-            expect(text).toContain('Verify your email for December')
+            expect(text).toContain('Verify your email')
+            expect(text).toContain('finish creating your December account')
             expect(text).toContain('849201')
             expect(text).toContain('10 minutes')
             expect(text).toContain('support@december.com')
         })
 
-        it('should render password reset OTP email with appropriate security notice and subject', () => {
+        it('should render the sign-in email for a returning user', () => {
             const { subject, html, text } = renderOtpEmail({
-                otp: '123456',
-                type: 'password_reset',
+                otp: '102938',
+                type: 'login',
                 supportEmail: 'support@december.com',
                 webUrl: 'https://trydecember.com',
             })
 
-            expect(subject).toBe('Reset your December password: 123456')
-            expect(html).toContain('Reset your password')
-            expect(html).toContain('123456')
-            expect(html).toContain('password reset')
-            expect(html).toContain('password will remain unchanged')
-
-            expect(text).toContain('Reset your December password')
-            expect(text).toContain('123456')
-            expect(text).toContain('password will remain unchanged')
+            expect(subject).toBe('Your December sign-in code: 102938')
+            expect(html).toContain('Sign in to December')
+            expect(html).toContain('102938')
+            expect(html).not.toContain('Verify your email')
+            expect(text).toContain('Your sign-in code: 102938')
+            expect(text).toContain('Nobody can sign in without this code')
         })
     })
 

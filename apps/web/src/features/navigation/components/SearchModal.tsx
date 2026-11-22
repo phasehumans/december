@@ -112,16 +112,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 subtitle: 'Settings / Account',
                 category: 'Settings Subpages',
                 icon: <Icons.User className="w-4 h-4 text-neutral-400" />,
-                keywords: [
-                    'profile',
-                    'account',
-                    'password',
-                    'security',
-                    'email',
-                    'avatar',
-                    'user',
-                    'name',
-                ],
+                keywords: ['profile', 'account', 'security', 'email', 'avatar', 'user', 'name'],
                 action: () => {
                     onClose()
                     navigate('/settings/account')

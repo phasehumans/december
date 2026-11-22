@@ -5,36 +5,21 @@ export type TokenPayload = {
     exp?: number
 }
 
-export type Signup = {
+export type StartEmailAuth = {
     email: string
-    password: string
 }
 
-export type VerifyOtp = {
+export type VerifyEmailAuth = {
     email: string
     otp: string
     userAgent?: string
     ipAddress?: string
 }
 
-export type Login = {
-    email: string
-    password: string
+export type IssueSession = {
+    userId: string
     userAgent?: string
     ipAddress?: string
-}
-
-export type RequestPasswordReset = {
-    email: string
-}
-
-export type VerifyPasswordResetOtp = {
-    email: string
-    otp: string
-}
-
-export type ResetPassword = VerifyPasswordResetOtp & {
-    newPassword: string
 }
 
 export type Google = {

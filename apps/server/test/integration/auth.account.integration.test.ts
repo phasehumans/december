@@ -3,11 +3,10 @@ import { describe, it, expect, afterAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP } from '../helpers'
+import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Auth Account Management & Signout All Integration Tests', () => {
     const testEmail = `accounttest-${Date.now()}@example.com`
-    const testPassword = 'Password123!'
     let testUserId: string
     let accessToken: string
 
@@ -18,31 +17,20 @@ describe('Auth Account Management & Signout All Integration Tests', () => {
     })
 
     it('setup: create user with multiple active sessions', async () => {
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const passHash = await bcrypt.hash(testPassword, env.BCRYPT_SALT_ROUNDS)
-
         const user = await prisma.user.create({
             data: {
                 email: testEmail,
                 name: 'Account Test User',
-                password: passHash,
                 emailVerified: true,
             },
         })
         testUserId = user.id
 
         // Login twice to create 2 sessions
-        const loginRes1 = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        const loginRes1 = await signInWithEmailCode(app, testEmail)
         accessToken = loginRes1.body.data.accessToken
 
-        await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        await signInWithEmailCode(app, testEmail)
 
         const activeSessions = await prisma.authSession.findMany({
             where: { userId: testUserId, isRevoked: false },
@@ -67,10 +55,7 @@ describe('Auth Account Management & Signout All Integration Tests', () => {
 
     it('2. DELETE /api/v1/auth/account - soft deletes user account and clears OAuth tokens', async () => {
         // Relogin to get fresh token
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        const loginRes = await signInWithEmailCode(app, testEmail)
         const freshAccessToken = loginRes.body.data.accessToken
 
         const deleteRes = await request(app)
@@ -85,13 +70,10 @@ describe('Auth Account Management & Signout All Integration Tests', () => {
         expect(user?.isDeleted).toBe(true)
         expect(user?.deletedAt).not.toBeNull()
 
-        // Trying to login with deleted account should fail
-        const loginDeletedRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: testEmail, password: testPassword })
+        // Signing in to a deleted account should fail
+        const loginDeletedRes = await signInWithEmailCode(app, testEmail)
 
-        expect(loginDeletedRes.status).toBe(401)
+        expect(loginDeletedRes.status).toBe(403)
         expect(loginDeletedRes.body.message).toBe('account has been deleted')
     })
 })

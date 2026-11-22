@@ -29,7 +29,7 @@ export const generateUserCode = (): string => {
     return `${result.substring(0, 4)}-${result.substring(4, 8)}`
 }
 
-export const sendOTP = async (email: string, otp: string, type: OtpType = 'verification') => {
+export const sendOTP = async (email: string, otp: string, type: OtpType = 'signup') => {
     await emailService.sendOtpEmail({ to: email, otp, type })
 }
 

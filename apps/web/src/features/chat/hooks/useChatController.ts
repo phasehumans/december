@@ -610,7 +610,12 @@ export const useChatController = (
                     }
                 }
 
-                if (overview !== undefined && (overview.creditBalance ?? 0) <= 0) {
+                // own-key runs are paid by the user's provider, so an empty wallet is fine
+                if (
+                    options?.billingSource !== 'OWN_KEY' &&
+                    overview !== undefined &&
+                    (overview.creditBalance ?? 0) <= 0
+                ) {
                     setShowOutOfCreditsModal(true)
                     return
                 }

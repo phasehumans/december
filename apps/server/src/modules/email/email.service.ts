@@ -5,7 +5,7 @@ import { enqueueOtpJob, enqueueWelcomeJob } from './email.queue'
 import type { SendOtpEmailParams, SendWelcomeEmailParams } from './email.types'
 
 const sendOtpEmail = async (data: SendOtpEmailParams) => {
-    const { to, otp, type = 'verification' } = data
+    const { to, otp, type = 'signup' } = data
     if (env.NODE_ENV === 'development') {
         console.log(
             `\n======================================================\n[DEV OTP Code] Verification code for ${to} is: ${otp}\n======================================================\n`

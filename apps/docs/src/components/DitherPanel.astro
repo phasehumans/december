@@ -10,14 +10,16 @@
 //
 // Place it as the first child of a positioned panel (relative, overflow-hidden). Give the
 // panel content `relative` so it paints above the canvas. The canvas is drawn once, and
-// again when the panel changes size. It shows on all screen sizes.
+// again when the panel changes size. Pass `class` to add classes to the canvas, for example
+// `hidden sm:block` to show it only from the sm breakpoint up.
 
 interface Props {
   seed?: number;
   clear?: boolean;
+  class?: string;
 }
 
-const { seed = 1, clear = true } = Astro.props;
+const { seed = 1, clear = true, class: className } = Astro.props;
 ---
 
 <canvas
@@ -25,7 +27,7 @@ const { seed = 1, clear = true } = Astro.props;
   data-seed={seed}
   data-clear={clear ? 'oval' : 'none'}
   aria-hidden="true"
-  class="pointer-events-none absolute inset-0 h-full w-full"
+  class:list={['pointer-events-none absolute inset-0 h-full w-full', className]}
 ></canvas>
 
 <style>

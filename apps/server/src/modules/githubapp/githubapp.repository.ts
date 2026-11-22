@@ -42,7 +42,6 @@ const upsertInstallation = async (data: ProcessInstallation) => {
             where: { id: effectiveUserId },
             data: {
                 githubAppInstall: true,
-                githubCardDone: true,
                 githubConnected: true,
             },
         })

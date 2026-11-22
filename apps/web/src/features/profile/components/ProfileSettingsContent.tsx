@@ -15,7 +15,6 @@ interface ProfileSettingsContentProps {
     securityAlerts: boolean
     isNotificationPending: boolean
     onOpenNameModal: () => void
-    onOpenPasswordModal?: () => void
     onNotificationToggle: (
         field: 'notifyProjectActivity' | 'notifyProductUpdates' | 'notifySecurityAlerts',
         value: boolean

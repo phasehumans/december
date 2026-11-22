@@ -11,12 +11,6 @@ export type UpdateName = {
     name: string
 }
 
-export type ChangePassword = {
-    userId: string
-    currentPassword?: string
-    newPassword: string
-}
-
 export type UpdateNotifications = {
     userId: string
     notifyProjectActivity?: boolean
@@ -29,13 +23,32 @@ export type UpdateModelSource = {
     defaultModelSource: 'CREDITS' | 'OWN_KEY'
 }
 
+export type OnboardingStep = 'github' | 'start' | 'models'
+
+export type GetOnboarding = {
+    userId: string
+}
+
+export type UpdateOnboarding = {
+    userId: string
+    step: OnboardingStep
+}
+
 export type CompleteOnboarding = {
     userId: string
 }
 
-export type DismissOnboardingCard = {
-    userId: string
-    card: 'welcome' | 'github' | 'feedback'
+/** what the /onboarding page needs. Each step is done from real data. */
+export type OnboardingState = {
+    completedAt: Date | null
+    step: OnboardingStep | null
+    steps: {
+        models: boolean
+        github: boolean
+    }
+    github: { accountLogin: string | null } | null
+    wallet: { balanceInCents: number }
+    ownKey: { provider: string; keyHint: string } | null
 }
 
 export type SubmitFeedback = {

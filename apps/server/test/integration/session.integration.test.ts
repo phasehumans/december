@@ -3,12 +3,11 @@ import { describe, it, expect, afterAll, beforeAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP } from '../helpers'
+import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Session Integration Tests', () => {
     const user1Email = `sessiontest1-${Date.now()}@example.com`
     const user2Email = `sessiontest2-${Date.now()}@example.com`
-    const password = 'Password123!'
 
     let user1Id: string
     let user2Id: string
@@ -17,17 +16,12 @@ describe('Session Integration Tests', () => {
     let createdSessionId: string
 
     beforeAll(async () => {
-        const bcrypt = await import('bcrypt')
-        const { env } = await import('../../src/env')
-        const passHash = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS)
-
         const timestamp = Date.now()
         // Create User 1
         const u1 = await prisma.user.create({
             data: {
                 email: user1Email,
                 name: 'Session Test User 1',
-                password: passHash,
                 emailVerified: true,
                 creditBalance: 5000,
             },
@@ -39,7 +33,6 @@ describe('Session Integration Tests', () => {
             data: {
                 email: user2Email,
                 name: 'Session Test User 2',
-                password: passHash,
                 emailVerified: true,
                 creditBalance: 5000,
             },
@@ -47,17 +40,11 @@ describe('Session Integration Tests', () => {
         user2Id = u2.id
 
         // Login User 1
-        const loginRes1 = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: user1Email, password })
+        const loginRes1 = await signInWithEmailCode(app, user1Email)
         user1Token = loginRes1.body.data.accessToken
 
         // Login User 2
-        const loginRes2 = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ email: user2Email, password })
+        const loginRes2 = await signInWithEmailCode(app, user2Email)
         user2Token = loginRes2.body.data.accessToken
     })
 

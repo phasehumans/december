@@ -66,7 +66,7 @@ const envSchema = z
         RAZORPAY_KEY_SECRET: emptyAsUndefined,
         RAZORPAY_PRO_PLAN_ID: emptyAsUndefined,
         RAZORPAY_WEBHOOK_SECRET: emptyAsUndefined,
-        USD_TO_INR_RATE: z.coerce.number().default(95.26),
+        USD_TO_INR_RATE: z.coerce.number().default(92.68),
 
         COINBASE_API_KEY: emptyAsUndefined,
         COINBASE_WEBHOOK_SECRET: emptyAsUndefined,

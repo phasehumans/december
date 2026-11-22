@@ -1,12 +1,8 @@
 import { describe, it, expect } from 'bun:test'
 
 import {
-    signupSchema,
-    verifyOtpSchema,
-    loginSchema,
-    forgotPasswordRequestSchema,
-    forgotPasswordVerifySchema,
-    forgotPasswordResetSchema,
+    emailAuthStartSchema,
+    emailAuthVerifySchema,
     googleAuthSchema,
     githubAuthSchema,
     pollDeviceTokenSchema,
@@ -14,100 +10,31 @@ import {
 } from '../../src/modules/auth/auth.schema'
 
 describe('Auth Schema - Unit Tests', () => {
-    describe('signupSchema', () => {
-        it('should pass with valid email and password', () => {
-            const valid = { email: 'test@example.com', password: 'Password123' }
-            expect(signupSchema.safeParse(valid).success).toBe(true)
+    describe('emailAuthStartSchema', () => {
+        it('should pass with a valid email and normalize it', () => {
+            const result = emailAuthStartSchema.safeParse({ email: '  Test@Example.com ' })
+            expect(result.success).toBe(true)
+            expect(result.data?.email).toBe('test@example.com')
         })
 
-        it('should fail with invalid email', () => {
-            const invalid = { email: 'not-an-email', password: 'Password123' }
-            const result = signupSchema.safeParse(invalid)
-            expect(result.success).toBe(false)
-        })
-
-        it('should fail if password is too short (<6 chars)', () => {
-            const invalid = { email: 'test@example.com', password: '123' }
-            const result = signupSchema.safeParse(invalid)
-            expect(result.success).toBe(false)
-        })
-
-        it('should fail if password is too long (>20 chars)', () => {
-            const invalid = { email: 'test@example.com', password: 'A'.repeat(21) }
-            const result = signupSchema.safeParse(invalid)
-            expect(result.success).toBe(false)
+        it('should fail with an invalid email', () => {
+            expect(emailAuthStartSchema.safeParse({ email: 'not-an-email' }).success).toBe(false)
+            expect(emailAuthStartSchema.safeParse({}).success).toBe(false)
         })
     })
 
-    describe('verifyOtpSchema', () => {
-        it('should pass with valid email and 6-digit OTP', () => {
+    describe('emailAuthVerifySchema', () => {
+        it('should pass with a valid email and 6-digit code', () => {
             const valid = { email: 'test@example.com', otp: '123456' }
-            expect(verifyOtpSchema.safeParse(valid).success).toBe(true)
+            expect(emailAuthVerifySchema.safeParse(valid).success).toBe(true)
         })
 
-        it('should fail if OTP is not 6 digits', () => {
-            expect(
-                verifyOtpSchema.safeParse({ email: 'test@example.com', otp: '12345' }).success
-            ).toBe(false)
-            expect(
-                verifyOtpSchema.safeParse({ email: 'test@example.com', otp: '1234567' }).success
-            ).toBe(false)
-            expect(
-                verifyOtpSchema.safeParse({ email: 'test@example.com', otp: 'abcdef' }).success
-            ).toBe(false)
-        })
-    })
-
-    describe('loginSchema', () => {
-        it('should pass with valid email and password', () => {
-            const valid = { email: 'test@example.com', password: 'Password123' }
-            expect(loginSchema.safeParse(valid).success).toBe(true)
-        })
-
-        it('should fail with invalid email or short password', () => {
-            expect(
-                loginSchema.safeParse({ email: 'invalid', password: 'Password123' }).success
-            ).toBe(false)
-            expect(
-                loginSchema.safeParse({ email: 'test@example.com', password: '123' }).success
-            ).toBe(false)
-        })
-    })
-
-    describe('forgotPassword schemas', () => {
-        it('forgotPasswordRequestSchema requires valid email', () => {
-            expect(
-                forgotPasswordRequestSchema.safeParse({ email: 'user@example.com' }).success
-            ).toBe(true)
-            expect(forgotPasswordRequestSchema.safeParse({ email: 'invalid' }).success).toBe(false)
-        })
-
-        it('forgotPasswordVerifySchema requires email and 6-digit OTP', () => {
-            expect(
-                forgotPasswordVerifySchema.safeParse({ email: 'user@example.com', otp: '654321' })
-                    .success
-            ).toBe(true)
-            expect(
-                forgotPasswordVerifySchema.safeParse({ email: 'user@example.com', otp: 'invalid' })
-                    .success
-            ).toBe(false)
-        })
-
-        it('forgotPasswordResetSchema requires email, 6-digit OTP, and newPassword', () => {
-            expect(
-                forgotPasswordResetSchema.safeParse({
-                    email: 'user@example.com',
-                    otp: '654321',
-                    newPassword: 'NewPassword1',
-                }).success
-            ).toBe(true)
-            expect(
-                forgotPasswordResetSchema.safeParse({
-                    email: 'user@example.com',
-                    otp: '654321',
-                    newPassword: 'short',
-                }).success
-            ).toBe(false)
+        it('should fail if the code is not exactly 6 digits', () => {
+            for (const otp of ['12345', '1234567', '12ab56', '']) {
+                expect(
+                    emailAuthVerifySchema.safeParse({ email: 'test@example.com', otp }).success
+                ).toBe(false)
+            }
         })
     })
 

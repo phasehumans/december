@@ -2,9 +2,8 @@ import { describe, it, expect } from 'bun:test'
 
 import {
     updateNameSchema,
-    changePasswordSchema,
     updateNotificationSchema,
-    dismissOnboardingCardSchema,
+    updateOnboardingSchema,
     submitFeedbackSchema,
 } from '../../src/modules/setting/setting.schema'
 
@@ -20,38 +19,6 @@ describe('Setting Schema - Unit Tests', () => {
             expect(updateNameSchema.safeParse({ name: 'A'.repeat(21) }).success).toBe(false)
             expect(updateNameSchema.safeParse({ name: 123 }).success).toBe(false)
             expect(updateNameSchema.safeParse({}).success).toBe(false)
-        })
-    })
-
-    describe('changePasswordSchema', () => {
-        it('should pass with valid newPassword and optional/empty currentPassword', () => {
-            expect(
-                changePasswordSchema.safeParse({
-                    currentPassword: 'OldPass123!',
-                    newPassword: 'NewPass123!',
-                }).success
-            ).toBe(true)
-
-            expect(
-                changePasswordSchema.safeParse({
-                    currentPassword: '',
-                    newPassword: 'NewPass123!',
-                }).success
-            ).toBe(true)
-
-            expect(
-                changePasswordSchema.safeParse({
-                    newPassword: 'NewPass123!',
-                }).success
-            ).toBe(true)
-        })
-
-        it('should fail with invalid newPassword (<6 or >20 chars or missing)', () => {
-            expect(changePasswordSchema.safeParse({ newPassword: '12345' }).success).toBe(false)
-            expect(changePasswordSchema.safeParse({ newPassword: 'A'.repeat(21) }).success).toBe(
-                false
-            )
-            expect(changePasswordSchema.safeParse({}).success).toBe(false)
         })
     })
 
@@ -83,15 +50,16 @@ describe('Setting Schema - Unit Tests', () => {
         })
     })
 
-    describe('dismissOnboardingCardSchema', () => {
-        it('should pass with valid card names', () => {
-            expect(dismissOnboardingCardSchema.safeParse({ card: 'welcome' }).success).toBe(true)
-            expect(dismissOnboardingCardSchema.safeParse({ card: 'github' }).success).toBe(true)
-            expect(dismissOnboardingCardSchema.safeParse({ card: 'feedback' }).success).toBe(true)
+    describe('updateOnboardingSchema', () => {
+        it('should accept a known step', () => {
+            expect(updateOnboardingSchema.safeParse({ step: 'github' }).success).toBe(true)
+            expect(updateOnboardingSchema.safeParse({ step: 'start' }).success).toBe(true)
+            expect(updateOnboardingSchema.safeParse({ step: 'models' }).success).toBe(true)
         })
 
-        it('should fail with unknown card name', () => {
-            expect(dismissOnboardingCardSchema.safeParse({ card: 'unknown' }).success).toBe(false)
+        it('should reject an unknown step or an empty body', () => {
+            expect(updateOnboardingSchema.safeParse({ step: 'welcome' }).success).toBe(false)
+            expect(updateOnboardingSchema.safeParse({}).success).toBe(false)
         })
     })
 

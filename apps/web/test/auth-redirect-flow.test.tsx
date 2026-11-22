@@ -78,13 +78,13 @@ describe('Authentication & Multi-Domain Redirection Flow', () => {
         )
 
         // Must render login modal
-        expect(screen.getByText(/Sign in to continue building/i)).not.toBeNull()
+        expect(screen.getByText(/Don't have an account\?/i)).not.toBeNull()
         // Must NOT render sidebar or workspace
         expect(container.querySelector('[aria-label="New Thread"]')).toBeNull()
         expect(container.querySelector('nav')).toBeNull()
     })
 
-    test('unauthenticated visitor on / redirects to /login and renders login modal without application frame', () => {
+    test('unauthenticated visitor on / redirects to /signup and renders signup modal without application frame', () => {
         useAppStore.setState({
             isAuthenticated: false,
             isAuthRestored: true,
@@ -100,7 +100,7 @@ describe('Authentication & Multi-Domain Redirection Flow', () => {
             </MemoryRouter>
         )
 
-        expect(screen.getByText(/Sign in to continue building/i)).not.toBeNull()
+        expect(screen.getByText(/Already have an account\?/i)).not.toBeNull()
         expect(container.querySelector('[aria-label="New Thread"]')).toBeNull()
         expect(container.querySelector('nav')).toBeNull()
     })

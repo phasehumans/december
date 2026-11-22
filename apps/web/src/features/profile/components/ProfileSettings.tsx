@@ -19,7 +19,6 @@ import { ProfileConnectionsSettings } from './ProfileConnectionsSettings'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { ProfileModelKeysSettings } from './ProfileModelKeysSettings'
 import { ProfileNameModal } from './ProfileNameModal'
-import { ProfilePasswordModal } from './ProfilePasswordModal'
 import { ProfileRepositoriesSettings } from './ProfileRepositoriesSettings'
 import { ProfileSecretsSettings } from './ProfileSecretsSettings'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
@@ -188,22 +187,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         setProfileActionError,
         nameModalOpen,
         tempName,
-        passwordModalOpen,
-        showCurrentPass,
-        showNewPass,
-        currentPassword,
-        newPassword,
-        confirmPassword,
         setNameModalOpen,
         setTempName,
-        setPasswordModalOpen,
-        setShowCurrentPass,
-        setShowNewPass,
-        setCurrentPassword,
-        setNewPassword,
-        setConfirmPassword,
         updateNameMutation,
-        updatePasswordMutation,
         updateNotificationMutation,
         isGithubConnected,
         emailNotifications,
@@ -211,9 +197,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         securityAlerts,
         resolvedName,
         openNameModal,
-        openPasswordModal,
         handleSaveName,
-        handleUpdatePassword,
         handleNotificationToggle,
         connectGithub,
     } = useProfileSettingsController()
@@ -269,7 +253,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         securityAlerts={securityAlerts}
                         isNotificationPending={updateNotificationMutation.isPending}
                         onOpenNameModal={openNameModal}
-                        onOpenPasswordModal={openPasswordModal}
                         onNotificationToggle={handleNotificationToggle}
                         onConnectGithub={connectGithub}
                         onSignOut={onSignOut}
@@ -719,28 +702,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 }}
                 onChange={setTempName}
                 onSave={handleSaveName}
-            />
-
-            <ProfilePasswordModal
-                isOpen={passwordModalOpen}
-                isPending={updatePasswordMutation.isPending}
-                currentPassword={currentPassword}
-                newPassword={newPassword}
-                confirmPassword={confirmPassword}
-                showCurrentPass={showCurrentPass}
-                showNewPass={showNewPass}
-                errorMessage={passwordModalOpen ? profileActionError : null}
-                onClose={() => {
-                    setPasswordModalOpen(false)
-                    setProfileActionError(null)
-                }}
-                onUpdatePassword={handleUpdatePassword}
-                onCurrentPasswordChange={setCurrentPassword}
-                onNewPasswordChange={setNewPassword}
-                onConfirmPasswordChange={setConfirmPassword}
-                onToggleShowCurrentPass={() => setShowCurrentPass((prev) => !prev)}
-                onToggleShowNewPass={() => setShowNewPass((prev) => !prev)}
-                hasPassword={profile?.hasPassword}
             />
 
             <ProfileDeleteAccountModal

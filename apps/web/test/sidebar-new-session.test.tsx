@@ -180,8 +180,12 @@ describe('Sidebar Navigation - Create New Session', () => {
     test('useAppController handleNewThread resets all session and generation state', async () => {
         const { profileAPI } = await import('../src/features/profile/api/profile')
         const originalQuickInfo = profileAPI.getQuickInfo
+        const originalGetProfile = profileAPI.getProfile
         profileAPI.getQuickInfo = async () =>
             ({ id: 'u1', fullName: 'User', email: 'user@example.com' }) as any
+        // a user who finished onboarding, so the onboarding redirect stays out of this test
+        profileAPI.getProfile = async () =>
+            ({ id: 'u1', name: 'User', onboardingCompletedAt: '2026-11-22T10:00:00.000Z' }) as any
 
         useAppStore.setState({
             isAuthenticated: true,
@@ -232,6 +236,7 @@ describe('Sidebar Navigation - Create New Session', () => {
             expect(useAppStore.getState().projectLoadError).toBeNull()
         } finally {
             profileAPI.getQuickInfo = originalQuickInfo
+            profileAPI.getProfile = originalGetProfile
         }
     })
 

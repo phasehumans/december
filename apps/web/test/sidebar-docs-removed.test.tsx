@@ -10,11 +10,11 @@ if (!globalThis.document) {
 
 const { render, screen, cleanup } = await import('@testing-library/react')
 
+import { useAppStore } from '../src/app/store'
 import { getViewForPath, isPublicPath } from '../src/app/types'
 import { HomeHero } from '../src/features/home/components/HomeHero'
 import { MobileSidebar } from '../src/features/navigation/components/MobileSidebar'
 import Sidebar from '../src/features/navigation/components/Sidebar'
-import { getWebUrl } from '../src/shared/config/env'
 
 describe('Documentation removal from web & sidebar', () => {
     let queryClient: QueryClient
@@ -30,6 +30,7 @@ describe('Documentation removal from web & sidebar', () => {
 
     afterEach(() => {
         cleanup()
+        useAppStore.setState({ isAuthenticated: false })
     })
 
     test('Desktop Sidebar does not include Documentation button', () => {
@@ -85,7 +86,8 @@ describe('Documentation removal from web & sidebar', () => {
         expect(getViewForPath('/docs/quickstart')).toBe('chat')
     })
 
-    test('HomeHero Read Docs link points to external documentation site', () => {
+    test('HomeHero shows the Docs link to signed-out visitors', () => {
+        useAppStore.setState({ isAuthenticated: false })
         render(
             <QueryClientProvider client={queryClient}>
                 <MemoryRouter>
@@ -94,9 +96,8 @@ describe('Documentation removal from web & sidebar', () => {
             </QueryClientProvider>
         )
 
-        const readDocsLink = screen.getByRole('link', { name: /Read Docs/i })
-        expect(readDocsLink).not.toBeNull()
-        expect(readDocsLink.getAttribute('href')).toBe(`${getWebUrl()}/docs`)
-        expect(readDocsLink.getAttribute('target')).toBe('_blank')
+        const docsLink = screen.getByRole('link', { name: /Docs/i })
+        expect(docsLink.getAttribute('href')).toBe('/docs')
+        expect(docsLink.getAttribute('target')).toBe('_blank')
     })
 })

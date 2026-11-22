@@ -11,7 +11,7 @@ if (!globalThis.document) {
     GlobalRegistrator.register()
 }
 
-const { render, cleanup, fireEvent } = await import('@testing-library/react')
+const { render, cleanup } = await import('@testing-library/react')
 
 afterEach(() => {
     cleanup()
@@ -20,55 +20,40 @@ afterEach(() => {
     })
 })
 
-describe('HomeHero Get Started Section', () => {
-    test('renders Get Started section when user is not authenticated', () => {
+const renderHero = () => {
+    const queryClient = new QueryClient({
+        defaultOptions: {
+            queries: { retry: false },
+        },
+    })
+
+    return render(
+        <QueryClientProvider client={queryClient}>
+            <MemoryRouter>
+                <HomeHero onPromptSubmit={() => {}} onOpenAuth={() => {}} />
+            </MemoryRouter>
+        </QueryClientProvider>
+    )
+}
+
+describe('HomeHero', () => {
+    test('shows no setup list, cards or Recent Sessions when signed out', () => {
         useAppStore.setState({ isAuthenticated: false })
 
-        const queryClient = new QueryClient({
-            defaultOptions: {
-                queries: { retry: false },
-            },
-        })
+        const { queryByText } = renderHero()
 
-        const { getByText, queryByText, getAllByText } = render(
-            <QueryClientProvider client={queryClient}>
-                <MemoryRouter>
-                    <HomeHero onPromptSubmit={() => {}} onOpenAuth={() => {}} />
-                </MemoryRouter>
-            </QueryClientProvider>
-        )
-
-        expect(getByText('Get Started')).not.toBeNull()
-        expect(getByText('Connect GitHub')).not.toBeNull()
-        expect(getByText('Read documentation')).not.toBeNull()
-        expect(getByText('Read Docs')).not.toBeNull()
-        expect(getByText('Give feedback')).not.toBeNull()
+        expect(queryByText('Setup')).toBeNull()
+        expect(queryByText('Get Started')).toBeNull()
         expect(queryByText('Recent Sessions')).toBeNull()
     })
 
-    test('renders Get Started section and does not render Recent Sessions when authenticated and sessions exist', () => {
+    test('shows no setup list, cards or Recent Sessions when signed in', () => {
         useAppStore.setState({ isAuthenticated: true })
 
-        const queryClient = new QueryClient({
-            defaultOptions: {
-                queries: { retry: false },
-            },
-        })
+        const { queryByText } = renderHero()
 
-        const { getByText, queryByText, getAllByText } = render(
-            <QueryClientProvider client={queryClient}>
-                <MemoryRouter>
-                    <HomeHero onPromptSubmit={() => {}} onOpenAuth={() => {}} />
-                </MemoryRouter>
-            </QueryClientProvider>
-        )
-
-        // Verify Get Started section is rendered and Recent Sessions is never displayed
-        expect(getByText('Get Started')).not.toBeNull()
-        expect(getByText('Connect GitHub')).not.toBeNull()
-        expect(getByText('Read documentation')).not.toBeNull()
-        expect(getByText('Read Docs')).not.toBeNull()
-        expect(getByText('Give feedback')).not.toBeNull()
+        expect(queryByText('Setup')).toBeNull()
+        expect(queryByText('Get Started')).toBeNull()
         expect(queryByText('Recent Sessions')).toBeNull()
     })
 })

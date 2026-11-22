@@ -12,12 +12,8 @@ import { authController } from './auth.controller'
 
 const authRouter = Router()
 
-authRouter.post('/signup', authRateLimiter, authController.signup)
-authRouter.post('/verify', authRateLimiter, authController.verifyOtp)
-authRouter.post('/login', authRateLimiter, authController.login)
-authRouter.post('/forgot-password/request', authRateLimiter, authController.requestPasswordReset)
-authRouter.post('/forgot-password/verify', authRateLimiter, authController.verifyPasswordResetOtp)
-authRouter.post('/forgot-password/reset', authRateLimiter, authController.resetPassword)
+authRouter.post('/email/start', authRateLimiter, authController.startEmailAuth)
+authRouter.post('/email/verify', authRateLimiter, authController.verifyEmailAuth)
 authRouter.post('/google', authRateLimiter, authController.google)
 authRouter.post('/github', authRateLimiter, authController.github)
 authRouter.post('/refresh', refreshRateLimiter, authController.refreshSession)

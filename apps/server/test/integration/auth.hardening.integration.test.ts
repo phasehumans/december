@@ -4,11 +4,11 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { hashRefreshToken } from '../../src/modules/auth/auth.utils'
+import { signInWithEmailCode } from '../helpers'
 
 describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
     let testUserId: string
     let testEmail: string
-    const testPassword = 'Password123!'
     let accessToken: string
     let refreshToken: string
 
@@ -27,13 +27,13 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         }
     })
 
-    it('POST /api/v1/auth/signup - creates unverified user and sends OTP', async () => {
+    it('POST /api/v1/auth/email/start - creates unverified user and sends OTP', async () => {
         const res = await request(app)
-            .post('/api/v1/auth/signup')
+            .post('/api/v1/auth/email/start')
             .set('x-forwarded-for', '10.0.0.1')
-            .send({ email: testEmail, password: testPassword })
+            .send({ email: testEmail })
 
-        expect(res.status).toBe(201)
+        expect(res.status).toBe(200)
         expect(res.body.message).toBe('otp sent to email')
 
         const user = await prisma.user.findUnique({ where: { email: testEmail } })
@@ -42,17 +42,7 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         testUserId = user!.id
     })
 
-    it('POST /api/v1/auth/login - fails for unverified user', async () => {
-        const res = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', '10.0.0.2')
-            .send({ email: testEmail, password: testPassword })
-
-        expect(res.status).toBe(401)
-        expect(res.body.message).toBe('please verify your email')
-    })
-
-    it('POST /api/v1/auth/verify - verifies user with OTP and generates session with SHA-256 token hash', async () => {
+    it('POST /api/v1/auth/email/verify - verifies user with OTP and generates session with SHA-256 token hash', async () => {
         const bcrypt = await import('bcrypt')
         const { env } = await import('../../src/env')
         const otpHash = await bcrypt.hash('123456', env.BCRYPT_SALT_ROUNDS)
@@ -66,7 +56,7 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         })
 
         const res = await request(app)
-            .post('/api/v1/auth/verify')
+            .post('/api/v1/auth/email/verify')
             .set('x-forwarded-for', '10.0.0.3')
             .send({ email: testEmail, otp: '123456' })
 
@@ -125,10 +115,7 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
     })
 
     it('GET /api/v1/auth/cli-token - validates access token with cached session lookup', async () => {
-        const loginRes = await request(app)
-            .post('/api/v1/auth/login')
-            .set('x-forwarded-for', '10.0.0.7')
-            .send({ email: testEmail, password: testPassword })
+        const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
         accessToken = loginRes.body.data.accessToken
@@ -199,14 +186,14 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         expect(checkRevoked).toBeNull()
     })
 
-    it('POST /api/v1/auth/login - returns 429 when rate limit threshold is exceeded', async () => {
+    it('POST /api/v1/auth/email/verify - returns 429 when rate limit threshold is exceeded', async () => {
         const RATE_LIMIT_TEST_IP = '10.99.99.99'
         let rateLimitedRes: any
         for (let i = 0; i < 35; i++) {
             const res = await request(app)
-                .post('/api/v1/auth/login')
+                .post('/api/v1/auth/email/verify')
                 .set('x-forwarded-for', RATE_LIMIT_TEST_IP)
-                .send({ email: 'ratelimit@example.com', password: 'Password123!' })
+                .send({ email: 'ratelimit@example.com', otp: '000000' })
             if (res.status === 429) {
                 rateLimitedRes = res
                 break
