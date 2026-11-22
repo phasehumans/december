@@ -106,22 +106,20 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
     describe('Model Registry & Alias Normalization', () => {
         it('returns provider model lists for each new provider and their aliases', () => {
             const sarvamModels = getProviderModels('sarvam')
-            expect(sarvamModels.map((m) => m.value)).toEqual(['sarvam-105b', 'sarvam-30b'])
+            expect(sarvamModels.map((m) => m.value)).toEqual([
+                'sarvam-105b',
+                'sarvam-105b-conversations',
+            ])
 
             const stepfunModels = getProviderModels('stepfun')
             expect(stepfunModels.map((m) => m.value)).toEqual([
                 'step-3.7-flash',
                 'step-3.5-flash',
-                'step-1-32k',
+                'step-5-preview',
             ])
 
             const upstageModels = getProviderModels('upstage')
-            expect(upstageModels.map((m) => m.value)).toEqual([
-                'solar-pro4',
-                'solar-pro3',
-                'solar-pro2',
-                'solar-mini',
-            ])
+            expect(upstageModels.map((m) => m.value)).toEqual(['solar-pro4', 'solar-mini4'])
 
             const tinkerModels = getProviderModels('thinkingmachines')
             expect(tinkerModels.map((m) => m.value)).toEqual([
@@ -130,22 +128,27 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             ])
 
             const xiaomiModels = getProviderModels('xiaomi')
+            // catalog checked against xiaomi /models on 2026-11-21 (#619)
             expect(xiaomiModels.map((m) => m.value)).toEqual([
-                'mimo-v2.5',
-                'mimo-v2.5-pro',
-                'mimo-v2.5-pro-ultraspeed',
-                'mimo-v2-flash',
-                'mimo-v2-omni',
-                'mimo-v2-pro',
+                'mimo-v2.6-flash',
+                'mimo-v2.6-pro',
+                'mimo-v2.6-pro-ultraspeed',
             ])
 
             const waferModels = getProviderModels('wafer.ai')
+            // catalog checked against wafer /models on 2026-11-21 (#619)
             expect(waferModels.map((m) => m.value)).toEqual([
-                'glm5.2-fast',
                 'GLM-5.2',
-                'MiniMax-M3',
-                'Kimi-K2.6',
-                'GLM-5.1',
+                'GLM-5.3',
+                'Kimi-K3',
+                'Qwen3.8-27B',
+                'GLM-5.3-Flash',
+                'Kimi-K3.1-Pro',
+                'DeepSeek-V4-Pro',
+                'Kimi-K3.1-Pro-US',
+                'MiniMax-M3.1-Flash',
+                'DeepSeek-V4.1-Flash',
+                'DeepSeek-V4-Flash-0731-Fast',
             ])
 
             // Test aliases
@@ -162,11 +165,11 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(getDefaultModelForProvider('solar')).toBe('solar-pro4')
             expect(getDefaultModelForProvider('thinkingmachines')).toBe('thinkingmachines/Inkling')
             expect(getDefaultModelForProvider('tinker')).toBe('thinkingmachines/Inkling')
-            expect(getDefaultModelForProvider('xiaomi')).toBe('mimo-v2.5')
-            expect(getDefaultModelForProvider('mimo')).toBe('mimo-v2.5')
+            expect(getDefaultModelForProvider('xiaomi')).toBe('mimo-v2.6-flash')
+            expect(getDefaultModelForProvider('mimo')).toBe('mimo-v2.6-flash')
             expect(getDefaultModelForProvider('zai')).toBe('glm-5.3-flash')
             expect(getDefaultModelForProvider('zhipuai')).toBe('glm-5.3-flash')
-            expect(getDefaultModelForProvider('wafer.ai')).toBe('glm5.2-fast')
+            expect(getDefaultModelForProvider('wafer.ai')).toBe('GLM-5.2')
         })
 
         it('validates and normalizes models correctly', () => {
@@ -176,7 +179,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(isValidModelForProvider('thinkingmachines', 'thinkingmachines/Inkling')).toBe(
                 true
             )
-            expect(isValidModelForProvider('wafer.ai', 'glm5.2-fast')).toBe(true)
+            expect(isValidModelForProvider('wafer.ai', 'GLM-5.2')).toBe(true)
         })
 
         it('normalizes fallback models properly', () => {
@@ -284,7 +287,7 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
                 provider: 'wafer.ai',
                 isAuthenticated: true,
             })
-            expect(waferCard).toContain('https://wafer.ai/')
+            expect(waferCard).toContain('https://app.wafer.ai')
         })
     })
 
@@ -340,14 +343,14 @@ describe('BYOK Providers End-to-End Regression & Switching Verification (Unit)',
             expect(targetXiaomi).toBeDefined()
             const switched4 = applyProviderSwitch(switched3.config, targetXiaomi!)
             expect(switched4.config.activeProvider).toBe('xiaomi')
-            expect(switched4.config.activeModel).toBe('mimo-v2.5')
+            expect(switched4.config.activeModel).toBe('mimo-v2.6-flash')
 
             // Switch: xiaomi -> wafer.ai
             const targetWafer = resolveSwitchTarget(switched4.config, 'wafer.ai')
             expect(targetWafer).toBeDefined()
             const switched5 = applyProviderSwitch(switched4.config, targetWafer!)
             expect(switched5.config.activeProvider).toBe('wafer.ai')
-            expect(switched5.config.activeModel).toBe('glm5.2-fast')
+            expect(switched5.config.activeModel).toBe('GLM-5.2')
 
             // Switch: wafer.ai -> sarvam
             const targetSarvam = resolveSwitchTarget(switched5.config, 'sarvam')

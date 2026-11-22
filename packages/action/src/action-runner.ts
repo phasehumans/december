@@ -76,6 +76,48 @@ const defaultRunCommand = async (
     }
 }
 
+/**
+ * Picks the action's model from what the provider serves for this key (#619, D1/D5).
+ * The action's `gemini` is an ai studio key, so its models come from the `google` list.
+ * A requested model the key cannot use is replaced, with a warning, instead of failing mid-run.
+ */
+export async function resolveActionModel(
+    provider: ActionProvider,
+    apiKey: string,
+    requested?: string,
+    fetchFn: typeof fetch = fetch
+): Promise<string> {
+    const providers = await import('@december/providers')
+    const listProvider = provider === 'gemini' ? 'google' : provider
+    const live = await providers.fetchProviderModelIds(listProvider, apiKey, undefined, fetchFn)
+    if (live.ok === false) {
+        if (live.reason === 'bad_key') {
+            throw new Error(
+                `${provider} rejected the API key${live.message ? `: ${live.message}` : '.'} Check the repository secret.`
+            )
+        }
+        if (live.reason === 'forbidden') {
+            console.warn(
+                `[December Action] ${provider} refused the key${live.message ? `: ${live.message}` : '.'}`
+            )
+        }
+        return requested || providers.pickCatalogModel(listProvider) || 'gemini-3.8-flash'
+    }
+    const served = (id: string) => live.ids.some((m) => m.toLowerCase() === id.toLowerCase())
+    if (requested && served(requested)) return requested
+    const picked = providers.pickPreferredModel(
+        listProvider,
+        live.ids,
+        requested ? [requested] : []
+    )
+    if (requested) {
+        console.warn(
+            `[December Action] ${provider} does not serve '${requested}' for this key. Using '${picked}'.`
+        )
+    }
+    return picked || requested || providers.pickCatalogModel(listProvider) || 'gemini-3.8-flash'
+}
+
 export async function runDecemberAction(
     options: DecemberActionOptions
 ): Promise<DecemberActionResult> {
@@ -181,10 +223,11 @@ export async function runDecemberAction(
                       : provider === 'anthropic'
                         ? providers.anthropicProvider(apiKey)
                         : providers.openrouterProvider(apiKey)
-            const model =
-                options.model ||
-                process.env.INPUT_MODEL ||
-                providers.getDefaultModelForProvider(provider)
+            const model = await resolveActionModel(
+                provider,
+                apiKey,
+                options.model || process.env.INPUT_MODEL
+            )
 
             const { AgentHarness, runAgentLoop } = await import('@december/agent')
             const { CORE_TOOLS } = await import('@december/tools')

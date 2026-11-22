@@ -365,7 +365,7 @@ describe('error-parser', () => {
             const rawErr = '402 Payment Required: balance insufficient on z.ai'
             const parsed = parseError(rawErr)
             expect(parsed.message).toBe('Insufficient balance in your Zhipu AI account.')
-            expect(parsed.hint).toContain('https://open.bigmodel.cn/')
+            expect(parsed.hint).toContain('https://z.ai/')
         })
 
         test('attaches custom notice for Abliteration AI credit exhaustion', () => {
@@ -584,5 +584,27 @@ describe('error-parser', () => {
             )
             expect(parsed.hint).toBeUndefined()
         })
+    })
+
+    test('billing links point at the same site as the key links (#619)', async () => {
+        const { PROVIDER_BILLING_URLS } = await import('../src/utils/error-parser')
+        const cliRates = await import('../src/utils/usage-rates')
+        const sharedRates = await import('@december/shared')
+        const { PROVIDER_KEY_URLS } = await import('@december/tui')
+        const site = (url: string) => new URL(url).hostname.split('.').slice(-2).join('.')
+        const maps = {
+            'error-parser': PROVIDER_BILLING_URLS,
+            'cli usage-rates': cliRates.PROVIDER_BILLING_LINKS,
+            'shared usage-rates': sharedRates.PROVIDER_BILLING_LINKS,
+        }
+        for (const [name, map] of Object.entries(maps)) {
+            for (const [provider, billing] of Object.entries(map as Record<string, string>)) {
+                const key = PROVIDER_KEY_URLS[provider]
+                if (!key) continue
+                expect(`${name} ${provider}: ${site(billing)}`).toBe(
+                    `${name} ${provider}: ${site(key)}`
+                )
+            }
+        }
     })
 })

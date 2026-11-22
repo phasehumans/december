@@ -263,6 +263,7 @@ export async function handleKeyCommand(options?: {
     const baseUrl = options?.baseUrl?.trim()
     const BLUE = '\x1b[38;2;135;178;244m'
     const GREEN = '\x1b[38;2;110;231;183m'
+    const RED = '\x1b[38;2;252;165;165m'
     const WHITE = '\x1b[38;2;244;244;245m'
     const RESET = '\x1b[0m'
 
@@ -298,6 +299,30 @@ export async function handleKeyCommand(options?: {
 
     const isSTTProvider = provider.toLowerCase() === 'deepgram'
 
+    // D4 (issue #619): ask the provider about the key before saving it
+    let checkNote = ''
+    if (!isSTTProvider) {
+        const { checkProviderKey } = await import('../utils/models')
+        console.log('Checking key...')
+        const check = await checkProviderKey(provider, finalKey, baseUrl)
+        if (check.status === 'rejected') {
+            const { PROVIDER_KEY_URLS } = await import('@december/tui')
+            const keyUrl = PROVIDER_KEY_URLS[provider.toLowerCase()]
+            console.log(
+                `\n${RED}Key rejected by ${formatProviderName(provider)}${check.message ? `: ${check.message}` : '.'}${RESET}`
+            )
+            if (keyUrl) console.log(`Get a key at ${keyUrl}`)
+            console.log('The key was not saved.\n')
+            process.exitCode = 1
+            return
+        }
+        if (check.status === 'forbidden') {
+            checkNote = `${formatProviderName(provider)} accepted the key but refused access${check.message ? `: ${check.message}` : '.'}`
+        } else if (check.status === 'unverified') {
+            checkNote = 'Could not verify the key, December will check on the first message.'
+        }
+    }
+
     const config = await loadConfig()
     config.providers = config.providers || {}
     config.providers[provider] = finalKey
@@ -315,14 +340,10 @@ export async function handleKeyCommand(options?: {
         config.authPriority = 'byok'
         await saveConfig(config)
 
-        const { fetchLiveProviderModels } = await import('../utils/models')
-        fetchLiveProviderModels(provider, finalKey, baseUrl).catch(() => {
-            // Intentionally swallowed: background live model fetch failure
-        })
-
         console.log(
             `\n${GREEN}Successfully saved API key for ${provider.toUpperCase()} (Model: ${defaultModel})!${RESET}\n`
         )
+        if (checkNote) console.log(`${checkNote}\n`)
     } else {
         await saveConfig(config)
         console.log(

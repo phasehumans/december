@@ -14,9 +14,11 @@ if (!version) {
 
 console.log(`Releasing v${version}...`)
 
-// Pre-flight: verify and sync model provider catalog
+// Pre-flight: sync the model catalog with what providers serve (keys from .env.parity when
+// present, public model lists otherwise), then check it
 console.log('Syncing model provider catalog with live endpoints...')
 await $`bun run models:sync`
+await $`bun run models:check`
 
 const glob = new Bun.Glob('**/package.json')
 for await (const file of glob.scan('.')) {

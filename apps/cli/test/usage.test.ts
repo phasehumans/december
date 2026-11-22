@@ -189,7 +189,7 @@ describe('CLI In-Terminal Usage & Rates (Unit)', () => {
         expect(text).toContain('Active Model: `claude-3-7-sonnet-latest` (BYOK)')
         expect(text).toContain('Provider: Anthropic Console')
         expect(text).toContain(
-            '[https://console.anthropic.com/settings/billing](https://console.anthropic.com/settings/billing)'
+            '[https://platform.claude.com/settings/billing](https://platform.claude.com/settings/billing)'
         )
         expect(text).not.toContain('**')
         expect(text).not.toContain('>')

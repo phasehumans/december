@@ -166,19 +166,19 @@ describe('instantiateProvider', () => {
     it('instantiates upstage provider via openai compat', () => {
         instantiateProvider('upstage', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.upstage.ai/v1/solar',
+            'https://api.upstage.ai/v1',
             'key-123'
         )
 
         instantiateProvider('upstageai', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.upstage.ai/v1/solar',
+            'https://api.upstage.ai/v1',
             'key-123'
         )
 
         instantiateProvider('solar', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.upstage.ai/v1/solar',
+            'https://api.upstage.ai/v1',
             'key-123'
         )
     })
@@ -257,7 +257,7 @@ describe('instantiateProvider', () => {
     it('instantiates hyperbolic provider via openai compat', () => {
         instantiateProvider('hyperbolic', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.hyperbolic.xyz/v1',
+            'https://api.hyperbolic.ai/inference/v1',
             'key-123'
         )
     })
@@ -281,7 +281,7 @@ describe('instantiateProvider', () => {
     it('instantiates cohere provider via openai compat', () => {
         instantiateProvider('cohere', 'key-123')
         expect(providers.openaiProvider).toHaveBeenCalledWith(
-            'https://api.cohere.com/v2',
+            'https://api.cohere.com/compatibility/v1',
             'key-123'
         )
     })

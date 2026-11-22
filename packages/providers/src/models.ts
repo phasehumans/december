@@ -1677,7 +1677,8 @@ export function getReasoningSupportType(
             baseURL.includes('groq.com') ||
             baseURL.includes('mistral.ai') ||
             baseURL.includes('together.xyz') ||
-            baseURL.includes('hyperbolic.xyz'))
+            baseURL.includes('hyperbolic.xyz') ||
+            baseURL.includes('hyperbolic.ai'))
     ) {
         return 'none'
     }
@@ -1708,6 +1709,22 @@ export function createProvider<T>(
         api: config.api,
         stream: streamImpl,
     }
+}
+
+/**
+ * D5 without a live list: the catalog default, else the first catalog model,
+ * never one of `exclude` (the model that just failed). The cli refines this with the live list.
+ */
+export function pickCatalogModel(provider?: string, exclude: string[] = []): string | undefined {
+    const normalized = (provider || '').toLowerCase().trim()
+    const excluded = new Set(exclude.map((m) => m.toLowerCase().trim()))
+    if (normalized === 'december' || normalized === 'december_proxy') {
+        return excluded.has('december-auto') ? undefined : 'december-auto'
+    }
+    const canonical = MODEL_CATALOG.aliases[normalized] || normalized
+    const entry = MODEL_CATALOG.providers[canonical]
+    const candidates = [entry?.defaultModel, ...(entry?.models || []).map((m) => m?.id)]
+    return candidates.find((id) => id && !excluded.has(id.toLowerCase()))
 }
 
 export function getDefaultModelForProvider(provider?: string): string {

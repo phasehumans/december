@@ -56,14 +56,48 @@ describe('CLI Standalone Commands', () => {
         }
     }, 15000)
 
+    const withFetch = async (answer: Response, run: () => Promise<void>) => {
+        const originalFetch = globalThis.fetch
+        const originalLog = console.log
+        globalThis.fetch = (async () => answer.clone()) as any
+        console.log = () => {}
+        try {
+            await run()
+        } finally {
+            globalThis.fetch = originalFetch
+            console.log = originalLog
+        }
+    }
+
     it('handleKeyCommand saves API key to config and sets activeProvider', async () => {
         const { handleKeyCommand } = await import('../src/commands')
-        await handleKeyCommand({ provider: 'openai', key: 'sk-test-custom-key' })
+        const { clearProviderModelsCache } = await import('../src/utils/models')
+        clearProviderModelsCache()
+        await withFetch(new Response(JSON.stringify({ data: [{ id: 'gpt-5.6-sol' }] })), () =>
+            handleKeyCommand({ provider: 'openai', key: 'sk-test-custom-key' })
+        )
 
         const config = await loadConfig()
         expect(config.providers?.openai).toBe('sk-test-custom-key')
         expect(config.activeProvider).toBe('openai')
         expect(config.authPriority).toBe('byok')
+    })
+
+    it('handleKeyCommand does not save a key the provider rejects (D4)', async () => {
+        const { handleKeyCommand } = await import('../src/commands')
+        const { clearProviderModelsCache } = await import('../src/utils/models')
+        clearProviderModelsCache()
+        await withFetch(
+            new Response(JSON.stringify({ error: { message: 'Incorrect API key' } }), {
+                status: 401,
+            }),
+            () => handleKeyCommand({ provider: 'openai', key: 'sk-test-bad-key' })
+        )
+
+        const config = await loadConfig()
+        expect(config.providers?.openai).toBeUndefined()
+        expect(process.exitCode).toBe(1)
+        process.exitCode = 0
     })
 
     it('handleLinkCommand without provider outputs available subscriptions', async () => {

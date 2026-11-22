@@ -1,15 +1,27 @@
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, unlinkSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { getModelContextWindow, MODEL_CATALOG, DYNAMIC_ENDPOINTS } from '@december/providers'
+import {
+    classifyModelsFailure,
+    extractProviderMessage,
+    getModelContextWindow as getCatalogContextWindow,
+    MODEL_CATALOG,
+    parseModelsResponse,
+    pickPreferredModel,
+    resolveModelsRequest,
+} from '@december/providers'
+
+import type { ModelOption, ModelsFailureReason } from '@december/providers'
 
 export const LIVE_MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+const MODELS_TIMEOUT_MS = 8000
 
 export interface LiveModelCacheEntry {
     timestamp: number
-    models: { label: string; value: string }[]
+    models: ModelOption[]
     unavailable?: string[]
 }
 
@@ -29,6 +41,12 @@ function getModelsCacheFile(): string {
     return legacyFile
 }
 
+/** `<provider>:<16 hex fingerprint | default>:<base url>`; anything else holds a raw key */
+function isFingerprintCacheKey(key: string): boolean {
+    const second = key.split(':')[1] || ''
+    return second === 'default' || /^[0-9a-f]{16}$/.test(second)
+}
+
 export function initDiskCacheSync(): void {
     if (diskCacheLoaded) return
     diskCacheLoaded = true
@@ -41,7 +59,13 @@ export function initDiskCacheSync(): void {
             const raw = readFileSync(cacheFile, 'utf-8')
             const parsed = JSON.parse(raw)
             const now = Date.now()
+            let droppedRawKeys = false
             for (const [k, v] of Object.entries(parsed as Record<string, LiveModelCacheEntry>)) {
+                // older versions keyed the cache by the raw api key: drop those entries
+                if (!isFingerprintCacheKey(k)) {
+                    droppedRawKeys = true
+                    continue
+                }
                 if (
                     v &&
                     typeof v.timestamp === 'number' &&
@@ -50,6 +74,11 @@ export function initDiskCacheSync(): void {
                 ) {
                     liveModelCache.set(k, v)
                 }
+            }
+            if (droppedRawKeys) {
+                saveDiskCache().catch(() => {
+                    // Intentionally swallowed: the next save rewrites the file anyway
+                })
             }
         }
     } catch {
@@ -154,7 +183,6 @@ export const getProviderModels = (provider: string) => {
     initDiskCacheSync()
     const now = Date.now()
     for (const [key, entry] of liveModelCache.entries()) {
-        if (key.includes(':test-token:')) continue
         if (key.startsWith(`${normalized}:`) && now - entry.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
             const unavail = new Set((entry.unavailable || []).map((m) => m.toLowerCase()))
             return entry.models.filter((m) => !unavail.has(m.value.toLowerCase()))
@@ -170,395 +198,200 @@ export const getProviderModels = (provider: string) => {
     return curated
 }
 
-function formatModelLabel(id: string): string {
-    if (!id) return ''
-    const parts = id.split(/[/:]/)
-    const last = parts[parts.length - 1]
-    return last
-        .split(/[-_]/)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ')
-}
+export type LiveModelsFailureReason = ModelsFailureReason | 'no_key'
 
-function isChatModel(id: string): boolean {
-    if (!id || typeof id !== 'string') return false
-    const lower = id.toLowerCase()
-    if (
-        lower.includes('embedding') ||
-        lower.includes('bge-') ||
-        lower.includes('whisper') ||
-        lower.includes('tts-') ||
-        lower.includes('flux') ||
-        lower.includes('sdxl') ||
-        lower.includes('stable-diffusion') ||
-        lower.includes('dall-e') ||
-        lower.includes('rerank') ||
-        lower.includes('compaction') ||
-        lower.startsWith('copilot-search') ||
-        lower.startsWith('exec-agent')
-    ) {
-        return false
+export type LiveModelsResult =
+    /** verified: false when the list answers any key, so the key itself is still unchecked */
+    | { ok: true; models: ModelOption[]; verified: boolean }
+    | { ok: false; reason: LiveModelsFailureReason; status?: number; message?: string }
+
+const keyFingerprint = (apiKey: string): string =>
+    createHash('sha256').update(apiKey).digest('hex').slice(0, 16)
+
+const liveCacheKey = (provider: string, apiKey: string, baseUrl?: string): string =>
+    `${provider}:${keyFingerprint(apiKey)}:${baseUrl || 'default'}`
+
+/**
+ * D1: the provider decides which models appear, the catalog decides their order and labels.
+ * Catalog models come first in catalog order, then the rest in the provider's order.
+ */
+export function orderByCatalog(provider: string, live: ModelOption[]): ModelOption[] {
+    const normalized = (provider || '').toLowerCase().trim()
+    const canonical = MODEL_CATALOG.aliases[normalized] || normalized
+    const catalogModels = MODEL_CATALOG.providers[canonical]?.models || []
+    const liveById = new Map(live.map((m) => [m.value.toLowerCase(), m]))
+    const seen = new Set<string>()
+    const ordered: ModelOption[] = []
+    for (const cm of catalogModels) {
+        const hit = liveById.get(cm.id.toLowerCase())
+        if (hit && !seen.has(hit.value)) {
+            seen.add(hit.value)
+            ordered.push({ ...hit, label: cm.label || hit.label })
+        }
     }
-    return true
+    for (const m of live) {
+        if (!seen.has(m.value)) {
+            seen.add(m.value)
+            ordered.push(m)
+        }
+    }
+    return ordered
 }
 
+async function readModelsResponse(
+    res: Response
+): Promise<{ ok: true; json: any } | { ok: false; status: number; body: string }> {
+    if (res.ok) {
+        return { ok: true, json: await res.json() }
+    }
+    const body = await res.text().catch(() => '')
+    return { ok: false, status: res.status, body }
+}
+
+/**
+ * Asks the provider which models this key can use.
+ * Returns the failure type (bad key, forbidden, no endpoint, network) instead of a fallback list,
+ * so callers can tell "bad key" from "this provider has no model list".
+ */
 export async function fetchLiveProviderModels(
     provider: string,
     apiKey?: string,
     baseUrl?: string,
     fetchFn: typeof fetch = fetch
-): Promise<{ label: string; value: string }[]> {
+): Promise<LiveModelsResult> {
     const normalized = (provider || '').toLowerCase().trim()
-    const curated = getCuratedProviderModels(normalized)
 
     if (normalized === 'december' || normalized === 'december_proxy') {
-        return curated
-    }
-
-    if (normalized === 'openrouter') {
-        const cacheKey = `openrouter:${apiKey || 'none'}:${baseUrl || 'default'}`
-        const cached = liveModelCache.get(cacheKey)
-        if (cached && Date.now() - cached.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
-            return cached.models
-        }
-        const { fetchOpenRouterModels } = await import('./openrouter-models')
-        const models = await fetchOpenRouterModels(apiKey, false, fetchFn)
-        if (models && models.length > 0) {
-            liveModelCache.set(cacheKey, {
-                timestamp: Date.now(),
-                models,
-            })
-            saveDiskCache().catch(() => {})
-        }
-        return models
+        return { ok: true, models: getCuratedProviderModels(normalized), verified: true }
     }
 
     if (!apiKey) {
-        return curated
+        return { ok: false, reason: 'no_key' }
     }
 
-    const cacheKey = `${normalized}:${apiKey}:${baseUrl || 'default'}`
+    const cacheKey = liveCacheKey(normalized, apiKey, baseUrl)
+    const request = resolveModelsRequest(normalized, apiKey, baseUrl)
     const cached = liveModelCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
-        return cached.models
+        return { ok: true, models: cached.models, verified: request?.verifiesKey ?? true }
+    }
+
+    if (!request) {
+        return { ok: false, reason: 'no_endpoint' }
     }
 
     try {
-        let endpoint = ''
-        const headers: Record<string, string> = { Accept: 'application/json' }
-
-        const isAntigravity = normalized === 'antigravity'
-        let isPostRpc = false
-        let requestBody: any = undefined
-
-        if (isAntigravity) {
-            endpoint = 'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels'
-            headers['Authorization'] = apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`
-            headers['Content-Type'] = 'application/json'
-            headers['User-Agent'] = 'google-antigravity-cli/1.0'
-            isPostRpc = true
-            requestBody = JSON.stringify({ project: 'aicode-consumers' })
-        } else if (normalized === 'google' || normalized === 'gemini') {
-            if (
-                apiKey.startsWith('ya29.') ||
-                apiKey.startsWith('Bearer ') ||
-                apiKey.includes('.')
-            ) {
-                endpoint = 'https://generativelanguage.googleapis.com/v1beta/models'
-                headers['Authorization'] = apiKey.startsWith('Bearer ')
-                    ? apiKey
-                    : `Bearer ${apiKey}`
-            } else {
-                endpoint = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
-            }
-        } else if (normalized === 'anthropic' || normalized === 'claude') {
-            endpoint = 'https://api.anthropic.com/v1/models'
-            headers['anthropic-version'] = '2023-06-01'
-            const isOAuth =
-                normalized === 'claude' ||
-                apiKey.startsWith('sk-ant-oat') ||
-                apiKey.startsWith('Bearer ')
-            if (isOAuth) {
-                headers['Authorization'] = apiKey.startsWith('Bearer ')
-                    ? apiKey
-                    : `Bearer ${apiKey}`
-                headers['anthropic-beta'] = 'claude-code-20250219,oauth-2024-06-20'
-            } else {
-                headers['x-api-key'] = apiKey
-            }
-        } else {
-            headers['Authorization'] = `Bearer ${apiKey}`
-            switch (normalized) {
-                case 'openai':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://api.openai.com/v1/models'
-                    break
-                case 'codex':
-                case 'chatgpt':
-                    if (baseUrl) {
-                        endpoint = `${baseUrl.replace(/\/+$/, '')}/models`
-                    } else {
-                        return curated
+        if (request.keyCheck) {
+            const check = await fetchFn(request.keyCheck.url, {
+                method: request.keyCheck.method || 'GET',
+                headers: request.keyCheck.headers,
+                body: request.keyCheck.body,
+                signal: AbortSignal.timeout(MODELS_TIMEOUT_MS),
+            })
+            if (!check.ok) {
+                const body = await check.text().catch(() => '')
+                const reason = classifyModelsFailure(check.status, body)
+                if (reason === 'bad_key' || reason === 'forbidden') {
+                    return {
+                        ok: false,
+                        reason,
+                        status: check.status,
+                        message: extractProviderMessage(body),
                     }
-                    break
-                case 'deepseek':
-                    endpoint = 'https://api.deepseek.com/models'
-                    break
-                case 'groq':
-                    endpoint = 'https://api.groq.com/openai/v1/models'
-                    break
-                case 'mistral':
-                case 'mistralai':
-                case 'mistral-ai':
-                    endpoint = 'https://api.mistral.ai/v1/models'
-                    break
-                case 'xai':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://api.x.ai/v1/models'
-                    break
-                case 'xiaomi':
-                case 'mimo':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://api.xiaomimimo.com/v1/models'
-                    break
-                case 'zai':
-                case 'zhipu':
-                case 'zhipuai':
-                    endpoint = baseUrl
-                        ? `${baseUrl.replace(/\/+$/, '')}/models`
-                        : 'https://api.z.ai/api/coding/paas/v4/models'
-                    break
-                case 'together':
-                case 'togetherai':
-                    endpoint = 'https://api.together.xyz/v1/models'
-                    break
-                case 'fireworks':
-                case 'fireworksai':
-                    endpoint = 'https://api.fireworks.ai/inference/v1/models'
-                    break
-                case 'siliconflow':
-                case 'siliconcloud':
-                    endpoint = 'https://api.siliconflow.cn/v1/models'
-                    break
-                case 'dashscope':
-                case 'qwen':
-                    endpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1/models'
-                    break
-                case 'minimax':
-                case 'minimaxai':
-                case 'minimax-ai':
-                    endpoint = 'https://api.minimax.io/v1/models'
-                    break
-                case 'cerebras':
-                    endpoint = 'https://api.cerebras.ai/v1/models'
-                    break
-                case 'sambanova':
-                    endpoint = 'https://api.sambanova.ai/v1/models'
-                    break
-                case 'nvidia':
-                case 'nim':
-                    endpoint = 'https://integrate.api.nvidia.com/v1/models'
-                    break
-                case 'cohere':
-                    endpoint = 'https://api.cohere.com/v2/models'
-                    break
-                case 'kimi':
-                case 'moonshot':
-                case 'moonshoot':
-                case 'moonshotai':
-                case 'moonshot-ai':
-                    endpoint = 'https://api.moonshot.ai/v1/models'
-                    break
-                case 'huggingface':
-                    endpoint = 'https://router.huggingface.co/v1/models'
-                    break
-                case 'hyperbolic':
-                    endpoint = 'https://api.hyperbolic.xyz/v1/models'
-                    break
-                case 'arcee':
-                case 'arceeai':
-                case 'arcee-ai':
-                    endpoint = 'https://api.arcee.ai/api/v1/models'
-                    break
-                case 'meta':
-                case 'metaai':
-                case 'meta-ai':
-                    endpoint = 'https://api.meta.ai/v1/models'
-                    break
-                case 'sakana':
-                case 'sakanaai':
-                case 'sakana-ai':
-                    endpoint = 'https://api.sakana.ai/v1/models'
-                    break
-                case 'sarvam':
-                case 'sarvamai':
-                case 'sarvam-ai':
-                    endpoint = 'https://api.sarvam.ai/v1/models'
-                    break
-                case 'stepfun':
-                case 'stepfunai':
-                case 'stepfun-ai':
-                    endpoint = 'https://api.stepfun.ai/v1/models'
-                    break
-                case 'upstage':
-                case 'upstageai':
-                case 'solar':
-                    endpoint = 'https://api.upstage.ai/v1/solar/models'
-                    break
-                case 'december':
-                case 'december_proxy': {
-                    const serverUrl = process.env.SERVER_URL || 'https://api.trydecember.com'
-                    endpoint = `${serverUrl.replace(/\/+$/, '')}/api/v1/cli/models`
-                    break
-                }
-                case 'copilot':
-                case 'github_copilot':
-                case 'github':
-                    endpoint = 'https://api.individual.githubcopilot.com/models'
-                    headers['Editor-Version'] = 'vscode/1.95.0'
-                    headers['Editor-Plugin-Version'] = 'copilot/1.240.0'
-                    headers['User-Agent'] = 'GithubCopilot/1.240.0'
-                    break
-                default: {
-                    const dynamic =
-                        DYNAMIC_ENDPOINTS[normalized] ||
-                        DYNAMIC_ENDPOINTS[MODEL_CATALOG.aliases[normalized] || '']
-                    if (dynamic) {
-                        endpoint = baseUrl
-                            ? `${baseUrl.replace(/\/+$/, '')}/models`
-                            : `${dynamic.baseURL.replace(/\/+$/, '')}/models`
-                        if (dynamic.defaultHeaders) {
-                            Object.assign(headers, dynamic.defaultHeaders)
-                        }
-                    } else if (baseUrl) {
-                        const clean = baseUrl.replace(/\/+$/, '')
-                        endpoint = clean.endsWith('/v1') ? `${clean}/models` : `${clean}/v1/models`
-                    }
-                    break
                 }
             }
         }
 
-        if (!endpoint) {
-            return curated
-        }
-
-        const fetchOptions: RequestInit = {
-            headers,
-            signal: AbortSignal.timeout(4000),
-        }
-        if (isPostRpc) {
-            fetchOptions.method = 'POST'
-            fetchOptions.body = requestBody
-        }
-
-        const res = await fetchFn(endpoint, fetchOptions)
-
-        if (!res.ok) {
-            return curated
-        }
-
-        const json = (await res.json()) as any
-        const liveItems: { label: string; value: string }[] = []
-
-        if (isAntigravity && json.models) {
-            for (const [id, m] of Object.entries(json.models as Record<string, any>)) {
-                if (!id || id.startsWith('tab_') || id.startsWith('chat_2')) continue
-                let label = m?.displayName || formatModelLabel(id)
-                let value = id
-                if (id === 'gemini-3.8-flash-tiered') {
-                    value = 'gemini-3.8-flash'
-                    label = 'Gemini 3.8 Flash (High)'
-                }
-                liveItems.push({ label, value })
-            }
-        } else if (normalized === 'google' || normalized === 'gemini') {
-            const rawModels = json.models || []
-            for (const m of rawModels) {
-                const id = (m.name || '').replace(/^models\//, '')
-                if (
-                    id &&
-                    (id.includes('gemini') || id.includes('gemma')) &&
-                    !id.includes('image') &&
-                    !id.includes('banana') &&
-                    !id.includes('deep-research') &&
-                    !id.includes('embedding') &&
-                    !id.includes('aqa')
-                ) {
-                    liveItems.push({
-                        label: m.displayName || formatModelLabel(id),
-                        value: id,
-                    })
-                }
-            }
-        } else if (normalized === 'anthropic' || normalized === 'claude') {
-            const rawModels = json.data || []
-            for (const m of rawModels) {
-                if (m.id) {
-                    liveItems.push({
-                        label: m.display_name || formatModelLabel(m.id),
-                        value: m.id,
-                    })
-                }
-            }
-        } else if (Array.isArray(json.data)) {
-            for (const m of json.data) {
-                const id = m.id || m.name
-                if (id && typeof id === 'string' && isChatModel(id)) {
-                    liveItems.push({
-                        label: formatModelLabel(id),
-                        value: id,
-                    })
-                }
-            }
-        } else if (Array.isArray(json.models)) {
-            for (const m of json.models) {
-                const id = typeof m === 'string' ? m : m.name || m.id
-                if (id && typeof id === 'string' && isChatModel(id)) {
-                    liveItems.push({
-                        label: formatModelLabel(id),
-                        value: id,
-                    })
-                }
-            }
-        }
-
-        if (liveItems.length === 0) {
-            return curated
-        }
-
-        const seen = new Set<string>()
-        const merged: { label: string; value: string }[] = []
-
-        // Live models directly returned from the provider API take precedence
-        for (const item of liveItems) {
-            if (!seen.has(item.value)) {
-                seen.add(item.value)
-                merged.push(item)
-            }
-        }
-
-        for (const m of curated) {
-            if (!seen.has(m.value)) {
-                seen.add(m.value)
-                merged.push(m)
-            }
-        }
-
-        liveModelCache.set(cacheKey, {
-            timestamp: Date.now(),
-            models: merged,
+        const res = await fetchFn(request.url, {
+            method: request.method,
+            headers: request.headers,
+            body: request.body,
+            signal: AbortSignal.timeout(MODELS_TIMEOUT_MS),
         })
-        saveDiskCache().catch(() => {})
+        const read = await readModelsResponse(res)
+        if (read.ok === false) {
+            return {
+                ok: false,
+                reason: classifyModelsFailure(read.status, read.body),
+                status: read.status,
+                message: extractProviderMessage(read.body),
+            }
+        }
 
-        return merged
-    } catch {
-        // Intentionally swallowed: return curated fallback models on timeout or network error
-        return curated
+        const live = parseModelsResponse(request.parser, read.json)
+        if (live.length === 0) {
+            return { ok: false, reason: 'no_endpoint', status: res.status }
+        }
+
+        const models = orderByCatalog(normalized, live)
+        liveModelCache.set(cacheKey, { timestamp: Date.now(), models })
+        saveDiskCache().catch(() => {
+            // Intentionally swallowed: cache write failure only costs a refetch
+        })
+        return { ok: true, models, verified: request.verifiesKey }
+    } catch (err: any) {
+        return { ok: false, reason: 'network', message: err?.message }
     }
+}
+
+export type KeyCheckResult =
+    | { status: 'valid'; models: ModelOption[] }
+    | { status: 'rejected' | 'forbidden'; message?: string; httpStatus?: number }
+    | { status: 'unverified'; reason: LiveModelsFailureReason; message?: string }
+
+/**
+ * D4: checks a key with the provider's model list before december saves it.
+ * rejected: do not save. forbidden: save and show the provider's reason.
+ * unverified: save, december checks again on the first message.
+ */
+export async function checkProviderKey(
+    provider: string,
+    apiKey: string,
+    baseUrl?: string,
+    fetchFn: typeof fetch = fetch
+): Promise<KeyCheckResult> {
+    const normalized = (provider || '').toLowerCase().trim()
+    const keep = liveCacheKey(normalized, apiKey, baseUrl)
+    // a fresh check: never answer from a cached list
+    liveModelCache.delete(keep)
+
+    const result = await fetchLiveProviderModels(normalized, apiKey, baseUrl, fetchFn)
+    if (result.ok === false && result.reason === 'bad_key') {
+        return { status: 'rejected', message: result.message, httpStatus: result.status }
+    }
+
+    // the key will be saved: drop lists read with any older key for this provider
+    for (const key of [...liveModelCache.keys()]) {
+        if (key.startsWith(`${normalized}:`) && key !== keep) liveModelCache.delete(key)
+    }
+    saveDiskCache().catch(() => {
+        // Intentionally swallowed: cache write failure only costs a refetch
+    })
+
+    if (result.ok === true) {
+        if (result.verified) return { status: 'valid', models: result.models }
+        return { status: 'unverified', reason: 'no_endpoint' }
+    }
+    if (result.reason === 'forbidden') {
+        return { status: 'forbidden', message: result.message, httpStatus: result.status }
+    }
+    return { status: 'unverified', reason: result.reason, message: result.message }
+}
+
+/** the cached live list for a provider, or undefined when december has not read one yet */
+export const getLiveProviderModels = (provider: string): ModelOption[] | undefined => {
+    const normalized = (provider || '').toLowerCase().trim()
+    initDiskCacheSync()
+    const now = Date.now()
+    for (const [key, entry] of liveModelCache.entries()) {
+        if (key.startsWith(`${normalized}:`) && now - entry.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
+            // `<provider>:default:default` holds the curated list minus failed models, not a live list
+            if (key.split(':')[1] === 'default') continue
+            const unavail = new Set((entry.unavailable || []).map((m) => m.toLowerCase()))
+            return entry.models.filter((m) => !unavail.has(m.value.toLowerCase()))
+        }
+    }
+    return undefined
 }
 
 export const getModelLabel = (value: string) => {
@@ -627,6 +460,13 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     }
 
     const canonical = MODEL_CATALOG.aliases[normalized] || normalized
+
+    // once the provider has told us its models, that list is the only truth
+    const live = getLiveProviderModels(normalized)
+    if (live && live.length > 0) {
+        const wanted = model.toLowerCase().trim()
+        return live.some((m) => m.value.toLowerCase() === wanted)
+    }
 
     if (normalized === 'openrouter' && (model.includes('/') || model.includes(':'))) return true
     if (
@@ -740,21 +580,34 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
     return false
 }
 
-export const getDefaultModelForProvider = (provider: string): string => {
+/**
+ * D5: the first catalog-preferred model (default first, then catalog order) that the provider
+ * offers; else the first model the provider offers. Never one of `exclude` (the model that failed).
+ */
+export const pickModelForProvider = (
+    provider: string,
+    exclude: string[] = []
+): string | undefined => {
     const normalized = (provider || '').toLowerCase().trim()
     if (normalized === 'december' || normalized === 'december_proxy') {
-        return 'december-auto'
+        return exclude.some((m) => m.toLowerCase() === 'december-auto')
+            ? undefined
+            : 'december-auto'
     }
-    const canonical = MODEL_CATALOG.aliases[normalized] || normalized
-    const entry = MODEL_CATALOG.providers[canonical]
-    if (entry && entry.defaultModel) {
-        return entry.defaultModel
-    }
-    const models = getProviderModels(provider)
-    if (models && models.length > 0) {
-        return models[0].value
-    }
-    return 'gemini-3.8-flash'
+    const available = getProviderModels(normalized)
+        .map((m) => m.value)
+        .filter((id) => id !== 'default')
+    return pickPreferredModel(normalized, available, exclude)
+}
+
+/** the hint under a model-not-available error */
+export const modelFallbackHint = (fallback?: string): string =>
+    fallback
+        ? `Press [Enter] to switch to '${fallback}' & retry · [m] /model · [Esc] dismiss`
+        : 'Pick an available model with `/model` or change provider with `/switch`.'
+
+export const getDefaultModelForProvider = (provider: string): string => {
+    return pickModelForProvider(provider) || 'gemini-3.8-flash'
 }
 
 export const ensureValidModelForProvider = (provider: string, model?: string): string => {
@@ -778,4 +631,18 @@ export const ensureValidModelForProvider = (provider: string, model?: string): s
     return getDefaultModelForProvider(provider)
 }
 
-export { getModelContextWindow }
+/**
+ * The context window for a model: what the provider's own model list says when we have read it
+ * (G3), else the catalog, else a guess from the name.
+ */
+export const getModelContextWindow = (model: string): number => {
+    const wanted = (model || '').toLowerCase().trim()
+    if (wanted) {
+        initDiskCacheSync()
+        for (const entry of liveModelCache.values()) {
+            const hit = entry.models.find((m) => m.value.toLowerCase() === wanted)
+            if (hit?.contextWindow) return hit.contextWindow
+        }
+    }
+    return getCatalogContextWindow(model)
+}

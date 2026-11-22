@@ -208,6 +208,17 @@ export type PluginConfirmAction =
     | { action: 'remove-mcp'; id: string; scope: 'global' | 'project'; message: string }
     | { action: 'remove-marketplace'; id: string; message: string }
 
+/**
+ * What happened when the user entered an api key (issue #619, D4).
+ * rejected: the provider does not know the key, nothing was saved.
+ * forbidden: saved, but the account cannot use it yet (billing, region, restricted key).
+ * unverified: saved, the provider has no model list or could not be reached.
+ */
+export interface ApiKeySaveResult {
+    status: 'saved' | 'rejected' | 'forbidden' | 'unverified' | 'error'
+    message?: string
+}
+
 export interface PendingModelFallback {
     provider: string
     failedModel: string
@@ -412,6 +423,10 @@ export interface DifferentialAppState {
     isSearchingAuthProviders: boolean
     authApiKeyInput: string
     authKeyError: string | null
+    /** true while december checks the entered key with the provider */
+    authKeyChecking: boolean
+    /** /model: the picked model is not available on this key, waiting for y/n */
+    modelSwitchConfirm: { failed: ModelItem; fallback: ModelItem } | null
     authMenuSelectedIndex: number
     authConfirmDeleteValue: string | null
     authConfirmTarget: { label: string; value: string; account?: string } | null
@@ -575,7 +590,14 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     onOpenEditor?: (filePath: string) => Promise<void>
     workspaceFiles?: string[]
     recentFiles?: Set<string>
-    onSaveApiKey?: (provider: string, apiKey: string) => Promise<void> | void
+    /** /model opened: the cli refreshes the provider's model list when it is stale (G1) */
+    onModelMenuOpen?: () => void
+    /** says whether the key can use `model`, and which model to offer instead (D5) */
+    onCheckModel?: (model: ModelItem) => { available: boolean; fallback?: ModelItem }
+    onSaveApiKey?: (
+        provider: string,
+        apiKey: string
+    ) => Promise<ApiKeySaveResult | void> | ApiKeySaveResult | void
     switchItems?: SwitchItem[]
     onSwitchSelect?: (value: string) => Promise<void> | void
     onDeleteProvider?: (value: string) => Promise<void> | void
@@ -792,6 +814,11 @@ export class DifferentialApp {
     private onAbortCallback?: () => void
     private onExitCallback?: () => void
     private onModelSelectCallback?: (model: ModelItem) => void
+    private onModelMenuOpenCallback?: () => void
+    private onCheckModelCallback?: (model: ModelItem) => {
+        available: boolean
+        fallback?: ModelItem
+    }
     private getProviderModelsCallback?: (provider: string) => ModelItem[]
     private onCodeSearchCallback?: (query: string) => Promise<CodeSearchResultItem[]>
     private onOpenCodeSearchResultCallback?: (item: CodeSearchResultItem) => void
@@ -817,7 +844,10 @@ export class DifferentialApp {
     sessionRepository?: any
     readonly workspaceFiles: string[] = []
     readonly recentFiles: Set<string> = new Set<string>()
-    private onSaveApiKeyCallback?: (provider: string, apiKey: string) => Promise<void> | void
+    private onSaveApiKeyCallback?: (
+        provider: string,
+        apiKey: string
+    ) => Promise<ApiKeySaveResult | void> | ApiKeySaveResult | void
     private onOpenEditorCallback?: (filePath: string) => Promise<void> | void
     private isLoadingWorkspaceFiles = false
     private pendingQuestionAnswers: Record<string, string | string[]> = {}
@@ -901,6 +931,8 @@ export class DifferentialApp {
         this.onAbortCallback = options?.onAbort
         this.onExitCallback = options?.onExit
         this.onModelSelectCallback = options?.onModelSelect
+        this.onCheckModelCallback = options?.onCheckModel
+        this.onModelMenuOpenCallback = options?.onModelMenuOpen
         this.getProviderModelsCallback = options?.getProviderModels
         this.onEffortSelectCallback = options?.onEffortSelect
         this.onLoginCallback = options?.onLogin
@@ -1050,6 +1082,8 @@ export class DifferentialApp {
             isSearchingAuthProviders: false,
             authApiKeyInput: '',
             authKeyError: null,
+            authKeyChecking: false,
+            modelSwitchConfirm: null,
             authMenuSelectedIndex: 0,
             authConfirmDeleteValue: null,
             authConfirmTarget: null,
@@ -2502,6 +2536,100 @@ export class DifferentialApp {
         return result
     }
 
+    /** /model: makes `selected` the active model and tells the cli */
+    private applyModelSelection(selected: ModelItem): void {
+        this.state.activeModel = selected.value
+        this.state.modelLabel = selected.label
+        this.state.activeOverlay = 'none'
+        this.state.overlayHistory = []
+
+        // Auto-adjust reasoning support on model switch
+        const support = getReasoningSupportType(selected.value)
+        if (support === 'controllable') {
+            if (!this.state.thinkingLevel || this.state.thinkingLevel === 'off') {
+                void this.commitThinkingLevel('fast')
+            }
+        }
+
+        this.showToast(`Switched active model to ${selected.label}.`, 'success')
+        if (this.onModelSelectCallback) {
+            this.onModelSelectCallback(selected)
+        }
+        this.render()
+    }
+
+    /** D4: checks the key with the provider, then saves it or shows why not */
+    private submitApiKey(provider: string, apiKey: string): void {
+        const providerName = formatProviderName(provider)
+        this.state.authKeyChecking = true
+        this.state.authKeyError = null
+        this.render()
+
+        const finish = (outcome: ApiKeySaveResult | void) => {
+            this.state.authKeyChecking = false
+            const result: ApiKeySaveResult = outcome || { status: 'saved' }
+            const status = result.status
+            if (status === 'rejected' || status === 'error') {
+                this.state.authApiKeyInput = ''
+                this.state.authKeyError =
+                    status === 'rejected'
+                        ? `Key rejected by ${providerName}${result.message ? `: ${result.message}` : '.'}`
+                        : result.message || 'Could not save the key.'
+                this.render()
+                return
+            }
+
+            const existingSwitchIdx = this.state.switchItems.findIndex(
+                (it) => it.value === `provider:${provider}` || it.value === `byok:${provider}`
+            )
+            if (existingSwitchIdx === -1) {
+                this.state.switchItems.push({
+                    label: providerName,
+                    value: `provider:${provider}`,
+                    isActive: true,
+                })
+            } else {
+                for (const it of this.state.switchItems) {
+                    it.isActive =
+                        it.value === `provider:${provider}` || it.value === `byok:${provider}`
+                }
+            }
+            this.state.authApiKeyInput = ''
+            this.state.activeOverlay = 'none'
+            this.state.isAuthenticated = true
+            this.state.authMethod = 'byok'
+            this.state.selectedProvider = provider
+
+            if (status === 'forbidden') {
+                this.showToast(
+                    `Saved key for ${providerName}, but ${providerName} refused access${result.message ? `: ${result.message}` : '.'}`,
+                    'error'
+                )
+            } else if (status === 'unverified') {
+                this.showToast(
+                    `Saved key for ${providerName}. Could not verify it, December will check on the first message.`,
+                    'info'
+                )
+            } else {
+                this.showToast(`Saved API key for ${providerName}.`, 'success')
+            }
+            this.render()
+        }
+
+        if (!this.onSaveApiKeyCallback) {
+            finish()
+            return
+        }
+        Promise.resolve(this.onSaveApiKeyCallback(provider, apiKey))
+            .then(finish)
+            .catch((err: any) => {
+                finish({
+                    status: 'error',
+                    message: `Could not save the key: ${err?.message || err}`,
+                })
+            })
+    }
+
     refreshModelsForProvider(provider?: string): void {
         const prov = provider || this.state.selectedProvider
         if (this.getProviderModelsCallback && prov) {
@@ -3197,6 +3325,7 @@ export class DifferentialApp {
             if (key === 'm' || key === 'M') {
                 this.state.pendingModelFallback = undefined
                 this.state.activeOverlay = 'model'
+                this.onModelMenuOpenCallback?.()
                 this.render()
                 return
             }
@@ -4266,6 +4395,7 @@ export class DifferentialApp {
             }
             this.refreshModelsForProvider()
             this.state.activeOverlay = 'model'
+            this.onModelMenuOpenCallback?.()
             this.state.modelSearchQuery = ''
             this.state.isModelSearching = false
             const activeIdx = this.state.models.findIndex(
@@ -5355,6 +5485,7 @@ export class DifferentialApp {
                     if (current.id === 'model') {
                         this.state.overlayHistory.push('settings')
                         this.state.activeOverlay = 'model'
+                        this.onModelMenuOpenCallback?.()
                         this.render()
                         return
                     }
@@ -5402,6 +5533,7 @@ export class DifferentialApp {
             if (key === 'm' || key === 'M') {
                 this.state.overlayHistory.push('context')
                 this.state.activeOverlay = 'model'
+                this.onModelMenuOpenCallback?.()
                 this.state.modelSearchQuery = ''
                 this.state.modelSelectedIndex = 0
                 this.state.modelWindowStart = 0
@@ -6235,6 +6367,20 @@ export class DifferentialApp {
                 this.state.modelSearchQuery
             )
 
+            if (this.state.modelSwitchConfirm) {
+                const pending = this.state.modelSwitchConfirm
+                if (key === 'y' || key === 'Y' || key === '\r' || key === '\n') {
+                    this.state.modelSwitchConfirm = null
+                    this.applyModelSelection(pending.fallback)
+                    return
+                }
+                if (key === 'n' || key === 'N' || key === '\x1b') {
+                    this.state.modelSwitchConfirm = null
+                    this.render()
+                }
+                return
+            }
+
             if (this.state.isModelSearching) {
                 if (key === '\r' || key === '\n' || key === '\x1b[B') {
                     this.state.isModelSearching = false
@@ -6296,25 +6442,24 @@ export class DifferentialApp {
 
             if (key === '\r' || key === '\n') {
                 const selected = filtered[this.state.modelSelectedIndex]
-                if (selected) {
-                    this.state.activeModel = selected.value
-                    this.state.modelLabel = selected.label
-                    this.state.activeOverlay = 'none'
-                    this.state.overlayHistory = []
-
-                    // Auto-adjust reasoning support on model switch
-                    const support = getReasoningSupportType(selected.value)
-                    if (support === 'controllable') {
-                        if (!this.state.thinkingLevel || this.state.thinkingLevel === 'off') {
-                            void this.commitThinkingLevel('fast')
+                if (!selected) return
+                const check = this.onCheckModelCallback?.(selected)
+                if (check && !check.available) {
+                    if (check.fallback) {
+                        this.state.modelSwitchConfirm = {
+                            failed: selected,
+                            fallback: check.fallback,
                         }
+                    } else {
+                        this.showToast(
+                            `${selected.label} is not available on this key. Use /switch to change provider.`,
+                            'error'
+                        )
                     }
-
-                    this.showToast(`Switched active model to ${selected.label}.`, 'success')
-                    if (this.onModelSelectCallback) {
-                        this.onModelSelectCallback(selected)
-                    }
+                    this.render()
+                    return
                 }
+                this.applyModelSelection(selected)
                 return
             }
 
@@ -7673,6 +7818,8 @@ export class DifferentialApp {
             }
 
             if (this.state.authViewMode === 'byok_key') {
+                // the key is with the provider: wait for the answer
+                if (this.state.authKeyChecking) return
                 if (key === '\x1b') {
                     this.state.authViewMode = 'byok_provider'
                     this.render()
@@ -7701,34 +7848,7 @@ export class DifferentialApp {
                     )
                     const sel = filtered[this.state.authProviderSelectedIndex]
                     const provider = sel?.value || 'custom'
-                    if (this.onSaveApiKeyCallback) {
-                        Promise.resolve(this.onSaveApiKeyCallback(provider, trimmed)).catch(() => {
-                            // Intentionally swallowed: key save callback error handled
-                        })
-                    }
-                    const existingSwitchIdx = this.state.switchItems.findIndex(
-                        (it) =>
-                            it.value === `provider:${provider}` || it.value === `byok:${provider}`
-                    )
-                    if (existingSwitchIdx === -1) {
-                        this.state.switchItems.push({
-                            label: formatProviderName(provider),
-                            value: `provider:${provider}`,
-                            isActive: true,
-                        })
-                    } else {
-                        for (const it of this.state.switchItems) {
-                            it.isActive =
-                                it.value === `provider:${provider}` ||
-                                it.value === `byok:${provider}`
-                        }
-                    }
-                    this.state.activeOverlay = 'none'
-                    this.state.isAuthenticated = true
-                    this.state.authMethod = 'byok'
-                    this.state.selectedProvider = provider
-                    this.showToast(`Saved API key for ${formatProviderName(provider)}.`, 'success')
-                    this.render()
+                    this.submitApiKey(provider, trimmed)
                     return
                 }
                 if (!key.startsWith('\x1b') && key.length > 0) {
@@ -9951,6 +10071,12 @@ export class DifferentialApp {
                     windowStart: this.state.modelWindowStart,
                     searchQuery: this.state.modelSearchQuery,
                     isSearching: this.state.isModelSearching,
+                    confirmSwitch: this.state.modelSwitchConfirm
+                        ? {
+                              failedValue: this.state.modelSwitchConfirm.failed.value,
+                              fallbackLabel: this.state.modelSwitchConfirm.fallback.label,
+                          }
+                        : null,
                 })
             } else if (overlay === 'tasks') {
                 TasksModeMenuView.render(this.screen.backBuffer, {
@@ -10164,6 +10290,7 @@ export class DifferentialApp {
                     providerKeyNote,
                     apiKeyInput: this.state.authApiKeyInput,
                     keyError: this.state.authKeyError,
+                    keyChecking: this.state.authKeyChecking,
                     menuSelectedIndex: this.state.authMenuSelectedIndex,
                     confirmDeleteValue: this.state.authConfirmDeleteValue,
                     confirmTarget: this.state.authConfirmTarget,
