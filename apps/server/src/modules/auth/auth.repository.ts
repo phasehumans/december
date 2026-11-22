@@ -8,6 +8,12 @@ async function findUserByEmail(email: string) {
     })
 }
 
+async function findUserByGithubId(githubId: string) {
+    return prisma.user.findUnique({
+        where: { githubId },
+    })
+}
+
 async function findUserById(id: string) {
     return prisma.user.findUnique({
         where: { id },
@@ -182,6 +188,7 @@ async function findActiveDeviceSession(userId: string) {
 
 export const authRepository = {
     findUserByEmail,
+    findUserByGithubId,
     findUserById,
     createUser,
     updateUser,

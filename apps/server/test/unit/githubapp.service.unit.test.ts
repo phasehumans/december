@@ -6,6 +6,10 @@ import { describe, it, expect } from 'bun:test'
 import { env } from '../../src/env'
 import { githubAppRepository } from '../../src/modules/githubapp/githubapp.repository'
 import { githubAppService } from '../../src/modules/githubapp/githubapp.service'
+import {
+    canClaimInstallation,
+    resolveInstallReturnUrl,
+} from '../../src/modules/githubapp/githubapp.utils'
 
 describe('GitHubApp Service - Unit Tests', () => {
     describe('verifySignature', () => {
@@ -68,6 +72,253 @@ describe('GitHubApp Service - Unit Tests', () => {
             } finally {
                 githubAppRepository.upsertInstallation = originalUpsert
             }
+        })
+    })
+
+    describe('canClaimInstallation', () => {
+        const now = new Date('2026-11-22T12:00:00Z')
+        const minutesAgo = (minutes: number) =>
+            new Date(now.getTime() - minutes * 60 * 1000).toISOString()
+
+        it('keeps an installation the user already owns', () => {
+            expect(
+                canClaimInstallation({ existingUserId: 'me', userId: 'me', details: null, now })
+            ).toEqual({ linked: true, reason: 'already_owned' })
+        })
+
+        it("refuses another user's installation even with matching details", () => {
+            expect(
+                canClaimInstallation({
+                    existingUserId: 'someone-else',
+                    userId: 'me',
+                    userGithubId: '42',
+                    details: { account: { id: 42, type: 'User' }, created_at: minutesAgo(1) },
+                    now,
+                })
+            ).toEqual({ linked: false, reason: 'owned_by_other_user' })
+        })
+
+        it('refuses when github details are unavailable', () => {
+            expect(canClaimInstallation({ userId: 'me', details: null, now })).toEqual({
+                linked: false,
+                reason: 'unverified',
+            })
+        })
+
+        it('links a personal install whose account id matches the user github id', () => {
+            expect(
+                canClaimInstallation({
+                    existingUserId: null,
+                    userId: 'me',
+                    userGithubId: '42',
+                    details: { account: { id: 42, type: 'User' }, created_at: minutesAgo(600) },
+                    now,
+                })
+            ).toEqual({ linked: true, reason: 'account_matches' })
+        })
+
+        it("refuses a personal install on someone else's account, however recent", () => {
+            expect(
+                canClaimInstallation({
+                    userId: 'me',
+                    userGithubId: '42',
+                    details: { account: { id: 7, type: 'User' }, created_at: minutesAgo(1) },
+                    now,
+                })
+            ).toEqual({ linked: false, reason: 'account_mismatch' })
+        })
+
+        it('links an unclaimed organisation install only right after it was created', () => {
+            const org = (createdAt: string) => ({
+                account: { id: 9, type: 'Organization' },
+                created_at: createdAt,
+            })
+            expect(
+                canClaimInstallation({
+                    userId: 'me',
+                    userGithubId: '42',
+                    details: org(minutesAgo(5)),
+                    now,
+                })
+            ).toEqual({ linked: true, reason: 'recent_unclaimed' })
+            expect(
+                canClaimInstallation({
+                    userId: 'me',
+                    userGithubId: '42',
+                    details: org(minutesAgo(61)),
+                    now,
+                })
+            ).toEqual({ linked: false, reason: 'stale_unclaimed' })
+        })
+
+        it('treats a user without github id like an organisation install', () => {
+            const details = { account: { id: 7, type: 'User' }, created_at: minutesAgo(5) }
+            expect(
+                canClaimInstallation({ userId: 'me', userGithubId: null, details, now })
+            ).toEqual({
+                linked: true,
+                reason: 'recent_unclaimed',
+            })
+            expect(
+                canClaimInstallation({ userId: 'me', details: { account: details.account }, now })
+            ).toEqual({ linked: false, reason: 'stale_unclaimed' })
+        })
+    })
+
+    describe('resolveInstallReturnUrl', () => {
+        const appUrl = 'https://app.trydecember.com'
+        const prod = (returnUrl: string) =>
+            resolveInstallReturnUrl({ returnUrl, appUrl, isProduction: true })
+
+        it('keeps relative paths on the app host', () => {
+            expect(prod('/settings/repositories')).toBe(
+                'https://app.trydecember.com/settings/repositories'
+            )
+            expect(prod('settings')).toBe('https://app.trydecember.com/settings')
+            expect(prod('//evil.com')).toBe('https://app.trydecember.com//evil.com')
+        })
+
+        it('allows https urls on our own hosts', () => {
+            expect(prod('https://app.trydecember.com/x')).toBe('https://app.trydecember.com/x')
+            expect(prod('https://trydecember.com/x')).toBe('https://trydecember.com/x')
+        })
+
+        it('rejects other hosts, including any vercel app', () => {
+            const fallback = 'https://app.trydecember.com/settings/repositories'
+            expect(prod('https://evil.vercel.app/x')).toBe(fallback)
+            expect(prod('https://evil.com')).toBe(fallback)
+            expect(prod('https://trydecember.com.evil.com')).toBe(fallback)
+            expect(prod('http://app.trydecember.com/x')).toBe(fallback)
+        })
+
+        it('allows localhost only outside production', () => {
+            expect(prod('http://localhost:3000/x')).toBe(
+                'https://app.trydecember.com/settings/repositories'
+            )
+            expect(
+                resolveInstallReturnUrl({
+                    returnUrl: 'http://localhost:3000/x',
+                    appUrl,
+                    isProduction: false,
+                })
+            ).toBe('http://localhost:3000/x')
+        })
+    })
+
+    describe('findInstallationOwner', () => {
+        const withGithubIds = async (ids: Record<string, string>, run: () => Promise<void>) => {
+            const original = githubAppRepository.findUserIdByGithubId
+            githubAppRepository.findUserIdByGithubId = (async (githubId: string) =>
+                ids[githubId] ?? null) as any
+            try {
+                await run()
+            } finally {
+                githubAppRepository.findUserIdByGithubId = original
+            }
+        }
+
+        it('matches a personal install by the account github id', async () => {
+            await withGithubIds({ '42': 'user-42' }, async () => {
+                expect(
+                    await githubAppService.findInstallationOwner({
+                        accountId: '42',
+                        accountType: 'User',
+                        senderId: '7',
+                    })
+                ).toBe('user-42')
+            })
+        })
+
+        it('uses the sender id for organisation installs, never the org id', async () => {
+            await withGithubIds({ '9': 'collides-with-org-id', '7': 'user-7' }, async () => {
+                expect(
+                    await githubAppService.findInstallationOwner({
+                        accountId: '9',
+                        accountType: 'Organization',
+                        senderId: '7',
+                    })
+                ).toBe('user-7')
+            })
+        })
+
+        it('returns null when no github id matches', async () => {
+            await withGithubIds({}, async () => {
+                expect(
+                    await githubAppService.findInstallationOwner({ accountType: 'User' })
+                ).toBeNull()
+            })
+        })
+    })
+
+    describe('claimInstallation', () => {
+        const withRepoStubs = async (
+            stubs: { user?: any; existing?: any },
+            run: (upserts: any[]) => Promise<void>
+        ) => {
+            const upserts: any[] = []
+            const original = {
+                findUserGithubId: githubAppRepository.findUserGithubId,
+                findByInstallationId: githubAppRepository.findByInstallationId,
+                upsertInstallation: githubAppRepository.upsertInstallation,
+            }
+            githubAppRepository.findUserGithubId = (async () => stubs.user ?? null) as any
+            githubAppRepository.findByInstallationId = (async () => stubs.existing ?? null) as any
+            githubAppRepository.upsertInstallation = (async (data: any) => {
+                upserts.push(data)
+                return data
+            }) as any
+            try {
+                await run(upserts)
+            } finally {
+                githubAppRepository.findUserGithubId = original.findUserGithubId
+                githubAppRepository.findByInstallationId = original.findByInstallationId
+                githubAppRepository.upsertInstallation = original.upsertInstallation
+            }
+        }
+
+        it('does not write when the installation belongs to another user', async () => {
+            await withRepoStubs(
+                {
+                    user: { id: 'me', githubId: '42', isDeleted: false },
+                    existing: { installationId: '1', userId: 'someone-else' },
+                },
+                async (upserts) => {
+                    const res = await githubAppService.claimInstallation({
+                        installationId: '1',
+                        userId: 'me',
+                    })
+                    expect(res).toEqual({ linked: false, reason: 'owned_by_other_user' })
+                    expect(upserts).toHaveLength(0)
+                }
+            )
+        })
+
+        it('does not write for an unknown or deleted user', async () => {
+            await withRepoStubs({ user: { id: 'me', isDeleted: true } }, async (upserts) => {
+                const res = await githubAppService.claimInstallation({
+                    installationId: '1',
+                    userId: 'me',
+                })
+                expect(res.linked).toBe(false)
+                expect(upserts).toHaveLength(0)
+            })
+        })
+
+        it('refreshes an installation the user already owns', async () => {
+            await withRepoStubs(
+                {
+                    user: { id: 'me', githubId: '42', isDeleted: false },
+                    existing: { installationId: '1', userId: 'me' },
+                },
+                async (upserts) => {
+                    const res = await githubAppService.claimInstallation({
+                        installationId: '1',
+                        userId: 'me',
+                    })
+                    expect(res).toEqual({ linked: true, reason: 'already_owned' })
+                    expect(upserts).toEqual([{ installationId: '1', userId: 'me' }])
+                }
+            )
         })
     })
 

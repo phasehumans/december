@@ -56,7 +56,6 @@ export function initSocket(httpServer: any) {
                 }
                 if (
                     allowedOrigins.includes(origin) ||
-                    origin.endsWith('.vercel.app') ||
                     (env.NODE_ENV !== 'production' &&
                         (origin.includes('localhost') || origin.includes('127.0.0.1')))
                 ) {

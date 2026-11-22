@@ -12,8 +12,10 @@ const formatRedirect = (path: string) => `${appBaseUrl}${path.startsWith('/') ? 
 const connectGithub = asyncHandler(async (req: Request, res: Response) => {
     const { code, state } = connectOAuthQuerySchema.parse(req.query)
 
-    if (state === 'auth') {
-        return res.redirect(formatRedirect(`/github/callback?code=${code}`))
+    // login states are `auth` or `auth.<nonce>`: hand the code and state to the web callback
+    if (state === 'auth' || state.startsWith('auth.')) {
+        const params = new URLSearchParams({ code, state })
+        return res.redirect(formatRedirect(`/github/callback?${params.toString()}`))
     }
 
     let userId = state

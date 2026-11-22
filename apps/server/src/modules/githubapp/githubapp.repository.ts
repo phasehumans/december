@@ -35,15 +35,15 @@ const upsertInstallation = async (data: ProcessInstallation) => {
         },
     })
 
+    // githubUsername stays as set at github login: the installation account
+    // can be an organisation, whose name is not the user's username
     if (effectiveUserId) {
-        const username = accountLogin || existing?.accountLogin
         await prisma.user.update({
             where: { id: effectiveUserId },
             data: {
                 githubAppInstall: true,
                 githubCardDone: true,
                 githubConnected: true,
-                ...(username ? { githubUsername: username } : {}),
             },
         })
     }
@@ -120,6 +120,21 @@ const findByInstallationId = async (installationId: string) => {
     })
 }
 
+const findUserGithubId = async (userId: string) => {
+    return prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, githubId: true, isDeleted: true },
+    })
+}
+
+const findUserIdByGithubId = async (githubId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { githubId },
+        select: { id: true },
+    })
+    return user?.id ?? null
+}
+
 export const githubAppRepository = {
     upsertInstallation,
     deleteInstallation,
@@ -127,4 +142,6 @@ export const githubAppRepository = {
     findAllByUserId,
     findByOwnerAndUser,
     findByInstallationId,
+    findUserGithubId,
+    findUserIdByGithubId,
 }

@@ -50,7 +50,11 @@ describe('GitHubApp Module Integration Tests', () => {
                     where: {
                         OR: [
                             { userId: testUserId },
-                            { installationId: { in: ['88888', '98765', '98766', '77777'] } },
+                            {
+                                installationId: {
+                                    in: ['88888', '98765', '98766', '98767', '77777'],
+                                },
+                            },
                         ],
                     },
                 })
@@ -273,7 +277,7 @@ describe('GitHubApp Module Integration Tests', () => {
         }
     })
 
-    it('7. GET /api/v1/githubapp/callback - links installation and redirects (302)', async () => {
+    it('7. GET /api/v1/githubapp/callback - ignores the user id in state when signed out (302)', async () => {
         const state = encodeURIComponent(`${testUserId}|/profile/integrations`)
         const res = await request(app)
             .get(
@@ -287,8 +291,7 @@ describe('GitHubApp Module Integration Tests', () => {
         const installation = await prisma.githubAppInstallation.findUnique({
             where: { installationId: '98765' },
         })
-        expect(installation).toBeDefined()
-        expect(installation?.userId).toBe(testUserId)
+        expect(installation).toBeNull()
     })
 
     it('7b. GET /api/v1/githubapp/callback - redirects to localhost origin when provided in returnUrl (302)', async () => {
@@ -303,36 +306,83 @@ describe('GitHubApp Module Integration Tests', () => {
         expect(res.headers.location).toBe('http://localhost:3000/settings/connections')
     })
 
-    it('7c. GET /api/v1/githubapp/callback - claims and associates previously unmatched installation (userId null -> testUserId) (302)', async () => {
-        // installation 77777 was created by test 5b with userId: null
-        const beforeClaim = await prisma.githubAppInstallation.findUnique({
-            where: { installationId: '77777' },
-        })
-        expect(beforeClaim?.userId).toBeNull()
-
-        const state = encodeURIComponent(`${testUserId}|/settings/repositories`)
+    it('7c. GET /api/v1/githubapp/callback - does not claim an unclaimed installation it cannot verify (302)', async () => {
+        // installation 77777 was created by test 5b with userId: null; github details are
+        // unavailable in tests, so ownership cannot be proven
         const res = await request(app)
             .get(
-                `/api/v1/githubapp/callback?installation_id=77777&setup_action=install&state=${state}`
+                '/api/v1/githubapp/callback?installation_id=77777&setup_action=install&state=%2Fsettings%2Frepositories'
             )
             .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
 
         expect(res.status).toBe(302)
         expect(res.headers.location).toContain('/settings/repositories')
 
-        const afterClaim = await prisma.githubAppInstallation.findUnique({
+        const afterCallback = await prisma.githubAppInstallation.findUnique({
             where: { installationId: '77777' },
         })
-        expect(afterClaim).toBeDefined()
-        expect(afterClaim?.userId).toBe(testUserId)
-        expect(afterClaim?.accountLogin).toBe('unclaimed-org-or-user')
+        expect(afterCallback?.userId).toBeNull()
+    })
 
-        const user = await prisma.user.findUnique({
-            where: { id: testUserId },
+    it("7d. GET /api/v1/githubapp/callback - never moves another user's installation (302)", async () => {
+        const otherUser = await prisma.user.create({
+            data: {
+                name: 'Installation Owner',
+                email: `ghapp-owner-${Date.now()}@example.com`,
+                emailVerified: true,
+            },
         })
+
+        try {
+            await prisma.githubAppInstallation.create({
+                data: { installationId: '98767', userId: otherUser.id, accountLogin: 'victim' },
+            })
+
+            const res = await request(app)
+                .get(
+                    `/api/v1/githubapp/callback?installation_id=98767&setup_action=install&state=${encodeURIComponent(`${testUserId}|/settings/repositories`)}`
+                )
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', `Bearer ${accessToken}`)
+
+            expect(res.status).toBe(302)
+
+            const installation = await prisma.githubAppInstallation.findUnique({
+                where: { installationId: '98767' },
+            })
+            expect(installation?.userId).toBe(otherUser.id)
+        } finally {
+            await prisma.githubAppInstallation
+                .deleteMany({ where: { installationId: '98767' } })
+                .catch(() => {
+                    // Intentionally swallowed: test cleanup fallback
+                })
+            await cleanupTestUser({ id: otherUser.id })
+        }
+    })
+
+    it('7e. GET /api/v1/githubapp/callback - keeps an installation the signed-in user already owns (302)', async () => {
+        await prisma.githubAppInstallation.create({
+            data: { installationId: '98766', userId: testUserId, accountLogin: 'ghapp-test' },
+        })
+
+        const res = await request(app)
+            .get(
+                '/api/v1/githubapp/callback?installation_id=98766&setup_action=update&state=%2Fsettings%2Frepositories'
+            )
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(res.status).toBe(302)
+
+        const installation = await prisma.githubAppInstallation.findUnique({
+            where: { installationId: '98766' },
+        })
+        expect(installation?.userId).toBe(testUserId)
+
+        const user = await prisma.user.findUnique({ where: { id: testUserId } })
         expect(user?.githubAppInstall).toBe(true)
-        expect(user?.githubConnected).toBe(true)
-        expect(user?.githubUsername).toBe('unclaimed-org-or-user')
     })
 
     it('8. GET /api/v1/githubapp/status - returns installation status for authenticated user (200)', async () => {

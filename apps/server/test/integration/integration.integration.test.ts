@@ -13,7 +13,20 @@ describe('Integrations Module Integration Tests', () => {
             .set('x-forwarded-for', getRandomIP())
 
         expect(res.status).toBe(302)
-        expect(res.headers.location).toBe(`${env.APP_URL}/github/callback?code=ghcode123`)
+        expect(res.headers.location).toBe(
+            `${env.APP_URL}/github/callback?code=ghcode123&state=auth`
+        )
+    })
+
+    it('1b. GET /api/v1/integrations/github/connect - passes a login nonce state through encoded (302)', async () => {
+        const res = await request(app)
+            .get('/api/v1/integrations/github/connect?code=gh%26code&state=auth.abc123')
+            .set('x-forwarded-for', getRandomIP())
+
+        expect(res.status).toBe(302)
+        expect(res.headers.location).toBe(
+            `${env.APP_URL}/github/callback?code=gh%26code&state=auth.abc123`
+        )
     })
 
     it('2. GET /api/v1/integrations/github/connect - handles oauth connect and redirects (302)', async () => {

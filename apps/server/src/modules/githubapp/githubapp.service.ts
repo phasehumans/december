@@ -8,15 +8,20 @@ import { AppError } from '../../shared/appError'
 
 import { githubAppRepository } from './githubapp.repository'
 import {
+    canClaimInstallation,
     createCommentReaction,
     createIssueReaction,
     createIssueComment,
     extractBotMention,
     generateAppJwt,
+    getInstallationDetails,
     isAuthorizedGithubSender,
 } from './githubapp.utils'
 
 import type {
+    ClaimInstallation,
+    ClaimInstallationResult,
+    FindInstallationOwner,
     GetInstallationAccessToken,
     GetUserInstallationRepos,
     GetUserInstallationStatus,
@@ -43,6 +48,59 @@ const processInstallation = async (data: ProcessInstallation) => {
         targetType,
         permissions,
     })
+}
+
+const claimInstallation = async (data: ClaimInstallation): Promise<ClaimInstallationResult> => {
+    const { installationId, userId } = data
+
+    const user = await githubAppRepository.findUserGithubId(userId)
+    if (!user || user.isDeleted) {
+        return { linked: false, reason: 'unverified' }
+    }
+
+    const existing = await githubAppRepository.findByInstallationId(installationId)
+    const existingOwner = existing?.userId && existing.userId !== 'system' ? existing.userId : null
+
+    // only ask github when the database alone cannot decide
+    const details = existingOwner ? null : await getInstallationDetails(installationId)
+
+    const decision = canClaimInstallation({
+        existingUserId: existing?.userId,
+        userId,
+        userGithubId: user.githubId,
+        details,
+    })
+
+    if (!decision.linked) {
+        console.warn(
+            `[githubapp] refused to link installation ${installationId} to user ${userId}: ${decision.reason}`
+        )
+        return decision
+    }
+
+    await githubAppRepository.upsertInstallation({
+        installationId,
+        userId,
+        ...(details?.account?.login ? { accountLogin: details.account.login } : {}),
+        ...(details?.account?.type ? { accountType: details.account.type } : {}),
+        ...(details?.target_type ? { targetType: details.target_type } : {}),
+        ...(details?.permissions ? { permissions: details.permissions } : {}),
+    })
+
+    return decision
+}
+
+// Webhook installs: find the December user by github id only. Usernames can be
+// renamed and taken by someone else, so they never decide who owns access.
+const findInstallationOwner = async (data: FindInstallationOwner): Promise<string | null> => {
+    const { accountId, accountType, senderId } = data
+
+    if (accountType === 'User' && accountId) {
+        const owner = await githubAppRepository.findUserIdByGithubId(accountId)
+        if (owner) return owner
+    }
+
+    return senderId ? githubAppRepository.findUserIdByGithubId(senderId) : null
 }
 
 const processUninstallation = async (data: ProcessUninstallation) => {
@@ -449,6 +507,8 @@ const handlePullRequestOpened = async (
 }
 
 export const githubAppService = {
+    claimInstallation,
+    findInstallationOwner,
     processInstallation,
     processUninstallation,
     verifySignature,
