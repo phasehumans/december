@@ -351,9 +351,9 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
                 str.includes('api.moonshot.cn') ||
                 str.includes('api.kimi.com')) &&
             isCreditOrBalanceError(str),
-        notice: 'Insufficient balance in your Moonshot AI account. Please top up your balance at https://platform.moonshot.cn/\n',
+        notice: 'Insufficient balance in your Moonshot AI account. Please top up your balance at https://platform.kimi.ai/console\n',
         message: 'Insufficient balance in your Moonshot AI account.',
-        hint: 'Please top up your balance at https://platform.moonshot.cn/ or switch models using /model.',
+        hint: 'Please top up your balance at https://platform.kimi.ai/console or switch models using /model.',
     },
     {
         id: 'together',
@@ -422,9 +422,9 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         match: (str) =>
             (str.includes('hyperbolic') || str.includes('hyperbolic.xyz')) &&
             isCreditOrBalanceError(str),
-        notice: 'Insufficient credits in your Hyperbolic account. Please add compute credits at https://app.hyperbolic.xyz/settings\n',
+        notice: 'Insufficient credits in your Hyperbolic account. Please add compute credits at https://app.hyperbolic.ai/settings\n',
         message: 'Insufficient credits in your Hyperbolic account.',
-        hint: 'Please add compute credits at https://app.hyperbolic.xyz/settings or switch models using /model.',
+        hint: 'Please add compute credits at https://app.hyperbolic.ai/settings or switch models using /model.',
     },
     {
         id: 'perplexity',
@@ -432,9 +432,9 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         match: (str) =>
             (str.includes('perplexity') || str.includes('api.perplexity.ai')) &&
             isCreditOrBalanceError(str),
-        notice: 'Insufficient credits or quota in your Perplexity account. Please check your billing at https://www.perplexity.ai/settings/api\n',
+        notice: 'Insufficient credits or quota in your Perplexity account. Please check your billing at https://console.perplexity.ai/\n',
         message: 'Insufficient credits or quota in your Perplexity account.',
-        hint: 'Please check your billing at https://www.perplexity.ai/settings/api or switch models using /model.',
+        hint: 'Please check your billing at https://console.perplexity.ai/ or switch models using /model.',
     },
     {
         id: 'cohere',
@@ -478,9 +478,9 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
                 str.includes('bigmodel.cn') ||
                 str.includes('z.ai')) &&
             isCreditOrBalanceError(str),
-        notice: 'Insufficient balance in your Zhipu AI account. Please top up your balance at https://open.bigmodel.cn/\n',
+        notice: 'Insufficient balance in your Zhipu AI account. Please top up your balance at https://z.ai/\n',
         message: 'Insufficient balance in your Zhipu AI account.',
-        hint: 'Please top up your balance at https://open.bigmodel.cn/ or switch models using /model.',
+        hint: 'Please top up your balance at https://z.ai/ or switch models using /model.',
     },
     {
         id: 'sakana',
@@ -514,9 +514,9 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
         match: (str) =>
             (str.includes('anthropic') || str.includes('claude')) &&
             (isCreditOrBalanceError(str) || str.includes('credit balance is too low')),
-        notice: 'Insufficient credits in your Anthropic account. Please add credits at https://console.anthropic.com/settings/billing\n',
+        notice: 'Insufficient credits in your Anthropic account. Please add credits at https://platform.claude.com/settings/billing\n',
         message: 'Insufficient credits in your Anthropic account.',
-        hint: 'Please add credits at https://console.anthropic.com/settings/billing or switch models using /model.',
+        hint: 'Please add credits at https://platform.claude.com/settings/billing or switch models using /model.',
     },
     {
         id: 'openai',
@@ -713,25 +713,27 @@ export const PROVIDER_CREDIT_RULES: ProviderCreditRule[] = [
 
 export const PROVIDER_BILLING_URLS: Record<string, string> = {
     agentrouter: 'https://agentrouter.org/',
-    anthropic: 'https://console.anthropic.com/settings/billing',
+    anthropic: 'https://platform.claude.com/settings/billing',
     arcee: 'https://platform.arcee.ai/api/api-keys',
     cerebras: 'https://cloud.cerebras.ai/',
     cohere: 'https://dashboard.cohere.com/billing',
-    dashscope: 'https://dashscope.console.aliyun.com/',
+    dashscope: 'https://bailian.console.aliyun.com/',
     deepseek: 'https://platform.deepseek.com/top_up',
     fireworks: 'https://fireworks.ai/account/billing',
     google: 'https://aistudio.google.com/',
     groq: 'https://console.groq.com/settings/limits',
     huggingface: 'https://huggingface.co/settings/billing',
-    hyperbolic: 'https://app.hyperbolic.xyz/settings',
+    hyperbolic: 'https://app.hyperbolic.ai/settings',
     meta: 'https://dev.meta.ai/',
     minimax: 'https://platform.minimax.io/',
     mistral: 'https://console.mistral.ai/billing/',
-    moonshot: 'https://platform.moonshot.cn/',
+    // chat goes to api.moonshot.ai, whose console is platform.kimi.ai (not the .cn site)
+    moonshot: 'https://platform.kimi.ai/console',
+    kimi: 'https://www.kimi.com/code/console',
     nvidia: 'https://build.nvidia.com/',
     openai: 'https://platform.openai.com/account/billing',
     openrouter: 'https://openrouter.ai/settings/credits',
-    perplexity: 'https://www.perplexity.ai/settings/api',
+    perplexity: 'https://console.perplexity.ai/',
     sakana: 'https://console.sakana.ai/api-keys',
     sambanova: 'https://cloud.sambanova.ai/',
     sarvam: 'https://indus.sarvam.ai/',
@@ -742,9 +744,10 @@ export const PROVIDER_BILLING_URLS: Record<string, string> = {
     upstage: 'https://console.upstage.ai/',
     xai: 'https://console.x.ai/',
     xiaomi: 'https://platform.xiaomimimo.com/console/api-keys',
-    zai: 'https://open.bigmodel.cn/',
-    zhipu: 'https://open.bigmodel.cn/',
-    zhipuai: 'https://open.bigmodel.cn/',
+    // zai and its zhipu aliases call api.z.ai (international), not open.bigmodel.cn
+    zai: 'https://z.ai/',
+    zhipu: 'https://z.ai/',
+    zhipuai: 'https://z.ai/',
     mimo: 'https://platform.xiaomimimo.com/console/api-keys',
     abliteration: 'https://abliteration.ai/console',
     'abliteration-ai': 'https://abliteration.ai/console',

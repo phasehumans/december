@@ -422,7 +422,11 @@ export async function saveConfig(config: DecemberConfig): Promise<void> {
 
     await fs.mkdir(configDir, { recursive: true })
     const toSave = await withToolOwnedKeysFromDisk(configFile, config)
-    await fs.writeFile(configFile, JSON.stringify(toSave, null, 2), 'utf-8')
+    // created owner-only, so keys are never readable by others even for a moment
+    await fs.writeFile(configFile, JSON.stringify(toSave, null, 2), {
+        encoding: 'utf-8',
+        mode: 0o600,
+    })
     await fs.chmod(configFile, 0o600).catch(() => {
         // Intentionally swallowed: chmod failure on non-POSIX systems
     })

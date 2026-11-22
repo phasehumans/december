@@ -51,6 +51,8 @@ export interface AuthMenuViewProps {
     apiKeyInput?: string
     apiKeyMasked?: boolean
     keyError?: string | null
+    /** shows `Checking key...` while the provider answers */
+    keyChecking?: boolean
     // Menu mode
     menuSelectedIndex?: number
     confirmSwitchAccount?: boolean
@@ -381,7 +383,14 @@ export const AuthMenuView = {
             requestPanelCursor(keyResult.x, y)
             y += 1
 
-            if (props.keyError) {
+            if (props.keyChecking) {
+                drawText(buffer, `Checking key with ${pName}...`, {
+                    x,
+                    y,
+                    maxWidth: width,
+                    style: { fg: THEME.colors.muted },
+                })
+            } else if (props.keyError) {
                 drawText(buffer, describeKeyError(props.keyError), {
                     x,
                     y,

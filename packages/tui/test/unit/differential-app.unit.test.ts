@@ -1366,7 +1366,7 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
 
         // 'b' opens the provider usage dashboard
         app.handleKey('b')
-        expect(billingUrl).toBe('https://console.anthropic.com/settings/billing')
+        expect(billingUrl).toBe('https://platform.claude.com/settings/billing')
 
         // december cloud users get the december dashboard
         app.state.authMethod = 'december'
@@ -2054,7 +2054,158 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
-    it('handles bracketed paste in overlays including auth byok_key without polluting chat input', () => {
+    it('D4: shows checking key, then keeps the menu open with the reason when the key is rejected', async () => {
+        let resolveCheck: (r: any) => void = () => {}
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSaveApiKey: () =>
+                new Promise((resolve) => {
+                    resolveCheck = resolve
+                }),
+        })
+        app.start()
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'byok_key'
+        app.state.authProviders = [{ label: 'Groq', value: 'groq' }]
+        app.state.authProviderSelectedIndex = 0
+        app.state.authApiKeyInput = 'gsk_bad'
+
+        app.handleKey('\r')
+        expect(app.state.authKeyChecking).toBe(true)
+        // keys are ignored while the provider answers
+        app.handleKey('x')
+        expect(app.state.authApiKeyInput).toBe('gsk_bad')
+
+        resolveCheck({ status: 'rejected', message: 'Invalid API Key' })
+        await Promise.resolve()
+        await Promise.resolve()
+        expect(app.state.authKeyChecking).toBe(false)
+        expect(app.state.activeOverlay as string).toBe('auth')
+        expect(app.state.authViewMode as string).toBe('byok_key')
+        expect(app.state.authKeyError).toContain('Key rejected by')
+        expect(app.state.authKeyError).toContain('Invalid API Key')
+        expect(app.state.selectedProvider).not.toBe('groq')
+        app.stop()
+    })
+
+    it('D4: esc cancels a running key check and nothing is saved', async () => {
+        let seen: AbortSignal | undefined
+        let resolveCheck: (r: any) => void = () => {}
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSaveApiKey: (_p, _k, signal) => {
+                seen = signal
+                return new Promise((resolve) => {
+                    resolveCheck = resolve
+                })
+            },
+        })
+        app.start()
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'byok_key'
+        app.state.authProviders = [{ label: 'Groq', value: 'groq' }]
+        app.state.authProviderSelectedIndex = 0
+        app.state.authApiKeyInput = 'gsk_slow'
+
+        app.handleKey('\r')
+        expect(app.state.authKeyChecking).toBe(true)
+        app.handleKey('\x1b')
+        expect(seen?.aborted).toBe(true)
+        expect(app.state.authKeyChecking).toBe(false)
+        expect(app.state.authViewMode as string).toBe('byok_provider')
+
+        resolveCheck({ status: 'saved' })
+        await Promise.resolve()
+        await Promise.resolve()
+        expect(app.state.activeOverlay as string).toBe('auth')
+        expect(app.state.selectedProvider).not.toBe('groq')
+        app.stop()
+    })
+
+    it('D4: saves a forbidden key, closes the menu and shows the provider reason', async () => {
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSaveApiKey: async () => ({ status: 'forbidden', message: 'no credits yet' }),
+        })
+        app.start()
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'byok_key'
+        app.state.authProviders = [{ label: 'xAI', value: 'xai' }]
+        app.state.authProviderSelectedIndex = 0
+        app.state.authApiKeyInput = 'xai-key'
+
+        app.handleKey('\r')
+        await Promise.resolve()
+        await Promise.resolve()
+        expect(app.state.activeOverlay as string).toBe('none')
+        expect(app.state.selectedProvider).toBe('xai')
+        expect(app.state.toast?.message || '').toContain('no credits yet')
+        app.stop()
+    })
+
+    it('/model: asks the cli to refresh a stale model list when the menu opens (G1)', () => {
+        let opened = 0
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onModelMenuOpen: () => {
+                opened++
+            },
+        })
+        app.start()
+        app.state.isAuthenticated = true
+        app.executeCommand('model')
+        expect(app.state.activeOverlay as string).toBe('model')
+        expect(opened).toBe(1)
+        app.stop()
+    })
+
+    it('/model: offers an inline switch when the picked model is not available on the key', () => {
+        const selected: string[] = []
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onCheckModel: (m) =>
+                m.value === 'old-model'
+                    ? { available: false, fallback: { label: 'New Model', value: 'new-model' } }
+                    : { available: true },
+            onModelSelect: (m) => {
+                selected.push(m.value)
+            },
+        })
+        app.start()
+        app.state.models = [
+            { label: 'Old Model', value: 'old-model' },
+            { label: 'New Model', value: 'new-model' },
+        ]
+        app.state.activeOverlay = 'model'
+        app.state.modelSelectedIndex = 0
+
+        app.handleKey('\r')
+        expect(app.state.modelSwitchConfirm?.fallback.value).toBe('new-model')
+        expect(selected).toEqual([])
+
+        app.handleKey('n')
+        expect(app.state.modelSwitchConfirm).toBeNull()
+        expect(app.state.activeOverlay as string).toBe('model')
+
+        app.handleKey('\r')
+        app.handleKey('y')
+        expect(selected).toEqual(['new-model'])
+        expect(app.state.activeModel).toBe('new-model')
+        expect(app.state.activeOverlay as string).toBe('none')
+        app.stop()
+    })
+
+    it('handles bracketed paste in overlays including auth byok_key without polluting chat input', async () => {
         let savedKey: { provider: string; key: string } | null = null
         const app = new DifferentialApp({
             terminal,
@@ -2081,12 +2232,14 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         expect(app.state.authApiKeyInput).toBe('sk-ant-api03-samplekey1234567890')
         expect(app.state.input).toBe('')
 
-        // Press Enter saves key
+        // Press Enter checks the key, then saves it and closes the menu
         app.handleKey('\r')
         expect(savedKey).toEqual({
             provider: 'anthropic',
             key: 'sk-ant-api03-samplekey1234567890',
         })
+        await Promise.resolve()
+        await Promise.resolve()
         expect(app.state.activeOverlay as string).toBe('none')
 
         // 2. Auth provider search paste

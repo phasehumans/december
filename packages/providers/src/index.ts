@@ -1,4 +1,6 @@
 export * from './types.ts'
+export * from './errors.ts'
+export * from './model-endpoints.ts'
 export * from './normalizer/index.ts'
 export { registerProvider, getProvider, getAllProviders } from './registry.ts'
 
@@ -10,6 +12,7 @@ export {
     isFixedReasoningModel,
     getReasoningSupportType,
     getDefaultModelForProvider,
+    pickCatalogModel,
 } from './models.ts'
 export * from './providers/openai.ts'
 export * from './providers/anthropic.ts'
@@ -21,3 +24,4 @@ export * from './providers/codex.ts'
 export * from './providers/kimi.ts'
 export * from './providers/thinkingmachines.ts'
 export * from './providers/dynamic-registry.ts'
+export * from './providers/watsonx.ts'

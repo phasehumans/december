@@ -1,4 +1,5 @@
 import { OpenAIProvider, openaiProvider } from './openai.ts'
+import { watsonxProvider } from './watsonx.ts'
 
 import type { LLMProvider } from '../types.ts'
 
@@ -14,7 +15,12 @@ export const DYNAMIC_ENDPOINTS: Record<string, DynamicEndpoint> = {
     ai21: { id: 'ai21', baseURL: 'https://api.ai21.com/studio/v1', envVar: 'AI21_API_KEY' },
     arcee: { id: 'arcee', baseURL: 'https://api.arcee.ai/api/v1', envVar: 'ARCEE_API_KEY' },
     cerebras: { id: 'cerebras', baseURL: 'https://api.cerebras.ai/v1', envVar: 'CEREBRAS_API_KEY' },
-    cohere: { id: 'cohere', baseURL: 'https://api.cohere.com/v2', envVar: 'COHERE_API_KEY' },
+    // openai-compatible chat lives under /compatibility/v1; /v2/chat/completions answers 405 (#619)
+    cohere: {
+        id: 'cohere',
+        baseURL: 'https://api.cohere.com/compatibility/v1',
+        envVar: 'COHERE_API_KEY',
+    },
     dashscope: {
         id: 'dashscope',
         baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
@@ -39,7 +45,8 @@ export const DYNAMIC_ENDPOINTS: Record<string, DynamicEndpoint> = {
     },
     hyperbolic: {
         id: 'hyperbolic',
-        baseURL: 'https://api.hyperbolic.xyz/v1',
+        // api.hyperbolic.xyz was decommissioned (docs, checked 2026-11-21, #619)
+        baseURL: 'https://api.hyperbolic.ai/inference/v1',
         envVar: 'HYPERBOLIC_API_KEY',
     },
     inception: {
@@ -108,7 +115,8 @@ export const DYNAMIC_ENDPOINTS: Record<string, DynamicEndpoint> = {
     stepfun: { id: 'stepfun', baseURL: 'https://api.stepfun.ai/v1', envVar: 'STEPFUN_API_KEY' },
     'tencent-tokenhub': {
         id: 'tencent-tokenhub',
-        baseURL: 'https://tokenhub.tencentmaas.com/v1',
+        // the host in tencent's docs; tokenhub.tencentmaas.com is the same service (#619)
+        baseURL: 'https://tokenhub.tencentcloudmaas.com/v1',
         envVar: 'TENCENT_TOKENHUB_API_KEY',
     },
     thinkingmachines: {
@@ -123,7 +131,8 @@ export const DYNAMIC_ENDPOINTS: Record<string, DynamicEndpoint> = {
     },
     upstage: {
         id: 'upstage',
-        baseURL: 'https://api.upstage.ai/v1/solar',
+        // current docs use /v1; /v1/solar still answers (#619)
+        baseURL: 'https://api.upstage.ai/v1',
         envVar: 'UPSTAGE_API_KEY',
     },
     volcengine: {
@@ -134,7 +143,8 @@ export const DYNAMIC_ENDPOINTS: Record<string, DynamicEndpoint> = {
     'wafer.ai': { id: 'wafer.ai', baseURL: 'https://pass.wafer.ai/v1', envVar: 'WAFER_API_KEY' },
     watsonx: {
         id: 'watsonx',
-        baseURL: 'https://us-south.ml.cloud.ibm.com/v1',
+        // openai-compatible chat is under /ml/v1 and needs an IAM token, see watsonx.ts (#619)
+        baseURL: 'https://us-south.ml.cloud.ibm.com/ml/v1',
         envVar: 'WATSONX_AI_APIKEY',
     },
     xai: { id: 'xai', baseURL: 'https://api.x.ai/v1', envVar: 'XAI_API_KEY' },
@@ -159,7 +169,7 @@ export const DYNAMIC_ENDPOINTS: Record<string, DynamicEndpoint> = {
     'sakana-ai': { id: 'sakana-ai', baseURL: 'https://api.sakana.ai/v1' },
     'sarvam-ai': { id: 'sarvam-ai', baseURL: 'https://api.sarvam.ai/v1' },
     'stepfun-ai': { id: 'stepfun-ai', baseURL: 'https://api.stepfun.ai/v1' },
-    solar: { id: 'solar', baseURL: 'https://api.upstage.ai/v1/solar' },
+    solar: { id: 'solar', baseURL: 'https://api.upstage.ai/v1' },
     alibaba: { id: 'alibaba', baseURL: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' },
     qwen: { id: 'qwen', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
 }
@@ -232,7 +242,12 @@ export const TogetherProvider = createDynamicSubproviderClass('together')
 export const UpstageProvider = createDynamicSubproviderClass('upstage')
 export const VolcengineProvider = createDynamicSubproviderClass('volcengine')
 export const WaferAiProvider = createDynamicSubproviderClass('wafer.ai')
-export const WatsonxProvider = createDynamicSubproviderClass('watsonx')
+/** watsonx needs an IAM token exchange and a project id, so it is not a plain openai subprovider */
+export const WatsonxProvider = class {
+    constructor(apiKey?: string, baseURL?: string) {
+        return watsonxProvider(apiKey, baseURL) as any
+    }
+} as unknown as new (apiKey?: string, baseURL?: string) => LLMProvider
 export const XAIProvider = createDynamicSubproviderClass('xai')
 export const XiaomiProvider = createDynamicSubproviderClass('xiaomi')
 export const ZAIProvider = createDynamicSubproviderClass('zai')

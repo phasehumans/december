@@ -46,6 +46,7 @@ export function supportsReasoningEffort(model?: string, baseURL?: string): boole
             baseURL.includes('siliconflow') ||
             baseURL.includes('together.xyz') ||
             baseURL.includes('hyperbolic.xyz') ||
+            baseURL.includes('hyperbolic.ai') ||
             baseURL.includes('cerebras.ai') ||
             baseURL.includes('sambanova.ai') ||
             baseURL.includes('arcee.ai') ||
@@ -231,6 +232,10 @@ export function openaiProvider(
             }
             if (shouldSendReasoningEffort) {
                 createParams.reasoning_effort = reasoningEffort
+            }
+            // provider specific body fields, e.g. watsonx `project_id`
+            if (modelOptions?.extraBody && typeof modelOptions.extraBody === 'object') {
+                Object.assign(createParams, modelOptions.extraBody)
             }
 
             let stream: any

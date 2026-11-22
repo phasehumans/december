@@ -63,6 +63,24 @@ describe('OpenAI Provider (Integration)', () => {
         expect(provider.id).toBe('openai')
     })
 
+    test('merges provider specific body fields (watsonx project_id) into the request', async () => {
+        const provider = openaiProvider('https://us-south.ml.cloud.ibm.com/ml/v1', 'token')
+        for await (const _ of provider.stream(
+            [{ role: 'user', content: 'hi' }],
+            undefined,
+            undefined,
+            {
+                model: 'ibm/granite-4',
+                extraBody: { project_id: 'p-123' },
+            }
+        )) {
+            // drain
+        }
+        expect(capturedOptions.project_id).toBe('p-123')
+        expect(capturedOptions.model).toBe('ibm/granite-4')
+        expect(capturedOptions.extraBody).toBeUndefined()
+    })
+
     test('should stream text, tools, and usage chunks correctly', async () => {
         const provider = openaiProvider(undefined, 'test-key')
         const gen = provider.stream([{ role: 'user', content: 'Say hello' }])

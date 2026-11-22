@@ -122,3 +122,68 @@ describe('December GitHub Action Runner (Unit Tests)', () => {
         }
     })
 })
+
+describe('resolveActionModel (#619)', () => {
+    const list = (ids: string[]) =>
+        (async () => new Response(JSON.stringify({ data: ids.map((id) => ({ id })) }))) as any
+
+    it('keeps a requested model the key can use', async () => {
+        const { resolveActionModel } = await import('../src/action-runner')
+        expect(await resolveActionModel('openai', 'k', 'gpt-5.6-sol', list(['gpt-5.6-sol']))).toBe(
+            'gpt-5.6-sol'
+        )
+    })
+
+    it('replaces a requested model the key cannot use with the best served one', async () => {
+        const { resolveActionModel } = await import('../src/action-runner')
+        const warn = console.warn
+        const warnings: string[] = []
+        console.warn = (msg: string) => warnings.push(msg)
+        try {
+            const model = await resolveActionModel(
+                'anthropic',
+                'k',
+                'claude-retired-1',
+                list(['claude-sonnet-5', 'claude-opus-5'])
+            )
+            expect(model).toBe('claude-opus-5')
+            expect(warnings.join(' ')).toContain('claude-retired-1')
+        } finally {
+            console.warn = warn
+        }
+    })
+
+    it('reads ai studio models for the action gemini provider', async () => {
+        const { resolveActionModel } = await import('../src/action-runner')
+        let url = ''
+        const fetchFn = (async (u: string) => {
+            url = u
+            return new Response(
+                JSON.stringify({
+                    models: [
+                        {
+                            name: 'models/gemini-3.8-flash',
+                            supportedGenerationMethods: ['generateContent'],
+                        },
+                    ],
+                })
+            )
+        }) as any
+        expect(await resolveActionModel('gemini', 'AIza-test', undefined, fetchFn)).toBe(
+            'gemini-3.8-flash'
+        )
+        expect(url).toContain('generativelanguage.googleapis.com')
+    })
+
+    it('stops with a clear message when the key is rejected', async () => {
+        const { resolveActionModel } = await import('../src/action-runner')
+        const fetchFn = (async () =>
+            new Response(JSON.stringify({ error: { message: 'Incorrect API key' } }), {
+                status: 401,
+            })) as any
+        const err: any = await resolveActionModel('openai', 'bad', undefined, fetchFn).catch(
+            (e) => e
+        )
+        expect(err.message).toContain('rejected the API key')
+    })
+})

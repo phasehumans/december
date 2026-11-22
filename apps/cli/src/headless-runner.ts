@@ -41,6 +41,8 @@ export interface HeadlessTaskOptions {
     rpc?: boolean
     print?: boolean
     readOnly?: boolean
+    /** the agent loop to drive; tests pass a stub here instead of mocking the module */
+    runLoop?: typeof runAgentLoop
 }
 
 export interface HeadlessTaskResult {
@@ -317,7 +319,7 @@ export async function runHeadlessTask(
             steer: (text) => agent.steer({ role: 'user', content: text }),
         })
 
-        const stream = runAgentLoop(
+        const stream = (options.runLoop ?? runAgentLoop)(
             agent,
             options.readOnly ? { content: effectivePrompt, readOnly: true } : effectivePrompt
         )

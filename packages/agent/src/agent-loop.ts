@@ -1,6 +1,6 @@
 import util from 'util'
 
-import { supportsModelThinking, getDefaultModelForProvider } from '@december/providers'
+import { classifyProviderError, pickCatalogModel, supportsModelThinking } from '@december/providers'
 import {
     safeParseJson,
     formatInsufficientCreditsNotice,
@@ -1005,88 +1005,89 @@ async function streamAssistantResponse(
         let errorProvider: string | undefined
         let errorHint: string | undefined
 
-        if (errorMsg.includes('402') || errorMsg.toLowerCase().includes('insufficient credits')) {
-            const providerId = (agent.llm?.id || '').toLowerCase().trim()
-            const model = agent.modelOptions?.model
-            const notice = formatInsufficientCreditsNotice(providerId, model, errorMsg)
-            if (!errorMsg.includes(notice)) {
-                errorMsg = `${notice}\n${errorMsg}`
-            }
-        } else if (
-            errorMsg.includes('404') ||
-            errorMsg.toLowerCase().includes('not found') ||
-            errorMsg.toLowerCase().includes('does not exist') ||
-            errorMsg.toLowerCase().includes('is not supported') ||
-            errorMsg.toLowerCase().includes('invalid model') ||
-            errorMsg.toLowerCase().includes('model_not_found') ||
-            errorMsg.toLowerCase().includes('invalid_argument') ||
-            errorMsg.toLowerCase().includes('invalid argument') ||
-            errorMsg.toLowerCase().includes('unsupported_model') ||
-            errorMsg.toLowerCase().includes('unknown model') ||
-            errorMsg.toLowerCase().includes('model is not recognized') ||
-            errorMsg.includes('无可用渠道') ||
-            errorMsg.toLowerCase().includes('no available channel') ||
-            errorMsg.toLowerCase().includes('channel not found')
-        ) {
-            const currentModel = (agent.modelOptions as any)?.model || 'the selected model'
-            const providerId = (agent.llm?.id || '').toLowerCase().trim()
-            const providerName = getCleanProviderDisplayName(agent.llm?.id, currentModel)
-            const fallback = getDefaultModelForProvider(providerId)
-            const hasFallback = Boolean(
-                fallback &&
-                currentModel !== 'the selected model' &&
-                fallback.toLowerCase() !== currentModel.toLowerCase()
-            )
+        // issue #619: the kind comes from the http status and the provider's error code
+        const providerId = (agent.llm?.id || '').toLowerCase().trim()
+        const currentModel: string | undefined = (agent.modelOptions as any)?.model
+        const providerName = getCleanProviderDisplayName(agent.llm?.id, currentModel)
+        let { kind } = classifyProviderError(error, currentModel)
+        if (kind === 'unknown') {
+            // errors raised mid-stream carry no status; keep the few plain-text signals we trust
+            const lower = errorMsg.toLowerCase()
+            if (lower.includes('insufficient credits') || /\b402\b/.test(lower)) kind = 'no_credits'
+            else if (/\b429\b|rate limit|quota/.test(lower)) kind = 'rate_limit'
+            else if (lower.includes('session expired')) kind = 'bad_key'
+            else if (lower.includes('timed out') || lower.includes('etimedout')) kind = 'timeout'
+        }
 
-            errorCode = hasFallback ? 'MODEL_UNAVAILABLE' : undefined
-            errorModel = currentModel
-            errorFallbackModel = hasFallback ? fallback : undefined
-            errorProvider = providerId
-            errorHint = hasFallback
-                ? `Press [Enter] to switch to '${fallback}' & retry · [m] /model · [Esc] dismiss`
-                : 'Please select an available model using `/model` or switch providers using `/switch`.'
-
-            errorMsg =
-                `Model '${currentModel}' is not available or not supported on ${providerName}.\n` +
-                `${errorHint}\n\n` +
-                errorMsg
-        } else if (
-            errorMsg.includes('401') ||
-            errorMsg.toLowerCase().includes('unauthorized') ||
-            errorMsg.toLowerCase().includes('session expired') ||
-            errorMsg.toLowerCase().includes('invalid token')
-        ) {
-            errorMsg =
-                'Authentication failed or session expired. Please run `/login` to sign in with your December account (Cloud Wallet) or configure Bring Your Own Key (BYOK).\n' +
-                errorMsg
-        } else if (
-            errorMsg.includes('429') ||
-            errorMsg.toLowerCase().includes('quota') ||
-            errorMsg.toLowerCase().includes('rate limit')
-        ) {
-            const providerId = (agent.llm?.id || '').toLowerCase().trim()
-            const model = agent.modelOptions?.model
-            const notice = formatRateLimitNotice(providerId, model, errorMsg)
-            if (!errorMsg.includes(notice)) {
-                errorMsg = `${notice}\n${errorMsg}`
+        switch (kind) {
+            case 'no_credits': {
+                const notice = formatInsufficientCreditsNotice(providerId, currentModel, errorMsg)
+                if (!errorMsg.includes(notice)) {
+                    errorMsg = `${notice}\n${errorMsg}`
+                }
+                break
             }
-        } else if (
-            errorMsg.includes('503') ||
-            errorMsg.includes('529') ||
-            errorMsg.toLowerCase().includes('high demand') ||
-            errorMsg.toLowerCase().includes('overloaded') ||
-            errorMsg.toLowerCase().includes('capacity')
-        ) {
-            errorMsg =
-                'This model is currently experiencing high demand or capacity limits from the provider. Spikes in demand are usually temporary. Please try again in a few moments or switch to a different model at https://app.trydecember.com/settings/billing\n' +
-                errorMsg
-        } else if (
-            errorMsg.toLowerCase().includes('timed out') ||
-            errorMsg.toLowerCase().includes('etimedout')
-        ) {
-            errorMsg =
-                `${errorMsg}\n` +
-                'The model took too long to respond. Please try again or switch to a faster model using `/model`.'
+            case 'model_unavailable': {
+                const failed = currentModel || 'the selected model'
+                // D5: never offer the model that failed. The cli swaps in the best model from
+                // the provider's live list before it shows the confirm.
+                const fallback = currentModel
+                    ? pickCatalogModel(providerId, [currentModel])
+                    : undefined
+                errorCode = 'MODEL_UNAVAILABLE'
+                errorModel = failed
+                errorFallbackModel = fallback
+                errorProvider = providerId
+                errorHint = fallback
+                    ? `Press [Enter] to switch to '${fallback}' & retry · [m] /model · [Esc] dismiss`
+                    : 'Pick an available model with `/model` or change provider with `/switch`.'
+                errorMsg = `Model '${failed}' is not available on ${providerName} for this key.\n${errorMsg}`
+                break
+            }
+            case 'bad_key':
+                errorCode = 'BAD_KEY'
+                errorProvider = providerId
+                errorHint =
+                    providerId === 'december' || providerId === 'december_proxy'
+                        ? 'Run `/login` to sign in to December again.'
+                        : `Run \`/login\` to enter a new ${providerName} key.`
+                errorMsg = `${providerName} rejected the API key or session.\n${errorMsg}`
+                break
+            case 'forbidden':
+                errorCode = 'FORBIDDEN'
+                errorProvider = providerId
+                errorHint = `Check billing, region and key permissions in your ${providerName} account, or change provider with \`/switch\`.`
+                errorMsg = `${providerName} accepted the key but refused the request.\n${errorMsg}`
+                break
+            case 'rate_limit': {
+                const notice = formatRateLimitNotice(providerId, currentModel, errorMsg)
+                if (!errorMsg.includes(notice)) {
+                    errorMsg = `${notice}\n${errorMsg}`
+                }
+                break
+            }
+            case 'endpoint_not_found':
+                errorCode = 'ENDPOINT_NOT_FOUND'
+                errorProvider = providerId
+                errorHint = `Check the base URL for ${providerName}, or change provider with \`/switch\`.`
+                errorMsg = `${providerName} returned 404 Not Found for the request URL.\n${errorMsg}`
+                break
+            case 'bad_request':
+                errorProvider = providerId
+                errorMsg = `${providerName} rejected the request as invalid.\n${errorMsg}`
+                break
+            case 'overloaded':
+                errorMsg =
+                    'This model is currently experiencing high demand or capacity limits from the provider. Spikes in demand are usually temporary. Please try again in a few moments or switch to a different model with `/model`.\n' +
+                    errorMsg
+                break
+            case 'timeout':
+                errorMsg =
+                    `${errorMsg}\n` +
+                    'The model took too long to respond. Please try again or switch to a faster model using `/model`.'
+                break
+            default:
+                break
         }
 
         eventQueue.push({

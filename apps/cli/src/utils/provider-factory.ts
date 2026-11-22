@@ -7,6 +7,7 @@ import {
     antigravityProvider,
     codexResponsesProvider,
     getDynamicEndpoint,
+    watsonxProvider,
 } from '@december/providers'
 
 import { resolveSubscriptionToken } from '../auth/subscriptions/subscription-manager'
@@ -168,6 +169,8 @@ export function instantiateProvider(
                 ),
                 'thinkingmachines'
             )
+        case 'watsonx':
+            return watsonxProvider(apiKey, options?.baseURL)
         case 'amazon-q':
         case 'amazonq':
         case 'aws':

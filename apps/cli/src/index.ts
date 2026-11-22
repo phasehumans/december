@@ -325,6 +325,19 @@ async function main() {
         const sessionId = targetSessionId || `session-${Date.now()}`
         const config = await loadConfig()
         const activeProvider = providerConfig?.provider || config.activeProvider || 'gemini'
+        // G2: headless runs pick their model from what the provider serves now (D1, D5)
+        // a fresh cached list answers at once; a slow network costs at most 3s before the run
+        if (providerConfig?.apiKey && providerConfig.authMethod !== 'december') {
+            const { fetchLiveProviderModels } = await import('./utils/models')
+            await Promise.race([
+                fetchLiveProviderModels(
+                    providerConfig.provider,
+                    providerConfig.apiKey,
+                    providerConfig.baseURL
+                ),
+                new Promise((resolve) => setTimeout(resolve, 3000)),
+            ])
+        }
         const initialModel =
             providerConfig?.authMethod === 'december'
                 ? 'december-auto'
@@ -405,7 +418,7 @@ async function main() {
     // Path 5: Full Interactive TUI Session (Differential 2D Screen Buffer Engine)
     const [
         { AgentHarness, runAgentLoop },
-        { openaiProvider, getModelContextWindow },
+        { openaiProvider },
         toolsModule,
         { DifferentialApp },
         { FileSessionRepository },
@@ -420,7 +433,14 @@ async function main() {
         { suppressConsole },
         { localOperations, setActiveScopeDir },
         { instantiateProvider },
-        { ensureValidModelForProvider, getModelLabel, getProviderModels },
+        {
+            ensureValidModelForProvider,
+            getModelLabel,
+            getProviderModels,
+            isValidModelForProvider,
+            pickModelForProvider,
+            getModelContextWindow,
+        },
         { useCliStore },
         { convertAgentMessagesToDifferentialMessages },
         { recordUsage, getUsageHistory },
@@ -633,6 +653,33 @@ async function main() {
 
     let differentialApp: DifferentialApp
 
+    /**
+     * G1: reads the active provider's model list again when the cached one is older than 24h,
+     * so /model and the model checks keep using what the provider serves (D1), not the catalog.
+     */
+    const refreshActiveModels = async (): Promise<void> => {
+        try {
+            const { getProviderConfig } = await import('./config')
+            const pc = await getProviderConfig()
+            if (!pc?.provider || !pc.apiKey) return
+            const { fetchLiveProviderModels } = await import('./utils/models')
+            const result = await fetchLiveProviderModels(pc.provider, pc.apiKey, pc.baseURL)
+            if (result.ok === true && differentialApp) {
+                differentialApp.refreshModelsForProvider(pc.provider)
+                const active = differentialApp.state.activeModel
+                if (active) {
+                    differentialApp.state.maxContextTokens = getModelContextWindow(
+                        active,
+                        pc.provider
+                    )
+                }
+                differentialApp.render()
+            }
+        } catch {
+            // Intentionally swallowed: a failed background refresh keeps the cached or catalog list
+        }
+    }
+
     let activePlanGoal: string | null = null
     let activePlanText: string | null = null
     let userHooks: import('./utils/user-hooks-setup').UserHooksController | undefined
@@ -649,21 +696,16 @@ async function main() {
             const providerCfg = await getProviderConfig(cfg)
             const activeProv = providerCfg?.provider || cfg.activeProvider || 'gemini'
             const activeMod = agent.modelOptions?.model || cfg.activeModel
-            const { isValidModelForProvider } = await import('./utils/models')
+            const { isValidModelForProvider, pickModelForProvider, modelFallbackHint } =
+                await import('./utils/models')
             const { getCleanProviderDisplayName } = await import('@december/shared')
             if (activeMod && !isValidModelForProvider(activeProv, activeMod)) {
                 const displayName = getCleanProviderDisplayName(activeProv, activeMod)
-                const { getDefaultModelForProvider } = await import('@december/providers')
-                const fallback = getDefaultModelForProvider(activeProv)
-                const hasFallback = Boolean(
-                    fallback && fallback.toLowerCase() !== activeMod.toLowerCase()
-                )
-                const hintText = hasFallback
-                    ? `Press [Enter] to switch to '${fallback}' & retry · [m] /model · [Esc] dismiss`
-                    : `Please select an available model using \`/model\` or switch providers using \`/switch\`.`
-                const errorMsg =
-                    `Model '${activeMod}' is not available or not supported on ${displayName}.\n` +
-                    `${hintText}`
+                // D5: the best model this key can use, never the one that is not available
+                const fallback = pickModelForProvider(activeProv, [activeMod])
+                const hasFallback = Boolean(fallback)
+                const hintText = modelFallbackHint(fallback)
+                const errorMsg = `Model '${activeMod}' is not available on ${displayName} for this key.`
                 differentialApp.clearStatusMessage()
                 differentialApp.state.messages.push({
                     role: 'error',
@@ -744,17 +786,45 @@ async function main() {
                     differentialApp.clearStatusMessage()
                     differentialApp.stopSpinner()
                     differentialApp.state.isStreaming = false
+                    let errorHint = event.hint
+                    let errorContent = event.error
+                    let errorCode = event.code
+                    let fallbackModel: string | undefined
+                    const failedModel = event.model || activeMod || 'unknown'
+                    if (errorCode === 'ENDPOINT_NOT_FOUND') {
+                        // some providers (nvidia) answer an unknown model with a bare 404; the
+                        // live list tells that apart from a wrong base url
+                        const { getLiveProviderModels } = await import('./utils/models')
+                        const errProvider = event.provider || activeProv
+                        if (
+                            getLiveProviderModels(errProvider) &&
+                            !isValidModelForProvider(errProvider, failedModel)
+                        ) {
+                            errorCode = 'MODEL_UNAVAILABLE'
+                            const { getCleanProviderDisplayName } = await import('@december/shared')
+                            errorContent = `Model '${failedModel}' is not available on ${getCleanProviderDisplayName(errProvider, failedModel)} for this key.\n${event.error}`
+                        }
+                    }
+                    if (errorCode === 'MODEL_UNAVAILABLE') {
+                        // D5 with the provider's live list; the agent only knows the catalog
+                        // the model is marked unavailable only when the user accepts the switch
+                        const { pickModelForProvider, modelFallbackHint } =
+                            await import('./utils/models')
+                        const errProvider = event.provider || activeProv
+                        fallbackModel = pickModelForProvider(errProvider, [failedModel])
+                        errorHint = modelFallbackHint(fallbackModel)
+                    }
                     differentialApp.state.messages.push({
                         role: 'error',
-                        content: event.error,
+                        content: errorContent,
                         cause: event.cause,
-                        hint: event.hint,
+                        hint: errorHint,
                     })
-                    if (event.code === 'MODEL_UNAVAILABLE' && event.fallbackModel) {
+                    if (errorCode === 'MODEL_UNAVAILABLE' && fallbackModel) {
                         differentialApp.setPendingModelFallback({
                             provider: event.provider || activeProv,
-                            failedModel: event.model || activeMod || 'unknown',
-                            fallbackModel: event.fallbackModel,
+                            failedModel,
+                            fallbackModel,
                             prompt: promptText,
                         })
                     }
@@ -919,7 +989,7 @@ async function main() {
         models: getProviderModels(activeProvider),
         getProviderModels: (provider) => getProviderModels(provider),
         contextTokens: 0,
-        maxContextTokens: getModelContextWindow(initialModel),
+        maxContextTokens: getModelContextWindow(initialModel, activeProvider),
         sessionId,
         thinkingLevel: config.thinkingLevel || 'fast',
         onAbort: () => {
@@ -1027,6 +1097,23 @@ async function main() {
                 differentialApp.setNotifyMode(newValue)
             }
         },
+        onModelMenuOpen: () => {
+            void refreshActiveModels()
+        },
+        onCheckModel: (selected) => {
+            const provider = differentialApp.state.selectedProvider || ''
+            if (!provider || isValidModelForProvider(provider, selected.value)) {
+                return { available: true }
+            }
+            const fallbackId = pickModelForProvider(provider, [selected.value])
+            const fallback = fallbackId
+                ? getProviderModels(provider).find((m) => m.value === fallbackId) || {
+                      label: fallbackId,
+                      value: fallbackId,
+                  }
+                : undefined
+            return { available: false, fallback }
+        },
         onModelSelect: async (selected) => {
             try {
                 const cfg = await loadConfig()
@@ -1064,7 +1151,10 @@ async function main() {
                 }
                 differentialApp.state.activeModel = selected.value
                 differentialApp.state.modelLabel = selected.label
-                differentialApp.state.maxContextTokens = getModelContextWindow(selected.value)
+                differentialApp.state.maxContextTokens = getModelContextWindow(
+                    selected.value,
+                    activeProv
+                )
                 differentialApp.showToast(`Switched model to ${selected.label}`, 'success')
                 differentialApp.render()
             } catch (err: any) {
@@ -1105,7 +1195,10 @@ async function main() {
                 const fallbackLabel = getModelLabel(fallbackModel)
                 differentialApp.state.activeModel = fallbackModel
                 differentialApp.state.modelLabel = fallbackLabel
-                differentialApp.state.maxContextTokens = getModelContextWindow(fallbackModel)
+                differentialApp.state.maxContextTokens = getModelContextWindow(
+                    fallbackModel,
+                    activeProv
+                )
                 differentialApp.refreshModelsForProvider(activeProv)
                 differentialApp.showToast(
                     `Switched model to ${fallbackLabel} and retrying...`,
@@ -1200,8 +1293,8 @@ async function main() {
                     bundle.accessToken,
                     bundle.endpoint
                 )
-                    .then((liveModels) => {
-                        if (liveModels && liveModels.length > 0) {
+                    .then((result) => {
+                        if (result.ok === true) {
                             differentialApp.refreshModelsForProvider(targetProvider)
                             differentialApp.render()
                         }
@@ -1217,15 +1310,25 @@ async function main() {
             }
             return bundle
         },
-        onSaveApiKey: async (provider: string, apiKey: string) => {
+        onSaveApiKey: async (provider: string, apiKey: string, signal?: AbortSignal) => {
+            const { checkProviderKey, getDefaultModelForProvider } = await import('./utils/models')
+            const cfgBefore = await loadConfig()
+            const baseUrl = cfgBefore.providerBaseUrls?.[provider]
+            const check = await checkProviderKey(provider, apiKey, baseUrl)
+            // the user pressed esc while the provider answered: save nothing
+            if (signal?.aborted) {
+                return { status: 'error' as const, message: 'Key check cancelled.' }
+            }
+            if (check.status === 'rejected') {
+                return { status: 'rejected' as const, message: check.message }
+            }
             try {
                 const cfg = await loadConfig()
                 cfg.providers = cfg.providers || {}
                 cfg.providers[provider] = apiKey
                 cfg.activeProvider = provider
                 cfg.authPriority = 'byok'
-                const { getDefaultModelForProvider, fetchLiveProviderModels } =
-                    await import('./utils/models')
+                // D5: first catalog-preferred model the key can use (live list when we have one)
                 const targetModel = getDefaultModelForProvider(provider)
                 cfg.activeModel = targetModel
                 await saveConfig(cfg)
@@ -1233,6 +1336,10 @@ async function main() {
                 differentialApp.state.authMethod = 'byok'
                 differentialApp.state.activeModel = targetModel
                 differentialApp.state.modelLabel = getModelLabel(targetModel)
+                differentialApp.state.maxContextTokens = getModelContextWindow(
+                    targetModel,
+                    provider
+                )
                 differentialApp.state.switchItems = getConfiguredProviders(cfg)
                 differentialApp.state.isAuthenticated = true
                 differentialApp.refreshModelsForProvider(provider)
@@ -1240,6 +1347,7 @@ async function main() {
                     const { instantiateProvider } = await import('./utils/provider-factory')
                     const llm = instantiateProvider(provider, apiKey, {
                         authMethod: 'byok',
+                        baseURL: baseUrl,
                     })
                     agent.setLLM(llm)
                     if (agent.modelOptions) {
@@ -1247,22 +1355,19 @@ async function main() {
                     }
                 }
                 differentialApp.render()
-                fetchLiveProviderModels(provider, apiKey)
-                    .then((liveModels) => {
-                        if (liveModels && liveModels.length > 0) {
-                            differentialApp.refreshModelsForProvider(provider)
-                            differentialApp.render()
-                        }
-                    })
-                    .catch(() => {
-                        // Intentionally swallowed: background live model fetch failure
-                    })
             } catch (err: any) {
-                differentialApp.showToast(
-                    `Failed to save API key: ${err?.message || 'Error'}`,
-                    'error'
-                )
+                return {
+                    status: 'error' as const,
+                    message: `Failed to save API key: ${err?.message || 'Error'}`,
+                }
             }
+            if (check.status === 'forbidden') {
+                return { status: 'forbidden' as const, message: check.message }
+            }
+            if (check.status === 'unverified') {
+                return { status: 'unverified' as const, message: check.message }
+            }
+            return { status: 'saved' as const }
         },
         switchItems: getConfiguredProviders(config),
         onSwitchSelect: async (value: string) => {
@@ -1294,6 +1399,7 @@ async function main() {
             differentialApp.state.switchItems = getConfiguredProviders(updatedConfig)
             differentialApp.refreshModelsForProvider(target.provider)
             differentialApp.render()
+            void refreshActiveModels()
         },
         onDeleteProvider: async (value: string) => {
             const cfg = await loadConfig()
@@ -2223,6 +2329,9 @@ async function main() {
     differentialApp.state.announcement = announcement
 
     differentialApp.start()
+
+    // G1: a stale model list is read again in the background while the user types
+    void refreshActiveModels()
 
     // Opens the provider connection while the user types the first prompt
     if (providerConfig) {

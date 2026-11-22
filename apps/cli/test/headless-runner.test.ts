@@ -4,21 +4,7 @@ import { describe, it, expect, beforeEach, mock } from 'bun:test'
 
 const mockRunAgentLoop = mock()
 
-mock.module('@december/agent', () => {
-    return {
-        runAgentLoop: mockRunAgentLoop,
-        Agent: class MockAgent {
-            sessionId = 'default'
-            modelOptions = {}
-            workspaceDir = ''
-            operations = { ui: {} }
-            setOnToolActivated() {}
-            steer = mock()
-            abort = mock()
-        },
-    }
-})
-
+// the loop is passed in (runLoop) so no module mock leaks into other test files
 import { runHeadlessTask, restoreConsole, suppressConsole } from '../src/headless-runner'
 
 describe('runHeadlessTask', () => {
@@ -53,6 +39,7 @@ describe('runHeadlessTask', () => {
 
         const result = await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -82,6 +69,7 @@ describe('runHeadlessTask', () => {
 
         const result = await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -102,6 +90,7 @@ describe('runHeadlessTask', () => {
 
         await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -132,6 +121,7 @@ describe('runHeadlessTask', () => {
 
         await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -160,6 +150,7 @@ describe('runHeadlessTask', () => {
 
         const result = await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -185,6 +176,7 @@ describe('runHeadlessTask', () => {
 
         await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -208,6 +200,7 @@ describe('runHeadlessTask', () => {
 
         await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -227,6 +220,7 @@ describe('runHeadlessTask', () => {
 
         await runHeadlessTask('analyze @package.json', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -242,6 +236,7 @@ describe('runHeadlessTask', () => {
 
         await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -267,6 +262,7 @@ describe('runHeadlessTask', () => {
 
         const result = await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -287,6 +283,7 @@ describe('runHeadlessTask', () => {
 
         const result = await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -304,6 +301,7 @@ describe('runHeadlessTask', () => {
 
         const result = await runHeadlessTask('test prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -339,6 +337,7 @@ describe('runHeadlessTask', () => {
 
         const result = await runHeadlessTask('test default rpc', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -374,6 +373,7 @@ describe('runHeadlessTask', () => {
 
         const result = await runHeadlessTask('test ask prompt', {
             agent: mockAgent,
+            runLoop: mockRunAgentLoop,
             stdin: mockStdin as any,
             stdout: mockStdout as any,
             stderr: mockStderr as any,
@@ -417,6 +417,7 @@ describe('runHeadlessTask', () => {
 
             const result = await runHeadlessTask('test rpc prompt', {
                 agent: mockAgent,
+                runLoop: mockRunAgentLoop,
                 stdin: mockStdin as any,
                 stdout: mockStdout as any,
                 stderr: mockStderr as any,
@@ -457,6 +458,7 @@ describe('runHeadlessTask', () => {
 
             await runHeadlessTask('test prompt', {
                 agent: mockAgent,
+                runLoop: mockRunAgentLoop,
                 stdin: mockStdin as any,
                 stdout: mockStdout as any,
                 stderr: mockStderr as any,
@@ -477,6 +479,7 @@ describe('runHeadlessTask', () => {
 
             await runHeadlessTask('test prompt', {
                 agent: mockAgent,
+                runLoop: mockRunAgentLoop,
                 stdin: mockStdin as any,
                 stdout: mockStdout as any,
                 stderr: mockStderr as any,
@@ -511,6 +514,7 @@ describe('runHeadlessTask', () => {
 
             const result = await runHeadlessTask('test print prompt', {
                 agent: mockAgent,
+                runLoop: mockRunAgentLoop,
                 stdin: mockStdin as any,
                 stdout: mockStdout as any,
                 stderr: mockStderr as any,
@@ -552,6 +556,7 @@ describe('runHeadlessTask', () => {
 
             const result = await runHeadlessTask('diagnose', {
                 agent: mockAgent,
+                runLoop: mockRunAgentLoop,
                 stdin: mockStdin as any,
                 stdout: mockStdout as any,
                 stderr: mockStderr as any,
@@ -591,6 +596,7 @@ describe('runHeadlessTask', () => {
 
             const result = await runHeadlessTask('execute without prompts', {
                 agent: mockAgent,
+                runLoop: mockRunAgentLoop,
                 stdin: mockStdin as any,
                 stdout: mockStdout as any,
                 stderr: mockStderr as any,
@@ -620,6 +626,7 @@ describe('runHeadlessTask', () => {
 
             const result = await runHeadlessTask('test console redirection', {
                 agent: mockAgent,
+                runLoop: mockRunAgentLoop,
                 stdin: mockStdin as any,
                 stdout: mockStdout as any,
                 stderr: mockStderr as any,
@@ -650,6 +657,7 @@ describe('runHeadlessTask', () => {
 
             const result = await runHeadlessTask('failing task', {
                 agent: mockAgent,
+                runLoop: mockRunAgentLoop,
                 stdin: mockStdin as any,
                 stdout: mockStdout as any,
                 stderr: mockStderr as any,

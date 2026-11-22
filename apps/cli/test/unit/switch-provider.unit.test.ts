@@ -238,13 +238,13 @@ describe('Provider Switch Logic (Unit)', () => {
             },
         }
 
-        // Switch to xiaomi via alias 'mimo' -> default model mimo-v2.5
+        // Switch to xiaomi via alias 'mimo' -> default model mimo-v2.6-flash
         const targetXiaomi = resolveSwitchTarget(config, 'mimo')
         expect(targetXiaomi).toBeDefined()
         expect(targetXiaomi?.provider).toBe('xiaomi')
         let res = applyProviderSwitch(config, targetXiaomi!)
         expect(res.config.activeProvider).toBe('xiaomi')
-        expect(res.config.activeModel).toBe('mimo-v2.5')
+        expect(res.config.activeModel).toBe('mimo-v2.6-flash')
         config = res.config
 
         // Switch to zai via alias 'zhipuai' -> default model glm-5.3-flash

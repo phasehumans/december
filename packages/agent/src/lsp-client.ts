@@ -80,15 +80,22 @@ export class LspClient {
             return this.binaryPath
         }
 
-        const candidatePaths = [
-            path.resolve(this.workspaceRoot, 'node_modules/.bin/typescript-language-server'),
-            path.resolve(process.cwd(), 'node_modules/.bin/typescript-language-server'),
-            path.resolve(process.cwd(), 'node_modules/typescript-language-server/lib/cli.mjs'),
-        ]
-
-        for (const candidate of candidatePaths) {
-            if (fs.existsSync(candidate)) {
-                return candidate
+        // Monorepos hoist the server to the root node_modules, so walk up from the workspace
+        // and from cwd instead of looking in one folder only
+        const roots = [this.workspaceRoot, process.cwd()]
+        for (const start of roots) {
+            let dir = path.resolve(start)
+            while (true) {
+                const candidates = [
+                    path.join(dir, 'node_modules/.bin/typescript-language-server'),
+                    path.join(dir, 'node_modules/typescript-language-server/lib/cli.mjs'),
+                ]
+                for (const candidate of candidates) {
+                    if (fs.existsSync(candidate)) return candidate
+                }
+                const parent = path.dirname(dir)
+                if (parent === dir) break
+                dir = parent
             }
         }
 

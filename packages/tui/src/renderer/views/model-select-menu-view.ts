@@ -4,6 +4,7 @@ import { drawText } from '../ui'
 import { MenuFooterView } from './menu-footer-view'
 import {
     drawEmpty,
+    drawInlineConfirm,
     drawListRow,
     drawPanelTitle,
     drawWindowOverflow,
@@ -31,6 +32,8 @@ export interface ModelSelectMenuViewProps {
     windowStart: number
     searchQuery: string
     isSearching: boolean
+    /** the picked model is not available on this key: offer `fallbackLabel` inline */
+    confirmSwitch?: { failedValue: string; fallbackLabel: string } | null
 }
 
 export const ModelSelectMenuView = {
@@ -136,6 +139,15 @@ export const ModelSelectMenuView = {
                     label: item.label,
                     tag: isActive ? 'current' : undefined,
                 })
+                if (props.confirmSwitch && props.confirmSwitch.failedValue === item.value) {
+                    const labelEnd = x + 2 + Math.min(item.label.length, Math.max(4, width - 2))
+                    drawInlineConfirm(buffer, {
+                        x: labelEnd,
+                        y: y + i,
+                        text: ` [Not available on this key · switch to ${props.confirmSwitch.fallbackLabel}? (y/n)]`,
+                        tone: 'warning',
+                    })
+                }
             }
 
             if (filtered.length > windowSize) {
@@ -151,18 +163,23 @@ export const ModelSelectMenuView = {
 
         // Footer at bottom of viewport
         const footerY = (props.y ?? 0) + (props.height ?? this.getHeight(filtered.length)) - 1
-        const footerItems = props.isSearching
+        const footerItems = props.confirmSwitch
             ? [
-                  { key: 'enter / ↓', label: 'focus list' },
-                  { key: 'esc', label: 'exit search' },
+                  { key: 'y', label: 'switch' },
+                  { key: 'n / esc', label: 'cancel' },
               ]
-            : [
-                  { key: '↑/↓', label: 'navigate' },
-                  { key: 'enter', label: 'select' },
-                  { key: '/', label: 'search' },
-                  { key: '/switch', label: 'provider' },
-                  { key: 'esc', label: 'close' },
-              ]
+            : props.isSearching
+              ? [
+                    { key: 'enter / ↓', label: 'focus list' },
+                    { key: 'esc', label: 'exit search' },
+                ]
+              : [
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'enter', label: 'select' },
+                    { key: '/', label: 'search' },
+                    { key: '/switch', label: 'provider' },
+                    { key: 'esc', label: 'close' },
+                ]
 
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,
