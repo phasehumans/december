@@ -1,0 +1,38 @@
+---
+// Section Divider
+// One 1px line that runs the full width of the screen, with the December ✱
+// mark where it crosses each side rail of the 1200px column. Place it as a
+// direct child of a column container (the element that draws the rails with border-x).
+// edge: when set, the divider overlays the top or bottom edge of its container
+// and takes no space. When not set, it sits in the normal flow (1px tall).
+// hideOnMobile: hide the divider below the sm breakpoint.
+
+interface Props {
+  edge?: 'top' | 'bottom';
+  hideOnMobile?: boolean;
+}
+
+const { edge, hideOnMobile = false } = Astro.props;
+
+const rootClass = edge === 'top'
+  ? 'absolute inset-x-0 top-0'
+  : edge === 'bottom'
+    ? 'absolute inset-x-0 bottom-0'
+    : 'relative w-full';
+
+const visibilityClass = hideOnMobile ? 'hidden sm:block' : '';
+
+// Marks sit on the rails, which are 1px outside this box. Show them only when the gutters are wide enough.
+const markClass = 'hidden xl:block absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full bg-white p-px text-[#87b2f4]';
+---
+
+<div class={`${rootClass} ${visibilityClass} h-px pointer-events-none`} aria-hidden="true">
+  <div class="absolute inset-y-0 left-1/2 w-screen -translate-x-1/2 bg-[#cbd5e1]"></div>
+  {[`${markClass} -left-[0.5px] -translate-x-1/2`, `${markClass} -right-[0.5px] translate-x-1/2`].map((cls) => (
+    <svg class={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round">
+      <line x1="12" y1="3" x2="12" y2="21" />
+      <line x1="4.2" y1="7.5" x2="19.8" y2="16.5" />
+      <line x1="4.2" y1="16.5" x2="19.8" y2="7.5" />
+    </svg>
+  ))}
+</div>

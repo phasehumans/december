@@ -226,22 +226,6 @@ const showCloudNudge = !hideHeader && !hideFooter && activePath === '/';
   </head>
   <body class="min-h-dvh flex flex-col bg-white text-[#090a0f] selection:bg-[#87b2f4] selection:text-[#0a1128] overflow-x-hidden w-full max-w-[100vw]">
     <div class="relative min-h-dvh w-full flex flex-col flex-1">
-      {!hideHeader && !hideFooter && (
-        <>
-          <!-- Continuous Full-Page Left Side Gutter: Single unbroken element from top to bottom -->
-          <div
-            class="hidden lg:block absolute top-0 bottom-0 left-0 right-[calc(50%+600px)] side-gutter-hatch side-gutter-mask-left pointer-events-none z-0"
-            aria-hidden="true"
-          />
-
-          <!-- Continuous Full-Page Right Side Gutter: Single unbroken element from top to bottom -->
-          <div
-            class="hidden lg:block absolute top-0 bottom-0 left-[calc(50%+600px)] right-0 side-gutter-hatch side-gutter-mask-right pointer-events-none z-0"
-            aria-hidden="true"
-          />
-        </>
-      )}
-
       {showLoader && <PageLoader />}
       {!hideScrollbar && <CustomScrollbar />}
       {!hideHeader && <Header activePath={activePath} />}

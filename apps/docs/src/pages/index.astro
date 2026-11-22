@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import InstallCommand from '../components/InstallCommand.astro';
+import SectionDivider from '../components/SectionDivider.astro';
 import { version } from '../lib/version';
 import { latestHighlight } from '../lib/changelog';
 import { landingFaq, faqParagraphHtml, landingFaqJsonLd } from '../lib/landing-faq';
@@ -16,10 +17,10 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
   hideHeader={false}
   hideFooter={false}
 >
-  <!-- Page Blueprint Chassis: 1200px wide flanked by cross blue line side gutters on desktop -->
+  <!-- Page Blueprint Chassis: 1200px wide column with side rails on desktop -->
   <div class="relative w-full overflow-x-clip">
     <!-- Center Chassis (1200px wide, framed with clean line borders) -->
-    <div class="relative z-10 mx-auto max-w-[1200px] border-x border-transparent lg:border-[#e2e8f0] bg-white">
+    <div class="relative z-10 mx-auto max-w-[1200px] border-x border-transparent lg:border-[#cbd5e1] bg-white">
       
       <!-- Hero Section -->
       <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-8 sm:pt-12 sm:pb-16">
@@ -238,13 +239,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       </div>
     </section>
 
-    <!-- Section Divider: 01 Features -->
-    <div class="hidden sm:flex border-y border-[#e2e8f0] bg-[#fafbfc] px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 items-center justify-between font-mono text-xs select-none">
-      <div class="flex items-center gap-2">
-        <span class="text-[#87b2f4] font-semibold">// 01</span>
-        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">Features</span>
-      </div>
-    </div>
+    <SectionDivider />
 
     <!-- Features Section -->
     <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-8 sm:py-16">
@@ -406,13 +401,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       </div>
     </section>
 
-    <!-- Section Divider: 02 Benchmarks & Adoption -->
-    <div class="hidden sm:flex border-y border-[#e2e8f0] bg-[#fafbfc] px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 items-center justify-between font-mono text-xs select-none">
-      <div class="flex items-center gap-2">
-        <span class="text-[#87b2f4] font-semibold">// 02</span>
-        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">Benchmarks &amp; Adoption</span>
-      </div>
-    </div>
+    <SectionDivider />
 
     <!-- Benchmarks & Adoption Section -->
     <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-8 sm:py-16">
@@ -496,7 +485,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
                   phasehumans/december
                 </span>
                 <span class="inline-flex items-center gap-1 whitespace-nowrap text-[#64748b] group-hover/github:text-[#0066f5] transition-colors">
-                  Star on GitHub
+                  Star<span class="hidden sm:inline"> on GitHub</span>
                   <svg class="w-3 h-3 transition-transform group-hover/github:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                 </span>
               </div>
@@ -675,13 +664,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       </div>
     </section>
 
-    <!-- Section Divider: 03 Environments -->
-    <div class="hidden sm:flex border-y border-[#e2e8f0] bg-[#fafbfc] px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 items-center justify-between font-mono text-xs select-none">
-      <div class="flex items-center gap-2">
-        <span class="text-[#87b2f4] font-semibold">// 03</span>
-        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">Environments</span>
-      </div>
-    </div>
+    <SectionDivider />
 
     <!-- Environments Section -->
     <section class="relative px-6 sm:px-8 md:px-10 lg:px-12 py-8 sm:py-16">
@@ -751,13 +734,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       </div>
     </section>
 
-    <!-- Section Divider: 04 FAQ -->
-    <div class="hidden sm:flex border-y border-[#e2e8f0] bg-[#fafbfc] px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 items-center justify-between font-mono text-xs select-none">
-      <div class="flex items-center gap-2">
-        <span class="text-[#87b2f4] font-semibold">// 04</span>
-        <span class="text-[#090a0f] font-medium tracking-wider uppercase text-[11px] sm:text-xs">FAQ</span>
-      </div>
-    </div>
+    <SectionDivider />
 
     <!-- FAQ Section -->
     <section id="faq" class="relative px-6 sm:px-8 md:px-10 lg:px-12 pt-8 sm:pt-16 pb-8 sm:pb-10">
@@ -803,7 +780,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
     </section>
 
     <!-- Minimal Action Bar Above Footer (No divider, seamless on bg-white) -->
-    <section class="px-6 sm:px-8 md:px-10 lg:px-12 pt-8 sm:pt-10 pb-10 sm:pb-12 text-center">
+    <section class="px-6 sm:px-8 md:px-10 lg:px-12 pt-8 sm:pt-10 pb-10 sm:pb-20 text-center">
       <div class="max-w-md mx-auto flex flex-col items-center">
         <h3 class="text-xl sm:text-2xl font-medium tracking-tight text-[#090a0f]">
           Start building with December
