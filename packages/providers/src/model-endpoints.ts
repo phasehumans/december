@@ -461,8 +461,7 @@ const withContext = (option: ModelOption, contextWindow?: number): ModelOption =
 
 export function formatModelLabel(id: string): string {
     if (!id) return ''
-    const parts = id.split(/[/:]/)
-    const last = parts[parts.length - 1]
+    const last = id.split(/[/:]/).pop() || id
     return last
         .split(/[-_]/)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
