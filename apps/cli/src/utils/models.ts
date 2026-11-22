@@ -178,21 +178,38 @@ export const getCuratedProviderModels = (provider: string): { label: string; val
     return [{ label: 'Default', value: 'default' }]
 }
 
-export const getProviderModels = (provider: string) => {
-    const normalized = (provider || '').toLowerCase().trim()
+/**
+ * The newest fresh live list for a provider. The newest one belongs to the credential that was
+ * checked or refreshed last, which is the active one; an older list from another key or base url
+ * must not decide which models are valid.
+ */
+function newestLiveEntry(provider: string): LiveModelCacheEntry | undefined {
     initDiskCacheSync()
     const now = Date.now()
+    let newest: LiveModelCacheEntry | undefined
     for (const [key, entry] of liveModelCache.entries()) {
-        if (key.startsWith(`${normalized}:`) && now - entry.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
-            const unavail = new Set((entry.unavailable || []).map((m) => m.toLowerCase()))
-            return entry.models.filter((m) => !unavail.has(m.value.toLowerCase()))
-        }
+        if (!key.startsWith(`${provider}:`)) continue
+        // `<provider>:default:default` holds the curated list minus failed models, not a live list
+        if (key.split(':')[1] === 'default') continue
+        if (now - entry.timestamp >= LIVE_MODEL_CACHE_TTL_MS) continue
+        if (!newest || entry.timestamp > newest.timestamp) newest = entry
     }
+    return newest
+}
+
+const withoutUnavailable = (entry: LiveModelCacheEntry, models: ModelOption[]): ModelOption[] => {
+    const unavail = new Set((entry.unavailable || []).map((m) => m.toLowerCase()))
+    return models.filter((m) => !unavail.has(m.value.toLowerCase()))
+}
+
+export const getProviderModels = (provider: string) => {
+    const normalized = (provider || '').toLowerCase().trim()
+    const live = newestLiveEntry(normalized)
+    if (live) return withoutUnavailable(live, live.models)
     const curated = getCuratedProviderModels(normalized)
     for (const [key, entry] of liveModelCache.entries()) {
         if (key.startsWith(`${normalized}:`) && entry.unavailable && entry.unavailable.length > 0) {
-            const unavail = new Set(entry.unavailable.map((m) => m.toLowerCase()))
-            return curated.filter((m) => !unavail.has(m.value.toLowerCase()))
+            return withoutUnavailable(entry, curated)
         }
     }
     return curated
@@ -281,14 +298,17 @@ export async function fetchLiveProviderModels(
     }
 
     try {
+        // the key counts as checked only when the key check answered ok (or there is none)
+        let keyChecked = !request.keyCheck
         if (request.keyCheck) {
             const check = await fetchFn(request.keyCheck.url, {
                 method: request.keyCheck.method || 'GET',
                 headers: request.keyCheck.headers,
                 body: request.keyCheck.body,
                 signal: AbortSignal.timeout(MODELS_TIMEOUT_MS),
-            })
-            if (!check.ok) {
+            }).catch(() => undefined)
+            keyChecked = Boolean(check?.ok)
+            if (check && !check.ok) {
                 const body = await check.text().catch(() => '')
                 const reason = classifyModelsFailure(check.status, body)
                 if (reason === 'bad_key' || reason === 'forbidden') {
@@ -328,7 +348,7 @@ export async function fetchLiveProviderModels(
         saveDiskCache().catch(() => {
             // Intentionally swallowed: cache write failure only costs a refetch
         })
-        return { ok: true, models, verified: request.verifiesKey }
+        return { ok: true, models, verified: request.verifiesKey && keyChecked }
     } catch (err: any) {
         return { ok: false, reason: 'network', message: err?.message }
     }
@@ -380,18 +400,8 @@ export async function checkProviderKey(
 
 /** the cached live list for a provider, or undefined when december has not read one yet */
 export const getLiveProviderModels = (provider: string): ModelOption[] | undefined => {
-    const normalized = (provider || '').toLowerCase().trim()
-    initDiskCacheSync()
-    const now = Date.now()
-    for (const [key, entry] of liveModelCache.entries()) {
-        if (key.startsWith(`${normalized}:`) && now - entry.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
-            // `<provider>:default:default` holds the curated list minus failed models, not a live list
-            if (key.split(':')[1] === 'default') continue
-            const unavail = new Set((entry.unavailable || []).map((m) => m.toLowerCase()))
-            return entry.models.filter((m) => !unavail.has(m.value.toLowerCase()))
-        }
-    }
-    return undefined
+    const live = newestLiveEntry((provider || '').toLowerCase().trim())
+    return live ? withoutUnavailable(live, live.models) : undefined
 }
 
 export const getModelLabel = (value: string) => {
@@ -635,14 +645,14 @@ export const ensureValidModelForProvider = (provider: string, model?: string): s
  * The context window for a model: what the provider's own model list says when we have read it
  * (G3), else the catalog, else a guess from the name.
  */
-export const getModelContextWindow = (model: string): number => {
+export const getModelContextWindow = (model: string, provider?: string): number => {
     const wanted = (model || '').toLowerCase().trim()
-    if (wanted) {
-        initDiskCacheSync()
-        for (const entry of liveModelCache.values()) {
-            const hit = entry.models.find((m) => m.value.toLowerCase() === wanted)
-            if (hit?.contextWindow) return hit.contextWindow
-        }
+    if (wanted && provider) {
+        // only the active provider's own list: another provider may serve the same id with a
+        // different context window
+        const live = newestLiveEntry(provider.toLowerCase().trim())
+        const hit = live?.models.find((m) => m.value.toLowerCase() === wanted)
+        if (hit?.contextWindow) return hit.contextWindow
     }
     return getCatalogContextWindow(model)
 }

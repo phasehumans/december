@@ -596,7 +596,9 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     onCheckModel?: (model: ModelItem) => { available: boolean; fallback?: ModelItem }
     onSaveApiKey?: (
         provider: string,
-        apiKey: string
+        apiKey: string,
+        /** aborted when the user presses esc while the key is being checked */
+        signal?: AbortSignal
     ) => Promise<ApiKeySaveResult | void> | ApiKeySaveResult | void
     switchItems?: SwitchItem[]
     onSwitchSelect?: (value: string) => Promise<void> | void
@@ -815,6 +817,7 @@ export class DifferentialApp {
     private onExitCallback?: () => void
     private onModelSelectCallback?: (model: ModelItem) => void
     private onModelMenuOpenCallback?: () => void
+    private keyCheckAbort?: AbortController
     private onCheckModelCallback?: (model: ModelItem) => {
         available: boolean
         fallback?: ModelItem
@@ -846,7 +849,9 @@ export class DifferentialApp {
     readonly recentFiles: Set<string> = new Set<string>()
     private onSaveApiKeyCallback?: (
         provider: string,
-        apiKey: string
+        apiKey: string,
+        /** aborted when the user presses esc while the key is being checked */
+        signal?: AbortSignal
     ) => Promise<ApiKeySaveResult | void> | ApiKeySaveResult | void
     private onOpenEditorCallback?: (filePath: string) => Promise<void> | void
     private isLoadingWorkspaceFiles = false
@@ -2561,11 +2566,16 @@ export class DifferentialApp {
     /** D4: checks the key with the provider, then saves it or shows why not */
     private submitApiKey(provider: string, apiKey: string): void {
         const providerName = formatProviderName(provider)
+        const abort = new AbortController()
+        this.keyCheckAbort = abort
         this.state.authKeyChecking = true
         this.state.authKeyError = null
         this.render()
 
         const finish = (outcome: ApiKeySaveResult | void) => {
+            // cancelled with esc: the cli saw the signal and saved nothing
+            if (abort.signal.aborted) return
+            this.keyCheckAbort = undefined
             this.state.authKeyChecking = false
             const result: ApiKeySaveResult = outcome || { status: 'saved' }
             const status = result.status
@@ -2620,7 +2630,7 @@ export class DifferentialApp {
             finish()
             return
         }
-        Promise.resolve(this.onSaveApiKeyCallback(provider, apiKey))
+        Promise.resolve(this.onSaveApiKeyCallback(provider, apiKey, abort.signal))
             .then(finish)
             .catch((err: any) => {
                 finish({
@@ -4924,6 +4934,16 @@ export class DifferentialApp {
 
     private handleOverlayEsc(): void {
         const overlay = this.state.activeOverlay
+
+        // esc while the provider checks a key cancels the check; the cli then saves nothing
+        if (overlay === 'auth' && this.state.authKeyChecking) {
+            this.keyCheckAbort?.abort()
+            this.keyCheckAbort = undefined
+            this.state.authKeyChecking = false
+            this.state.authViewMode = 'byok_provider'
+            this.render()
+            return
+        }
 
         if (overlay === 'report') {
             if (this.state.report?.input) {
@@ -7818,7 +7838,7 @@ export class DifferentialApp {
             }
 
             if (this.state.authViewMode === 'byok_key') {
-                // the key is with the provider: wait for the answer
+                // the key is with the provider: wait for the answer (esc is handled in handleOverlayEsc)
                 if (this.state.authKeyChecking) return
                 if (key === '\x1b') {
                     this.state.authViewMode = 'byok_provider'

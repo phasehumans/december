@@ -175,4 +175,19 @@ describe('classifyProviderError', () => {
         expect(classifyProviderError(moonshot).kind).toBe('no_credits')
         expect(classifyProviderError(sakana).kind).toBe('no_credits')
     })
+
+    it('does not call an ordinary bad request about a named model "model not available"', () => {
+        const err = Object.assign(new Error('400'), {
+            status: 400,
+            error: {
+                type: 'error',
+                error: {
+                    type: 'invalid_request_error',
+                    message:
+                        'max_tokens: 128000 > 64000, which is the maximum allowed number of output tokens for claude-sonnet-5',
+                },
+            },
+        })
+        expect(classifyProviderError(err, 'claude-sonnet-5').kind).toBe('bad_request')
+    })
 })

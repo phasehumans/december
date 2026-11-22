@@ -2090,6 +2090,42 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('D4: esc cancels a running key check and nothing is saved', async () => {
+        let seen: AbortSignal | undefined
+        let resolveCheck: (r: any) => void = () => {}
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onSaveApiKey: (_p, _k, signal) => {
+                seen = signal
+                return new Promise((resolve) => {
+                    resolveCheck = resolve
+                })
+            },
+        })
+        app.start()
+        app.state.activeOverlay = 'auth'
+        app.state.authViewMode = 'byok_key'
+        app.state.authProviders = [{ label: 'Groq', value: 'groq' }]
+        app.state.authProviderSelectedIndex = 0
+        app.state.authApiKeyInput = 'gsk_slow'
+
+        app.handleKey('\r')
+        expect(app.state.authKeyChecking).toBe(true)
+        app.handleKey('\x1b')
+        expect(seen?.aborted).toBe(true)
+        expect(app.state.authKeyChecking).toBe(false)
+        expect(app.state.authViewMode as string).toBe('byok_provider')
+
+        resolveCheck({ status: 'saved' })
+        await Promise.resolve()
+        await Promise.resolve()
+        expect(app.state.activeOverlay as string).toBe('auth')
+        expect(app.state.selectedProvider).not.toBe('groq')
+        app.stop()
+    })
+
     it('D4: saves a forbidden key, closes the menu and shows the provider reason', async () => {
         const app = new DifferentialApp({
             terminal,

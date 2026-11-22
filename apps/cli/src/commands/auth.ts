@@ -303,8 +303,10 @@ export async function handleKeyCommand(options?: {
     let checkNote = ''
     if (!isSTTProvider) {
         const { checkProviderKey } = await import('../utils/models')
+        // chat goes to the saved custom base url when there is one, so check the key there too
+        const savedBaseUrl = (await loadConfig()).providerBaseUrls?.[provider]
         console.log('Checking key...')
-        const check = await checkProviderKey(provider, finalKey, baseUrl)
+        const check = await checkProviderKey(provider, finalKey, baseUrl || savedBaseUrl)
         if (check.status === 'rejected') {
             const { PROVIDER_KEY_URLS } = await import('@december/tui')
             const keyUrl = PROVIDER_KEY_URLS[provider.toLowerCase()]

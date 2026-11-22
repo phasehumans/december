@@ -34,6 +34,7 @@ jobs:
             # public model lists are read without a key.
             - name: Sync model catalog from provider model lists
               run: |
+                  set -o pipefail
                   bun scripts/model-parity.ts --apply --no-subscriptions --keys env --json "$RUNNER_TEMP/parity.json" | tee "$RUNNER_TEMP/parity.md"
                   bun scripts/model-parity.ts --validate
               env:

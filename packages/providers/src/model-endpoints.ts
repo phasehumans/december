@@ -598,14 +598,17 @@ export async function fetchProviderModelIds(
     const request = resolveModelsRequest(provider, apiKey, baseUrl)
     if (!request) return { ok: false, reason: 'no_endpoint' }
     try {
+        // the key counts as checked only when the key check answered ok (or there is none)
+        let keyChecked = !request.keyCheck
         if (request.keyCheck) {
             const check = await fetchFn(request.keyCheck.url, {
                 method: request.keyCheck.method || 'GET',
                 headers: request.keyCheck.headers,
                 body: request.keyCheck.body,
                 signal: AbortSignal.timeout(8000),
-            })
-            if (!check.ok) {
+            }).catch(() => undefined)
+            keyChecked = Boolean(check?.ok)
+            if (check && !check.ok) {
                 const body = await check.text().catch(() => '')
                 const reason = classifyModelsFailure(check.status, body)
                 if (reason === 'bad_key' || reason === 'forbidden') {
@@ -635,7 +638,7 @@ export async function fetchProviderModelIds(
         }
         const ids = parseModelsResponse(request.parser, await res.json()).map((m) => m.value)
         if (ids.length === 0) return { ok: false, reason: 'no_endpoint', status: res.status }
-        return { ok: true, ids, verified: request.verifiesKey }
+        return { ok: true, ids, verified: request.verifiesKey && keyChecked }
     } catch (err: any) {
         return { ok: false, reason: 'network', message: err?.message }
     }

@@ -607,6 +607,43 @@ describe('models utils', () => {
         })
     })
 
+    describe('review fixes', () => {
+        const list = (ids: string[]) =>
+            (async () => new Response(JSON.stringify({ data: ids.map((id) => ({ id })) }))) as any
+
+        it('decides validity from the newest list, not the first cached one', async () => {
+            clearProviderModelsCache()
+            await fetchLiveProviderModels('groq', 'old-key', undefined, list(['old-only']))
+            await new Promise((r) => setTimeout(r, 5))
+            await fetchLiveProviderModels('groq', 'new-key', undefined, list(['new-only']))
+            expect(isValidModelForProvider('groq', 'new-only')).toBe(true)
+            expect(isValidModelForProvider('groq', 'old-only')).toBe(false)
+        })
+
+        it("reads a model's context window only from the active provider's list", async () => {
+            clearProviderModelsCache()
+            const withContext = (ctx: number) =>
+                (async () =>
+                    new Response(
+                        JSON.stringify({ data: [{ id: 'shared-model', context_length: ctx }] })
+                    )) as any
+            await fetchLiveProviderModels('cerebras', 'k1', undefined, withContext(8192))
+            await fetchLiveProviderModels('groq', 'k2', undefined, withContext(131072))
+            expect(getModelContextWindow('shared-model', 'groq')).toBe(131072)
+            expect(getModelContextWindow('shared-model', 'cerebras')).toBe(8192)
+        })
+
+        it('reports a key as unverified when the key check itself could not answer', async () => {
+            clearProviderModelsCache()
+            const fetchFn = (async (url: string) =>
+                url.endsWith('/key')
+                    ? new Response('busy', { status: 503 })
+                    : new Response(JSON.stringify({ data: [{ id: 'x/y' }] }))) as any
+            const result = await checkProviderKey('openrouter', 'sk-or-typo', undefined, fetchFn)
+            expect(result.status).toBe('unverified')
+        })
+    })
+
     describe('pickModelForProvider (D5)', () => {
         it('picks the catalog default when the provider offers it', async () => {
             clearProviderModelsCache()

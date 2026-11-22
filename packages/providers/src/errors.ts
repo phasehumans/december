@@ -167,8 +167,12 @@ const MODEL_400 =
 
 function isModelBadRequest(message: string, model?: string): boolean {
     if (MODEL_400.test(message)) return true
-    // a 400 that echoes the requested model id is about that model (sarvam: "should be one of")
-    return Boolean(model) && message.toLowerCase().includes(model.toLowerCase())
+    // a 400 that names the requested model and says it is missing (sarvam: "should be one of").
+    // naming the model alone is not enough: "max_tokens > 64000 for claude-sonnet-5" is a bad request
+    if (!model || !message.toLowerCase().includes(model.toLowerCase())) return false
+    return /not exist|not found|not supported|unsupported|not available|unavailable|should be one of|unknown|no access|not have access/i.test(
+        message
+    )
 }
 
 export function classifyProviderError(error: any, model?: string): ProviderErrorInfo {

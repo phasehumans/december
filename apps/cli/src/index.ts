@@ -326,13 +326,17 @@ async function main() {
         const config = await loadConfig()
         const activeProvider = providerConfig?.provider || config.activeProvider || 'gemini'
         // G2: headless runs pick their model from what the provider serves now (D1, D5)
+        // a fresh cached list answers at once; a slow network costs at most 3s before the run
         if (providerConfig?.apiKey && providerConfig.authMethod !== 'december') {
             const { fetchLiveProviderModels } = await import('./utils/models')
-            await fetchLiveProviderModels(
-                providerConfig.provider,
-                providerConfig.apiKey,
-                providerConfig.baseURL
-            )
+            await Promise.race([
+                fetchLiveProviderModels(
+                    providerConfig.provider,
+                    providerConfig.apiKey,
+                    providerConfig.baseURL
+                ),
+                new Promise((resolve) => setTimeout(resolve, 3000)),
+            ])
         }
         const initialModel =
             providerConfig?.authMethod === 'december'
@@ -664,7 +668,10 @@ async function main() {
                 differentialApp.refreshModelsForProvider(pc.provider)
                 const active = differentialApp.state.activeModel
                 if (active) {
-                    differentialApp.state.maxContextTokens = getModelContextWindow(active)
+                    differentialApp.state.maxContextTokens = getModelContextWindow(
+                        active,
+                        pc.provider
+                    )
                 }
                 differentialApp.render()
             }
@@ -800,13 +807,12 @@ async function main() {
                     }
                     if (errorCode === 'MODEL_UNAVAILABLE') {
                         // D5 with the provider's live list; the agent only knows the catalog
-                        const { markModelUnavailable, pickModelForProvider, modelFallbackHint } =
+                        // the model is marked unavailable only when the user accepts the switch
+                        const { pickModelForProvider, modelFallbackHint } =
                             await import('./utils/models')
                         const errProvider = event.provider || activeProv
-                        markModelUnavailable(errProvider, failedModel)
                         fallbackModel = pickModelForProvider(errProvider, [failedModel])
                         errorHint = modelFallbackHint(fallbackModel)
-                        differentialApp.refreshModelsForProvider(errProvider)
                     }
                     differentialApp.state.messages.push({
                         role: 'error',
@@ -983,7 +989,7 @@ async function main() {
         models: getProviderModels(activeProvider),
         getProviderModels: (provider) => getProviderModels(provider),
         contextTokens: 0,
-        maxContextTokens: getModelContextWindow(initialModel),
+        maxContextTokens: getModelContextWindow(initialModel, activeProvider),
         sessionId,
         thinkingLevel: config.thinkingLevel || 'fast',
         onAbort: () => {
@@ -1145,7 +1151,10 @@ async function main() {
                 }
                 differentialApp.state.activeModel = selected.value
                 differentialApp.state.modelLabel = selected.label
-                differentialApp.state.maxContextTokens = getModelContextWindow(selected.value)
+                differentialApp.state.maxContextTokens = getModelContextWindow(
+                    selected.value,
+                    activeProv
+                )
                 differentialApp.showToast(`Switched model to ${selected.label}`, 'success')
                 differentialApp.render()
             } catch (err: any) {
@@ -1186,7 +1195,10 @@ async function main() {
                 const fallbackLabel = getModelLabel(fallbackModel)
                 differentialApp.state.activeModel = fallbackModel
                 differentialApp.state.modelLabel = fallbackLabel
-                differentialApp.state.maxContextTokens = getModelContextWindow(fallbackModel)
+                differentialApp.state.maxContextTokens = getModelContextWindow(
+                    fallbackModel,
+                    activeProv
+                )
                 differentialApp.refreshModelsForProvider(activeProv)
                 differentialApp.showToast(
                     `Switched model to ${fallbackLabel} and retrying...`,
@@ -1298,11 +1310,15 @@ async function main() {
             }
             return bundle
         },
-        onSaveApiKey: async (provider: string, apiKey: string) => {
+        onSaveApiKey: async (provider: string, apiKey: string, signal?: AbortSignal) => {
             const { checkProviderKey, getDefaultModelForProvider } = await import('./utils/models')
             const cfgBefore = await loadConfig()
             const baseUrl = cfgBefore.providerBaseUrls?.[provider]
             const check = await checkProviderKey(provider, apiKey, baseUrl)
+            // the user pressed esc while the provider answered: save nothing
+            if (signal?.aborted) {
+                return { status: 'error' as const, message: 'Key check cancelled.' }
+            }
             if (check.status === 'rejected') {
                 return { status: 'rejected' as const, message: check.message }
             }
@@ -1320,7 +1336,10 @@ async function main() {
                 differentialApp.state.authMethod = 'byok'
                 differentialApp.state.activeModel = targetModel
                 differentialApp.state.modelLabel = getModelLabel(targetModel)
-                differentialApp.state.maxContextTokens = getModelContextWindow(targetModel)
+                differentialApp.state.maxContextTokens = getModelContextWindow(
+                    targetModel,
+                    provider
+                )
                 differentialApp.state.switchItems = getConfiguredProviders(cfg)
                 differentialApp.state.isAuthenticated = true
                 differentialApp.refreshModelsForProvider(provider)
