@@ -17,7 +17,7 @@ import { getWebUrl } from '@/shared/config/env'
 
 const CHATGPT_SOON_MS = 2500
 
-const legalLinkClass = 'text-white underline underline-offset-2'
+const legalLinkClass = 'text-white hover:text-[#EDEDED] transition-colors'
 
 export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     authMode,
@@ -105,11 +105,9 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
             </div>
 
             <form onSubmit={onSubmit} className="flex flex-col gap-2.5">
-                <label htmlFor="auth-email" className="font-sans text-xs text-[#a3a3a3]">
-                    Email address
-                </label>
                 <input
                     id="auth-email"
+                    aria-label="Email address"
                     type="email"
                     required
                     autoComplete="email"
