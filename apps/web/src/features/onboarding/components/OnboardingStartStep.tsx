@@ -1,8 +1,8 @@
 import { Check, Copy } from 'lucide-react'
 import React from 'react'
 
-import onboardingCliWebp from '../../../../assets/onboarding-cli.webp'
-import onboardingWebWebp from '../../../../assets/onboarding-web.webp'
+import { OnboardingTerminalMock } from './OnboardingTerminalMock'
+import { OnboardingWebMock } from './OnboardingWebMock'
 
 import { authPrimaryButtonClass } from '@/features/auth/components/authModalStyles'
 
@@ -13,9 +13,10 @@ const COPIED_MS = 1500
 const cardClass =
     'flex flex-col min-w-0 overflow-hidden rounded-md border border-[#2A2A2A] bg-[#181818]'
 
-// the dark window images sit on a warm stone ground so they stand out on the dark page
+// the dark window mocks sit on a warm stone ground so they stand out on the dark page;
+// @container lets each mock scale itself to the card width
 const shotClass =
-    'relative h-[120px] sm:h-[180px] overflow-hidden border-b border-[#2A2A2A] bg-gradient-to-b from-[#efede8] to-[#e3e0d9]'
+    '@container relative h-[120px] sm:h-[180px] overflow-hidden border-b border-[#2A2A2A] bg-gradient-to-b from-[#efede8] to-[#e3e0d9]'
 
 interface OnboardingStartStepProps {
     onContinueWithWeb: () => void
@@ -52,13 +53,7 @@ export const OnboardingStartStep: React.FC<OnboardingStartStepProps> = ({ onCont
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className={cardClass}>
                 <div className={shotClass}>
-                    <img
-                        src={onboardingCliWebp}
-                        alt="December CLI in a terminal window"
-                        width={302}
-                        height={282}
-                        className="absolute left-0 top-0 w-full h-auto"
-                    />
+                    <OnboardingTerminalMock stage={500} />
                 </div>
                 <div className="flex flex-col flex-1 gap-2.5 p-3.5">
                     <span className="text-[13.5px] font-medium text-white">December CLI</span>
@@ -91,13 +86,7 @@ export const OnboardingStartStep: React.FC<OnboardingStartStepProps> = ({ onCont
 
             <div className={`${cardClass} order-first sm:order-none`}>
                 <div className={shotClass}>
-                    <img
-                        src={onboardingWebWebp}
-                        alt="December web app in a browser window"
-                        width={306}
-                        height={282}
-                        className="absolute left-0 top-0 w-full h-auto"
-                    />
+                    <OnboardingWebMock stage={500} windowWidth={760} promptTop={66} />
                 </div>
                 <div className="flex flex-col flex-1 gap-2.5 p-3.5">
                     <span className="text-[13.5px] font-medium text-white">

@@ -8,4 +8,4 @@ export const authInputClass =
     'w-full bg-[#141414] border border-[#2A2A2A] rounded-md h-9 px-3 font-sans text-xs sm:text-[13px] text-white placeholder-[#666666] outline-none focus:border-[#87b2f4] transition-colors'
 
 export const authTextLinkClass =
-    'text-white hover:text-[#EDEDED] underline underline-offset-2 transition-colors cursor-pointer disabled:opacity-50'
+    'text-white hover:text-[#EDEDED] transition-colors cursor-pointer disabled:opacity-50'
