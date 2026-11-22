@@ -1,3 +1,24 @@
+## [0.4.21] - 2026-11-22
+
+### Features
+
+- _(tui,cli,agent,tools,docs)_ Notify when december needs you, and session changes in /diff
+- _(docs)_ Tidy the mobile landing page and turn /me into a minimal portfolio
+- _(cli,tui,providers)_ Verify provider keys and show only the models each provider serves (#623)
+- _(cli,tui,providers)_ Model details from models.dev and /model refresh
+
+### Bug Fixes
+
+- _(tui)_ Show how many plan steps are hidden in a long checklist
+
+### Refactor
+
+- _(cli)_ Move the settings rows into settings-menu and save before applying
+
+### Styling
+
+- _(docs)_ Replace the hatched side gutters with section dividers and darker rails
+
 ## [0.4.20] - 2026-11-21
 
 ### Features
@@ -23,6 +44,7 @@
 ### Miscellaneous Tasks
 
 - _(docs,web,cli)_ Drop (so much) from tagline, use a better coding agent
+- _(release)_ V0.4.20
 
 ## [0.4.19] - 2026-11-18
 

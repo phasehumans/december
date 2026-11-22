@@ -1,9 +1,9 @@
 {
-    "version": "0.4.20",
-    "title": "What's New in v0.4.20",
+    "version": "0.4.21",
+    "title": "What's New in v0.4.21",
     "bullets": [
-        "Simplify /memory into a read-only rules viewer",
-        "Refresh landing page, docs code blocks, and cloud nudge"
+        "Notify when december needs you, and session changes in /diff",
+        "Tidy the mobile landing page and turn /me into a minimal portfolio"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

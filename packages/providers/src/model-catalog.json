@@ -2208,11 +2208,6 @@
                     "contextWindow": 1000000
                 },
                 {
-                    "id": "DeepSeek-V4.1-Flash",
-                    "label": "DeepSeek V4.1 Flash",
-                    "contextWindow": 1048576
-                },
-                {
                     "id": "DeepSeek-V4-Flash-0731-Fast",
                     "label": "DeepSeek V4 Flash 0731 Fast",
                     "contextWindow": 1000000
