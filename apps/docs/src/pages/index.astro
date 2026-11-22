@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import InstallCommand from '../components/InstallCommand.astro';
 import SectionDivider from '../components/SectionDivider.astro';
 import HeroDither from '../components/HeroDither.astro';
+import DitherPanel from '../components/DitherPanel.astro';
 import { version } from '../lib/version';
 import { latestHighlight } from '../lib/changelog';
 import { landingFaq, faqParagraphHtml, landingFaqJsonLd } from '../lib/landing-faq';
@@ -19,18 +20,21 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
   hideHeader={false}
   hideFooter={false}
 >
-  <!-- Page Blueprint Chassis: 1200px wide column with side rails on desktop -->
+  <!-- Page Blueprint Chassis: 1280px wide column with side rails on desktop -->
   <div class="relative w-full overflow-x-clip">
-    <!-- Center Chassis (1200px wide, framed with clean line borders) -->
-    <div class="relative z-10 mx-auto max-w-[1200px] border-x border-transparent lg:border-[#cbd5e1] bg-white">
+    <!-- Center Chassis (1280px wide, framed with clean line borders) -->
+    <div class="relative z-10 mx-auto max-w-[1280px] border-x border-transparent lg:border-[#cbd5e1] bg-white">
       
       <!-- Hero Section -->
       <!-- overflow-x-clip keeps the dither inside the side rails -->
       <section class="relative overflow-x-clip px-6 sm:px-8 md:px-10 lg:px-12">
         <HeroDither />
-        <!-- First screen: from md up it fills the viewport below the header, so the demo video starts below the fold.
-             On phones the hero keeps its natural height, so there is no empty space around it. -->
-        <div class="flex md:min-h-[calc(100svh-3.5rem)] flex-col justify-center pt-8 pb-8 sm:pt-10 md:pb-24">
+        <!-- First screen: from md up the hero is the viewport height less two navbar heights (2 x 3rem).
+             The navbar takes one at the top, and the divider under the hero sits one navbar height above
+             the bottom edge. So the hero reads as a framed box (navbar line, side rails, divider) between
+             two bands of the same height, and the demo below starts after the fold. On phones the hero
+             keeps its natural height, so there is no empty space around it. -->
+        <div class="flex md:min-h-[calc(100svh-6rem)] flex-col justify-center pt-8 pb-8 sm:pt-10 md:pb-24">
         <!-- Centered Hero Header & CLI Script -->
         <div data-dither-source class="text-center max-w-3xl mx-auto flex flex-col items-center">
           <!-- Release Changelog Badge with Signature Corner Brackets (hidden on mobile) -->
@@ -300,7 +304,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
+          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-white border border-[#d6e6fd] rounded-[2px] overflow-hidden">
+            <DitherPanel seed={7919} />
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -311,7 +316,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               alt="No new subscription"
               width="240"
               height="240"
-              class="w-28 h-28 sm:w-36 sm:h-36 object-contain group-hover:scale-105 transition-transform duration-300"
+              class="relative w-28 h-28 sm:w-36 sm:h-36 object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
               decoding="async"
             />
@@ -336,7 +341,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
+          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-white border border-[#d6e6fd] rounded-[2px] overflow-hidden">
+            <DitherPanel seed={15838} />
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -347,7 +353,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               alt="Keeps working with your laptop closed"
               width="240"
               height="240"
-              class="w-28 h-28 sm:w-36 sm:h-36 object-contain group-hover:scale-105 transition-transform duration-300"
+              class="relative w-28 h-28 sm:w-36 sm:h-36 object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
               decoding="async"
             />
@@ -372,7 +378,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
+          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-white border border-[#d6e6fd] rounded-[2px] overflow-hidden">
+            <DitherPanel seed={23757} />
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -383,7 +390,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               alt="Big tasks finish faster"
               width="240"
               height="240"
-              class="w-28 h-28 sm:w-36 sm:h-36 object-contain group-hover:scale-105 transition-transform duration-300"
+              class="relative w-28 h-28 sm:w-36 sm:h-36 object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
               decoding="async"
             />
@@ -408,7 +415,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] border border-[#d6e6fd] rounded-[2px] overflow-hidden">
+          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-white border border-[#d6e6fd] rounded-[2px] overflow-hidden">
+            <DitherPanel seed={31676} />
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
@@ -419,7 +427,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
               alt="Works the way you work"
               width="240"
               height="240"
-              class="w-28 h-28 sm:w-36 sm:h-36 object-contain group-hover:scale-105 transition-transform duration-300"
+              class="relative w-28 h-28 sm:w-36 sm:h-36 object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
               decoding="async"
             />
@@ -520,7 +528,7 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
         </div>
 
         <!-- Right Column: Benchmarks Card (7 cols) -->
-        <div class="lg:col-span-7 p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col justify-between group">
+        <div class="lg:col-span-7 p-4 sm:p-5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] hover:shadow-xs transition-all flex flex-col group">
           <div>
             <div class="flex items-center justify-between font-mono text-xs text-[#090a0f] font-medium mb-3">
               <div class="flex items-center gap-1.5">
@@ -550,14 +558,15 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <!-- 3D Isometric Benchmark Chart Diagram -->
-          <div class="relative mt-4 py-3 sm:py-3.5 px-2 flex items-center justify-center bg-[#f8fafc]/50 border border-[#f1f5f9]">
+          <!-- 3D Isometric Benchmark Chart Diagram. From lg up it grows to fill the card, so the chart
+               scales up to match the taller cards on the left instead of leaving a gap above it. -->
+          <div class="relative mt-4 lg:flex-1 py-3 sm:py-3.5 px-2 flex items-center justify-center bg-[#f8fafc]/50 border border-[#f1f5f9]">
             <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#cbd5e1]"></span>
             <span class="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#cbd5e1]"></span>
             <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#cbd5e1]"></span>
 
-            <div class="relative w-full h-32 sm:h-36 lg:h-38">
+            <div class="relative w-full h-32 sm:h-36 lg:h-auto lg:self-stretch lg:min-h-38">
               <svg class="w-full h-full" viewBox="0 0 380 140" fill="none" preserveAspectRatio="xMidYMid meet">
                 <defs>
                   <!-- Fine Dither Dot Pattern for Comparative Bars -->
@@ -718,13 +727,14 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
 
             <!-- Terminal Illustration -->
-            <div class="mt-auto overflow-hidden border border-[#e2e8f0] rounded-[2px]">
+            <div class="relative mt-auto overflow-hidden border border-[#e2e8f0] rounded-[2px] bg-white">
+              <DitherPanel seed={4241} clear={false} />
               <img
-                src="/illustrations/terminal.webp?v=2"
+                src="/illustrations/terminal-window.webp"
                 alt="Terminal Environment"
                 width="354"
                 height="315"
-                class="w-full h-auto block object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                class="relative w-full h-auto block object-cover group-hover:scale-[1.02] transition-transform duration-300"
                 loading="lazy"
                 decoding="async"
               />
@@ -745,13 +755,14 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
 
             <!-- Web Illustration -->
-            <div class="mt-auto overflow-hidden border border-[#e2e8f0] rounded-[2px]">
+            <div class="relative mt-auto overflow-hidden border border-[#e2e8f0] rounded-[2px] bg-white">
+              <DitherPanel seed={9377} clear={false} />
               <img
-                src="/illustrations/web.webp?v=2"
+                src="/illustrations/web-window.webp"
                 alt="Web Cloud Environment"
                 width="354"
                 height="315"
-                class="w-full h-auto block object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                class="relative w-full h-auto block object-cover group-hover:scale-[1.02] transition-transform duration-300"
                 loading="lazy"
                 decoding="async"
               />

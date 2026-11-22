@@ -1,17 +1,19 @@
 ---
 // Hero Dither
-// Blue clouds around the landing hero, drawn as ordered (Bayer) dither pixels. A bowl
-// shaped area stays clear: it curves around the bottom half of the element marked
-// data-dither-source (the hero text block), and above the middle of that element its walls
-// open out toward the top of the section. Outside the bowl, drifting clouds fill the sides
-// and the bottom of the section, and fade out before they reach the navbar line. The clouds come from warped noise and rise slowly,
-// so the shapes keep changing.
+// Blue clouds around a section's content, drawn as ordered (Bayer) dither pixels. Used in
+// the landing hero and in the closing call to action. A bowl shaped area stays clear: it
+// curves around the bottom half of the element marked data-dither-source (the section's
+// text block), and above the middle of that element its walls open out toward the top of
+// the section. Outside the bowl, drifting clouds fill the sides and the bottom of the
+// section, and fade out before they reach the line at the top of the section. The clouds
+// come from warped noise and rise slowly, so the shapes keep changing.
 //
 // The clouds brighten around the mouse pointer, with a short trail.
 //
-// Place it as the first child of the hero <section>. The canvas covers the section and
-// nothing outside it, so the clouds stay between the page's side rails. Pixels are left out
-// around hero content marked with data-dither-hole, so text stays easy to read.
+// Place it as the first child of a <section> (more than one section can have one). The
+// canvas covers its section and nothing outside it, so the clouds stay between the page's
+// side rails. Pixels are left out around content in that section marked with
+// data-dither-hole, so text stays easy to read.
 //
 // data-dither-hole values:
 //   "box"      the element's bounding box
@@ -44,7 +46,7 @@
   const OVAL_Y = 1.52;
   const BOWL_FLARE = 0.5;
   const BOWL_CURVE = 1.1; // higher: the walls stay narrow longer, then open out near the top
-  const TOP_CLEAR = 30; // no clouds in this many px below the top of the section (the navbar line)
+  const TOP_CLEAR = 30; // no clouds in this many px below the top of the section (the line above it)
   const TOP_FADE = 240; // below TOP_CLEAR, the clouds fade in over this many px
   const RISE_FROM = 0.9; // clouds start at this e (the noise moves the edge in and out)
   const RISE_TO = 1.45; // clouds are at full strength from this e
@@ -96,7 +98,7 @@
     return u * u * (3 - 2 * u);
   };
 
-  let cleanup: (() => void) | null = null;
+  let cleanups: (() => void)[] = [];
 
   const holeRects = (section: HTMLElement): DOMRect[] => {
     const rects: DOMRect[] = [];
@@ -118,14 +120,11 @@
     return rects.filter((r) => r.width > 0 && r.height > 0);
   };
 
-  const initDither = () => {
-    cleanup?.();
-    cleanup = null;
-
-    const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-hero-dither]');
-    const section = canvas?.parentElement;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !section || !ctx) return;
+  // Start one dither on a canvas. Returns a function that stops it.
+  const initDither = (canvas: HTMLCanvasElement): (() => void) | null => {
+    const section = canvas.parentElement;
+    const ctx = canvas.getContext('2d');
+    if (!section || !ctx) return null;
 
     const desktop = window.matchMedia('(min-width: 768px)');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -186,7 +185,7 @@
       const weights: number[] = [];
       for (let row = 0; row < rows; row++) {
         const y = row * PIXEL + PIXEL / 2;
-        // The clouds thin out toward the navbar and are gone before they reach it
+        // The clouds thin out toward the top of the section and are gone before they reach it
         const top = smooth(TOP_CLEAR, TOP_CLEAR + TOP_FADE, y);
         if (top <= 0) continue;
         // Above the centre the bowl is open, and its walls widen toward the top of the page
@@ -350,7 +349,7 @@
     });
     start();
 
-    cleanup = () => {
+    return () => {
       disposed = true;
       stop();
       clearTimeout(resizeTimer);
@@ -364,9 +363,19 @@
     };
   };
 
-  document.addEventListener('astro:page-load', initDither);
-  document.addEventListener('astro:before-swap', () => {
-    cleanup?.();
-    cleanup = null;
-  });
+  const stopAll = () => {
+    cleanups.forEach((stop) => stop());
+    cleanups = [];
+  };
+
+  const initAll = () => {
+    stopAll();
+    document.querySelectorAll<HTMLCanvasElement>('canvas[data-hero-dither]').forEach((canvas) => {
+      const stop = initDither(canvas);
+      if (stop) cleanups.push(stop);
+    });
+  };
+
+  document.addEventListener('astro:page-load', initAll);
+  document.addEventListener('astro:before-swap', stopAll);
 </script>
