@@ -5,30 +5,22 @@ import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 
 import { byokRepository } from './byok.repository'
-import { buildKeyHint, byokUtils, verifyFailureMessage } from './byok.utils'
+import {
+    buildKeyHint,
+    byokUtils,
+    providerName,
+    toCredentialSummary,
+    verifyFailureMessage,
+} from './byok.utils'
 
 import type {
     AssertOwnKeyUsable,
     CheckKey,
-    CredentialRow,
-    CredentialSummary,
     DeleteCredential,
     ListCredentials,
     RefreshCredential,
     SaveCredential,
 } from './byok.types'
-
-const providerName = (provider: string) =>
-    BYOK_PROVIDERS.find((p) => p.id === provider)?.name || provider
-
-const toSummary = (row: CredentialRow): CredentialSummary => ({
-    provider: row.provider,
-    keyHint: row.keyHint,
-    models: Array.isArray(row.models) ? (row.models as string[]) : [],
-    defaultModel: row.defaultModel,
-    verifiedAt: row.verifiedAt,
-    lastUsedAt: row.lastUsedAt,
-})
 
 const checkKey = async (data: CheckKey) => {
     const { provider, apiKey } = data
@@ -55,7 +47,7 @@ const checkKey = async (data: CheckKey) => {
 const listCredentials = async (data: ListCredentials) => {
     const { userId } = data
     const rows = await byokRepository.findCredentialsByUser(userId)
-    return { providers: BYOK_PROVIDERS, credentials: rows.map(toSummary) }
+    return { providers: BYOK_PROVIDERS, credentials: rows.map(toCredentialSummary) }
 }
 
 const saveCredential = async (data: SaveCredential) => {
@@ -79,7 +71,7 @@ const saveCredential = async (data: SaveCredential) => {
         defaultModel: verified.defaultModel,
         verifiedAt: new Date(),
     })
-    return toSummary(row)
+    return toCredentialSummary(row)
 }
 
 const refreshCredential = async (data: RefreshCredential) => {
@@ -105,7 +97,7 @@ const refreshCredential = async (data: RefreshCredential) => {
         defaultModel: verified.defaultModel,
         verifiedAt: new Date(),
     })
-    return toSummary(row)
+    return toCredentialSummary(row)
 }
 
 const deleteCredential = async (data: DeleteCredential) => {
@@ -123,7 +115,7 @@ const assertOwnKeyUsable = async (data: AssertOwnKeyUsable) => {
     if (!credential) {
         throw new AppError(`add your ${providerName(provider)} key in settings first`, 400)
     }
-    const summary = toSummary(credential)
+    const summary = toCredentialSummary(credential)
     if (model && !summary.models.includes(model)) {
         throw new AppError(
             `${model} is not available with your ${providerName(provider)} key. Refresh the key or pick another model.`,

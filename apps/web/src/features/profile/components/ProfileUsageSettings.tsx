@@ -31,6 +31,10 @@ export const ProfileUsageSettings: React.FC = () => {
         })
     }
 
+    // Own-key runs are paid by the user's provider, so they show no December charge
+    const formatRowCost = (row: { costInCents: number; billingSource?: 'CREDITS' | 'OWN_KEY' }) =>
+        row.billingSource === 'OWN_KEY' ? 'your key' : `$${(row.costInCents / 100).toFixed(2)}`
+
     const formatModelName = (model: string) => {
         if (!model) return '-'
         const lower = model.toLowerCase()
@@ -107,9 +111,12 @@ export const ProfileUsageSettings: React.FC = () => {
 
     // compute metrics stats
     const stats = React.useMemo(() => {
+        // Own-key runs are paid by the user's provider, so they never count as December spend
         const totalCost =
             (history?.periods ?? []).reduce((sum, p) => sum + p.costInCents, 0) / 100 ||
-            displayEvents.reduce((sum, e) => sum + e.costInCents, 0) / 100
+            displayEvents
+                .filter((e) => e.billingSource !== 'OWN_KEY')
+                .reduce((sum, e) => sum + e.costInCents, 0) / 100
         const totalTokens = displayEvents.reduce((sum, e) => sum + e.totalTokens, 0)
 
         return {
@@ -274,7 +281,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                                             'Workspace Event'}
                                                     </span>
                                                     <span className="font-mono font-medium text-[#D6D5C9] shrink-0">
-                                                        ${(row.costInCents / 100).toFixed(2)}
+                                                        {formatRowCost(row)}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center justify-between font-sans text-[11.5px] text-[#7B7A79]">
@@ -307,7 +314,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                                 </div>
                                                 <div className="text-right">
                                                     <span className="text-[#D6D5C9] font-mono font-medium">
-                                                        ${(row.costInCents / 100).toFixed(2)}
+                                                        {formatRowCost(row)}
                                                     </span>
                                                 </div>
                                             </div>

@@ -59,7 +59,9 @@ export interface UsageEvent {
     inputTokens: number
     outputTokens: number
     totalTokens: number
+    // For own-key runs this is an estimate of the provider cost: December did not charge it
     costInCents: number
+    billingSource?: 'CREDITS' | 'OWN_KEY'
     projectId: string | null
     chatId: string | null
     externalRequestId: string | null

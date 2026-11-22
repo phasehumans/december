@@ -188,6 +188,56 @@ describe('GitHubApp Module Integration Tests', () => {
         expect(createdInstallation?.accountLogin).toBe('unclaimed-org-or-user')
     })
 
+    it('5c. POST /api/v1/githubapp/webhook - never links an installation to a deleted account (200)', async () => {
+        const githubId = `deleted-gh-${Date.now()}`
+        const deletedUser = await prisma.user.create({
+            data: {
+                name: 'Deleted GitHub user',
+                email: `ghapp-deleted-${Date.now()}@example.com`,
+                emailVerified: true,
+                githubId,
+                isDeleted: true,
+            },
+        })
+
+        try {
+            const payloadStr = JSON.stringify({
+                action: 'created',
+                installation: {
+                    id: 77778,
+                    account: { login: 'deleted-user-login', type: 'User', id: githubId },
+                    target_type: 'User',
+                    permissions: { issues: 'write' },
+                },
+                sender: { login: 'deleted-user-login', id: githubId },
+            })
+            const hmac = crypto.createHmac('sha256', env.GITHUB_APP_WEBHOOK_SECRET || 'secret')
+            hmac.update(payloadStr)
+
+            const res = await request(app)
+                .post('/api/v1/githubapp/webhook')
+                .set('Content-Type', 'application/json')
+                .set('x-hub-signature-256', `sha256=${hmac.digest('hex')}`)
+                .set('x-github-event', 'installation')
+                .send(payloadStr)
+
+            expect(res.status).toBe(200)
+            const installation = await prisma.githubAppInstallation.findUnique({
+                where: { installationId: '77778' },
+            })
+            expect(installation?.userId).toBeNull()
+            const stillDeleted = await prisma.user.findUnique({ where: { id: deletedUser.id } })
+            expect(stillDeleted?.githubAppInstall).toBeFalsy()
+        } finally {
+            await prisma.githubAppInstallation
+                .deleteMany({ where: { installationId: '77778' } })
+                .catch(() => {
+                    // Intentionally swallowed: test cleanup fallback
+                })
+            await cleanupTestUser({ id: deletedUser.id })
+        }
+    })
+
     it('6. POST /api/v1/githubapp/webhook - processes installation deleted event (200)', async () => {
         const { githubAppService } = await import('../../src/modules/githubapp/githubapp.service')
         let processUninstallCalledWith: any = null

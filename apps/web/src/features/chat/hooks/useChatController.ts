@@ -660,6 +660,7 @@ export const useChatController = (
             visibleUserMessage,
             model,
             provider,
+            billingSource,
         }: {
             kind: 'edit' | 'fix'
             prompt?: string
@@ -668,6 +669,8 @@ export const useChatController = (
             visibleUserMessage: string
             model?: string
             provider?: string
+            // the payment source the prompt box shows (December credits or the user's own key)
+            billingSource?: PromptInputSubmitOptions['billingSource']
         }) => {
             if (!activeProjectId) {
                 return
@@ -1016,6 +1019,7 @@ export const useChatController = (
                                   prompt: prompt ?? '',
                                   model,
                                   provider,
+                                  billingSource,
                                   signal: abortController.signal,
                                   onEvent: handleStreamEvent,
                               })
@@ -1120,6 +1124,7 @@ export const useChatController = (
                     visibleUserMessage: normalizedPrompt,
                     model: options?.model,
                     provider: options?.provider,
+                    billingSource: options?.billingSource,
                 })
             })
         },

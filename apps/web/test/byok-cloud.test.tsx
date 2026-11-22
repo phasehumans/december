@@ -323,6 +323,35 @@ describe('own-key failures over the socket', () => {
         }
     })
 
+    it('shows a rejected new own-key session as an own-key error, once', async () => {
+        const { ApiError } = await import('../src/shared/api/client')
+        spies.push(
+            spyOn(sessionAPI, 'createSession').mockImplementation(async () => {
+                throw new ApiError('add your OpenAI key in settings first', 400)
+            })
+        )
+        const events: any[] = []
+        const error = await generationAPI
+            .generateProjectStream({
+                prompt: 'build a todo app',
+                model: 'gpt-5',
+                provider: 'openai',
+                billingSource: 'OWN_KEY',
+                onEvent: (event: any) => events.push(event),
+            })
+            .catch((e) => e)
+
+        // the chat gets the error event with a BYOK_ code, so it offers "switch to december
+        // credits", and the rejection is an own-key error, so the chat does not show it twice
+        expect(events).toEqual([
+            {
+                type: 'AgentError',
+                data: { error: 'add your OpenAI key in settings first', code: 'BYOK_KEY_MISSING' },
+            },
+        ])
+        expect(isOwnKeyError(error)).toBe(true)
+    })
+
     it('rejects other agent errors as before', async () => {
         const { handlers, restore } = connectedSocketWithHandler()
         try {

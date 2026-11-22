@@ -49,6 +49,16 @@ describe('github oauth state and return path', () => {
         expect(githubOAuth.getReturnPath(at('/login', '?redirect=https://evil.com'))).toBe('/')
     })
 
+    test('paths that browsers turn into another origin are rejected', () => {
+        // browsers drop tab and newline characters, so these become //evil.com
+        expect(githubOAuth.getReturnPath(at('/login', '?redirect=%2F%09%2Fevil.com'))).toBe('/')
+        expect(githubOAuth.getReturnPath(at('/login', '?redirect=%2F%0A%2Fevil.com'))).toBe('/')
+        expect(githubOAuth.getReturnPath(at('/login', '?redirect=%2F%0D%2Fevil.com'))).toBe('/')
+        expect(githubOAuth.isSafeReturnPath('/\t/evil.com')).toBe(false)
+        expect(githubOAuth.isSafeReturnPath('/\\evil.com')).toBe(false)
+        expect(githubOAuth.isSafeReturnPath('/settings?tab=keys')).toBe(true)
+    })
+
     test('device activation keeps its code in the return path', () => {
         expect(githubOAuth.getReturnPath(at('/device/activate', '?code=ABCD-1234'))).toBe(
             '/device/activate?code=ABCD-1234'

@@ -8,6 +8,7 @@ import { env } from './env'
 import { byokService } from './modules/byok/byok.service'
 import { secretsService } from './modules/secrets/secrets.service'
 import { usageService } from './modules/usage/usage.service'
+import { AppError } from './shared/appError'
 
 const pubClient = new Redis(env.REDIS_URL || 'redis://localhost:6379', {
     maxRetriesPerRequest: null,
@@ -276,6 +277,17 @@ export function initSocket(httpServer: any) {
                     // own key: the user's key pays, so no credits are needed. the key itself is
                     // never put in the job: the worker loads and decrypts it.
                     if (billingSource === 'OWN_KEY') {
+                        // own keys belong to a signed-in user: stop here, before any lookup
+                        if (!userId) {
+                            const message = 'Sign in to use your own key.'
+                            socket.emit('agent_event', {
+                                type: 'AgentError',
+                                code: 'BYOK_KEY_MISSING',
+                                message,
+                            })
+                            socket.emit('error', { message })
+                            return
+                        }
                         try {
                             const credential = await byokService.assertOwnKeyUsable({
                                 userId,
@@ -285,7 +297,15 @@ export function initSocket(httpServer: any) {
                             // no model picked: use the key's own default, never a december model
                             model = data.model || credential.defaultModel
                         } catch (keyErr: any) {
-                            const message = keyErr?.message || 'Your own key cannot be used.'
+                            // only our own errors carry a message meant for the user; anything
+                            // else (a database error, say) gets the generic message
+                            const message =
+                                keyErr instanceof AppError
+                                    ? keyErr.message
+                                    : 'Your own key cannot be used.'
+                            if (!(keyErr instanceof AppError)) {
+                                console.error('[SERVER CORE] own key check failed:', keyErr)
+                            }
                             socket.emit('agent_event', {
                                 type: 'AgentError',
                                 code: 'BYOK_KEY_MISSING',

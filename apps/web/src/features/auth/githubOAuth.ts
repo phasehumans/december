@@ -6,14 +6,23 @@ const STATE_KEY = 'december:github-oauth-state'
 const RETURN_KEY = 'december:github-oauth-return'
 const CALLBACK_PATH = '/github/callback'
 
+// Any origin works here: it only lets URL() tell us whether the path stays on the origin
+const PROBE_ORIGIN = 'https://return-path.invalid'
+
+// A safe return path stays on our own origin. Browsers drop tab and newline characters
+// from URLs, so '/\t/evil.com' turns into '//evil.com': reject every control character,
+// then let URL() resolve the path and check that the origin did not change.
 const isSafeReturnPath = (path: string | null | undefined): path is string => {
-    return (
-        typeof path === 'string' &&
-        path.startsWith('/') &&
-        !path.startsWith('//') &&
-        !path.startsWith('/\\') &&
-        !path.startsWith(CALLBACK_PATH)
-    )
+    if (typeof path !== 'string' || !path.startsWith('/')) return false
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u001f\u007f]/.test(path)) return false
+    if (path.startsWith('//') || path.startsWith('/\\')) return false
+    if (path.startsWith(CALLBACK_PATH)) return false
+    try {
+        return new URL(path, PROBE_ORIGIN).origin === PROBE_ORIGIN
+    } catch {
+        return false // not a valid URL path
+    }
 }
 
 const createNonce = () => {

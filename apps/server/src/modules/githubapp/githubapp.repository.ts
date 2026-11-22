@@ -127,9 +127,10 @@ const findUserGithubId = async (userId: string) => {
     })
 }
 
+// Deleted accounts keep their github id, so skip them: never link an install to one
 const findUserIdByGithubId = async (githubId: string) => {
-    const user = await prisma.user.findUnique({
-        where: { githubId },
+    const user = await prisma.user.findFirst({
+        where: { githubId, isDeleted: false },
         select: { id: true },
     })
     return user?.id ?? null

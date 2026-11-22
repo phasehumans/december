@@ -1,6 +1,21 @@
-import { verifyByokKey } from '@december/providers'
+import { BYOK_PROVIDERS, verifyByokKey } from '@december/providers'
 
+import type { CredentialRow, CredentialSummary } from './byok.types'
 import type { ByokVerifyFailure } from '@december/providers'
+
+// the provider's display name, for messages ("add your OpenAI key")
+export const providerName = (provider: string): string =>
+    BYOK_PROVIDERS.find((p) => p.id === provider)?.name || provider
+
+// a stored credential as the client sees it: never the key itself
+export const toCredentialSummary = (row: CredentialRow): CredentialSummary => ({
+    provider: row.provider,
+    keyHint: row.keyHint,
+    models: Array.isArray(row.models) ? (row.models as string[]) : [],
+    defaultModel: row.defaultModel,
+    verifiedAt: row.verifiedAt,
+    lastUsedAt: row.lastUsedAt,
+})
 
 // last 4 characters of the key part. watsonx keys are API_KEY:PROJECT_ID, so the
 // project id is cut off first.

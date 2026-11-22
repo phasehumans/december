@@ -194,7 +194,7 @@ describe('Session Integration Tests', () => {
             .set('Authorization', `Bearer ${user1Token}`)
 
         expect(res.status).toBe(200)
-        expect(res.body.data.message).toContain('Disconnect signal received')
+        expect(res.body.data.message).toContain('Disconnect acknowledged')
     })
 
     it('11. GET /api/v1/session/:id/preview/:port - resolves preview target', async () => {

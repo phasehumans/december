@@ -876,21 +876,40 @@ const generateProjectStream = async ({
     if (!targetSessionId) {
         // create new session if no session id provided. an own-key session tells the
         // server which key pays, so it does not ask for credits.
-        const newSession = await sessionAPI.createSession({
-            prompt,
-            type: 'WEB',
-            repoUrl,
-            branch,
-            gitRef,
-            issueNumber,
-            ...(selection.billingSource === 'OWN_KEY'
-                ? {
-                      billingSource: 'OWN_KEY' as const,
-                      provider: selection.provider,
-                      model: selection.model,
-                  }
-                : {}),
-        })
+        let newSession: Awaited<ReturnType<typeof sessionAPI.createSession>>
+        try {
+            newSession = await sessionAPI.createSession({
+                prompt,
+                type: 'WEB',
+                repoUrl,
+                branch,
+                gitRef,
+                issueNumber,
+                ...(selection.billingSource === 'OWN_KEY'
+                    ? {
+                          billingSource: 'OWN_KEY' as const,
+                          provider: selection.provider,
+                          model: selection.model,
+                      }
+                    : {}),
+            })
+        } catch (error) {
+            // the server checks the own key before it creates the session (400, for example
+            // "add your OpenAI key in settings first"). show it the same way as a key failure
+            // during the run, with "switch to december credits", and do not show it twice.
+            if (
+                selection.billingSource === 'OWN_KEY' &&
+                error instanceof ApiError &&
+                error.status === 400
+            ) {
+                onEvent({
+                    type: 'AgentError',
+                    data: { error: error.message, code: 'BYOK_KEY_MISSING' },
+                })
+                throw new OwnKeyError(error.message, 'BYOK_KEY_MISSING')
+            }
+            throw error
+        }
         targetSessionId = newSession.id
 
         onEvent({
