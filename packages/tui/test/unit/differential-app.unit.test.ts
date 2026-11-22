@@ -2167,6 +2167,107 @@ describe('DifferentialApp Interactive Engine (Renderer)', () => {
         app.stop()
     })
 
+    it('/model: asks before switching to a model that cannot use tools', () => {
+        const selected: string[] = []
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onModelSelect: (m) => {
+                selected.push(m.value)
+            },
+        })
+        app.start()
+        app.state.models = [
+            { label: 'No Tools Model', value: 'no-tools', tools: false },
+            { label: 'Tool Model', value: 'with-tools', tools: true },
+        ]
+        app.state.activeOverlay = 'model'
+        app.state.modelSelectedIndex = 0
+
+        app.handleKey('\r')
+        expect(app.state.modelToolsConfirm?.value).toBe('no-tools')
+        expect(selected).toEqual([])
+        app.handleKey('n')
+        expect(app.state.modelToolsConfirm).toBeNull()
+
+        app.handleKey('\r')
+        app.handleKey('y')
+        expect(selected).toEqual(['no-tools'])
+
+        // a model with tools switches straight away
+        app.state.activeOverlay = 'model'
+        app.state.modelSelectedIndex = 1
+        app.handleKey('\r')
+        expect(selected).toEqual(['no-tools', 'with-tools'])
+        app.stop()
+    })
+
+    it('/model: r reads the provider list again and shows it is refreshing', async () => {
+        let finish: () => void = () => {}
+        let calls = 0
+        const app = new DifferentialApp({
+            terminal,
+            width: 80,
+            height: 24,
+            onModelRefresh: () => {
+                calls++
+                return new Promise<void>((resolve) => {
+                    finish = resolve
+                })
+            },
+        })
+        app.start()
+        app.state.models = [{ label: 'A', value: 'a', isNew: true, deprecated: true }]
+        app.state.activeOverlay = 'model'
+
+        app.handleKey('r')
+        expect(calls).toBe(1)
+        expect(app.state.modelRefreshing).toBe(true)
+        app.handleKey('r')
+        expect(calls).toBe(1)
+
+        finish()
+        await Promise.resolve()
+        await Promise.resolve()
+        expect(app.state.modelRefreshing).toBe(false)
+        app.stop()
+    })
+
+    it('D4: says how many models a saved key unlocked', async () => {
+        const toastFor = async (result: any) => {
+            const app = new DifferentialApp({
+                terminal,
+                width: 80,
+                height: 24,
+                onSaveApiKey: async () => result,
+            })
+            app.start()
+            app.state.activeOverlay = 'auth'
+            app.state.authViewMode = 'byok_key'
+            app.state.authProviders = [{ label: 'Deep Infra', value: 'deepinfra' }]
+            app.state.authProviderSelectedIndex = 0
+            app.state.authApiKeyInput = 'key'
+            app.handleKey('\r')
+            await Promise.resolve()
+            await Promise.resolve()
+            const message = app.state.toast?.message || ''
+            app.stop()
+            return message
+        }
+        expect(await toastFor({ status: 'saved', modelCount: 92 })).toContain('· 92 models')
+        expect(
+            await toastFor({
+                status: 'unverified',
+                unverifiedReason: 'not_verifiable',
+                modelCount: 16,
+            })
+        ).toContain('16 models (key not verified)')
+        expect(await toastFor({ status: 'unverified', unverifiedReason: 'no_endpoint' })).toContain(
+            "using December's model list"
+        )
+    })
+
     it('/model: offers an inline switch when the picked model is not available on the key', () => {
         const selected: string[] = []
         const app = new DifferentialApp({

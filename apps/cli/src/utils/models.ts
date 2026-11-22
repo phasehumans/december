@@ -7,7 +7,9 @@ import path from 'node:path'
 import {
     classifyModelsFailure,
     extractProviderMessage,
+    formatModelLabel,
     getModelContextWindow as getCatalogContextWindow,
+    getModelDetails,
     MODEL_CATALOG,
     parseModelsResponse,
     pickPreferredModel,
@@ -22,6 +24,8 @@ const MODELS_TIMEOUT_MS = 8000
 export interface LiveModelCacheEntry {
     timestamp: number
     models: ModelOption[]
+    /** ids that were not in the provider's previous list (shown with a `new` tag) */
+    newIds?: string[]
     unavailable?: string[]
 }
 
@@ -202,17 +206,39 @@ const withoutUnavailable = (entry: LiveModelCacheEntry, models: ModelOption[]): 
     return models.filter((m) => !unavail.has(m.value.toLowerCase()))
 }
 
+/**
+ * Adds models.dev details to a list: a proper name where the label was generated from the id,
+ * tool support, deprecation, and the `new` tag for ids that appeared since the last refresh.
+ */
+function withDetails(
+    provider: string,
+    models: ModelOption[],
+    newIds: string[] = []
+): ModelOption[] {
+    const fresh = new Set(newIds.map((id) => id.toLowerCase()))
+    return models.map((m) => {
+        const details = getModelDetails(provider, m.value)
+        const generated = m.label === m.value || m.label === formatModelLabel(m.value)
+        const out: ModelOption = { ...m }
+        if (details?.name && generated) out.label = details.name
+        if (details?.tools !== undefined) out.tools = details.tools
+        if (details?.deprecated) out.deprecated = true
+        if (fresh.has(m.value.toLowerCase())) out.isNew = true
+        return out
+    })
+}
+
 export const getProviderModels = (provider: string) => {
     const normalized = (provider || '').toLowerCase().trim()
     const live = newestLiveEntry(normalized)
-    if (live) return withoutUnavailable(live, live.models)
+    if (live) return withDetails(normalized, withoutUnavailable(live, live.models), live.newIds)
     const curated = getCuratedProviderModels(normalized)
     for (const [key, entry] of liveModelCache.entries()) {
         if (key.startsWith(`${normalized}:`) && entry.unavailable && entry.unavailable.length > 0) {
-            return withoutUnavailable(entry, curated)
+            return withDetails(normalized, withoutUnavailable(entry, curated))
         }
     }
-    return curated
+    return withDetails(normalized, curated)
 }
 
 export type LiveModelsFailureReason = ModelsFailureReason | 'no_key'
@@ -274,7 +300,9 @@ export async function fetchLiveProviderModels(
     provider: string,
     apiKey?: string,
     baseUrl?: string,
-    fetchFn: typeof fetch = fetch
+    fetchFn: typeof fetch = fetch,
+    /** force: read the provider's list now, even when the cached one is fresh (`r` in /model) */
+    options: { force?: boolean } = {}
 ): Promise<LiveModelsResult> {
     const normalized = (provider || '').toLowerCase().trim()
 
@@ -289,7 +317,7 @@ export async function fetchLiveProviderModels(
     const cacheKey = liveCacheKey(normalized, apiKey, baseUrl)
     const request = resolveModelsRequest(normalized, apiKey, baseUrl)
     const cached = liveModelCache.get(cacheKey)
-    if (cached && Date.now() - cached.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
+    if (!options.force && cached && Date.now() - cached.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
         return { ok: true, models: cached.models, verified: request?.verifiesKey ?? true }
     }
 
@@ -344,7 +372,13 @@ export async function fetchLiveProviderModels(
         }
 
         const models = orderByCatalog(normalized, live)
-        liveModelCache.set(cacheKey, { timestamp: Date.now(), models })
+        // new = not in the previous list; the very first list marks nothing as new
+        const previous = newestLiveEntry(normalized)
+        const before = new Set((previous?.models || []).map((m) => m.value.toLowerCase()))
+        const newIds = previous
+            ? models.filter((m) => !before.has(m.value.toLowerCase())).map((m) => m.value)
+            : []
+        liveModelCache.set(cacheKey, { timestamp: Date.now(), models, newIds })
         saveDiskCache().catch(() => {
             // Intentionally swallowed: cache write failure only costs a refetch
         })
@@ -357,7 +391,13 @@ export async function fetchLiveProviderModels(
 export type KeyCheckResult =
     | { status: 'valid'; models: ModelOption[] }
     | { status: 'rejected' | 'forbidden'; message?: string; httpStatus?: number }
-    | { status: 'unverified'; reason: LiveModelsFailureReason; message?: string }
+    | {
+          status: 'unverified'
+          /** not_verifiable: the list answers any key, so it came back but proves nothing */
+          reason: LiveModelsFailureReason | 'not_verifiable'
+          message?: string
+          models?: ModelOption[]
+      }
 
 /**
  * D4: checks a key with the provider's model list before december saves it.
@@ -390,7 +430,7 @@ export async function checkProviderKey(
 
     if (result.ok === true) {
         if (result.verified) return { status: 'valid', models: result.models }
-        return { status: 'unverified', reason: 'no_endpoint' }
+        return { status: 'unverified', reason: 'not_verifiable', models: result.models }
     }
     if (result.reason === 'forbidden') {
         return { status: 'forbidden', message: result.message, httpStatus: result.status }
@@ -648,11 +688,21 @@ export const ensureValidModelForProvider = (provider: string, model?: string): s
 export const getModelContextWindow = (model: string, provider?: string): number => {
     const wanted = (model || '').toLowerCase().trim()
     if (wanted && provider) {
-        // only the active provider's own list: another provider may serve the same id with a
-        // different context window
-        const live = newestLiveEntry(provider.toLowerCase().trim())
+        const normalized = provider.toLowerCase().trim()
+        // 1. the active provider's own list (another provider may serve the same id differently)
+        const live = newestLiveEntry(normalized)
         const hit = live?.models.find((m) => m.value.toLowerCase() === wanted)
         if (hit?.contextWindow) return hit.contextWindow
+        // 2. this provider's catalog entry
+        const canonical = MODEL_CATALOG.aliases[normalized] || normalized
+        const cat = MODEL_CATALOG.providers[canonical]?.models.find(
+            (m) => m.id.toLowerCase() === wanted
+        )
+        if (cat?.contextWindow) return cat.contextWindow
+        // 3. models.dev
+        const details = getModelDetails(normalized, model)
+        if (details?.contextWindow) return details.contextWindow
     }
+    // 4. any catalog entry, then a guess from the name
     return getCatalogContextWindow(model)
 }

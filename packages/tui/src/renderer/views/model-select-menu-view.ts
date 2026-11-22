@@ -18,6 +18,12 @@ export const MODEL_WINDOW_SIZE = 7
 export interface ModelItem {
     label: string
     value: string
+    /** false: the model cannot call tools (picking it asks first) */
+    tools?: boolean
+    /** the provider still lists it, but models.dev marks it deprecated */
+    deprecated?: boolean
+    /** appeared since the previous refresh */
+    isNew?: boolean
 }
 
 export interface ModelSelectMenuViewProps {
@@ -34,6 +40,10 @@ export interface ModelSelectMenuViewProps {
     isSearching: boolean
     /** the picked model is not available on this key: offer `fallbackLabel` inline */
     confirmSwitch?: { failedValue: string; fallbackLabel: string } | null
+    /** the picked model cannot use tools: ask before switching */
+    confirmNoTools?: string | null
+    /** `r` is reading the provider's list again */
+    refreshing?: boolean
 }
 
 export const ModelSelectMenuView = {
@@ -78,7 +88,10 @@ export const ModelSelectMenuView = {
             x,
             y,
             title: 'Model',
-            meta: [provider, count].filter(Boolean).join(' · ') || undefined,
+            meta:
+                [provider, count, props.refreshing ? 'refreshing…' : '']
+                    .filter(Boolean)
+                    .join(' · ') || undefined,
             width,
         })
         y += 1
@@ -137,8 +150,24 @@ export const ModelSelectMenuView = {
                     width,
                     selected: windowStart + i === props.selectedIndex,
                     label: item.label,
-                    tag: isActive ? 'current' : undefined,
+                    tag:
+                        [
+                            isActive ? 'current' : '',
+                            item.isNew ? 'new' : '',
+                            item.deprecated ? 'deprecated' : '',
+                        ]
+                            .filter(Boolean)
+                            .join(' · ') || undefined,
                 })
+                if (props.confirmNoTools && props.confirmNoTools === item.value) {
+                    const labelEnd = x + 2 + Math.min(item.label.length, Math.max(4, width - 2))
+                    drawInlineConfirm(buffer, {
+                        x: labelEnd,
+                        y: y + i,
+                        text: " [Can't use tools · switch anyway? (y/n)]",
+                        tone: 'warning',
+                    })
+                }
                 if (props.confirmSwitch && props.confirmSwitch.failedValue === item.value) {
                     const labelEnd = x + 2 + Math.min(item.label.length, Math.max(4, width - 2))
                     drawInlineConfirm(buffer, {
@@ -163,23 +192,26 @@ export const ModelSelectMenuView = {
 
         // Footer at bottom of viewport
         const footerY = (props.y ?? 0) + (props.height ?? this.getHeight(filtered.length)) - 1
-        const footerItems = props.confirmSwitch
-            ? [
-                  { key: 'y', label: 'switch' },
-                  { key: 'n / esc', label: 'cancel' },
-              ]
-            : props.isSearching
-              ? [
-                    { key: 'enter / ↓', label: 'focus list' },
-                    { key: 'esc', label: 'exit search' },
-                ]
-              : [
-                    { key: '↑/↓', label: 'navigate' },
-                    { key: 'enter', label: 'select' },
-                    { key: '/', label: 'search' },
-                    { key: '/switch', label: 'provider' },
-                    { key: 'esc', label: 'close' },
-                ]
+        const footerItems =
+            props.confirmSwitch || props.confirmNoTools
+                ? [
+                      { key: 'y', label: 'switch' },
+                      { key: 'n / esc', label: 'cancel' },
+                  ]
+                : props.isSearching
+                  ? [
+                        { key: 'enter / ↓', label: 'focus list' },
+                        { key: 'esc', label: 'exit search' },
+                    ]
+                  : [
+                        { key: '↑/↓', label: 'navigate' },
+                        { key: 'enter', label: 'select' },
+                        { key: '/', label: 'search' },
+                        { key: '/switch', label: 'provider' },
+                        // after /switch: at 80 columns today's footer stays as it was and r hides
+                        { key: 'r', label: 'refresh' },
+                        { key: 'esc', label: 'close' },
+                    ]
 
         MenuFooterView.render(buffer, {
             x: props.x ?? 0,

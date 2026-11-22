@@ -217,6 +217,10 @@ export type PluginConfirmAction =
 export interface ApiKeySaveResult {
     status: 'saved' | 'rejected' | 'forbidden' | 'unverified' | 'error'
     message?: string
+    /** how many models the key unlocked, when the provider listed them */
+    modelCount?: number
+    /** unverified only: why the key could not be checked */
+    unverifiedReason?: 'not_verifiable' | 'no_endpoint' | 'network' | 'no_key' | string
 }
 
 export interface PendingModelFallback {
@@ -427,6 +431,10 @@ export interface DifferentialAppState {
     authKeyChecking: boolean
     /** /model: the picked model is not available on this key, waiting for y/n */
     modelSwitchConfirm: { failed: ModelItem; fallback: ModelItem } | null
+    /** /model: the picked model cannot use tools, waiting for y/n */
+    modelToolsConfirm: ModelItem | null
+    /** /model: `r` is reading the provider's list again */
+    modelRefreshing: boolean
     authMenuSelectedIndex: number
     authConfirmDeleteValue: string | null
     authConfirmTarget: { label: string; value: string; account?: string } | null
@@ -592,6 +600,8 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     recentFiles?: Set<string>
     /** /model opened: the cli refreshes the provider's model list when it is stale (G1) */
     onModelMenuOpen?: () => void
+    /** `r` in /model: the cli reads the provider's list now and reports what changed */
+    onModelRefresh?: () => Promise<void> | void
     /** says whether the key can use `model`, and which model to offer instead (D5) */
     onCheckModel?: (model: ModelItem) => { available: boolean; fallback?: ModelItem }
     onSaveApiKey?: (
@@ -817,6 +827,7 @@ export class DifferentialApp {
     private onExitCallback?: () => void
     private onModelSelectCallback?: (model: ModelItem) => void
     private onModelMenuOpenCallback?: () => void
+    private onModelRefreshCallback?: () => Promise<void> | void
     private keyCheckAbort?: AbortController
     private onCheckModelCallback?: (model: ModelItem) => {
         available: boolean
@@ -938,6 +949,7 @@ export class DifferentialApp {
         this.onModelSelectCallback = options?.onModelSelect
         this.onCheckModelCallback = options?.onCheckModel
         this.onModelMenuOpenCallback = options?.onModelMenuOpen
+        this.onModelRefreshCallback = options?.onModelRefresh
         this.getProviderModelsCallback = options?.getProviderModels
         this.onEffortSelectCallback = options?.onEffortSelect
         this.onLoginCallback = options?.onLogin
@@ -1089,6 +1101,8 @@ export class DifferentialApp {
             authKeyError: null,
             authKeyChecking: false,
             modelSwitchConfirm: null,
+            modelToolsConfirm: null,
+            modelRefreshing: false,
             authMenuSelectedIndex: 0,
             authConfirmDeleteValue: null,
             authConfirmTarget: null,
@@ -2616,9 +2630,27 @@ export class DifferentialApp {
                     'error'
                 )
             } else if (status === 'unverified') {
+                const count = result.modelCount
+                if (result.unverifiedReason === 'not_verifiable' && count) {
+                    this.showToast(
+                        `Saved key for ${providerName} · ${count} models (key not verified)`,
+                        'info'
+                    )
+                } else if (result.unverifiedReason === 'no_endpoint') {
+                    this.showToast(
+                        `Saved key for ${providerName} · using December's model list`,
+                        'info'
+                    )
+                } else {
+                    this.showToast(
+                        `Saved key for ${providerName}. Could not verify it, December will check on the first message.`,
+                        'info'
+                    )
+                }
+            } else if (result.modelCount) {
                 this.showToast(
-                    `Saved key for ${providerName}. Could not verify it, December will check on the first message.`,
-                    'info'
+                    `Saved key for ${providerName} · ${result.modelCount} models`,
+                    'success'
                 )
             } else {
                 this.showToast(`Saved API key for ${providerName}.`, 'success')
@@ -6387,6 +6419,20 @@ export class DifferentialApp {
                 this.state.modelSearchQuery
             )
 
+            if (this.state.modelToolsConfirm) {
+                const target = this.state.modelToolsConfirm
+                if (key === 'y' || key === 'Y' || key === '\r' || key === '\n') {
+                    this.state.modelToolsConfirm = null
+                    this.applyModelSelection(target)
+                    return
+                }
+                if (key === 'n' || key === 'N' || key === '\x1b') {
+                    this.state.modelToolsConfirm = null
+                    this.render()
+                }
+                return
+            }
+
             if (this.state.modelSwitchConfirm) {
                 const pending = this.state.modelSwitchConfirm
                 if (key === 'y' || key === 'Y' || key === '\r' || key === '\n') {
@@ -6479,7 +6525,28 @@ export class DifferentialApp {
                     this.render()
                     return
                 }
+                // decision 2c: a model without tools is allowed, after an inline confirm
+                if (selected.tools === false) {
+                    this.state.modelToolsConfirm = selected
+                    this.render()
+                    return
+                }
                 this.applyModelSelection(selected)
+                return
+            }
+
+            if ((key === 'r' || key === 'R') && this.onModelRefreshCallback) {
+                if (this.state.modelRefreshing) return
+                this.state.modelRefreshing = true
+                this.render()
+                Promise.resolve(this.onModelRefreshCallback())
+                    .catch(() => {
+                        // Intentionally swallowed: the cli reports refresh failures in a toast
+                    })
+                    .finally(() => {
+                        this.state.modelRefreshing = false
+                        this.render()
+                    })
                 return
             }
 
@@ -10097,6 +10164,8 @@ export class DifferentialApp {
                               fallbackLabel: this.state.modelSwitchConfirm.fallback.label,
                           }
                         : null,
+                    confirmNoTools: this.state.modelToolsConfirm?.value ?? null,
+                    refreshing: this.state.modelRefreshing,
                 })
             } else if (overlay === 'tasks') {
                 TasksModeMenuView.render(this.screen.backBuffer, {

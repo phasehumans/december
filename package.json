@@ -52,6 +52,7 @@
         "models:check": "bun scripts/model-parity.ts --validate",
         "models:sync": "bun scripts/model-parity.ts --apply --no-subscriptions",
         "models:parity": "bun scripts/model-parity.ts",
+        "models:metadata": "bun scripts/sync-model-metadata.ts",
         "dev:cli": "NODE_ENV=development bun run --watch apps/cli/src/index.ts",
         "verify": "bash scripts/verify.sh",
         "reset": "bash scripts/reset.sh",

@@ -18,6 +18,7 @@ console.log(`Releasing v${version}...`)
 // present, public model lists otherwise), then check it
 console.log('Syncing model provider catalog with live endpoints...')
 await $`bun run models:sync`
+await $`bun run models:metadata`
 await $`bun run models:check`
 
 const glob = new Bun.Glob('**/package.json')

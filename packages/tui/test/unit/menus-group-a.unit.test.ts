@@ -262,6 +262,50 @@ describe('menus group A', () => {
             expect(noBoldExcept(buffer, [0])).toBe(true)
         })
 
+        it('tags new and deprecated models, shows refreshing, and offers r refresh', () => {
+            const buffer = new ScreenBuffer(110, 12)
+            ModelSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 110,
+                height: 10,
+                models: [
+                    { label: 'Opus 5.5', value: 'opus-5-5', isNew: true },
+                    { label: 'Llama 3.3', value: 'llama-3-3', deprecated: true },
+                ],
+                activeModel: 'opus-5-5',
+                providerName: 'Anthropic',
+                selectedIndex: 1,
+                windowStart: 0,
+                searchQuery: '',
+                isSearching: false,
+                refreshing: true,
+            })
+            expect(buffer.getLine(0)).toContain('anthropic · 2 models · refreshing…')
+            expect(buffer.getLine(3)).toContain('Opus 5.5  current · new')
+            expect(buffer.getLine(4)).toContain('Llama 3.3  deprecated')
+            expect(buffer.getLine(9)).toContain('r refresh')
+        })
+
+        it('asks inline before switching to a model that cannot use tools', () => {
+            const buffer = new ScreenBuffer(80, 12)
+            ModelSelectMenuView.render(buffer, {
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                models: [{ label: 'Tiny', value: 'tiny', tools: false }],
+                providerName: 'Groq',
+                selectedIndex: 0,
+                windowStart: 0,
+                searchQuery: '',
+                isSearching: false,
+                confirmNoTools: 'tiny',
+            })
+            expect(buffer.getLine(3)).toContain("Tiny [Can't use tools · switch anyway? (y/n)]")
+            expect(buffer.getLine(9)).toContain('y switch')
+        })
+
         it('shows the empty state instead of a fixed list of old models', () => {
             const buffer = new ScreenBuffer(80, 8)
             ModelSelectMenuView.render(buffer, {

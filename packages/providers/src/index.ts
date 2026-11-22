@@ -1,6 +1,7 @@
 export * from './types.ts'
 export * from './errors.ts'
 export * from './model-endpoints.ts'
+export * from './model-metadata.ts'
 export * from './normalizer/index.ts'
 export { registerProvider, getProvider, getAllProviders } from './registry.ts'
 

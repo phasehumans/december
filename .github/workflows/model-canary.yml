@@ -29,62 +29,21 @@ jobs:
             - name: Generate Prisma Client
               run: bun db:generate
 
-            # issue #619: asks every provider which models it serves (a free GET /models per
-            # provider) and updates the catalog. a missing secret only skips that provider;
-            # public model lists are read without a key.
-            - name: Sync model catalog from provider model lists
+            # no provider keys in ci: which models exist comes from each user's own key (d1).
+            # this job reads only public model lists and models.dev (mit) for model details.
+            - name: Sync model catalog from public model lists
               run: |
                   set -o pipefail
-                  bun scripts/model-parity.ts --apply --no-subscriptions --keys env --json "$RUNNER_TEMP/parity.json" | tee "$RUNNER_TEMP/parity.md"
+                  bun scripts/model-parity.ts --apply --no-subscriptions --json "$RUNNER_TEMP/parity.json" | tee "$RUNNER_TEMP/parity.md"
                   bun scripts/model-parity.ts --validate
-              env:
-                  ABACUS_API_KEY: ${{ secrets.ABACUS_API_KEY }}
-                  AI21_API_KEY: ${{ secrets.AI21_API_KEY }}
-                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-                  ARCEE_API_KEY: ${{ secrets.ARCEE_API_KEY }}
-                  ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
-                  CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-                  COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-                  DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
-                  DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY }}
-                  DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-                  FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
-                  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-                  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-                  HF_TOKEN: ${{ secrets.HF_TOKEN }}
-                  HYPERBOLIC_API_KEY: ${{ secrets.HYPERBOLIC_API_KEY }}
-                  INCEPTION_API_KEY: ${{ secrets.INCEPTION_API_KEY }}
-                  KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
-                  META_API_KEY: ${{ secrets.META_API_KEY }}
-                  MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
-                  MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-                  MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
-                  MORPH_API_KEY: ${{ secrets.MORPH_API_KEY }}
-                  NEBIUS_API_KEY: ${{ secrets.NEBIUS_API_KEY }}
-                  NOVITA_API_KEY: ${{ secrets.NOVITA_API_KEY }}
-                  NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-                  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-                  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-                  PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
-                  SAKANA_API_KEY: ${{ secrets.SAKANA_API_KEY }}
-                  SAMBANOVA_API_KEY: ${{ secrets.SAMBANOVA_API_KEY }}
-                  SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
-                  SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
-                  STEPFUN_API_KEY: ${{ secrets.STEPFUN_API_KEY }}
-                  TENCENT_TOKENHUB_API_KEY: ${{ secrets.TENCENT_TOKENHUB_API_KEY }}
-                  TINKER_API_KEY: ${{ secrets.TINKER_API_KEY }}
-                  TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-                  UPSTAGE_API_KEY: ${{ secrets.UPSTAGE_API_KEY }}
-                  WAFER_API_KEY: ${{ secrets.WAFER_API_KEY }}
-                  WATSONX_AI_APIKEY: ${{ secrets.WATSONX_AI_APIKEY }}
-                  XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-                  XIAOMI_API_KEY: ${{ secrets.XIAOMI_API_KEY }}
-                  ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+
+            - name: Sync model details from models.dev
+              run: bun scripts/sync-model-metadata.ts
 
             - name: Check for model catalog changes
               id: git-diff
               run: |
-                  git diff --quiet packages/providers/src/model-catalog.json || echo "changed=true" >> "$GITHUB_OUTPUT"
+                  git diff --quiet packages/providers/src/model-catalog.json packages/providers/src/model-metadata.json || echo "changed=true" >> "$GITHUB_OUTPUT"
 
             - name: Create Pull Request if models updated
               if: steps.git-diff.outputs.changed == 'true'
@@ -96,6 +55,8 @@ jobs:
                   commit-message: 'chore(models): auto-sync provider models and context windows'
                   title: 'chore(models): auto-sync provider models and context windows'
                   body-path: ${{ runner.temp }}/parity.md
-                  add-paths: packages/providers/src/model-catalog.json
+                  add-paths: |
+                      packages/providers/src/model-catalog.json
+                      packages/providers/src/model-metadata.json
                   branch: 'auto-sync-models'
                   delete-branch: true

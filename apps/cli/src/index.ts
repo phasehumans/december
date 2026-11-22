@@ -657,14 +657,30 @@ async function main() {
      * G1: reads the active provider's model list again when the cached one is older than 24h,
      * so /model and the model checks keep using what the provider serves (D1), not the catalog.
      */
-    const refreshActiveModels = async (): Promise<void> => {
+    const refreshActiveModels = async (
+        options: { force?: boolean; announce?: boolean } = {}
+    ): Promise<void> => {
         try {
             const { getProviderConfig } = await import('./config')
             const pc = await getProviderConfig()
-            if (!pc?.provider || !pc.apiKey) return
-            const { fetchLiveProviderModels } = await import('./utils/models')
-            const result = await fetchLiveProviderModels(pc.provider, pc.apiKey, pc.baseURL)
-            if (result.ok === true && differentialApp) {
+            if (!pc?.provider || !pc.apiKey) {
+                if (options.announce) {
+                    differentialApp?.showToast('No provider key to refresh models with.', 'info')
+                }
+                return
+            }
+            const { fetchLiveProviderModels, getProviderModels } = await import('./utils/models')
+            const result = await fetchLiveProviderModels(
+                pc.provider,
+                pc.apiKey,
+                pc.baseURL,
+                fetch,
+                { force: options.force }
+            )
+            if (!differentialApp) return
+            const { formatProviderName } = await import('./config')
+            const name = formatProviderName(pc.provider)
+            if (result.ok === true) {
                 differentialApp.refreshModelsForProvider(pc.provider)
                 const active = differentialApp.state.activeModel
                 if (active) {
@@ -673,7 +689,25 @@ async function main() {
                         pc.provider
                     )
                 }
+                if (options.announce) {
+                    const models = getProviderModels(pc.provider)
+                    const fresh = models.filter((m) => m.isNew).length
+                    differentialApp.showToast(
+                        `${name} · ${models.length} models${fresh > 0 ? ` (${fresh} new)` : ''}`,
+                        'success'
+                    )
+                }
                 differentialApp.render()
+            } else if (options.announce) {
+                const why =
+                    result.reason === 'bad_key'
+                        ? `${name} rejected the key`
+                        : result.reason === 'forbidden'
+                          ? `${name} refused access`
+                          : result.reason === 'no_endpoint'
+                            ? `${name} has no model list, December's list stays in use`
+                            : `could not reach ${name}`
+                differentialApp.showToast(`Models not refreshed: ${why}.`, 'error')
             }
         } catch {
             // Intentionally swallowed: a failed background refresh keeps the cached or catalog list
@@ -1100,6 +1134,8 @@ async function main() {
         onModelMenuOpen: () => {
             void refreshActiveModels()
         },
+        // `r` in /model: read the provider's list now and say what changed
+        onModelRefresh: () => refreshActiveModels({ force: true, announce: true }),
         onCheckModel: (selected) => {
             const provider = differentialApp.state.selectedProvider || ''
             if (!provider || isValidModelForProvider(provider, selected.value)) {
@@ -1365,9 +1401,17 @@ async function main() {
                 return { status: 'forbidden' as const, message: check.message }
             }
             if (check.status === 'unverified') {
-                return { status: 'unverified' as const, message: check.message }
+                return {
+                    status: 'unverified' as const,
+                    message: check.message,
+                    unverifiedReason: check.reason,
+                    modelCount: check.models?.length,
+                }
             }
-            return { status: 'saved' as const }
+            return {
+                status: 'saved' as const,
+                modelCount: check.status === 'valid' ? check.models.length : undefined,
+            }
         },
         switchItems: getConfiguredProviders(config),
         onSwitchSelect: async (value: string) => {

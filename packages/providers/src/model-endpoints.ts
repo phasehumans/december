@@ -17,6 +17,12 @@ export interface ModelOption {
     value: string
     /** from the provider's own model list, when it says (G3) */
     contextWindow?: number
+    /** from models.dev: false means the model cannot call tools */
+    tools?: boolean
+    /** from models.dev: the provider still lists it, but it is deprecated */
+    deprecated?: boolean
+    /** appeared in the provider's list since the previous refresh */
+    isNew?: boolean
 }
 
 export type ModelsParser =

@@ -317,7 +317,9 @@ describe('models utils', () => {
                 expect(result.ok === false ? result.reason : 'ok').toBe(reason)
             }
             // a failed check never replaces the catalog
-            expect(getProviderModels('groq')).toEqual(getCuratedProviderModels('groq'))
+            expect(getProviderModels('groq').map((m) => m.value)).toEqual(
+                getCuratedProviderModels('groq').map((m) => m.value)
+            )
         })
 
         it('LIVE_MODEL_CACHE_TTL_MS is configured to 24 hours', () => {
@@ -570,7 +572,7 @@ describe('models utils', () => {
             })
         })
 
-        it('cannot verify keys where the model list answers any key', async () => {
+        it('cannot verify keys where the model list answers any key (unverified)', async () => {
             clearProviderModelsCache()
             const result = await checkProviderKey('nvidia', 'nvapi-any', undefined, (async () =>
                 json({ data: [{ id: 'meta/llama-4' }] })) as any)
@@ -641,6 +643,98 @@ describe('models utils', () => {
                     : new Response(JSON.stringify({ data: [{ id: 'x/y' }] }))) as any
             const result = await checkProviderKey('openrouter', 'sk-or-typo', undefined, fetchFn)
             expect(result.status).toBe('unverified')
+        })
+    })
+
+    describe('model details from models.dev', () => {
+        const list = (items: unknown[]) =>
+            (async () => new Response(JSON.stringify({ data: items }))) as any
+
+        it('names models the catalog does not know, keeping names the provider sent', async () => {
+            clearProviderModelsCache()
+            await fetchLiveProviderModels(
+                'groq',
+                'k',
+                undefined,
+                list([{ id: 'openai/gpt-oss-120b' }, { id: 'llama-3.3-70b-versatile' }])
+            )
+            const models = getProviderModels('groq')
+            const deprecated = models.find((m) => m.value === 'llama-3.3-70b-versatile')
+            expect(deprecated?.label).not.toBe('Llama 3.3 70b Versatile')
+            expect(deprecated?.deprecated).toBe(true)
+
+            clearProviderModelsCache()
+            await fetchLiveProviderModels(
+                'groq',
+                'k',
+                undefined,
+                list([{ id: 'llama-3.3-70b-versatile', display_name: 'Groq Llama Name' }])
+            )
+            expect(getProviderModels('groq')[0].label).toBe('Groq Llama Name')
+        })
+
+        it('tags models that appeared since the previous refresh, never on the first list', async () => {
+            clearProviderModelsCache()
+            await fetchLiveProviderModels('groq', 'k', undefined, list([{ id: 'model-a' }]))
+            expect(getProviderModels('groq').some((m) => m.isNew)).toBe(false)
+
+            await fetchLiveProviderModels(
+                'groq',
+                'k',
+                undefined,
+                list([{ id: 'model-a' }, { id: 'model-b' }]),
+                { force: true }
+            )
+            const models = getProviderModels('groq')
+            expect(models.find((m) => m.value === 'model-b')?.isNew).toBe(true)
+            expect(models.find((m) => m.value === 'model-a')?.isNew).toBeUndefined()
+        })
+
+        it('force reads the provider even when the cached list is fresh', async () => {
+            clearProviderModelsCache()
+            let calls = 0
+            const fetchFn = (async () => {
+                calls++
+                return new Response(JSON.stringify({ data: [{ id: 'm' }] }))
+            }) as any
+            await fetchLiveProviderModels('groq', 'k', undefined, fetchFn)
+            await fetchLiveProviderModels('groq', 'k', undefined, fetchFn)
+            expect(calls).toBe(1)
+            await fetchLiveProviderModels('groq', 'k', undefined, fetchFn, { force: true })
+            expect(calls).toBe(2)
+        })
+
+        it('takes the context window from the live list, then the catalog, then models.dev', async () => {
+            clearProviderModelsCache()
+            // catalog entry wins over models.dev when the live list says nothing
+            const catalogCtx = getCuratedProviderModels('anthropic').length
+                ? getModelContextWindow('claude-opus-5', 'anthropic')
+                : 0
+            expect(catalogCtx).toBeGreaterThan(100000)
+            // the live list wins over both
+            await fetchLiveProviderModels(
+                'anthropic',
+                'k',
+                undefined,
+                (async () =>
+                    new Response(
+                        JSON.stringify({ data: [{ id: 'claude-opus-5', max_input_tokens: 4096 }] })
+                    )) as any
+            )
+            expect(getModelContextWindow('claude-opus-5', 'anthropic')).toBe(4096)
+        })
+
+        it('returns the models of a key it cannot verify, so the toast can count them', async () => {
+            clearProviderModelsCache()
+            const result = await checkProviderKey(
+                'nvidia',
+                'nvapi-any',
+                undefined,
+                list([{ id: 'a/b' }, { id: 'c/d' }])
+            )
+            expect(result.status).toBe('unverified')
+            expect(result.status === 'unverified' && result.reason).toBe('not_verifiable')
+            expect(result.status === 'unverified' && result.models?.length).toBe(2)
         })
     })
 
