@@ -13,6 +13,7 @@ import {
     getTextFile,
 } from '../../shared/project-storage'
 import { getIO } from '../../socket'
+import { byokService } from '../byok/byok.service'
 import { cliDispatcher } from '../cli/cli.dispatcher'
 import { runtimeService } from '../runtime/runtime.service'
 import { usageService } from '../usage/usage.service'
@@ -190,20 +191,31 @@ const createSession = async (data: CreateSession) => {
         gitRef,
         issueNumber,
         maxConcurrentSessions,
+        billingSource,
+        provider,
+        model,
     } = data
 
-    const minBalance =
-        type === 'SEARCH' ? 1 : parseInt(process.env.MIN_SESSION_START_BALANCE_IN_CENTS || '50', 10)
-    const hasBalance = await usageService.hasMinimumBalance({
-        userId,
-        minBalanceInCents: minBalance,
-    })
+    // a cloud session on the user's own key needs that key, not credits. search
+    // always runs on december keys, so it always needs credits.
+    if (billingSource === 'OWN_KEY' && type !== 'SEARCH') {
+        await byokService.assertOwnKeyUsable({ userId, provider, model })
+    } else {
+        const minBalance =
+            type === 'SEARCH'
+                ? 1
+                : parseInt(process.env.MIN_SESSION_START_BALANCE_IN_CENTS || '50', 10)
+        const hasBalance = await usageService.hasMinimumBalance({
+            userId,
+            minBalanceInCents: minBalance,
+        })
 
-    if (!hasBalance) {
-        throw new AppError(
-            `Insufficient balance. A minimum balance of $${(minBalance / 100).toFixed(2)} is required to start a session.`,
-            402
-        )
+        if (!hasBalance) {
+            throw new AppError(
+                `Insufficient balance. A minimum balance of $${(minBalance / 100).toFixed(2)} is required to start a session.`,
+                402
+            )
+        }
     }
 
     if (type !== 'SEARCH') {

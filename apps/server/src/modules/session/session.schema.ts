@@ -32,6 +32,9 @@ export const createSessionSchema = z.object({
     branch: z.string().max(100).optional(),
     gitRef: z.string().max(100).optional(),
     issueNumber: z.number().int().positive().optional(),
+    billingSource: z.enum(['CREDITS', 'OWN_KEY']).optional(),
+    provider: z.string().trim().max(64).optional(),
+    model: z.string().trim().max(200).optional(),
 })
 
 export const getSessionByIdSchema = z.object({

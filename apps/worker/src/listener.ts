@@ -17,6 +17,8 @@ import {
     type SessionTestReport,
 } from './test-runner-parser'
 
+import type { BillingSource } from './llm-source'
+
 export const MUTATING_TOOL_NAMES = new Set([
     'write_file',
     'writefile',
@@ -507,8 +509,9 @@ export async function processGrpcStream(
     sessionId: string,
     stream: any,
     sandbox?: any,
-    options?: { kernel?: DurableStepKernel }
+    options?: { kernel?: DurableStepKernel; billingSource?: BillingSource }
 ) {
+    const billingSource: BillingSource = options?.billingSource ?? 'CREDITS'
     let hasError = false
     let currentTurn: AccumulatedTurn = {
         thoughts: '',
@@ -792,7 +795,7 @@ export async function processGrpcStream(
                     })
                 }
             } else if (eventType === 'AgentUsage') {
-                await updateCredits(sessionId, parsedEvent)
+                await updateCredits(sessionId, parsedEvent, billingSource)
             } else if (eventType === 'AgentError') {
                 hasError = true
                 currentTurn.hasError = true
@@ -843,7 +846,9 @@ export async function processGrpcStream(
     }
 }
 
-async function updateCredits(sessionId: string, event: any) {
+// records token usage. CREDITS runs are charged to the wallet; OWN_KEY runs are paid
+// by the user's provider, so they are recorded for display only.
+async function updateCredits(sessionId: string, event: any, billingSource: BillingSource) {
     try {
         const session = await prisma.session.findUnique({
             where: { id: sessionId },
@@ -870,7 +875,7 @@ async function updateCredits(sessionId: string, event: any) {
         )
 
         await prisma.$transaction(async (tx) => {
-            if (session.userId) {
+            if (session.userId && billingSource === 'CREDITS') {
                 await tx.user.update({
                     where: { id: session.userId },
                     data: {
@@ -890,6 +895,7 @@ async function updateCredits(sessionId: string, event: any) {
                     outputTokens: completionTokens,
                     totalTokens,
                     costInCents: calculatedCost,
+                    billingSource,
                     periodStart,
                     periodEnd,
                 },

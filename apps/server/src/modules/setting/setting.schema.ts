@@ -39,3 +39,9 @@ export const submitFeedbackSchema = z.object({
     rating: z.enum(['sad', 'neutral', 'happy']).nullable(),
     feedback: z.string({ message: 'feedback is required' }).min(1, 'feedback cannot be empty'),
 })
+
+export const updateModelSourceSchema = z.object({
+    defaultModelSource: z.enum(['CREDITS', 'OWN_KEY'], {
+        message: 'defaultModelSource must be CREDITS or OWN_KEY',
+    }),
+})

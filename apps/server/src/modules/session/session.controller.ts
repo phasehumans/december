@@ -66,7 +66,19 @@ export const createSession = asyncHandler(async (req: Request, res: Response) =>
     const userId = req.user?.userId
     if (!userId) throw new AppError('unauthorized', 401)
     const parsedBody = createSessionSchema.parse(req.body)
-    const { title, type, prompt, projectId, repoUrl, branch, gitRef, issueNumber } = parsedBody
+    const {
+        title,
+        type,
+        prompt,
+        projectId,
+        repoUrl,
+        branch,
+        gitRef,
+        issueNumber,
+        billingSource,
+        provider,
+        model,
+    } = parsedBody
 
     const session = await sessionService.createSession({
         userId,
@@ -78,6 +90,9 @@ export const createSession = asyncHandler(async (req: Request, res: Response) =>
         branch,
         gitRef,
         issueNumber,
+        billingSource,
+        provider,
+        model,
     })
     return sendSuccess(res, 'session created successfully', { session }, 201)
 })

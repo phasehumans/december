@@ -21,6 +21,8 @@ export const usageRepository = {
         const { userId, periodStart, periodEnd } = data
         const where: any = {
             userId,
+            // own-key runs are paid by the user's provider, not december credits
+            billingSource: 'CREDITS',
             createdAt: {
                 gte: periodStart,
                 lt: periodEnd,

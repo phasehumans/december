@@ -246,7 +246,10 @@ const getCreditsHistory = async (data: CreditsHistory) => {
             costInCents: 0,
         }
 
-        period.costInCents += event.costInCents
+        // own-key runs stay in the list, but december credits did not pay for them
+        if (event.billingSource !== 'OWN_KEY') {
+            period.costInCents += event.costInCents
+        }
         periods.set(key, period)
     }
 

@@ -237,6 +237,9 @@ export const sessionAPI = {
         branch?: string
         gitRef?: string
         issueNumber?: number
+        billingSource?: 'CREDITS' | 'OWN_KEY'
+        provider?: string
+        model?: string
     }): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>('/session', {
             method: 'POST',

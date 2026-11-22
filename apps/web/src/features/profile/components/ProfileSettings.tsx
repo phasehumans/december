@@ -7,6 +7,7 @@ import {
     KeyRound,
     FileText,
     Activity,
+    Cpu,
 } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -16,6 +17,7 @@ import { useProfileSettingsController } from '../hooks/useProfileSettingsControl
 import { ProfileBillingSettings } from './ProfileBillingSettings'
 import { ProfileConnectionsSettings } from './ProfileConnectionsSettings'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
+import { ProfileModelKeysSettings } from './ProfileModelKeysSettings'
 import { ProfileNameModal } from './ProfileNameModal'
 import { ProfilePasswordModal } from './ProfilePasswordModal'
 import { ProfileRepositoriesSettings } from './ProfileRepositoriesSettings'
@@ -65,6 +67,12 @@ const SETTINGS_NAV_GROUPS = [
                 icon: KeyRound,
             },
             {
+                tab: 'Models',
+                slug: 'models',
+                label: 'Model keys',
+                icon: Cpu,
+            },
+            {
                 tab: 'Billing',
                 slug: 'billing',
                 label: 'Billing',
@@ -112,6 +120,7 @@ const TAB_LABEL_MAP: Record<string, string> = {
     Integrations: 'Connections',
     Repositories: 'Repositories',
     Secrets: 'Secrets',
+    Models: 'Model keys',
     Billing: 'Billing',
     Usage: 'Usage',
     Analytics: 'Usage',
@@ -235,6 +244,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                     )
                 case 'Secrets':
                     return <ProfileSecretsSettings />
+                case 'Models':
+                    return <ProfileModelKeysSettings />
                 case 'Billing':
                     return <ProfileBillingSettings profile={profile} />
                 case 'Usage':
@@ -288,6 +299,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                 )
             case 'Secrets':
                 return <ProfileSecretsSettings />
+            case 'Models':
+                return <ProfileModelKeysSettings />
             default:
                 return (
                     <div className="flex flex-col gap-6">
@@ -548,6 +561,17 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         >
                             <KeyRound className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Secrets
+                        </button>
+                        <button
+                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Models')}`)}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                                activeTab === 'Models'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <Cpu className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Model keys
                         </button>
                         <button
                             onClick={() => navigate(`/settings/${getSlugForProfileTab('Billing')}`)}

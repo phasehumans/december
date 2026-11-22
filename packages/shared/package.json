@@ -6,7 +6,8 @@
     "types": "src/index.ts",
     "exports": {
         ".": "./src/index.ts",
-        "./queue": "./src/queue/index.ts"
+        "./queue": "./src/queue/index.ts",
+        "./crypto": "./src/crypto/index.ts"
     },
     "private": true,
     "scripts": {

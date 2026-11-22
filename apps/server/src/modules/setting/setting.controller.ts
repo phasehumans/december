@@ -7,6 +7,7 @@ import {
     updateNameSchema,
     updateNotificationSchema,
     dismissOnboardingCardSchema,
+    updateModelSourceSchema,
     submitFeedbackSchema,
 } from './setting.schema'
 import { settingService } from './setting.service'
@@ -86,6 +87,18 @@ const updateNotifications = asyncHandler(async (req: Request, res: Response) => 
     return sendSuccess(res, 'notifications preferences updated', result)
 })
 
+const updateModelSource = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { defaultModelSource } = updateModelSourceSchema.parse(req.body)
+    const result = await settingService.updateModelSource({ userId, defaultModelSource })
+    return sendSuccess(res, 'default model source updated', result)
+})
+
 const completeOnboarding = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
@@ -131,6 +144,7 @@ export const settingController = {
     updateName,
     changePassword,
     updateNotifications,
+    updateModelSource,
     completeOnboarding,
     dismissOnboardingCard,
     submitFeedback,

@@ -11,6 +11,7 @@ import { useChatMessageController } from '@/features/chat/hooks/useChatMessageCo
 import { renderRichContent } from '@/features/chat/utils/chatFormatting'
 import { parseInlineThoughtBlocks } from '@/features/chat/utils/thoughtParser'
 import { getToolActionLabel } from '@/features/chat/utils/toolFormatter'
+import { DEFAULT_SELECTION, useModelSelection } from '@/features/home/model-selection'
 import { cn } from '@/shared/lib/utils'
 
 const CollapsibleThoughtView: React.FC<{
@@ -306,6 +307,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                                         className="py-1 text-[13px] leading-relaxed text-[#F87171] font-sans select-text whitespace-pre-wrap"
                                     >
                                         {block.error}
+                                        {block.action === 'switch_to_credits' && (
+                                            <SwitchToCreditsButton />
+                                        )}
                                     </div>
                                 )
                             }
@@ -384,6 +388,29 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                     </>
                 )}
             </div>
+        </div>
+    )
+}
+
+// shown under an own-key error: switches the prompt box to december credits. the user
+// sends the prompt again; nothing is resent automatically.
+const SwitchToCreditsButton: React.FC = () => {
+    const [switched, setSwitched] = React.useState(false)
+    return (
+        <div className="mt-2">
+            <button
+                type="button"
+                disabled={switched}
+                onClick={() => {
+                    useModelSelection.getState().select({ ...DEFAULT_SELECTION })
+                    setSwitched(true)
+                }}
+                className="px-2.5 py-1 rounded-lg border border-[#2A2928] bg-[#1E1E1E] text-[12px] font-medium text-[#EDEDEF] hover:bg-[#252525] disabled:opacity-60 disabled:cursor-default cursor-pointer transition-colors"
+            >
+                {switched
+                    ? 'Switched to December credits. Send your message again.'
+                    : 'Switch to December credits'}
+            </button>
         </div>
     )
 }

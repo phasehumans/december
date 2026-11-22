@@ -13,6 +13,7 @@ settingRouter.get('/', settingController.getProfile)
 settingRouter.patch('/name', settingController.updateName)
 settingRouter.patch('/password', settingController.changePassword)
 settingRouter.patch('/notifications', settingController.updateNotifications)
+settingRouter.patch('/model-source', settingController.updateModelSource)
 settingRouter.patch('/onboarding', settingController.completeOnboarding)
 settingRouter.post('/onboarding/dismiss', settingController.dismissOnboardingCard)
 

@@ -35,6 +35,8 @@ export const billingRepository = {
         return prisma.usageEvent.aggregate({
             where: {
                 userId,
+                // own-key runs are paid by the user's provider, not december credits
+                billingSource: 'CREDITS',
                 createdAt: {
                     gte: periodStart,
                     lt: periodEnd,

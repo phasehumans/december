@@ -112,6 +112,8 @@ async function findUserByIdForDeleteCheck(id: string) {
 
 async function deleteAccount(userId: string) {
     return prisma.$transaction([
+        // deletion is a soft delete, but saved api keys are always removed for real
+        prisma.providerCredential.deleteMany({ where: { userId } }),
         prisma.authSession.updateMany({
             where: {
                 userId,

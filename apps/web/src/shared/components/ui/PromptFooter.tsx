@@ -5,8 +5,11 @@ import { useNavigate } from 'react-router-dom'
 
 import { Icons } from './Icons'
 
+import type { BillingSource } from '@/features/home/model-selection'
+
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { DEFAULT_MODEL_OPTIONS } from '@/features/home/types'
+import { useByokList } from '@/features/profile/hooks/useByokData'
 import { useVoiceToText } from '@/shared/lib/useVoiceToText'
 import { cn } from '@/shared/lib/utils'
 
@@ -25,7 +28,8 @@ interface PromptFooterProps {
     onToggleThinking?: (enabled: boolean) => void
     selectedModel?: string
     selectedProvider?: string
-    onSelectModel?: (model: string, provider?: string) => void
+    selectedSource?: BillingSource
+    onSelectModel?: (model: string, provider?: string, source?: BillingSource) => void
 }
 
 export const PromptFooter: React.FC<PromptFooterProps> = ({
@@ -43,6 +47,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     onToggleThinking,
     selectedModel,
     selectedProvider,
+    selectedSource = 'CREDITS',
     onSelectModel,
 }) => {
     const navigate = useNavigate()
@@ -55,9 +60,45 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     const [internalThinkingMode, setInternalThinkingMode] = useState(false)
     const isThinkingMode = propThinkingMode !== undefined ? propThinkingMode : internalThinkingMode
 
+    const [modelQuery, setModelQuery] = useState('')
+    const { data: byokData } = useByokList(Boolean(isAuthenticated))
+    const ownKeyGroups = (byokData?.credentials || []).map((credential) => ({
+        provider: credential.provider,
+        name:
+            byokData?.providers.find((p) => p.id === credential.provider)?.name ||
+            credential.provider,
+        models: credential.models,
+    }))
+
     const currentModelOption =
         DEFAULT_MODEL_OPTIONS.find((opt) => opt.id === (selectedModel || 'gemini-2.5-pro')) ||
         DEFAULT_MODEL_OPTIONS[0]
+    const currentLabel =
+        selectedSource === 'OWN_KEY' && selectedModel
+            ? selectedModel.split('/').pop()
+            : currentModelOption?.name
+
+    const query = modelQuery.trim().toLowerCase()
+    const matches = (text: string) => !query || text.toLowerCase().includes(query)
+    const creditOptions = DEFAULT_MODEL_OPTIONS.filter(
+        (item) => matches(item.name) || matches(item.provider)
+    )
+    const filteredOwnKeyGroups = ownKeyGroups
+        .map((group) => ({
+            ...group,
+            models: matches(group.name)
+                ? group.models
+                : group.models.filter((model) => matches(model)),
+        }))
+        .filter((group) => group.models.length > 0)
+    const totalOptions =
+        DEFAULT_MODEL_OPTIONS.length + ownKeyGroups.reduce((n, g) => n + g.models.length, 0)
+
+    const pickModel = (model: string, provider: string, source: BillingSource) => {
+        setIsModelMenuOpen(false)
+        setModelQuery('')
+        onSelectModel?.(model, provider, source)
+    }
 
     const handleToggleThinking = () => {
         const next = !isThinkingMode
@@ -282,52 +323,122 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium text-[#8E8E8E] hover:text-[#EDEDEF] hover:bg-white/5 transition-all outline-none cursor-pointer touch-manipulation border border-white/5"
                             aria-label="Select Model"
                         >
-                            <Icons.Sparkles className="w-3 h-3 text-[#E08734]" />
+                            {selectedSource === 'OWN_KEY' ? (
+                                <KeyRound
+                                    className="w-3 h-3 text-[#E08734]"
+                                    aria-label="Your key"
+                                />
+                            ) : (
+                                <Icons.Sparkles className="w-3 h-3 text-[#E08734]" />
+                            )}
                             <span className="truncate max-w-[120px]">
-                                {currentModelOption?.name || 'Gemini 2.5 Pro'}
+                                {currentLabel || 'Gemini 2.5 Pro'}
                             </span>
                             <Icons.ChevronDown className="w-3 h-3 opacity-60" />
                         </button>
 
                         {isModelMenuOpen && (
                             <div
-                                className={`absolute ${modelMenuPosition === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'} left-0 w-[240px] max-w-[calc(100vw-32px)] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-lg shadow-black/40 z-50 flex flex-col animate-in fade-in zoom-in-95 duration-150`}
+                                className={`absolute ${modelMenuPosition === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'} left-0 w-[280px] max-w-[calc(100vw-32px)] max-h-[360px] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-lg shadow-black/40 z-50 flex flex-col animate-in fade-in zoom-in-95 duration-150`}
                             >
-                                <div className="px-3 py-1.5 text-[10px] font-semibold text-[#8F8E8D] uppercase tracking-wider">
-                                    Model
-                                </div>
-                                {DEFAULT_MODEL_OPTIONS.map((item) => {
-                                    const isSelected =
-                                        item.id === (selectedModel || 'gemini-2.5-pro')
-                                    return (
+                                {totalOptions > 8 && (
+                                    <input
+                                        type="text"
+                                        value={modelQuery}
+                                        onChange={(e) => setModelQuery(e.target.value)}
+                                        placeholder="Search models"
+                                        aria-label="Search models"
+                                        className="mx-1 mt-1 mb-1 px-2.5 py-1.5 rounded-lg bg-[#141414] border border-[#2A2928] text-[12px] text-[#EDEDEF] placeholder:text-[#6F6E6D] outline-none focus:border-[#3A3938]"
+                                    />
+                                )}
+                                <div className="overflow-y-auto no-scrollbar flex flex-col">
+                                    <div className="px-3 py-1.5 text-[10px] font-semibold text-[#8F8E8D] uppercase tracking-wider">
+                                        December credits
+                                    </div>
+                                    {creditOptions.map((item) => {
+                                        const isSelected =
+                                            selectedSource === 'CREDITS' &&
+                                            item.id === (selectedModel || 'gemini-2.5-pro')
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() =>
+                                                    pickModel(item.id, item.provider, 'CREDITS')
+                                                }
+                                                className={cn(
+                                                    'flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-medium transition-colors outline-none w-full cursor-pointer',
+                                                    isSelected
+                                                        ? 'bg-[#252525] text-white'
+                                                        : 'text-[#EDEDEF] hover:bg-[#252525]'
+                                                )}
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span>{item.name}</span>
+                                                    <span className="text-[10px] text-[#8F8E8D] capitalize">
+                                                        {item.provider}
+                                                    </span>
+                                                </div>
+                                                {item.badge && (
+                                                    <span className="text-[9px] uppercase font-semibold px-1.5 py-0.5 rounded bg-white/10 text-[#EDEDEF]">
+                                                        {item.badge}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        )
+                                    })}
+
+                                    {isAuthenticated && (
+                                        <div className="px-3 pt-2.5 pb-1.5 text-[10px] font-semibold text-[#8F8E8D] uppercase tracking-wider">
+                                            Your keys
+                                        </div>
+                                    )}
+                                    {filteredOwnKeyGroups.map((group) =>
+                                        group.models.map((model) => {
+                                            const isSelected =
+                                                selectedSource === 'OWN_KEY' &&
+                                                selectedProvider === group.provider &&
+                                                selectedModel === model
+                                            return (
+                                                <button
+                                                    key={`${group.provider}:${model}`}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        pickModel(model, group.provider, 'OWN_KEY')
+                                                    }
+                                                    className={cn(
+                                                        'flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-medium transition-colors outline-none w-full cursor-pointer',
+                                                        isSelected
+                                                            ? 'bg-[#252525] text-white'
+                                                            : 'text-[#EDEDEF] hover:bg-[#252525]'
+                                                    )}
+                                                >
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="truncate">{model}</span>
+                                                        <span className="text-[10px] text-[#8F8E8D]">
+                                                            {group.name} · your key
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            )
+                                        })
+                                    )}
+                                    {isAuthenticated && (
                                         <button
-                                            key={item.id}
                                             type="button"
                                             onClick={() => {
                                                 setIsModelMenuOpen(false)
-                                                onSelectModel?.(item.id, item.provider)
+                                                navigate('/settings/models')
                                             }}
-                                            className={cn(
-                                                'flex items-center justify-between px-3 py-2 rounded-xl text-left text-[12px] font-medium transition-colors outline-none w-full cursor-pointer',
-                                                isSelected
-                                                    ? 'bg-[#252525] text-white'
-                                                    : 'text-[#EDEDEF] hover:bg-[#252525]'
-                                            )}
+                                            className="flex items-center gap-2 px-3 py-2 rounded-xl text-left text-[12px] font-medium text-[#8F8E8D] hover:text-[#EDEDEF] hover:bg-[#252525] transition-colors outline-none w-full cursor-pointer"
                                         >
-                                            <div className="flex flex-col">
-                                                <span>{item.name}</span>
-                                                <span className="text-[10px] text-[#8F8E8D] capitalize">
-                                                    {item.provider}
-                                                </span>
-                                            </div>
-                                            {item.badge && (
-                                                <span className="text-[9px] uppercase font-semibold px-1.5 py-0.5 rounded bg-white/10 text-[#EDEDEF]">
-                                                    {item.badge}
-                                                </span>
-                                            )}
+                                            <KeyRound className="w-3 h-3" />
+                                            {ownKeyGroups.length > 0
+                                                ? 'Manage your keys'
+                                                : 'Add your own key'}
                                         </button>
-                                    )
-                                })}
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>

@@ -64,6 +64,7 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
         handleAuthCheck,
         selectedModel,
         selectedProvider,
+        selectedSource,
         handleSelectModel,
     } = usePromptInputController({
         value,
@@ -408,8 +409,9 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
                     onToggleThinking={onToggleThinking}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
-                    onSelectModel={(model, provider) => {
-                        handleSelectModel(model, provider)
+                    selectedSource={selectedSource}
+                    onSelectModel={(model, provider, source) => {
+                        handleSelectModel(model, provider, source)
                         onModelChange?.(model, provider)
                     }}
                 />

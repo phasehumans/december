@@ -33,6 +33,9 @@ export type CreateSession = {
     gitRef?: string
     issueNumber?: number
     maxConcurrentSessions?: number
+    billingSource?: 'CREDITS' | 'OWN_KEY'
+    provider?: string
+    model?: string
 }
 
 export type GetSession = {

@@ -2,10 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { KeyRound, Folder } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 
+import type { BillingSource } from '@/features/home/model-selection'
 import type { PromptInputSubmitOptions } from '@/features/home/types'
 
+import { DEFAULT_SELECTION, useModelSelection } from '@/features/home/model-selection'
 import { profileAPI } from '@/features/profile/api/profile'
 import { secretsAPI } from '@/features/profile/api/secrets'
+import { useByokList } from '@/features/profile/hooks/useByokData'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { Icons } from '@/shared/components/ui/Icons'
 
@@ -42,8 +45,8 @@ export const usePromptInputController = ({
     onOpenAuth,
     isLoading,
     mode = 'agent',
-    initialModel = 'gemini-2.5-pro',
-    initialProvider = 'gemini',
+    initialModel,
+    initialProvider,
 }: {
     value?: string
     onChange?: (val: string) => void
@@ -62,19 +65,93 @@ export const usePromptInputController = ({
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [selectedRepos, setSelectedRepos] = useState<any[]>([])
     const [selectedBranch, setSelectedBranch] = useState('')
-    const [selectedModel, setSelectedModel] = useState<string>(initialModel)
-    const [selectedProvider, setSelectedProvider] = useState<string>(initialProvider)
+    // starts from the shared selection, so a model picked on the home page carries into
+    // the session's prompt box
+    const [selectedModel, setSelectedModel] = useState<string>(
+        () => initialModel ?? useModelSelection.getState().model
+    )
+    const [selectedProvider, setSelectedProvider] = useState<string>(
+        () => initialProvider ?? useModelSelection.getState().provider
+    )
+    const [selectedSource, setSelectedSource] = useState<BillingSource>(() =>
+        initialModel ? 'CREDITS' : useModelSelection.getState().source
+    )
     const [forceClose, setForceClose] = useState(false)
     const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>('bottom')
     const voiceBaseRef = useRef('')
     const isVoiceActiveRef = useRef(false)
 
-    const handleSelectModel = useCallback((model: string, provider?: string) => {
-        setSelectedModel(model)
-        if (provider) {
-            setSelectedProvider(provider)
+    const handleSelectModel = useCallback(
+        (model: string, provider?: string, source: BillingSource = 'CREDITS') => {
+            setSelectedModel(model)
+            setSelectedSource(source)
+            if (provider) {
+                setSelectedProvider(provider)
+            }
+            useModelSelection.getState().select({
+                model,
+                provider: provider ?? useModelSelection.getState().provider,
+                source,
+            })
+        },
+        []
+    )
+
+    // follow changes made elsewhere (another prompt box, or "switch to december credits")
+    useEffect(() => {
+        if (initialModel) return
+        return useModelSelection.subscribe((state) => {
+            setSelectedModel(state.model)
+            setSelectedProvider(state.provider)
+            setSelectedSource(state.source)
+        })
+    }, [initialModel])
+
+    // the user's default model source: when it is "your keys", start on the first saved
+    // key's default model, until the user picks a model. a selection on a deleted key
+    // falls back to december credits.
+    const { data: defaultsProfile } = useQuery({
+        queryKey: ['profile'],
+        queryFn: profileAPI.getProfile,
+        enabled: !!isAuthenticated,
+    })
+    const { data: byokData } = useByokList(!!isAuthenticated)
+
+    useEffect(() => {
+        if (!byokData) return
+        const store = useModelSelection.getState()
+        const credentials = byokData.credentials
+        const first = credentials[0]
+
+        if (
+            selectedSource === 'OWN_KEY' &&
+            !credentials.some((c) => c.provider === selectedProvider)
+        ) {
+            setSelectedModel(DEFAULT_SELECTION.model)
+            setSelectedProvider(DEFAULT_SELECTION.provider)
+            setSelectedSource('CREDITS')
+            store.reset()
+            return
         }
-    }, [])
+
+        if (
+            !store.userChosen &&
+            !initialModel &&
+            defaultsProfile?.defaultModelSource === 'OWN_KEY' &&
+            first &&
+            selectedSource !== 'OWN_KEY'
+        ) {
+            const selection = {
+                model: first.defaultModel,
+                provider: first.provider,
+                source: 'OWN_KEY' as const,
+            }
+            store.applyDefault(selection)
+            setSelectedModel(selection.model)
+            setSelectedProvider(selection.provider)
+            setSelectedSource('OWN_KEY')
+        }
+    }, [byokData, defaultsProfile, initialModel, selectedProvider, selectedSource])
 
     const isControlled = value !== undefined
     const input = isControlled ? value : internalInput
@@ -345,6 +422,7 @@ export const usePromptInputController = ({
                 issueNumber,
                 model: selectedModel,
                 provider: selectedProvider,
+                billingSource: selectedSource,
             }
 
             onSubmit(finalPrompt, submitOptions)
@@ -478,6 +556,7 @@ export const usePromptInputController = ({
         setSelectedModel,
         selectedProvider,
         setSelectedProvider,
+        selectedSource,
         handleSelectModel,
     }
 }

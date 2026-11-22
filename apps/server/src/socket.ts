@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 import { Server, Socket } from 'socket.io'
 
 import { env } from './env'
+import { byokService } from './modules/byok/byok.service'
 import { secretsService } from './modules/secrets/secrets.service'
 import { usageService } from './modules/usage/usage.service'
 
@@ -252,6 +253,7 @@ export function initSocket(httpServer: any) {
                 projectId?: string
                 model?: string
                 provider?: string
+                billingSource?: 'CREDITS' | 'OWN_KEY'
             }) => {
                 const targetSessionId = data.sessionId || data.projectId
                 if (!targetSessionId) {
@@ -268,7 +270,31 @@ export function initSocket(httpServer: any) {
                     )
 
                     const userId = socket.data.userId
-                    if (userId) {
+                    const billingSource = data.billingSource === 'OWN_KEY' ? 'OWN_KEY' : 'CREDITS'
+                    let model = data.model
+
+                    // own key: the user's key pays, so no credits are needed. the key itself is
+                    // never put in the job: the worker loads and decrypts it.
+                    if (billingSource === 'OWN_KEY') {
+                        try {
+                            const credential = await byokService.assertOwnKeyUsable({
+                                userId,
+                                provider: data.provider,
+                                model: data.model,
+                            })
+                            // no model picked: use the key's own default, never a december model
+                            model = data.model || credential.defaultModel
+                        } catch (keyErr: any) {
+                            const message = keyErr?.message || 'Your own key cannot be used.'
+                            socket.emit('agent_event', {
+                                type: 'AgentError',
+                                code: 'BYOK_KEY_MISSING',
+                                message,
+                            })
+                            socket.emit('error', { message })
+                            return
+                        }
+                    } else if (userId) {
                         const hasBalance = await usageService.hasMinimumBalance({
                             userId,
                             minBalanceInCents: 1,
@@ -309,8 +335,9 @@ export function initSocket(httpServer: any) {
                         userId: socket.data.userId,
                         prompt: data.prompt,
                         secrets: decryptedSecrets,
-                        model: data.model,
+                        model,
                         provider: data.provider,
+                        billingSource,
                     })
 
                     console.log(

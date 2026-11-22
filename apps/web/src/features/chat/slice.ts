@@ -59,7 +59,11 @@ export interface ChatSlice {
     addCompactionBlock: (messageId: string, summary: string) => void
     addInterruptBlock: (messageId: string) => void
     appendAssistantChunk: (messageId: string, chunk: string, streamMessageId?: string) => void
-    setAssistantError: (messageId: string, errorMessage: string) => void
+    setAssistantError: (
+        messageId: string,
+        errorMessage: string,
+        options?: { ownKey?: boolean }
+    ) => void
     setAssistantAppliedFiles: (messageId: string, appliedFiles: string[]) => void
 }
 
@@ -304,13 +308,18 @@ export const createChatSlice: StateCreator<ChatSlice> = (set, get) => ({
             }
         })
     },
-    setAssistantError: (messageId, errorMessage) => {
-        const userFacingMessage = getUserFacingGenerationError(errorMessage)
+    setAssistantError: (messageId, errorMessage, options) => {
+        // an own-key error is the provider's message about the user's key; it must not be
+        // rewritten into a december credits message
+        const userFacingMessage = options?.ownKey
+            ? errorMessage
+            : getUserFacingGenerationError(errorMessage)
         get().updateAssistantMessage(messageId, (message) => {
             const blocks = message.blocks ? [...message.blocks] : []
             blocks.push({
                 type: 'error',
                 error: userFacingMessage,
+                ...(options?.ownKey ? { action: 'switch_to_credits' as const } : {}),
             })
             return {
                 ...message,

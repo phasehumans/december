@@ -73,6 +73,14 @@ async function updateNotifications(id: string, data: Prisma.UserUpdateInput) {
     })
 }
 
+async function updateModelSource(id: string, defaultModelSource: 'CREDITS' | 'OWN_KEY') {
+    return prisma.user.update({
+        where: { id },
+        data: { defaultModelSource },
+        select: { defaultModelSource: true },
+    })
+}
+
 async function updateCompleteOnboarding(id: string) {
     return prisma.user.update({
         where: { id },
@@ -146,6 +154,7 @@ export const settingRepository = {
     findUserPasswordById,
     updatePassword,
     updateNotifications,
+    updateModelSource,
 
     updateCompleteOnboarding,
     updateWelcomeCardDone,

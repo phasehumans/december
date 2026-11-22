@@ -730,12 +730,14 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         secrets,
         model,
         provider,
+        llm: ownKeyLlm,
     } = data
     console.log(`[E2BSandboxService] Starting in-sandbox agent runner session for ${sessionId}`)
 
     const effectiveUserRules = userRules
 
     const hasLlmKey = !!(
+        ownKeyLlm ||
         process.env.GEMINI_API_KEY ||
         process.env.OPENAI_API_KEY ||
         process.env.OPENROUTER_API_KEY ||
@@ -777,7 +779,8 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         redisClient: getRedisPub(),
     })
     activeAdapters.add(adapter)
-    const llm = getLlmProvider(provider)
+    // an own-key client never falls back to december keys
+    const llm = ownKeyLlm ?? getLlmProvider(provider)
 
     const tools = [
         BashTool,

@@ -26,6 +26,7 @@ export const settingSelect = {
     welcomeCardDone: true,
     githubCardDone: true,
     feedbackCardDone: true,
+    defaultModelSource: true,
 }
 
 import type {
@@ -36,6 +37,7 @@ import type {
     UpdateNotifications,
     CompleteOnboarding,
     DismissOnboardingCard,
+    UpdateModelSource,
     SubmitFeedback,
 } from './setting.types'
 
@@ -137,6 +139,20 @@ const changePassword = async (data: ChangePassword) => {
     return { success: true }
 }
 
+const updateModelSource = async (data: UpdateModelSource) => {
+    const { userId, defaultModelSource } = data
+
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    const updatedUser = await settingRepository.updateModelSource(userId, defaultModelSource)
+    await invalidateUserSettingCache(userId)
+
+    return updatedUser
+}
+
 const updateNotifications = async (data: UpdateNotifications) => {
     const { userId, notifyProductUpdates, notifyProjectActivity, notifySecurityAlerts } = data
 
@@ -234,6 +250,7 @@ export const settingService = {
     updateName,
     changePassword,
     updateNotifications,
+    updateModelSource,
     completeOnboarding,
     dismissOnboardingCard,
     submitFeedback,

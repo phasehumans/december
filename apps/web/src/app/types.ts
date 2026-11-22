@@ -9,6 +9,7 @@ export type ProfileTab =
     | 'Analytics'
     | 'Usage'
     | 'Secrets'
+    | 'Models'
     | 'Terms'
     | 'Privacy'
 
@@ -21,6 +22,7 @@ const profileTabToSlug: Record<string, string> = {
     Analytics: 'usage',
     Usage: 'usage',
     Secrets: 'secrets',
+    Models: 'models',
     Terms: 'terms',
     Privacy: 'privacy',
 }

@@ -1021,6 +1021,8 @@ async function streamAssistantResponse(
 
         switch (kind) {
             case 'no_credits': {
+                errorCode = 'NO_CREDITS'
+                errorProvider = providerId
                 const notice = formatInsufficientCreditsNotice(providerId, currentModel, errorMsg)
                 if (!errorMsg.includes(notice)) {
                     errorMsg = `${notice}\n${errorMsg}`

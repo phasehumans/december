@@ -1,3 +1,5 @@
+import type { LLMProvider } from '@december/providers'
+
 export interface ProvisionSandboxInput {
     sessionId: string
     userId?: string
@@ -41,6 +43,8 @@ export interface RunAgentSessionInput {
     envs?: Record<string, string>
     model?: string
     provider?: string
+    /** a ready client for the user's own key; when set, no december env key is used */
+    llm?: LLMProvider
 }
 
 export interface DestroySandboxInput {

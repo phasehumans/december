@@ -10,11 +10,14 @@ if (!globalThis.document) {
 const { renderHook, act } = await import('@testing-library/react')
 const { usePromptInputController } =
     await import('../src/features/home/hooks/usePromptInputController')
+const { useModelSelection } = await import('../src/features/home/model-selection')
 
 describe('usePromptInputController - repository and branch onboarding', () => {
     let queryClient: QueryClient
 
     beforeEach(() => {
+        // the picked model is shared across tests in one bun process
+        useModelSelection.getState().reset()
         queryClient = new QueryClient({
             defaultOptions: { queries: { retry: false } },
         })
@@ -79,6 +82,7 @@ describe('usePromptInputController - repository and branch onboarding', () => {
             issueNumber: 583,
             model: 'gemini-2.5-pro',
             provider: 'gemini',
+            billingSource: 'CREDITS',
         })
     })
 

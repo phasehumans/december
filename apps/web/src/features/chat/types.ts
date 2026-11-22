@@ -18,7 +18,7 @@ export type MessageBlock =
       }
     | { type: 'text'; content: string; color?: string }
     | { type: 'status'; label: string; success: boolean }
-    | { type: 'error'; error: string }
+    | { type: 'error'; error: string; action?: 'switch_to_credits' }
 
 export interface Message {
     id: string
