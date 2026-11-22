@@ -1,12 +1,10 @@
-import { prisma } from '@december/database'
-
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import { githubAppService } from './githubapp.service'
-import { getInstallationDetails } from './githubapp.utils'
+import { resolveInstallReturnUrl } from './githubapp.utils'
 
 import type { Request, Response } from 'express'
 
@@ -26,65 +24,28 @@ const startInstall = asyncHandler(async (req: Request, res: Response) => {
 const handleCallback = asyncHandler(async (req: Request, res: Response) => {
     const installationId = req.query.installation_id as string
     const state = req.query.state as string
-    const setupAction = req.query.setup_action as string
 
-    let userId: string | null = null
+    // state is `<userId>|<returnUrl>` or just `<returnUrl>`. Only the return url
+    // is used: anyone can write a state, so the user comes from the auth cookie.
     let returnUrl = '/settings/repositories'
-
     if (state) {
         const decoded = decodeURIComponent(state)
-        const parts = decoded.split('|')
-        userId = parts[0] || null
-        if (parts[1]) {
-            returnUrl = parts[1]
+        const separator = decoded.indexOf('|')
+        const statePath = separator === -1 ? decoded : decoded.slice(separator + 1)
+        if (statePath) {
+            returnUrl = statePath
         }
     }
 
-    if (!userId && (req as any).user?.userId) {
-        userId = (req as any).user.userId
-    }
-
+    const userId: string | undefined = (req as any).user?.userId
     if (installationId && userId) {
-        let details: any = null
-        try {
-            details = await getInstallationDetails(installationId.toString())
-        } catch {
-            // Intentionally swallowed: fallback to basic info if API call fails
-        }
-
-        await githubAppService.processInstallation({
+        await githubAppService.claimInstallation({
             installationId: installationId.toString(),
             userId,
-            ...(details?.account?.login ? { accountLogin: details.account.login } : {}),
-            ...(details?.account?.type ? { accountType: details.account.type } : {}),
-            ...(details?.target_type ? { targetType: details.target_type } : {}),
-            ...(details?.permissions ? { permissions: details.permissions } : {}),
         })
     }
 
-    const baseAppUrl = (env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')
-    let redirectTarget = `${baseAppUrl}${returnUrl.startsWith('/') ? returnUrl : `/${returnUrl}`}`
-    if (returnUrl.startsWith('http://') || returnUrl.startsWith('https://')) {
-        try {
-            const parsed = new URL(returnUrl)
-            const allowedHosts = [
-                'localhost',
-                '127.0.0.1',
-                'trydecember.com',
-                'www.trydecember.com',
-                ...(env.APP_URL ? [new URL(env.APP_URL).hostname] : []),
-            ]
-            if (
-                allowedHosts.includes(parsed.hostname) ||
-                parsed.hostname.endsWith('.trydecember.com') ||
-                parsed.hostname.endsWith('.vercel.app')
-            ) {
-                redirectTarget = returnUrl
-            }
-        } catch {
-            // Intentionally swallowed: invalid URL fallback to env.APP_URL
-        }
-    }
+    const redirectTarget = resolveInstallReturnUrl({ returnUrl })
 
     return res.redirect(redirectTarget)
 })
@@ -116,36 +77,11 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
         const targetType = payload.installation.target_type
         const permissions = payload.installation.permissions
 
-        let userId: string | null = null
-        if (accountLogin) {
-            const matchedUser = await prisma.user.findFirst({
-                where: {
-                    OR: [
-                        { githubUsername: accountLogin },
-                        { githubId: payload.installation.account?.id?.toString() },
-                    ],
-                },
-                select: { id: true },
-            })
-            if (matchedUser) {
-                userId = matchedUser.id
-            }
-        }
-
-        if (!userId && payload.sender?.login) {
-            const senderUser = await prisma.user.findFirst({
-                where: {
-                    OR: [
-                        { githubUsername: payload.sender.login },
-                        { githubId: payload.sender?.id?.toString() },
-                    ],
-                },
-                select: { id: true },
-            })
-            if (senderUser) {
-                userId = senderUser.id
-            }
-        }
+        const userId = await githubAppService.findInstallationOwner({
+            accountId: payload.installation.account?.id?.toString(),
+            accountType,
+            senderId: payload.sender?.id?.toString(),
+        })
 
         await githubAppService.processInstallation({
             installationId,

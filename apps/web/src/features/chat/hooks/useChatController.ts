@@ -12,6 +12,7 @@ import { billingQueryKeys } from '@/features/billing/hooks/useBillingData'
 import { mapBackendMessageToUIMessage } from '@/features/chat/utils'
 import {
     generationAPI,
+    isOwnKeyError,
     type AppliedProjectChangeResult,
     type GenerationStreamEvent,
 } from '@/features/generation/api/generation'
@@ -208,6 +209,7 @@ export const useChatController = (
                         issueNumber: options?.issueNumber,
                         model: options?.model,
                         provider: options?.provider,
+                        billingSource: options?.billingSource,
                         signal: abortController.signal,
                         onEvent: (event) => {
                             const activeMessageId = activeAssistantMessageIdRef.current
@@ -392,6 +394,16 @@ export const useChatController = (
                                         event.data?.message ||
                                         'Agent Execution Error'
                                     const lowerErr = String(errText).toLowerCase()
+                                    const isOwnKeyError = String(event.data?.code || '').startsWith(
+                                        'BYOK_'
+                                    )
+                                    if (isOwnKeyError) {
+                                        setAssistantError(activeMessageId, errText, {
+                                            ownKey: true,
+                                        })
+                                        setIsGenerating(false)
+                                        return
+                                    }
                                     if (
                                         lowerErr.includes('insufficient') ||
                                         lowerErr.includes('credit') ||
@@ -501,6 +513,10 @@ export const useChatController = (
                     })
                 } catch (error) {
                     if (abortController.signal.aborted) {
+                        return
+                    }
+                    // already shown by the stream handler, with "switch to december credits"
+                    if (isOwnKeyError(error)) {
                         return
                     }
 
@@ -644,6 +660,7 @@ export const useChatController = (
             visibleUserMessage,
             model,
             provider,
+            billingSource,
         }: {
             kind: 'edit' | 'fix'
             prompt?: string
@@ -652,6 +669,8 @@ export const useChatController = (
             visibleUserMessage: string
             model?: string
             provider?: string
+            // the payment source the prompt box shows (December credits or the user's own key)
+            billingSource?: PromptInputSubmitOptions['billingSource']
         }) => {
             if (!activeProjectId) {
                 return
@@ -897,7 +916,10 @@ export const useChatController = (
                                     activeMessageId,
                                     event.data?.error ||
                                         event.data?.message ||
-                                        'Agent Execution Error'
+                                        'Agent Execution Error',
+                                    String(event.data?.code || '').startsWith('BYOK_')
+                                        ? { ownKey: true }
+                                        : undefined
                                 )
                                 setIsGenerating(false)
                                 return
@@ -997,6 +1019,7 @@ export const useChatController = (
                                   prompt: prompt ?? '',
                                   model,
                                   provider,
+                                  billingSource,
                                   signal: abortController.signal,
                                   onEvent: handleStreamEvent,
                               })
@@ -1019,6 +1042,10 @@ export const useChatController = (
                     }
                 } catch (error) {
                     if (abortController.signal.aborted) {
+                        return
+                    }
+                    // already shown by the stream handler, with "switch to december credits"
+                    if (isOwnKeyError(error)) {
                         return
                     }
 
@@ -1097,6 +1124,7 @@ export const useChatController = (
                     visibleUserMessage: normalizedPrompt,
                     model: options?.model,
                     provider: options?.provider,
+                    billingSource: options?.billingSource,
                 })
             })
         },

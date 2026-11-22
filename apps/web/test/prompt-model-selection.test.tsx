@@ -13,11 +13,14 @@ const { render, fireEvent, screen } = await import('@testing-library/react')
 const { usePromptInputController } =
     await import('../src/features/home/hooks/usePromptInputController')
 const { PromptFooter } = await import('../src/shared/components/ui/PromptFooter')
+const { useModelSelection } = await import('../src/features/home/model-selection')
 
 describe('Model and provider routing', () => {
     let queryClient: QueryClient
 
     beforeEach(() => {
+        // the picked model is shared across tests in one bun process
+        useModelSelection.getState().reset()
         queryClient = new QueryClient({
             defaultOptions: { queries: { retry: false } },
         })
@@ -71,6 +74,7 @@ describe('Model and provider routing', () => {
             issueNumber: undefined,
             model: 'claude-3-7-sonnet-latest',
             provider: 'anthropic',
+            billingSource: 'CREDITS',
         })
     })
 
@@ -109,7 +113,7 @@ describe('Model and provider routing', () => {
         fireEvent.click(gptOption)
 
         expect(onSelectModel).toHaveBeenCalledTimes(1)
-        expect(onSelectModel).toHaveBeenCalledWith('gpt-4o', 'openai')
+        expect(onSelectModel).toHaveBeenCalledWith('gpt-4o', 'openai', 'CREDITS')
     })
 
     it('sends model and provider in send_prompt socket event via generateProjectStream', async () => {
@@ -141,6 +145,7 @@ describe('Model and provider routing', () => {
             prompt: 'Test prompt',
             model: 'claude-3-7-sonnet-latest',
             provider: 'anthropic',
+            billingSource: 'CREDITS',
         })
     })
 })

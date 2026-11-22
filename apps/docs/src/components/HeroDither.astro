@@ -1,0 +1,381 @@
+---
+// Hero Dither
+// Blue clouds around a section's content, drawn as ordered (Bayer) dither pixels. Used in
+// the landing hero and in the closing call to action. A bowl shaped area stays clear: it
+// curves around the bottom half of the element marked data-dither-source (the section's
+// text block), and above the middle of that element its walls open out toward the top of
+// the section. Outside the bowl, drifting clouds fill the sides and the bottom of the
+// section, and fade out before they reach the line at the top of the section. The clouds
+// come from warped noise and rise slowly, so the shapes keep changing.
+//
+// The clouds brighten around the mouse pointer, with a short trail.
+//
+// Place it as the first child of a <section> (more than one section can have one). The
+// canvas covers its section and nothing outside it, so the clouds stay between the page's
+// side rails. Pixels are left out around content in that section marked with
+// data-dither-hole, so text stays easy to read.
+//
+// data-dither-hole values:
+//   "box"      the element's bounding box
+//   "text"     the boxes of each line of text in the element
+//   "children" the bounding box of each direct child
+//
+// Hidden below the md breakpoint. Still (no motion) with prefers-reduced-motion.
+---
+
+<canvas
+  data-hero-dither
+  aria-hidden="true"
+  class="pointer-events-none absolute top-0 left-0 -z-10 hidden md:block"
+></canvas>
+
+<style>
+  canvas[data-hero-dither] {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+</style>
+
+<script>
+  const PIXEL = 3; // CSS px per dither pixel
+  // The clear bowl. Below the source centre it is half an oval: half the source size times
+  // these factors. Its edge is e = 1, where e is the elliptical distance from the centre.
+  // Above the centre the walls open out: at the top of the section the bowl is
+  // 1 + BOWL_FLARE times as wide as at the centre.
+  const OVAL_X = 1.22;
+  const OVAL_Y = 1.52;
+  const BOWL_FLARE = 0.5;
+  const BOWL_CURVE = 1.1; // higher: the walls stay narrow longer, then open out near the top
+  const TOP_CLEAR = 30; // no clouds in this many px below the top of the section (the line above it)
+  const TOP_FADE = 240; // below TOP_CLEAR, the clouds fade in over this many px
+  const RISE_FROM = 0.9; // clouds start at this e (the noise moves the edge in and out)
+  const RISE_TO = 1.45; // clouds are at full strength from this e
+  const FADE_FROM = 1.9; // clouds start to fade at this e
+  const FADE_TO = 2.55; // nothing past this e
+  const PEAK = 0.82; // max share of lit pixels, so even the densest part keeps a dither texture
+  const HAZE = 0.2; // thin dither between the clouds
+  const ACCENT_FROM = 0.46; // above this strength, some lit pixels take the dark accent tone
+  const HOLE_PAD = 12; // clear space around content
+  const HOLE_SOFT = 44; // soft edge beyond the clear space
+  const FRAME_MS = 1000 / 30;
+  const POINTER_RADIUS = 70; // CSS px, size of the glow around the pointer
+  const POINTER_BOOST = 0.5;
+  const BOOSTED_PEAK = 0.88; // max share of lit pixels where the pointer adds to the glow
+
+  const TONE: [number, number, number] = [135, 178, 244]; // #87b2f4
+  const ACCENT: [number, number, number] = [0, 102, 245]; // #0066f5
+
+  // 4x4 Bayer matrix, as thresholds in (0, 1)
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((b) => (b + 0.5) / 16);
+
+  // Value noise on a hashed lattice
+  const perm = new Uint8Array(512);
+  {
+    const p = Array.from({ length: 256 }, (_, i) => i);
+    for (let i = 255; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [p[i], p[j]] = [p[j], p[i]];
+    }
+    for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+  }
+  const lattice = (x: number, y: number) => perm[perm[x & 255] + (y & 255)] / 255;
+  const noise = (x: number, y: number) => {
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+    const xf = x - xi;
+    const yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf);
+    const v = yf * yf * (3 - 2 * yf);
+    const a = lattice(xi, yi);
+    const b = lattice(xi + 1, yi);
+    const c = lattice(xi, yi + 1);
+    const d = lattice(xi + 1, yi + 1);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+
+  const smooth = (a: number, b: number, x: number) => {
+    const u = Math.max(0, Math.min(1, (x - a) / (b - a)));
+    return u * u * (3 - 2 * u);
+  };
+
+  let cleanups: (() => void)[] = [];
+
+  const holeRects = (section: HTMLElement): DOMRect[] => {
+    const rects: DOMRect[] = [];
+    section.querySelectorAll<HTMLElement>('[data-dither-hole]').forEach((el) => {
+      const mode = el.dataset.ditherHole;
+      if (mode === 'text') {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        rects.push(...Array.from(range.getClientRects()));
+      } else if (mode === 'children') {
+        Array.from(el.children).forEach((child) => {
+          const r = child.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) rects.push(r);
+        });
+      } else {
+        rects.push(el.getBoundingClientRect());
+      }
+    });
+    return rects.filter((r) => r.width > 0 && r.height > 0);
+  };
+
+  // Start one dither on a canvas. Returns a function that stops it.
+  const initDither = (canvas: HTMLCanvasElement): (() => void) | null => {
+    const section = canvas.parentElement;
+    const ctx = canvas.getContext('2d');
+    if (!section || !ctx) return null;
+
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    let cols = 0;
+    let image: ImageData | null = null;
+    let active = new Uint32Array(0); // cells with any glow
+    let ovalDist = new Float32Array(0); // elliptical distance e per active cell
+    let weight = new Float32Array(0); // top fade and hole fade per active cell
+    let threshold = new Float32Array(0); // Bayer threshold per active cell
+    let raf = 0;
+    let lastFrame = 0;
+    let visible = true;
+
+    // Pointer position in canvas space; the glow follows it with a short trail
+    let pointerX = 0;
+    let pointerY = 0;
+    let pointerIn = false;
+    let glowX = 0;
+    let glowY = 0;
+    let glowAmount = 0;
+
+    const layout = () => {
+      const sectionRect = section.getBoundingClientRect();
+      const width = sectionRect.width;
+      const height = sectionRect.height;
+
+      cols = Math.ceil(width / PIXEL);
+      const rows = Math.ceil(height / PIXEL);
+      canvas.width = cols;
+      canvas.height = rows;
+      canvas.style.width = `${cols * PIXEL}px`;
+      canvas.style.height = `${rows * PIXEL}px`;
+      image = ctx.createImageData(cols, rows);
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const toLocal = (r: DOMRect) => ({
+        left: r.left - canvasRect.left,
+        right: r.right - canvasRect.left,
+        top: r.top - canvasRect.top,
+        bottom: r.bottom - canvasRect.top,
+      });
+
+      const sourceEl = section.querySelector<HTMLElement>('[data-dither-source]');
+      if (!sourceEl) {
+        active = new Uint32Array(0);
+        return;
+      }
+      const src = toLocal(sourceEl.getBoundingClientRect());
+      const cx = (src.left + src.right) / 2;
+      const cy = (src.top + src.bottom) / 2;
+      const rx = ((src.right - src.left) / 2) * OVAL_X;
+      const ry = ((src.bottom - src.top) / 2) * OVAL_Y;
+      const holes = holeRects(section).map(toLocal);
+
+      const cells: number[] = [];
+      const dists: number[] = [];
+      const weights: number[] = [];
+      for (let row = 0; row < rows; row++) {
+        const y = row * PIXEL + PIXEL / 2;
+        // The clouds thin out toward the top of the section and are gone before they reach it
+        const top = smooth(TOP_CLEAR, TOP_CLEAR + TOP_FADE, y);
+        if (top <= 0) continue;
+        // Above the centre the bowl is open, and its walls widen toward the top of the page
+        const above = y < cy;
+        const ey = above ? 0 : (y - cy) / ry;
+        const rowRx = above ? rx * (1 + BOWL_FLARE * Math.pow((cy - y) / cy, BOWL_CURVE)) : rx;
+        for (let col = 0; col < cols; col++) {
+          const x = col * PIXEL + PIXEL / 2;
+          const ex = (x - cx) / rowRx;
+          const e = Math.sqrt(ex * ex + ey * ey);
+          if (e <= RISE_FROM - 0.12 || e >= FADE_TO) continue;
+          let w = top;
+          for (const h of holes) {
+            const hx = Math.max(h.left - x, 0, x - h.right);
+            const hy = Math.max(h.top - y, 0, y - h.bottom);
+            const hd = Math.hypot(hx, hy);
+            if (hd < HOLE_PAD) {
+              w = 0;
+              break;
+            }
+            if (hd < HOLE_PAD + HOLE_SOFT) w *= (hd - HOLE_PAD) / HOLE_SOFT;
+          }
+          if (w <= 0.01) continue;
+          cells.push(row * cols + col);
+          dists.push(e);
+          weights.push(w);
+        }
+      }
+      active = Uint32Array.from(cells);
+      ovalDist = Float32Array.from(dists);
+      weight = Float32Array.from(weights);
+      threshold = new Float32Array(active.length);
+      for (let k = 0; k < active.length; k++) {
+        const i = active[k];
+        threshold[k] = BAYER[(Math.floor(i / cols) & 3) * 4 + ((i % cols) & 3)];
+      }
+    };
+
+    const draw = (now: number) => {
+      if (!image) return;
+      const t = now / 1000;
+      const data = image.data;
+      data.fill(0);
+
+      glowX += (pointerX - glowX) * 0.25;
+      glowY += (pointerY - glowY) * 0.25;
+      glowAmount += ((pointerIn ? 1 : 0) - glowAmount) * 0.12;
+      const glowOn = glowAmount > 0.01;
+      const glowReach2 = (POINTER_RADIUS * 3) ** 2;
+      const glowSigma2 = 2 * POINTER_RADIUS * POINTER_RADIUS;
+
+      for (let k = 0; k < active.length; k++) {
+        const i = active[k];
+        const x = (i % cols) * PIXEL;
+        const y = Math.floor(i / cols) * PIXEL;
+        // Warped noise: a slow, large noise field bends the coordinates of the cloud noise,
+        // so the clouds curl instead of looking like round blobs. Both layers rise slowly.
+        const warp = noise(x / 240 + t * 0.04, (y + t * 10) / 240);
+        const wx = x + (warp - 0.5) * 160;
+        const wy = y + t * 16 + (warp - 0.5) * 120;
+        const n = 0.65 * noise(wx / 120, wy / 120) + 0.35 * noise(wx / 46, (wy + t * 10) / 46);
+        const cloud = smooth(0.36, 0.62, n);
+        // The oval edge moves in and out with the noise, so it never looks drawn
+        const e = ovalDist[k] - (warp - 0.5) * 0.25;
+        const shape = smooth(RISE_FROM, RISE_TO, e) * (1 - smooth(FADE_FROM, FADE_TO, e));
+        let v = Math.min(PEAK, weight[k] * shape * (HAZE + (1 - HAZE) * cloud));
+        if (glowOn) {
+          const r2 = (x - glowX) ** 2 + (y - glowY) ** 2;
+          if (r2 < glowReach2) {
+            const boost = glowAmount * POINTER_BOOST * Math.exp(-r2 / glowSigma2);
+            v = Math.min(BOOSTED_PEAK, v + boost * weight[k] * (0.5 + 0.5 * cloud));
+          }
+        }
+        // Ordered dither: the pixel is lit when the strength beats its Bayer threshold.
+        // In the strongest part, the pixels with the lowest thresholds take the accent tone.
+        const th = threshold[k];
+        if (v <= th) continue;
+        const tone = th < v - ACCENT_FROM ? ACCENT : TONE;
+        const o = i * 4;
+        data[o] = tone[0];
+        data[o + 1] = tone[1];
+        data[o + 2] = tone[2];
+        data[o + 3] = 255;
+      }
+      ctx.putImageData(image, 0, 0);
+    };
+
+    const animated = () => desktop.matches && !reducedMotion.matches;
+
+    const loop = (now: number) => {
+      raf = requestAnimationFrame(loop);
+      if (now - lastFrame < FRAME_MS) return;
+      lastFrame = now;
+      draw(now);
+    };
+
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    const start = () => {
+      stop();
+      if (!desktop.matches) return;
+      layout();
+      draw(performance.now());
+      if (animated() && visible && !document.hidden) raf = requestAnimationFrame(loop);
+    };
+
+    const resume = () => {
+      if (!raf && visible && !document.hidden && animated()) raf = requestAnimationFrame(loop);
+    };
+
+    let resizeTimer = 0;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(start, 150);
+    };
+
+    const onVisibility = () => (document.hidden ? stop() : resume());
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return;
+      const rect = canvas.getBoundingClientRect();
+      pointerX = e.clientX - rect.left;
+      pointerY = e.clientY - rect.top;
+      if (!pointerIn) {
+        // Start the trail at the pointer, not at the last place it left
+        glowX = pointerX;
+        glowY = pointerY;
+      }
+      pointerIn = pointerY >= 0 && pointerY <= rect.height;
+    };
+    const onPointerLeave = () => {
+      pointerIn = false;
+    };
+
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) resume();
+      else stop();
+    });
+    observer.observe(canvas);
+
+    // Watch the content too: its size changes when the web font loads
+    const resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(section);
+    section.querySelectorAll('[data-dither-hole]').forEach((el) => resizeObserver.observe(el));
+
+    desktop.addEventListener('change', start);
+    reducedMotion.addEventListener('change', start);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    document.documentElement.addEventListener('pointerleave', onPointerLeave);
+
+    let disposed = false;
+
+    // Web fonts change the size of the text, so lay out again once they load
+    document.fonts?.ready.then(() => {
+      if (!disposed) start();
+    });
+    start();
+
+    return () => {
+      disposed = true;
+      stop();
+      clearTimeout(resizeTimer);
+      observer.disconnect();
+      resizeObserver.disconnect();
+      desktop.removeEventListener('change', start);
+      reducedMotion.removeEventListener('change', start);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pointermove', onPointerMove);
+      document.documentElement.removeEventListener('pointerleave', onPointerLeave);
+    };
+  };
+
+  const stopAll = () => {
+    cleanups.forEach((stop) => stop());
+    cleanups = [];
+  };
+
+  const initAll = () => {
+    stopAll();
+    document.querySelectorAll<HTMLCanvasElement>('canvas[data-hero-dither]').forEach((canvas) => {
+      const stop = initDither(canvas);
+      if (stop) cleanups.push(stop);
+    });
+  };
+
+  document.addEventListener('astro:page-load', initAll);
+  document.addEventListener('astro:before-swap', stopAll);
+</script>

@@ -69,8 +69,12 @@ const google = (data: GoogleInput) => {
     })
 }
 
+type GithubResult = {
+    isNewUser?: boolean
+}
+
 const github = (data: GithubInput) => {
-    return apiRequest<void>('/auth/github', {
+    return apiRequest<GithubResult>('/auth/github', {
         method: 'POST',
         includeAuth: false,
         body: JSON.stringify(data),

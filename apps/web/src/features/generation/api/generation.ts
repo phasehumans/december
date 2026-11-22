@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client'
 
+import type { BillingSource } from '@/features/home/model-selection'
 import type {
     BackendProject,
     BackendMessage,
@@ -7,6 +8,7 @@ import type {
 } from '@/features/sessions/api/session'
 
 import { useAppStore } from '@/app/store'
+import { getModelSelection } from '@/features/home/model-selection'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { ApiError, refreshAuthSession } from '@/shared/api/client'
 import { getWebSocketUrl } from '@/shared/config/env'
@@ -173,6 +175,10 @@ export type GenerationStreamEvent =
           data: {
               error?: string
               message?: string
+              /** BYOK_KEY_FAILED or BYOK_KEY_MISSING when the user's own key failed */
+              code?: string
+              provider?: string
+              keyFailure?: string
           }
       }
     | {
@@ -510,9 +516,16 @@ export function normalizeAgentStreamEvent(raw: any): GenerationStreamEvent {
                 payload.error ||
                 payload.message ||
                 'Agent Execution Error'
+            const code = payload.code || (typeof innerData === 'object' && innerData?.code)
             return {
                 type: 'AgentError',
-                data: { error: String(error), message: String(error) },
+                data: {
+                    error: String(error),
+                    message: String(error),
+                    ...(code ? { code: String(code) } : {}),
+                    ...(payload.provider ? { provider: String(payload.provider) } : {}),
+                    ...(payload.keyFailure ? { keyFailure: String(payload.keyFailure) } : {}),
+                },
             }
         }
         case 'AgentInterrupt': {
@@ -548,12 +561,50 @@ export function normalizeAgentStreamEvent(raw: any): GenerationStreamEvent {
     }
 }
 
+/**
+ * The user's own key failed (BYOK_KEY_FAILED or BYOK_KEY_MISSING). The stream handler
+ * already showed the provider's message with "switch to december credits", so callers
+ * must not show it again or treat it as a december credits problem.
+ */
+export class OwnKeyError extends ApiError {
+    code: string
+
+    constructor(message: string, code: string) {
+        super(message, 500)
+        this.name = 'OwnKeyError'
+        this.code = code
+    }
+}
+
+export const isOwnKeyError = (error: unknown): error is OwnKeyError => error instanceof OwnKeyError
+
+// the model a prompt runs on. callers that pass no model use the model picked in the
+// prompt box (the shared selection). a caller's model only keeps the picked payment
+// source when it is that same picked model; otherwise it runs on december credits.
+const resolvePromptSelection = (options?: {
+    model?: string
+    provider?: string
+    billingSource?: BillingSource
+}) => {
+    const picked = getModelSelection()
+    if (!options?.model) {
+        return { model: picked.model, provider: picked.provider, billingSource: picked.source }
+    }
+    const billingSource: BillingSource =
+        options.billingSource ??
+        (picked.model === options.model && picked.provider === options.provider
+            ? picked.source
+            : 'CREDITS')
+    return { model: options.model, provider: options.provider, billingSource }
+}
+
 type GenerateProjectInput = {
     prompt: string
     sessionId?: string | null
     projectId?: string | null
     model?: string
     provider?: string
+    billingSource?: BillingSource
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
     repoUrl?: string
@@ -568,6 +619,7 @@ type ApplyProjectEditInput = {
     prompt: string
     model?: string
     provider?: string
+    billingSource?: BillingSource
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
@@ -604,8 +656,14 @@ const runOverSocket = async (
     prompt: string,
     onEvent: (event: GenerationStreamEvent) => void,
     signal?: AbortSignal,
-    options?: { attachOnly?: boolean; model?: string; provider?: string }
+    options?: {
+        attachOnly?: boolean
+        model?: string
+        provider?: string
+        billingSource?: BillingSource
+    }
 ): Promise<any> => {
+    const selection = resolvePromptSelection(options)
     return new Promise((resolve, reject) => {
         const socket = getSharedSocket()
 
@@ -634,8 +692,9 @@ const runOverSocket = async (
                     sessionId: sessionId,
                     projectId: sessionId,
                     prompt: prompt,
-                    model: options?.model,
-                    provider: options?.provider,
+                    model: selection.model,
+                    provider: selection.provider,
+                    billingSource: selection.billingSource,
                 })
             }
         }
@@ -734,13 +793,15 @@ const runOverSocket = async (
             if (streamEvent.type === 'error' || streamEvent.type === 'AgentError') {
                 hasResolved = true
                 cleanup()
+                const errorMessage =
+                    (streamEvent.data as any)?.error ||
+                    streamEvent.data?.message ||
+                    'Agent Execution Error'
+                const errorCode = (streamEvent.data as any)?.code
                 reject(
-                    new ApiError(
-                        (streamEvent.data as any)?.error ||
-                            streamEvent.data?.message ||
-                            'Agent Execution Error',
-                        500
-                    )
+                    typeof errorCode === 'string' && errorCode.startsWith('BYOK_')
+                        ? new OwnKeyError(errorMessage, errorCode)
+                        : new ApiError(errorMessage, 500)
                 )
             }
         }
@@ -801,6 +862,7 @@ const generateProjectStream = async ({
     projectId,
     model,
     provider,
+    billingSource,
     signal,
     onEvent,
     repoUrl,
@@ -809,17 +871,45 @@ const generateProjectStream = async ({
     issueNumber,
 }: GenerateProjectInput) => {
     let targetSessionId = sessionId || projectId
+    const selection = resolvePromptSelection({ model, provider, billingSource })
 
     if (!targetSessionId) {
-        // create new session if no session id provided
-        const newSession = await sessionAPI.createSession({
-            prompt,
-            type: 'WEB',
-            repoUrl,
-            branch,
-            gitRef,
-            issueNumber,
-        })
+        // create new session if no session id provided. an own-key session tells the
+        // server which key pays, so it does not ask for credits.
+        let newSession: Awaited<ReturnType<typeof sessionAPI.createSession>>
+        try {
+            newSession = await sessionAPI.createSession({
+                prompt,
+                type: 'WEB',
+                repoUrl,
+                branch,
+                gitRef,
+                issueNumber,
+                ...(selection.billingSource === 'OWN_KEY'
+                    ? {
+                          billingSource: 'OWN_KEY' as const,
+                          provider: selection.provider,
+                          model: selection.model,
+                      }
+                    : {}),
+            })
+        } catch (error) {
+            // the server checks the own key before it creates the session (400, for example
+            // "add your OpenAI key in settings first"). show it the same way as a key failure
+            // during the run, with "switch to december credits", and do not show it twice.
+            if (
+                selection.billingSource === 'OWN_KEY' &&
+                error instanceof ApiError &&
+                error.status === 400
+            ) {
+                onEvent({
+                    type: 'AgentError',
+                    data: { error: error.message, code: 'BYOK_KEY_MISSING' },
+                })
+                throw new OwnKeyError(error.message, 'BYOK_KEY_MISSING')
+            }
+            throw error
+        }
         targetSessionId = newSession.id
 
         onEvent({
@@ -833,7 +923,7 @@ const generateProjectStream = async ({
         })
     }
 
-    return await runOverSocket(targetSessionId, prompt, onEvent, signal, { model, provider })
+    return await runOverSocket(targetSessionId, prompt, onEvent, signal, selection)
 }
 
 /**
@@ -845,6 +935,7 @@ const applyProjectEdit = async (data: ApplyProjectEditInput) => {
     return await runOverSocket(targetSessionId, data.prompt, data.onEvent, data.signal, {
         model: data.model,
         provider: data.provider,
+        ...(data.billingSource ? { billingSource: data.billingSource } : {}),
     })
 }
 

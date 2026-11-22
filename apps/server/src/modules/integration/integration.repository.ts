@@ -12,11 +12,24 @@ async function findUserFirst(id: string) {
     })
 }
 
-async function updateUserGithub(data: { id: string; username: string; accessToken: string }) {
-    const { id, username, accessToken } = data
+async function findUserByGithubId(githubId: string) {
+    return prisma.user.findUnique({
+        where: { githubId },
+        select: { id: true },
+    })
+}
+
+async function updateUserGithub(data: {
+    id: string
+    username: string
+    accessToken: string
+    githubId?: string
+}) {
+    const { id, username, accessToken, githubId } = data
     return prisma.user.update({
         where: { id },
         data: {
+            ...(githubId ? { githubId } : {}),
             githubUsername: username,
             githubToken: accessToken,
             githubConnected: true,
@@ -32,6 +45,7 @@ async function updateUserGithub(data: { id: string; username: string; accessToke
 }
 
 export const integrationRepository = {
+    findUserByGithubId,
     findUserById,
     findUserFirst,
     updateUserGithub,

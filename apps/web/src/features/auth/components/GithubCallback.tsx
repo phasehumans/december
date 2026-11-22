@@ -1,97 +1,63 @@
 import { X } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
 
 import { authAPI } from '@/features/auth/api/auth'
+import { githubOAuth } from '@/features/auth/githubOAuth'
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const GithubCallback = () => {
-    const navigate = useNavigate()
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
+    const [backPath, setBackPath] = useState('/login')
+    // the code is single use: never exchange it twice (StrictMode runs effects twice)
+    const hasStarted = useRef(false)
 
     useEffect(() => {
+        if (hasStarted.current) return
+        hasStarted.current = true
+
         const urlParams = new URLSearchParams(window.location.search)
         const code = urlParams.get('code')
         const error = urlParams.get('error')
         const errorDescription = urlParams.get('error_description')
+        const { isStateValid, returnPath } = githubOAuth.complete(urlParams.get('state'))
+        // keep where the user started (cli login, device activation) for the retry
+        if (returnPath !== '/') {
+            setBackPath(`/login?redirect=${encodeURIComponent(returnPath)}`)
+        }
 
-        const isRealPopup = Boolean(
-            window.opener && window.opener !== window && !window.opener.closed
-        )
-
-        if (error || errorDescription) {
-            const message =
-                errorDescription || error || 'GitHub authorization was cancelled or failed.'
-            if (isRealPopup) {
-                try {
-                    window.opener.postMessage(
-                        { type: 'GITHUB_LOGIN_FAILED', error: message },
-                        window.location.origin
-                    )
-                    window.close()
-                } catch {
-                    // Intentionally swallowed: fallback handled below
-                }
-            }
+        const fail = (message: string) => {
             setStatus('error')
             setErrorMsg(message)
+        }
+
+        if (error || errorDescription) {
+            fail(errorDescription || error || 'GitHub authorization was cancelled or failed.')
             return
         }
 
         if (!code) {
-            const message = 'No authorization code found in URL.'
-            if (isRealPopup) {
-                try {
-                    window.opener.postMessage(
-                        { type: 'GITHUB_LOGIN_FAILED', error: message },
-                        window.location.origin
-                    )
-                    window.close()
-                } catch {
-                    // Intentionally swallowed: fallback handled below
-                }
-            }
-            setStatus('error')
-            setErrorMsg(message)
+            fail('No authorization code found in URL.')
             return
         }
 
-        let openerHandled = false
-        if (isRealPopup) {
-            try {
-                window.opener.postMessage(
-                    { type: 'GITHUB_LOGIN_SUCCESS', code },
-                    window.location.origin
-                )
-                window.close()
-                openerHandled = true
-            } catch {
-                openerHandled = false
-            }
+        if (!isStateValid) {
+            fail('This GitHub sign-in link is not valid or has expired. Please try again.')
+            return
         }
 
-        const handleDirectAuth = async () => {
+        const exchangeCode = async () => {
             try {
-                setStatus('loading')
                 await authAPI.github({ code })
                 setStatus('success')
-                window.location.href = '/'
+                window.location.href = returnPath
             } catch (err: any) {
-                setStatus('error')
-                setErrorMsg(err?.message || 'Failed to authenticate with GitHub.')
+                fail(err?.message || 'Failed to authenticate with GitHub.')
             }
         }
 
-        if (openerHandled) {
-            const timer = setTimeout(() => {
-                window.location.href = '/'
-            }, 500)
-            return () => clearTimeout(timer)
-        } else {
-            handleDirectAuth()
-        }
-    }, [navigate])
+        exchangeCode()
+    }, [])
 
     if (status === 'error') {
         return (
@@ -99,7 +65,7 @@ export const GithubCallback = () => {
                 <button
                     type="button"
                     onClick={() => {
-                        window.location.href = '/login'
+                        window.location.href = backPath
                     }}
                     className="flex items-center justify-center absolute top-5 right-5 text-[#888888] hover:text-[#EDEDED] p-2 rounded-lg hover:bg-white/5 transition-colors z-50 outline-none cursor-pointer"
                     aria-label="Close"
@@ -126,7 +92,7 @@ export const GithubCallback = () => {
                         <button
                             type="button"
                             onClick={() => {
-                                window.location.href = '/login'
+                                window.location.href = backPath
                             }}
                             className="w-full bg-white hover:bg-[#EDEDED] text-[#090a0f] font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer"
                         >

@@ -26,6 +26,7 @@ export type Profile = {
     githubCardDone?: boolean
     feedbackCardDone?: boolean
     canvasWaitlist?: boolean
+    defaultModelSource?: 'CREDITS' | 'OWN_KEY'
 }
 
 type BackendProfile = Profile
@@ -92,6 +93,13 @@ const changePassword = (data: ChangePasswordInput) => {
     return apiRequest<BackendProfile>('/setting/password', {
         method: 'PATCH',
         body: JSON.stringify(data),
+    })
+}
+
+const updateModelSource = (defaultModelSource: 'CREDITS' | 'OWN_KEY') => {
+    return apiRequest<{ defaultModelSource: 'CREDITS' | 'OWN_KEY' }>('/setting/model-source', {
+        method: 'PATCH',
+        body: JSON.stringify({ defaultModelSource }),
     })
 }
 
@@ -234,6 +242,7 @@ export const profileAPI = {
     updateAvatarUrl,
     changePassword,
     updateNotifications,
+    updateModelSource,
     getQuickInfo,
     signout,
     signoutAll,

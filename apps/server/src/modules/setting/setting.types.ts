@@ -24,6 +24,11 @@ export type UpdateNotifications = {
     notifySecurityAlerts?: boolean
 }
 
+export type UpdateModelSource = {
+    userId: string
+    defaultModelSource: 'CREDITS' | 'OWN_KEY'
+}
+
 export type CompleteOnboarding = {
     userId: string
 }

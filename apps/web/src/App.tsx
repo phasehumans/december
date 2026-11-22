@@ -5,6 +5,7 @@ import { AppContentView } from './app/components/AppContentView'
 import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { useAppController } from './app/hooks/useAppController'
 import { AuthModal } from './features/auth/components/AuthModal'
+import { githubOAuth } from './features/auth/githubOAuth'
 
 import { Icons } from '@/shared/components/ui/Icons'
 import { getWebUrl } from '@/shared/config/env'
@@ -76,11 +77,7 @@ const App: React.FC = () => {
                             queryClient.invalidateQueries({ queryKey: ['profile'] })
                             const searchParams = new URLSearchParams(window.location.search)
                             const redirectTarget = searchParams.get('redirect')
-                            if (
-                                redirectTarget &&
-                                redirectTarget.startsWith('/') &&
-                                !redirectTarget.startsWith('//')
-                            ) {
+                            if (githubOAuth.isSafeReturnPath(redirectTarget)) {
                                 navigate(redirectTarget, { replace: true })
                             } else {
                                 navigate('/', { replace: true })

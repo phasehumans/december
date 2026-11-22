@@ -118,7 +118,7 @@ function normalizeErrorResponse(text: string): string {
     return text
 }
 
-async function providerFetch(
+export async function providerFetch(
     url: Parameters<typeof fetch>[0],
     init?: Parameters<typeof fetch>[1]
 ): Promise<Response> {

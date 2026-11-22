@@ -2,6 +2,7 @@ import { useGoogleLogin } from '@react-oauth/google'
 import { useMutation } from '@tanstack/react-query'
 
 import { authAPI } from '@/features/auth/api/auth'
+import { githubOAuth } from '@/features/auth/githubOAuth'
 import { ApiError } from '@/shared/api/client'
 import { getGithubClientId } from '@/shared/config/env'
 
@@ -190,10 +191,15 @@ export const useAuthMutations = ({
             window.location.origin !== 'null'
                 ? window.location.origin
                 : ''
-        const redirectUri = origin ? `${origin}/github/callback` : undefined
-        const redirectParam = redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ''
-        const url = `https://github.com/login/oauth/authorize?client_id=${clientId}${redirectParam}&state=auth&scope=read:user%20user:email`
-        window.location.href = url
+        const params = new URLSearchParams({
+            client_id: clientId,
+            state: githubOAuth.begin(window.location),
+            scope: 'read:user user:email',
+        })
+        if (origin) {
+            params.set('redirect_uri', `${origin}/github/callback`)
+        }
+        window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`
     }
 
     const isAuthPending =

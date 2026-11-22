@@ -205,7 +205,13 @@ const login = async (data: Login) => {
     }
 
     if (!existingUser.password) {
-        throw new AppError('please continue with google login', 401)
+        const provider =
+            existingUser.githubId && !existingUser.googleId
+                ? 'github'
+                : existingUser.googleId && !existingUser.githubId
+                  ? 'google'
+                  : 'google or github'
+        throw new AppError(`please continue with ${provider} login`, 401)
     }
 
     const isPasswordMatch = await bcrypt.compare(password, existingUser.password)
@@ -372,6 +378,8 @@ const google = async (data: Google) => {
             emailVerified: true,
             otpHash: null,
             otpExpiresAt: null,
+            // an unverified password was never proven to belong to the email owner
+            ...(user.emailVerified ? {} : { password: null }),
         })
     } else if (user.googleId !== sub) {
         throw new AppError('google id mismatch', 400)
@@ -417,21 +425,21 @@ const github = async (data: Github) => {
     const { name, email, sub, username: ghUsername, userAgent, ipAddress } = data
     const normalizedEmail = email.trim().toLowerCase()
 
-    let user = await authRepository.findUserByEmail(normalizedEmail)
+    // the github id is stable, the primary email is not: match on the id first
+    let user =
+        (await authRepository.findUserByGithubId(sub)) ??
+        (await authRepository.findUserByEmail(normalizedEmail))
+
+    const isNewUser = !user
 
     if (!user) {
         user = await authRepository.createUser({
             email: normalizedEmail,
             emailVerified: true,
             githubId: sub,
+            ...(ghUsername ? { githubUsername: ghUsername } : {}),
             name: name,
         })
-
-        if (ghUsername) {
-            user = await authRepository.updateUser(user.id, {
-                githubUsername: ghUsername,
-            })
-        }
 
         try {
             await notificationService.sendNotificationToUser({
@@ -459,6 +467,8 @@ const github = async (data: Github) => {
             emailVerified: true,
             otpHash: null,
             otpExpiresAt: null,
+            // an unverified password was never proven to belong to the email owner
+            ...(user.emailVerified ? {} : { password: null }),
         })
     } else if (user.githubId !== sub) {
         throw new AppError('github id mismatch', 400)
@@ -498,10 +508,11 @@ const github = async (data: Github) => {
         },
     })
 
+    // never return the user row: it holds the password hash and stored tokens
     return {
         accessToken,
         token: accessToken,
-        user,
+        isNewUser,
     }
 }
 

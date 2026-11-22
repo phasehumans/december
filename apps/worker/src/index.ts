@@ -7,11 +7,27 @@ import jwt from 'jsonwebtoken'
 import { E2BSandboxService } from './e2b-sandbox.service'
 import { processGithubIssueFix } from './github-issue-fix.service'
 import { processGrpcStream } from './listener'
+import {
+    loadOwnKeyProvider,
+    normalizeBillingSource,
+    OwnKeyUnavailableError,
+    resolveSecretsEncKey,
+    tagOwnKeyErrors,
+} from './llm-source'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { WakeUpSweeper } from './wake-up-sweeper'
 
+import type { LLMProvider } from '@december/providers'
+
 if (process.env.NODE_ENV === 'production' && !process.env.REDIS_URL) {
     throw new Error('REDIS_URL must be configured in production for Worker.')
+}
+
+if (process.env.NODE_ENV === 'production' && !resolveSecretsEncKey()) {
+    // credits runs still work; every own-key run would fail until this is set
+    console.error(
+        '[WORKER ENGINE] SECRETS_ENC_KEY is not set (same value as the server). Own-key runs will fail.'
+    )
 }
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
@@ -30,6 +46,7 @@ export const worker = new Worker(
     async (job: Job) => {
         const { sessionId, userId, taskType, prUrl, gitToken, reviewId, secrets, model, provider } =
             job.data
+        const billingSource = normalizeBillingSource(job.data.billingSource)
         const effectiveTaskType = taskType || job.name
 
         console.log(
@@ -124,7 +141,39 @@ export const worker = new Worker(
                 }
             }
 
-            if (userId) {
+            // own key: load and decrypt it before a sandbox is provisioned. it stays in memory.
+            let ownKeyLlm: LLMProvider | undefined
+            let runModel = model
+            if (billingSource === 'OWN_KEY') {
+                try {
+                    const ownKey = await loadOwnKeyProvider({ userId, provider })
+                    ownKeyLlm = ownKey.llm
+                    // never fall back to december's default model on the user's provider
+                    runModel = model || ownKey.defaultModel
+                } catch (keyErr: any) {
+                    if (!(keyErr instanceof OwnKeyUnavailableError)) throw keyErr
+                    await prisma.session
+                        .update({ where: { id: sessionId }, data: { vmStatus: 'FAILED' } })
+                        .catch(() => {
+                            // Intentionally swallowed: DB fallback on own key failure
+                        })
+                    await E2BSandboxService.emitSessionEvent({
+                        sessionId,
+                        event: {
+                            type: 'AgentError',
+                            code: 'BYOK_KEY_FAILED',
+                            keyFailure: 'missing_key',
+                            provider,
+                            billingSource,
+                            error: keyErr.message,
+                            message: keyErr.message,
+                        },
+                    })
+                    return { status: 'FAILED', error: keyErr.message }
+                }
+            }
+
+            if (userId && billingSource === 'CREDITS') {
                 const user = await prisma.user.findUnique({
                     where: { id: userId },
                     select: { creditBalance: true },
@@ -203,17 +252,22 @@ export const worker = new Worker(
                 token,
                 apiHostUrl,
                 secrets,
-                model,
+                model: runModel,
                 provider,
+                ...(ownKeyLlm ? { llm: ownKeyLlm } : {}),
             })
 
             console.log(
                 `[WORKER ENGINE] Agent loop started for session '${sessionId}'. Spawning stream listener...`
             )
 
+            const eventStream =
+                billingSource === 'OWN_KEY' && provider ? tagOwnKeyErrors(stream, provider) : stream
+
             // start listening in the background without blocking the worker pool
-            processGrpcStream(sessionId, stream).catch((e: any) =>
-                console.error(`[WORKER ENGINE] Stream failed for session ${sessionId}`, e)
+            processGrpcStream(sessionId, eventStream, undefined, { billingSource }).catch(
+                (e: any) =>
+                    console.error(`[WORKER ENGINE] Stream failed for session ${sessionId}`, e)
             )
 
             return { status: 'RUNNING', sandboxId: provisionResult.sandboxId, token }

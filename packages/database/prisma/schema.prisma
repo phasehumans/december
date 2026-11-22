@@ -33,6 +33,7 @@ model User {
   welcomeCardDone        Boolean         @default(false)
   githubCardDone         Boolean         @default(false)
   feedbackCardDone       Boolean         @default(false)
+  defaultModelSource     BillingSource   @default(CREDITS)
 
   notifications      Notification[]
   authSessions       AuthSession[]
@@ -45,6 +46,33 @@ model User {
   secrets            Secret[]
   feedbacks          Feedback[]
   projects           Project[]
+  providerCredentials ProviderCredential[]
+}
+
+// how a cloud run pays for model tokens
+enum BillingSource {
+  CREDITS
+  OWN_KEY
+}
+
+// a user's own api key for one provider, used by december cloud runs.
+// encryptedKey is aes-256-gcm with SECRETS_ENC_KEY; the key itself is never returned.
+model ProviderCredential {
+  id           String    @id @default(uuid())
+  userId       String
+  provider     String
+  encryptedKey String
+  keyHint      String
+  models       Json
+  defaultModel String
+  verifiedAt   DateTime
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
 }
 
 model Notification {
@@ -285,6 +313,7 @@ model UsageEvent {
   chatId            String?
   externalRequestId String?  @unique
   metadata          Json?
+  billingSource     BillingSource @default(CREDITS)
   periodStart       DateTime
   periodEnd         DateTime
   createdAt         DateTime @default(now())

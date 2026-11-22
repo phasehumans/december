@@ -1,4 +1,4 @@
-import crypto from 'crypto'
+import { decryptText, encryptText, EncryptedTextError } from '@december/shared/crypto'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
@@ -17,30 +17,19 @@ import type {
     DecryptedSecretItem,
 } from './secrets.types'
 
-const ALGORITHM = 'aes-256-gcm'
-const KEY = Buffer.from(env.SECRETS_ENC_KEY, 'hex')
-
 const encrypt = (data: EncryptData): string => {
     const { text } = data
-    const iv = crypto.randomBytes(12)
-    const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv)
-    let encrypted = cipher.update(text, 'utf8', 'hex')
-    encrypted += cipher.final('hex')
-    const authTag = cipher.getAuthTag().toString('hex')
-    return `${iv.toString('hex')}:${authTag}:${encrypted}`
+    return encryptText({ text, keyHex: env.SECRETS_ENC_KEY })
 }
 
 const decrypt = (data: DecryptData): string => {
     const { encryptedText } = data
-    const [ivHex, authTagHex, contentHex] = encryptedText.split(':')
-    if (!ivHex || !authTagHex || !contentHex) throw new AppError('Invalid encrypted text', 400)
-    const iv = Buffer.from(ivHex, 'hex')
-    const authTag = Buffer.from(authTagHex, 'hex')
-    const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv)
-    decipher.setAuthTag(authTag)
-    let decrypted = decipher.update(contentHex, 'hex', 'utf8')
-    decrypted += decipher.final('utf8')
-    return decrypted
+    try {
+        return decryptText({ encryptedText, keyHex: env.SECRETS_ENC_KEY })
+    } catch (error) {
+        if (error instanceof EncryptedTextError) throw new AppError('Invalid encrypted text', 400)
+        throw error
+    }
 }
 
 const createSecret = async (data: CreateSecret) => {

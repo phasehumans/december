@@ -40,7 +40,11 @@ jobs:
               run: bun run models:check
 
             - name: Run Model Unit Tests
-              run: bun test apps/cli/test/models.test.ts packages/providers
+              # test/isolated runs in its own bun process: the other provider tests replace the
+              # sdks with mock.module, which would hide the real requests it inspects
+              run: |
+                  bun test apps/cli/test/models.test.ts packages/providers/test/unit packages/providers/test/integration
+                  bun test packages/providers/test/isolated
 
     gitleaks:
         name: Secret Scan

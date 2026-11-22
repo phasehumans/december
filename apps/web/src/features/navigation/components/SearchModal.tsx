@@ -199,6 +199,28 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 },
             },
             {
+                id: 'go-settings-models',
+                label: 'Model keys',
+                subtitle: 'Settings / Model keys',
+                category: 'Settings Subpages',
+                icon: <Icons.Lock className="w-4 h-4 text-neutral-400" />,
+                keywords: [
+                    'model',
+                    'models',
+                    'byok',
+                    'own key',
+                    'api key',
+                    'provider',
+                    'openai',
+                    'anthropic',
+                    'openrouter',
+                ],
+                action: () => {
+                    onClose()
+                    navigate('/settings/models')
+                },
+            },
+            {
                 id: 'go-settings-billing',
                 label: 'Billing & Credits',
                 subtitle: 'Settings / Billing',

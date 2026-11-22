@@ -42,6 +42,7 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         handleVoiceTranscript,
         selectedModel,
         selectedProvider,
+        selectedSource,
         handleSelectModel,
     } = usePromptInputController({
         value,
@@ -211,8 +212,9 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
                     onToggleThinking={props.onToggleThinking}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
-                    onSelectModel={(model, provider) => {
-                        handleSelectModel(model, provider)
+                    selectedSource={selectedSource}
+                    onSelectModel={(model, provider, source) => {
+                        handleSelectModel(model, provider, source)
                         props.onModelChange?.(model, provider)
                     }}
                     onOptionSelect={(trigger) => {

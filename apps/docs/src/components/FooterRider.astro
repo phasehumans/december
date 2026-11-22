@@ -1,0 +1,356 @@
+---
+// Footer Rider
+// A small dot-matrix horse race along the footer divider line, in a loop, paced like a real race:
+//   1. The horse walks in from the left, rider sitting up, and stops at the start line.
+//   2. It pulls up square at the line and the rider leans into a racing crouch. The left ✱
+//      mark blinks three times.
+//   3. The horse breaks strongly out of the start and keeps building speed for about a second.
+//   4. It crosses the finish line at full speed. The right ✱ mark flashes once and the rider
+//      raises an arm.
+//   5. It eases up past the line over about three seconds, gallop slowing smoothly into a walk,
+//      arm still up for a few steps,
+//      and walks off to the right. After a short pause the race starts again.
+//
+// The start and finish lines are the side rails of the page column (lg and up). On narrower
+// screens they sit at 15% and 85% of the width.
+//
+// The motion is real: the gallop and the walk are Muybridge's photos and drawings (public
+// domain), sampled onto a grid of round dots, like an LED sign. See
+// src/lib/footer-rider-frames.ts. Each time the frame changes, the horse moves forward exactly
+// as far as a planted hoof moved back in the source, so hooves on the ground stay still. As the
+// horse speeds up or eases off, both its stride and its stride rate change, like a real horse.
+//
+// Place it as a direct child of the footer column container (the element that holds the
+// top SectionDivider). It sits on top of that line and takes no space.
+// Hidden below the sm breakpoint, like the footer divider. With prefers-reduced-motion the
+// horse stands still at the start line.
+---
+
+<canvas
+  data-footer-rider
+  aria-hidden="true"
+  class="pointer-events-none absolute bottom-full left-1/2 hidden h-12 w-screen max-w-none -translate-x-1/2 sm:block"
+></canvas>
+
+<script>
+  import {
+    GALLOP_ADVANCE,
+    GALLOP_ARM_UP_FRAMES,
+    GALLOP_FRAMES,
+    READY_WALK_FRAME,
+    SET_FRAMES,
+    WALK_ADVANCE,
+    WALK_ARM_UP_FRAMES,
+    WALK_FRAMES,
+  } from '../lib/footer-rider-frames';
+
+  // ---- Look and timing ----------------------------------------------------------------
+  const INK = '100, 116, 139'; // #64748b
+  const MARK_LIT = '#0066f5'; // ✱ mark colour when it blinks or flashes
+  const PITCH = 1.4; // px between dot centres
+  const DOT = 1.15; // dot diameter in px
+  // Dot shade for each key in the frames
+  const SHADES: Record<string, number> = { '#': 1, '=': 0.6, '+': 0.42 };
+
+  const WALK_FRAME_MS = 70; // a calm walk
+  const RACE_FRAME_MS = 27; // full gallop
+  const SLOW_STEPS = 6; // walk steps that shorten and slow as the horse pulls up at the start
+  const SET_MS = [520, 260, 500]; // rider sitting up, leaning in, crouched before the first blink
+  const BLINK_MS = 300; // each ✱ blink on, and each gap
+  const BLINKS = 3;
+  // Out of the start the horse breaks strongly, then keeps building: like a racehorse out of
+  // the gate, fast from the first stride but not at top speed until a second or so in.
+  // [ms after the go, speed 0..1]; eased between the points.
+  const BREAK: [number, number][] = [[0, 0.55], [400, 0.85], [1200, 1]];
+  const BREAK_FRAME = 13; // first gallop frame: hind legs under, about to drive forward
+  // After the finish it eases off over a few seconds, the way a racehorse pulls up: speed
+  // falls gently at first, then more, then levels out into a walking pace.
+  const EASE_OFF_MS = 2800;
+  const EASE_TO = 0.2; // gallop speed (0..1) at the end of the ease-off, close to walking pace
+  const WALK_SETTLE_STEPS = 8; // first walk steps start a touch quicker and settle to the walk
+  const CARRY = 5; // frames at full speed past the line before easing off
+  const FLASH_MS = 520; // the ✱ flash at the finish
+  const FLASHES = 1;
+  const ARM_UP_STEPS = 12; // walk frames with the arm still up
+  const IDLE_MS = 2500; // off-screen before the next race
+
+  // All frames in one list
+  const GALLOP_UP = GALLOP_FRAMES.length;
+  const WALK0 = GALLOP_UP + GALLOP_ARM_UP_FRAMES.length;
+  const WALK_UP = WALK0 + WALK_FRAMES.length;
+  const SET0 = WALK_UP + WALK_ARM_UP_FRAMES.length;
+  const ALL_FRAMES = [
+    ...GALLOP_FRAMES,
+    ...GALLOP_ARM_UP_FRAMES,
+    ...WALK_FRAMES,
+    ...WALK_ARM_UP_FRAMES,
+    ...SET_FRAMES,
+  ];
+
+  // Each frame as one path per shade, drawn with the sprite's bottom-right corner (the nose
+  // side) at (0, 0), so walk and gallop frames line up at the nose
+  const FRAME_PATHS = ALL_FRAMES.map((rows) => {
+    const paths = new Map<string, Path2D>();
+    const cols = rows[0].length;
+    rows.forEach((row, r) => {
+      [...row].forEach((key, c) => {
+        if (!(key in SHADES)) return;
+        const path = paths.get(key) ?? new Path2D();
+        const x = -(cols - c - 0.5) * PITCH;
+        const y = -(rows.length - r - 0.5) * PITCH;
+        path.moveTo(x + DOT / 2, y);
+        path.arc(x, y, DOT / 2, 0, Math.PI * 2);
+        paths.set(key, path);
+      });
+    });
+    return paths;
+  });
+  const GALLOP_W = GALLOP_FRAMES[0][0].length * PITCH;
+
+  // One moment of the race: from time t, show `frame` with the nose at x, and light the marks
+  interface Beat {
+    t: number;
+    x: number;
+    frame: number;
+    lit: [boolean, boolean]; // left ✱, right ✱
+  }
+
+  let cleanup: (() => void) | null = null;
+
+  const initRider = () => {
+    cleanup?.();
+    cleanup = null;
+
+    const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-footer-rider]');
+    const column = canvas?.parentElement;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !column || !ctx) return;
+
+    // The divider's ✱ marks, left then right
+    const markEls = Array.from(column.querySelectorAll<SVGElement>(':scope > div[aria-hidden="true"] > svg'));
+
+    const railed = window.matchMedia('(min-width: 1024px)');
+    const smUp = window.matchMedia('(min-width: 640px)');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    let width = 0;
+    let height = 0;
+    let startX = 0;
+    let beats: Beat[] = [];
+    let cycle = 0;
+    let raf = 0;
+    let onScreen = false;
+    let epoch = performance.now();
+    let lastBeat = -1;
+    let lit: [boolean, boolean] = [false, false];
+
+    const light = (next: [boolean, boolean]) => {
+      markEls.forEach((el, i) => {
+        if (next[i] === lit[i]) return;
+        el.style.transition = 'color 120ms ease-out, scale 120ms ease-out';
+        el.style.color = next[i] ? MARK_LIT : '';
+        el.style.scale = next[i] ? '1.3' : '';
+      });
+      lit = next;
+    };
+
+    // Lay out one race as a list of beats
+    const plan = () => {
+      const rect = canvas.getBoundingClientRect();
+      const columnRect = column.getBoundingClientRect();
+      const start = railed.matches ? columnRect.left - rect.left : width * 0.15;
+      const finish = railed.matches ? columnRect.right - rect.left : width * 0.85;
+      const offRight = width + GALLOP_W + PITCH * 4;
+      startX = start;
+
+      const list: Beat[] = [];
+      let t = 0;
+      let x = -PITCH * 4;
+      const off: [boolean, boolean] = [false, false];
+      let crossedAt = -1;
+      // The right ✱ flashes for a moment after the nose crosses the finish
+      const finishLit = (): [boolean, boolean] => {
+        if (crossedAt < 0) return off;
+        const k = Math.floor((t - crossedAt) / FLASH_MS);
+        return [false, k < FLASHES * 2 && k % 2 === 0];
+      };
+      const push = (frame: number, ms: number, lit = finishLit()) => {
+        list.push({ t, x, frame, lit });
+        t += ms;
+      };
+
+      // 1. Walk in to the start line. The last few steps get shorter and slower as the horse
+      // pulls up, and the walk ends on the square, head-up frame.
+      const walkStride = WALK_ADVANCE * PITCH;
+      const pullUp = (i: number, n: number) => (i < n - SLOW_STEPS ? 1 : 1 - 0.45 * ((i - (n - SLOW_STEPS) + 1) / SLOW_STEPS));
+      const steps = Math.max(SLOW_STEPS + 1, Math.round((start - x) / walkStride));
+      let total = 0;
+      for (let i = 0; i < steps; i++) total += pullUp(i, steps);
+      const unit = (start - x) / total;
+      // Pick the first frame so the last step lands on the ready frame
+      const first = (((READY_WALK_FRAME - steps) % WALK_FRAMES.length) + WALK_FRAMES.length) % WALK_FRAMES.length;
+      for (let i = 0; i < steps; i++) {
+        const pace = pullUp(i, steps);
+        push(WALK0 + ((first + i) % WALK_FRAMES.length), WALK_FRAME_MS / Math.pow(pace, 0.8), off);
+        x += unit * pace;
+      }
+      x = start;
+
+      // 2. Get set: the rider leans in and drops into a crouch, then three blinks of the left ✱
+      SET_FRAMES.forEach((_, i) => push(SET0 + i, SET_MS[i], off));
+      const crouched = SET0 + SET_FRAMES.length - 1;
+      for (let b = 0; b < BLINKS; b++) {
+        push(crouched, BLINK_MS, [true, false]);
+        push(crouched, BLINK_MS, off);
+      }
+
+      // 3-5. Race. Speed s (0..1) sets both the stride (distance per frame) and the stride
+      // rate (time per frame), so speed changes smoothly and the hooves stay nearly planted.
+      const stride = GALLOP_ADVANCE * PITCH;
+      const gallopAt = (s: number, frame: number) => {
+        push(frame, RACE_FRAME_MS / Math.pow(s, 0.6));
+        x += stride * Math.pow(s, 0.4);
+      };
+      let k = BREAK_FRAME;
+      // Break and build: speed follows the BREAK curve until it reaches full speed
+      const breakAt = (ms: number) => {
+        for (let i = 1; i < BREAK.length; i++) {
+          const [t1, s1] = BREAK[i];
+          if (ms <= t1) {
+            const [t0, s0] = BREAK[i - 1];
+            const e = 1 - Math.pow(1 - (ms - t0) / (t1 - t0), 2); // fast at first, then levelling off
+            return s0 + (s1 - s0) * e;
+          }
+        }
+        return 1;
+      };
+      const go = t;
+      while (t - go < BREAK[BREAK.length - 1][0]) {
+        gallopAt(breakAt(t - go), k % GALLOP_FRAMES.length);
+        k++;
+      }
+      // Full gallop to the line
+      while (x < finish) {
+        gallopAt(1, k % GALLOP_FRAMES.length);
+        k++;
+      }
+      crossedAt = t;
+      // Through the line at full speed, arm going up
+      for (let i = 0; i < CARRY; i++, k++) gallopAt(1, GALLOP_UP + (k % GALLOP_FRAMES.length));
+      // Ease off, still galloping, arm up. Smoothstep: a gentle start, a gentle finish.
+      const easeStart = t;
+      while (t - easeStart < EASE_OFF_MS) {
+        const u = (t - easeStart) / EASE_OFF_MS;
+        const e = u * u * (3 - 2 * u);
+        gallopAt(1 - (1 - EASE_TO) * e, GALLOP_UP + (k % GALLOP_FRAMES.length));
+        k++;
+      }
+      // Into a walk. The first steps match the last gallop pace, then settle to the walk, so the
+      // change is barely noticeable. Arm up for a few steps, then down, and walk off.
+      const easedSpeed = (stride * Math.pow(EASE_TO, 0.4)) / (RACE_FRAME_MS / Math.pow(EASE_TO, 0.6));
+      const firstWalkMs = Math.min(WALK_FRAME_MS, walkStride / easedSpeed);
+      for (let i = 0; x < offRight; i++) {
+        const settle = Math.min(1, i / WALK_SETTLE_STEPS);
+        push((i < ARM_UP_STEPS ? WALK_UP : WALK0) + (i % WALK_FRAMES.length), firstWalkMs + (WALK_FRAME_MS - firstWalkMs) * settle);
+        x += walkStride;
+      }
+
+      // 6. Pause off-screen
+      push(-1, IDLE_MS, off);
+
+      beats = list;
+      cycle = t;
+    };
+
+    const measure = () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = rect.width;
+      height = rect.height;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      plan();
+      lastBeat = -1;
+    };
+
+    // Draw a beat: its frame with the nose at x (frame -1 draws nothing)
+    const render = (beat: Pick<Beat, 'x' | 'frame'>) => {
+      ctx.clearRect(0, 0, width, height);
+      if (beat.frame < 0) return;
+      ctx.save();
+      ctx.translate(beat.x, height);
+      FRAME_PATHS[beat.frame].forEach((path, key) => {
+        ctx.fillStyle = `rgba(${INK}, ${SHADES[key]})`;
+        ctx.fill(path);
+      });
+      ctx.restore();
+    };
+
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick);
+      const t = (now - epoch) % cycle;
+      // Beats are in time order; find the one playing now
+      let i = lastBeat >= 0 && beats[lastBeat].t <= t ? lastBeat : 0;
+      while (i + 1 < beats.length && beats[i + 1].t <= t) i++;
+      if (i === lastBeat) return;
+      lastBeat = i;
+      const beat = beats[i];
+      render(beat);
+      light(beat.lit);
+    };
+
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      light([false, false]);
+    };
+
+    const start = () => {
+      stop();
+      if (!onScreen || !smUp.matches) return;
+      measure();
+      if (reducedMotion.matches) {
+        render({ x: startX, frame: SET0 });
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    const observer = new IntersectionObserver(([entry]) => {
+      const wasOnScreen = onScreen;
+      onScreen = entry.isIntersecting;
+      // Start a fresh race each time the footer comes into view
+      if (onScreen && !wasOnScreen) epoch = performance.now();
+      start();
+    });
+    observer.observe(canvas);
+
+    let resizeTimer = 0;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(start, 150);
+    };
+
+    window.addEventListener('resize', onResize);
+    railed.addEventListener('change', start);
+    smUp.addEventListener('change', start);
+    reducedMotion.addEventListener('change', start);
+
+    cleanup = () => {
+      stop();
+      clearTimeout(resizeTimer);
+      observer.disconnect();
+      window.removeEventListener('resize', onResize);
+      railed.removeEventListener('change', start);
+      smUp.removeEventListener('change', start);
+      reducedMotion.removeEventListener('change', start);
+    };
+  };
+
+  document.addEventListener('astro:page-load', initRider);
+  document.addEventListener('astro:before-swap', () => {
+    cleanup?.();
+    cleanup = null;
+  });
+</script>

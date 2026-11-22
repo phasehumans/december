@@ -28,6 +28,7 @@ export interface PromptInputSubmitOptions {
     issueNumber?: number
     model?: string
     provider?: string
+    billingSource?: 'CREDITS' | 'OWN_KEY'
 }
 
 export interface HomeHeroProps {

@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useAppStore } from '@/app/store'
 import { getViewForPath, toProjectSlug, type ViewState } from '@/app/types'
+import { githubOAuth } from '@/features/auth/githubOAuth'
 import { useChatController } from '@/features/chat/hooks/useChatController'
 import { useNavigationController } from '@/features/navigation/hooks/useNavigationController'
 import { previewAPI } from '@/features/preview/api'
@@ -102,11 +103,7 @@ export const useAppController = () => {
             if (isAuthenticated) {
                 const searchParams = new URLSearchParams(location.search)
                 const redirectTarget = searchParams.get('redirect')
-                if (
-                    redirectTarget &&
-                    redirectTarget.startsWith('/') &&
-                    !redirectTarget.startsWith('//')
-                ) {
+                if (githubOAuth.isSafeReturnPath(redirectTarget)) {
                     navigate(redirectTarget, { replace: true })
                 } else {
                     navigate('/', { replace: true })

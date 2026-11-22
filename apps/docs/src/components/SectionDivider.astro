@@ -1,7 +1,7 @@
 ---
 // Section Divider
 // One 1px line that runs the full width of the screen, with the December ✱
-// mark where it crosses each side rail of the 1200px column. Place it as a
+// mark where it crosses each side rail of the 1280px column. Place it as a
 // direct child of a column container (the element that draws the rails with border-x).
 // edge: when set, the divider overlays the top or bottom edge of its container
 // and takes no space. When not set, it sits in the normal flow (1px tall).
@@ -23,7 +23,7 @@ const rootClass = edge === 'top'
 const visibilityClass = hideOnMobile ? 'hidden sm:block' : '';
 
 // Marks sit on the rails, which are 1px outside this box. Show them only when the gutters are wide enough.
-const markClass = 'hidden xl:block absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full bg-white p-px text-[#87b2f4]';
+const markClass = 'hidden min-[1320px]:block absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full bg-white p-px text-[#87b2f4]';
 ---
 
 <div class={`${rootClass} ${visibilityClass} h-px pointer-events-none`} aria-hidden="true">

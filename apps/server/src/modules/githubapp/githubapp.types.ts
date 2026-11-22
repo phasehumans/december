@@ -24,6 +24,48 @@ export type ProcessInstallation = {
     permissions?: Record<string, string>
 }
 
+export type ClaimInstallation = {
+    installationId: string
+    userId: string
+}
+
+export type ClaimInstallationReason =
+    | 'already_owned'
+    | 'owned_by_other_user'
+    | 'unverified'
+    | 'account_matches'
+    | 'account_mismatch'
+    | 'recent_unclaimed'
+    | 'stale_unclaimed'
+
+export type ClaimInstallationResult = {
+    linked: boolean
+    reason: ClaimInstallationReason
+}
+
+export type CanClaimInstallation = {
+    existingUserId?: string | null
+    userId: string
+    userGithubId?: string | null
+    details: {
+        created_at?: string
+        account?: { id?: number | string; type?: string }
+    } | null
+    now?: Date
+}
+
+export type FindInstallationOwner = {
+    accountId?: string
+    accountType?: string
+    senderId?: string
+}
+
+export type ResolveInstallReturnUrl = {
+    returnUrl: string
+    appUrl?: string
+    isProduction?: boolean
+}
+
 export type ProcessUninstallation = {
     installationId: string
 }

@@ -10,6 +10,7 @@ import { errorHandler } from './middleware/error.middleware'
 import { cliRateLimiter, globalRateLimiter, runtimeRateLimiter } from './middleware/rate-limiter'
 import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
+import byokRouter from './modules/byok/byok.routes'
 import cliRouter from './modules/cli/cli.routes'
 import githubAppRouter from './modules/githubapp/githubapp.routes'
 import integrationsRouter from './modules/integration/integration.routes'
@@ -62,7 +63,6 @@ app.use(
             }
             if (
                 allowedOrigins.includes(origin) ||
-                origin.endsWith('.vercel.app') ||
                 (env.NODE_ENV !== 'production' &&
                     (origin.includes('localhost') || origin.includes('127.0.0.1')))
             ) {
@@ -111,6 +111,7 @@ app.use('/api/v1/cli', cliRateLimiter, cliRouter)
 app.use('/api/v1/session', sessionRouter)
 app.use('/api/v1/sessions', sessionRouter)
 app.use('/api/v1/secrets', secretsRouter)
+app.use('/api/v1/byok', byokRouter)
 app.use('/api/v1/githubapp', githubAppRouter)
 
 app.use(errorHandler)

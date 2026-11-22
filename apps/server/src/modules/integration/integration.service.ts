@@ -7,7 +7,7 @@ import { integrationRepository } from './integration.repository'
 import type { ConnectGithub, HandleGitHubOAuth } from './integration.types'
 
 const connectGithub = async (data: ConnectGithub) => {
-    const { username, accessToken, userId } = data
+    const { username, accessToken, userId, githubId } = data
 
     const existingUser = await integrationRepository.findUserFirst(userId)
 
@@ -15,11 +15,21 @@ const connectGithub = async (data: ConnectGithub) => {
         throw new AppError('user not found', 404)
     }
 
+    // Save the GitHub id so the GitHub App webhook can match this user's installs. Only when
+    // the user has none yet (it is also their GitHub login identity) and no other account
+    // holds it (the column is unique).
+    let githubIdToSave: string | undefined
+    if (githubId && !existingUser.githubId) {
+        const holder = await integrationRepository.findUserByGithubId(githubId)
+        if (!holder) githubIdToSave = githubId
+    }
+
     try {
         const updatedUser = await integrationRepository.updateUserGithub({
             id: userId,
             username,
             accessToken,
+            githubId: githubIdToSave,
         })
 
         try {
@@ -93,8 +103,9 @@ const handleGitHubOAuth = async (data: HandleGitHubOAuth) => {
 
     const githubUser: any = await userRes.json()
     const username = githubUser.login
+    const githubId = githubUser.id != null ? String(githubUser.id) : undefined
 
-    return connectGithub({ userId, accessToken, username })
+    return connectGithub({ userId, accessToken, username, githubId })
 }
 
 export const integrationsService = {
