@@ -4,7 +4,6 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import CustomScrollbar from '../components/CustomScrollbar.astro';
 import PageLoader from '../components/PageLoader.astro';
-import CloudNudge from '../components/CloudNudge.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -14,6 +13,8 @@ interface Props {
   activePath?: string;
   hideHeader?: boolean;
   hideFooter?: boolean;
+  /** Show the ASCII horse and jockey on the footer divider (landing page only) */
+  showFooterRider?: boolean;
   showLoader?: boolean;
   /** Hide the custom scroll indicator, for short pages that never scroll */
   hideScrollbar?: boolean;
@@ -23,18 +24,18 @@ interface Props {
 
 const {
   title = 'December | A Better Coding Agent',
-  description = 'December is an open-source coding agent. Use any model, or the Claude Code and Codex plans you already have. Run it in your terminal or in the cloud.',
+  description = 'December is an open-source coding agent. Use any model, with your own keys or your Claude Code and Codex plan. Run it in your terminal or in the cloud.',
   canonicalUrl = 'https://trydecember.com',
   activePath = '/',
   hideHeader = false,
   hideFooter = false,
+  showFooterRider = false,
   showLoader = false,
   hideScrollbar = false,
   structuredData = [],
 } = Astro.props;
 
 const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
-const showCloudNudge = !hideHeader && !hideFooter && activePath === '/';
 ---
 
 <!doctype html>
@@ -46,11 +47,6 @@ const showCloudNudge = !hideHeader && !hideFooter && activePath === '/';
     <link rel="alternate icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     <meta name="generator" content={Astro.generator} />
-
-    <!-- Preload the Cloud nudge preview on desktop so it is ready before the popup appears -->
-    {showCloudNudge && (
-      <link rel="preload" as="image" href="/illustrations/cloud-preview.webp?v=3" type="image/webp" media="(min-width: 640px)" />
-    )}
 
     <!-- Primary Meta Tags -->
     <title>{title}</title>
@@ -180,7 +176,7 @@ const showCloudNudge = !hideHeader && !hideFooter && activePath === '/';
             "price": "0",
             "priceCurrency": "USD"
           },
-          "description": "An open-source coding agent. Use any model, or the Claude Code and Codex plans you already have. Run it in your terminal or in the cloud.",
+          "description": "An open-source coding agent. Use any model, with your own keys or your Claude Code and Codex plan. Run it in your terminal or in the cloud.",
           "url": "https://trydecember.com",
           "downloadUrl": "https://www.npmjs.com/package/@trydecember/cli",
           "installUrl": "https://www.npmjs.com/package/@trydecember/cli",
@@ -232,8 +228,7 @@ const showCloudNudge = !hideHeader && !hideFooter && activePath === '/';
       <main class="flex-1 w-full max-w-[100vw] overflow-x-hidden relative z-10 flex flex-col">
         <slot />
       </main>
-      {!hideFooter && <Footer />}
-      {showCloudNudge && <CloudNudge appUrl={appUrl} />}
+      {!hideFooter && <Footer showRider={showFooterRider} />}
     </div>
   </body>
 </html>

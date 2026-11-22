@@ -2,12 +2,21 @@
 // Footer Component
 // Ultra-minimal developer-focused footer matching the page content width and design language
 import SectionDivider from './SectionDivider.astro';
+import FooterRider from './FooterRider.astro';
+
+interface Props {
+  /** Show the ASCII horse and jockey galloping along the divider line */
+  showRider?: boolean;
+}
+
+const { showRider = false } = Astro.props;
 ---
 
 <footer class="relative z-10 w-full text-[#64748b] mt-auto overflow-visible">
   <!-- Constrained container matching landing page content width -->
   <div class="relative z-10 mx-auto max-w-[1200px] px-6 sm:px-8 md:px-10 lg:px-12 border-x border-transparent lg:border-[#cbd5e1] bg-white">
     <SectionDivider edge="top" hideOnMobile />
+    {showRider && <FooterRider />}
     <div class="pt-6 sm:pt-5 pb-8 sm:pb-5 font-mono text-xs sm:text-[13px]">
       <!-- Mobile View (1 line): built by on the left, GitHub, X and email icons on the right, visible on < sm -->
       <div class="flex items-center justify-between sm:hidden">

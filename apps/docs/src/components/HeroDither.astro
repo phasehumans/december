@@ -1,0 +1,299 @@
+---
+// Hero Dither
+// A soft blue glow around the landing hero, drawn as ordered (Bayer) dither pixels. The
+// glow forms a ring around the element marked data-dither-source (the hero text block):
+// it is clear next to the element, densest about PEAK_AT px out, and thins out to nothing
+// further away. A slow noise field moves the glow upward, so the dither edge shimmers.
+//
+// Place it as the first child of the hero <section>. The canvas covers the full section.
+// Pixels are left out around hero content marked with data-dither-hole, so text stays
+// easy to read.
+//
+// data-dither-hole values:
+//   "box"      the element's bounding box
+//   "text"     the boxes of each line of text in the element
+//   "children" the bounding box of each direct child
+//
+// Hidden below the md breakpoint. Still (no motion) with prefers-reduced-motion.
+---
+
+<canvas
+  data-hero-dither
+  aria-hidden="true"
+  class="pointer-events-none absolute top-0 left-1/2 -z-10 hidden w-screen max-w-none -translate-x-1/2 md:block"
+></canvas>
+
+<style>
+  canvas[data-hero-dither] {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+</style>
+
+<script>
+  const PIXEL = 3; // CSS px per dither pixel
+  const INNER = 24; // clear space between the source edge and the glow, in CSS px
+  const PEAK_AT = 110; // the glow is densest this far from the source edge
+  const REACH = 300; // typical reach of the glow from the source edge
+  const REACH_MAX = REACH * 1.3; // noise pushes the outer edge out to this distance
+  const TOP_FADE = 90; // the glow fades in over this distance below the top of the section
+  const PEAK = 0.7; // max share of lit pixels, so even the densest part keeps a dither texture
+  const ACCENT_FROM = 0.45; // above this strength, some lit pixels take the dark accent tone
+  const HOLE_PAD = 12; // clear space around content
+  const HOLE_SOFT = 44; // soft edge beyond the clear space
+  const FRAME_MS = 1000 / 20;
+
+  const TONE: [number, number, number] = [135, 178, 244]; // #87b2f4
+  const ACCENT: [number, number, number] = [0, 102, 245]; // #0066f5
+
+  // 4x4 Bayer matrix, as thresholds in (0, 1)
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((b) => (b + 0.5) / 16);
+
+  // Value noise on a hashed lattice
+  const perm = new Uint8Array(512);
+  {
+    const p = Array.from({ length: 256 }, (_, i) => i);
+    for (let i = 255; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [p[i], p[j]] = [p[j], p[i]];
+    }
+    for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+  }
+  const lattice = (x: number, y: number) => perm[perm[x & 255] + (y & 255)] / 255;
+  const noise = (x: number, y: number) => {
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+    const xf = x - xi;
+    const yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf);
+    const v = yf * yf * (3 - 2 * yf);
+    const a = lattice(xi, yi);
+    const b = lattice(xi + 1, yi);
+    const c = lattice(xi, yi + 1);
+    const d = lattice(xi + 1, yi + 1);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+
+  let cleanup: (() => void) | null = null;
+
+  const holeRects = (section: HTMLElement): DOMRect[] => {
+    const rects: DOMRect[] = [];
+    section.querySelectorAll<HTMLElement>('[data-dither-hole]').forEach((el) => {
+      const mode = el.dataset.ditherHole;
+      if (mode === 'text') {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        rects.push(...Array.from(range.getClientRects()));
+      } else if (mode === 'children') {
+        Array.from(el.children).forEach((child) => {
+          const r = child.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) rects.push(r);
+        });
+      } else {
+        rects.push(el.getBoundingClientRect());
+      }
+    });
+    return rects.filter((r) => r.width > 0 && r.height > 0);
+  };
+
+  const initDither = () => {
+    cleanup?.();
+    cleanup = null;
+
+    const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-hero-dither]');
+    const section = canvas?.parentElement;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !section || !ctx) return;
+
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    let cols = 0;
+    let image: ImageData | null = null;
+    let active = new Uint32Array(0); // cells with any glow
+    let distance = new Float32Array(0); // distance from the source edge per active cell
+    let weight = new Float32Array(0); // top fade and hole fade per active cell
+    let threshold = new Float32Array(0); // Bayer threshold per active cell
+    let raf = 0;
+    let lastFrame = 0;
+    let visible = true;
+
+    const layout = () => {
+      const sectionRect = section.getBoundingClientRect();
+      const width = document.documentElement.clientWidth;
+      const height = sectionRect.height;
+
+      cols = Math.ceil(width / PIXEL);
+      const rows = Math.ceil(height / PIXEL);
+      canvas.width = cols;
+      canvas.height = rows;
+      canvas.style.width = `${cols * PIXEL}px`;
+      canvas.style.height = `${rows * PIXEL}px`;
+      image = ctx.createImageData(cols, rows);
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const toLocal = (r: DOMRect) => ({
+        left: r.left - canvasRect.left,
+        right: r.right - canvasRect.left,
+        top: r.top - canvasRect.top,
+        bottom: r.bottom - canvasRect.top,
+      });
+
+      const sourceEl = section.querySelector<HTMLElement>('[data-dither-source]');
+      if (!sourceEl) {
+        active = new Uint32Array(0);
+        return;
+      }
+      const src = toLocal(sourceEl.getBoundingClientRect());
+      const holes = holeRects(section).map(toLocal);
+
+      const cells: number[] = [];
+      const dists: number[] = [];
+      const weights: number[] = [];
+      for (let row = 0; row < rows; row++) {
+        const y = row * PIXEL + PIXEL / 2;
+        if (y < src.top - REACH_MAX || y > src.bottom + REACH_MAX) continue;
+        // No hard edge under the header
+        const top = Math.min(1, y / TOP_FADE);
+        for (let col = 0; col < cols; col++) {
+          const x = col * PIXEL + PIXEL / 2;
+          const dx = Math.max(src.left - x, 0, x - src.right);
+          const dy = Math.max(src.top - y, 0, y - src.bottom);
+          const d = Math.hypot(dx, dy);
+          if (d <= INNER || d >= REACH_MAX) continue;
+          let w = top * top;
+          for (const h of holes) {
+            const hx = Math.max(h.left - x, 0, x - h.right);
+            const hy = Math.max(h.top - y, 0, y - h.bottom);
+            const hd = Math.hypot(hx, hy);
+            if (hd < HOLE_PAD) {
+              w = 0;
+              break;
+            }
+            if (hd < HOLE_PAD + HOLE_SOFT) w *= (hd - HOLE_PAD) / HOLE_SOFT;
+          }
+          if (w <= 0.01) continue;
+          cells.push(row * cols + col);
+          dists.push(d);
+          weights.push(w);
+        }
+      }
+      active = Uint32Array.from(cells);
+      distance = Float32Array.from(dists);
+      weight = Float32Array.from(weights);
+      threshold = new Float32Array(active.length);
+      for (let k = 0; k < active.length; k++) {
+        const i = active[k];
+        threshold[k] = BAYER[(Math.floor(i / cols) & 3) * 4 + ((i % cols) & 3)];
+      }
+    };
+
+    const draw = (now: number) => {
+      if (!image) return;
+      const t = now / 1000;
+      const data = image.data;
+      data.fill(0);
+      for (let k = 0; k < active.length; k++) {
+        const i = active[k];
+        const x = (i % cols) * PIXEL;
+        const y = Math.floor(i / cols) * PIXEL;
+        // Two noise layers that drift upward at different speeds
+        const n = 0.6 * noise(x / 110, (y + t * 14) / 110) + 0.4 * noise((x - t * 9) / 45, (y + t * 22) / 45);
+        // The noise also moves the outer edge, so the glow rises in uneven tongues
+        const reach = REACH * (0.6 + 0.7 * n); // never below PEAK_AT
+        const d = distance[k];
+        if (d >= reach) continue;
+        // Ramp up from INNER to PEAK_AT, then fall off to the noisy outer edge
+        const rise = Math.min(1, (d - INNER) / (PEAK_AT - INNER));
+        const fall = d <= PEAK_AT ? 1 : Math.pow(1 - (d - PEAK_AT) / (reach - PEAK_AT), 2);
+        const v = Math.min(PEAK, weight[k] * rise * rise * fall * (0.55 + 0.45 * n));
+        // Ordered dither: the pixel is lit when the strength beats its Bayer threshold.
+        // In the strongest part, the pixels with the lowest thresholds take the accent tone.
+        const th = threshold[k];
+        if (v <= th) continue;
+        const tone = th < v - ACCENT_FROM ? ACCENT : TONE;
+        const o = i * 4;
+        data[o] = tone[0];
+        data[o + 1] = tone[1];
+        data[o + 2] = tone[2];
+        data[o + 3] = 255;
+      }
+      ctx.putImageData(image, 0, 0);
+    };
+
+    const animated = () => desktop.matches && !reducedMotion.matches;
+
+    const loop = (now: number) => {
+      raf = requestAnimationFrame(loop);
+      if (now - lastFrame < FRAME_MS) return;
+      lastFrame = now;
+      draw(now);
+    };
+
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    const start = () => {
+      stop();
+      if (!desktop.matches) return;
+      layout();
+      draw(performance.now());
+      if (animated() && visible && !document.hidden) raf = requestAnimationFrame(loop);
+    };
+
+    const resume = () => {
+      if (!raf && visible && !document.hidden && animated()) raf = requestAnimationFrame(loop);
+    };
+
+    let resizeTimer = 0;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(start, 150);
+    };
+
+    const onVisibility = () => (document.hidden ? stop() : resume());
+
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) resume();
+      else stop();
+    });
+    observer.observe(canvas);
+
+    // Watch the content too: its size changes when the web font loads
+    const resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(section);
+    section.querySelectorAll('[data-dither-hole]').forEach((el) => resizeObserver.observe(el));
+
+    desktop.addEventListener('change', start);
+    reducedMotion.addEventListener('change', start);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    let disposed = false;
+
+    // Web fonts change the size of the text, so lay out again once they load
+    document.fonts?.ready.then(() => {
+      if (!disposed) start();
+    });
+    start();
+
+    cleanup = () => {
+      disposed = true;
+      stop();
+      clearTimeout(resizeTimer);
+      observer.disconnect();
+      resizeObserver.disconnect();
+      desktop.removeEventListener('change', start);
+      reducedMotion.removeEventListener('change', start);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  };
+
+  document.addEventListener('astro:page-load', initDither);
+  document.addEventListener('astro:before-swap', () => {
+    cleanup?.();
+    cleanup = null;
+  });
+</script>

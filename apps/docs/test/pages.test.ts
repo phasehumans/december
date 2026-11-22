@@ -84,19 +84,14 @@ describe('apps/docs page content & layout tests', () => {
             expect(html).not.toContain('<iframe')
         })
 
-        it('renders environments card and cloud nudge auth links to /login', () => {
+        it('renders environments card auth links to /login and no floating cloud nudge', () => {
             const html = getLandingHtml()
 
-            expect(html).toContain('Start December in Web')
-            expect(html).toContain('Get started')
             expect(html).toContain('/login')
-            expect(html).toContain('7000')
-            expect(html).toContain('0.40')
-            expect(html).toContain('december_cloud_nudge_dismissed')
-            expect(html).toContain('TTL_MS')
-            expect(html).toContain('isDesktop')
-            expect(html).toContain('hidden sm:block fixed')
             expect(html).toContain('Skills teach December your conventions and workflows')
+            // The floating "Start December in Web" popup was removed: it covered the footer race
+            expect(html).not.toContain('december-cloud-nudge')
+            expect(html).not.toContain('december_cloud_nudge_dismissed')
         })
 
         it('renders docs and blog in the header on all sizes and github and x icons in the single-line mobile footer', () => {
