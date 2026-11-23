@@ -451,7 +451,7 @@
                 {
                     "id": "meta-llama/llama-4-scout",
                     "label": "Meta: Llama 4 Scout",
-                    "contextWindow": 327680
+                    "contextWindow": 1310720
                 },
                 {
                     "id": "meta-llama/llama-3.3-70b-instruct",
@@ -2211,6 +2211,14 @@
                     "id": "DeepSeek-V4-Flash-0731-Fast",
                     "label": "DeepSeek V4 Flash 0731 Fast",
                     "contextWindow": 1000000
+                },
+                {
+                    "id": "DeepSeek-V4.1-Flash",
+                    "label": "DeepSeek V4.1 Flash"
+                },
+                {
+                    "id": "Qwen3.8-27B",
+                    "label": "Qwen3.8 27B"
                 }
             ]
         },
