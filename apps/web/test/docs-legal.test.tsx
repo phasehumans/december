@@ -3,7 +3,6 @@ import path from 'path'
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
 import { expect, test, describe, afterEach } from 'bun:test'
-import React from 'react'
 
 import { getProfileTabFromSlug, getSlugForProfileTab, getViewForPath } from '../src/app/types'
 
@@ -23,11 +22,15 @@ describe('Google OAuth Verification, Privacy & Terms', () => {
         expect(getViewForPath('/settings/terms')).toBe('profile')
         expect(getViewForPath('/settings/usage')).toBe('profile')
         expect(getViewForPath('/settings/billing')).toBe('profile')
-        expect(getViewForPath('/settings/integrations')).toBe('profile')
         expect(getViewForPath('/profile/integrations')).toBe('profile')
-        expect(getViewForPath('/settings/connections')).toBe('profile')
-        expect(getViewForPath('/connections')).toBe('profile')
-        expect(getViewForPath('/connectors')).toBe('profile')
+        // connections moved out of settings into its own page; old urls land there
+        expect(getViewForPath('/settings/integrations')).toBe('connections')
+        expect(getViewForPath('/settings/connections')).toBe('connections')
+        expect(getViewForPath('/settings/repositories')).toBe('connections')
+        expect(getViewForPath('/connections')).toBe('connections')
+        expect(getViewForPath('/connections/mcps/sentry')).toBe('connections')
+        expect(getViewForPath('/integrations')).toBe('connections')
+        expect(getViewForPath('/connectors')).toBe('connections')
         // Standalone /privacy and /terms are now external landing page redirects, not internal profile views
         expect(getViewForPath('/privacy')).toBe('chat')
         expect(getViewForPath('/terms')).toBe('chat')
@@ -86,24 +89,5 @@ describe('Google OAuth Verification, Privacy & Terms', () => {
         expect(content).toMatch(/\/terms\s+https:\/\/trydecember\.com\/terms\s+302/)
         expect(content).toMatch(/\/settings\/privacy\s+https:\/\/trydecember\.com\/privacy\s+302/)
         expect(content).toMatch(/\/settings\/terms\s+https:\/\/trydecember\.com\/terms\s+302/)
-    })
-
-    test('ProfileConnectionsSettings renders Connections section without mock MCP servers', async () => {
-        const { ProfileConnectionsSettings } =
-            await import('../src/features/profile/components/ProfileConnectionsSettings')
-
-        render(<ProfileConnectionsSettings isGithubConnected={true} onConnectGithub={() => {}} />)
-
-        // Section heading
-        expect(screen.getByRole('heading', { name: 'Connections' })).toBeDefined()
-        expect(screen.queryByRole('heading', { name: 'MCP Servers' })).toBeNull()
-
-        // Core connections
-        expect(screen.getAllByText('GitHub').length).toBeGreaterThan(0)
-        expect(screen.getAllByText('Figma').length).toBeGreaterThan(0)
-        expect(screen.getAllByText('Linear').length).toBeGreaterThan(0)
-
-        // GitHub connected status
-        expect(screen.getByText('Connected')).toBeDefined()
     })
 })

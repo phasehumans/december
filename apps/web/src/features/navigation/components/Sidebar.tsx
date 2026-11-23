@@ -9,6 +9,7 @@ import { SidebarFooter } from './SidebarFooter'
 import type { SidebarProps } from '@/features/navigation/types'
 
 import { useAppStore } from '@/app/store'
+import { getViewForPath } from '@/app/types'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { Icons } from '@/shared/components/ui/Icons'
@@ -220,12 +221,9 @@ const Sidebar: React.FC<
         path.startsWith('/projects') ||
         path.startsWith('/all-projects') ||
         path.startsWith('/sessions')
+    const isConnectionsActive = getViewForPath(path) === 'connections'
     const isSettingsActive =
-        path.startsWith('/settings') ||
-        path.startsWith('/profile') ||
-        path.startsWith('/integrations') ||
-        path.startsWith('/connections') ||
-        path.startsWith('/connectors')
+        !isConnectionsActive && (path.startsWith('/settings') || path.startsWith('/profile'))
 
     let activeIndex = 0
     if (isSearchOpen) {
@@ -234,7 +232,8 @@ const Sidebar: React.FC<
         activeIndex = 2
     } else if (!isHomeActive) {
         if (isProjectsActive) activeIndex = 3
-        else if (isSettingsActive) activeIndex = 4
+        else if (isConnectionsActive) activeIndex = 4
+        else if (isSettingsActive) activeIndex = 5
         else activeIndex = -1
     } else {
         activeIndex = 0
@@ -301,6 +300,15 @@ const Sidebar: React.FC<
                 </div>
             ),
             onClick: onSessions,
+        },
+        {
+            id: 'connections',
+            label: 'Connections',
+            icon: <Icons.Connections className="w-[17px] h-[17px]" />,
+            onClick: () => {
+                if (isAuthenticated) navigate('/connections')
+                else if (onOpenAuth) onOpenAuth()
+            },
         },
         {
             id: 'settings',

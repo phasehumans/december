@@ -16,7 +16,6 @@ import { useProfileSettingsController } from '../hooks/useProfileSettingsControl
 
 import { MobileSettingsList } from './MobileSettingsList'
 import { ProfileBillingSettings } from './ProfileBillingSettings'
-import { ProfileConnectionsSettings } from './ProfileConnectionsSettings'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { ProfileModelKeysSettings } from './ProfileModelKeysSettings'
 import { ProfileNameModal } from './ProfileNameModal'
@@ -33,7 +32,6 @@ import { useAppStore } from '@/app/store'
 import { getProfileTabFromSlug, getSlugForProfileTab } from '@/app/types'
 import { MobileBackButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
-import { Icons } from '@/shared/components/ui/Icons'
 import { getWebUrl } from '@/shared/config/env'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
@@ -172,14 +170,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         onOpenSignOutAllSessionsModal={() => setSignOutAllSessionsModalOpen(true)}
                     />
                 )
-            case 'Connections':
-            case 'Integrations':
-                return (
-                    <ProfileConnectionsSettings
-                        isGithubConnected={isGithubConnected}
-                        onConnectGithub={connectGithub}
-                    />
-                )
             case 'Billing':
                 return <ProfileBillingSettings profile={profile} />
             case 'Usage':
@@ -239,32 +229,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                         >
                             <UserCircle className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Account
-                        </button>
-                        <button
-                            onClick={() =>
-                                navigate(`/settings/${getSlugForProfileTab('Connections')}`)
-                            }
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Connections' || activeTab === 'Integrations'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Icons.Connections className="w-[18px] h-[18px]" />
-                            Connections
-                        </button>
-                        <button
-                            onClick={() =>
-                                navigate(`/settings/${getSlugForProfileTab('Repositories')}`)
-                            }
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Repositories'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Icons.Github className="w-[18px] h-[18px]" />
-                            Repositories
                         </button>
                         <button
                             onClick={() => navigate(`/settings/${getSlugForProfileTab('Secrets')}`)}

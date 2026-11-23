@@ -8,6 +8,7 @@ import { SearchModal } from './SearchModal'
 import type { Notification } from '@/features/notification/api/notification'
 
 import { useAppStore } from '@/app/store'
+import { getViewForPath } from '@/app/types'
 import { notificationAPI } from '@/features/notification/api/notification'
 import { useInbox } from '@/features/notification/hooks/useInbox'
 import { profileAPI } from '@/features/profile/api/profile'
@@ -74,8 +75,11 @@ const MenuLevel: React.FC<
     // session urls are /sessions/<slug>, so only the bare list page counts as Sessions
     const isSessionsActive =
         path === '/sessions' || path === '/all-projects' || path === '/projects'
-    const isSettingsActive = path.startsWith('/settings') || path.startsWith('/profile')
-    const isOnSession = path !== '/' && !isSessionsActive && !isSettingsActive
+    const isConnectionsActive = getViewForPath(path) === 'connections'
+    const isSettingsActive =
+        !isConnectionsActive && (path.startsWith('/settings') || path.startsWith('/profile'))
+    const isOnSession =
+        path !== '/' && !isSessionsActive && !isSettingsActive && !isConnectionsActive
 
     const recent = React.useMemo(
         () =>
@@ -132,6 +136,12 @@ const MenuLevel: React.FC<
                 label="Sessions"
                 active={isSessionsActive}
                 onClick={() => closeThen(onSessions)}
+            />
+            <SheetRow
+                icon={<Icons.Connections className="w-[17px] h-[17px]" />}
+                label="Connections"
+                active={isConnectionsActive}
+                onClick={() => requireAuth(() => closeThen(() => navigate('/connections')))}
             />
             <SheetRow
                 icon={<Icons.Settings className="w-[17px] h-[17px]" />}

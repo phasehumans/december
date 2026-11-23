@@ -64,7 +64,7 @@ export const SETTINGS_PAGES: { id: string; label: string; path: string; keywords
     {
         id: 'connections',
         label: 'Connections',
-        path: '/settings/connections',
+        path: '/connections/apps',
         keywords: [
             'integrations',
             'connectors',
@@ -86,9 +86,45 @@ export const SETTINGS_PAGES: { id: string; label: string; path: string; keywords
     },
     {
         id: 'repositories',
-        label: 'Repositories',
-        path: '/settings/repositories',
+        label: 'GitHub repositories',
+        path: '/connections/apps/github',
         keywords: ['repos', 'github', 'git', 'sync', 'branches', 'codebase'],
+    },
+    {
+        id: 'plugins',
+        label: 'Plugins',
+        path: '/connections/plugins',
+        keywords: ['marketplace', 'extensions', 'install', 'connections'],
+    },
+    {
+        id: 'skills',
+        label: 'Skills',
+        path: '/connections/skills',
+        keywords: ['skill.md', 'commands', 'instructions', 'connections'],
+    },
+    {
+        id: 'mcps',
+        label: 'MCPs',
+        path: '/connections/mcps',
+        keywords: ['mcp', 'model context protocol', 'servers', 'tools', 'connections'],
+    },
+    {
+        id: 'hooks',
+        label: 'Hooks',
+        path: '/connections/hooks',
+        keywords: ['hooks.json', 'events', 'scripts', 'connections'],
+    },
+    {
+        id: 'rules',
+        label: 'Rules',
+        path: '/connections/rules',
+        keywords: ['agents.md', 'instructions', 'guidelines', 'connections'],
+    },
+    {
+        id: 'memory',
+        label: 'Memory',
+        path: '/connections/memory',
+        keywords: ['memories', 'notes', 'remember', 'connections'],
     },
     {
         id: 'secrets',

@@ -18,6 +18,11 @@ const ProfileSettings = React.lazy(() =>
         default: m.ProfileSettings,
     }))
 )
+const ConnectionsPage = React.lazy(() =>
+    import('@/features/connections/components/ConnectionsPage').then((m) => ({
+        default: m.ConnectionsPage,
+    }))
+)
 const SessionList = React.lazy(() =>
     import('@/features/sessions/components/SessionList').then((m) => ({ default: m.SessionList }))
 )
@@ -105,6 +110,12 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                 {view === 'sessions' && (
                     <AnimatedPage pageKey="sessions">
                         <SessionList onNewProject={onNewProject} onOpenProject={onOpenProject} />
+                    </AnimatedPage>
+                )}
+
+                {view === 'connections' && (
+                    <AnimatedPage pageKey="connections">
+                        <ConnectionsPage />
                     </AnimatedPage>
                 )}
 

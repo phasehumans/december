@@ -9,8 +9,6 @@ import { cn } from '@/shared/lib/utils'
 
 const SETTINGS_ROWS = [
     { slug: 'account', label: 'Account' },
-    { slug: 'connections', label: 'Connections' },
-    { slug: 'repositories', label: 'Repositories' },
     { slug: 'secrets', label: 'Secrets' },
     { slug: 'models', label: 'Model keys' },
     { slug: 'billing', label: 'Billing' },

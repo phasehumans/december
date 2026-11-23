@@ -1,4 +1,4 @@
-export type ViewState = 'chat' | 'sessions' | 'profile' | 'project'
+export type ViewState = 'chat' | 'sessions' | 'connections' | 'profile' | 'project'
 
 export type ProfileTab =
     | 'Account'
@@ -53,6 +53,7 @@ export const toProjectSlug = toSessionSlug
 const simpleViewToPath: Record<string, string> = {
     chat: '/',
     sessions: '/sessions',
+    connections: '/connections',
 }
 
 const simplePathToView: Record<string, ViewState> = Object.fromEntries(
@@ -83,18 +84,27 @@ export const getViewForPath = (pathname: string): ViewState => {
     const simple = simplePathToView[pathname]
     if (simple) return simple
 
-    // /settings or /settings/*, /profile, /integrations, /connections, /connectors → profile
+    // /connections/*, plus the old /integrations, /connectors, /settings/connections and
+    // /settings/repositories urls (the connections page redirects them) → connections
+    if (
+        pathname === '/connections' ||
+        pathname.startsWith('/connections/') ||
+        pathname === '/integrations' ||
+        pathname.startsWith('/integrations/') ||
+        pathname === '/connectors' ||
+        pathname.startsWith('/connectors/') ||
+        pathname.startsWith('/settings/connections') ||
+        pathname.startsWith('/settings/integrations') ||
+        pathname.startsWith('/settings/repositories')
+    )
+        return 'connections'
+
+    // /settings or /settings/*, /profile → profile
     if (
         pathname === '/settings' ||
         pathname.startsWith('/settings/') ||
         pathname === '/profile' ||
-        pathname.startsWith('/profile/') ||
-        pathname === '/integrations' ||
-        pathname.startsWith('/integrations/') ||
-        pathname === '/connections' ||
-        pathname.startsWith('/connections/') ||
-        pathname === '/connectors' ||
-        pathname.startsWith('/connectors/')
+        pathname.startsWith('/profile/')
     )
         return 'profile'
 
