@@ -9,6 +9,7 @@ import type { HomeHeroProps } from '@/features/home/types'
 import { useAppStore } from '@/app/store'
 import { OutOfCreditsModal } from '@/features/billing/components/OutOfCreditsModal'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { MobileInboxButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const HomeHero: React.FC<HomeHeroProps> = ({
@@ -50,6 +51,11 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             className="h-full min-h-0 overflow-hidden md:overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col"
         >
             <HomeHeader isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
+            <MobileTopBar
+                hasInboxButton
+                right={<MobileInboxButton />}
+                className="absolute top-0 inset-x-0 z-50 bg-transparent"
+            />
 
             <div className="flex flex-col items-center justify-start pt-[19vh] md:pt-[26vh] h-full flex-1 gap-6 animate-in fade-in duration-500 max-w-4xl mx-auto px-4 w-full shrink-0 relative">
                 {/* hidden original logo to preserve exact vertical layout flow */}

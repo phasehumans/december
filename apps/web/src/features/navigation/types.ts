@@ -16,19 +16,6 @@ export interface SidebarProps {
     onHomeClick?: () => void
 }
 
-export interface MobileSidebarProps {
-    isOpen: boolean
-    onClose: () => void
-    onNewThread: () => void
-    onAllProjects?: () => void
-    onSessions?: () => void
-    onProfile: () => void
-    onOpenProject: (projectId: string) => void
-    isAuthenticated: boolean
-    onOpenAuth: () => void
-    onSignOut?: () => void
-}
-
 export interface SidebarHeaderProps {
     isCollapsed: boolean
     onToggleCollapse: () => void

@@ -110,8 +110,8 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
                 )}
             </div>
 
-            {/* right icons */}
-            <div className="flex-1 flex items-center justify-end pointer-events-auto">
+            {/* right icons (desktop only, phones use the mobile top bar) */}
+            <div className="hidden md:flex flex-1 items-center justify-end pointer-events-auto">
                 <div className="flex items-center gap-0">
                     <MagneticIconWithTooltip
                         icon={<Icons.Github className="w-5 h-5" />}

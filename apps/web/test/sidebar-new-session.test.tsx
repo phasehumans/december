@@ -13,7 +13,7 @@ const { render, screen, fireEvent, cleanup, act } = await import('@testing-libra
 import { useAppController } from '../src/app/hooks/useAppController'
 import { useAppStore } from '../src/app/store'
 import { HomeHero } from '../src/features/home/components/HomeHero'
-import { MobileSidebar } from '../src/features/navigation/components/MobileSidebar'
+import { MobileMenuSheet } from '../src/features/navigation/components/MobileMenuSheet'
 import Sidebar from '../src/features/navigation/components/Sidebar'
 
 describe('Sidebar Navigation - Create New Session', () => {
@@ -144,16 +144,14 @@ describe('Sidebar Navigation - Create New Session', () => {
         expect(onNewThreadMock).toHaveBeenCalledTimes(1)
     })
 
-    test('clicking + icon in mobile sidebar triggers onNewThread and closes sidebar', async () => {
+    test('New in the mobile menu sheet closes the sheet and triggers onNewThread', async () => {
         const onNewThreadMock = mock(() => {})
-        const onCloseMock = mock(() => {})
+        useAppStore.setState({ isMobileSidebarOpen: true, mobileSheetStart: 'menu' })
 
         render(
             <QueryClientProvider client={queryClient}>
                 <MemoryRouter initialEntries={['/sessions']}>
-                    <MobileSidebar
-                        isOpen={true}
-                        onClose={onCloseMock}
+                    <MobileMenuSheet
                         onNewThread={onNewThreadMock}
                         onSessions={() => {}}
                         onProfile={() => {}}
@@ -165,16 +163,17 @@ describe('Sidebar Navigation - Create New Session', () => {
             </QueryClientProvider>
         )
 
-        const buttons = screen.getAllByRole('button')
-        const newButton = buttons.find((b) => b.textContent?.includes('New'))
+        const newButton = screen.getAllByRole('button').find((b) => b.textContent === 'New')
         expect(newButton).toBeDefined()
 
         await act(async () => {
             fireEvent.click(newButton!)
+            // the sheet pops its history entry first, then runs the action
+            await new Promise((resolve) => setTimeout(resolve, 50))
         })
 
         expect(onNewThreadMock).toHaveBeenCalledTimes(1)
-        expect(onCloseMock).toHaveBeenCalledTimes(1)
+        expect(useAppStore.getState().isMobileSidebarOpen).toBe(false)
     })
 
     test('useAppController handleNewThread resets all session and generation state', async () => {

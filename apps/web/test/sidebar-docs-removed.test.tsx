@@ -13,7 +13,7 @@ const { render, screen, cleanup } = await import('@testing-library/react')
 import { useAppStore } from '../src/app/store'
 import { getViewForPath, isPublicPath } from '../src/app/types'
 import { HomeHero } from '../src/features/home/components/HomeHero'
-import { MobileSidebar } from '../src/features/navigation/components/MobileSidebar'
+import { MobileMenuSheet } from '../src/features/navigation/components/MobileMenuSheet'
 import Sidebar from '../src/features/navigation/components/Sidebar'
 
 describe('Documentation removal from web & sidebar', () => {
@@ -30,7 +30,7 @@ describe('Documentation removal from web & sidebar', () => {
 
     afterEach(() => {
         cleanup()
-        useAppStore.setState({ isAuthenticated: false })
+        useAppStore.setState({ isAuthenticated: false, isMobileSidebarOpen: false })
     })
 
     test('Desktop Sidebar does not include Documentation button', () => {
@@ -54,12 +54,11 @@ describe('Documentation removal from web & sidebar', () => {
     })
 
     test('Mobile Sidebar does not include Documentation button', () => {
+        useAppStore.setState({ isMobileSidebarOpen: true, mobileSheetStart: 'menu' })
         render(
             <QueryClientProvider client={queryClient}>
                 <MemoryRouter initialEntries={['/']}>
-                    <MobileSidebar
-                        isOpen={true}
-                        onClose={() => {}}
+                    <MobileMenuSheet
                         onNewThread={() => {}}
                         onSessions={() => {}}
                         onProfile={() => {}}
@@ -87,7 +86,7 @@ describe('Documentation removal from web & sidebar', () => {
     })
 
     test('HomeHero shows the Docs link to signed-out visitors', () => {
-        useAppStore.setState({ isAuthenticated: false })
+        useAppStore.setState({ isAuthenticated: false, isMobileSidebarOpen: false })
         render(
             <QueryClientProvider client={queryClient}>
                 <MemoryRouter>

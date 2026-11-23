@@ -14,6 +14,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
 
+import { MobileSettingsList } from './MobileSettingsList'
 import { ProfileBillingSettings } from './ProfileBillingSettings'
 import { ProfileConnectionsSettings } from './ProfileConnectionsSettings'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
@@ -30,100 +31,12 @@ import type { ProfileSettingsProps } from '@/features/profile/types'
 
 import { useAppStore } from '@/app/store'
 import { getProfileTabFromSlug, getSlugForProfileTab } from '@/app/types'
-import { MobileBreadcrumbsHeader } from '@/features/navigation/components/MobileBreadcrumbsHeader'
+import { MobileBackButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
 import { getWebUrl } from '@/shared/config/env'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
-
-const SETTINGS_NAV_GROUPS = [
-    {
-        title: 'Settings',
-        items: [
-            {
-                tab: 'Account',
-                slug: 'account',
-                label: 'Account',
-                icon: UserCircle,
-            },
-            {
-                tab: 'Connections',
-                slug: 'connections',
-                label: 'Connections',
-                icon: Icons.Connections,
-            },
-            {
-                tab: 'Repositories',
-                slug: 'repositories',
-                label: 'Repositories',
-                icon: Icons.Github,
-            },
-            {
-                tab: 'Secrets',
-                slug: 'secrets',
-                label: 'Secrets',
-                icon: KeyRound,
-            },
-            {
-                tab: 'Models',
-                slug: 'models',
-                label: 'Model keys',
-                icon: Cpu,
-            },
-            {
-                tab: 'Billing',
-                slug: 'billing',
-                label: 'Billing',
-                icon: CreditCard,
-            },
-            {
-                tab: 'Usage',
-                slug: 'usage',
-                label: 'Usage',
-                icon: Activity,
-            },
-        ],
-    },
-    {
-        title: 'Resources',
-        items: [
-            {
-                slug: 'privacy',
-                label: 'Privacy Policy',
-                icon: FileText,
-                isExternal: true,
-                href: `${getWebUrl()}/privacy`,
-            },
-            {
-                slug: 'terms',
-                label: 'Terms of Service',
-                icon: FileText,
-                isExternal: true,
-                href: `${getWebUrl()}/terms`,
-            },
-            {
-                slug: 'changelog',
-                label: 'Changelog',
-                icon: FileClock,
-                isExternal: true,
-                href: `${getWebUrl()}/docs/changelog`,
-            },
-        ],
-    },
-]
-
-const TAB_LABEL_MAP: Record<string, string> = {
-    Account: 'Account',
-    Connections: 'Connections',
-    Integrations: 'Connections',
-    Repositories: 'Repositories',
-    Secrets: 'Secrets',
-    Models: 'Model keys',
-    Billing: 'Billing',
-    Usage: 'Usage',
-    Analytics: 'Usage',
-}
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack }) => {
     const location = useLocation()
@@ -166,7 +79,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         !location.pathname.startsWith('/integrations') &&
         !location.pathname.startsWith('/connections') &&
         !location.pathname.startsWith('/connectors')
-    const activeTabLabel = TAB_LABEL_MAP[activeTab] || activeTab
 
     // fallback for hash backward compatibility
     React.useEffect(() => {
@@ -293,192 +205,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         }
     }
 
-    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = React.useState(isMobileRoot)
-
-    React.useEffect(() => {
-        if (isMobileRoot) {
-            setIsMobileDrawerOpen(true)
-        }
-    }, [isMobileRoot])
-
     if (!isPublicTab && (!isAuthRestored || !isAuthenticated)) {
         return null
     }
 
     return (
         <div className="flex w-full h-full bg-[#141414] md:bg-[#100E12] overflow-hidden p-0 md:p-[8px] no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-            {/* Mobile Drawer Backdrop */}
-            <div
-                className={cn(
-                    'fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
-                    isMobileDrawerOpen
-                        ? 'opacity-100 pointer-events-auto'
-                        : 'opacity-0 pointer-events-none'
-                )}
-                onClick={() => setIsMobileDrawerOpen(false)}
-            />
-
-            {/* Mobile Drawer: Exact Main Sidebar look, width, and color */}
-            <div
-                className={cn(
-                    'fixed inset-y-0 left-0 w-[240px] bg-sidebar border-r border-white/5 z-[60] md:hidden flex flex-col pt-2 pb-0 transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-transform font-sans',
-                    isMobileDrawerOpen
-                        ? 'translate-x-0 pointer-events-auto'
-                        : '-translate-x-full pointer-events-none'
-                )}
-            >
-                {/* Drawer Header */}
-                <div className="px-3 mb-2 mt-0 z-30 relative">
-                    <div className="flex items-center justify-between px-2 mb-6 mt-4">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (onBack) onBack()
-                                else navigate('/')
-                            }}
-                            className="flex items-center cursor-pointer outline-none"
-                            aria-label="Home"
-                        >
-                            <Icons.DecemberLogo className="w-6 h-6 text-[#D6D5D4]" />
-                        </button>
-                        <div
-                            className="flex items-center justify-center text-[#919191] hover:text-[#D4D4D8] group/collapse p-1 rounded-md hover:bg-[#252525] transition-colors cursor-pointer relative"
-                            onClick={() => setIsMobileDrawerOpen(false)}
-                            aria-label="Close sidebar"
-                        >
-                            <Icons.SidebarToggle className="w-4 h-4" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Drawer Nav Items */}
-                <div className="flex-1 flex flex-col gap-[2px] px-3 overflow-y-auto no-scrollbar pb-6">
-                    <div className="px-2.5 py-1.5 text-[12px] font-medium text-[#919191] tracking-tight mb-0.5">
-                        Settings
-                    </div>
-                    {SETTINGS_NAV_GROUPS[0].items.map((item) => {
-                        const IconComponent = item.icon
-                        const isActive = activeTab === item.tab
-                        return (
-                            <button
-                                key={item.slug}
-                                onClick={() => {
-                                    const slug = item.slug || getSlugForProfileTab(item.tab)
-                                    navigate(`/settings/${slug}`)
-                                    setIsMobileDrawerOpen(false)
-                                }}
-                                className={cn(
-                                    'relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none cursor-pointer',
-                                    isActive ? 'bg-[#1F1F1F]' : 'hover:bg-[#1C1C1C]'
-                                )}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <div
-                                        className={cn(
-                                            'transition-colors flex items-center justify-center shrink-0',
-                                            isActive
-                                                ? 'text-[#D6D5D4]'
-                                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
-                                        )}
-                                    >
-                                        <IconComponent
-                                            className="w-[18px] h-[18px]"
-                                            strokeWidth={1.5}
-                                        />
-                                    </div>
-                                    <span
-                                        className={cn(
-                                            'font-medium text-[14px] tracking-wide transition-colors truncate',
-                                            isActive
-                                                ? 'text-[#D6D5D4]'
-                                                : 'text-[#919191] group-hover:text-[#D6D5D4]'
-                                        )}
-                                    >
-                                        {item.label}
-                                    </span>
-                                </div>
-                            </button>
-                        )
-                    })}
-
-                    <div className="px-2.5 py-1.5 text-[12px] font-medium text-[#919191] tracking-tight mt-4 mb-0.5">
-                        Resources
-                    </div>
-                    {/* Privacy Policy */}
-                    <a
-                        href={`${getWebUrl()}/privacy`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => {
-                            e.preventDefault()
-                            window.open(`${getWebUrl()}/privacy`, '_blank', 'noopener,noreferrer')
-                            setIsMobileDrawerOpen(false)
-                        }}
-                        className="relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none hover:bg-[#1C1C1C] cursor-pointer"
-                    >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="text-[#919191] group-hover:text-[#D6D5D4] transition-colors flex items-center justify-center shrink-0">
-                                <FileText className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            </div>
-                            <span className="font-medium text-[14px] tracking-wide transition-colors truncate text-[#919191] group-hover:text-[#D6D5D4]">
-                                Privacy Policy
-                            </span>
-                        </div>
-                        <ArrowUpRight
-                            className="w-[14px] h-[14px] text-[#7B7A79]"
-                            strokeWidth={1.5}
-                        />
-                    </a>
-
-                    {/* Terms of Service */}
-                    <a
-                        href={`${getWebUrl()}/terms`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => {
-                            e.preventDefault()
-                            window.open(`${getWebUrl()}/terms`, '_blank', 'noopener,noreferrer')
-                            setIsMobileDrawerOpen(false)
-                        }}
-                        className="relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none hover:bg-[#1C1C1C] cursor-pointer"
-                    >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="text-[#919191] group-hover:text-[#D6D5D4] transition-colors flex items-center justify-center shrink-0">
-                                <FileText className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            </div>
-                            <span className="font-medium text-[14px] tracking-wide transition-colors truncate text-[#919191] group-hover:text-[#D6D5D4]">
-                                Terms of Service
-                            </span>
-                        </div>
-                        <ArrowUpRight
-                            className="w-[14px] h-[14px] text-[#7B7A79]"
-                            strokeWidth={1.5}
-                        />
-                    </a>
-
-                    {/* Changelog */}
-                    <a
-                        href={`${getWebUrl()}/docs/changelog`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="relative flex items-center justify-between w-full px-2.5 h-[32px] rounded-[10px] transition-all group outline-none hover:bg-[#1C1C1C] cursor-pointer"
-                    >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="text-[#919191] group-hover:text-[#D6D5D4] transition-colors flex items-center justify-center shrink-0">
-                                <FileClock className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            </div>
-                            <span className="font-medium text-[14px] tracking-wide transition-colors truncate text-[#919191] group-hover:text-[#D6D5D4]">
-                                Changelog
-                            </span>
-                        </div>
-                        <ArrowUpRight
-                            className="w-[14px] h-[14px] text-[#7B7A79]"
-                            strokeWidth={1.5}
-                        />
-                    </a>
-                </div>
-            </div>
-
             <div className="flex flex-col md:flex-row w-full h-full bg-[#141414] rounded-none md:rounded-lg border-0 md:border md:border-[#242323] overflow-hidden no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
                 {/* Desktop sidebar: visible only on md: and up */}
                 <div className="hidden md:flex w-[220px] shrink-0 border-r border-[#242323] flex-col py-4 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
@@ -644,27 +376,34 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
 
                 {/* Mobile View with top bar and direct subpage content */}
                 <div className="flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                    {/* Mobile Top Bar */}
-                    <MobileBreadcrumbsHeader
-                        onOpenSidebar={() => setIsMobileDrawerOpen(true)}
-                        onHomeClick={() => {
-                            if (onBack) onBack()
-                            else navigate('/')
-                        }}
-                        items={[
-                            {
-                                label: 'Settings',
-                                onClick: () => setIsMobileDrawerOpen(true),
-                            },
-                            {
-                                label: activeTabLabel,
-                                isLast: true,
-                            },
-                        ]}
-                    />
+                    {/* Mobile top bar: list page at /settings, "‹ Settings" on a page */}
+                    {isMobileRoot ? (
+                        <MobileTopBar title="Settings" />
+                    ) : (
+                        <MobileTopBar
+                            left={
+                                <MobileBackButton
+                                    label="Settings"
+                                    onClick={() => navigate('/settings')}
+                                />
+                            }
+                        />
+                    )}
+
+                    {isMobileRoot && (
+                        <MobileSettingsList
+                            onOpenPage={(slug) => navigate(`/settings/${slug}`)}
+                            onSignOut={onSignOut}
+                        />
+                    )}
 
                     {/* Mobile Content: Active Tab Content directly rendered */}
-                    <div className="md:hidden flex flex-col p-4 pb-6 w-full no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                    <div
+                        className={cn(
+                            'md:hidden flex-col p-4 pb-6 w-full no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]',
+                            isMobileRoot ? 'hidden' : 'flex'
+                        )}
+                    >
                         {profileErrorMessage && (
                             <div className="mb-4">
                                 <ErrorAlert

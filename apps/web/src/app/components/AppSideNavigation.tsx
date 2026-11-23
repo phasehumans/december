@@ -1,9 +1,8 @@
-import { Menu } from 'lucide-react'
 import React, { useState, useEffect, useRef } from 'react'
 
 import type { ViewState } from '@/app/types'
 
-import { MobileSidebar } from '@/features/navigation/components/MobileSidebar'
+import { MobileMenuSheet } from '@/features/navigation/components/MobileMenuSheet'
 import Sidebar from '@/features/navigation/components/Sidebar'
 
 interface AppSideNavigationProps {
@@ -37,12 +36,6 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
 }) => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(isWorkspaceScreen)
     const prevIsWorkspaceRef = useRef(isWorkspaceScreen)
-
-    const showFloatingMobileToggle =
-        currentView !== 'sessions' &&
-        currentView !== 'profile' &&
-        currentView !== 'docs' &&
-        !isWorkspaceScreen
 
     useEffect(() => {
         if (isWorkspaceScreen && !prevIsWorkspaceRef.current) {
@@ -84,30 +77,15 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onExpand={() => setIsSidebarCollapsed(false)}
             />
 
-            {showFloatingMobileToggle && (
-                <div className="md:hidden fixed top-0 left-0 h-11 px-4 z-50 flex items-center pointer-events-none">
-                    <button
-                        onClick={() => setIsMobileSidebarOpen(true)}
-                        className="pointer-events-auto w-7 h-7 text-[#8F8E8D] hover:text-[#D4D4D8] hover:bg-[#252525] rounded-full transition-colors flex items-center justify-center cursor-pointer outline-none"
-                        aria-label="Open menu"
-                    >
-                        <Menu className="w-[18px] h-[18px]" />
-                    </button>
-                </div>
-            )}
-
-            <MobileSidebar
-                isOpen={isMobileSidebarOpen}
-                onClose={() => setIsMobileSidebarOpen(false)}
+            <MobileMenuSheet
                 onNewThread={onNewThread}
+                onHomeClick={onHomeClick}
                 onSessions={() => onNavigate('sessions')}
-                onAllProjects={() => onNavigate('all-projects')}
                 onProfile={() => onNavigate('profile')}
                 onOpenProject={onOpenProject}
                 isAuthenticated={isAuthenticated}
                 onOpenAuth={onOpenAuth}
                 onSignOut={onSignOut}
-                onHomeClick={onHomeClick}
             />
         </>
     )
