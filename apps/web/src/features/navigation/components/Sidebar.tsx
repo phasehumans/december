@@ -8,6 +8,7 @@ import { SidebarFooter } from './SidebarFooter'
 
 import type { SidebarProps } from '@/features/navigation/types'
 
+import { useAppStore } from '@/app/store'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { Icons } from '@/shared/components/ui/Icons'
@@ -77,6 +78,8 @@ const Sidebar: React.FC<
     const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
     const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
     const [isLogoAnimating, setIsLogoAnimating] = React.useState(false)
+    const isSuperCrewOpen = useAppStore((s) => s.isSuperCrewOpen)
+    const setIsSuperCrewOpen = useAppStore((s) => s.setIsSuperCrewOpen)
 
     React.useEffect(() => {
         if (isCollapsed) {
@@ -227,9 +230,11 @@ const Sidebar: React.FC<
     let activeIndex = 0
     if (isSearchOpen) {
         activeIndex = 1
+    } else if (isSuperCrewOpen) {
+        activeIndex = 2
     } else if (!isHomeActive) {
-        if (isProjectsActive) activeIndex = 2
-        else if (isSettingsActive) activeIndex = 3
+        if (isProjectsActive) activeIndex = 3
+        else if (isSettingsActive) activeIndex = 4
         else activeIndex = -1
     } else {
         activeIndex = 0
@@ -277,6 +282,12 @@ const Sidebar: React.FC<
                     if (onOpenAuth) onOpenAuth()
                 }
             },
+        },
+        {
+            id: 'supercrew',
+            label: 'Super Crew',
+            icon: <Icons.CrewDots className="w-[17px] h-[17px]" />,
+            onClick: () => setIsSuperCrewOpen(!isSuperCrewOpen),
         },
         {
             id: 'sessions',
@@ -487,6 +498,11 @@ const Sidebar: React.FC<
                                         {item.label}
                                     </span>
                                 </div>
+                                {item.id === 'supercrew' && (
+                                    <span className="text-[10px] font-medium text-[#919191] border border-[#383735] rounded-full px-1.5 leading-4 shrink-0">
+                                        Soon
+                                    </span>
+                                )}
                                 {item.id === 'new' && (
                                     <div className="absolute top-1/2 left-[120px] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                         <span className="text-[12px] font-medium text-[#EDEDEF]">

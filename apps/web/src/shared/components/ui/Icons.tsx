@@ -606,6 +606,19 @@ export const Icons = {
             <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
     ),
+    CrewDots: (props: any) => (
+        <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="6" cy="6" r="1.6" opacity=".45" />
+            <circle cx="12" cy="6" r="1.6" />
+            <circle cx="18" cy="6" r="1.6" opacity=".45" />
+            <circle cx="6" cy="12" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" opacity=".45" />
+            <circle cx="18" cy="12" r="1.6" />
+            <circle cx="6" cy="18" r="1.6" opacity=".45" />
+            <circle cx="12" cy="18" r="1.6" />
+            <circle cx="18" cy="18" r="1.6" opacity=".45" />
+        </svg>
+    ),
     Search: (props: any) => (
         <svg
             {...props}

@@ -47,6 +47,7 @@ model User {
   feedbacks          Feedback[]
   projects           Project[]
   providerCredentials ProviderCredential[]
+  featureWaitlists   FeatureWaitlist[]
 }
 
 // how a cloud run pays for model tokens
@@ -73,6 +74,22 @@ model ProviderCredential {
 
   @@unique([userId, provider])
   @@index([userId])
+}
+
+// one row per user per coming-soon feature: who asked to be notified and who saw the popup
+model FeatureWaitlist {
+  id          String    @id @default(uuid())
+  userId      String
+  feature     String
+  joinedAt    DateTime?
+  popupSeenAt DateTime?
+  notifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, feature])
+  @@index([feature, joinedAt])
 }
 
 model Notification {

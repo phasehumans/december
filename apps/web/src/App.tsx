@@ -7,6 +7,7 @@ import { useAppController } from './app/hooks/useAppController'
 import { AuthModal } from './features/auth/components/AuthModal'
 import { githubOAuth } from './features/auth/githubOAuth'
 import { OnboardingPage } from './features/onboarding/components/OnboardingPage'
+import { SuperCrewCard } from './features/supercrew/components/SuperCrewCard'
 
 import { LogoLoader } from '@/shared/components/ui/LogoLoader'
 import { getWebUrl } from '@/shared/config/env'
@@ -116,6 +117,8 @@ const App: React.FC = () => {
                     onSignOut={handleSignOut}
                     isWorkspaceScreen={!isHome && (view === 'chat' || view === 'project')}
                 />
+
+                <SuperCrewCard isHome={isHome} />
 
                 <AuthModal
                     isOpen={showAuthModal}

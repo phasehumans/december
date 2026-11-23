@@ -21,6 +21,7 @@ import secretsRouter from './modules/secrets/secrets.routes'
 import sessionRouter from './modules/session/session.routes'
 import settingRouter from './modules/setting/setting.routes'
 import usageRouter from './modules/usage/usage.routes'
+import waitlistRouter from './modules/waitlist/waitlist.routes'
 
 const app = express()
 
@@ -105,6 +106,7 @@ app.use('/api/v1/runtime', runtimeRateLimiter, runtimeRouter)
 app.use('/api/v1/usage', usageRouter)
 app.use('/api/v1/integrations', integrationsRouter)
 app.use('/api/v1/notification', notificationRouter)
+app.use('/api/v1/waitlist', waitlistRouter)
 app.use('/api/v1/billing', billingRouter)
 app.use('/api/v1/platform', platformRouter)
 app.use('/api/v1/cli', cliRateLimiter, cliRouter)

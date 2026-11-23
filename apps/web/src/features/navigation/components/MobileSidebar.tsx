@@ -9,6 +9,7 @@ import { SidebarFooter } from './SidebarFooter'
 
 import type { MobileSidebarProps } from '@/features/navigation/types'
 
+import { useAppStore } from '@/app/store'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { Icons } from '@/shared/components/ui/Icons'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
@@ -59,12 +60,14 @@ export const MobileSidebar: React.FC<
     const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
     const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
 
+    const setIsSuperCrewOpen = useAppStore((s) => s.setIsSuperCrewOpen)
+
     let activeIndex = 0
     if (isSearchOpen) {
         activeIndex = 1
     } else if (!isHomeActive) {
-        if (isProjectsActive) activeIndex = 2
-        else if (isSettingsActive) activeIndex = 3
+        if (isProjectsActive) activeIndex = 3
+        else if (isSettingsActive) activeIndex = 4
         else activeIndex = -1
     } else {
         activeIndex = 0
@@ -107,6 +110,15 @@ export const MobileSidebar: React.FC<
                     if (onOpenAuth) onOpenAuth()
                 }
                 onClose()
+            },
+        },
+        {
+            id: 'supercrew',
+            label: 'Super Crew',
+            icon: <Icons.CrewDots className="w-[18px] h-[18px]" />,
+            onClick: () => {
+                onClose()
+                setIsSuperCrewOpen(true)
             },
         },
         {
@@ -270,6 +282,11 @@ export const MobileSidebar: React.FC<
                                         {item.label}
                                     </span>
                                 </div>
+                                {item.id === 'supercrew' && (
+                                    <span className="text-[10px] font-medium text-[#919191] border border-[#383735] rounded-full px-1.5 leading-4 shrink-0">
+                                        Soon
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
