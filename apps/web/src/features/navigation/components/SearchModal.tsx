@@ -1,504 +1,442 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+import { useSearchModel } from '../search/useSearchModel'
+
+import type { SearchItem, SearchRow } from '../search/searchItems'
 
 import { Icons } from '@/shared/components/ui/Icons'
-import { getWebUrl } from '@/shared/config/env'
 import { cn } from '@/shared/lib/utils'
 
 interface SearchModalProps {
     isOpen: boolean
     onClose: () => void
     onNewThread?: () => void
+    onOpenSession?: (sessionId: string) => void
+    /** desktop only; leave out to hide the sidebar action */
+    onToggleSidebar?: () => void
+    onSignOut?: () => void
+    /** runs after an item or Ask December runs (not on a plain close) */
+    onAction?: () => void
     isAuthenticated?: boolean
     isSidebarCollapsed?: boolean
 }
 
-export type SearchCategory = 'Recent' | 'Navigation' | 'Settings Subpages'
+const MOBILE_BREAKPOINT = 768
+const FLASH_MS = 700
 
-export interface SearchItem {
-    id: string
-    label: string
-    subtitle?: string
-    category: SearchCategory
-    icon: React.ReactNode
-    keywords?: string[]
-    action: () => void
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(() =>
+        typeof window !== 'undefined' ? window.innerWidth < MOBILE_BREAKPOINT : false
+    )
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
+    return isMobile
+}
+
+/** visible height and the space the on-screen keyboard takes at the bottom */
+const useVisualViewport = (active: boolean) => {
+    const [viewport, setViewport] = useState<{ height: number; bottomInset: number } | null>(null)
+    useEffect(() => {
+        if (!active) return
+        const vv = window.visualViewport
+        const update = () => {
+            const height = vv ? vv.height : window.innerHeight
+            const offsetTop = vv ? vv.offsetTop : 0
+            setViewport({
+                height,
+                bottomInset: Math.max(0, window.innerHeight - height - offsetTop),
+            })
+        }
+        update()
+        vv?.addEventListener('resize', update)
+        vv?.addEventListener('scroll', update)
+        window.addEventListener('resize', update)
+        return () => {
+            vv?.removeEventListener('resize', update)
+            vv?.removeEventListener('scroll', update)
+            window.removeEventListener('resize', update)
+        }
+    }, [active])
+    return viewport
+}
+
+const Highlight: React.FC<{ text: string; indexes: number[] }> = ({ text, indexes }) => {
+    if (indexes.length === 0) return <>{text}</>
+    const matched = new Set(indexes)
+    const parts: React.ReactNode[] = []
+    let run = ''
+    let runMatched = matched.has(0)
+    const flush = (key: number) => {
+        if (!run) return
+        parts.push(
+            runMatched ? (
+                <span key={key} className="text-white font-semibold">
+                    {run}
+                </span>
+            ) : (
+                run
+            )
+        )
+        run = ''
+    }
+    for (let i = 0; i < text.length; i++) {
+        const isMatch = matched.has(i)
+        if (isMatch !== runMatched) {
+            flush(i)
+            runMatched = isMatch
+        }
+        run += text[i]
+    }
+    flush(text.length)
+    return <>{parts}</>
 }
 
 export const SearchModal: React.FC<SearchModalProps> = ({
     isOpen,
     onClose,
     onNewThread,
+    onOpenSession,
+    onToggleSidebar,
+    onSignOut,
+    onAction,
     isAuthenticated,
     isSidebarCollapsed = false,
 }) => {
-    const navigate = useNavigate()
-    const [searchQuery, setSearchQuery] = useState('')
+    const [query, setQuery] = useState('')
     const [selectedIndex, setSelectedIndex] = useState(0)
+    const [armedId, setArmedId] = useState<string | null>(null)
+    const [flash, setFlash] = useState<{ id: string; label: string } | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
-    const [recentIds, setRecentIds] = useState<string[]>(() => {
-        try {
-            return JSON.parse(localStorage.getItem('december-search-recents') || '[]')
-        } catch {
-            return []
-        }
+    const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const isMobile = useIsMobile()
+    const viewport = useVisualViewport(isOpen && isMobile)
+
+    const { sections, askDecember, isAiSearching } = useSearchModel({
+        isOpen,
+        query,
+        isAuthenticated,
+        isMobile,
+        onNewThread,
+        onOpenSession,
+        onToggleSidebar: isMobile ? undefined : onToggleSidebar,
+        isSidebarCollapsed,
+        onSignOut,
     })
 
-    // Reset search query and selected index on open
-    useEffect(() => {
-        if (isOpen) {
-            setSearchQuery('')
-            setSelectedIndex(0)
-            setTimeout(() => inputRef.current?.focus(), 50)
-        }
-    }, [isOpen])
-
-    const saveRecent = useCallback((id: string) => {
-        setRecentIds((prev) => {
-            const newRecents = [id, ...prev.filter((rId) => rId !== id)].slice(0, 5)
-            localStorage.setItem('december-search-recents', JSON.stringify(newRecents))
-            return newRecents
-        })
-    }, [])
-
-    const allItems: SearchItem[] = useMemo(
-        () => [
-            // Main Navigation Pages
-            {
-                id: 'go-home',
-                label: 'Home / New Session',
-                subtitle: 'Start a new AI coding session',
-                category: 'Navigation',
-                icon: <Icons.Home className="w-4 h-4 text-neutral-400" />,
-                keywords: ['home', 'new', 'chat', 'session', 'prompt', 'create', 'start'],
-                action: () => {
-                    onClose()
-                    if (onNewThread) {
-                        onNewThread()
-                    } else {
-                        navigate('/')
-                    }
-                },
-            },
-            {
-                id: 'go-projects',
-                label: 'Sessions',
-                subtitle: 'View all active sessions & history',
-                category: 'Navigation',
-                icon: <Icons.Folder className="w-4 h-4 text-neutral-400" />,
-                keywords: ['projects', 'history', 'threads', 'saved', 'chats', 'sessions'],
-                action: () => {
-                    onClose()
-                    navigate('/projects')
-                },
-            },
-            {
-                id: 'go-docs',
-                label: 'Documentation',
-                subtitle: 'Guides, architecture, and CLI reference',
-                category: 'Navigation',
-                icon: <Icons.DocsBook className="w-4 h-4 text-neutral-400" />,
-                keywords: ['docs', 'help', 'guide', 'manual', 'reference', 'cli', 'architecture'],
-                action: () => {
-                    onClose()
-                    window.open(`${getWebUrl()}/docs`, '_blank')
-                },
-            },
-
-            // Settings Subpages
-            {
-                id: 'go-settings-account',
-                label: 'Account Details',
-                subtitle: 'Settings / Account',
-                category: 'Settings Subpages',
-                icon: <Icons.User className="w-4 h-4 text-neutral-400" />,
-                keywords: ['profile', 'account', 'security', 'email', 'avatar', 'user', 'name'],
-                action: () => {
-                    onClose()
-                    navigate('/settings/account')
-                },
-            },
-            {
-                id: 'go-settings-connections',
-                label: 'Connections',
-                subtitle: 'Settings / Connections',
-                category: 'Settings Subpages',
-                icon: <Icons.Connections className="w-4 h-4 text-neutral-400" />,
-                keywords: [
-                    'connections',
-                    'integrations',
-                    'connectors',
-                    'github',
-                    'vercel',
-                    'figma',
-                    'linear',
-                    'sentry',
-                    'neon',
-                    'cloudflare',
-                    'upstash',
-                    'railway',
-                    'posthog',
-                    'slack',
-                    'discord',
-                    'oauth',
-                    'services',
-                    'third party',
-                ],
-                action: () => {
-                    onClose()
-                    navigate('/settings/connections')
-                },
-            },
-            {
-                id: 'go-settings-repositories',
-                label: 'GitHub Repositories',
-                subtitle: 'Settings / Repositories',
-                category: 'Settings Subpages',
-                icon: <Icons.Github className="w-4 h-4 text-neutral-400" />,
-                keywords: [
-                    'repos',
-                    'repositories',
-                    'github',
-                    'git',
-                    'sync',
-                    'branches',
-                    'codebase',
-                ],
-                action: () => {
-                    onClose()
-                    navigate('/settings/repositories')
-                },
-            },
-            {
-                id: 'go-settings-secrets',
-                label: 'API Keys & Secrets',
-                subtitle: 'Settings / Secrets',
-                category: 'Settings Subpages',
-                icon: <Icons.Lock className="w-4 h-4 text-neutral-400" />,
-                keywords: [
-                    'api key',
-                    'secrets',
-                    'tokens',
-                    'credentials',
-                    'env',
-                    'variables',
-                    'keys',
-                ],
-                action: () => {
-                    onClose()
-                    navigate('/settings/secrets')
-                },
-            },
-            {
-                id: 'go-settings-models',
-                label: 'Model keys',
-                subtitle: 'Settings / Model keys',
-                category: 'Settings Subpages',
-                icon: <Icons.Lock className="w-4 h-4 text-neutral-400" />,
-                keywords: [
-                    'model',
-                    'models',
-                    'byok',
-                    'own key',
-                    'api key',
-                    'provider',
-                    'openai',
-                    'anthropic',
-                    'openrouter',
-                ],
-                action: () => {
-                    onClose()
-                    navigate('/settings/models')
-                },
-            },
-            {
-                id: 'go-settings-billing',
-                label: 'Billing & Credits',
-                subtitle: 'Settings / Billing',
-                category: 'Settings Subpages',
-                icon: <Icons.Clock className="w-4 h-4 text-neutral-400" />,
-                keywords: [
-                    'billing',
-                    'credits',
-                    'payment',
-                    'invoices',
-                    'receipts',
-                    'subscription',
-                    'plan',
-                    'pricing',
-                    'pro',
-                ],
-                action: () => {
-                    onClose()
-                    navigate('/settings/billing')
-                },
-            },
-            {
-                id: 'go-settings-usage',
-                label: 'Usage & Quotas',
-                subtitle: 'Settings / Usage',
-                category: 'Settings Subpages',
-                icon: <Icons.Clock className="w-4 h-4 text-neutral-400" />,
-                keywords: [
-                    'usage',
-                    'quotas',
-                    'token limit',
-                    'ai calls',
-                    'metrics',
-                    'stats',
-                    'analytics',
-                ],
-                action: () => {
-                    onClose()
-                    navigate('/settings/usage')
-                },
-            },
-            {
-                id: 'go-settings-privacy',
-                label: 'Privacy Policy',
-                subtitle: 'Legal / Privacy Policy',
-                category: 'Settings Subpages',
-                icon: <Icons.Lock className="w-4 h-4 text-neutral-400" />,
-                keywords: ['privacy', 'security', 'data', 'encryption', 'gdpr', 'compliance'],
-                action: () => {
-                    onClose()
-                    window.open(`${getWebUrl()}/privacy`, '_blank', 'noopener,noreferrer')
-                },
-            },
-            {
-                id: 'go-settings-terms',
-                label: 'Terms of Service',
-                subtitle: 'Legal / Terms of Service',
-                category: 'Settings Subpages',
-                icon: <Icons.BookOpen className="w-4 h-4 text-neutral-400" />,
-                keywords: ['terms', 'tos', 'conditions', 'agreement', 'legal', 'compliance'],
-                action: () => {
-                    onClose()
-                    window.open(`${getWebUrl()}/terms`, '_blank', 'noopener,noreferrer')
-                },
-            },
-        ],
-        [onClose, onNewThread, navigate]
-    )
-
-    const [isMobile, setIsMobile] = useState(() =>
-        typeof window !== 'undefined' ? window.innerWidth < 768 : false
-    )
-
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth < 768)
-        }
-        window.addEventListener('resize', handleResize)
-        return () => window.removeEventListener('resize', handleResize)
-    }, [])
-
-    const recentItems = useMemo(
-        () =>
-            recentIds
-                .map((id) => allItems.find((i) => i.id === id))
-                .filter((i): i is SearchItem => Boolean(i))
-                .map((i) => ({ ...i, category: 'Recent' as const })),
-        [recentIds, allItems]
-    )
-
-    const navigationItems = useMemo(
-        () => allItems.filter((item) => item.category === 'Navigation'),
-        [allItems]
-    )
-
-    const displayedItems: SearchItem[] = useMemo(() => {
-        if (searchQuery.trim() === '') {
-            if (isMobile) {
-                // In mobile view: show Recent (if any) and Navigation
-                if (recentItems.length > 0) {
-                    return [...recentItems, ...navigationItems]
-                }
-                return navigationItems
-            }
-            // Desktop view: show recent items first if any, then all remaining items
-            if (recentItems.length > 0) {
-                return [...recentItems, ...allItems]
-            }
-            return allItems
-        }
-        const query = searchQuery.toLowerCase()
-        return allItems.filter(
-            (item) =>
-                item.label.toLowerCase().includes(query) ||
-                item.subtitle?.toLowerCase().includes(query) ||
-                item.category.toLowerCase().includes(query) ||
-                item.keywords?.some((k) => k.toLowerCase().includes(query))
-        )
-    }, [searchQuery, isMobile, recentItems, navigationItems, allItems])
-
-    const categories: SearchCategory[] = useMemo(() => {
-        if (searchQuery.trim() === '') {
-            if (isMobile) {
-                return recentItems.length > 0 ? ['Recent', 'Navigation'] : ['Navigation']
-            }
-            return recentItems.length > 0
-                ? ['Recent', 'Navigation', 'Settings Subpages']
-                : ['Navigation', 'Settings Subpages']
-        }
-        return ['Recent', 'Navigation', 'Settings Subpages']
-    }, [searchQuery, isMobile, recentItems.length])
-
-    useEffect(() => {
-        setSelectedIndex(0)
-    }, [searchQuery])
+    const rows = useMemo<SearchRow[]>(() => sections.flatMap((s) => s.rows), [sections])
+    const hasQuery = query.trim().length > 0
 
     useEffect(() => {
         if (!isOpen) return
-        const element = document.getElementById(`search-item-${selectedIndex}`)
-        if (element) {
-            element.scrollIntoView({ block: 'nearest' })
-        }
-    }, [selectedIndex, isOpen])
+        setQuery('')
+        setSelectedIndex(0)
+        setArmedId(null)
+        setFlash(null)
+        const timer = setTimeout(() => inputRef.current?.focus(), 50)
+        return () => clearTimeout(timer)
+    }, [isOpen])
 
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (!isOpen) return
+        return () => {
+            if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+        }
+    }, [])
 
+    useEffect(() => {
+        setSelectedIndex(0)
+        setArmedId(null)
+    }, [query])
+
+    useEffect(() => {
+        if (selectedIndex >= rows.length && rows.length > 0) setSelectedIndex(rows.length - 1)
+    }, [rows.length, selectedIndex])
+
+    useEffect(() => {
+        if (!isOpen) return
+        document.getElementById(`search-row-${selectedIndex}`)?.scrollIntoView({ block: 'nearest' })
+    }, [selectedIndex, isOpen])
+
+    const select = useCallback((index: number) => {
+        setSelectedIndex(index)
+        setArmedId(null)
+    }, [])
+
+    const runItem = useCallback(
+        (item: SearchItem, newTab: boolean) => {
+            if (item.confirmLabel && armedId !== item.id) {
+                setArmedId(item.id)
+                return
+            }
+            if (item.flashLabel) {
+                item.run()
+                setFlash({ id: item.id, label: item.flashLabel })
+                if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+                flashTimerRef.current = setTimeout(() => {
+                    onClose()
+                    onAction?.()
+                }, FLASH_MS)
+                return
+            }
+            onClose()
+            if (newTab && item.href && !item.external) {
+                window.open(item.href, '_blank', 'noopener,noreferrer')
+            } else {
+                item.run()
+            }
+            onAction?.()
+        },
+        [armedId, onClose, onAction]
+    )
+
+    const activate = useCallback(
+        (index: number, newTab: boolean) => {
+            const row = rows[index]
+            if (!row) return
+            if (row.kind === 'ask') {
+                onClose()
+                askDecember(row.prompt)
+                onAction?.()
+                return
+            }
+            runItem(row.item, newTab)
+        },
+        [rows, onClose, askDecember, onAction, runItem]
+    )
+
+    useEffect(() => {
+        if (!isOpen) return
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const count = rows.length || 1
             if (e.key === 'ArrowDown') {
                 e.preventDefault()
-                setSelectedIndex((prev) => (prev + 1) % (displayedItems.length || 1))
+                select((selectedIndex + 1) % count)
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault()
-                setSelectedIndex(
-                    (prev) => (prev - 1 + displayedItems.length) % (displayedItems.length || 1)
-                )
+                select((selectedIndex - 1 + count) % count)
             } else if (e.key === 'Enter') {
                 e.preventDefault()
-                if (displayedItems[selectedIndex]) {
-                    const item = displayedItems[selectedIndex]
-                    saveRecent(item.id)
-                    if (e.ctrlKey || e.metaKey) {
-                        window.open(window.location.origin, '_blank')
-                        onClose()
-                    } else {
-                        item.action()
-                    }
-                }
+                activate(selectedIndex, e.metaKey || e.ctrlKey)
             } else if (e.key === 'Escape') {
                 e.preventDefault()
                 onClose()
             }
         }
-
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [isOpen, displayedItems, selectedIndex, onClose, saveRecent])
+    }, [isOpen, rows.length, selectedIndex, select, activate, onClose])
 
     if (!isOpen) return null
 
-    let currentIndex = 0
+    let rowIndex = 0
+    const list = (
+        <div
+            role="listbox"
+            className={cn(
+                'flex flex-col py-1.5 overflow-y-auto no-scrollbar',
+                isMobile
+                    ? 'flex-1 min-h-0 pb-[max(6px,env(safe-area-inset-bottom))]'
+                    : 'max-h-[440px]'
+            )}
+        >
+            {sections.map((section, sectionIndex) => (
+                <div
+                    key={section.key}
+                    className={cn(
+                        'flex flex-col px-2 pb-1',
+                        // a divider only when other rows sit above Ask December
+                        (section.isAsk || section.hasDivider) &&
+                            sectionIndex > 0 &&
+                            'border-t border-[#282828] mt-1 pt-1.5'
+                    )}
+                >
+                    {section.title && (
+                        <div className="px-2.5 pt-1 pb-0.5 text-[11px] font-semibold text-[#7B7A79]">
+                            {section.title}
+                        </div>
+                    )}
+                    {section.rows.map((row) => {
+                        const index = rowIndex++
+                        const isSelected = index === selectedIndex
+                        return (
+                            <button
+                                key={row.kind === 'ask' ? 'ask' : row.item.id}
+                                id={`search-row-${index}`}
+                                type="button"
+                                role="option"
+                                aria-selected={isSelected}
+                                onMouseMove={() => {
+                                    if (index !== selectedIndex) select(index)
+                                }}
+                                onClick={(e) => activate(index, e.metaKey || e.ctrlKey)}
+                                className={cn(
+                                    'flex items-center gap-2.5 w-full text-left rounded-[10px] px-2.5 outline-none cursor-pointer transition-colors',
+                                    isMobile ? 'min-h-[42px] py-2' : 'min-h-[32px] py-1.5',
+                                    isSelected ? 'bg-[#2A2928]' : 'hover:bg-[#2A2928]/40'
+                                )}
+                            >
+                                {row.kind === 'ask' ? (
+                                    <>
+                                        <span
+                                            className={cn(
+                                                'shrink-0 font-medium',
+                                                isMobile ? 'text-[14px]' : 'text-[13px]',
+                                                isSelected ? 'text-[#EDEDED]' : 'text-[#D6D5D4]'
+                                            )}
+                                        >
+                                            Ask December
+                                        </span>
+                                        <span
+                                            className={cn(
+                                                'flex-1 min-w-0 truncate text-[#7B7A79]',
+                                                isMobile ? 'text-[14px]' : 'text-[13px]'
+                                            )}
+                                        >
+                                            {row.prompt}
+                                        </span>
+                                    </>
+                                ) : (
+                                    <ItemRowContent
+                                        row={row}
+                                        isSelected={isSelected}
+                                        isMobile={isMobile}
+                                        hasQuery={hasQuery}
+                                        isArmed={armedId === row.item.id}
+                                        flashLabel={flash?.id === row.item.id ? flash.label : null}
+                                    />
+                                )}
+                            </button>
+                        )
+                    })}
+                </div>
+            ))}
+            {rows.length === 0 && (
+                <div className="py-6 text-center text-[13px] text-[#7B7A79]">No results</div>
+            )}
+        </div>
+    )
+
+    const input = (
+        <div
+            className={cn(
+                'relative flex items-center gap-2.5 border-b border-[#282828]',
+                isMobile ? 'px-4 py-3' : 'px-[18px] py-[15px]'
+            )}
+        >
+            {isAiSearching && (
+                <span
+                    aria-hidden
+                    className="absolute left-0 right-0 -bottom-px h-[2px] overflow-hidden pointer-events-none"
+                >
+                    <span className="absolute inset-y-0 w-[28%] bg-gradient-to-r from-transparent via-[#A8A7A6] to-transparent animate-line-sweep" />
+                </span>
+            )}
+            <Icons.Search className="w-3.5 h-3.5 text-[#888888] shrink-0" />
+            <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search"
+                aria-label="Search"
+                autoComplete="off"
+                spellCheck={false}
+                aria-busy={isAiSearching}
+                className={cn(
+                    'w-full bg-transparent font-medium text-[#EDEDED] placeholder-[#777777] focus:outline-none caret-white font-sans',
+                    isMobile ? 'text-[16px]' : 'text-[15px]'
+                )}
+            />
+        </div>
+    )
+
+    if (isMobile) {
+        const sheetHeight = viewport ? Math.min(viewport.height - 48, 640) : undefined
+        return (
+            <div className="fixed inset-0 z-[200]">
+                <div
+                    className="fixed inset-0 bg-black/55 animate-in fade-in duration-200"
+                    onClick={onClose}
+                />
+                <div
+                    className="fixed left-0 right-0 flex flex-col bg-[#1E1E1E] border border-b-0 border-[#282828] rounded-t-[20px] shadow-[0_-10px_40px_rgba(0,0,0,0.6)] overflow-hidden font-sans animate-sheet-in"
+                    style={{
+                        bottom: viewport?.bottomInset ?? 0,
+                        height: sheetHeight ?? '80dvh',
+                    }}
+                >
+                    <div className="w-9 h-1 rounded-full bg-[#3A3A3A] mx-auto mt-2 shrink-0" />
+                    {input}
+                    {list}
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="fixed inset-0 z-[200]">
-            {/* Backdrop */}
             <div
                 className="fixed inset-0 bg-black/50 animate-in fade-in duration-200"
                 onClick={onClose}
             />
-
-            {/* Centered container in remaining area (after excluding desktop sidebar) */}
+            {/* centered in the area right of the desktop sidebar */}
             <div
                 className={cn(
-                    'fixed inset-0 flex items-center sm:items-start justify-center p-3 sm:p-4 sm:pt-[12vh] pointer-events-none transition-[left] duration-300',
+                    'fixed inset-0 flex items-start justify-center p-4 pt-[12vh] pointer-events-none transition-[left] duration-300',
                     isSidebarCollapsed ? 'md:left-[56px]' : 'md:left-[200px]'
                 )}
             >
                 <div
-                    className="w-full max-w-[360px] xs:max-w-[400px] sm:max-w-[480px] bg-[#1E1E1E] border border-[#282828] rounded-2xl sm:rounded-[18px] shadow-[0_0_80px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans pointer-events-auto"
+                    className="w-full max-w-[560px] bg-[#1E1E1E] border border-[#282828] rounded-[18px] shadow-[0_0_80px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans pointer-events-auto"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Search input */}
-                    <div className="flex items-center px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-[#282828] bg-[#1E1E1E]">
-                        <Icons.Search className="w-3.5 h-3.5 text-[#888888] mr-2.5 shrink-0" />
-                        <input
-                            ref={inputRef}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search pages or topics..."
-                            className="w-full bg-transparent text-[13px] sm:text-[13.5px] font-medium text-[#EDEDED] placeholder-[#777777] focus:outline-none caret-white font-sans"
-                        />
-                    </div>
-
-                    {/* Results list */}
-                    <div className="flex flex-col py-1.5 max-h-[320px] sm:max-h-[420px] overflow-y-auto no-scrollbar">
-                        {categories.map((category) => {
-                            const categoryItems = displayedItems.filter(
-                                (item) => item.category === category
-                            )
-                            if (categoryItems.length === 0) return null
-
-                            return (
-                                <div
-                                    key={category}
-                                    className="flex flex-col mb-1 sm:mb-1.5 last:mb-0"
-                                >
-                                    <div className="px-3.5 py-1 text-[10.5px] sm:text-[11px] font-semibold text-[#7B7A79]">
-                                        {category}
-                                    </div>
-                                    <div className="flex flex-col gap-0.5 px-2 pb-0.5">
-                                        {categoryItems.map((item, localIdx) => {
-                                            const itemIndex = currentIndex++
-                                            const isSelected = itemIndex === selectedIndex
-
-                                            return (
-                                                <button
-                                                    key={`${category}-${item.id}-${localIdx}`}
-                                                    id={`search-item-${itemIndex}`}
-                                                    onClick={() => {
-                                                        saveRecent(item.id)
-                                                        item.action()
-                                                    }}
-                                                    onMouseEnter={() => setSelectedIndex(itemIndex)}
-                                                    className={cn(
-                                                        'flex items-center justify-between px-2.5 py-1.5 rounded-[10px] transition-colors w-full text-left outline-none cursor-pointer group',
-                                                        isSelected
-                                                            ? 'bg-[#2A2928]'
-                                                            : 'hover:bg-[#2A2928]/40'
-                                                    )}
-                                                >
-                                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                                        <div className="shrink-0 text-[#888888] group-hover:text-[#EDEDED] flex items-center justify-center">
-                                                            {item.icon}
-                                                        </div>
-                                                        <div className="flex items-baseline min-w-0 gap-2 truncate">
-                                                            <span
-                                                                className={cn(
-                                                                    'text-[12.5px] sm:text-[13px] font-medium transition-colors truncate',
-                                                                    isSelected
-                                                                        ? 'text-[#EDEDED]'
-                                                                        : 'text-[#D6D5D4]'
-                                                                )}
-                                                            >
-                                                                {item.label}
-                                                            </span>
-                                                            {item.subtitle && (
-                                                                <span className="text-[11px] sm:text-[11.5px] text-[#7B7A79] transition-colors truncate hidden xs:inline sm:inline">
-                                                                    {item.subtitle}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            )
-                        })}
-                        {displayedItems.length === 0 && (
-                            <div className="py-6 text-center text-[12.5px] sm:text-[13px] text-[#7B7A79]">
-                                No results found for "{searchQuery}"
-                            </div>
-                        )}
-                    </div>
+                    {input}
+                    {list}
                 </div>
             </div>
         </div>
+    )
+}
+
+const ItemRowContent: React.FC<{
+    row: Extract<SearchRow, { kind: 'item' }>
+    isSelected: boolean
+    isMobile: boolean
+    hasQuery: boolean
+    isArmed: boolean
+    flashLabel: string | null
+}> = ({ row, isSelected, isMobile, hasQuery, isArmed, flashLabel }) => {
+    const { item, indexes } = row
+    const label = flashLabel ?? (isArmed ? item.confirmLabel : null)
+    const labelColor = isArmed
+        ? 'text-[#E6A28F]'
+        : hasQuery
+          ? isSelected
+              ? 'text-[#CFCECD]'
+              : 'text-[#B9B8B7]'
+          : isSelected
+            ? 'text-[#EDEDED]'
+            : 'text-[#D6D5D4]'
+
+    return (
+        <>
+            <span
+                className={cn(
+                    'min-w-0 truncate font-medium',
+                    isMobile ? 'text-[14px]' : 'text-[13px]',
+                    labelColor
+                )}
+            >
+                {label ?? <Highlight text={item.label} indexes={indexes} />}
+            </span>
+            <span className="flex-1" />
+            {(item.repo || item.time) && (
+                <span className="shrink-0 flex items-center gap-2.5 text-[11.5px] text-[#7B7A79] tabular-nums">
+                    {item.repo && <span className="max-w-[140px] truncate">{item.repo}</span>}
+                    {item.time && <span className="min-w-[22px] text-right">{item.time}</span>}
+                </span>
+            )}
+        </>
     )
 }

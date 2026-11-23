@@ -12,6 +12,7 @@ export const getSessionsSchema = z.object({
     sortBy: z.enum(['updatedAt', 'createdAt']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
     search: z.string().optional(),
+    searchIn: z.enum(['title', 'all']).optional(),
     page: z.preprocess(
         (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
         z.number().int().min(1).optional()
@@ -21,6 +22,30 @@ export const getSessionsSchema = z.object({
         z.number().int().min(1).max(100).optional()
     ),
     vmStatus: z.string().optional(),
+})
+
+export const smartSearchSessionsSchema = z.object({
+    q: z.string().trim().min(3).max(200),
+})
+
+/** what the model must return; anything else falls back to plain search */
+export const smartSearchFiltersSchema = z.object({
+    topic: z
+        .array(
+            z
+                .string()
+                .trim()
+                .min(1)
+                .max(40)
+                .transform((word) => word.toLowerCase())
+        )
+        .max(5)
+        .default([]),
+    updatedWithinDays: z.number().int().min(1).max(366).nullable().default(null),
+    repo: z.string().trim().min(1).max(100).nullable().default(null),
+    running: z.boolean().default(false),
+    archived: z.boolean().default(false),
+    sort: z.enum(['newest', 'oldest']).default('newest'),
 })
 
 export const createSessionSchema = z.object({

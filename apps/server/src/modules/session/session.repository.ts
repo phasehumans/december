@@ -25,19 +25,46 @@ export async function findManySessions(userId: string, filters?: SessionFilters)
 
     if (filters?.search && filters.search.trim().length > 0) {
         const searchTerms = filters.search.trim()
+        const titleMatch: Prisma.SessionWhereInput = {
+            title: { contains: searchTerms, mode: 'insensitive' },
+        }
         where.AND = [
-            {
-                OR: [
-                    { title: { contains: searchTerms, mode: 'insensitive' } },
-                    {
-                        messages: {
-                            some: { content: { contains: searchTerms, mode: 'insensitive' } },
-                        },
-                    },
-                ],
-            },
+            filters.searchIn === 'title'
+                ? titleMatch
+                : {
+                      OR: [
+                          titleMatch,
+                          {
+                              messages: {
+                                  some: {
+                                      content: { contains: searchTerms, mode: 'insensitive' },
+                                  },
+                              },
+                          },
+                      ],
+                  },
         ]
     }
+
+    const and: Prisma.SessionWhereInput[] = Array.isArray(where.AND) ? [...where.AND] : []
+    if (filters?.titleAny && filters.titleAny.length > 0) {
+        and.push({
+            OR: filters.titleAny.map((word) => ({
+                title: { contains: word, mode: 'insensitive' as const },
+            })),
+        })
+    }
+    if (filters?.repoName) {
+        and.push({
+            OR: [
+                { githubRepoName: { equals: filters.repoName, mode: 'insensitive' } },
+                { repoUrl: { endsWith: `/${filters.repoName}`, mode: 'insensitive' } },
+                { repoUrl: { endsWith: `/${filters.repoName}.git`, mode: 'insensitive' } },
+            ],
+        })
+    }
+    if (filters?.updatedAfter) where.updatedAt = { gte: filters.updatedAfter }
+    if (and.length > 0) where.AND = and
 
     const orderBy: Prisma.SessionOrderByWithRelationInput = {}
     if (filters?.sortBy) {
@@ -157,8 +184,20 @@ export async function findMessagesBySessionId(data: {
     return messages.reverse()
 }
 
+/** distinct repo names across the user's sessions, for AI search filters */
+export async function findUserRepoNames(userId: string) {
+    const rows = await prisma.session.findMany({
+        where: { userId, githubRepoName: { not: null } },
+        select: { githubRepoName: true },
+        distinct: ['githubRepoName'],
+        take: 50,
+    })
+    return rows.map((row) => row.githubRepoName).filter((name): name is string => Boolean(name))
+}
+
 export const sessionRepository = {
     findManySessions,
+    findUserRepoNames,
     createSession,
     findSessionById,
     findMessagesBySessionId,

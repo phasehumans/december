@@ -12,6 +12,12 @@ export type SessionFilters = {
     sortBy?: 'updatedAt' | 'createdAt'
     sortOrder?: 'asc' | 'desc'
     search?: string
+    searchIn?: 'title' | 'all'
+    /** title contains any of these words (AI search filters) */
+    titleAny?: string[]
+    updatedAfter?: Date
+    /** GitHub repo name, matched without case */
+    repoName?: string
     page?: number
     limit?: number
     vmStatus?: string
@@ -97,6 +103,27 @@ export type ProxyPreview = {
 export type LoadSessionFiles = {
     sessionId: string
     userId?: string
+}
+
+export type SmartSearchSessions = {
+    userId: string
+    query: string
+    signal?: AbortSignal
+}
+
+/** filters the model returns for a typed description, checked by smartSearchFiltersSchema */
+export type SmartSearchFilters = {
+    topic: string[]
+    updatedWithinDays: number | null
+    repo: string | null
+    running: boolean
+    archived: boolean
+    sort: 'newest' | 'oldest'
+}
+
+export type BuildSmartSearchPrompt = {
+    today: Date
+    repoNames: string[]
 }
 
 export type StreamSearchResponse = {

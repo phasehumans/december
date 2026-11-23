@@ -98,6 +98,39 @@ describe('Session Integration Tests', () => {
         expect(sessionIds).toContain(createdSessionId)
     })
 
+    it('3b. GET /api/v1/session?searchIn=title - matches titles but not message text', async () => {
+        const marker = `searchmarker${Date.now()}`
+        const message = await prisma.message.create({
+            data: {
+                sessionId: createdSessionId,
+                role: 'USER',
+                content: `please look at ${marker}`,
+                sequence: 9000,
+            },
+        })
+
+        const list = async (query: Record<string, string>) => {
+            const res = await request(app)
+                .get('/api/v1/session')
+                .query(query)
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', `Bearer ${user1Token}`)
+            expect(res.status).toBe(200)
+            return res.body.data.sessions.map((s: any) => s.id)
+        }
+
+        expect(await list({ search: 'integration test', searchIn: 'title' })).toContain(
+            createdSessionId
+        )
+        expect(await list({ search: marker, searchIn: 'title' })).not.toContain(createdSessionId)
+        // default still searches message text, which the sidebar list relies on
+        expect(await list({ search: marker })).toContain(createdSessionId)
+        expect(await list({ search: marker, searchIn: 'all' })).toContain(createdSessionId)
+
+        // later tests count this session's messages
+        await prisma.message.delete({ where: { id: message.id } })
+    })
+
     it('4. GET /api/v1/session/:id - fetches session details and chat messages', async () => {
         const res = await request(app)
             .get(`/api/v1/session/${createdSessionId}`)

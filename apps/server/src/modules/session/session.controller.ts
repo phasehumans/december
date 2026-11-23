@@ -18,6 +18,7 @@ import {
     proxyPreviewParamsSchema,
     streamSearchResponseParamsSchema,
     streamSearchResponseBodySchema,
+    smartSearchSessionsSchema,
     getSessionDiffParamsSchema,
     getSessionFileTreeParamsSchema,
     getSessionFileContentParamsSchema,
@@ -52,6 +53,7 @@ export const getSessions = asyncHandler(async (req: Request, res: Response) => {
     if (parsedQuery.sortBy) filters.sortBy = parsedQuery.sortBy
     if (parsedQuery.sortOrder) filters.sortOrder = parsedQuery.sortOrder
     if (parsedQuery.search) filters.search = parsedQuery.search
+    if (parsedQuery.searchIn) filters.searchIn = parsedQuery.searchIn
     if (parsedQuery.page) filters.page = parsedQuery.page
     if (parsedQuery.limit) filters.limit = parsedQuery.limit
 
@@ -262,6 +264,25 @@ export const streamSearchResponse = asyncHandler(async (req: Request, res: Respo
     })
 })
 
+export const smartSearchSessions = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { q } = smartSearchSessionsSchema.parse(req.query)
+
+    // the client cancels when the user keeps typing; stop the model call too
+    const abort = new AbortController()
+    res.on('close', () => {
+        if (!res.writableFinished) abort.abort()
+    })
+
+    const result = await sessionService.smartSearchSessions({
+        userId,
+        query: q,
+        signal: abort.signal,
+    })
+    return sendSuccess(res, 'smart search finished', result)
+})
+
 export const getSessionMessages = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
     if (!userId) throw new AppError('unauthorized', 401)
@@ -397,6 +418,7 @@ export const sessionController = {
     disconnectSession,
     proxyPreview,
     streamSearchResponse,
+    smartSearchSessions,
     getSessionDiff,
     getSessionFileTree,
     getSessionFileContent,

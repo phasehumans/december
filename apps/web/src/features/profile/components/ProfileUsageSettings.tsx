@@ -2,10 +2,19 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
+import type { UsageEvent } from '@/features/billing/api/billing'
+
 import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
+
+/** label for usage rows that have no session, such as the daily AI search total */
+const usageEventLabel = (row: UsageEvent): string | null => {
+    if (row.metadata?.type !== 'search-filters') return null
+    const calls = Number(row.metadata?.calls ?? 0)
+    return calls > 1 ? `AI search (${calls} searches)` : 'AI search'
+}
 
 export const ProfileUsageSettings: React.FC = () => {
     const { data: profile } = useQuery({
@@ -278,6 +287,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                                     <span className="font-medium text-[#D6D5C9] truncate">
                                                         {row.session?.title ||
                                                             row.project?.name ||
+                                                            usageEventLabel(row) ||
                                                             'Workspace Event'}
                                                     </span>
                                                     <span className="font-mono font-medium text-[#D6D5C9] shrink-0">
@@ -304,7 +314,10 @@ export const ProfileUsageSettings: React.FC = () => {
                                                     {formatRowDate(row.createdAt)}
                                                 </div>
                                                 <div className="text-[#D6D5C9] truncate pr-2 font-medium">
-                                                    {row.session?.title || row.project?.name || '-'}
+                                                    {row.session?.title ||
+                                                        row.project?.name ||
+                                                        usageEventLabel(row) ||
+                                                        '-'}
                                                 </div>
                                                 <div className="text-[#7B7A79] truncate pr-2">
                                                     {formatModelName(row.model)}

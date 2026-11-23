@@ -501,6 +501,9 @@ export const MobileSidebar: React.FC<
                 isOpen={isSearchOpen}
                 onClose={() => setIsSearchOpen(false)}
                 onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
+                onOpenSession={(sessionId) => onOpenProject(sessionId)}
+                onSignOut={onSignOut}
+                onAction={onClose}
                 isAuthenticated={isAuthenticated}
             />
         </>

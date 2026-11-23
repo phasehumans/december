@@ -8,6 +8,7 @@ import type {
     CheckEnoughCredits,
     HasMinimumBalance,
     RecordUsageEvent,
+    RecordDailyUsage,
     CalculateGenerationCost,
     CanRunSelfCorrection,
     UsageUser,
@@ -234,11 +235,70 @@ const canRunSelfCorrection = async (data: CanRunSelfCorrection): Promise<boolean
     }
 }
 
+/**
+ * Charges a small, frequent call (like AI search filters) and adds it to one usage
+ * event per user per UTC day, so the Usage page shows a daily total, not every call.
+ */
+const recordDailyUsage = async (data: RecordDailyUsage) => {
+    const { userId, model, inputTokens, outputTokens, kind } = data
+    const user = await getUsageUser(userId)
+    const { periodStart, periodEnd } = resolveCurrentPeriod(user)
+    const day = new Date().toISOString().slice(0, 10)
+    const externalRequestId = `${kind}:${user.id}:${day}`
+    const totalTokens = inputTokens + outputTokens
+    const costInCents = calculateGenerationCost({ modelName: model, inputTokens, outputTokens })
+
+    return usageRepository.runTransaction(async (tx) => {
+        // locks the user row, so two calls on the same day cannot both create the daily event
+        const dbUser = await usageRepository.findUserCredits({ userId: user.id }, tx)
+        if (!dbUser) {
+            throw new AppError('user not found', 404)
+        }
+        await usageRepository.updateUserCredits(
+            { userId: user.id, creditBalance: dbUser.creditBalance - costInCents },
+            tx
+        )
+
+        const existing = await usageRepository.findExternalUsageEvent({ externalRequestId }, tx)
+        if (existing) {
+            const calls = Number((existing.metadata as any)?.calls ?? 1) + 1
+            return usageRepository.addToUsageEvent(
+                {
+                    id: existing.id,
+                    inputTokens,
+                    outputTokens,
+                    totalTokens,
+                    costInCents,
+                    metadata: { ...(existing.metadata as object), type: kind, calls },
+                },
+                tx
+            )
+        }
+
+        return usageRepository.createUsageEvent(
+            {
+                userId: user.id,
+                model,
+                inputTokens,
+                outputTokens,
+                totalTokens,
+                costInCents,
+                externalRequestId,
+                periodStart,
+                periodEnd,
+                metadata: { type: kind, calls: 1 },
+            },
+            tx
+        )
+    })
+}
+
 export const usageService = {
     getCurrentUsage,
     checkEnoughCredits,
     hasMinimumBalance,
     recordUsageEvent,
+    recordDailyUsage,
     calculateGenerationCost,
     canRunSelfCorrection,
 }

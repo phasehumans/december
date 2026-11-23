@@ -6,6 +6,7 @@ import type { BillingSource } from '@/features/home/model-selection'
 import type { PromptInputSubmitOptions } from '@/features/home/types'
 
 import { DEFAULT_SELECTION, useModelSelection } from '@/features/home/model-selection'
+import { onHomePrefill, takeHomePrefill } from '@/features/home/prefill'
 import { profileAPI } from '@/features/profile/api/profile'
 import { secretsAPI } from '@/features/profile/api/secrets'
 import { useByokList } from '@/features/profile/hooks/useByokData'
@@ -47,6 +48,7 @@ export const usePromptInputController = ({
     mode = 'agent',
     initialModel,
     initialProvider,
+    acceptPrefill = false,
 }: {
     value?: string
     onChange?: (val: string) => void
@@ -57,6 +59,8 @@ export const usePromptInputController = ({
     mode?: 'agent' | 'chat'
     initialModel?: string
     initialProvider?: string
+    /** take a prompt or repo handed over by requestHomePrefill (Home only) */
+    acceptPrefill?: boolean
 }) => {
     const [internalInput, setInternalInput] = useState('')
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -173,6 +177,28 @@ export const usePromptInputController = ({
         },
         [isControlled, onChange]
     )
+
+    useEffect(() => {
+        if (!acceptPrefill) return
+        const applyPrefill = () => {
+            const prefill = takeHomePrefill()
+            if (!prefill) return
+            if (prefill.prompt !== undefined) handleInputChange(prefill.prompt)
+            if (prefill.repo) {
+                setSelectedRepos([prefill.repo])
+                setSelectedBranch(prefill.repo.defaultBranch || 'main')
+            }
+            // after the new-session reset and its own focus call
+            setTimeout(() => {
+                const el = textareaRef.current
+                if (!el) return
+                el.focus()
+                el.setSelectionRange(el.value.length, el.value.length)
+            }, 80)
+        }
+        applyPrefill()
+        return onHomePrefill(applyPrefill)
+    }, [acceptPrefill, handleInputChange])
 
     const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
         setCursorPosition((e.target as HTMLTextAreaElement).selectionStart)

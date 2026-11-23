@@ -58,6 +58,12 @@ describe('Session Schemas - Unit Tests', () => {
             expect(result.limit).toBe(25)
         })
 
+        it('should accept searchIn title or all, and reject anything else', () => {
+            expect(getSessionsSchema.parse({ searchIn: 'title' }).searchIn).toBe('title')
+            expect(getSessionsSchema.parse({ searchIn: 'all' }).searchIn).toBe('all')
+            expect(() => getSessionsSchema.parse({ searchIn: 'messages' })).toThrow()
+        })
+
         it('should parse isArchived=false correctly', () => {
             const result = getSessionsSchema.parse({ isArchived: 'false' })
             expect(result.isArchived).toBe(false)

@@ -25,6 +25,15 @@ export type RecordUsageEvent = {
     metadata?: Record<string, unknown>
 }
 
+export type RecordDailyUsage = {
+    userId: string
+    model: string
+    inputTokens: number
+    outputTokens: number
+    /** groups calls into one usage event per user per UTC day, e.g. 'search-filters' */
+    kind: string
+}
+
 export type CalculateGenerationCost = {
     modelName: string
     inputTokens: number

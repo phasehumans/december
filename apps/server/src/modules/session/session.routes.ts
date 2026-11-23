@@ -1,8 +1,17 @@
 import { Router } from 'express'
 
 import { authMiddleware } from '../../middleware/auth.middleware'
+import { createRateLimiter } from '../../middleware/rate-limiter'
 
 import { sessionController } from './session.controller'
+
+// each smart search may call a model and charge credits; cap it per user
+const smartSearchLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    limit: 30,
+    message: 'Too many searches. Try again in a minute.',
+    prefix: 'rl:smart-search:',
+})
 
 const sessionRouter = Router()
 
@@ -10,6 +19,8 @@ sessionRouter.use(authMiddleware)
 
 sessionRouter.get('/', sessionController.getSessions)
 sessionRouter.post('/', sessionController.createSession)
+// before '/:id', so "smart-search" is not read as a session id
+sessionRouter.get('/smart-search', smartSearchLimiter, sessionController.smartSearchSessions)
 sessionRouter.get('/:id', sessionController.getSessionById)
 sessionRouter.get('/:id/messages', sessionController.getSessionMessages)
 sessionRouter.patch('/:id/rename', sessionController.renameSession)

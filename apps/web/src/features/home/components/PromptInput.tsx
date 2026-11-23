@@ -7,7 +7,9 @@ import { usePromptInputController } from '@/features/home/hooks/usePromptInputCo
 import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 
-export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mode?: 'agent' }> = ({
+export const PromptInput: React.FC<
+    PromptInputProps & { onFocus?: () => void; mode?: 'agent'; acceptPrefill?: boolean }
+> = ({
     onSubmit,
     isLoading,
     placeholder,
@@ -24,6 +26,7 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
     selectedModel: propSelectedModel,
     selectedProvider: propSelectedProvider,
     onModelChange,
+    acceptPrefill,
 }) => {
     const {
         input,
@@ -76,6 +79,7 @@ export const PromptInput: React.FC<PromptInputProps & { onFocus?: () => void; mo
         mode,
         initialModel: propSelectedModel,
         initialProvider: propSelectedProvider,
+        acceptPrefill,
     })
 
     return (

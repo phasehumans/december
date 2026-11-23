@@ -6,6 +6,8 @@ import path from 'path'
 import plugin from 'bun-plugin-tailwind'
 import dotenv from 'dotenv'
 
+import { writeDocsIndex } from './scripts/gen-docs-index'
+
 const rootDir = path.resolve(process.cwd(), '../../')
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env'
 dotenv.config({ path: path.join(rootDir, envFile) })
@@ -126,6 +128,8 @@ if (existsSync(outdir)) {
 }
 
 const start = performance.now()
+
+await writeDocsIndex()
 
 const entrypoints = [...new Bun.Glob('**.html').scanSync('src')]
     .map((a) => path.resolve('src', a))

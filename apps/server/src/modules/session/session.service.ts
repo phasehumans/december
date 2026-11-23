@@ -19,6 +19,11 @@ import { runtimeService } from '../runtime/runtime.service'
 import { usageService } from '../usage/usage.service'
 
 import { sessionRepository } from './session.repository'
+import {
+    buildSmartSearchPrompt,
+    isEmptySmartSearchFilters,
+    parseSmartSearchFilters,
+} from './session.utils'
 
 import type {
     GetUserSessions,
@@ -35,6 +40,8 @@ import type {
     ProxyPreview,
     LoadSessionFiles,
     StreamSearchResponse,
+    SmartSearchSessions,
+    SmartSearchFilters,
     GetSessionDiff,
     GetSessionFileTree,
     GetSessionFileContent,
@@ -139,6 +146,8 @@ const getUserSessions = async (data: GetUserSessions) => {
                 additions,
                 deletions,
                 repoName,
+                githubRepoName: session.githubRepoName ?? null,
+                repoUrl: session.repoUrl ?? session.githubRepoUrl ?? null,
             }
         })
 
@@ -148,7 +157,12 @@ const getUserSessions = async (data: GetUserSessions) => {
         }
     }
 
-    if (filters?.search && filters.search.trim().length > 0) {
+    const hasSearchFilters =
+        (filters?.search && filters.search.trim().length > 0) ||
+        (filters?.titleAny && filters.titleAny.length > 0) ||
+        Boolean(filters?.updatedAfter) ||
+        Boolean(filters?.repoName)
+    if (hasSearchFilters) {
         return fetchSessions()
     }
 
@@ -1030,6 +1044,98 @@ const getSessionDesktopViewport = async (
     return { viewport }
 }
 
+const SMART_SEARCH_MODEL = 'gemini-3.5-flash-lite'
+const SMART_SEARCH_CACHE_SECONDS = 10 * 60
+const SMART_SEARCH_RESULT_LIMIT = 6
+
+/** asks the model for filters and charges the call; null when the reply is unusable */
+const parseSmartSearchQuery = async (data: SmartSearchSessions) => {
+    const { userId, query, signal } = data
+    const repoNames = await sessionRepository.findUserRepoNames(userId)
+    const systemPrompt = buildSmartSearchPrompt({ today: new Date(), repoNames })
+    const { provider, model } = cliDispatcher.resolveServerProvider(SMART_SEARCH_MODEL)
+
+    let text = ''
+    let inputTokens = 0
+    let outputTokens = 0
+    const stream = provider.stream(
+        [{ role: 'user', content: query }],
+        undefined,
+        systemPrompt,
+        { model, temperature: 0 },
+        signal
+    )
+    for await (const chunk of stream) {
+        if (chunk.type === 'text') text += chunk.text
+        else if (chunk.type === 'usage') {
+            inputTokens = chunk.promptTokens
+            outputTokens = chunk.completionTokens
+        }
+    }
+    if (!inputTokens && !outputTokens) {
+        inputTokens = Math.ceil((systemPrompt.length + query.length) / 4)
+        outputTokens = Math.ceil(text.length / 4)
+    }
+
+    await usageService
+        .recordDailyUsage({
+            userId,
+            model: SMART_SEARCH_MODEL,
+            inputTokens,
+            outputTokens,
+            kind: 'search-filters',
+        })
+        .catch((err) => console.error('[Smart Search Usage Record Error]:', err))
+
+    return parseSmartSearchFilters(text, repoNames)
+}
+
+/**
+ * Search sessions by description ("stripe from last week"). A model turns the text
+ * into filters, then the normal session query runs. Returns applied: false when the
+ * user has no credits or the model gives nothing usable, so the client keeps plain results.
+ */
+const smartSearchSessions = async (data: SmartSearchSessions) => {
+    const { userId, query, signal } = data
+    const notApplied = { applied: false, sessions: [] as unknown[] }
+
+    const hasBalance = await usageService.hasMinimumBalance({ userId, minBalanceInCents: 0.01 })
+    if (!hasBalance) return notApplied
+
+    const normalized = query.trim().toLowerCase().replace(/\s+/g, ' ')
+    let filters: SmartSearchFilters | null
+    try {
+        // the same text within 10 minutes reuses the filters and is not charged again
+        filters = await appCache.wrap(
+            appCache.key('sessions', 'smart-search', userId, normalized),
+            SMART_SEARCH_CACHE_SECONDS,
+            () => parseSmartSearchQuery({ userId, query: normalized, signal })
+        )
+    } catch (err) {
+        console.error('[Smart Search Error]:', err)
+        return notApplied
+    }
+    if (!filters || isEmptySmartSearchFilters(filters)) return notApplied
+
+    const result = await getUserSessions({
+        userId,
+        filters: {
+            titleAny: filters.topic.length > 0 ? filters.topic : undefined,
+            updatedAfter: filters.updatedWithinDays
+                ? new Date(Date.now() - filters.updatedWithinDays * 24 * 60 * 60 * 1000)
+                : undefined,
+            repoName: filters.repo ?? undefined,
+            vmStatus: filters.running ? 'running' : undefined,
+            isArchived: filters.archived,
+            sortBy: 'updatedAt',
+            sortOrder: filters.sort === 'oldest' ? 'asc' : 'desc',
+            limit: SMART_SEARCH_RESULT_LIMIT,
+        },
+    })
+
+    return { applied: true, sessions: result.sessions }
+}
+
 export const sessionService = {
     loadSessionFiles,
     getUserSessions,
@@ -1045,6 +1151,7 @@ export const sessionService = {
     disconnectSession,
     proxyPreview,
     streamSearchResponse,
+    smartSearchSessions,
     getSessionDiff,
     getSessionFileTree,
     getSessionFileContent,

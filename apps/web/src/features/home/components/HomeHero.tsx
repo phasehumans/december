@@ -100,6 +100,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                         isAuthenticated={isAuthenticated}
                         onOpenAuth={onOpenAuth}
                         mode="agent"
+                        acceptPrefill
                     />
                 </div>
             </div>

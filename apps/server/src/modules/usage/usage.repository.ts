@@ -53,10 +53,36 @@ export const usageRepository = {
         }
     },
 
-    async findExternalUsageEvent(data: { externalRequestId: string }) {
+    async findExternalUsageEvent(data: { externalRequestId: string }, tx?: any) {
         const { externalRequestId } = data
-        return prisma.usageEvent.findFirst({
+        const client = tx || prisma
+        return client.usageEvent.findFirst({
             where: { externalRequestId },
+        })
+    },
+
+    async addToUsageEvent(
+        data: {
+            id: string
+            inputTokens: number
+            outputTokens: number
+            totalTokens: number
+            costInCents: number
+            metadata: any
+        },
+        tx?: any
+    ) {
+        const { id, inputTokens, outputTokens, totalTokens, costInCents, metadata } = data
+        const client = tx || prisma
+        return client.usageEvent.update({
+            where: { id },
+            data: {
+                inputTokens: { increment: inputTokens },
+                outputTokens: { increment: outputTokens },
+                totalTokens: { increment: totalTokens },
+                costInCents: { increment: costInCents },
+                metadata,
+            },
         })
     },
 

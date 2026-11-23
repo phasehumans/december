@@ -9,6 +9,7 @@ export type BackendSession = {
     projectId?: string | null
     projectName?: string | null
     repoUrl?: string | null
+    githubRepoName?: string | null
     branch?: string | null
     gitRef?: string | null
     issueNumber?: number | null
@@ -71,6 +72,7 @@ export type SessionFilters = {
     sortBy?: 'updatedAt' | 'createdAt'
     sortOrder?: 'asc' | 'desc'
     search?: string
+    searchIn?: 'title' | 'all'
     page?: number
     limit?: number
 }
@@ -107,6 +109,7 @@ export const sessionAPI = {
         if (filters?.sortBy) queryParams.append('sortBy', filters.sortBy)
         if (filters?.sortOrder) queryParams.append('sortOrder', filters.sortOrder)
         if (filters?.search) queryParams.append('search', filters.search)
+        if (filters?.searchIn) queryParams.append('searchIn', filters.searchIn)
         if (filters?.page) queryParams.append('page', filters.page.toString())
         if (filters?.limit) queryParams.append('limit', filters.limit.toString())
 
@@ -118,6 +121,18 @@ export const sessionAPI = {
             sessions: data.sessions || [],
             pagination: data.pagination,
         }
+    },
+
+    /** AI filters from a description; applied is false when plain results should stay */
+    smartSearchSessions: async (
+        query: string,
+        signal?: AbortSignal
+    ): Promise<{ applied: boolean; sessions: BackendSession[] }> => {
+        const params = new URLSearchParams({ q: query })
+        return apiRequest<{ applied: boolean; sessions: BackendSession[] }>(
+            `/session/smart-search?${params.toString()}`,
+            { signal }
+        )
     },
 
     getSession: async (id: string): Promise<BackendSession> => {
