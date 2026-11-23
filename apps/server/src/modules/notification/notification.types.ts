@@ -1,8 +1,11 @@
+export type NotificationCategory = 'GENERAL' | 'MENTION'
+
 export type GetNotifications = {
     userId: string
     page?: number
     limit?: number
     isRead?: boolean
+    category?: NotificationCategory
 }
 
 export type GetUnreadCount = {
@@ -30,6 +33,13 @@ export type SendNotificationToUser = {
     message: string
     type?: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR'
     link?: string
+    category?: NotificationCategory
+    // show a toast in open tabs (mentions, replies, agent questions)
+    toast?: boolean
+}
+
+export type MarkAllAsRead = {
+    userId: string
 }
 
 export type DeleteAllReadNotification = {

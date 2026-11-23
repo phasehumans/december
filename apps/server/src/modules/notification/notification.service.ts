@@ -1,3 +1,5 @@
+import { publishEvent } from '@december/shared/queue'
+
 import { AppError } from '../../shared/appError'
 
 import { notificationRepository } from './notification.repository'
@@ -8,6 +10,7 @@ export const notificationSelect = {
     message: true,
     isRead: true,
     type: true,
+    category: true,
     link: true,
     createdAt: true,
 }
@@ -20,23 +23,28 @@ import type {
     DeleteNotification,
     SendNotificationToUser,
     DeleteAllReadNotification,
+    MarkAllAsRead,
 } from './notification.types'
 
 const getNotifications = async (data: GetNotifications) => {
-    const { userId, page, limit, isRead } = data
+    const { userId, page, limit, isRead, category } = data
     return notificationRepository.findManyNotifications({
         userId,
         page,
         limit,
         isRead,
+        category,
         select: notificationSelect,
     })
 }
 
 const getUnreadCount = async (data: GetUnreadCount) => {
     const { userId } = data
-    const count = await notificationRepository.countUnreadNotifications(userId)
-    return { count }
+    const [count, mentions] = await Promise.all([
+        notificationRepository.countUnreadNotifications(userId),
+        notificationRepository.countUnreadNotifications(userId, 'MENTION'),
+    ])
+    return { count, mentions }
 }
 
 const getNotificationById = async (data: GetNotificationById) => {
@@ -91,15 +99,40 @@ const deleteNotification = async (data: DeleteNotification) => {
 }
 
 const sendNotificationToUser = async (data: SendNotificationToUser) => {
-    const { userId, title, message, type = 'INFO', link } = data
-    return notificationRepository.createNotification({
+    const {
+        userId,
+        title,
+        message,
+        type = 'INFO',
+        link,
+        category = 'GENERAL',
+        toast = false,
+    } = data
+    const notification = await notificationRepository.createNotification({
         userId,
         title,
         message,
         type,
+        category,
         link,
         select: notificationSelect,
     })
+
+    // open tabs get it at once over the socket (socket.ts relays user_notifications:*)
+    try {
+        await publishEvent(`user_notifications:${userId}`, { notification, toast })
+    } catch (err) {
+        // the inbox still refetches the unread count every 30s, so a missed publish only delays it
+        console.error('[Notification] live publish failed:', err)
+    }
+
+    return notification
+}
+
+const markAllAsRead = async (data: MarkAllAsRead) => {
+    const { userId } = data
+    const result = await notificationRepository.updateAllNotificationsRead(userId)
+    return { updated: result.count }
 }
 
 const deleteAllReadNotification = async (data: DeleteAllReadNotification) => {
@@ -115,4 +148,5 @@ export const notificationService = {
     deleteNotification,
     sendNotificationToUser,
     deleteAllReadNotification,
+    markAllAsRead,
 }

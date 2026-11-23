@@ -5,7 +5,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { SearchModal } from './SearchModal'
 
-import type { Notification } from '@/features/notification/api/notification'
+import type { InboxFilter, Notification } from '@/features/notification/api/notification'
+import type { BackendSession } from '@/features/sessions/api/session'
 
 import { useAppStore } from '@/app/store'
 import { getViewForPath } from '@/app/types'
@@ -13,6 +14,8 @@ import { notificationAPI } from '@/features/notification/api/notification'
 import { useInbox } from '@/features/notification/hooks/useInbox'
 import { profileAPI } from '@/features/profile/api/profile'
 import { MobileSettingsLevel } from '@/features/profile/components/MobileSettingsLevel'
+import { SessionSheetItems } from '@/features/sessions/components/SessionMenu'
+import { useSessionActions } from '@/features/sessions/hooks/useSessionActions'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import {
     BottomSheet,
@@ -25,9 +28,17 @@ import { cn } from '@/shared/lib/utils'
 
 // phones only: the menu sheet (M-C). nav rows, the last 5 sessions, then the account row
 // with the inbox bell. settings, the inbox and one notification slide in as levels of the
-// same sheet.
+// same sheet. holding a Recent row opens its options as a level too (P3-b).
 
-type Level = 'menu' | 'settings' | 'inbox' | 'note'
+type Level = 'menu' | 'settings' | 'inbox' | 'note' | 'session'
+
+type SessionActions = ReturnType<typeof useSessionActions>
+
+/** a session held in the Recent list, with its place for the undo line */
+interface HeldSession {
+    session: BackendSession
+    index: number
+}
 
 interface MobileMenuSheetProps {
     onNewThread: () => void
@@ -55,11 +66,90 @@ const relativeTime = (iso?: string) => {
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+const LONG_PRESS_MS = 500
+
+/** one Recent row: a tap opens the session, holding it opens its options */
+const RecentSheetRow: React.FC<{
+    session: BackendSession
+    isCurrent: boolean
+    onOpen: () => void
+    onHold: () => void
+}> = ({ session, isCurrent, onOpen, onHold }) => {
+    const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    const start = React.useRef<{ x: number; y: number } | null>(null)
+    const held = React.useRef(false)
+
+    const cancel = () => {
+        if (timer.current) clearTimeout(timer.current)
+        timer.current = null
+        start.current = null
+    }
+    React.useEffect(() => cancel, [])
+
+    const starting = session.vmStatus === 'PROVISIONING'
+    const running = session.vmStatus === 'RUNNING'
+    return (
+        <button
+            type="button"
+            onPointerDown={(e) => {
+                held.current = false
+                start.current = { x: e.clientX, y: e.clientY }
+                if (timer.current) clearTimeout(timer.current)
+                timer.current = setTimeout(() => {
+                    held.current = true
+                    timer.current = null
+                    onHold()
+                }, LONG_PRESS_MS)
+            }}
+            onPointerMove={(e) => {
+                // a scroll or drag is not a hold
+                if (
+                    start.current &&
+                    Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 8
+                )
+                    cancel()
+            }}
+            onPointerUp={cancel}
+            onPointerLeave={cancel}
+            onPointerCancel={cancel}
+            onContextMenu={(e) => e.preventDefault()}
+            onClick={() => {
+                if (held.current) {
+                    held.current = false
+                    return
+                }
+                onOpen()
+            }}
+            className={cn(
+                'w-full flex items-center gap-2 h-9 px-2.5 rounded-[10px] text-left text-[13px] text-[#CBCACA] outline-none cursor-pointer select-none [-webkit-touch-callout:none]',
+                isCurrent ? 'bg-[#262626]' : 'active:bg-[#242424]'
+            )}
+        >
+            {(running || starting) && (
+                <span
+                    className={cn(
+                        'w-1.5 h-1.5 rounded-full shrink-0',
+                        starting ? 'bg-amber-400' : 'bg-emerald-400'
+                    )}
+                />
+            )}
+            <span className="flex-1 min-w-0 truncate">
+                {session.title || session.projectName || 'Untitled session'}
+            </span>
+            <span className="text-[11.5px] text-[#7B7A79] shrink-0">
+                {relativeTime(session.updatedAt)}
+            </span>
+        </button>
+    )
+}
+
 const MenuLevel: React.FC<
     MobileMenuSheetProps & {
         onOpenSearch: () => void
         onOpenInbox: () => void
         onOpenSettings: () => void
+        onHoldSession: (held: HeldSession) => void
+        actions: SessionActions
     }
 > = ({
     onNewThread,
@@ -70,13 +160,15 @@ const MenuLevel: React.FC<
     onOpenAuth,
     onOpenSearch,
     onOpenSettings,
+    onHoldSession,
+    actions,
 }) => {
     const { closeThen } = useBottomSheet()
     const navigate = useNavigate()
     const path = useLocation().pathname
     const activeProjectId = useAppStore((s) => s.activeProjectId)
     const setIsSuperCrewOpen = useAppStore((s) => s.setIsSuperCrewOpen)
-    const { data: sessionsData, isLoading } = useSessions()
+    const { data: sessionsData, isLoading, isError, refetch } = useSessions()
 
     // session urls are /sessions/<slug>, so only the bare list page counts as Sessions
     const isSessionsActive =
@@ -109,6 +201,36 @@ const MenuLevel: React.FC<
         })
 
     const requireAuth = (fn: () => void) => (isAuthenticated ? fn() : closeThen(onOpenAuth))
+
+    const recentRows: React.ReactNode[] = recent.map((s, index) => (
+        <RecentSheetRow
+            key={s.id}
+            session={s}
+            isCurrent={isOnSession && s.id === activeProjectId}
+            onOpen={() => closeThen(() => onOpenProject(s.id))}
+            onHold={() => onHoldSession({ session: s, index })}
+        />
+    ))
+    const undo = actions.undo
+    if (undo && !recent.some((s) => s.id === undo.session.id)) {
+        recentRows.splice(
+            Math.min(undo.index, recentRows.length),
+            0,
+            <div
+                key="archived-undo"
+                className="h-9 px-2.5 flex items-center justify-between text-[13px] text-[#8F8E8D]"
+            >
+                Archived
+                <button
+                    type="button"
+                    onClick={actions.undoArchive}
+                    className="font-medium text-[#E8E8E8] outline-none cursor-pointer"
+                >
+                    Undo
+                </button>
+            </div>
+        )
+    }
 
     return (
         <div className="flex flex-col pb-1">
@@ -155,51 +277,44 @@ const MenuLevel: React.FC<
                 onClick={onOpenSettings}
             />
 
-            {isAuthenticated && (isLoading || recent.length > 0) && (
+            {isAuthenticated && (isLoading || isError || recent.length > 0 || actions.undo) && (
                 <>
                     <div className="px-2.5 pt-3 pb-1 text-[11.5px] font-semibold text-[#8F8E8D]">
                         Recent
                     </div>
-                    {isLoading
-                        ? [70, 55, 62].map((w) => (
-                              <div
-                                  key={w}
-                                  className="h-2.5 my-2 mx-2.5 rounded bg-[#262626]"
-                                  style={{ width: `${w}%` }}
-                              />
-                          ))
-                        : recent.map((s) => {
-                              const running =
-                                  s.vmStatus === 'RUNNING' || s.vmStatus === 'PROVISIONING'
-                              const current = isOnSession && s.id === activeProjectId
-                              return (
-                                  <button
-                                      key={s.id}
-                                      type="button"
-                                      onClick={() => closeThen(() => onOpenProject(s.id))}
-                                      className={cn(
-                                          'w-full flex items-center gap-2 h-9 px-2.5 rounded-[10px] text-left text-[13px] text-[#CBCACA] outline-none cursor-pointer',
-                                          current ? 'bg-[#262626]' : 'active:bg-[#242424]'
-                                      )}
-                                  >
-                                      {running && (
-                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                      )}
-                                      <span className="flex-1 min-w-0 truncate">
-                                          {s.title || s.projectName || 'Untitled session'}
-                                      </span>
-                                  </button>
-                              )
-                          })}
-                    {!isLoading && (
-                        <button
-                            type="button"
-                            onClick={() => closeThen(onSessions)}
-                            className="w-full flex items-center justify-between h-9 px-2.5 rounded-[10px] text-[13px] text-[#919191] active:bg-[#242424] outline-none cursor-pointer"
-                        >
-                            All sessions
-                            <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
+                    {isLoading && !sessionsData ? (
+                        // five rows at real height, so the sheet does not grow when they load (P5-b)
+                        [70, 55, 62, 48, 66].map((w) => (
+                            <div key={w} className="h-9 px-2.5 flex items-center">
+                                <div
+                                    className="h-2.5 rounded bg-[#262626]"
+                                    style={{ width: `${w}%` }}
+                                />
+                            </div>
+                        ))
+                    ) : isError && !sessionsData ? (
+                        <div className="h-9 px-2.5 flex items-center justify-between text-[13px] text-[#919191]">
+                            Couldn&apos;t load sessions
+                            <button
+                                type="button"
+                                onClick={() => void refetch()}
+                                className="rounded-lg border border-[#383736] px-2.5 py-0.5 text-[12px] font-medium text-[#D6D5C9] active:bg-[#242323] outline-none cursor-pointer"
+                            >
+                                Try again
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            {recentRows}
+                            <button
+                                type="button"
+                                onClick={() => closeThen(onSessions)}
+                                className="w-full flex items-center justify-between h-9 px-2.5 rounded-[10px] text-[13px] text-[#919191] active:bg-[#242424] outline-none cursor-pointer"
+                            >
+                                All sessions
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </>
                     )}
                 </>
             )}
@@ -248,12 +363,13 @@ const AccountRow: React.FC<{ onOpenInbox: () => void; unread: boolean }> = ({
 }
 
 const InboxList: React.FC<{
+    emptyText?: string
     items: Notification[]
     isLoading: boolean
     hasMore: boolean
     onMore: () => void
     onPick: (n: Notification) => void
-}> = ({ items, isLoading, hasMore, onMore, onPick }) => {
+}> = ({ emptyText = 'No notifications', items, isLoading, hasMore, onMore, onPick }) => {
     if (isLoading)
         return (
             <div className="flex flex-col gap-3 px-3 py-2">
@@ -263,7 +379,7 @@ const InboxList: React.FC<{
             </div>
         )
     if (items.length === 0)
-        return <div className="py-10 text-center text-[13px] text-[#919191]">No notifications</div>
+        return <div className="py-10 text-center text-[13px] text-[#919191]">{emptyText}</div>
     return (
         <div className="flex flex-col pb-2">
             {items.map((n) => (
@@ -372,14 +488,57 @@ const NoteDetail: React.FC<{ note: Notification }> = ({ note }) => {
     )
 }
 
+/** options for a held Recent row: the Sessions page items, Delete asks with a second tap */
+const SessionLevel: React.FC<{
+    held: HeldSession
+    actions: SessionActions
+    onDone: () => void
+}> = ({ held, actions, onDone }) => {
+    const { closeThen } = useBottomSheet()
+    const { session, index } = held
+    return (
+        <div className="flex flex-col pb-1">
+            <SessionSheetItems
+                isArchived={Boolean(session.isArchived)}
+                canStop={session.vmStatus === 'RUNNING' || session.vmStatus === 'PROVISIONING'}
+                onRename={() => closeThen(() => actions.openRename(session))}
+                onTags={() => closeThen(() => actions.openTags(session))}
+                onToggleArchive={() => {
+                    actions.toggleArchive(session, index)
+                    onDone()
+                }}
+                onStop={() => {
+                    actions.stop(session.id)
+                    onDone()
+                }}
+                onDelete={() => {
+                    actions.deleteNow(session.id)
+                    onDone()
+                }}
+                confirmDelete
+            />
+        </div>
+    )
+}
+
 export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
-    const { isAuthenticated, onNewThread, onOpenProject, onOpenAuth } = props
+    const { isAuthenticated, onNewThread, onHomeClick, onOpenProject, onOpenAuth } = props
+    const navigate = useNavigate()
     const isOpen = useAppStore((s) => s.isMobileSidebarOpen)
     const setIsOpen = useAppStore((s) => s.setIsMobileSidebarOpen)
     const start = useAppStore((s) => s.mobileSheetStart)
     const [level, setLevel] = React.useState<Level>(start)
     const [note, setNote] = React.useState<Notification | null>(null)
+    const [held, setHeld] = React.useState<HeldSession | null>(null)
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
+
+    // archiving or deleting the session on screen closes the sheet and lands on home (M4-a)
+    const actions = useSessionActions(() => {
+        setIsOpen(false)
+        if (onNewThread) onNewThread()
+        else if (onHomeClick) onHomeClick()
+        else navigate('/')
+    })
 
     React.useEffect(() => {
         if (isOpen) {
@@ -388,7 +547,12 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
         }
     }, [isOpen, start])
 
-    const inbox = useInbox(isOpen && (level === 'inbox' || level === 'note') && isAuthenticated)
+    // All or Mentions (K3-B), same filter as the desktop popover
+    const [inboxFilter, setInboxFilter] = React.useState<InboxFilter>('all')
+    const inbox = useInbox(
+        isOpen && (level === 'inbox' || level === 'note') && isAuthenticated,
+        inboxFilter
+    )
     const { data: unreadData } = useQuery({
         queryKey: ['notifications-unread-count'],
         queryFn: notificationAPI.getUnreadCount,
@@ -404,7 +568,9 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
             setLevel('inbox')
             return true
         }
-        if ((level === 'inbox' && start === 'menu') || level === 'settings') {
+        // opened from the bell or a settings page, back closes the sheet; from the menu it
+        // goes back to the menu
+        if ((level === 'inbox' || level === 'settings') && start === 'menu') {
             setLevel('menu')
             return true
         }
@@ -427,35 +593,76 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
                 onOpenSearch={() => setIsSearchOpen(true)}
                 onOpenInbox={() => setLevel('inbox')}
                 onOpenSettings={() => setLevel('settings')}
+                onHoldSession={(next) => {
+                    setHeld(next)
+                    setLevel('session')
+                }}
+                actions={actions}
             />
         )
         footer = isAuthenticated ? (
             <AccountRow unread={unread} onOpenInbox={() => setLevel('inbox')} />
         ) : null
+    } else if (level === 'session' && held) {
+        header = (
+            <SheetHeader
+                title={held.session.title || held.session.projectName || 'Untitled session'}
+                onBack={() => setLevel('menu')}
+            />
+        )
+        body = (
+            <SessionLevel
+                key={held.session.id}
+                held={held}
+                actions={actions}
+                onDone={() => setLevel('menu')}
+            />
+        )
     } else if (level === 'settings') {
         header = <SheetHeader title="Settings" onBack={() => setLevel('menu')} />
         body = <MobileSettingsLevel isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
     } else if (level === 'inbox') {
         const hasRead = inbox.notifications.some((n) => n.isRead)
         header = (
-            <SheetHeader
-                title="Inbox"
-                onBack={start === 'menu' ? () => setLevel('menu') : undefined}
-                action={
-                    hasRead ? (
+            <>
+                <SheetHeader
+                    title="Inbox"
+                    onBack={start === 'menu' ? () => setLevel('menu') : undefined}
+                    action={
+                        hasRead ? (
+                            <button
+                                type="button"
+                                onClick={() => inbox.clearRead.mutate()}
+                                className="text-[12px] font-medium text-[#919191] active:text-[#D6D5D4] outline-none cursor-pointer"
+                            >
+                                Clear read
+                            </button>
+                        ) : null
+                    }
+                />
+                <div className="flex items-center gap-1 px-3.5 pb-1.5">
+                    {(['all', 'mentions'] as const).map((value) => (
                         <button
+                            key={value}
                             type="button"
-                            onClick={() => inbox.clearRead.mutate()}
-                            className="text-[12px] font-medium text-[#919191] active:text-[#D6D5D4] outline-none cursor-pointer"
+                            onClick={() => setInboxFilter(value)}
+                            aria-pressed={inboxFilter === value}
+                            className={cn(
+                                'pr-2 py-0.5 text-[12.5px] font-medium outline-none cursor-pointer',
+                                inboxFilter === value
+                                    ? 'text-[#EDEDED]'
+                                    : 'text-[#7B7A79] active:text-[#D6D5D4]'
+                            )}
                         >
-                            Clear read
+                            {value === 'all' ? 'All' : 'Mentions'}
                         </button>
-                    ) : null
-                }
-            />
+                    ))}
+                </div>
+            </>
         )
         body = (
             <InboxList
+                emptyText={inboxFilter === 'mentions' ? 'No mentions' : 'No notifications'}
                 items={inbox.notifications}
                 isLoading={inbox.isLoading}
                 hasMore={!!inbox.hasNextPage}
@@ -497,7 +704,15 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
                 onBack={goBack}
                 header={header}
                 footer={footer}
-                ariaLabel={level === 'menu' ? 'Menu' : level === 'settings' ? 'Settings' : 'Inbox'}
+                ariaLabel={
+                    level === 'menu'
+                        ? 'Menu'
+                        : level === 'settings'
+                          ? 'Settings'
+                          : level === 'session'
+                            ? 'Session options'
+                            : 'Inbox'
+                }
             >
                 {body}
             </BottomSheet>
@@ -508,6 +723,7 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
                 onOpenSession={(sessionId) => onOpenProject(sessionId)}
                 isAuthenticated={isAuthenticated}
             />
+            {actions.modals}
         </>
     )
 }

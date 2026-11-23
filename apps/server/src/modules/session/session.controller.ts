@@ -56,6 +56,8 @@ export const getSessions = asyncHandler(async (req: Request, res: Response) => {
     if (parsedQuery.searchIn) filters.searchIn = parsedQuery.searchIn
     if (parsedQuery.page) filters.page = parsedQuery.page
     if (parsedQuery.limit) filters.limit = parsedQuery.limit
+    if (parsedQuery.vmStatus) filters.vmStatus = parsedQuery.vmStatus
+    if (parsedQuery.hasPr) filters.hasPr = true
 
     const result = await sessionService.getUserSessions({ userId, filters })
     return sendSuccess(res, 'sessions fetched successfully', {

@@ -1,8 +1,7 @@
-import { useQueryClient } from '@tanstack/react-query'
 import React from 'react'
-import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 
+import { RecentSessions } from './RecentSessions'
 import { SearchModal } from './SearchModal'
 import { SidebarFooter } from './SidebarFooter'
 
@@ -10,33 +9,12 @@ import type { SidebarProps } from '@/features/navigation/types'
 
 import { useAppStore } from '@/app/store'
 import { getViewForPath } from '@/app/types'
-import { sessionAPI } from '@/features/sessions/api/session'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { Icons } from '@/shared/components/ui/Icons'
-import { Skeleton } from '@/shared/components/ui/Skeleton'
-import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { OPEN_SEARCH_EVENT } from '@/shared/lib/appEvents'
-import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
 
-export const SidebarSessionsSkeleton: React.FC = () => (
-    <div className="flex flex-col gap-0.5 px-1 py-1">
-        {[
-            { titleW: 'w-[75%]', timeW: 'w-12' },
-            { titleW: 'w-[60%]', timeW: 'w-16' },
-            { titleW: 'w-[85%]', timeW: 'w-10' },
-            { titleW: 'w-[50%]', timeW: 'w-14' },
-            { titleW: 'w-[68%]', timeW: 'w-12' },
-            { titleW: 'w-[80%]', timeW: 'w-16' },
-            { titleW: 'w-[55%]', timeW: 'w-10' },
-        ].map((item, i) => (
-            <div key={i} className="flex flex-col gap-1 px-2.5 py-1.5 rounded-xl">
-                <Skeleton className={`h-3 ${item.titleW} bg-white/[0.04] rounded`} />
-                <Skeleton className={`h-2.5 ${item.timeW} bg-white/[0.02] rounded`} />
-            </div>
-        ))}
-    </div>
-)
+export { SidebarSessionsSkeleton } from './RecentSessions'
 
 const Sidebar: React.FC<
     SidebarProps & {
@@ -62,23 +40,13 @@ const Sidebar: React.FC<
     isCollapsed,
     onExpand,
 }) => {
-    const queryClient = useQueryClient()
-    const { data: sessionsData, isLoading: isSessionsLoading } = useSessions()
+    const { data: sessionsData } = useSessions()
     const sessions = React.useMemo(() => sessionsData?.sessions || [], [sessionsData?.sessions])
     const navigate = useNavigate()
     const location = useLocation()
     const path = location.pathname
 
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
-    const [isRecentMenuOpen, setIsRecentMenuOpen] = React.useState(false)
-    const [recentMenuPos, setRecentMenuPos] = React.useState<{ top: number; left: number } | null>(
-        null
-    )
-    const [sortBy, setSortBy] = React.useState<'created' | 'updated'>('updated')
-    const [filterArchived, setFilterArchived] = React.useState(false)
-    const [sessionType, setSessionType] = React.useState<'all' | 'web' | 'running'>('all')
-    const recentMenuRef = React.useRef<HTMLDivElement | null>(null)
-    const recentMenuTriggerRef = React.useRef<HTMLButtonElement | null>(null)
     const [isLogoAnimating, setIsLogoAnimating] = React.useState(false)
     const isSuperCrewOpen = useAppStore((s) => s.isSuperCrewOpen)
     const setIsSuperCrewOpen = useAppStore((s) => s.setIsSuperCrewOpen)
@@ -90,27 +58,6 @@ const Sidebar: React.FC<
             return () => clearTimeout(timer)
         }
     }, [isCollapsed])
-
-    React.useEffect(() => {
-        if (!isRecentMenuOpen) return
-        const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
-            const target = e.target as Node | null
-            if (
-                recentMenuRef.current &&
-                !recentMenuRef.current.contains(target) &&
-                recentMenuTriggerRef.current &&
-                !recentMenuTriggerRef.current.contains(target)
-            ) {
-                setIsRecentMenuOpen(false)
-            }
-        }
-        document.addEventListener('mousedown', handleOutsideClick)
-        document.addEventListener('touchstart', handleOutsideClick)
-        return () => {
-            document.removeEventListener('mousedown', handleOutsideClick)
-            document.removeEventListener('touchstart', handleOutsideClick)
-        }
-    }, [isRecentMenuOpen])
 
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -129,100 +76,6 @@ const Sidebar: React.FC<
         window.addEventListener(OPEN_SEARCH_EVENT, openSearch)
         return () => window.removeEventListener(OPEN_SEARCH_EVENT, openSearch)
     }, [])
-
-    const handleToggleArchive = async (sessionId: string, currentArchived: boolean) => {
-        const nextArchived = !currentArchived
-        // Instant optimistic cache update
-        queryClient.setQueriesData({ queryKey: ['sessions'] }, (old: any) => {
-            if (!old) return old
-            if (Array.isArray(old)) {
-                return old.map((s) => (s.id === sessionId ? { ...s, isArchived: nextArchived } : s))
-            }
-            if (Array.isArray(old.sessions)) {
-                return {
-                    ...old,
-                    sessions: old.sessions.map((s: any) =>
-                        s.id === sessionId ? { ...s, isArchived: nextArchived } : s
-                    ),
-                }
-            }
-            if (Array.isArray(old.pages)) {
-                return {
-                    ...old,
-                    pages: old.pages.map((page: any) => {
-                        if (!page) return page
-                        if (Array.isArray(page.sessions)) {
-                            return {
-                                ...page,
-                                sessions: page.sessions.map((s: any) =>
-                                    s.id === sessionId ? { ...s, isArchived: nextArchived } : s
-                                ),
-                            }
-                        }
-                        return page
-                    }),
-                }
-            }
-            return old
-        })
-        queryClient.setQueryData(['session', sessionId], (old: any) => {
-            if (!old) return old
-            return { ...old, isArchived: nextArchived }
-        })
-
-        try {
-            if (currentArchived) {
-                await sessionAPI.unarchiveSession(sessionId)
-            } else {
-                await sessionAPI.archiveSession(sessionId)
-            }
-        } catch (err) {
-            console.error('Failed to toggle archive:', err)
-        } finally {
-            queryClient.invalidateQueries({ queryKey: ['sessions'] })
-        }
-    }
-
-    const handleDeleteSession = async (sessionId: string) => {
-        // Instant optimistic removal
-        queryClient.setQueriesData({ queryKey: ['sessions'] }, (old: any) => {
-            if (!old) return old
-            if (Array.isArray(old)) {
-                return old.filter((s) => s.id !== sessionId)
-            }
-            if (Array.isArray(old.sessions)) {
-                return {
-                    ...old,
-                    sessions: old.sessions.filter((s: any) => s.id !== sessionId),
-                }
-            }
-            if (Array.isArray(old.pages)) {
-                return {
-                    ...old,
-                    pages: old.pages.map((page: any) => {
-                        if (!page) return page
-                        if (Array.isArray(page.sessions)) {
-                            return {
-                                ...page,
-                                sessions: page.sessions.filter((s: any) => s.id !== sessionId),
-                            }
-                        }
-                        return page
-                    }),
-                }
-            }
-            return old
-        })
-        queryClient.removeQueries({ queryKey: ['session', sessionId] })
-
-        try {
-            await sessionAPI.deleteSession(sessionId)
-        } catch (err) {
-            console.error('Failed to delete session:', err)
-        } finally {
-            queryClient.invalidateQueries({ queryKey: ['sessions'] })
-        }
-    }
 
     const isHomeActive = path === '/'
     const isProjectsActive =
@@ -252,6 +105,13 @@ const Sidebar: React.FC<
             (s) => s.vmStatus === 'RUNNING' || s.vmStatus === 'PROVISIONING'
         )
     }, [sessions])
+
+    // archiving or deleting the session on screen lands on home (M4-a)
+    const goHome = () => {
+        if (onNewThread) onNewThread()
+        else if (onHomeClick) onHomeClick()
+        else navigate('/')
+    }
 
     const navItems = [
         {
@@ -325,70 +185,6 @@ const Sidebar: React.FC<
             onClick: onProfile,
         },
     ]
-
-    const formatRelativeTime = (isoString?: string) => {
-        if (!isoString) return 'just now'
-        const date = new Date(isoString)
-        if (isNaN(date.getTime())) return 'just now'
-        const diff = Math.max(0, Date.now() - date.getTime())
-        const mins = Math.floor(diff / (1000 * 60))
-        if (mins < 1) return 'just now'
-        if (mins < 60) return `${mins}m ago`
-        const hours = Math.floor(mins / 60)
-        if (hours < 24) return `${hours}h ago`
-        const days = Math.floor(hours / 24)
-        if (days < 7) return `${days}d ago`
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-    }
-
-    const recentProjects = React.useMemo(() => {
-        if (!isAuthenticated) return []
-
-        const sourceList = (sessions || []).map((s) => ({
-            id: s.id,
-            title: s.title || s.projectName || 'Untitled Session',
-            projectName: s.projectName,
-            updatedAt: s.updatedAt,
-            createdAt: s.createdAt,
-            isArchived: Boolean(s.isArchived),
-            type: s.type || 'WEB',
-            prNumber: s.prNumber,
-            vmStatus: s.vmStatus,
-        }))
-
-        return sourceList
-            .filter((item) => {
-                if (!filterArchived && item.isArchived) {
-                    return false
-                }
-                if (item.type === 'SEARCH') {
-                    return false
-                }
-                if (sessionType === 'web' && item.type !== 'WEB') {
-                    return false
-                }
-                if (
-                    sessionType === 'running' &&
-                    item.vmStatus !== 'RUNNING' &&
-                    item.vmStatus !== 'PROVISIONING'
-                ) {
-                    return false
-                }
-                return true
-            })
-            .sort((a, b) => {
-                const timeA = new Date(a.createdAt).getTime() || 0
-                const timeB = new Date(b.createdAt).getTime() || 0
-                const updatedA = new Date(a.updatedAt).getTime() || 0
-                const updatedB = new Date(b.updatedAt).getTime() || 0
-
-                if (sortBy === 'created') {
-                    return timeB - timeA
-                }
-                return updatedB - updatedA
-            })
-            .slice(0, 7)
-    }, [isAuthenticated, sessions, sortBy, filterArchived, sessionType])
 
     return (
         <div
@@ -538,273 +334,13 @@ const Sidebar: React.FC<
                     isCollapsed ? 'hidden' : 'flex'
                 )}
             >
-                <div className="flex flex-col h-full">
-                    <div className="flex items-center justify-between px-2.5 h-7 mb-0">
-                        <span className="font-semibold text-[11.5px] text-[#8F8E8D] tracking-tight">
-                            Recent
-                        </span>
-                        <div className="flex items-center gap-0.5">
-                            <div className="relative">
-                                <Tooltip content="More options" position="bottom" usePortal>
-                                    <button
-                                        ref={recentMenuTriggerRef}
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            if (!isAuthenticated) {
-                                                onOpenAuth?.()
-                                            } else {
-                                                if (!isRecentMenuOpen) {
-                                                    const rect =
-                                                        e.currentTarget.getBoundingClientRect()
-                                                    const menuWidth = 180
-                                                    const left = Math.max(
-                                                        10,
-                                                        Math.min(
-                                                            rect.right + 8,
-                                                            window.innerWidth - menuWidth - 10
-                                                        )
-                                                    )
-                                                    const top = Math.min(
-                                                        rect.top,
-                                                        window.innerHeight - 340
-                                                    )
-                                                    setRecentMenuPos({
-                                                        top,
-                                                        left,
-                                                    })
-                                                }
-                                                setIsRecentMenuOpen(!isRecentMenuOpen)
-                                            }
-                                        }}
-                                        className="relative flex items-center justify-center p-1 rounded-md text-[#919191] hover:text-[#E8E8E8] hover:bg-[#252525] transition-all outline-none cursor-pointer"
-                                        aria-label="More options"
-                                    >
-                                        <Icons.MoreHorizontal className="w-3.5 h-3.5" />
-                                    </button>
-                                </Tooltip>
-                                {isRecentMenuOpen &&
-                                    recentMenuPos &&
-                                    typeof document !== 'undefined' &&
-                                    createPortal(
-                                        <div
-                                            ref={recentMenuRef}
-                                            className="fixed z-[200] w-[180px] rounded-xl border border-[#2E2D2C] bg-[#1E1E1E] shadow-2xl p-1 flex flex-col gap-0 animate-in fade-in zoom-in-95 duration-100 font-sans text-left"
-                                            style={{
-                                                top: recentMenuPos.top,
-                                                left: recentMenuPos.left,
-                                            }}
-                                        >
-                                            <div className="px-2.5 py-1 text-[11.5px] font-medium text-[#8F8E8D]">
-                                                Sort by
-                                            </div>
-                                            <button
-                                                onClick={() => {
-                                                    setSortBy('created')
-                                                }}
-                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
-                                            >
-                                                <span>Created time</span>
-                                                {sortBy === 'created' && (
-                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setSortBy('updated')
-                                                }}
-                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
-                                            >
-                                                <span>Last updated</span>
-                                                {sortBy === 'updated' && (
-                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
-                                                )}
-                                            </button>
-
-                                            <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
-
-                                            <div className="px-2.5 py-1 text-[11.5px] font-medium text-[#8F8E8D]">
-                                                Filter
-                                            </div>
-                                            <button
-                                                onClick={() => setFilterArchived(!filterArchived)}
-                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
-                                            >
-                                                <span>Archived</span>
-                                                <div
-                                                    className={`w-7 h-[14px] rounded-full flex items-center px-[2px] transition-colors ${filterArchived ? 'bg-[#87B2F4]' : 'bg-[#333333]'}`}
-                                                >
-                                                    <div
-                                                        className={`w-[10px] h-[10px] rounded-full bg-white transition-transform ${filterArchived ? 'translate-x-[14px]' : 'translate-x-0'}`}
-                                                    />
-                                                </div>
-                                            </button>
-
-                                            <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
-
-                                            <div className="px-2.5 py-1 text-[11.5px] font-medium text-[#8F8E8D]">
-                                                Session type
-                                            </div>
-                                            <button
-                                                onClick={() => setSessionType('all')}
-                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
-                                            >
-                                                <span>All</span>
-                                                {sessionType === 'all' && (
-                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => setSessionType('web')}
-                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
-                                            >
-                                                <span>Web</span>
-                                                {sessionType === 'web' && (
-                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => setSessionType('running')}
-                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
-                                            >
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                                    <span>Running</span>
-                                                </div>
-                                                {sessionType === 'running' && (
-                                                    <Icons.Check className="w-3.5 h-3.5 text-white" />
-                                                )}
-                                            </button>
-
-                                            <div className="h-[1px] bg-[#2B2A29] mx-1 my-1" />
-
-                                            <button
-                                                onClick={() => {
-                                                    setIsRecentMenuOpen(false)
-                                                    onSessions?.()
-                                                }}
-                                                className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[#2A2A2A] text-[#CBCACA] hover:text-white transition-colors text-left text-[12px] cursor-pointer outline-none group"
-                                            >
-                                                <span>View all sessions</span>
-                                            </button>
-                                        </div>,
-                                        document.body
-                                    )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-[2px] mt-1 overflow-y-auto no-scrollbar flex-1 min-h-0 pb-2">
-                        {isAuthenticated ? (
-                            isSessionsLoading || isSkeletonPreviewActive() ? (
-                                <SidebarSessionsSkeleton />
-                            ) : recentProjects.length > 0 ? (
-                                recentProjects.map((project) => (
-                                    <div
-                                        key={project.id}
-                                        className="group flex items-center justify-between px-2.5 py-1.5 w-full text-left rounded-xl hover:bg-[#202020] transition-colors cursor-pointer relative"
-                                        onClick={() => onOpenProject?.(project.id)}
-                                    >
-                                        <div className="flex flex-col min-w-0 pr-1.5 overflow-hidden flex-1">
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                {(project.vmStatus === 'RUNNING' ||
-                                                    project.vmStatus === 'PROVISIONING') && (
-                                                    <span
-                                                        className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${
-                                                            project.vmStatus === 'PROVISIONING'
-                                                                ? 'bg-amber-400'
-                                                                : 'bg-emerald-400'
-                                                        }`}
-                                                        title={
-                                                            project.vmStatus === 'PROVISIONING'
-                                                                ? 'Provisioning container...'
-                                                                : 'Agent running in background'
-                                                        }
-                                                    />
-                                                )}
-                                                <span className="font-normal text-[12.5px] transition-colors tracking-tight text-[#EDEDED] group-hover:text-white truncate leading-snug">
-                                                    {project.title}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-[11px] text-[#8F8E8D] tracking-tight truncate mt-[2px]">
-                                                {project.vmStatus === 'RUNNING' ? (
-                                                    <span className="text-emerald-400 font-medium">
-                                                        Running
-                                                    </span>
-                                                ) : project.vmStatus === 'PROVISIONING' ? (
-                                                    <span className="text-amber-400 font-medium">
-                                                        Provisioning
-                                                    </span>
-                                                ) : (
-                                                    <span>
-                                                        {formatRelativeTime(project.updatedAt)}
-                                                    </span>
-                                                )}
-                                                {project.prNumber ? (
-                                                    <>
-                                                        <span className="text-[#555] select-none">
-                                                            •
-                                                        </span>
-                                                        <span className="text-[#C084FC] inline-flex items-center gap-0.5 font-mono text-[10.5px]">
-                                                            <Icons.GitPullRequest className="w-3 h-3 text-[#C084FC]" />
-                                                            <span>{project.prNumber}</span>
-                                                        </span>
-                                                    </>
-                                                ) : null}
-                                            </div>
-                                        </div>
-
-                                        {/* Right side hover actions */}
-                                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                            <Tooltip
-                                                content={
-                                                    project.isArchived ? 'Unarchive' : 'Archive'
-                                                }
-                                                position="top"
-                                                align="end"
-                                                usePortal
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        handleToggleArchive(
-                                                            project.id,
-                                                            project.isArchived
-                                                        )
-                                                    }}
-                                                    className="p-1 rounded-md text-[#8F8E8D] hover:text-white hover:bg-[#2E2E2E] transition-colors cursor-pointer"
-                                                    aria-label={
-                                                        project.isArchived ? 'Unarchive' : 'Archive'
-                                                    }
-                                                >
-                                                    <Icons.Archive className="w-3.5 h-3.5" />
-                                                </button>
-                                            </Tooltip>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="px-3 py-1.5 text-[12px] font-medium text-[#616161] tracking-tight">
-                                    No recent sessions
-                                </div>
-                            )
-                        ) : (
-                            <div className="px-2.5 py-2 flex flex-col gap-2 text-left">
-                                <p className="text-[11.5px] text-[#7A7A7A] leading-normal font-sans">
-                                    Sign in to view your recent sessions and chat history.
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={onOpenAuth}
-                                    className="w-full py-1 px-2.5 rounded-lg bg-[#202020] hover:bg-[#282828] border border-[#313131] hover:border-[#3E3E3E] text-[#EDEDED] hover:text-white text-[12px] font-medium transition-all text-center cursor-pointer"
-                                >
-                                    Sign in
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <RecentSessions
+                    isAuthenticated={isAuthenticated}
+                    onOpenAuth={onOpenAuth}
+                    onOpenProject={onOpenProject}
+                    onSessions={onSessions}
+                    onLeaveCurrent={goHome}
+                />
             </div>
 
             <SidebarFooter

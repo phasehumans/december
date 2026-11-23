@@ -33,12 +33,8 @@ export interface DeleteModalState {
 export interface ProjectListRowProps {
     project: Project
     isMenuOpen: boolean
-    isTogglePending: boolean
     onOpenProject: (projectId: string) => void
-    onToggleStar: (id: string, event: MouseEvent) => void
     onToggleMenu: (id: string, event: MouseEvent) => void
-    onOpenProjectFromMenu: (projectId: string, event: MouseEvent) => void
-    onToggleStarFromMenu: (project: Project, event: MouseEvent) => void
     onOpenRename: (project: Project, event: MouseEvent) => void
     onOpenDelete: (project: Project, event: MouseEvent) => void
 }

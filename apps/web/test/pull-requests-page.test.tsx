@@ -34,6 +34,7 @@ const sessions = [
         updatedAt: '2026-11-23T09:00:00.000Z',
         prNumber: 412,
         prState: 'open' as const,
+        prBranch: 'fix/login-loop',
     },
     {
         ...base,
@@ -66,9 +67,12 @@ const renderPage = (list: unknown[] = sessions, githubConnected = true) => {
     const client = new QueryClient({
         defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
-    client.setQueryData(['sessions', { limit: 100, sortBy: 'updatedAt', sortOrder: 'desc' }], {
-        sessions: list,
-    })
+    client.setQueryData(
+        ['sessions', { limit: 100, sortBy: 'updatedAt', sortOrder: 'desc', hasPr: true }],
+        {
+            sessions: list,
+        }
+    )
     client.setQueryData(['profile'], { id: 'user-1', githubConnected })
     client.setQueryData(['quickinfo'], { fullName: 'Test', githubConnected })
     const onOpenProject = mock((_id: string) => {})
@@ -80,6 +84,14 @@ const renderPage = (list: unknown[] = sessions, githubConnected = true) => {
         </QueryClientProvider>
     )
     return onOpenProject
+}
+
+// focus, change, keyup: typing that works whatever order the test files load react-dom in
+const typeInto = (el: HTMLElement, value: string) => {
+    fireEvent.focusIn(el)
+    fireEvent.change(el, { target: { value } })
+    fireEvent.keyUp(el)
+    fireEvent.focusOut(el)
 }
 
 beforeEach(() => {
@@ -101,8 +113,16 @@ describe('pull request rows', () => {
             sessionId: 's1',
             repo: 'acme/web',
             state: 'open',
+            branch: 'fix/login-loop',
             url: 'https://github.com/acme/web/pull/412',
         })
+    })
+
+    test('a saved pull request link wins over the one built from the repository', () => {
+        const rows = toPullRequestRows([
+            { ...sessions[1], prUrl: 'https://github.com/acme/other/pull/409' },
+        ] as never)
+        expect(rows[0].url).toBe('https://github.com/acme/other/pull/409')
     })
 
     test('a draft counts as open', () => {
@@ -130,6 +150,20 @@ describe('Pull requests page', () => {
         expect(screen.queryByText('fix: login redirect loop')).toBeNull()
     })
 
+    test('search matches title, branch and number', () => {
+        renderPage()
+        const search = screen.getByRole('textbox', { name: 'Search pull requests' })
+        typeInto(search, 'login-loop')
+        expect(screen.getByText('fix: login redirect loop')).not.toBeNull()
+        expect(screen.queryAllByText('feat: csv export')).toHaveLength(0)
+
+        typeInto(search, '#409')
+        expect(screen.getByText('feat: csv export')).not.toBeNull()
+
+        typeInto(search, 'nothing like this')
+        expect(screen.getByText('No pull requests found')).not.toBeNull()
+    })
+
     test('a row opens its session on the pull request view', () => {
         const onOpenProject = renderPage()
         fireEvent.click(screen.getByText('feat: csv export'))
@@ -147,7 +181,7 @@ describe('Pull requests page', () => {
 
     test('empty states', () => {
         renderPage([sessions[4]])
-        expect(screen.getByText('No pull requests yet.')).not.toBeNull()
+        expect(screen.getByText('No pull requests yet')).not.toBeNull()
         cleanup()
 
         renderPage([], false)

@@ -5,6 +5,7 @@ import { enqueueJob } from '@december/shared/queue'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
+import { notificationService } from '../notification/notification.service'
 
 import { githubAppRepository } from './githubapp.repository'
 import {
@@ -16,12 +17,15 @@ import {
     generateAppJwt,
     getInstallationDetails,
     isAuthorizedGithubSender,
+    isDecemberBotLogin,
+    toInboxPreview,
 } from './githubapp.utils'
 
 import type {
     ClaimInstallation,
     ClaimInstallationResult,
     FindInstallationOwner,
+    FindPullRequestOwner,
     GetInstallationAccessToken,
     GetUserInstallationRepos,
     GetUserInstallationStatus,
@@ -33,6 +37,7 @@ import type {
     HandlePullRequestOpened,
     HandlePullRequestOpenedResult,
     InstallationStatusResponse,
+    NotifyGithubActivity,
     ProcessInstallation,
     ProcessUninstallation,
     VerifySignature,
@@ -506,6 +511,154 @@ const handlePullRequestOpened = async (
     }
 }
 
+// who owns December's pull request: the session that opened it, else (for PRs opened from an
+// @trydecember issue comment, which have no session) the owner of the installation
+const findPullRequestOwner = async (data: FindPullRequestOwner): Promise<string | null> => {
+    const { installationId, repoOwner, repoName, prNumber, prAuthorLogin } = data
+    const session = await githubAppRepository.findSessionByPullRequest({
+        repoOwner,
+        repoName,
+        prNumber,
+    })
+    if (session?.userId) return session.userId
+    if (installationId && isDecemberBotLogin(prAuthorLogin)) {
+        const installation = await githubAppRepository.findByInstallationId(installationId)
+        return installation?.userId ?? null
+    }
+    return null
+}
+
+// puts replies, review comments, @trydecember mentions and failed checks into the inbox (K2)
+const notifyGithubActivity = async (data: NotifyGithubActivity) => {
+    const {
+        installationId,
+        repoOwner,
+        repoName,
+        number,
+        actorLogin,
+        actorType,
+        prAuthorLogin,
+        activity,
+    } = data
+
+    // December's own comments and other bots (CI, dependabot) never notify
+    if (actorType === 'Bot' || isDecemberBotLogin(actorLogin) || actorLogin?.endsWith('[bot]')) {
+        return { notified: false, reason: 'bot' }
+    }
+
+    const repoLink = `https://github.com/${repoOwner}/${repoName}`
+    const actor = actorLogin || 'someone'
+    const send = async (input: {
+        userId: string
+        title: string
+        message: string
+        link: string
+        category: 'GENERAL' | 'MENTION'
+        type?: 'INFO' | 'WARNING' | 'ERROR'
+        toast: boolean
+    }) => {
+        // your own comments on December's pull request are not news to you
+        const username = await githubAppRepository.findUserGithubUsername(input.userId)
+        if (username && actorLogin && username.toLowerCase() === actorLogin.toLowerCase()) {
+            return { notified: false, reason: 'own_comment' }
+        }
+        await notificationService.sendNotificationToUser({
+            userId: input.userId,
+            title: input.title,
+            message: input.message,
+            link: input.link,
+            category: input.category,
+            type: input.type ?? 'INFO',
+            toast: input.toast,
+        })
+        return { notified: true }
+    }
+
+    if (activity.kind === 'comment') {
+        const { isMentioned } = extractBotMention(activity.body)
+        if (isMentioned) {
+            if (!installationId) return { notified: false, reason: 'no_installation' }
+            const installation = await githubAppRepository.findByInstallationId(installationId)
+            if (!installation?.userId) return { notified: false, reason: 'no_owner' }
+            return send({
+                userId: installation.userId,
+                title: `${actor} mentioned December on #${number}`,
+                message: toInboxPreview(activity.body),
+                link: activity.url || `${repoLink}/issues/${number}`,
+                category: 'MENTION',
+                toast: true,
+            })
+        }
+        if (!activity.isPullRequest) return { notified: false, reason: 'not_pull_request' }
+    }
+
+    if (activity.kind === 'review' && activity.state === 'commented' && !activity.body.trim()) {
+        // an empty "commented" review only wraps review comments, which notify on their own
+        return { notified: false, reason: 'empty_review' }
+    }
+
+    const userId = await findPullRequestOwner({
+        installationId,
+        repoOwner,
+        repoName,
+        prNumber: number,
+        prAuthorLogin,
+    })
+    if (!userId) return { notified: false, reason: 'not_december_pull_request' }
+
+    switch (activity.kind) {
+        case 'comment':
+        case 'review_comment': {
+            return send({
+                userId,
+                title: `${actor} commented on #${number}`,
+                message: toInboxPreview(activity.body),
+                link: activity.url || `${repoLink}/pull/${number}`,
+                category: 'MENTION',
+                toast: true,
+            })
+        }
+        case 'review': {
+            const state = activity.state.toLowerCase()
+            const title =
+                state === 'changes_requested'
+                    ? `${actor} requested changes on #${number}`
+                    : state === 'approved'
+                      ? `${actor} approved #${number}`
+                      : `${actor} reviewed #${number}`
+            const isApproval = state === 'approved'
+            return send({
+                userId,
+                title,
+                message: toInboxPreview(activity.body) || title,
+                link: activity.url || `${repoLink}/pull/${number}`,
+                category: isApproval ? 'GENERAL' : 'MENTION',
+                type: state === 'changes_requested' ? 'WARNING' : 'INFO',
+                toast: !isApproval,
+            })
+        }
+        case 'checks_failed': {
+            const title = `Checks failed on #${number}`
+            const since = new Date(Date.now() - 30 * 60 * 1000)
+            if (await githubAppRepository.hasUnreadNotification({ userId, title, since })) {
+                return { notified: false, reason: 'duplicate' }
+            }
+            await notificationService.sendNotificationToUser({
+                userId,
+                title,
+                message: `${repoOwner}/${repoName}: one or more checks failed on the latest push.`,
+                link: `${repoLink}/pull/${number}/checks`,
+                category: 'GENERAL',
+                type: 'ERROR',
+                toast: false,
+            })
+            return { notified: true }
+        }
+        default:
+            return { notified: false, reason: 'unknown' }
+    }
+}
+
 export const githubAppService = {
     claimInstallation,
     findInstallationOwner,
@@ -518,4 +671,5 @@ export const githubAppService = {
     getUserInstallationStatus,
     handleIssueComment,
     handlePullRequestOpened,
+    notifyGithubActivity,
 }

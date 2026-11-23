@@ -5,6 +5,7 @@ import { env } from '../../env'
 import type {
     CanClaimInstallation,
     ClaimInstallationResult,
+    NotifyGithubActivity,
     ResolveInstallReturnUrl,
 } from './githubapp.types'
 
@@ -126,6 +127,109 @@ export const canClaimInstallation = (data: CanClaimInstallation): ClaimInstallat
     return isRecent
         ? { linked: true, reason: 'recent_unclaimed' }
         : { linked: false, reason: 'stale_unclaimed' }
+}
+
+// December's own app account (comments it writes must not notify anyone)
+export const isDecemberBotLogin = (login?: string | null) => {
+    if (!login) return false
+    const name = (env.GITHUB_APP_NAME || 'trydecember').toLowerCase()
+    const lower = login.toLowerCase()
+    return lower === name || lower === `${name}[bot]` || /^trydecember(\[bot\])?$/.test(lower)
+}
+
+// a comment body as one short line for the inbox row
+export const toInboxPreview = (body?: string | null, max = 280) => {
+    const text = (body || '').replace(/\s+/g, ' ').trim()
+    return text.length > max ? `${text.slice(0, max - 1)}…` : text
+}
+
+// maps a webhook to an inbox notice, or null when the event never notifies
+export const toGithubActivity = (event: unknown, payload: any): NotifyGithubActivity | null => {
+    const repoOwner = payload?.repository?.owner?.login
+    const repoName = payload?.repository?.name
+    const installationId = payload?.installation?.id?.toString()
+    if (!repoOwner || !repoName) return null
+
+    if (event === 'issue_comment' && payload.action === 'created' && payload.issue?.number) {
+        return {
+            installationId,
+            repoOwner,
+            repoName,
+            number: payload.issue.number,
+            actorLogin: payload.comment?.user?.login,
+            actorType: payload.comment?.user?.type,
+            prAuthorLogin: payload.issue?.user?.login,
+            activity: {
+                kind: 'comment',
+                isPullRequest: Boolean(payload.issue?.pull_request),
+                body: payload.comment?.body || '',
+                url: payload.comment?.html_url,
+            },
+        }
+    }
+
+    if (
+        event === 'pull_request_review_comment' &&
+        payload.action === 'created' &&
+        payload.pull_request?.number
+    ) {
+        return {
+            installationId,
+            repoOwner,
+            repoName,
+            number: payload.pull_request.number,
+            actorLogin: payload.comment?.user?.login,
+            actorType: payload.comment?.user?.type,
+            prAuthorLogin: payload.pull_request?.user?.login,
+            activity: {
+                kind: 'review_comment',
+                body: payload.comment?.body || '',
+                path: payload.comment?.path,
+                url: payload.comment?.html_url,
+            },
+        }
+    }
+
+    if (
+        event === 'pull_request_review' &&
+        payload.action === 'submitted' &&
+        payload.pull_request?.number
+    ) {
+        return {
+            installationId,
+            repoOwner,
+            repoName,
+            number: payload.pull_request.number,
+            actorLogin: payload.review?.user?.login,
+            actorType: payload.review?.user?.type,
+            prAuthorLogin: payload.pull_request?.user?.login,
+            activity: {
+                kind: 'review',
+                state: payload.review?.state || 'commented',
+                body: payload.review?.body || '',
+                url: payload.review?.html_url,
+            },
+        }
+    }
+
+    // check_suite has no PR author; the owner is found through the session only
+    if (
+        event === 'check_suite' &&
+        payload.action === 'completed' &&
+        ['failure', 'timed_out'].includes(payload.check_suite?.conclusion)
+    ) {
+        const prNumber = payload.check_suite?.pull_requests?.[0]?.number
+        if (!prNumber) return null
+        return {
+            installationId,
+            repoOwner,
+            repoName,
+            number: prNumber,
+            activity: { kind: 'checks_failed' },
+        }
+    }
+
+    return null
 }
 
 export {

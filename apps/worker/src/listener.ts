@@ -335,6 +335,35 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             updatedAt: prData?.updated_at,
         }
 
+        // keep the pull request on the session, so the sessions list and the Pull requests
+        // page can show it after the Redis entry is gone
+        if (prResult.prNumber) {
+            const prState = prData?.merged_at
+                ? 'merged'
+                : prData?.draft
+                  ? 'draft'
+                  : prData?.state === 'closed'
+                    ? 'closed'
+                    : 'open'
+            await prisma.session
+                .update({
+                    where: { id: sessionId },
+                    data: {
+                        prNumber: prResult.prNumber,
+                        prUrl: prResult.url ?? null,
+                        prState,
+                        prTitle: prResult.title,
+                        prBranch: taskBranch,
+                    },
+                })
+                .catch((error: unknown) => {
+                    console.error(
+                        '[WORKER LISTENER] could not save the pull request on the session',
+                        error
+                    )
+                })
+        }
+
         const payload = JSON.stringify({
             type: 'PullRequestUpdate',
             sessionId,

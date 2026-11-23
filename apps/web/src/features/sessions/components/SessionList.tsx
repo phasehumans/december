@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useCallback, useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useSessionListMutations } from '../hooks/useSessionListMutations'
@@ -18,9 +18,8 @@ import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 export type SortOption = 'newest' | 'oldest'
 
 export const SessionList: React.FC<{
-    onNewProject: () => void
     onOpenProject: (projectId: string) => void
-}> = ({ onNewProject, onOpenProject }) => {
+}> = ({ onOpenProject }) => {
     const navigate = useNavigate()
     const isAuthenticated = useAppStore((s) => s.isAuthenticated)
     const isAuthRestored = useAppStore((s) => s.isAuthRestored)
@@ -41,11 +40,13 @@ export const SessionList: React.FC<{
         return {
             search: searchQuery.trim() || undefined,
             sortBy: 'updatedAt' as const,
-            sortOrder: sortOption === 'newest' ? 'desc' : 'asc',
+            sortOrder: sortOption === 'newest' ? ('desc' as const) : ('asc' as const),
+            // the server filters running sessions, so the filter also covers rows not loaded yet
+            vmStatus: statusFilter === 'running' ? ('running' as const) : undefined,
         }
-    }, [searchQuery, sortOption])
+    }, [searchQuery, sortOption, statusFilter])
 
-    const { data, isLoading, isFetching, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
         useInfiniteSessions(queryFilters)
     const sessions = useMemo(() => data?.pages.flatMap((page) => page.sessions) || [], [data])
     const errorMessage = error instanceof Error ? error.message : null
@@ -81,17 +82,12 @@ export const SessionList: React.FC<{
         return () => window.removeEventListener('click', handleClickOutside)
     }, [menuOpenId])
 
-    const {
-        togglePinMutation,
-        toggleArchiveMutation,
-        renameMutation,
-        deleteMutation,
-        updateTagsMutation,
-    } = useSessionListMutations({
-        setActionError,
-        onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
-        onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
-    })
+    const { toggleArchiveMutation, renameMutation, deleteMutation, updateTagsMutation } =
+        useSessionListMutations({
+            setActionError,
+            onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
+            onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
+        })
 
     const runningCount = useMemo(() => {
         return sessions.filter((s) => s.vmStatus === 'RUNNING' || s.vmStatus === 'PROVISIONING')
@@ -129,17 +125,11 @@ export const SessionList: React.FC<{
         return result
     }, [sessions, searchQuery, sortOption, statusFilter])
 
-    const handleStopSession = (id: string, event: React.MouseEvent) => {
-        event.stopPropagation()
+    const handleStopSession = (id: string, event?: React.MouseEvent) => {
+        event?.stopPropagation()
+        setMenuOpenId(null)
         generationAPI.stopSessionStream(id)
         void queryClient.invalidateQueries({ queryKey: ['sessions'] })
-    }
-
-    const toggleStar = (id: string, event: React.MouseEvent) => {
-        event.stopPropagation()
-        const session = sessions.find((item) => item.id === id)
-        if (!session) return
-        togglePinMutation.mutate({ sessionId: id, isPinned: !session.isPinned })
     }
 
     const toggleMenu = (id: string, event: React.MouseEvent) => {
@@ -147,39 +137,29 @@ export const SessionList: React.FC<{
         setMenuOpenId((prev) => (prev === id ? null : id))
     }
 
-    const openProjectFromMenu = (id: string, event: React.MouseEvent) => {
-        event.stopPropagation()
-        setMenuOpenId(null)
-        handleOpenProjectClick(id)
-    }
+    const closeMenu = useCallback(() => setMenuOpenId(null), [])
 
-    const toggleStarFromMenu = (session: any, event: React.MouseEvent) => {
-        event.stopPropagation()
-        setMenuOpenId(null)
-        togglePinMutation.mutate({ sessionId: session.id, isPinned: !session.isPinned })
-    }
-
-    const toggleArchiveFromMenu = (session: any, event: React.MouseEvent) => {
-        event.stopPropagation()
+    const toggleArchiveFromMenu = (session: any, event?: React.MouseEvent) => {
+        event?.stopPropagation()
         setMenuOpenId(null)
         toggleArchiveMutation.mutate({ sessionId: session.id, isArchived: !session.isArchived })
     }
 
-    const openModal = (event: React.MouseEvent, setter: () => void) => {
-        event.stopPropagation()
+    const openModal = (event: React.MouseEvent | undefined, setter: () => void) => {
+        event?.stopPropagation()
         setter()
         setMenuOpenId(null)
     }
 
-    const openRenameModal = (session: any, event: React.MouseEvent) =>
+    const openRenameModal = (session: any, event?: React.MouseEvent) =>
         openModal(event, () =>
             setRenameModal({ isOpen: true, project: session, value: session.title || '' })
         )
 
-    const openDeleteModal = (session: any, event: React.MouseEvent) =>
+    const openDeleteModal = (session: any, event?: React.MouseEvent) =>
         openModal(event, () => setDeleteModal({ isOpen: true, project: session }))
 
-    const openTagsModal = (session: any, event: React.MouseEvent) =>
+    const openTagsModal = (session: any, event?: React.MouseEvent) =>
         openModal(event, () => setTagsModal({ isOpen: true, project: session }))
 
     const handleSaveTags = (tags: string[]) => {
@@ -242,18 +222,14 @@ export const SessionList: React.FC<{
             <div className="relative z-10 mx-auto max-w-6xl px-3.5 sm:px-6 pb-8 pt-4 md:p-16">
                 <SessionListView
                     projects={filteredAndSortedSessions}
-                    onNewProject={onNewProject}
                     onOpenProject={handleOpenProjectClick}
                     isInitialLoading={isInitialLoading}
-                    isFetching={isFetching}
                     errorMessage={errorMessage}
+                    onRetry={() => void refetch()}
                     actionError={actionError}
                     menuOpenId={menuOpenId}
-                    isTogglePending={togglePinMutation.isPending}
-                    onToggleStar={toggleStar}
                     onToggleMenu={toggleMenu}
-                    onOpenProjectFromMenu={openProjectFromMenu}
-                    onToggleStarFromMenu={toggleStarFromMenu}
+                    onCloseMenu={closeMenu}
                     onToggleArchiveFromMenu={toggleArchiveFromMenu}
                     onOpenRename={openRenameModal}
                     onOpenDelete={openDeleteModal}
@@ -262,7 +238,9 @@ export const SessionList: React.FC<{
                     onSearchChange={setSearchQuery}
                     sortOption={sortOption}
                     onSortChange={setSortOption}
-                    hasUnfilteredProjects={sessions.length > 0}
+                    hasUnfilteredProjects={
+                        sessions.length > 0 || Boolean(searchQuery.trim()) || statusFilter !== 'all'
+                    }
                     statusFilter={statusFilter}
                     onStatusFilterChange={setStatusFilter}
                     runningCount={runningCount}

@@ -99,12 +99,15 @@ model Notification {
   message   String
   isRead    Boolean          @default(false)
   type      NotificationType @default(INFO)
+  // MENTION = a person talked to you or December (replies, review comments, @trydecember)
+  category  NotificationCategory @default(GENERAL)
   link      String?
   createdAt DateTime         @default(now())
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, isRead])
+  @@index([userId, category, isRead])
   @@index([createdAt])
 }
 
@@ -146,6 +149,12 @@ model Session {
   branch               String?
   gitRef               String?
   issueNumber          Int?
+  // the pull request December opened for this session (saved by the worker)
+  prNumber             Int?
+  prUrl                String?
+  prState              String?
+  prTitle              String?
+  prBranch             String?
   projectId            String?
   epoch                Int                   @default(1)
   leaseExpiresAt       DateTime?
@@ -166,6 +175,7 @@ model Session {
   wakeUpTriggers     WakeUpTrigger[]
 
   @@index([userId])
+  @@index([userId, prNumber])
   @@index([projectId])
 }
 
@@ -349,6 +359,11 @@ enum NotificationType {
   WARNING
   SUCCESS
   ERROR
+}
+
+enum NotificationCategory {
+  GENERAL
+  MENTION
 }
 
 

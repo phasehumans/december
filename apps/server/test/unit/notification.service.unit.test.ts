@@ -41,11 +41,14 @@ describe('Notification Service - Unit Tests', () => {
     describe('getUnreadCount', () => {
         it('should return unread notification count for user', async () => {
             const original = notificationRepository.countUnreadNotifications
-            notificationRepository.countUnreadNotifications = (async () => 5) as any
+            notificationRepository.countUnreadNotifications = (async (
+                _userId: string,
+                category?: string
+            ) => (category === 'MENTION' ? 2 : 5)) as any
 
             try {
                 const res = await notificationService.getUnreadCount({ userId: 'user-1' })
-                expect(res).toEqual({ count: 5 })
+                expect(res).toEqual({ count: 5, mentions: 2 })
             } finally {
                 notificationRepository.countUnreadNotifications = original
             }
@@ -188,6 +191,55 @@ describe('Notification Service - Unit Tests', () => {
                 expect(res).toEqual({ count: 3 })
             } finally {
                 notificationRepository.deleteManyReadNotifications = originalDeleteMany
+            }
+        })
+    })
+
+    describe('markAllAsRead', () => {
+        it('should mark every unread notification of the user as read', async () => {
+            const original = notificationRepository.updateAllNotificationsRead
+            let calledWith: string | null = null
+            notificationRepository.updateAllNotificationsRead = (async (userId: string) => {
+                calledWith = userId
+                return { count: 4 }
+            }) as any
+
+            try {
+                const res = await notificationService.markAllAsRead({ userId: 'user-1' })
+                expect(calledWith as unknown as string).toBe('user-1')
+                expect(res).toEqual({ updated: 4 })
+            } finally {
+                notificationRepository.updateAllNotificationsRead = original
+            }
+        })
+    })
+
+    describe('sendNotificationToUser category', () => {
+        it('should save the category and default to GENERAL', async () => {
+            const originalCreate = notificationRepository.createNotification
+            const payloads: any[] = []
+            notificationRepository.createNotification = (async (data: any) => {
+                payloads.push(data)
+                return { id: `notif-${payloads.length}`, ...data }
+            }) as any
+
+            try {
+                await notificationService.sendNotificationToUser({
+                    userId: 'user-1',
+                    title: 'maya-k commented on #482',
+                    message: 'Can we keep the old retry count?',
+                    category: 'MENTION',
+                    toast: true,
+                })
+                await notificationService.sendNotificationToUser({
+                    userId: 'user-1',
+                    title: 'Credits Added',
+                    message: 'Added $5.00',
+                })
+                expect(payloads[0].category).toBe('MENTION')
+                expect(payloads[1].category).toBe('GENERAL')
+            } finally {
+                notificationRepository.createNotification = originalCreate
             }
         })
     })

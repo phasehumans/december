@@ -5,6 +5,7 @@ import { useSearchModel } from '../search/useSearchModel'
 import type { SearchItem, SearchRow } from '../search/searchItems'
 
 import { Icons } from '@/shared/components/ui/Icons'
+import { useBackToClose } from '@/shared/lib/useBackToClose'
 import { cn } from '@/shared/lib/utils'
 
 interface SearchModalProps {
@@ -110,6 +111,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const isMobile = useIsMobile()
     const viewport = useVisualViewport(isOpen && isMobile)
+    // back button and back swipe close the search instead of leaving the page
+    useBackToClose({ isOpen, onClose })
 
     const { sections, askDecember, isAiSearching } = useSearchModel({
         isOpen,

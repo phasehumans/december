@@ -248,7 +248,7 @@ describe('Session Service - Unit Tests', () => {
     })
 
     describe('getUserSessions', () => {
-        it('should list sessions and format PR, author, and fallback titles correctly', async () => {
+        it('should list sessions with saved PR, status, branch, author and fallback titles', async () => {
             const originalFindMany = sessionRepository.findManySessions
             sessionRepository.findManySessions = mock(async () => ({
                 sessions: [
@@ -268,16 +268,13 @@ describe('Session Service - Unit Tests', () => {
                             email: 'test@example.com',
                             name: 'Test User',
                         },
-                        reviews: [
-                            {
-                                prUrl: 'https://github.com/repo/pull/42',
-                                prTitle: 'PR 42 Title',
-                                branchName: 'feature-branch',
-                                additions: 100,
-                                deletions: 20,
-                                repoName: 'test-repo',
-                            },
-                        ],
+                        vmStatus: 'RUNNING',
+                        branch: 'feat/session-branch',
+                        prNumber: 42,
+                        prUrl: 'https://github.com/acme/web/pull/42',
+                        prState: 'merged',
+                        prTitle: 'PR 42 Title',
+                        prBranch: 'feature-branch',
                     },
                     {
                         id: 'sess-2',
@@ -296,7 +293,9 @@ describe('Session Service - Unit Tests', () => {
                             },
                         ],
                         user: { githubUsername: null, email: 'fallback@example.com', name: null },
-                        reviews: [],
+                        vmStatus: 'STOPPED',
+                        prNumber: null,
+                        prState: 'open',
                     },
                 ],
                 pagination: { total: 2, page: 1, limit: 50, totalPages: 1 },
@@ -308,8 +307,20 @@ describe('Session Service - Unit Tests', () => {
                 expect(result.sessions).toHaveLength(2)
                 expect(result.sessions[0]?.title).toBe('Custom Title')
                 expect(result.sessions[0]?.prNumber).toBe(42)
-                expect(result.sessions[0]?.prState).toBe('open')
+                expect(result.sessions[0]?.prState).toBe('merged')
+                expect(result.sessions[0]?.prUrl).toBe('https://github.com/acme/web/pull/42')
+                expect(result.sessions[0]?.prBranch).toBe('feature-branch')
+                expect(result.sessions[0]?.vmStatus).toBe('RUNNING')
+                expect(result.sessions[0]?.branch).toBe('feat/session-branch')
                 expect(result.sessions[0]?.createdBy).toBe('@testuser')
+                // no made-up line counts or repository names
+                expect(result.sessions[0]).not.toHaveProperty('additions')
+                expect(result.sessions[0]).not.toHaveProperty('repoName')
+
+                // no pull request: every PR field stays null
+                expect(result.sessions[1]?.prNumber).toBeNull()
+                expect(result.sessions[1]?.prState).toBeNull()
+                expect(result.sessions[1]?.prUrl).toBeNull()
 
                 expect(result.sessions[1]?.title).toContain('First message text')
                 expect(result.sessions[1]?.createdBy).toBe('@fallback')

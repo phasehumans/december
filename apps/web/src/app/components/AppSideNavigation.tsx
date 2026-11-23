@@ -4,6 +4,7 @@ import type { ViewState } from '@/app/types'
 
 import { MobileMenuSheet } from '@/features/navigation/components/MobileMenuSheet'
 import Sidebar from '@/features/navigation/components/Sidebar'
+import { NotificationToast } from '@/features/notification/components/NotificationToast'
 
 interface AppSideNavigationProps {
     showSidebar: boolean
@@ -59,16 +60,20 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
 
     // the phone menu sheet stays mounted on settings (no sidebar there): its pages reopen
     // the sheet on the Settings level
+    // the toast for new mentions and questions rides along: this part is always mounted
     const mobileMenuSheet = (
-        <MobileMenuSheet
-            onNewThread={onNewThread}
-            onHomeClick={onHomeClick}
-            onSessions={() => onNavigate('sessions')}
-            onProfile={() => onNavigate('profile')}
-            onOpenProject={onOpenProject}
-            isAuthenticated={isAuthenticated}
-            onOpenAuth={onOpenAuth}
-        />
+        <>
+            <MobileMenuSheet
+                onNewThread={onNewThread}
+                onHomeClick={onHomeClick}
+                onSessions={() => onNavigate('sessions')}
+                onProfile={() => onNavigate('profile')}
+                onOpenProject={onOpenProject}
+                isAuthenticated={isAuthenticated}
+                onOpenAuth={onOpenAuth}
+            />
+            <NotificationToast isAuthenticated={isAuthenticated} />
+        </>
     )
 
     if (!showSidebar) {

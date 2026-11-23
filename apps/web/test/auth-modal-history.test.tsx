@@ -28,7 +28,7 @@ describe('AuthModal Mobile History & Back Navigation', () => {
         const originalPushState = window.history.pushState.bind(window.history)
         let pushedModalState = false
         window.history.pushState = (data: any, unused: string, url?: string | URL | null) => {
-            if (data?.modal === 'auth') {
+            if (data?.decemberOverlay) {
                 pushedModalState = true
             }
             return originalPushState(data, unused, url)

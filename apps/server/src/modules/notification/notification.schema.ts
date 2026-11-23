@@ -9,6 +9,7 @@ export const NotificationSchema = z.object({
     type: z.enum(['INFO', 'WARNING', 'SUCCESS', 'ERROR'], {
         message: "type must be one of 'INFO', 'WARNING', 'SUCCESS', 'ERROR'",
     }),
+    category: z.enum(['GENERAL', 'MENTION']).default('GENERAL'),
     link: z.string().nullable(),
     createdAt: z.date(),
 })
@@ -27,6 +28,7 @@ export const GetNotificationsQuerySchema = z.object({
             return undefined
         }, z.boolean().optional())
         .optional(),
+    category: z.enum(['GENERAL', 'MENTION']).optional(),
 })
 
 export type Notification = z.infer<typeof NotificationSchema>

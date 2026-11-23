@@ -96,7 +96,7 @@ describe('Documentation removal from web & sidebar', () => {
         )
 
         const docsLink = screen.getByRole('link', { name: /Docs/i })
-        expect(docsLink.getAttribute('href')).toBe('/docs')
+        expect(docsLink.getAttribute('href')).toBe('https://trydecember.com/docs/')
         expect(docsLink.getAttribute('target')).toBe('_blank')
     })
 })

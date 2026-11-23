@@ -88,3 +88,10 @@ export const isEmptySmartSearchFilters = (filters: SmartSearchFilters): boolean 
     filters.repo === null &&
     !filters.running &&
     !filters.archived
+
+const PULL_REQUEST_STATES = ['open', 'draft', 'merged', 'closed'] as const
+export type PullRequestState = (typeof PULL_REQUEST_STATES)[number]
+
+/** the saved GitHub state, or open when it was never set or is unknown */
+export const toPullRequestState = (value: unknown): PullRequestState =>
+    PULL_REQUEST_STATES.includes(value as PullRequestState) ? (value as PullRequestState) : 'open'

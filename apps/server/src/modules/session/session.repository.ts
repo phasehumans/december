@@ -15,6 +15,7 @@ export async function findManySessions(userId: string, filters?: SessionFilters)
     if (filters?.tags && filters.tags.length > 0) {
         where.tags = { hasEvery: filters.tags }
     }
+    if (filters?.hasPr) where.prNumber = { not: null }
     if (filters?.vmStatus) {
         if (filters.vmStatus === 'active' || filters.vmStatus === 'running') {
             where.vmStatus = { in: ['PROVISIONING', 'RUNNING'] }

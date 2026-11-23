@@ -1,5 +1,15 @@
 import { apiRequest } from '@/shared/api/client'
 
+export type NotificationCategory = 'GENERAL' | 'MENTION'
+
+/** inbox filter: all notifications, or mentions only (K3-B) */
+export type InboxFilter = 'all' | 'mentions'
+
+export interface UnreadCount {
+    count: number
+    mentions?: number
+}
+
 export interface Notification {
     id: string
     userId: string
@@ -7,6 +17,8 @@ export interface Notification {
     message: string
     isRead: boolean
     type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR'
+    // MENTION = replies, review comments and @trydecember mentions (the Mentions filter)
+    category?: NotificationCategory
     link: string | null
     createdAt: string
 }
@@ -21,17 +33,23 @@ export interface PaginatedNotificationsResponse {
     }
 }
 
-const getNotifications = (params?: { page?: number; limit?: number; isRead?: boolean }) => {
+const getNotifications = (params?: {
+    page?: number
+    limit?: number
+    isRead?: boolean
+    category?: NotificationCategory
+}) => {
     const query = new URLSearchParams()
     if (params?.page) query.set('page', params.page.toString())
     if (params?.limit) query.set('limit', params.limit.toString())
     if (params?.isRead !== undefined) query.set('isRead', params.isRead.toString())
+    if (params?.category) query.set('category', params.category)
     const qs = query.toString()
     return apiRequest<PaginatedNotificationsResponse>(`/notification${qs ? `?${qs}` : ''}`)
 }
 
 const getUnreadCount = () => {
-    return apiRequest<{ count: number }>('/notification/unread-count')
+    return apiRequest<UnreadCount>('/notification/unread-count')
 }
 
 const getNotificationById = (id: string) => {
@@ -40,6 +58,12 @@ const getNotificationById = (id: string) => {
 
 const markAsRead = (id: string) => {
     return apiRequest<Notification>(`/notification/${id}/read`, {
+        method: 'PATCH',
+    })
+}
+
+const markAllAsRead = () => {
+    return apiRequest<{ updated: number }>('/notification/read-all', {
         method: 'PATCH',
     })
 }
@@ -67,6 +91,7 @@ export const notificationAPI = {
     getUnreadCount,
     getNotificationById,
     markAsRead,
+    markAllAsRead,
     deleteNotification,
     deleteAllRead,
     deleteAll,

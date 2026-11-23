@@ -1,6 +1,7 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 
+import { useBackToClose } from '@/shared/lib/useBackToClose'
 import { cn } from '@/shared/lib/utils'
 
 // mobile bottom sheet shared by the menu, inbox, session actions and settings sheets.
@@ -33,23 +34,6 @@ interface BottomSheetProps {
 }
 
 const CLOSE_DRAG_PX = 90
-const SHEET_STATE = { decemberSheet: true }
-
-// when a sheet closes on its own it pops its history entry. that pop can arrive after the
-// sheet is gone (or, in strict mode, on the remount), so one app-wide listener, installed
-// before any sheet listener, marks those pops and sheets ignore them
-let pendingSelfPops = 0
-let lastPopWasSelf = false
-let selfPopListenerInstalled = false
-const installSelfPopListener = () => {
-    if (selfPopListenerInstalled) return
-    selfPopListenerInstalled = true
-    window.addEventListener('popstate', () => {
-        lastPopWasSelf = pendingSelfPops > 0
-        if (lastPopWasSelf) pendingSelfPops -= 1
-    })
-}
-
 export const BottomSheet: React.FC<BottomSheetProps> = ({
     isOpen,
     onClose,
@@ -67,55 +51,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         onBackRef.current = onBack
     }, [onClose, onBack])
 
-    const hasEntryRef = React.useRef(false)
-    const afterPopRef = React.useRef<(() => void) | null>(null)
-
-    React.useEffect(() => {
-        if (!isOpen || typeof window === 'undefined') return
-        installSelfPopListener()
-        window.history.pushState(SHEET_STATE, '')
-        hasEntryRef.current = true
-
-        const onPop = () => {
-            if (lastPopWasSelf) return
-            hasEntryRef.current = false
-            const after = afterPopRef.current
-            if (after) {
-                afterPopRef.current = null
-                after()
-                return
-            }
-            if (onBackRef.current?.()) {
-                window.history.pushState(SHEET_STATE, '')
-                hasEntryRef.current = true
-                return
-            }
-            onCloseRef.current()
-        }
-
-        window.addEventListener('popstate', onPop)
-        return () => {
-            window.removeEventListener('popstate', onPop)
-            if (hasEntryRef.current) {
-                hasEntryRef.current = false
-                pendingSelfPops += 1
-                window.history.back()
-            }
-        }
-    }, [isOpen])
-
-    const closeThen = React.useCallback((fn: () => void) => {
-        if (hasEntryRef.current && typeof window !== 'undefined') {
-            afterPopRef.current = () => {
-                onCloseRef.current()
-                fn()
-            }
-            window.history.back()
-            return
-        }
-        onCloseRef.current()
-        fn()
-    }, [])
+    // back button and back swipe: up a level, then close (shared with modals)
+    const { closeThen } = useBackToClose({ isOpen, onClose, onBack })
 
     // drag to close, only from the handle and header
     const [dragY, setDragY] = React.useState(0)

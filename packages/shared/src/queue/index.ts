@@ -80,8 +80,35 @@ export async function enqueueEmailJob(jobName: string, jobData: EmailJobData, op
     return await getEmailQueue().add(jobName, jobData, options)
 }
 
+// the shared client is lazy and has no offline queue: until something opens it, a publish
+// fails with "Stream isn't writeable". open it on first use and wait (max 3s) until ready
+const waitUntilReady = async (client: Redis) => {
+    if (client.status === 'ready') return
+    if (client.status === 'wait') {
+        client.connect().catch(() => {
+            // Intentionally swallowed: the ready wait below times out and the caller handles it
+        })
+    }
+    await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+            client.off('ready', onReady)
+            reject(new Error('redis is not ready'))
+        }, 3000)
+        const onReady = () => {
+            clearTimeout(timer)
+            resolve()
+        }
+        client.once('ready', onReady)
+    })
+}
+
 export async function publishEvent(channel: string, eventData: any) {
-    await getRedisClient().publish(channel, JSON.stringify(eventData))
+    const client = getRedisClient()
+    // tests run without redis: fail fast instead of opening a connection that retries forever
+    if (process.env.NODE_ENV !== 'test') {
+        await waitUntilReady(client)
+    }
+    await client.publish(channel, JSON.stringify(eventData))
 }
 
 export function subscribeToChannel(channel: string, onMessage: (data: any) => void) {

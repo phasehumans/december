@@ -9,6 +9,7 @@ import { OfficeCanvas } from './OfficeCanvas'
 
 import { useAppStore } from '@/app/store'
 import { Icons } from '@/shared/components/ui/Icons'
+import { useBackToClose } from '@/shared/lib/useBackToClose'
 import { useIsPhone } from '@/shared/lib/useIsPhone'
 
 // fade the office into the card instead of framing it
@@ -29,6 +30,10 @@ export const SuperCrewCard: React.FC<{ isHome: boolean }> = ({ isHome }) => {
         const timer = setTimeout(() => setIsOpen(true), SUPER_CREW_POPUP_DELAY_MS)
         return () => clearTimeout(timer)
     }, [canAutoOpen, setIsOpen])
+
+    // back button and back swipe close the card instead of leaving the page
+    const close = React.useCallback(() => setIsOpen(false), [setIsOpen])
+    useBackToClose({ isOpen, onClose: close })
 
     // any open (auto or from the sidebar) counts as seen, so the popup never comes back
     const { mutate: markSeenMutate } = markSeen

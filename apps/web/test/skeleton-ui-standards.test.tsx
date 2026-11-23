@@ -43,16 +43,9 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         setSkeletonPreview(null)
     })
 
-    test('SessionListSkeleton renders both desktop grid and mobile card geometries', () => {
+    test('SessionListSkeleton renders two-line rows for desktop and phones', () => {
         const { container } = render(<SessionListSkeleton />)
-
-        // Desktop grid rows present
-        const desktopRows = container.querySelectorAll('.hidden.md\\:grid')
-        expect(desktopRows.length).toBeGreaterThanOrEqual(7)
-
-        // Mobile rows present
-        const mobileRows = container.querySelectorAll('.md\\:hidden')
-        expect(mobileRows.length).toBeGreaterThanOrEqual(7)
+        expect(container.querySelectorAll('[data-skeleton-row]').length).toBeGreaterThanOrEqual(7)
     })
 
     test('ProfileSettingsSkeleton renders accurate Account tab with skeleton section headers and without obsolete password row', () => {
@@ -187,7 +180,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(historyRows.length).toBeGreaterThanOrEqual(1)
     })
 
-    test('HomeHeader credit balance uses Skeleton and not Loader2 when loading', () => {
+    test('HomeHeader shows the Docs pill to signed-in users, with no loader', () => {
         useAppStore.setState({ isAuthenticated: true })
 
         const queryClient = new QueryClient({
@@ -204,13 +197,14 @@ describe('Skeleton UI Standards & Preview Mode', () => {
             </QueryClientProvider>
         )
 
-        // No animate-spin Loader2 inside credit button
-        const loader = container.querySelector('.animate-spin')
-        expect(loader).toBeNull()
-
-        // Has skeleton element
-        const skeleton = container.querySelector('.after\\:animate-\\[shimmer_2s_infinite\\]')
-        expect(skeleton).not.toBeNull()
+        // the pill is a plain link now: nothing loads, so no spinner and no skeleton
+        expect(container.querySelector('.animate-spin')).toBeNull()
+        const docs = Array.from(container.querySelectorAll('a')).find((a) =>
+            a.textContent?.includes('Docs')
+        )
+        expect(docs?.getAttribute('href')).toBe('https://trydecember.com/docs/')
+        expect(docs?.getAttribute('target')).toBe('_blank')
+        expect(container.textContent).not.toContain('Credits:')
     })
 
     test('NotificationsPopover skeleton avoids conflicting animate-pulse on Skeleton items', () => {

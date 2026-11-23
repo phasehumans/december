@@ -7,17 +7,25 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
     const originalFetch = globalThis.fetch
     const originalFindUniqueSession = prisma.session.findUnique
     const originalFindUniqueUser = prisma.user.findUnique
+    const originalUpdateSession = prisma.session.update
+    let sessionUpdates: any[] = []
 
     beforeEach(() => {
         globalThis.fetch = originalFetch
         prisma.session.findUnique = originalFindUniqueSession
         prisma.user.findUnique = originalFindUniqueUser
+        sessionUpdates = []
+        prisma.session.update = mock(async (args: any) => {
+            sessionUpdates.push(args)
+            return {}
+        }) as any
     })
 
     afterEach(() => {
         globalThis.fetch = originalFetch
         prisma.session.findUnique = originalFindUniqueSession
         prisma.user.findUnique = originalFindUniqueUser
+        prisma.session.update = originalUpdateSession
     })
 
     it('creates dedicated task branch december/<sessionId>, commits with author identity, pushes to origin, and creates GitHub PR', async () => {
@@ -120,6 +128,19 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
         expect(prCreatedBody.head).toBe(`december/${sessionId}`)
         expect(prCreatedBody.base).toBe('main')
         expect(prCreatedBody.body).toContain('Verification Notes')
+
+        // the pull request is saved on the session for the sessions list and Pull requests page
+        expect(sessionUpdates).toHaveLength(1)
+        expect(sessionUpdates[0]).toEqual({
+            where: { id: sessionId },
+            data: {
+                prNumber: 42,
+                prUrl: 'https://github.com/phasehumans/december/pull/42',
+                prState: 'open',
+                prTitle: prCreatedBody.title,
+                prBranch: `december/${sessionId}`,
+            },
+        })
     })
 
     it('returns null and skips push/PR creation if git status is clean', async () => {

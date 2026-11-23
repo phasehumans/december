@@ -350,7 +350,7 @@ export const PromptInput: React.FC<
                                                 />
                                                 <div className="flex flex-col min-w-0 leading-tight gap-0.5">
                                                     <span className="text-[12.5px] font-medium text-[#EDEDEF] truncate">
-                                                        {session.title || 'Untitled Session'}
+                                                        {session.title || 'Untitled session'}
                                                     </span>
                                                     <span className="text-[11.5px] text-[#8F8E8D] truncate">
                                                         {session.lastMessage ||

@@ -22,6 +22,9 @@ export const getSessionsSchema = z.object({
         z.number().int().min(1).max(100).optional()
     ),
     vmStatus: z.string().optional(),
+    hasPr: z
+        .preprocess((val) => (val === 'true' ? true : undefined), z.boolean().optional())
+        .optional(),
 })
 
 export const smartSearchSessionsSchema = z.object({

@@ -5,6 +5,7 @@ import React from 'react'
 import type { Profile } from '../types'
 
 import { profileAPI } from '@/features/profile/api/profile'
+import { useIsPhone } from '@/shared/lib/useIsPhone'
 
 interface ProfileSettingsContentProps {
     profile?: Profile
@@ -73,7 +74,7 @@ const PhoneAccountSettings: React.FC<ProfileSettingsContentProps> = (props) => {
     const chevron = <ChevronRight className="w-4 h-4 text-[#7B7A79] shrink-0" strokeWidth={1.75} />
 
     return (
-        <div className="md:hidden flex flex-col gap-6 w-full text-[#D6D5C9]">
+        <div className="flex flex-col gap-6 w-full text-[#D6D5C9]">
             <div className="flex flex-col">
                 <h1 className={sectionTitleClass}>Account</h1>
                 <div className={sectionBodyClass}>
@@ -214,11 +215,13 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
         : ''
 
     const isLoading = !hasProfile && !resolvedName
+    // one layout at a time, so the page never holds two copies of every row
+    const isPhone = useIsPhone()
+    if (isPhone) return <PhoneAccountSettings {...props} />
 
     return (
         <>
-            <PhoneAccountSettings {...props} />
-            <div className="hidden md:flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
+            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
                 {/* account */}
                 <div className="flex flex-col mb-6">
                     <h1 className="text-[16px] font-medium mb-3">Account</h1>

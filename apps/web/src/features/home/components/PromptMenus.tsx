@@ -254,7 +254,7 @@ export const SessionSideList: React.FC<{ onPick: (session: BackendSession) => vo
     const shown = sessions
         .filter(
             (session) =>
-                !needle || (session.title || 'Untitled Session').toLowerCase().includes(needle)
+                !needle || (session.title || 'Untitled session').toLowerCase().includes(needle)
         )
         .slice(0, LIST_LIMIT)
 
@@ -273,7 +273,7 @@ export const SessionSideList: React.FC<{ onPick: (session: BackendSession) => vo
                         onClick={() => onPick(session)}
                         className={pickRowClass}
                     >
-                        <span className="truncate">{session.title || 'Untitled Session'}</span>
+                        <span className="truncate">{session.title || 'Untitled session'}</span>
                         <span className={hintClass}>{formatRelativeTime(session.updatedAt)}</span>
                     </button>
                 ))

@@ -24,6 +24,7 @@ import {
 import { Sandbox } from 'e2b'
 import Redis from 'ioredis'
 
+import { notifyAgentQuestion } from './inbox-notify'
 import { RemotePlatformAdapter } from './remote-operations'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { archiveWorkspaceState } from './workspace'
@@ -777,6 +778,12 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
     const adapter = new RemotePlatformAdapter(effectiveSandboxId, {
         sessionId,
         redisClient: getRedisPub(),
+        onQuestion: (questions) =>
+            notifyAgentQuestion({
+                sessionId,
+                question: questions?.[0]?.question || 'December has a question for you.',
+                redis: getRedisPub(),
+            }),
     })
     activeAdapters.add(adapter)
     // an own-key client never falls back to december keys

@@ -61,6 +61,8 @@ export interface RemotePlatformAdapterOptions {
     sessionId?: string
     redisClient?: any
     timeoutMs?: number
+    // called once the question is published, e.g. to put it in the user's inbox
+    onQuestion?: (questions: Array<{ question: string }>) => Promise<unknown>
 }
 
 export class RemotePlatformAdapter implements PlatformAdapter {
@@ -286,6 +288,12 @@ export class RemotePlatformAdapter implements PlatformAdapter {
             if (typeof redis.publish === 'function') {
                 await redis.publish(`session_events:${sessionId}`, promptPayload).catch(() => {
                     // Intentionally swallowed: Redis publish fallback
+                })
+            }
+
+            if (this.options?.onQuestion) {
+                await this.options.onQuestion(questions).catch((err: unknown) => {
+                    console.error('[RemotePlatformAdapter] question notice failed:', err)
                 })
             }
 

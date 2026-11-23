@@ -135,6 +135,43 @@ const findUserIdByGithubId = async (githubId: string) => {
     return user?.id ?? null
 }
 
+// the session whose pull request this is (December saves prNumber on the session)
+const findSessionByPullRequest = async (data: {
+    repoOwner: string
+    repoName: string
+    prNumber: number
+}) => {
+    const { repoOwner, repoName, prNumber } = data
+    return prisma.session.findFirst({
+        where: {
+            prNumber,
+            githubRepoOwner: { equals: repoOwner, mode: 'insensitive' },
+            githubRepoName: { equals: repoName, mode: 'insensitive' },
+            deletedAt: null,
+        },
+        select: { userId: true },
+        orderBy: { updatedAt: 'desc' },
+    })
+}
+
+const findUserGithubUsername = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { githubUsername: true },
+    })
+    return user?.githubUsername ?? null
+}
+
+// several check suites can fail for one push; one unread notice per pull request is enough
+const hasUnreadNotification = async (data: { userId: string; title: string; since: Date }) => {
+    const { userId, title, since } = data
+    const found = await prisma.notification.findFirst({
+        where: { userId, title, isRead: false, createdAt: { gte: since } },
+        select: { id: true },
+    })
+    return Boolean(found)
+}
+
 export const githubAppRepository = {
     upsertInstallation,
     deleteInstallation,
@@ -144,4 +181,7 @@ export const githubAppRepository = {
     findByInstallationId,
     findUserGithubId,
     findUserIdByGithubId,
+    findSessionByPullRequest,
+    findUserGithubUsername,
+    hasUnreadNotification,
 }

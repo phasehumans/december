@@ -4,6 +4,7 @@ import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import { githubAppService } from './githubapp.service'
+import { toGithubActivity } from './githubapp.utils'
 import { resolveInstallReturnUrl } from './githubapp.utils'
 
 import type { Request, Response } from 'express'
@@ -157,6 +158,16 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
                     authorAssociation: payload.pull_request?.author_association || 'NONE',
                 },
             })
+        }
+    }
+
+    // inbox notices (replies, reviews, mentions, failed checks) never fail the webhook
+    const activity = toGithubActivity(event, payload)
+    if (activity) {
+        try {
+            await githubAppService.notifyGithubActivity(activity)
+        } catch (err) {
+            console.error('[GitHubApp Webhook] inbox notification failed:', err)
         }
     }
 

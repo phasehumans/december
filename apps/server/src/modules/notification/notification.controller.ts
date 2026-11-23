@@ -20,6 +20,7 @@ const getNotifications = asyncHandler(async (req: Request, res: Response) => {
         page: query.page,
         limit: query.limit,
         isRead: query.isRead,
+        category: query.category,
     })
     return sendSuccess(res, 'notifications fetched successfully', result)
 })
@@ -99,6 +100,17 @@ const deleteAllReadNotification = asyncHandler(async (req: Request, res: Respons
     return sendSuccess(res, 'read notifications deleted successfully', null)
 })
 
+const markAllAsRead = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await notificationService.markAllAsRead({ userId })
+    return sendSuccess(res, 'notifications marked as read', result)
+})
+
 export const notificationController = {
     getNotifications,
     getUnreadCount,
@@ -106,4 +118,5 @@ export const notificationController = {
     markAsRead,
     deleteNotification,
     deleteAllReadNotification,
+    markAllAsRead,
 }

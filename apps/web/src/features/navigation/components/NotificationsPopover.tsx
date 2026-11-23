@@ -1,9 +1,10 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, ArrowLeft, MoreHorizontal, Settings, Bell } from 'lucide-react'
+import { Trash2, ArrowLeft, MoreHorizontal, Settings, Bell, CheckCheck } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
-import { notificationAPI, type Notification } from '@/features/notification/api/notification'
+import type { InboxFilter, Notification } from '@/features/notification/api/notification'
+
+import { useInbox } from '@/features/notification/hooks/useInbox'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
@@ -29,118 +30,10 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
 
     const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
 
-    const queryClient = useQueryClient()
-
-    const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-        queryKey: ['notifications'],
-        queryFn: ({ pageParam = 1 }) =>
-            notificationAPI.getNotifications({ page: pageParam, limit: 20 }),
-        getNextPageParam: (lastPage) => {
-            const { page, totalPages } = lastPage.pagination
-            return page < totalPages ? page + 1 : undefined
-        },
-        initialPageParam: 1,
-        enabled: isOpen,
-    })
-
-    const notifications = React.useMemo(
-        () => data?.pages.flatMap((page) => page.notifications) || [],
-        [data]
-    )
-
-    const markAsReadMutation = useMutation({
-        mutationFn: notificationAPI.markAsRead,
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: ['notifications'] })
-            await queryClient.cancelQueries({ queryKey: ['notifications-unread-count'] })
-
-            queryClient.setQueriesData({ queryKey: ['notifications'] }, (old: any) => {
-                if (!old) return old
-                if (Array.isArray(old)) {
-                    return old.map((n: any) => (n.id === id ? { ...n, isRead: true } : n))
-                }
-                if (Array.isArray(old.pages)) {
-                    return {
-                        ...old,
-                        pages: old.pages.map((page: any) => ({
-                            ...page,
-                            notifications: page.notifications?.map((n: any) =>
-                                n.id === id ? { ...n, isRead: true } : n
-                            ),
-                        })),
-                    }
-                }
-                return old
-            })
-
-            queryClient.setQueryData(['notifications-unread-count'], (count: number | undefined) =>
-                typeof count === 'number' ? Math.max(0, count - 1) : 0
-            )
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['notifications'] })
-            queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] })
-        },
-    })
-
-    const deleteMutation = useMutation({
-        mutationFn: notificationAPI.deleteNotification,
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: ['notifications'] })
-            await queryClient.cancelQueries({ queryKey: ['notifications-unread-count'] })
-
-            queryClient.setQueriesData({ queryKey: ['notifications'] }, (old: any) => {
-                if (!old) return old
-                if (Array.isArray(old)) {
-                    return old.filter((n: any) => n.id !== id)
-                }
-                if (Array.isArray(old.pages)) {
-                    return {
-                        ...old,
-                        pages: old.pages.map((page: any) => ({
-                            ...page,
-                            notifications: page.notifications?.filter((n: any) => n.id !== id),
-                        })),
-                    }
-                }
-                return old
-            })
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['notifications'] })
-            queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] })
-            setSelectedNotification(null)
-        },
-    })
-
-    const deleteAllReadMutation = useMutation({
-        mutationFn: notificationAPI.deleteAllRead,
-        onMutate: async () => {
-            await queryClient.cancelQueries({ queryKey: ['notifications'] })
-
-            queryClient.setQueriesData({ queryKey: ['notifications'] }, (old: any) => {
-                if (!old) return old
-                if (Array.isArray(old)) {
-                    return old.filter((n: any) => !n.isRead)
-                }
-                if (Array.isArray(old.pages)) {
-                    return {
-                        ...old,
-                        pages: old.pages.map((page: any) => ({
-                            ...page,
-                            notifications: page.notifications?.filter((n: any) => !n.isRead),
-                        })),
-                    }
-                }
-                return old
-            })
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['notifications'] })
-            queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] })
-            setIsMenuOpen(false)
-        },
-    })
+    // All or Mentions (K3-B); the shared hook keeps the unread badge in the right shape
+    const [filter, setFilter] = useState<InboxFilter>('all')
+    const inbox = useInbox(isOpen, filter)
+    const { notifications, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = inbox
 
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const menuRef = useRef<HTMLDivElement | null>(null)
@@ -246,7 +139,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
 
     const handleNotificationClick = (notification: Notification) => {
         if (!notification.isRead) {
-            markAsReadMutation.mutate(notification.id)
+            inbox.markAsRead.mutate(notification.id)
         }
         setSelectedNotification(notification)
     }
@@ -330,8 +223,22 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
             }}
         >
             <div className="flex items-center justify-between px-1.5 py-0.5 shrink-0 relative">
-                <div className="flex items-center gap-1.5">
-                    <span className="text-[12px] font-medium text-[#CBCACA]">Notifications</span>
+                <div className="flex items-center -ml-1.5">
+                    {(['all', 'mentions'] as const).map((value) => (
+                        <button
+                            key={value}
+                            type="button"
+                            onClick={() => setFilter(value)}
+                            aria-pressed={filter === value}
+                            className={`px-1.5 py-0.5 rounded-md text-[12px] font-medium transition-colors outline-none cursor-pointer ${
+                                filter === value
+                                    ? 'text-white'
+                                    : 'text-[#8F8E8D] hover:text-[#CBCACA]'
+                            }`}
+                        >
+                            {value === 'all' ? 'All' : 'Mentions'}
+                        </button>
+                    ))}
                 </div>
                 {/* 3 dots menu button */}
                 <div className="relative">
@@ -374,7 +281,24 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                 onClick={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    deleteAllReadMutation.mutate()
+                                    inbox.markAllAsRead.mutate()
+                                    setIsMenuOpen(false)
+                                }}
+                                className="flex items-center gap-2.5 w-full px-2 py-1 rounded-lg hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[11.5px] cursor-pointer outline-none group"
+                            >
+                                <CheckCheck
+                                    className="w-3.5 h-3.5 text-[#CBCACA] group-hover:text-white transition-colors"
+                                    strokeWidth={1.5}
+                                />
+                                <span>Mark all read</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    inbox.clearRead.mutate()
+                                    setIsMenuOpen(false)
                                 }}
                                 className="flex items-center gap-2.5 w-full px-2 py-1 rounded-lg hover:bg-[#252525] text-[#CBCACA] hover:text-white transition-colors text-left text-[11.5px] cursor-pointer outline-none group"
                             >
@@ -454,7 +378,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                             <Bell className="w-4 h-4 text-[#D6D5D4]" strokeWidth={1.5} />
                         </div>
                         <h3 className="text-[12px] font-medium text-white mb-1 tracking-tight">
-                            No Notifications
+                            {filter === 'mentions' ? 'No Mentions' : 'No Notifications'}
                         </h3>
                         <p className="text-[11px] text-[#8F8E8D] leading-[1.35] max-w-[170px]">
                             You're all caught up. New notifications will appear here.
@@ -508,7 +432,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                     onClick={(e) => {
                                         e.preventDefault()
                                         e.stopPropagation()
-                                        deleteMutation.mutate(notification.id)
+                                        inbox.remove.mutate(notification.id)
                                     }}
                                     className="absolute top-1.5 right-1.5 p-1 rounded-md text-[#8F8E8D] hover:text-white hover:bg-white/[0.08] opacity-0 group-hover/notif:opacity-100 transition-all duration-150 outline-none cursor-pointer"
                                 >

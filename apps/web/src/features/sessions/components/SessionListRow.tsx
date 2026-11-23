@@ -1,35 +1,39 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
+import { RunStatus, listRowClass } from './ListParts'
+import { SessionMenuItems, SessionSheetItems, sessionMenuPanelClass } from './SessionMenu'
 import { SessionPrTooltip } from './SessionPrTooltip'
+import { ListMeta, SessionTags } from './SessionRowParts'
 
+import { BottomSheet } from '@/shared/components/ui/BottomSheet'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
+import { useIsPhone } from '@/shared/lib/useIsPhone'
+import { cn } from '@/shared/lib/utils'
+
+type RowAction = (session: any, event?: React.MouseEvent) => void
 
 interface SessionListRowProps {
-    project: any // actually a backendsession
+    project: any // a BackendSession
     isMenuOpen: boolean
-    isTogglePending: boolean
     onOpenProject: (id: string) => void
-    onToggleStar: (id: string, event: React.MouseEvent) => void
     onToggleMenu: (id: string, event: React.MouseEvent) => void
-    onOpenProjectFromMenu: (id: string, event: React.MouseEvent) => void
-    onToggleStarFromMenu: (session: any, event: React.MouseEvent) => void
-    onToggleArchiveFromMenu: (session: any, event: React.MouseEvent) => void
-    onOpenRename: (session: any, event: React.MouseEvent) => void
-    onOpenDelete: (session: any, event: React.MouseEvent) => void
-    onOpenTags: (session: any, event: React.MouseEvent) => void
-    onStopSession?: (id: string, event: React.MouseEvent) => void
+    onCloseMenu: () => void
+    onToggleArchiveFromMenu: RowAction
+    onOpenRename: RowAction
+    onOpenDelete: RowAction
+    onOpenTags: RowAction
+    onStopSession?: (id: string, event?: React.MouseEvent) => void
 }
 
+// one session in the list: title and status, then repo · branch · time. tags, the pull
+// request chip and the ⋯ menu sit on the right. on phones the menu opens as a bottom sheet.
 export const SessionListRow: React.FC<SessionListRowProps> = ({
-    project,
+    project: session,
     isMenuOpen,
-    isTogglePending,
     onOpenProject,
-    onToggleStar,
     onToggleMenu,
-    onOpenProjectFromMenu,
-    onToggleStarFromMenu,
+    onCloseMenu,
     onToggleArchiveFromMenu,
     onOpenRename,
     onOpenDelete,
@@ -37,354 +41,171 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
     onStopSession,
 }) => {
     const [menuDirection, setMenuDirection] = useState<'down' | 'up'>('down')
-    const session = project // alias for clarity
-    const mobileMenuRef = useRef<HTMLDivElement>(null)
     const desktopMenuRef = useRef<HTMLDivElement>(null)
+    const isPhone = useIsPhone()
+    const isActive = session.vmStatus === 'RUNNING' || session.vmStatus === 'PROVISIONING'
+    const canStop = Boolean(onStopSession) && isActive
 
     useEffect(() => {
-        if (!isMenuOpen) return
-
+        if (!isMenuOpen || isPhone) return
         const handleClickOutside = (event: MouseEvent) => {
-            const target = event.target as Node
-            const isInsideMobile = mobileMenuRef.current?.contains(target)
-            const isInsideDesktop = desktopMenuRef.current?.contains(target)
-            if (!isInsideMobile && !isInsideDesktop) {
-                onToggleMenu(session.id, event as any)
-            }
+            if (!desktopMenuRef.current?.contains(event.target as Node)) onCloseMenu()
         }
-
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [isMenuOpen, session.id, onToggleMenu])
+    }, [isMenuOpen, isPhone, onCloseMenu])
 
-    const updatedDate = new Date(session.updatedAt || session.createdAt)
-    const createdDate = new Date(session.createdAt)
-    const formatDate = (d: Date) =>
-        d.toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-        })
-
-    const formatTooltipDate = (dInput: string | Date, prefix: 'Created' | 'Updated') => {
-        const d = new Date(dInput)
-        if (isNaN(d.getTime())) return `${prefix} on Unknown`
-        const weekday = d.toLocaleDateString('en-US', { weekday: 'long' })
-        const month = d.toLocaleDateString('en-US', { month: 'long' })
-        const day = d.getDate()
-        const year = d.getFullYear()
-        const time = d.toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-        })
-        return `${prefix} on ${weekday}, ${month} ${day}, ${year} at ${time}`
+    const openMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        setMenuDirection(window.innerHeight - rect.bottom < 300 && rect.top > 300 ? 'up' : 'down')
+        onToggleMenu(session.id, e)
     }
+
+    const title = session.title || 'Untitled session'
+    const menuProps = {
+        isArchived: Boolean(session.isArchived),
+        canStop,
+        onRename: (e?: React.MouseEvent) => onOpenRename(session, e),
+        onTags: (e?: React.MouseEvent) => onOpenTags(session, e),
+        onToggleArchive: (e?: React.MouseEvent) => onToggleArchiveFromMenu(session, e),
+        onStop: (e?: React.MouseEvent) => onStopSession?.(session.id, e),
+        onDelete: (e?: React.MouseEvent) => onOpenDelete(session, e),
+    }
+    const rowOpacity = session.isArchived && !isMenuOpen ? 'opacity-60 hover:opacity-100' : ''
+
+    const archivedIcon = session.isArchived && (
+        <Tooltip position="top" content="This session is archived">
+            <span className="flex items-center justify-center rounded bg-[#242323] p-1 shrink-0">
+                <Icons.Archive className="h-3 w-3 text-[#7B7A79]" />
+            </span>
+        </Tooltip>
+    )
+
+    const menuButton = (extra: string) => (
+        <button
+            type="button"
+            onClick={openMenu}
+            className={cn(
+                'rounded-lg p-1.5 text-[#7B7A79] transition-all hover:bg-[#242323] hover:text-[#D6D5C9] shrink-0',
+                isMenuOpen && 'bg-[#242323] text-[#D6D5C9]',
+                extra
+            )}
+            aria-label="Session options"
+        >
+            <Icons.MoreHorizontal className="h-4 w-4" />
+        </button>
+    )
 
     return (
         <>
-            {/* Mobile View (< md): seamless row matching desktop feel */}
+            {/* phones */}
             <div
-                className={`md:hidden relative flex flex-col px-2.5 py-2.5 rounded-lg border border-transparent transition-all duration-200 hover:bg-[#191919] active:bg-[#191919] cursor-pointer gap-1 ${
-                    session.isArchived && !isMenuOpen
-                        ? 'opacity-60 hover:opacity-100'
-                        : 'opacity-100'
-                }`}
+                className={cn(
+                    'md:hidden relative flex flex-col gap-1 py-2.5',
+                    listRowClass,
+                    rowOpacity
+                )}
                 style={{ zIndex: isMenuOpen ? 50 : undefined }}
                 onClick={() => onOpenProject(session.id)}
             >
-                {/* Top row: Title + 3-dots Menu */}
                 <div className="flex items-center justify-between gap-2 min-w-0">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="truncate text-[14px] font-medium text-[#D6D5C9] transition-colors hover:text-white">
-                            {session.title || 'Untitled Session'}
+                        <span className="truncate text-[14px] font-medium text-[#D6D5C9]">
+                            {title}
                         </span>
-                        {session.vmStatus === 'RUNNING' && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                Running
-                            </span>
-                        )}
-                        {session.vmStatus === 'PROVISIONING' && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                                Provisioning
-                            </span>
-                        )}
-                        {session.isArchived && (
-                            <span className="flex items-center justify-center rounded bg-[#242323] p-1 shrink-0">
-                                <Icons.Archive className="h-3 w-3 text-[#7B7A79]" />
-                            </span>
-                        )}
+                        <RunStatus vmStatus={session.vmStatus} />
+                        {archivedIcon}
                     </div>
-
-                    {/* 3-dots menu button */}
-                    <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <button
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect()
-                                if (window.innerHeight - rect.bottom < 300 && rect.top > 300) {
-                                    setMenuDirection('up')
-                                } else {
-                                    setMenuDirection('down')
-                                }
-                                onToggleMenu(session.id, e)
-                            }}
-                            className={`rounded-lg p-1.5 text-[#7B7A79] transition-all hover:bg-[#242323] hover:text-[#D6D5C9] ${
-                                isMenuOpen ? 'bg-[#242323] text-[#D6D5C9]' : ''
-                            }`}
-                            aria-label="Session options"
-                        >
-                            <Icons.MoreHorizontal className="h-4 w-4" />
-                        </button>
-                        {isMenuOpen && (
-                            <div
-                                ref={mobileMenuRef}
-                                className={`absolute right-0 ${
-                                    menuDirection === 'up' ? 'bottom-8' : 'top-8'
-                                } z-50 flex w-44 flex-col rounded-xl border border-[#272727] bg-[#1E1E1E] p-1 shadow-xl`}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <button
-                                    onClick={(e) => onOpenProjectFromMenu(session.id, e)}
-                                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-                                >
-                                    <Icons.ExternalLink className="h-3.5 w-3.5 text-[#7B7A79]" />{' '}
-                                    Open
-                                </button>
-                                <button
-                                    onClick={(e) => onOpenRename(session, e)}
-                                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-                                >
-                                    <Icons.Edit className="h-3.5 w-3.5 text-[#7B7A79]" /> Rename
-                                </button>
-                                <button
-                                    onClick={(e) => onOpenTags(session, e)}
-                                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-                                >
-                                    <Icons.Tag className="h-3.5 w-3.5 text-[#7B7A79]" /> Tags
-                                </button>
-                                <button
-                                    onClick={(e) => onToggleArchiveFromMenu(session, e)}
-                                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-                                >
-                                    <Icons.Archive className="h-3.5 w-3.5 text-[#7B7A79]" />{' '}
-                                    {session.isArchived ? 'Unarchive' : 'Archive'}
-                                </button>
-                                {onStopSession &&
-                                    (session.vmStatus === 'RUNNING' ||
-                                        session.vmStatus === 'PROVISIONING') && (
-                                        <button
-                                            onClick={(e) => onStopSession(session.id, e)}
-                                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-amber-400 transition-colors hover:bg-[#262626] hover:text-amber-300"
-                                        >
-                                            <Icons.X className="h-3.5 w-3.5" /> Stop task
-                                        </button>
-                                    )}
-                                <div className="mx-1.5 my-1 h-[1px] bg-[#282828]" />
-                                <button
-                                    onClick={(e) => onOpenDelete(session, e)}
-                                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-red-400 transition-colors hover:bg-[#262626] hover:text-red-300"
-                                >
-                                    <Icons.Trash className="h-3.5 w-3.5" /> Delete
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    <div onClick={(e) => e.stopPropagation()}>{menuButton('')}</div>
                 </div>
-
-                {/* Subtitle message preview */}
-                <span className="truncate text-[12px] text-[#7B7A79] transition-colors">
-                    {session.lastMessage || 'No messages yet...'}
-                </span>
-
-                {/* Metadata row: Date, creator, tags, PR */}
-                <div className="flex items-center justify-between font-sans text-[11.5px] text-[#7B7A79] pt-0.5">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <span>{formatDate(updatedDate)}</span>
-                        {session.createdBy && (
-                            <span className="truncate max-w-[100px] text-[#555]">
-                                by {session.createdBy}
-                            </span>
-                        )}
-                    </div>
-
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                    <ListMeta session={session} />
                     <div className="flex items-center gap-1.5 shrink-0">
-                        {session.tags && session.tags.length > 0 && (
-                            <span className="truncate rounded-md bg-[#202020] border border-white/5 px-1.5 py-0.5 font-sans text-[11px] font-medium text-[#949494]">
-                                {session.tags[0]}
-                            </span>
-                        )}
-                        {session.prNumber && <SessionPrTooltip session={session} />}
+                        <SessionTags tags={session.tags} />
+                        <SessionPrTooltip session={session} />
                     </div>
                 </div>
             </div>
 
-            {/* Desktop Grid View (>= md) */}
+            {/* the phone menu: a bottom sheet; clicks inside never reach the row */}
+            {isPhone && (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <BottomSheet
+                        isOpen={isMenuOpen}
+                        onClose={onCloseMenu}
+                        ariaLabel="Session options"
+                        header={
+                            <div className="px-3.5 pb-1.5 text-[12px] text-[#7B7A79] truncate">
+                                {title}
+                            </div>
+                        }
+                    >
+                        <SessionSheetItems {...menuProps} />
+                    </BottomSheet>
+                </div>
+            )}
+
+            {/* desktop */}
             <div
-                className={`hidden md:grid group relative cursor-pointer grid-cols-[minmax(0,2fr)_minmax(100px,auto)_minmax(100px,auto)_minmax(150px,1fr)_minmax(100px,auto)_2.5rem] items-center gap-3 rounded-lg border pl-1 pr-5 py-2 transition-all duration-200 hover:bg-[#191919] ${
-                    session.isArchived && !isMenuOpen
-                        ? 'opacity-60 border-transparent hover:opacity-100'
-                        : 'border-transparent opacity-100'
-                }`}
+                className={cn(
+                    'hidden md:flex group relative items-center gap-3',
+                    listRowClass,
+                    rowOpacity
+                )}
                 style={{ zIndex: isMenuOpen ? 50 : undefined }}
                 onClick={() => onOpenProject(session.id)}
             >
-                {/* name */}
-                <div className="flex flex-1 items-center gap-3 min-w-0">
-                    <div className="flex flex-1 flex-col min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <span
-                                onDoubleClick={(e) => {
-                                    e.stopPropagation()
-                                    onOpenRename(session, e)
-                                }}
-                                className="truncate text-[14px] font-medium text-[#D6D5C9] transition-colors hover:text-white"
-                                title="Double-click to rename"
-                            >
-                                {session.title || 'Untitled Session'}
-                            </span>
-                            {session.vmStatus === 'RUNNING' && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    Running
-                                </span>
-                            )}
-                            {session.vmStatus === 'PROVISIONING' && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                                    Provisioning
-                                </span>
-                            )}
-                            {session.isArchived && (
-                                <Tooltip position="top" content="This session is archived">
-                                    <span className="flex items-center justify-center rounded bg-[#242323] p-1">
-                                        <Icons.Archive className="h-3 w-3 text-[#7B7A79]" />
-                                    </span>
-                                </Tooltip>
-                            )}
-                        </div>
-                        <span className="truncate text-[12px] text-[#7B7A79] transition-colors">
-                            {session.lastMessage || 'No messages yet...'}
-                        </span>
-                    </div>
-                </div>
-
-                {/* created at */}
-                <Tooltip position="top" content={formatTooltipDate(session.createdAt, 'Created')}>
-                    <div className="truncate pr-2 font-sans text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
-                        {formatDate(createdDate)}
-                    </div>
-                </Tooltip>
-
-                {/* updated at */}
-                <Tooltip
-                    position="top"
-                    content={formatTooltipDate(session.updatedAt || session.createdAt, 'Updated')}
-                >
-                    <div className="truncate pr-2 font-sans text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
-                        {formatDate(updatedDate)}
-                    </div>
-                </Tooltip>
-
-                {/* tags & pr */}
-                <div className="flex items-center gap-2 min-w-0">
-                    {session.tags && session.tags.length > 0 && (
-                        <div className="flex items-center gap-1.5 min-w-0">
-                            <Tooltip position="top" content={`Tags: ${session.tags[0]}`}>
-                                <span
-                                    onDoubleClick={(e) => {
-                                        e.stopPropagation()
-                                        onOpenTags(session, e)
-                                    }}
-                                    className="truncate rounded-md bg-[#202020] hover:bg-[#272727] border border-white/5 transition-colors px-2 py-0.5 font-sans text-[11px] font-medium text-[#949494] cursor-pointer hover:text-white"
-                                    title="Double-click to edit tag"
-                                >
-                                    {session.tags[0]}
-                                </span>
-                            </Tooltip>
-                        </div>
-                    )}
-                    {session.prNumber && <SessionPrTooltip session={session} />}
-                </div>
-
-                {/* created by */}
-                <Tooltip
-                    position="top"
-                    content={`Created by: ${session.createdByName || session.createdBy || 'User'}`}
-                >
-                    <div className="truncate font-sans text-[13px] text-[#7B7A79] transition-colors group-hover:text-[#A3A2A0]">
-                        {session.createdBy || '--'}
-                    </div>
-                </Tooltip>
-
-                {/* menu */}
-                <div
-                    className={`relative flex justify-center ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transition-opacity'}`}
-                >
-                    <Tooltip position="top" content="More options">
-                        <button
-                            onClick={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect()
-                                if (window.innerHeight - rect.bottom < 300 && rect.top > 300) {
-                                    setMenuDirection('up')
-                                } else {
-                                    setMenuDirection('down')
-                                }
-                                onToggleMenu(session.id, e)
+                <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span
+                            onDoubleClick={(e) => {
+                                e.stopPropagation()
+                                onOpenRename(session, e)
                             }}
-                            className={`rounded-lg p-2 text-[#7B7A79] transition-all hover:bg-[#242323] hover:text-[#D6D5C9] ${isMenuOpen ? 'bg-[#242323] text-[#D6D5C9]' : ''}`}
+                            className="truncate text-[14px] font-medium text-[#D6D5C9] transition-colors hover:text-white"
+                            title="Double-click to rename"
                         >
-                            <Icons.MoreHorizontal className="h-4 w-4" />
-                        </button>
-                    </Tooltip>
-                    {isMenuOpen && (
+                            {title}
+                        </span>
+                        <RunStatus vmStatus={session.vmStatus} />
+                        {archivedIcon}
+                    </div>
+                    <ListMeta session={session} />
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <SessionTags
+                        tags={session.tags}
+                        onEdit={(e) => {
+                            e.stopPropagation()
+                            onOpenTags(session, e)
+                        }}
+                    />
+                    <SessionPrTooltip session={session} />
+                </div>
+
+                <div
+                    className={cn(
+                        'relative flex justify-center',
+                        isMenuOpen
+                            ? 'opacity-100'
+                            : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity'
+                    )}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {menuButton('p-2')}
+                    {isMenuOpen && !isPhone && (
                         <div
                             ref={desktopMenuRef}
-                            className={`absolute right-0 ${menuDirection === 'up' ? 'bottom-9' : 'top-9'} z-50 flex w-44 flex-col rounded-xl border border-[#272727] bg-[#1E1E1E] p-1 shadow-xl`}
-                            onClick={(e) => e.stopPropagation()}
+                            role="menu"
+                            className={cn(
+                                'absolute right-0',
+                                menuDirection === 'up' ? 'bottom-9' : 'top-9',
+                                sessionMenuPanelClass,
+                                'z-50'
+                            )}
                         >
-                            <button
-                                onClick={(e) => onOpenProjectFromMenu(session.id, e)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-                            >
-                                <Icons.ExternalLink className="h-3.5 w-3.5 text-[#7B7A79]" /> Open
-                            </button>
-                            <button
-                                onClick={(e) => onOpenRename(session, e)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-                            >
-                                <Icons.Edit className="h-3.5 w-3.5 text-[#7B7A79]" /> Rename
-                            </button>
-                            <button
-                                onClick={(e) => onOpenTags(session, e)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-                            >
-                                <Icons.Tag className="h-3.5 w-3.5 text-[#7B7A79]" /> Tags
-                            </button>
-                            <button
-                                onClick={(e) => onToggleArchiveFromMenu(session, e)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626]"
-                            >
-                                <Icons.Archive className="h-3.5 w-3.5 text-[#7B7A79]" />{' '}
-                                {session.isArchived ? 'Unarchive' : 'Archive'}
-                            </button>
-                            {onStopSession &&
-                                (session.vmStatus === 'RUNNING' ||
-                                    session.vmStatus === 'PROVISIONING') && (
-                                    <button
-                                        onClick={(e) => onStopSession(session.id, e)}
-                                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-amber-400 transition-colors hover:bg-[#262626] hover:text-amber-300"
-                                    >
-                                        <Icons.X className="h-3.5 w-3.5" /> Stop task
-                                    </button>
-                                )}
-                            <div className="mx-1.5 my-1 h-[1px] bg-[#282828]" />
-                            <button
-                                onClick={(e) => onOpenDelete(session, e)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-red-400 transition-colors hover:bg-[#262626] hover:text-red-300"
-                            >
-                                <Icons.Trash className="h-3.5 w-3.5" /> Delete
-                            </button>
+                            <SessionMenuItems {...menuProps} />
                         </div>
                     )}
                 </div>

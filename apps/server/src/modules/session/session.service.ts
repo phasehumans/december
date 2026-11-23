@@ -23,6 +23,7 @@ import {
     buildSmartSearchPrompt,
     isEmptySmartSearchFilters,
     parseSmartSearchFilters,
+    toPullRequestState,
 } from './session.utils'
 
 import type {
@@ -93,27 +94,7 @@ const getUserSessions = async (data: GetUserSessions) => {
     const fetchSessions = async () => {
         const result = await sessionRepository.findManySessions(userId, filters)
         const sessions = result.sessions.map((session: any) => {
-            let prNumber: number | null = session.prNumber || null
-            const prUrl: string | null = session.reviews?.[0]?.prUrl || null
-            if (!prNumber && prUrl) {
-                const match = prUrl.match(/pull\/(\d+)/)
-                if (match && match[1]) prNumber = parseInt(match[1], 10)
-            }
-
-            const prTitle =
-                session.reviews?.[0]?.prTitle || session.reviews?.[0]?.title || session.title
-            const branchName =
-                session.reviews?.[0]?.branchName ||
-                session.reviews?.[0]?.branch ||
-                (session.title
-                    ? session.title
-                          .toLowerCase()
-                          .replace(/[^a-z0-9]+/g, '-')
-                          .slice(0, 30)
-                    : null)
-            const additions = session.reviews?.[0]?.additions ?? (prNumber ? 220 : null)
-            const deletions = session.reviews?.[0]?.deletions ?? (prNumber ? 82 : null)
-            const repoName = session.reviews?.[0]?.repoName ?? (prNumber ? 'december' : null)
+            const prNumber: number | null = session.prNumber ?? null
 
             return {
                 id: session.id,
@@ -138,14 +119,14 @@ const getUserSessions = async (data: GetUserSessions) => {
                     session.user?.githubUsername ||
                     session.user?.email ||
                     'User',
+                vmStatus: session.vmStatus ?? null,
+                branch: session.branch ?? null,
+                // only what the worker saved when it opened the pull request; unknown stays null
                 prNumber,
-                prState: prNumber ? 'open' : null,
-                prTitle,
-                prUrl: prUrl || null,
-                branchName: branchName || null,
-                additions,
-                deletions,
-                repoName,
+                prState: prNumber ? toPullRequestState(session.prState) : null,
+                prTitle: prNumber ? (session.prTitle ?? null) : null,
+                prUrl: prNumber ? (session.prUrl ?? null) : null,
+                prBranch: prNumber ? (session.prBranch ?? null) : null,
                 githubRepoName: session.githubRepoName ?? null,
                 repoUrl: session.repoUrl ?? session.githubRepoUrl ?? null,
             }
@@ -172,6 +153,10 @@ const getUserSessions = async (data: GetUserSessions) => {
         userId,
         String(filters?.isArchived ?? 'all'),
         filters?.type ?? 'all',
+        filters?.vmStatus ?? 'any',
+        filters?.hasPr ? 'pr' : 'all-pr',
+        filters?.sortBy ?? 'updatedAt',
+        filters?.sortOrder ?? 'desc',
         String(filters?.limit ?? 50),
         String(filters?.page ?? 1)
     )

@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 
 import { Icons } from './Icons'
 
+import { useBackToClose } from '@/shared/lib/useBackToClose'
+
 interface ModalProps {
     isOpen: boolean
     onClose: () => void
@@ -26,6 +28,9 @@ export const Modal: React.FC<ModalProps> = ({
     showLogo = true,
     banner,
 }) => {
+    // back button and back swipe close the modal instead of leaving the page
+    useBackToClose({ isOpen, onClose })
+
     if (!isOpen) return null
 
     if (variant === 'premium') {

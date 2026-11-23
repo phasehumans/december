@@ -423,7 +423,7 @@ export const usePromptInputController = ({
     const sessions = sessionsData?.sessions || []
     const filteredSessions = sessions.filter(
         (session) =>
-            (session.title || 'Untitled Session').toLowerCase().includes(sessionsSearchQuery) ||
+            (session.title || 'Untitled session').toLowerCase().includes(sessionsSearchQuery) ||
             (session.lastMessage || '').toLowerCase().includes(sessionsSearchQuery)
     )
 

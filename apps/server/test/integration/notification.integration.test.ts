@@ -150,4 +150,51 @@ describe('Notification Integration Tests', () => {
 
         expect(res.status).toBe(404)
     })
+
+    it('8. GET /api/v1/notification?category=MENTION - returns mentions only, with counts', async () => {
+        const mention = await notificationService.sendNotificationToUser({
+            userId: testUserId,
+            title: 'maya-k commented on #482',
+            message: 'Can we keep the old retry count?',
+            category: 'MENTION',
+            toast: true,
+        })
+        await notificationService.sendNotificationToUser({
+            userId: testUserId,
+            title: 'Checks failed on #482',
+            message: 'typecheck failed',
+            type: 'ERROR',
+        })
+
+        const list = await request(app)
+            .get('/api/v1/notification?category=MENTION')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+        expect(list.status).toBe(200)
+        const ids = list.body.data.notifications.map((n: any) => n.id)
+        expect(ids).toEqual([mention.id])
+        expect(list.body.data.notifications[0].category).toBe('MENTION')
+
+        const count = await request(app)
+            .get('/api/v1/notification/unread-count')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+        expect(count.status).toBe(200)
+        expect(count.body.data.mentions).toBe(1)
+        expect(count.body.data.count).toBeGreaterThanOrEqual(2)
+    })
+
+    it('9. PATCH /api/v1/notification/read-all - marks every notification read', async () => {
+        const res = await request(app)
+            .patch('/api/v1/notification/read-all')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+        expect(res.status).toBe(200)
+        expect(res.body.data.updated).toBeGreaterThanOrEqual(2)
+
+        const unread = await prisma.notification.count({
+            where: { userId: testUserId, isRead: false },
+        })
+        expect(unread).toBe(0)
+    })
 })

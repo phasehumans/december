@@ -9,6 +9,7 @@ import {
     PULL_REQUEST_STATE_LABELS,
     toPullRequestRows,
 } from '@/features/pullrequests/lib/pullRequests'
+import { RunStatus } from '@/features/sessions/components/ListParts'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { useSuperCrewWaitlist } from '@/features/supercrew/hooks/useSuperCrewWaitlist'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
@@ -155,16 +156,12 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                                 className={rowClass}
                             >
                                 <span className={titleClass}>
-                                    {session.title || session.projectName || 'Untitled Session'}
+                                    {session.title || session.projectName || 'Untitled session'}
                                 </span>
-                                {session.vmStatus === 'RUNNING' ? (
-                                    <span className={cn(metaClass, 'font-medium text-emerald-400')}>
-                                        Running
-                                    </span>
-                                ) : session.vmStatus === 'PROVISIONING' ? (
-                                    <span className={cn(metaClass, 'font-medium text-amber-400')}>
-                                        Provisioning
-                                    </span>
+                                {session.vmStatus === 'RUNNING' ||
+                                session.vmStatus === 'PROVISIONING' ? (
+                                    // same words as the sidebar and the Sessions page
+                                    <RunStatus vmStatus={session.vmStatus} className={metaClass} />
                                 ) : (
                                     <span className={metaClass}>
                                         {session.prNumber ? `PR ${session.prNumber} · ` : ''}

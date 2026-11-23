@@ -13,6 +13,8 @@ export interface PullRequestRow {
     repo: string | null
     number: number
     state: PullRequestState
+    /** the branch the pull request was opened from, when known */
+    branch: string | null
     /** link to the pull request on GitHub, when the repository url is known */
     url: string | null
     updatedAt: string
@@ -34,11 +36,19 @@ export const PULL_REQUEST_FILTERS: { value: PullRequestFilter; label: string }[]
 
 const cleanRepoUrl = (repoUrl: string) => repoUrl.replace(/\.git$/, '').replace(/\/+$/, '')
 
-const repoNameOf = (session: BackendSession): string | null => {
+/** owner/name of the session repository, or null */
+export const repoNameOf = (session: BackendSession): string | null => {
     if (session.githubRepoName) return session.githubRepoName
     if (!session.repoUrl) return null
     const match = /github\.com[/:]([\w.-]+\/[\w.-]+)/i.exec(cleanRepoUrl(session.repoUrl))
     return match ? match[1] : null
+}
+
+/** the saved pull request link, else one built from the repository url */
+export const pullRequestUrlOf = (session: BackendSession): string | null => {
+    if (!session.prNumber) return null
+    if (session.prUrl) return session.prUrl
+    return session.repoUrl ? `${cleanRepoUrl(session.repoUrl)}/pull/${session.prNumber}` : null
 }
 
 /** sessions that opened a pull request, newest first */
@@ -47,13 +57,12 @@ export const toPullRequestRows = (sessions: BackendSession[]): PullRequestRow[] 
         .filter((session) => session.prNumber != null && session.type !== 'SEARCH')
         .map((session) => ({
             sessionId: session.id,
-            title: session.title || session.projectName || 'Untitled Session',
+            title: session.title || session.projectName || 'Untitled session',
             repo: repoNameOf(session),
             number: session.prNumber as number,
             state: session.prState ?? 'open',
-            url: session.repoUrl
-                ? `${cleanRepoUrl(session.repoUrl)}/pull/${session.prNumber}`
-                : null,
+            branch: session.prBranch ?? session.branch ?? null,
+            url: pullRequestUrlOf(session),
             updatedAt: session.updatedAt,
         }))
         .sort(
@@ -70,6 +79,17 @@ export const filterPullRequests = (
     if (filter === 'open')
         return rows.filter((row) => row.state === 'open' || row.state === 'draft')
     return rows.filter((row) => row.state === filter)
+}
+
+/** matches the title, repository, branch or number */
+export const searchPullRequests = (rows: PullRequestRow[], query: string): PullRequestRow[] => {
+    const needle = query.trim().toLowerCase().replace(/^#/, '')
+    if (!needle) return rows
+    return rows.filter((row) =>
+        [row.title, row.repo, row.branch, String(row.number)].some((value) =>
+            (value || '').toLowerCase().includes(needle)
+        )
+    )
 }
 
 export const PULL_REQUEST_STATE_CLASS: Record<PullRequestState, string> = {

@@ -74,10 +74,15 @@ export function initSocket(httpServer: any) {
     })
 
     // subscribe to all session events & terminal streams from redis (worker)
-    redisSubClient.psubscribe('session_events:*', 'session_terminal_data:*', (err, count) => {
-        if (err) console.error('Failed to psubscribe:', err)
-        else console.log(`[Socket] Subscribed to ${count} Redis pattern(s)`)
-    })
+    redisSubClient.psubscribe(
+        'session_events:*',
+        'session_terminal_data:*',
+        'user_notifications:*',
+        (err, count) => {
+            if (err) console.error('Failed to psubscribe:', err)
+            else console.log(`[Socket] Subscribed to ${count} Redis pattern(s)`)
+        }
+    )
 
     redisSubClient.on('pmessage', (pattern, channel, message) => {
         if (pattern === 'session_events:*') {
@@ -94,6 +99,14 @@ export function initSocket(httpServer: any) {
         } else if (pattern === 'session_terminal_data:*') {
             const sessionId = channel.replace('session_terminal_data:', '')
             io.to(`session_terminal:${sessionId}`).emit('TERMINAL_DATA', message)
+        } else if (pattern === 'user_notifications:*') {
+            // new inbox notification: every open tab of that user refreshes its badge
+            const userId = channel.replace('user_notifications:', '')
+            try {
+                io.to(`user:${userId}`).emit('notification', JSON.parse(message))
+            } catch (err) {
+                console.error(`[SERVER CORE] Failed to parse notification on ${channel}`, err)
+            }
         }
     })
 
@@ -122,6 +135,9 @@ export function initSocket(httpServer: any) {
 
     io.on('connection', (socket: Socket) => {
         console.log(`[Socket] User connected: ${socket.data.userId} (socket: ${socket.id})`)
+        if (socket.data.userId) {
+            socket.join(`user:${socket.data.userId}`)
+        }
 
         socket.on('join_session', (sessionId: string) => {
             console.log(`[Socket] User ${socket.data.userId} joined session ${sessionId}`)

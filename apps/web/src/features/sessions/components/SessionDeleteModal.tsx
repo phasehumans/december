@@ -24,18 +24,10 @@ export const SessionDeleteModal: React.FC<SessionDeleteModalProps> = ({
     }
 
     return (
-        <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            title="Delete project"
-            description="Permanently delete this project from your workspace."
-            variant="premium"
-        >
+        <Modal isOpen={isOpen} onClose={onClose} title="Delete session" variant="premium">
             <div className="flex flex-col gap-4">
-                <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
-                    Are you sure you want to delete{' '}
-                    <span className="text-white font-semibold">"{projectTitle}"</span>? This action
-                    is permanent and cannot be undone.
+                <p className="text-[13px] text-[#8F8E8D] leading-relaxed break-words">
+                    {projectTitle || 'Untitled session'}
                 </p>
                 <div className="flex items-center justify-end gap-2.5">
                     <button

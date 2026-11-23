@@ -77,30 +77,6 @@ export const useSessionListMutations = ({
         }
     }
 
-    const togglePinMutation = useMutation({
-        mutationFn: ({ sessionId, isPinned }: { sessionId: string; isPinned: boolean }) =>
-            sessionAPI.updateSessionSettings(sessionId, { isPinned }),
-        onMutate: async ({ sessionId, isPinned }) => {
-            setActionError(null)
-            await queryClient.cancelQueries({ queryKey: ['sessions'] })
-            await queryClient.cancelQueries({ queryKey: ['session', sessionId] })
-
-            updateAllSessionsCache((session) =>
-                session.id === sessionId ? { ...session, isPinned } : session
-            )
-            updateSingleSessionCache(sessionId, (session) => ({ ...session, isPinned }))
-        },
-        onError: (error) => {
-            setActionError(getErrorMessage(error, 'Failed to update session pin status'))
-        },
-        onSuccess: () => {
-            setActionError(null)
-        },
-        onSettled: (_data, _error, variables) => {
-            invalidateAllSessionQueries(variables?.sessionId)
-        },
-    })
-
     const toggleArchiveMutation = useMutation({
         mutationFn: ({ sessionId, isArchived }: { sessionId: string; isArchived: boolean }) =>
             isArchived
@@ -209,7 +185,6 @@ export const useSessionListMutations = ({
     })
 
     return {
-        togglePinMutation,
         toggleArchiveMutation,
         renameMutation,
         deleteMutation,

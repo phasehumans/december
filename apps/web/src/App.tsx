@@ -9,9 +9,15 @@ import { githubOAuth } from './features/auth/githubOAuth'
 import { OnboardingPage } from './features/onboarding/components/OnboardingPage'
 import { SuperCrewCard } from './features/supercrew/components/SuperCrewCard'
 
+import { useAppStore } from '@/app/store'
+import { getViewForPath } from '@/app/types'
 import { LogoLoader } from '@/shared/components/ui/LogoLoader'
 import { getWebUrl } from '@/shared/config/env'
 import { resetUserQueryCache } from '@/shared/lib/query-cache'
+import { useDelayedFlag } from '@/shared/lib/useDelayedFlag'
+
+/** opening a session faster than this shows no loader, so the screen does not blink */
+const OPEN_LOADER_DELAY_MS = 300
 
 const App: React.FC = () => {
     const {
@@ -47,6 +53,15 @@ const App: React.FC = () => {
 
     const location = useLocation()
     const navigate = useNavigate()
+    const activeProjectId = useAppStore((s) => s.activeProjectId)
+
+    // opening a session from inside the app keeps the current page until the session is
+    // ready; the full-screen loader only shows when that is slow. a session link opened
+    // directly has nothing to keep on screen, so it shows the loader at once.
+    const isSlowOpen = useDelayedFlag(isProjectOpening, OPEN_LOADER_DELAY_MS)
+    const isLinkOpen =
+        isProjectOpening && !activeProjectId && getViewForPath(location.pathname) === 'project'
+    const showOpeningLoader = isSlowOpen || isLinkOpen
 
     if (!isAuthRestored) {
         return <LogoLoader />
@@ -101,7 +116,7 @@ const App: React.FC = () => {
 
     return (
         <>
-            {isProjectOpening && <LogoLoader />}
+            {showOpeningLoader && <LogoLoader />}
             <div className="flex w-full h-dvh bg-background text-textMain overflow-hidden font-sans">
                 <AppSideNavigation
                     showSidebar={showSidebar}

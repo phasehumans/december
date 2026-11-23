@@ -213,3 +213,46 @@ export type GithubIssueJobData = {
     slackWebhookUrl?: string
     discordWebhookUrl?: string
 }
+
+// one GitHub webhook event that may go into the owner's inbox
+export type GithubActivity =
+    | {
+          kind: 'comment'
+          isPullRequest: boolean
+          body: string
+          url?: string
+      }
+    | {
+          kind: 'review_comment'
+          body: string
+          path?: string
+          url?: string
+      }
+    | {
+          kind: 'review'
+          state: string
+          body: string
+          url?: string
+      }
+    | {
+          kind: 'checks_failed'
+      }
+
+export type NotifyGithubActivity = {
+    installationId?: string
+    repoOwner: string
+    repoName: string
+    number: number
+    actorLogin?: string
+    actorType?: string
+    prAuthorLogin?: string
+    activity: GithubActivity
+}
+
+export type FindPullRequestOwner = {
+    installationId?: string
+    repoOwner: string
+    repoName: string
+    prNumber: number
+    prAuthorLogin?: string
+}

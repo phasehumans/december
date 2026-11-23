@@ -44,21 +44,17 @@ describe('multi-session concurrency and afk background execution UI', () => {
         },
     ]
 
-    it('should render running and provisioning status badges in SessionListRow', () => {
+    it('should show running and starting status in SessionListRow', () => {
         const onOpenProject = mock(() => {})
-        const onToggleStar = mock(() => {})
         const onToggleMenu = mock(() => {})
 
         const { rerender } = render(
             <SessionListRow
                 project={sampleSessions[0]}
                 isMenuOpen={false}
-                isTogglePending={false}
                 onOpenProject={onOpenProject}
-                onToggleStar={onToggleStar}
                 onToggleMenu={onToggleMenu}
-                onOpenProjectFromMenu={mock(() => {})}
-                onToggleStarFromMenu={mock(() => {})}
+                onCloseMenu={mock(() => {})}
                 onToggleArchiveFromMenu={mock(() => {})}
                 onOpenRename={mock(() => {})}
                 onOpenDelete={mock(() => {})}
@@ -72,12 +68,9 @@ describe('multi-session concurrency and afk background execution UI', () => {
             <SessionListRow
                 project={sampleSessions[1]}
                 isMenuOpen={false}
-                isTogglePending={false}
                 onOpenProject={onOpenProject}
-                onToggleStar={onToggleStar}
                 onToggleMenu={onToggleMenu}
-                onOpenProjectFromMenu={mock(() => {})}
-                onToggleStarFromMenu={mock(() => {})}
+                onCloseMenu={mock(() => {})}
                 onToggleArchiveFromMenu={mock(() => {})}
                 onOpenRename={mock(() => {})}
                 onOpenDelete={mock(() => {})}
@@ -85,7 +78,7 @@ describe('multi-session concurrency and afk background execution UI', () => {
             />
         )
 
-        expect(screen.getAllByText('Provisioning').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('Starting').length).toBeGreaterThan(0)
     })
 
     it('should allow stopping an active task from menu in SessionListRow', () => {
@@ -95,12 +88,9 @@ describe('multi-session concurrency and afk background execution UI', () => {
             <SessionListRow
                 project={sampleSessions[0]}
                 isMenuOpen={true}
-                isTogglePending={false}
                 onOpenProject={mock(() => {})}
-                onToggleStar={mock(() => {})}
                 onToggleMenu={mock(() => {})}
-                onOpenProjectFromMenu={mock(() => {})}
-                onToggleStarFromMenu={mock(() => {})}
+                onCloseMenu={mock(() => {})}
                 onToggleArchiveFromMenu={mock(() => {})}
                 onOpenRename={mock(() => {})}
                 onOpenDelete={mock(() => {})}
@@ -109,7 +99,7 @@ describe('multi-session concurrency and afk background execution UI', () => {
             />
         )
 
-        const stopButtons = screen.getAllByText('Stop task')
+        const stopButtons = screen.getAllByText('Stop')
         expect(stopButtons.length).toBeGreaterThan(0)
         fireEvent.click(stopButtons[0])
         expect(onStopSession).toHaveBeenCalledWith('sess-1', expect.anything())
@@ -121,21 +111,15 @@ describe('multi-session concurrency and afk background execution UI', () => {
         render(
             <SessionListView
                 projects={sampleSessions}
-                onNewProject={mock(() => {})}
                 onOpenProject={mock(() => {})}
                 isInitialLoading={false}
-                isFetching={false}
                 errorMessage={null}
                 actionError={null}
                 menuOpenId={null}
-                isTogglePending={false}
-                onToggleStar={mock(() => {})}
                 onToggleMenu={mock(() => {})}
-                onOpenProjectFromMenu={mock(() => {})}
-                onToggleStarFromMenu={mock(() => {})}
+                onCloseMenu={mock(() => {})}
                 onToggleArchiveFromMenu={mock(() => {})}
                 onOpenRename={mock(() => {})}
-                onOpenDuplicate={mock(() => {})}
                 onOpenDelete={mock(() => {})}
                 onOpenTags={mock(() => {})}
                 searchQuery=""

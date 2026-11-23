@@ -16,16 +16,12 @@ afterEach(() => {
 })
 
 describe('SessionListSkeleton UI', () => {
-    test('renders minimal shimmering skeleton rows with desktop grid and mobile layouts', () => {
+    test('renders shimmering two-line rows, the same shape as the session rows', () => {
         const { container } = render(<SessionListSkeleton />)
 
-        // Verify desktop rows matching SessionListRow geometry
-        const desktopRows = container.querySelectorAll('.hidden.md\\:grid')
-        expect(desktopRows.length).toBe(7)
-
-        // Verify mobile rows matching SessionListRow mobile geometry
-        const mobileRows = container.querySelectorAll('.md\\:hidden')
-        expect(mobileRows.length).toBe(7)
+        // one layout for desktop and phones, like the real rows
+        const rows = container.querySelectorAll('[data-skeleton-row]')
+        expect(rows.length).toBe(7)
 
         // Verify skeleton elements contain shimmer animation styling
         const skeletons = container.querySelectorAll('.relative.overflow-hidden')
@@ -37,21 +33,15 @@ describe('SessionListSkeleton UI', () => {
         const { container } = render(
             <SessionListView
                 projects={[]}
-                onNewProject={() => {}}
                 onOpenProject={() => {}}
                 isInitialLoading={true}
-                isFetching={false}
                 errorMessage={null}
                 actionError={null}
                 menuOpenId={null}
-                isTogglePending={false}
-                onToggleStar={() => {}}
                 onToggleMenu={() => {}}
-                onOpenProjectFromMenu={() => {}}
-                onToggleStarFromMenu={() => {}}
+                onCloseMenu={() => {}}
                 onToggleArchiveFromMenu={() => {}}
                 onOpenRename={() => {}}
-                onOpenDuplicate={() => {}}
                 onOpenDelete={() => {}}
                 onOpenTags={() => {}}
                 searchQuery=""
@@ -62,7 +52,6 @@ describe('SessionListSkeleton UI', () => {
             />
         )
 
-        const desktopRows = container.querySelectorAll('.hidden.md\\:grid')
-        expect(desktopRows.length).toBe(7)
+        expect(container.querySelectorAll('[data-skeleton-row]').length).toBe(7)
     })
 })

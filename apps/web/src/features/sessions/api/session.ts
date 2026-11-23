@@ -14,11 +14,14 @@ export type BackendSession = {
     gitRef?: string | null
     issueNumber?: number | null
     lastMessage: string | null
-    isPinned?: boolean
     isArchived?: boolean
     tags?: string[]
     prNumber?: number | null
     prState?: 'open' | 'closed' | 'merged' | 'draft' | null
+    prTitle?: string | null
+    prUrl?: string | null
+    /** the branch the pull request was opened from */
+    prBranch?: string | null
     createdBy?: string | null
     createdByName?: string | null
     vmStatus?: 'PROVISIONING' | 'RUNNING' | 'STOPPED' | 'PAUSED' | 'FAILED' | string | null
@@ -67,8 +70,11 @@ export type BackendSessionDetail = {
 export type SessionFilters = {
     type?: 'WEB' | 'SEARCH'
     isArchived?: boolean
-    isPinned?: boolean
     tags?: string[]
+    /** 'running' matches running and starting sessions */
+    vmStatus?: 'running'
+    /** only sessions that opened a pull request */
+    hasPr?: boolean
     sortBy?: 'updatedAt' | 'createdAt'
     sortOrder?: 'asc' | 'desc'
     search?: string
@@ -102,8 +108,8 @@ export const sessionAPI = {
         if (filters?.type) queryParams.append('type', filters.type)
         if (filters?.isArchived !== undefined)
             queryParams.append('isArchived', filters.isArchived.toString())
-        if (filters?.isPinned !== undefined)
-            queryParams.append('isPinned', filters.isPinned.toString())
+        if (filters?.vmStatus) queryParams.append('vmStatus', filters.vmStatus)
+        if (filters?.hasPr) queryParams.append('hasPr', 'true')
         if (filters?.tags && filters.tags.length > 0)
             queryParams.append('tags', filters.tags.join(','))
         if (filters?.sortBy) queryParams.append('sortBy', filters.sortBy)
@@ -276,7 +282,7 @@ export const sessionAPI = {
 
     updateSessionSettings: async (
         id: string,
-        data: { isPinned?: boolean; isArchived?: boolean; tags?: string[] }
+        data: { isArchived?: boolean; tags?: string[] }
     ): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/settings`, {
             method: 'PATCH',

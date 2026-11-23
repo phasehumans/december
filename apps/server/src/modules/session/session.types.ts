@@ -21,6 +21,8 @@ export type SessionFilters = {
     page?: number
     limit?: number
     vmStatus?: string
+    /** only sessions that opened a pull request */
+    hasPr?: boolean
 }
 
 export type GetUserSessions = {

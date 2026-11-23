@@ -8,12 +8,14 @@ async function findManyNotifications(data: {
     page?: number
     limit?: number
     isRead?: boolean
+    category?: 'GENERAL' | 'MENTION'
 }) {
-    const { userId, select, page = 1, limit = 20, isRead } = data
+    const { userId, select, page = 1, limit = 20, isRead, category } = data
     const skip = (page - 1) * limit
     const where: Prisma.NotificationWhereInput = {
         userId,
         ...(isRead !== undefined ? { isRead } : {}),
+        ...(category ? { category } : {}),
     }
 
     const [total, notifications] = await Promise.all([
@@ -106,16 +108,18 @@ async function createNotification(data: {
     title: string
     message: string
     type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR'
+    category?: 'GENERAL' | 'MENTION'
     link?: string | null
     select: Prisma.NotificationSelect
 }) {
-    const { userId, title, message, type, link, select } = data
+    const { userId, title, message, type, category = 'GENERAL', link, select } = data
     return prisma.notification.create({
         data: {
             userId,
             title,
             message,
             type,
+            category,
             link,
         },
         select,
@@ -131,11 +135,24 @@ async function deleteManyReadNotifications(userId: string) {
     })
 }
 
-async function countUnreadNotifications(userId: string) {
+async function countUnreadNotifications(userId: string, category?: 'GENERAL' | 'MENTION') {
     return prisma.notification.count({
         where: {
             userId,
             isRead: false,
+            ...(category ? { category } : {}),
+        },
+    })
+}
+
+async function updateAllNotificationsRead(userId: string) {
+    return prisma.notification.updateMany({
+        where: {
+            userId,
+            isRead: false,
+        },
+        data: {
+            isRead: true,
         },
     })
 }
@@ -149,4 +166,5 @@ export const notificationRepository = {
     deleteNotification,
     createNotification,
     deleteManyReadNotifications,
+    updateAllNotificationsRead,
 }
