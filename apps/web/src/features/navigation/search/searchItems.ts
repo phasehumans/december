@@ -22,8 +22,6 @@ export interface SearchItem {
     href?: string
     /** always opens in a new tab (docs, legal) */
     external?: boolean
-    /** label shown after the first Enter; a second Enter runs the item */
-    confirmLabel?: string
     /** label flashed on the row before the modal closes */
     flashLabel?: string
     run: () => void
@@ -38,8 +36,6 @@ export interface SearchSection {
     title: string | null
     rows: SearchRow[]
     isAsk?: boolean
-    /** a divider above the section, for rows set apart at the end */
-    hasDivider?: boolean
 }
 
 export const CLI_INSTALL_COMMAND = 'npm install -g @trydecember/cli'

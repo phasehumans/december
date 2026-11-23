@@ -14,7 +14,6 @@ interface SearchModalProps {
     onOpenSession?: (sessionId: string) => void
     /** desktop only; leave out to hide the sidebar action */
     onToggleSidebar?: () => void
-    onSignOut?: () => void
     /** runs after an item or Ask December runs (not on a plain close) */
     onAction?: () => void
     isAuthenticated?: boolean
@@ -100,14 +99,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     onNewThread,
     onOpenSession,
     onToggleSidebar,
-    onSignOut,
     onAction,
     isAuthenticated,
     isSidebarCollapsed = false,
 }) => {
     const [query, setQuery] = useState('')
     const [selectedIndex, setSelectedIndex] = useState(0)
-    const [armedId, setArmedId] = useState<string | null>(null)
     const [flash, setFlash] = useState<{ id: string; label: string } | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -123,7 +120,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         onOpenSession,
         onToggleSidebar: isMobile ? undefined : onToggleSidebar,
         isSidebarCollapsed,
-        onSignOut,
     })
 
     const rows = useMemo<SearchRow[]>(() => sections.flatMap((s) => s.rows), [sections])
@@ -133,7 +129,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         if (!isOpen) return
         setQuery('')
         setSelectedIndex(0)
-        setArmedId(null)
         setFlash(null)
         const timer = setTimeout(() => inputRef.current?.focus(), 50)
         return () => clearTimeout(timer)
@@ -147,7 +142,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
     useEffect(() => {
         setSelectedIndex(0)
-        setArmedId(null)
     }, [query])
 
     useEffect(() => {
@@ -159,17 +153,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         document.getElementById(`search-row-${selectedIndex}`)?.scrollIntoView({ block: 'nearest' })
     }, [selectedIndex, isOpen])
 
-    const select = useCallback((index: number) => {
-        setSelectedIndex(index)
-        setArmedId(null)
-    }, [])
-
     const runItem = useCallback(
         (item: SearchItem, newTab: boolean) => {
-            if (item.confirmLabel && armedId !== item.id) {
-                setArmedId(item.id)
-                return
-            }
             if (item.flashLabel) {
                 item.run()
                 setFlash({ id: item.id, label: item.flashLabel })
@@ -188,7 +173,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             }
             onAction?.()
         },
-        [armedId, onClose, onAction]
+        [onClose, onAction]
     )
 
     const activate = useCallback(
@@ -212,10 +197,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             const count = rows.length || 1
             if (e.key === 'ArrowDown') {
                 e.preventDefault()
-                select((selectedIndex + 1) % count)
+                setSelectedIndex((selectedIndex + 1) % count)
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault()
-                select((selectedIndex - 1 + count) % count)
+                setSelectedIndex((selectedIndex - 1 + count) % count)
             } else if (e.key === 'Enter') {
                 e.preventDefault()
                 activate(selectedIndex, e.metaKey || e.ctrlKey)
@@ -226,7 +211,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [isOpen, rows.length, selectedIndex, select, activate, onClose])
+    }, [isOpen, rows.length, selectedIndex, activate, onClose])
 
     if (!isOpen) return null
 
@@ -247,9 +232,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     className={cn(
                         'flex flex-col px-2 pb-1',
                         // a divider only when other rows sit above Ask December
-                        (section.isAsk || section.hasDivider) &&
-                            sectionIndex > 0 &&
-                            'border-t border-[#282828] mt-1 pt-1.5'
+                        section.isAsk && sectionIndex > 0 && 'border-t border-[#282828] mt-1 pt-1.5'
                     )}
                 >
                     {section.title && (
@@ -268,7 +251,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                                 role="option"
                                 aria-selected={isSelected}
                                 onMouseMove={() => {
-                                    if (index !== selectedIndex) select(index)
+                                    if (index !== selectedIndex) setSelectedIndex(index)
                                 }}
                                 onClick={(e) => activate(index, e.metaKey || e.ctrlKey)}
                                 className={cn(
@@ -303,7 +286,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                                         isSelected={isSelected}
                                         isMobile={isMobile}
                                         hasQuery={hasQuery}
-                                        isArmed={armedId === row.item.id}
                                         flashLabel={flash?.id === row.item.id ? flash.label : null}
                                     />
                                 )}
@@ -404,20 +386,16 @@ const ItemRowContent: React.FC<{
     isSelected: boolean
     isMobile: boolean
     hasQuery: boolean
-    isArmed: boolean
     flashLabel: string | null
-}> = ({ row, isSelected, isMobile, hasQuery, isArmed, flashLabel }) => {
+}> = ({ row, isSelected, isMobile, hasQuery, flashLabel }) => {
     const { item, indexes } = row
-    const label = flashLabel ?? (isArmed ? item.confirmLabel : null)
-    const labelColor = isArmed
-        ? 'text-[#E6A28F]'
-        : hasQuery
-          ? isSelected
-              ? 'text-[#CFCECD]'
-              : 'text-[#B9B8B7]'
-          : isSelected
-            ? 'text-[#EDEDED]'
-            : 'text-[#D6D5D4]'
+    const labelColor = hasQuery
+        ? isSelected
+            ? 'text-[#CFCECD]'
+            : 'text-[#B9B8B7]'
+        : isSelected
+          ? 'text-[#EDEDED]'
+          : 'text-[#D6D5D4]'
 
     return (
         <>
@@ -428,7 +406,7 @@ const ItemRowContent: React.FC<{
                     labelColor
                 )}
             >
-                {label ?? <Highlight text={item.label} indexes={indexes} />}
+                {flashLabel ?? <Highlight text={item.label} indexes={indexes} />}
             </span>
             <span className="flex-1" />
             {(item.repo || item.time) && (

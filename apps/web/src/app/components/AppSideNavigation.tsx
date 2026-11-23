@@ -57,8 +57,22 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
+    // the phone menu sheet stays mounted on settings (no sidebar there): its pages reopen
+    // the sheet on the Settings level
+    const mobileMenuSheet = (
+        <MobileMenuSheet
+            onNewThread={onNewThread}
+            onHomeClick={onHomeClick}
+            onSessions={() => onNavigate('sessions')}
+            onProfile={() => onNavigate('profile')}
+            onOpenProject={onOpenProject}
+            isAuthenticated={isAuthenticated}
+            onOpenAuth={onOpenAuth}
+        />
+    )
+
     if (!showSidebar) {
-        return null
+        return mobileMenuSheet
     }
 
     return (
@@ -77,16 +91,7 @@ export const AppSideNavigation: React.FC<AppSideNavigationProps> = ({
                 onExpand={() => setIsSidebarCollapsed(false)}
             />
 
-            <MobileMenuSheet
-                onNewThread={onNewThread}
-                onHomeClick={onHomeClick}
-                onSessions={() => onNavigate('sessions')}
-                onProfile={() => onNavigate('profile')}
-                onOpenProject={onOpenProject}
-                isAuthenticated={isAuthenticated}
-                onOpenAuth={onOpenAuth}
-                onSignOut={onSignOut}
-            />
+            {mobileMenuSheet}
         </>
     )
 }

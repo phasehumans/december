@@ -377,11 +377,36 @@ describe('model control', () => {
             options
         )
 
-    test('with no saved key there is no source switch and no GitHub icon', () => {
-        footer()
+    test('with no saved key the source switch still shows, and there is no GitHub icon', () => {
+        const onSelectModel = mock((_m: string, _p?: string, _s?: string) => {})
+        footer({ onSelectModel })
         expect(screen.getByRole('radiogroup', { name: 'Speed' })).not.toBeNull()
-        expect(screen.queryByRole('radiogroup', { name: 'Model source' })).toBeNull()
+        expect(screen.getByRole('radiogroup', { name: 'Model source' })).not.toBeNull()
         expect(screen.queryByText('Attach repo')).toBeNull()
+
+        // the key side opens the keys page instead of switching
+        fireEvent.click(screen.getByRole('radio', { name: 'Your keys' }))
+        expect(onSelectModel).not.toHaveBeenCalled()
+    })
+
+    test('on a phone Fast and Deep move into Configuration', () => {
+        const original = window.matchMedia
+        window.matchMedia = ((query: string) => ({
+            matches: query.includes('max-width'),
+            media: query,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        })) as never
+        try {
+            footer()
+            expect(screen.queryByRole('radiogroup', { name: 'Speed' })).toBeNull()
+            expect(screen.getByRole('radiogroup', { name: 'Model source' })).not.toBeNull()
+
+            fireEvent.click(screen.getByRole('button', { name: 'Configuration' }))
+            expect(screen.getByRole('radiogroup', { name: 'Speed' })).not.toBeNull()
+        } finally {
+            window.matchMedia = original
+        }
     })
 
     test('the source switch moves between credits and a saved key', () => {

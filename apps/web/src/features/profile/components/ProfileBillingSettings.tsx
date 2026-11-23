@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, ChevronRight } from 'lucide-react'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -111,7 +111,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
             <div className="flex flex-col mb-6">
                 <h1 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits</h1>
                 <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                    <p className="text-[13px] text-[#7B7A79]">
+                    <p className="hidden md:block text-[13px] text-[#7B7A79]">
                         Prepaid credits are used to power AI model completions and agent execution
                         in your workspaces.
                     </p>
@@ -139,6 +139,16 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                             </button>
                         </div>
                     </div>
+
+                    {/* phones: one row in place of the promotions section (C2) */}
+                    <button
+                        type="button"
+                        onClick={() => setShowRedeemModal(true)}
+                        className="md:hidden flex items-center justify-between h-10 -mx-1 px-1 rounded-lg text-left text-[14px] text-[#D6D5C9] active:bg-[#1F1F1F] transition-colors outline-none cursor-pointer"
+                    >
+                        Redeem code
+                        <ChevronRight className="w-4 h-4 text-[#7B7A79]" strokeWidth={1.75} />
+                    </button>
                 </div>
             </div>
 
@@ -248,8 +258,8 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                 </div>
             </div>
 
-            {/* promotions & usage section */}
-            <div className="flex flex-col mb-6">
+            {/* promotions & usage section. phones show only the redeem row above */}
+            <div className="hidden md:flex flex-col mb-6">
                 <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Promotions & Usage</h2>
                 <div className="flex flex-col gap-6 border-t border-[#242323] pt-4">
                     {/* gifted credits / coupon */}

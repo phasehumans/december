@@ -9,6 +9,7 @@ import { OfficeCanvas } from './OfficeCanvas'
 
 import { useAppStore } from '@/app/store'
 import { Icons } from '@/shared/components/ui/Icons'
+import { useIsPhone } from '@/shared/lib/useIsPhone'
 
 // fade the office into the card instead of framing it
 const FADE_MASK = 'radial-gradient(125% 105% at 50% 38%, #000 58%, transparent 99%)'
@@ -20,8 +21,9 @@ export const SuperCrewCard: React.FC<{ isHome: boolean }> = ({ isHome }) => {
     const setShowAuthModal = useAppStore((s) => s.setShowAuthModal)
     const { state, join, markSeen } = useSuperCrewWaitlist(isAuthenticated)
 
-    // first visit after onboarding: open by itself once per account
-    const canAutoOpen = shouldAutoOpenSuperCrew({ isAuthenticated, isHome, isOpen, state })
+    // first visit after onboarding: open by itself once per account. phones open it only from the menu
+    const isPhone = useIsPhone()
+    const canAutoOpen = shouldAutoOpenSuperCrew({ isAuthenticated, isHome, isOpen, isPhone, state })
     React.useEffect(() => {
         if (!canAutoOpen) return
         const timer = setTimeout(() => setIsOpen(true), SUPER_CREW_POPUP_DELAY_MS)
@@ -64,7 +66,7 @@ export const SuperCrewCard: React.FC<{ isHome: boolean }> = ({ isHome }) => {
     } else if (joined) {
         button = (
             <div className="w-full h-[28px] rounded-[8px] bg-[#252525] text-[#D6D5D4] text-[12.5px] font-medium flex items-center justify-center gap-1.5 select-none">
-                <Check className="w-3.5 h-3.5 text-emerald-400" strokeWidth={2.5} />
+                <Check className="w-3.5 h-3.5 text-[#87B2F4]" strokeWidth={2.5} />
                 You&apos;re on the list
             </div>
         )

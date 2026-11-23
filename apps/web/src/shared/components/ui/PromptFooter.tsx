@@ -11,7 +11,7 @@ import type { BackendSession } from '@/features/sessions/api/session'
 
 import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { CascadeMenu, type CascadeItem } from '@/features/home/components/CascadeMenu'
-import { ModelControl } from '@/features/home/components/ModelControl'
+import { ModelControl, SourceSwitch, TierConfigRow } from '@/features/home/components/ModelControl'
 import {
     McpSessionList,
     PluginSessionList,
@@ -147,6 +147,14 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         navigate(path)
     }
 
+    const modelProps = {
+        isAuthenticated,
+        selectedModel,
+        selectedProvider,
+        selectedSource,
+        onSelectModel,
+    }
+
     const isSignedIn = Boolean(isAuthenticated)
     // a signed-out visitor gets no lists: any row opens sign-up
     const sideWhenSignedIn = (side: React.ReactNode) => (isSignedIn ? side : undefined)
@@ -277,7 +285,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     }, [isConfigOpen, isPhone])
 
     return (
-        <div className="flex items-center justify-between px-3 pb-3 mt-0 pl-3 relative">
+        <div className="flex items-center justify-between gap-2 px-2.5 md:px-3 pb-3 mt-0 relative">
             <input
                 type="file"
                 ref={fileInputRef}
@@ -337,7 +345,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     </div>
 
                     {onSlash && (
-                        <div className="relative group/btn -ml-0.5">
+                        <div className="relative group/btn -ml-1.5 md:-ml-0.5">
                             <button
                                 type="button"
                                 aria-label="Commands"
@@ -363,7 +371,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         </div>
                     )}
 
-                    <div className="relative group/btn -ml-0.5" ref={configRef}>
+                    <div className="relative group/btn -ml-1.5 md:-ml-0.5" ref={configRef}>
                         <button
                             type="button"
                             aria-label="Configuration"
@@ -420,16 +428,15 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     </div>
 
                     <ModelControl
-                        isAuthenticated={isAuthenticated}
-                        selectedModel={selectedModel}
-                        selectedProvider={selectedProvider}
-                        selectedSource={selectedSource}
-                        onSelectModel={onSelectModel}
+                        {...modelProps}
+                        // phones keep Fast | Deep in Configuration
+                        showTier={!isPhone}
                     />
                 </div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-0.5 md:gap-1.5 shrink-0">
+                <SourceSwitch {...modelProps} onOpenAuth={onOpenAuth} />
                 {isSupported && (
                     <div className="relative group/btn">
                         <button
@@ -543,6 +550,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         ariaLabel="Configuration"
                     >
                         <div className="flex flex-col pb-1 [&>*]:py-2.5 [&>*]:text-[14px]">
+                            <TierConfigRow {...modelProps} />
                             <PromptConfigRows demo={demo} mode={mode} />
                         </div>
                     </BottomSheet>

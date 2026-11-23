@@ -12,8 +12,7 @@ import type { DeleteModalState, RenameModalState } from '@/features/sessions/typ
 
 import { useAppStore } from '@/app/store'
 import { generationAPI } from '@/features/generation/api/generation'
-import { MobileIconButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
-import { Icons } from '@/shared/components/ui/Icons'
+import { MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 export type SortOption = 'newest' | 'oldest'
@@ -238,14 +237,8 @@ export const SessionList: React.FC<{
                 }
             }}
         >
-            <MobileTopBar
-                title="Sessions"
-                right={
-                    <MobileIconButton label="New session" filled onClick={onNewProject}>
-                        <Icons.Plus className="w-3.5 h-3.5" strokeWidth={2.6} />
-                    </MobileIconButton>
-                }
-            />
+            {/* the page heading below says Sessions, so the bar only holds the menu */}
+            <MobileTopBar />
             <div className="relative z-10 mx-auto max-w-6xl px-3.5 sm:px-6 pb-8 pt-4 md:p-16">
                 <SessionListView
                     projects={filteredAndSortedSessions}

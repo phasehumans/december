@@ -104,7 +104,7 @@ describe('model picker with own keys', () => {
         expect(onSelectModel).toHaveBeenCalledWith(GROQ.defaultModel, 'groq', 'OWN_KEY')
     })
 
-    it('has no source switch when no key is saved', async () => {
+    it('keeps the source switch on credits when no key is saved', async () => {
         spies.push(
             spyOn(byokAPI, 'list').mockImplementation(async () => ({
                 providers: PROVIDERS,
@@ -121,7 +121,8 @@ describe('model picker with own keys', () => {
             />
         )
         expect(await screen.findByRole('radiogroup', { name: 'Speed' })).toBeDefined()
-        expect(screen.queryByRole('radio', { name: 'Your keys' })).toBeNull()
+        const keys = screen.getByRole('radio', { name: 'Your keys' })
+        expect(keys.getAttribute('aria-checked')).toBe('false')
         expect(screen.queryByRole('button', { name: /Select Model/i })).toBeNull()
     })
 })

@@ -35,7 +35,6 @@ interface SearchModelOptions {
     /** desktop only; leave out to hide the sidebar action */
     onToggleSidebar?: () => void
     isSidebarCollapsed?: boolean
-    onSignOut?: () => void
 }
 
 const SESSION_SEARCH_DEBOUNCE_MS = 150
@@ -69,7 +68,6 @@ export const useSearchModel = (options: SearchModelOptions) => {
         onOpenSession,
         onToggleSidebar,
         isSidebarCollapsed,
-        onSignOut,
     } = options
     const navigate = useNavigate()
     const queryClient = useQueryClient()
@@ -198,28 +196,6 @@ export const useSearchModel = (options: SearchModelOptions) => {
         isSidebarCollapsed,
     ])
 
-    // kept apart so the empty list can show it last, away from the other actions
-    const signOut = useMemo<SearchItem | null>(
-        () =>
-            isAuthenticated && onSignOut
-                ? {
-                      id: 'action-sign-out',
-                      group: 'Actions',
-                      label: 'Sign out',
-                      keywords: ['logout', 'log out', 'sign out'],
-                      confirmLabel: isMobile
-                          ? 'Tap again to sign out'
-                          : 'Press Enter again to sign out',
-                      run: onSignOut,
-                  }
-                : null,
-        [isAuthenticated, onSignOut, isMobile]
-    )
-    const searchableActions = useMemo(
-        () => (signOut ? [...actions, signOut] : actions),
-        [actions, signOut]
-    )
-
     const navigation = useMemo<SearchItem[]>(() => {
         const docsHref = `${getWebUrl()}/docs`
         const list: SearchItem[] = []
@@ -330,14 +306,6 @@ export const useSearchModel = (options: SearchModelOptions) => {
                     rows: docs.slice(0, 5).map((d) => itemRow(d)),
                 })
             }
-            if (signOut) {
-                result.push({
-                    key: 'sign-out',
-                    title: null,
-                    hasDivider: true,
-                    rows: [itemRow(signOut)],
-                })
-            }
             return result
         }
 
@@ -346,7 +314,7 @@ export const useSearchModel = (options: SearchModelOptions) => {
                 {
                     key: 'actions',
                     title: 'Actions',
-                    rows: searchableActions.map((a) => itemRow(a)),
+                    rows: actions.map((a) => itemRow(a)),
                 },
                 {
                     key: 'navigation',
@@ -372,10 +340,10 @@ export const useSearchModel = (options: SearchModelOptions) => {
             for (const s of recentSessions) sessionPool.set(s.id, s)
         }
         const pool: SearchItem[] = isCommandMode
-            ? [...searchableActions, ...navigation, ...settings]
+            ? [...actions, ...navigation, ...settings]
             : [
                   ...[...sessionPool.values()].map(sessionItem),
-                  ...searchableActions,
+                  ...actions,
                   ...navigation,
                   ...repoItems,
                   ...settings,
@@ -418,8 +386,6 @@ export const useSearchModel = (options: SearchModelOptions) => {
         searchData?.sessions,
         sessionItem,
         actions,
-        searchableActions,
-        signOut,
         navigation,
         settings,
         docs,

@@ -822,7 +822,6 @@ const Sidebar: React.FC<
                 onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
                 onOpenSession={(sessionId) => onOpenProject?.(sessionId)}
                 onToggleSidebar={isCollapsed ? onExpand : onCollapse}
-                onSignOut={onSignOut}
                 isAuthenticated={isAuthenticated}
                 isSidebarCollapsed={isCollapsed}
             />

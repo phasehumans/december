@@ -13,7 +13,7 @@ const state = (patch: Partial<WaitlistState> = {}): WaitlistState => ({
     ...patch,
 })
 
-const base = { isAuthenticated: true, isHome: true, isOpen: false, state: state() }
+const base = { isAuthenticated: true, isHome: true, isOpen: false, isPhone: false, state: state() }
 
 describe('shouldAutoOpenSuperCrew', () => {
     test('opens on home when the server allows it', () => {
@@ -30,6 +30,7 @@ describe('shouldAutoOpenSuperCrew', () => {
         expect(shouldAutoOpenSuperCrew({ ...base, isHome: false })).toBe(false)
         expect(shouldAutoOpenSuperCrew({ ...base, isAuthenticated: false })).toBe(false)
         expect(shouldAutoOpenSuperCrew({ ...base, isOpen: true })).toBe(false)
+        expect(shouldAutoOpenSuperCrew({ ...base, isPhone: true })).toBe(false)
         expect(shouldAutoOpenSuperCrew({ ...base, state: undefined })).toBe(false)
     })
 })

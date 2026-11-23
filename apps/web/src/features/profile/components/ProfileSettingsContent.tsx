@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ChevronRight } from 'lucide-react'
 import React from 'react'
 
 import type { Profile } from '../types'
@@ -23,6 +24,137 @@ interface ProfileSettingsContentProps {
     onSignOut: () => void
     onOpenSignOutAllSessionsModal: () => void
     onOpenDeleteAccountModal: () => void
+}
+
+const NotificationSwitch: React.FC<{
+    label: string
+    checked: boolean
+    onChange: (checked: boolean) => void
+}> = ({ label, checked, onChange }) => (
+    <button
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+            checked ? 'bg-[#87B2F4]' : 'bg-[#100E12] border-[#383736]'
+        }`}
+    >
+        <span
+            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                checked ? 'translate-x-4 bg-[#100E12]' : 'translate-x-0 bg-[#383736]'
+            }`}
+        />
+    </button>
+)
+
+const sectionTitleClass = 'text-[16px] font-medium text-[#D6D5C9] mb-3'
+const sectionBodyClass = 'flex flex-col border-t border-[#242323] pt-2'
+const phoneRowClass =
+    'flex items-center justify-between gap-3 min-h-11 py-1.5 -mx-1 px-1 rounded-lg text-left text-[14px] text-[#D6D5C9]'
+const phoneButtonRowClass = `${phoneRowClass} w-full active:bg-[#1F1F1F] transition-colors outline-none cursor-pointer`
+
+/**
+ * Account on phones (C1): rows instead of stacked full-width buttons, no description lines.
+ * Sign out stays here: it is the only sign out on phones.
+ */
+const PhoneAccountSettings: React.FC<ProfileSettingsContentProps> = (props) => {
+    const {
+        profile,
+        resolvedName,
+        productUpdates,
+        securityAlerts,
+        onOpenNameModal,
+        onNotificationToggle,
+        onSignOut,
+        onOpenSignOutAllSessionsModal,
+        onOpenDeleteAccountModal,
+    } = props
+    const chevron = <ChevronRight className="w-4 h-4 text-[#7B7A79] shrink-0" strokeWidth={1.75} />
+
+    return (
+        <div className="md:hidden flex flex-col gap-6 w-full text-[#D6D5C9]">
+            <div className="flex flex-col">
+                <h1 className={sectionTitleClass}>Account</h1>
+                <div className={sectionBodyClass}>
+                    <div className={phoneRowClass}>
+                        <div className="flex flex-col min-w-0">
+                            <span>Full Name</span>
+                            <span className="text-[13px] text-[#7B7A79] truncate">
+                                {profile?.name || resolvedName}
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onOpenNameModal}
+                            className="shrink-0 px-2 py-1 -mr-2 rounded-md text-[13px] font-medium text-[#87B2F4] active:bg-[#1F1F1F] outline-none cursor-pointer"
+                        >
+                            Edit
+                        </button>
+                    </div>
+                    <div className={phoneRowClass}>
+                        <div className="flex flex-col min-w-0">
+                            <span>Email</span>
+                            <span className="text-[13px] text-[#7B7A79] truncate">
+                                {profile?.email || 'No email set'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex flex-col">
+                <h2 className={sectionTitleClass}>Notifications</h2>
+                <div className={sectionBodyClass}>
+                    <div className={phoneRowClass}>
+                        <span>Product updates</span>
+                        <NotificationSwitch
+                            label="Product updates"
+                            checked={productUpdates}
+                            onChange={(value) =>
+                                onNotificationToggle('notifyProductUpdates', value)
+                            }
+                        />
+                    </div>
+                    <div className={phoneRowClass}>
+                        <span>Security alerts</span>
+                        <NotificationSwitch
+                            label="Security alerts"
+                            checked={securityAlerts}
+                            onChange={(value) =>
+                                onNotificationToggle('notifySecurityAlerts', value)
+                            }
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex flex-col">
+                <h2 className={sectionTitleClass}>System</h2>
+                <div className={sectionBodyClass}>
+                    <button type="button" onClick={onSignOut} className={phoneButtonRowClass}>
+                        Sign out
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onOpenSignOutAllSessionsModal}
+                        className={phoneButtonRowClass}
+                    >
+                        Sign out of all sessions
+                        {chevron}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onOpenDeleteAccountModal}
+                        className={`${phoneButtonRowClass} text-[#E57373]`}
+                    >
+                        Delete account
+                        {chevron}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
 }
 
 export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (props) => {
@@ -84,146 +216,153 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
     const isLoading = !hasProfile && !resolvedName
 
     return (
-        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
-            {/* account */}
-            <div className="flex flex-col mb-6">
-                <h1 className="text-[16px] font-medium mb-3">Account</h1>
-                <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
-                    {/* full name row */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Full Name</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                {profile?.name || resolvedName}
-                            </span>
+        <>
+            <PhoneAccountSettings {...props} />
+            <div className="hidden md:flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
+                {/* account */}
+                <div className="flex flex-col mb-6">
+                    <h1 className="text-[16px] font-medium mb-3">Account</h1>
+                    <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
+                        {/* full name row */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-[14px] text-[#D6D5C9]">Full Name</span>
+                                <span className="text-[13px] text-[#7B7A79]">
+                                    {profile?.name || resolvedName}
+                                </span>
+                            </div>
+                            <button
+                                onClick={onOpenNameModal}
+                                className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            >
+                                Change full name
+                            </button>
                         </div>
-                        <button
-                            onClick={onOpenNameModal}
-                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                        >
-                            Change full name
-                        </button>
-                    </div>
 
-                    {/* email row */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Email</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                {profile?.email || 'No email set'}
-                            </span>
+                        {/* email row */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-[14px] text-[#D6D5C9]">Email</span>
+                                <span className="text-[13px] text-[#7B7A79]">
+                                    {profile?.email || 'No email set'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* notifications */}
-            <div className="flex flex-col mb-6">
-                <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Notifications</h2>
-                <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Product updates</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Get notification updates about new features and improvements
-                            </span>
-                        </div>
-                        <button
-                            role="switch"
-                            onClick={() =>
-                                onNotificationToggle('notifyProductUpdates', !productUpdates)
-                            }
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                productUpdates ? 'bg-[#87B2F4]' : 'bg-[#100E12] border-[#383736]'
-                            }`}
-                        >
-                            <span
-                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                {/* notifications */}
+                <div className="flex flex-col mb-6">
+                    <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Notifications</h2>
+                    <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-[14px] text-[#D6D5C9]">Product updates</span>
+                                <span className="text-[13px] text-[#7B7A79]">
+                                    Get notification updates about new features and improvements
+                                </span>
+                            </div>
+                            <button
+                                role="switch"
+                                onClick={() =>
+                                    onNotificationToggle('notifyProductUpdates', !productUpdates)
+                                }
+                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                     productUpdates
-                                        ? 'translate-x-4 bg-[#100E12]'
-                                        : 'translate-x-0 bg-[#383736]'
+                                        ? 'bg-[#87B2F4]'
+                                        : 'bg-[#100E12] border-[#383736]'
                                 }`}
-                            />
-                        </button>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Security alerts</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Get notification updates for important security notices
-                            </span>
+                            >
+                                <span
+                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                                        productUpdates
+                                            ? 'translate-x-4 bg-[#100E12]'
+                                            : 'translate-x-0 bg-[#383736]'
+                                    }`}
+                                />
+                            </button>
                         </div>
-                        <button
-                            role="switch"
-                            onClick={() =>
-                                onNotificationToggle('notifySecurityAlerts', !securityAlerts)
-                            }
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                securityAlerts ? 'bg-[#87B2F4]' : 'bg-[#100E12] border-[#383736]'
-                            }`}
-                        >
-                            <span
-                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-[14px] text-[#D6D5C9]">Security alerts</span>
+                                <span className="text-[13px] text-[#7B7A79]">
+                                    Get notification updates for important security notices
+                                </span>
+                            </div>
+                            <button
+                                role="switch"
+                                onClick={() =>
+                                    onNotificationToggle('notifySecurityAlerts', !securityAlerts)
+                                }
+                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                     securityAlerts
-                                        ? 'translate-x-4 bg-[#100E12]'
-                                        : 'translate-x-0 bg-[#383736]'
+                                        ? 'bg-[#87B2F4]'
+                                        : 'bg-[#100E12] border-[#383736]'
                                 }`}
-                            />
-                        </button>
+                            >
+                                <span
+                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                                        securityAlerts
+                                            ? 'translate-x-4 bg-[#100E12]'
+                                            : 'translate-x-0 bg-[#383736]'
+                                    }`}
+                                />
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* system */}
-            <div className="flex flex-col mb-0">
-                <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">System</h2>
-                <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                        <span className="text-[14px] text-[#D6D5C9]">
-                            You are signed in as {profile?.name || resolvedName || 'User'}
-                        </span>
-                        <button
-                            onClick={onSignOut}
-                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                        >
-                            Sign out
-                        </button>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                        <div className="flex flex-col gap-0.5">
+                {/* system */}
+                <div className="flex flex-col mb-0">
+                    <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">System</h2>
+                    <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                             <span className="text-[14px] text-[#D6D5C9]">
-                                Sign out of all sessions
+                                You are signed in as {profile?.name || resolvedName || 'User'}
                             </span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Devices or browsers where you are signed in
-                            </span>
+                            <button
+                                onClick={onSignOut}
+                                className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            >
+                                Sign out
+                            </button>
                         </div>
-                        <button
-                            onClick={onOpenSignOutAllSessionsModal}
-                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                        >
-                            Sign out of all sessions
-                        </button>
-                    </div>
 
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Delete account</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Permanently delete your account and data
-                            </span>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-[14px] text-[#D6D5C9]">
+                                    Sign out of all sessions
+                                </span>
+                                <span className="text-[13px] text-[#7B7A79]">
+                                    Devices or browsers where you are signed in
+                                </span>
+                            </div>
+                            <button
+                                onClick={onOpenSignOutAllSessionsModal}
+                                className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            >
+                                Sign out of all sessions
+                            </button>
                         </div>
-                        <button
-                            onClick={onOpenDeleteAccountModal}
-                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                        >
-                            Delete Account
-                        </button>
+
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-[14px] text-[#D6D5C9]">Delete account</span>
+                                <span className="text-[13px] text-[#7B7A79]">
+                                    Permanently delete your account and data
+                                </span>
+                            </div>
+                            <button
+                                onClick={onOpenDeleteAccountModal}
+                                className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
+                            >
+                                Delete Account
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     )
 }

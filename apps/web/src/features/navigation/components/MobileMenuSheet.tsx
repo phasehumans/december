@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowUpRight, ChevronRight, Inbox } from 'lucide-react'
+import { ArrowUpRight, ChevronRight, Inbox, Trash2 } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -12,6 +12,7 @@ import { getViewForPath } from '@/app/types'
 import { notificationAPI } from '@/features/notification/api/notification'
 import { useInbox } from '@/features/notification/hooks/useInbox'
 import { profileAPI } from '@/features/profile/api/profile'
+import { MobileSettingsLevel } from '@/features/profile/components/MobileSettingsLevel'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import {
     BottomSheet,
@@ -23,9 +24,10 @@ import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
 // phones only: the menu sheet (M-C). nav rows, the last 5 sessions, then the account row
-// with the inbox bell. the inbox and one notification slide in as levels of the same sheet.
+// with the inbox bell. settings, the inbox and one notification slide in as levels of the
+// same sheet.
 
-type Level = 'menu' | 'inbox' | 'note'
+type Level = 'menu' | 'settings' | 'inbox' | 'note'
 
 interface MobileMenuSheetProps {
     onNewThread: () => void
@@ -35,7 +37,6 @@ interface MobileMenuSheetProps {
     onOpenProject: (projectId: string) => void
     isAuthenticated: boolean
     onOpenAuth: () => void
-    onSignOut?: () => void
 }
 
 const RECENT_LIMIT = 5
@@ -55,7 +56,11 @@ const relativeTime = (iso?: string) => {
 }
 
 const MenuLevel: React.FC<
-    MobileMenuSheetProps & { onOpenSearch: () => void; onOpenInbox: () => void }
+    MobileMenuSheetProps & {
+        onOpenSearch: () => void
+        onOpenInbox: () => void
+        onOpenSettings: () => void
+    }
 > = ({
     onNewThread,
     onHomeClick,
@@ -64,6 +69,7 @@ const MenuLevel: React.FC<
     isAuthenticated,
     onOpenAuth,
     onOpenSearch,
+    onOpenSettings,
 }) => {
     const { closeThen } = useBottomSheet()
     const navigate = useNavigate()
@@ -146,7 +152,7 @@ const MenuLevel: React.FC<
                 icon={<Icons.Settings className="w-[17px] h-[17px]" />}
                 label="Settings"
                 active={isSettingsActive}
-                onClick={() => closeThen(() => navigate('/settings'))}
+                onClick={onOpenSettings}
             />
 
             {isAuthenticated && (isLoading || recent.length > 0) && (
@@ -215,7 +221,7 @@ const AccountRow: React.FC<{ onOpenInbox: () => void; unread: boolean }> = ({
     })
     const name = profile?.name || 'Account'
     return (
-        <div className="flex items-center gap-2 border-t border-white/[0.06] pt-2 mt-1">
+        <div className="flex items-center gap-2 pt-0.5">
             <button
                 type="button"
                 onClick={() => closeThen(() => navigate('/settings/account'))}
@@ -274,12 +280,17 @@ const InboxList: React.FC<{
                         )}
                     />
                     <span className="flex-1 min-w-0">
-                        <span className="block text-[13px] font-medium text-[#EDEDED] truncate">
+                        {/* read titles go grey so unread ones stand out (L2) */}
+                        <span
+                            className={cn(
+                                'block text-[13px] font-medium truncate',
+                                n.isRead ? 'text-[#A3A2A1]' : 'text-[#EDEDED]'
+                            )}
+                        >
                             {n.title}
                         </span>
-                        <span className="block text-[12px] text-[#919191] truncate">
-                            {n.message}
-                        </span>
+                        {/* two lines of the message, most fit whole (L1) */}
+                        <span className="text-[12px] text-[#919191] line-clamp-2">{n.message}</span>
                     </span>
                     <span className="text-[11px] text-[#7B7A79] shrink-0">
                         {relativeTime(n.createdAt)}
@@ -299,7 +310,39 @@ const InboxList: React.FC<{
     )
 }
 
-const NoteDetail: React.FC<{ note: Notification; onDelete: () => void }> = ({ note, onDelete }) => {
+/** exact time for the message view (M1-a): "Today, 2:14 PM", "Yesterday, 6:40 PM", "Nov 20, 9:02 AM" */
+const exactTime = (iso?: string) => {
+    if (!iso) return ''
+    const date = new Date(iso)
+    if (isNaN(date.getTime())) return ''
+    const time = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const days = Math.floor((startOfToday.getTime() - date.getTime()) / 86400000) + 1
+    if (date >= startOfToday) return `Today, ${time}`
+    if (days === 1) return `Yesterday, ${time}`
+    const sameYear = date.getFullYear() === startOfToday.getFullYear()
+    const day = date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        ...(sameYear ? {} : { year: 'numeric' }),
+    })
+    return `${day}, ${time}`
+}
+
+/** the Open button says where it goes (M3-b). unknown links fall back to "Open" */
+export const openLabelForLink = (link: string) => {
+    if (!link.startsWith('/')) return 'Open'
+    if (link.startsWith('/pull-requests')) return 'View pull requests'
+    if (link.startsWith('/settings/billing')) return 'Open billing'
+    if (link.startsWith('/settings/usage')) return 'Open usage'
+    if (link.startsWith('/settings')) return 'Open settings'
+    if (link.startsWith('/sessions/')) return 'Open session'
+    if (link.startsWith('/sessions')) return 'View sessions'
+    return 'Open'
+}
+
+const NoteDetail: React.FC<{ note: Notification }> = ({ note }) => {
     const { closeThen } = useBottomSheet()
     const navigate = useNavigate()
     const open = () => {
@@ -309,37 +352,28 @@ const NoteDetail: React.FC<{ note: Notification; onDelete: () => void }> = ({ no
         else window.open(link, '_blank', 'noopener,noreferrer')
     }
     return (
-        <div className="flex flex-col gap-2 px-3.5 pb-3">
+        <div className="flex flex-col px-3.5 pb-3">
             <span className="text-[15px] font-semibold text-[#EDEDED]">{note.title}</span>
-            <p className="text-[13px] leading-[1.5] text-[#919191] whitespace-pre-wrap">
+            <span className="mt-0.5 text-[11.5px] text-[#7B7A79]">{exactTime(note.createdAt)}</span>
+            <p className="mt-2.5 text-[14px] leading-[1.5] text-[#B9B8B7] whitespace-pre-wrap">
                 {note.message}
             </p>
-            <span className="text-[11.5px] text-[#7B7A79]">{relativeTime(note.createdAt)}</span>
-            <div className="flex gap-2 pt-1.5">
-                {note.link && (
-                    <button
-                        type="button"
-                        onClick={open}
-                        className="h-8 px-3.5 rounded-[9px] bg-[#E8E8E8] text-[#141414] text-[12.5px] font-medium flex items-center gap-1 outline-none cursor-pointer"
-                    >
-                        Open
-                        {!note.link.startsWith('/') && <ArrowUpRight className="w-3.5 h-3.5" />}
-                    </button>
-                )}
+            {note.link && (
                 <button
                     type="button"
-                    onClick={onDelete}
-                    className="h-8 px-3.5 rounded-[9px] border border-[#383735] text-[#CBCACA] text-[12.5px] font-medium outline-none cursor-pointer"
+                    onClick={open}
+                    className="mt-4 h-9 w-full rounded-[10px] bg-[#E8E8E8] text-[#141414] text-[13px] font-medium flex items-center justify-center gap-1 outline-none cursor-pointer active:bg-white"
                 >
-                    Delete
+                    {openLabelForLink(note.link)}
+                    {!note.link.startsWith('/') && <ArrowUpRight className="w-3.5 h-3.5" />}
                 </button>
-            </div>
+            )}
         </div>
     )
 }
 
 export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
-    const { isAuthenticated, onNewThread, onOpenProject, onSignOut, onOpenAuth } = props
+    const { isAuthenticated, onNewThread, onOpenProject, onOpenAuth } = props
     const isOpen = useAppStore((s) => s.isMobileSidebarOpen)
     const setIsOpen = useAppStore((s) => s.setIsMobileSidebarOpen)
     const start = useAppStore((s) => s.mobileSheetStart)
@@ -354,7 +388,7 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
         }
     }, [isOpen, start])
 
-    const inbox = useInbox(isOpen && level !== 'menu' && isAuthenticated)
+    const inbox = useInbox(isOpen && (level === 'inbox' || level === 'note') && isAuthenticated)
     const { data: unreadData } = useQuery({
         queryKey: ['notifications-unread-count'],
         queryFn: notificationAPI.getUnreadCount,
@@ -370,7 +404,7 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
             setLevel('inbox')
             return true
         }
-        if (level === 'inbox' && start === 'menu') {
+        if ((level === 'inbox' && start === 'menu') || level === 'settings') {
             setLevel('menu')
             return true
         }
@@ -392,11 +426,15 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
                 {...props}
                 onOpenSearch={() => setIsSearchOpen(true)}
                 onOpenInbox={() => setLevel('inbox')}
+                onOpenSettings={() => setLevel('settings')}
             />
         )
         footer = isAuthenticated ? (
             <AccountRow unread={unread} onOpenInbox={() => setLevel('inbox')} />
         ) : null
+    } else if (level === 'settings') {
+        header = <SheetHeader title="Settings" onBack={() => setLevel('menu')} />
+        body = <MobileSettingsLevel isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
     } else if (level === 'inbox') {
         const hasRead = inbox.notifications.some((n) => n.isRead)
         header = (
@@ -426,16 +464,29 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
             />
         )
     } else {
-        header = <SheetHeader title="Inbox" onBack={() => setLevel('inbox')} />
-        body = note ? (
-            <NoteDetail
-                note={note}
-                onDelete={() => {
-                    inbox.remove.mutate(note.id)
-                    setLevel('inbox')
-                }}
+        // delete is a quiet icon in the header (D1), no confirm: it is one notification
+        header = (
+            <SheetHeader
+                title="Inbox"
+                onBack={() => setLevel('inbox')}
+                action={
+                    note ? (
+                        <button
+                            type="button"
+                            aria-label="Delete notification"
+                            onClick={() => {
+                                inbox.remove.mutate(note.id)
+                                setLevel('inbox')
+                            }}
+                            className="w-7 h-7 -mr-1 flex items-center justify-center rounded-lg text-[#919191] active:text-[#D6D5D4] active:bg-[#262626] outline-none cursor-pointer"
+                        >
+                            <Trash2 className="w-[15px] h-[15px]" strokeWidth={1.8} />
+                        </button>
+                    ) : null
+                }
             />
-        ) : null
+        )
+        body = note ? <NoteDetail note={note} /> : null
     }
 
     return (
@@ -446,7 +497,7 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
                 onBack={goBack}
                 header={header}
                 footer={footer}
-                ariaLabel={level === 'menu' ? 'Menu' : 'Inbox'}
+                ariaLabel={level === 'menu' ? 'Menu' : level === 'settings' ? 'Settings' : 'Inbox'}
             >
                 {body}
             </BottomSheet>
@@ -455,7 +506,6 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
                 onClose={() => setIsSearchOpen(false)}
                 onNewThread={isAuthenticated ? onNewThread : onOpenAuth}
                 onOpenSession={(sessionId) => onOpenProject(sessionId)}
-                onSignOut={onSignOut}
                 isAuthenticated={isAuthenticated}
             />
         </>

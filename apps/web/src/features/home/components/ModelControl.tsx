@@ -88,29 +88,12 @@ const KeyModelList: React.FC<{
     )
 }
 
-/**
- * The model control of the prompt box.
- * - On December credits: a Fast or Deep switch. No model names.
- * - On your own key: a button with the model name. Its menu lists your keys, and the
- *   models of a key open beside it.
- * - A small switch between the two shows only when a key is saved.
- */
-export const ModelControl: React.FC<ModelControlProps> = ({
-    isAuthenticated,
-    selectedModel,
-    selectedProvider,
-    selectedSource,
-    onSelectModel,
-}) => {
-    const navigate = useNavigate()
-    const isPhone = useIsPhone()
+/** the saved keys and the actions that move a run between credits and a key */
+const useModelSource = (props: ModelControlProps) => {
+    const { isAuthenticated, selectedModel, selectedSource, onSelectModel } = props
     const { data: byokData } = useByokList(Boolean(isAuthenticated))
     const lastCreditTier = useModelSelection((s) => s.lastCreditTier)
     const lastOwnKey = useModelSelection((s) => s.lastOwnKey)
-    const [isMenuOpen, setIsMenuOpen] = React.useState(false)
-    const [menuPlacement, setMenuPlacement] = React.useState<'top' | 'bottom'>('bottom')
-    const [sheetProvider, setSheetProvider] = React.useState<string | null>(null)
-    const menuRef = React.useRef<HTMLDivElement>(null)
 
     const groups = React.useMemo<KeyGroup[]>(
         () =>
@@ -126,20 +109,6 @@ export const ModelControl: React.FC<ModelControlProps> = ({
     const hasKeys = groups.length > 0
     const isOnKey = selectedSource === 'OWN_KEY' && hasKeys
     const tier = getCreditTier(selectedModel)
-
-    const closeMenu = React.useCallback(() => {
-        setIsMenuOpen(false)
-        setSheetProvider(null)
-    }, [])
-
-    React.useEffect(() => {
-        if (!isMenuOpen || isPhone) return
-        const onMouseDown = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) closeMenu()
-        }
-        document.addEventListener('mousedown', onMouseDown)
-        return () => document.removeEventListener('mousedown', onMouseDown)
-    }, [isMenuOpen, isPhone, closeMenu])
 
     const switchToCredits = (next: CreditTier = lastCreditTier) =>
         onSelectModel?.(CREDIT_TIERS[next].model, CREDIT_TIERS[next].provider, 'CREDITS')
@@ -160,6 +129,150 @@ export const ModelControl: React.FC<ModelControlProps> = ({
         const first = byokData?.credentials[0]
         if (first) onSelectModel?.(first.defaultModel, first.provider, 'OWN_KEY')
     }
+
+    return { groups, hasKeys, isOnKey, tier, switchToCredits, switchToKey }
+}
+
+const segmentClass = (isActive: boolean) =>
+    cn(
+        'flex items-center justify-center w-7 h-6 rounded-full transition-colors outline-none cursor-pointer touch-manipulation',
+        isActive ? 'bg-white/10 text-[#EDEDEF]' : 'text-[#8E8E8E] hover:text-[#EDEDEF]'
+    )
+
+/**
+ * The switch between December credits and your own keys. It sits left of the mic and
+ * always shows. With no key saved, the key side opens the keys page.
+ */
+export const SourceSwitch: React.FC<ModelControlProps & { onOpenAuth?: () => void }> = (props) => {
+    const { isAuthenticated, onOpenAuth } = props
+    const navigate = useNavigate()
+    const { hasKeys, isOnKey, switchToCredits, switchToKey } = useModelSource(props)
+
+    const pickKey = () => {
+        if (!isAuthenticated) {
+            onOpenAuth?.()
+            return
+        }
+        if (!hasKeys) {
+            navigate('/settings/models')
+            return
+        }
+        if (!isOnKey) switchToKey()
+    }
+
+    return (
+        <div
+            role="radiogroup"
+            aria-label="Model source"
+            className="inline-flex items-center gap-0.5 p-0.5 rounded-full border border-white/5"
+        >
+            <div className="relative group/seg">
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!isOnKey}
+                    aria-label="December credits"
+                    onClick={() => {
+                        if (isOnKey) switchToCredits()
+                    }}
+                    className={segmentClass(!isOnKey)}
+                >
+                    <Icons.DecemberLogo className="w-3.5 h-3.5" strokeWidth={1} />
+                </button>
+                <span className={tooltipClass}>December credits</span>
+            </div>
+            <div className="relative group/seg">
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={isOnKey}
+                    aria-label="Your keys"
+                    onClick={pickKey}
+                    className={segmentClass(isOnKey)}
+                >
+                    <KeyRound className="w-3 h-3" />
+                </button>
+                <span className={tooltipClass}>{hasKeys ? 'Your keys' : 'Add a key'}</span>
+            </div>
+        </div>
+    )
+}
+
+/** the Fast | Deep switch for December credits */
+export const TierSwitch: React.FC<ModelControlProps & { className?: string }> = (props) => {
+    const { className } = props
+    const { isOnKey, tier, switchToCredits } = useModelSource(props)
+    if (isOnKey) return null
+
+    return (
+        <div role="radiogroup" aria-label="Speed" className={cn(groupClass, className)}>
+            {TIERS.map((value) => (
+                <div key={value} className="relative group/seg">
+                    <button
+                        type="button"
+                        role="radio"
+                        aria-checked={tier === value}
+                        onClick={() => switchToCredits(value)}
+                        className={cn(
+                            'px-2.5 h-6 rounded-full text-[12px] font-medium transition-colors outline-none cursor-pointer touch-manipulation',
+                            tier === value
+                                ? 'bg-white/10 text-[#EDEDEF]'
+                                : 'text-[#8E8E8E] hover:text-[#EDEDEF]'
+                        )}
+                    >
+                        {CREDIT_TIER_LABELS[value]}
+                    </button>
+                    <span className={tooltipClass}>{TIER_TIPS[value]}</span>
+                </div>
+            ))}
+        </div>
+    )
+}
+
+/** Fast | Deep as a Configuration row, for phones. Hidden on your own key */
+export const TierConfigRow: React.FC<ModelControlProps> = (props) => {
+    const { isOnKey } = useModelSource(props)
+    if (isOnKey) return null
+
+    return (
+        <div className="flex items-center justify-between gap-3 px-3 rounded-xl font-medium text-[#EDEDEF] min-w-0">
+            <span>Speed</span>
+            <TierSwitch {...props} className="ml-0" />
+        </div>
+    )
+}
+
+/**
+ * The model control of the prompt box, left of the box.
+ * - On December credits: the Fast | Deep switch, unless `showTier` is off (phones put it
+ *   in Configuration).
+ * - On your own key: a button with the model name. Its menu lists your keys, and the
+ *   models of a key open beside it.
+ * The credits / keys switch is `SourceSwitch`, next to the mic.
+ */
+export const ModelControl: React.FC<ModelControlProps & { showTier?: boolean }> = (props) => {
+    const { selectedModel, selectedProvider, onSelectModel, showTier = true } = props
+    const navigate = useNavigate()
+    const isPhone = useIsPhone()
+    const { groups, isOnKey } = useModelSource(props)
+    const [isMenuOpen, setIsMenuOpen] = React.useState(false)
+    const [menuPlacement, setMenuPlacement] = React.useState<'top' | 'bottom'>('bottom')
+    const [sheetProvider, setSheetProvider] = React.useState<string | null>(null)
+    const menuRef = React.useRef<HTMLDivElement>(null)
+
+    const closeMenu = React.useCallback(() => {
+        setIsMenuOpen(false)
+        setSheetProvider(null)
+    }, [])
+
+    React.useEffect(() => {
+        if (!isMenuOpen || isPhone) return
+        const onMouseDown = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) closeMenu()
+        }
+        document.addEventListener('mousedown', onMouseDown)
+        return () => document.removeEventListener('mousedown', onMouseDown)
+    }, [isMenuOpen, isPhone, closeMenu])
 
     const pickKeyModel = (provider: string, model: string) => {
         closeMenu()
@@ -199,69 +312,8 @@ export const ModelControl: React.FC<ModelControlProps> = ({
 
     return (
         <>
-            {hasKeys && (
-                <div role="radiogroup" aria-label="Model source" className={groupClass}>
-                    <div className="relative group/seg">
-                        <button
-                            type="button"
-                            role="radio"
-                            aria-checked={!isOnKey}
-                            aria-label="December credits"
-                            onClick={() => switchToCredits()}
-                            className={cn(
-                                'flex items-center justify-center w-7 h-6 rounded-full transition-colors outline-none cursor-pointer',
-                                !isOnKey
-                                    ? 'bg-white/10 text-[#EDEDEF]'
-                                    : 'text-[#8E8E8E] hover:text-[#EDEDEF]'
-                            )}
-                        >
-                            <Icons.DecemberLogo className="w-3.5 h-3.5" strokeWidth={1} />
-                        </button>
-                        <span className={tooltipClass}>December credits</span>
-                    </div>
-                    <div className="relative group/seg">
-                        <button
-                            type="button"
-                            role="radio"
-                            aria-checked={isOnKey}
-                            aria-label="Your keys"
-                            onClick={switchToKey}
-                            className={cn(
-                                'flex items-center justify-center w-7 h-6 rounded-full transition-colors outline-none cursor-pointer',
-                                isOnKey
-                                    ? 'bg-white/10 text-[#EDEDEF]'
-                                    : 'text-[#8E8E8E] hover:text-[#EDEDEF]'
-                            )}
-                        >
-                            <KeyRound className="w-3 h-3" />
-                        </button>
-                        <span className={tooltipClass}>Your keys</span>
-                    </div>
-                </div>
-            )}
-
             {!isOnKey ? (
-                <div role="radiogroup" aria-label="Speed" className={groupClass}>
-                    {TIERS.map((value) => (
-                        <div key={value} className="relative group/seg">
-                            <button
-                                type="button"
-                                role="radio"
-                                aria-checked={tier === value}
-                                onClick={() => switchToCredits(value)}
-                                className={cn(
-                                    'px-2.5 h-6 rounded-full text-[12px] font-medium transition-colors outline-none cursor-pointer touch-manipulation',
-                                    tier === value
-                                        ? 'bg-white/10 text-[#EDEDEF]'
-                                        : 'text-[#8E8E8E] hover:text-[#EDEDEF]'
-                                )}
-                            >
-                                {CREDIT_TIER_LABELS[value]}
-                            </button>
-                            <span className={tooltipClass}>{TIER_TIPS[value]}</span>
-                        </div>
-                    ))}
-                </div>
+                showTier && <TierSwitch {...props} />
             ) : (
                 <div className="relative ml-1 min-w-0" ref={menuRef}>
                     <button

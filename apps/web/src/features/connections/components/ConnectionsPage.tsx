@@ -17,6 +17,7 @@ import { RulesTab } from './RulesTab'
 import { SkillsTab } from './SkillsTab'
 import { SoonTab } from './SoonTab'
 
+import { useAppStore } from '@/app/store'
 import {
     MobileBackButton,
     MobileIconButton,
@@ -55,6 +56,7 @@ const mobileAddTarget: Partial<Record<ConnectionsTab, 'modal' | 'page'>> = {
 export const ConnectionsPage: React.FC = () => {
     const location = useLocation()
     const { navigate, toTab, openAdd } = useConnectionsNav()
+    const openMobileSheet = useAppStore((s) => s.openMobileSheet)
     const [isDemo] = React.useState(isConnectionsDemoActive)
 
     const redirect = redirectFor(location.pathname, location.search)
@@ -109,7 +111,10 @@ export const ConnectionsPage: React.FC = () => {
             ) : (
                 <MobileTopBar
                     left={
-                        <MobileBackButton label="Settings" onClick={() => navigate('/settings')} />
+                        <MobileBackButton
+                            label="Settings"
+                            onClick={() => openMobileSheet('settings')}
+                        />
                     }
                     right={
                         addTarget && (

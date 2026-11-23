@@ -60,10 +60,11 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
 
     return (
         <div className="relative h-full w-full flex-1 overflow-y-auto bg-background font-sans no-scrollbar">
-            <MobileTopBar title="Pull requests" />
+            {/* the page heading below says Pull requests, so the bar only holds the menu */}
+            <MobileTopBar />
 
-            <div className="relative z-10 mx-auto max-w-[900px] px-3.5 sm:px-6 pb-8 pt-2 md:p-16 flex flex-col">
-                <h1 className="hidden md:block text-[24px] font-sans font-medium tracking-[-0.025em] text-[#D6D5C9] mb-5">
+            <div className="relative z-10 mx-auto max-w-[900px] px-3.5 sm:px-6 pb-8 pt-4 md:p-16 flex flex-col">
+                <h1 className="text-[24px] font-sans font-medium tracking-[-0.025em] text-[#D6D5C9] mb-5">
                     Pull requests
                 </h1>
                 <div className="mb-4">

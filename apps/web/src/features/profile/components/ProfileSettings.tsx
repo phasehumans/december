@@ -14,7 +14,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
 
-import { MobileSettingsList } from './MobileSettingsList'
 import { ProfileBillingSettings } from './ProfileBillingSettings'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { ProfileModelKeysSettings } from './ProfileModelKeysSettings'
@@ -37,6 +36,7 @@ import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
 import { getWebUrl } from '@/shared/config/env'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
+import { useIsPhone } from '@/shared/lib/useIsPhone'
 import { cn } from '@/shared/lib/utils'
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack }) => {
@@ -44,6 +44,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const navigate = useNavigate()
     const isAuthenticated = useAppStore((s) => s.isAuthenticated)
     const isAuthRestored = useAppStore((s) => s.isAuthRestored)
+    const openMobileSheet = useAppStore((s) => s.openMobileSheet)
+    const isPhone = useIsPhone()
 
     const activeTabMatch = location.pathname.match(
         /^\/(?:profile|settings|integrations|connections|connectors)(?:\/([^/]+))?/
@@ -84,6 +86,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         !location.pathname.startsWith('/integrations') &&
         !location.pathname.startsWith('/connections') &&
         !location.pathname.startsWith('/connectors')
+
+    // phones have no settings list page: the list is a level of the menu sheet (A1)
+    React.useEffect(() => {
+        if (!isPhone || !isMobileRoot || !isAuthenticated) return
+        navigate('/', { replace: true })
+        openMobileSheet('settings')
+    }, [isPhone, isMobileRoot, isAuthenticated, navigate, openMobileSheet])
 
     // fallback for hash backward compatibility
     React.useEffect(() => {
@@ -364,26 +373,15 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                     </div>
                 ) : (
                     <div className="flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                        {/* Mobile top bar: list page at /settings, "‹ Settings" on a page */}
-                        {isMobileRoot ? (
-                            <MobileTopBar title="Settings" />
-                        ) : (
-                            <MobileTopBar
-                                left={
-                                    <MobileBackButton
-                                        label="Settings"
-                                        onClick={() => navigate('/settings')}
-                                    />
-                                }
-                            />
-                        )}
-
-                        {isMobileRoot && (
-                            <MobileSettingsList
-                                onOpenPage={(slug) => navigate(`/settings/${slug}`)}
-                                onSignOut={onSignOut}
-                            />
-                        )}
+                        {/* Mobile top bar: "‹ Settings" opens the Settings level of the menu sheet */}
+                        <MobileTopBar
+                            left={
+                                <MobileBackButton
+                                    label="Settings"
+                                    onClick={() => openMobileSheet('settings')}
+                                />
+                            }
+                        />
 
                         {/* Mobile Content: Active Tab Content directly rendered */}
                         <div
