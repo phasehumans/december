@@ -75,7 +75,7 @@ afterEach(() => {
 })
 
 describe('model picker with own keys', () => {
-    it('lists saved keys under "Your keys" and selects them as OWN_KEY', async () => {
+    it('shows a source switch when a key is saved, and "Your keys" selects that key as OWN_KEY', async () => {
         spies.push(
             spyOn(byokAPI, 'list').mockImplementation(async () => ({
                 providers: PROVIDERS,
@@ -96,18 +96,15 @@ describe('model picker with own keys', () => {
             />
         )
 
-        fireEvent.click(screen.getByRole('button', { name: /Select Model/i }))
-        expect(screen.getByText('December credits')).toBeDefined()
-        const ownKeyOption = await screen.findByRole('button', {
-            name: /llama-3.3-70b-versatile/i,
-        })
-        expect(screen.getByText('Your keys')).toBeDefined()
+        // on december credits the footer has Fast and Deep, and no model names
+        expect(screen.getByRole('radio', { name: 'Deep' })).toBeDefined()
+        const yourKeys = await screen.findByRole('radio', { name: 'Your keys' })
 
-        fireEvent.click(ownKeyOption)
-        expect(onSelectModel).toHaveBeenCalledWith('llama-3.3-70b-versatile', 'groq', 'OWN_KEY')
+        fireEvent.click(yourKeys)
+        expect(onSelectModel).toHaveBeenCalledWith(GROQ.defaultModel, 'groq', 'OWN_KEY')
     })
 
-    it('offers to add a key when none is saved', async () => {
+    it('has no source switch when no key is saved', async () => {
         spies.push(
             spyOn(byokAPI, 'list').mockImplementation(async () => ({
                 providers: PROVIDERS,
@@ -123,8 +120,9 @@ describe('model picker with own keys', () => {
                 isAuthenticated
             />
         )
-        fireEvent.click(screen.getByRole('button', { name: /Select Model/i }))
-        expect(await screen.findByRole('button', { name: /Add your own key/i })).toBeDefined()
+        expect(await screen.findByRole('radiogroup', { name: 'Speed' })).toBeDefined()
+        expect(screen.queryByRole('radio', { name: 'Your keys' })).toBeNull()
+        expect(screen.queryByRole('button', { name: /Select Model/i })).toBeNull()
     })
 })
 

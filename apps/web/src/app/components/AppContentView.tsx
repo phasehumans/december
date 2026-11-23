@@ -18,9 +18,9 @@ const ProfileSettings = React.lazy(() =>
         default: m.ProfileSettings,
     }))
 )
-const ConnectionsPage = React.lazy(() =>
-    import('@/features/connections/components/ConnectionsPage').then((m) => ({
-        default: m.ConnectionsPage,
+const PullRequestsPage = React.lazy(() =>
+    import('@/features/pullrequests/components/PullRequestsPage').then((m) => ({
+        default: m.PullRequestsPage,
     }))
 )
 const SessionList = React.lazy(() =>
@@ -113,9 +113,9 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                     </AnimatedPage>
                 )}
 
-                {view === 'connections' && (
-                    <AnimatedPage pageKey="connections">
-                        <ConnectionsPage />
+                {view === 'pullrequests' && (
+                    <AnimatedPage pageKey="pullrequests">
+                        <PullRequestsPage onOpenProject={onOpenProject} />
                     </AnimatedPage>
                 )}
 

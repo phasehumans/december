@@ -4,6 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 
 import { useConnectionsNav } from '../hooks/useConnectionsNav'
 import { isConnectionsDemoActive } from '../lib/connectionsDemo'
+import { CONNECTIONS_BASE_PATH } from '../lib/paths'
 import { CONNECTIONS_TAB_LABELS, CONNECTIONS_TABS, type ConnectionsTab } from '../types'
 
 import { AppsTab } from './AppsTab'
@@ -25,16 +26,19 @@ import {
 const isTab = (value: string | undefined): value is ConnectionsTab =>
     Boolean(value && (CONNECTIONS_TABS as readonly string[]).includes(value))
 
-/** old urls that now live here */
-const redirectFor = (pathname: string): string | null => {
-    if (pathname.startsWith('/settings/repositories')) return '/connections/apps/github'
+/** old urls of this page. each one moves to its place under settings */
+const redirectFor = (pathname: string, search: string): string | null => {
+    if (pathname.startsWith('/settings/repositories')) return `${CONNECTIONS_BASE_PATH}/apps/github`
     if (
-        pathname.startsWith('/settings/connections') ||
         pathname.startsWith('/settings/integrations') ||
         pathname.startsWith('/integrations') ||
         pathname.startsWith('/connectors')
     ) {
-        return '/connections/apps'
+        return `${CONNECTIONS_BASE_PATH}/apps`
+    }
+    // the page was at /connections for a short time
+    if (pathname === '/connections' || pathname.startsWith('/connections/')) {
+        return `${CONNECTIONS_BASE_PATH}${pathname.slice('/connections'.length)}${search}`
     }
     return null
 }
@@ -53,16 +57,16 @@ export const ConnectionsPage: React.FC = () => {
     const { navigate, toTab, openAdd } = useConnectionsNav()
     const [isDemo] = React.useState(isConnectionsDemoActive)
 
-    const redirect = redirectFor(location.pathname)
-    const parts = location.pathname.split('/').filter(Boolean)
-    const tab = parts[1]
-    const itemId = parts[2] ? decodeURIComponent(parts[2]) : undefined
+    const redirect = redirectFor(location.pathname, location.search)
+    const parts = location.pathname.slice(CONNECTIONS_BASE_PATH.length).split('/').filter(Boolean)
+    const tab = parts[0]
+    const itemId = parts[1] ? decodeURIComponent(parts[1]) : undefined
 
     if (redirect) {
         return <Navigate to={redirect} replace />
     }
     if (!isTab(tab)) {
-        return <Navigate to="/connections/apps" replace />
+        return <Navigate to={`${CONNECTIONS_BASE_PATH}/apps`} replace />
     }
 
     const isSoon = tab !== 'apps' && !isDemo
@@ -104,7 +108,9 @@ export const ConnectionsPage: React.FC = () => {
                 />
             ) : (
                 <MobileTopBar
-                    title="Connections"
+                    left={
+                        <MobileBackButton label="Settings" onClick={() => navigate('/settings')} />
+                    }
                     right={
                         addTarget && (
                             <MobileIconButton
@@ -112,7 +118,7 @@ export const ConnectionsPage: React.FC = () => {
                                 filled
                                 onClick={() =>
                                     addTarget === 'page'
-                                        ? navigate(`/connections/${tab}/new`)
+                                        ? navigate(`${CONNECTIONS_BASE_PATH}/${tab}/new`)
                                         : openAdd(tab === 'plugins' ? 'repo' : '1')
                                 }
                             >
@@ -126,7 +132,7 @@ export const ConnectionsPage: React.FC = () => {
             <div className="relative z-10 mx-auto max-w-[900px] px-3.5 sm:px-6 pb-8 pt-2 md:p-16 flex flex-col">
                 {!isDetail && (
                     <>
-                        <h1 className="hidden md:block text-[24px] font-sans font-medium tracking-[-0.025em] text-[#D6D5C9] mb-5">
+                        <h1 className="text-[16px] md:text-[24px] font-sans font-medium tracking-[-0.025em] text-white md:text-[#D6D5C9] mb-3 md:mb-5">
                             Connections
                         </h1>
                         <div className="mb-4 -mx-3.5 px-3.5 md:mx-0 md:px-0 overflow-x-auto no-scrollbar [scrollbar-width:none]">

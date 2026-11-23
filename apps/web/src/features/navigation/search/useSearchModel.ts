@@ -232,6 +232,14 @@ export const useSearchModel = (options: SearchModelOptions) => {
                 href: `${window.location.origin}/sessions`,
                 run: () => navigate('/sessions'),
             })
+            list.push({
+                id: 'nav-pull-requests',
+                group: 'Navigation',
+                label: 'Pull requests',
+                keywords: ['prs', 'pr', 'github', 'review', 'merge'],
+                href: `${window.location.origin}/pull-requests`,
+                run: () => navigate('/pull-requests'),
+            })
         }
         list.push({
             id: 'nav-docs',

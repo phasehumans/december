@@ -14,6 +14,11 @@ import type { GeneratedProjectFile, PreviewSessionStatus } from '@/features/prev
 import type { BackendProjectVersionSummary } from '@/features/sessions/api/session'
 
 import { useAppStore } from '@/app/store'
+import {
+    clearWorkspaceTabRequest,
+    onWorkspaceTabRequest,
+    peekWorkspaceTabRequest,
+} from '@/features/preview/lib/workspaceTabRequest'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 
 interface WorkspaceScreenMainContentProps {
@@ -125,6 +130,22 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
         }
         setActiveTab(tabId)
     }
+
+    // a pull request row or the /diff command asked for a tab. the pull request tab
+    // waits until the session's pull request is loaded
+    const hasPullRequest = Boolean(pullRequest)
+    React.useEffect(() => {
+        const applyRequest = () => {
+            const requested = peekWorkspaceTabRequest()
+            if (!requested) return
+            if (requested === 'pull_requests' && !hasPullRequest) return
+            clearWorkspaceTabRequest()
+            setOpenTabs((prev) => (prev.includes(requested) ? prev : [...prev, requested]))
+            setActiveTab(requested)
+        }
+        applyRequest()
+        return onWorkspaceTabRequest(applyRequest)
+    }, [hasPullRequest])
 
     const activeDef = ALL_TAB_DEFS.find((t) => t.id === activeTab)
 

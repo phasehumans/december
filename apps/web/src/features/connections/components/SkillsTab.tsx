@@ -68,7 +68,7 @@ const SkillsList: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <SearchInput value={query} onChange={setQuery} placeholder="Search skills" />
                     <span className="hidden md:block flex-1" />
-                    <PrimaryButton onClick={() => navigate('/connections/skills/new')}>
+                    <PrimaryButton onClick={() => navigate('/settings/connections/skills/new')}>
                         New skill
                     </PrimaryButton>
                 </div>
@@ -83,7 +83,9 @@ const SkillsList: React.FC = () => {
                 {visible.length === 0 ? (
                     <EmptyRow
                         action={
-                            <SecondaryButton onClick={() => navigate('/connections/skills/new')}>
+                            <SecondaryButton
+                                onClick={() => navigate('/settings/connections/skills/new')}
+                            >
                                 New skill
                             </SecondaryButton>
                         }

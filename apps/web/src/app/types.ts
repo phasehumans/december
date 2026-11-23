@@ -1,4 +1,4 @@
-export type ViewState = 'chat' | 'sessions' | 'connections' | 'profile' | 'project'
+export type ViewState = 'chat' | 'sessions' | 'pullrequests' | 'profile' | 'project'
 
 export type ProfileTab =
     | 'Account'
@@ -53,7 +53,7 @@ export const toProjectSlug = toSessionSlug
 const simpleViewToPath: Record<string, string> = {
     chat: '/',
     sessions: '/sessions',
-    connections: '/connections',
+    pullrequests: '/pull-requests',
 }
 
 const simplePathToView: Record<string, ViewState> = Object.fromEntries(
@@ -84,20 +84,17 @@ export const getViewForPath = (pathname: string): ViewState => {
     const simple = simplePathToView[pathname]
     if (simple) return simple
 
-    // /connections/*, plus the old /integrations, /connectors, /settings/connections and
-    // /settings/repositories urls (the connections page redirects them) → connections
+    // connections is a page of settings. its old urls (/connections, /integrations,
+    // /connectors) open settings too, and the connections page redirects them
     if (
         pathname === '/connections' ||
         pathname.startsWith('/connections/') ||
         pathname === '/integrations' ||
         pathname.startsWith('/integrations/') ||
         pathname === '/connectors' ||
-        pathname.startsWith('/connectors/') ||
-        pathname.startsWith('/settings/connections') ||
-        pathname.startsWith('/settings/integrations') ||
-        pathname.startsWith('/settings/repositories')
+        pathname.startsWith('/connectors/')
     )
-        return 'connections'
+        return 'profile'
 
     // /settings or /settings/*, /profile → profile
     if (

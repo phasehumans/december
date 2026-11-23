@@ -78,7 +78,7 @@ describe('Model and provider routing', () => {
         })
     })
 
-    it('renders model selector button in PromptFooter and calls onSelectModel when option is clicked', () => {
+    it('shows Fast and Deep on December credits and calls onSelectModel with the model of the speed', () => {
         const onSelectModel = mock((model: string, provider?: string) => {})
 
         render(
@@ -98,22 +98,17 @@ describe('Model and provider routing', () => {
             </MemoryRouter>
         )
 
-        const modelButton = screen.getByRole('button', { name: /Select Model/i })
-        expect(modelButton).toBeDefined()
-        expect(modelButton.textContent).toContain('Gemini 2.5 Pro')
+        // no model names on credits: gemini-2.5-pro is "Deep"
+        const deep = screen.getByRole('radio', { name: 'Deep' })
+        const fast = screen.getByRole('radio', { name: 'Fast' })
+        expect(deep.getAttribute('aria-checked')).toBe('true')
+        expect(screen.queryByRole('button', { name: /Select Model/i })).toBeNull()
+        expect(screen.queryByText('Gemini 2.5 Pro')).toBeNull()
 
-        // Open menu
-        fireEvent.click(modelButton)
-
-        // Find GPT-4o option
-        const gptOption = screen.getByRole('button', { name: /GPT-4o/i })
-        expect(gptOption).toBeDefined()
-
-        // Select GPT-4o
-        fireEvent.click(gptOption)
+        fireEvent.click(fast)
 
         expect(onSelectModel).toHaveBeenCalledTimes(1)
-        expect(onSelectModel).toHaveBeenCalledWith('gpt-4o', 'openai', 'CREDITS')
+        expect(onSelectModel).toHaveBeenCalledWith('gemini-2.5-flash', 'gemini', 'CREDITS')
     })
 
     it('sends model and provider in send_prompt socket event via generateProjectStream', async () => {

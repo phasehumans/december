@@ -23,14 +23,14 @@ describe('Google OAuth Verification, Privacy & Terms', () => {
         expect(getViewForPath('/settings/usage')).toBe('profile')
         expect(getViewForPath('/settings/billing')).toBe('profile')
         expect(getViewForPath('/profile/integrations')).toBe('profile')
-        // connections moved out of settings into its own page; old urls land there
-        expect(getViewForPath('/settings/integrations')).toBe('connections')
-        expect(getViewForPath('/settings/connections')).toBe('connections')
-        expect(getViewForPath('/settings/repositories')).toBe('connections')
-        expect(getViewForPath('/connections')).toBe('connections')
-        expect(getViewForPath('/connections/mcps/sentry')).toBe('connections')
-        expect(getViewForPath('/integrations')).toBe('connections')
-        expect(getViewForPath('/connectors')).toBe('connections')
+        // connections is a page of settings again; its old urls open settings too
+        expect(getViewForPath('/settings/integrations')).toBe('profile')
+        expect(getViewForPath('/settings/connections')).toBe('profile')
+        expect(getViewForPath('/settings/repositories')).toBe('profile')
+        expect(getViewForPath('/connections')).toBe('profile')
+        expect(getViewForPath('/connections/mcps/sentry')).toBe('profile')
+        expect(getViewForPath('/integrations')).toBe('profile')
+        expect(getViewForPath('/connectors')).toBe('profile')
         // Standalone /privacy and /terms are now external landing page redirects, not internal profile views
         expect(getViewForPath('/privacy')).toBe('chat')
         expect(getViewForPath('/terms')).toBe('chat')

@@ -14,6 +14,7 @@ import { profileAPI } from '@/features/profile/api/profile'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { useSessionController } from '@/features/sessions/hooks/useSessionController'
 import { ApiError } from '@/shared/api/client'
+import { NEW_SESSION_REQUEST_EVENT } from '@/shared/lib/appEvents'
 import { clearLoggedInCookie, setLoggedInCookie } from '@/shared/utils/logged-in-cookie'
 
 export const useAppController = () => {
@@ -235,6 +236,12 @@ export const useAppController = () => {
 
     const handleHomeClick = React.useCallback(() => {
         handleNewThread()
+    }, [handleNewThread])
+
+    // the /new command starts a new session from the prompt box
+    React.useEffect(() => {
+        window.addEventListener(NEW_SESSION_REQUEST_EVENT, handleNewThread)
+        return () => window.removeEventListener(NEW_SESSION_REQUEST_EVENT, handleNewThread)
     }, [handleNewThread])
 
     const handleResetImportState = React.useCallback(() => {

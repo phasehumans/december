@@ -1,9 +1,11 @@
 import { Folder, KeyRound, GitBranch } from 'lucide-react'
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import type { PromptInputProps } from '@/features/home/types'
 
 import { usePromptInputController } from '@/features/home/hooks/usePromptInputController'
+import { SlashHelpPanel, SlashMenu } from '@/features/home/slash/SlashMenu'
 import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 
@@ -28,6 +30,7 @@ export const PromptInput: React.FC<
     onModelChange,
     acceptPrefill,
 }) => {
+    const navigate = useNavigate()
     const {
         input,
         textareaRef,
@@ -69,6 +72,7 @@ export const PromptInput: React.FC<
         selectedProvider,
         selectedSource,
         handleSelectModel,
+        slash,
     } = usePromptInputController({
         value,
         onChange,
@@ -80,10 +84,13 @@ export const PromptInput: React.FC<
         initialModel: propSelectedModel,
         initialProvider: propSelectedProvider,
         acceptPrefill,
+        onModelChange,
+        onNavigate: navigate,
     })
 
     return (
         <div
+            data-prompt-box
             className={`relative w-full transition-all duration-300 ${minimized ? 'max-w-full' : 'max-w-3xl'}`}
         >
             <div
@@ -133,12 +140,36 @@ export const PromptInput: React.FC<
                         </div>
                     )}
 
+                    {slash.chips.map((chip) => (
+                        <div
+                            key={chip.id}
+                            className="flex items-center gap-1.5 text-[#E8E8E8] font-sans text-xs font-medium mr-1.5 mb-1 bg-[#2A2928] px-2 py-0.5 rounded-[6px]"
+                        >
+                            <span className="text-[12.5px] leading-relaxed">{chip.label}</span>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    slash.removeChip(chip.id)
+                                }}
+                                className="text-[#8F8E8D] hover:text-white transition-colors ml-0.5"
+                                aria-label={`Remove ${chip.label}`}
+                            >
+                                <Icons.X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    ))}
+
                     <div className="relative flex-1 min-w-[100px]">
                         <textarea
                             id="home-prompt-textarea"
                             ref={textareaRef}
                             value={input}
-                            onChange={(event) => handleInputChange(event.target.value)}
+                            onChange={(event) => {
+                                handleInputChange(event.target.value)
+                                // the caret moves with the text, so the menus see the new word at once
+                                handleSelect(event)
+                            }}
                             onKeyDown={handleKeyDown}
                             onSelect={handleSelect}
                             onKeyUp={handleSelect}
@@ -418,8 +449,16 @@ export const PromptInput: React.FC<
                         handleSelectModel(model, provider, source)
                         onModelChange?.(model, provider)
                     }}
+                    onSlash={() => slash.open()}
+                    onPickRepo={handleSelectRepo}
+                    onPickSession={handleSelectSession}
+                    onPickSecret={handleSelectSecret}
+                    onPickSkill={slash.addSkillChip}
                 />
             </div>
+
+            <SlashMenu menu={slash} anchorRef={textareaRef} />
+            <SlashHelpPanel menu={slash} />
         </div>
     )
 }

@@ -67,7 +67,7 @@ const RulesList: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <SearchInput value={query} onChange={setQuery} placeholder="Search rules" />
                     <span className="hidden md:block flex-1" />
-                    <PrimaryButton onClick={() => navigate('/connections/rules/new')}>
+                    <PrimaryButton onClick={() => navigate('/settings/connections/rules/new')}>
                         New rule
                     </PrimaryButton>
                 </div>
@@ -83,7 +83,9 @@ const RulesList: React.FC = () => {
                 {visible.length === 0 ? (
                     <EmptyRow
                         action={
-                            <SecondaryButton onClick={() => navigate('/connections/rules/new')}>
+                            <SecondaryButton
+                                onClick={() => navigate('/settings/connections/rules/new')}
+                            >
                                 New rule
                             </SecondaryButton>
                         }

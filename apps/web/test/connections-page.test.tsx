@@ -75,33 +75,40 @@ afterEach(() => {
 })
 
 describe('connections routes', () => {
-    test('connections urls, including the old settings ones, use the connections view', () => {
-        expect(getViewForPath('/connections')).toBe('connections')
-        expect(getViewForPath('/connections/skills/new')).toBe('connections')
-        expect(getViewForPath('/settings/connections')).toBe('connections')
-        expect(getViewForPath('/settings/repositories')).toBe('connections')
+    test('connections urls, old and new, open settings', () => {
+        expect(getViewForPath('/settings/connections')).toBe('profile')
+        expect(getViewForPath('/settings/connections/skills/new')).toBe('profile')
+        expect(getViewForPath('/connections')).toBe('profile')
+        expect(getViewForPath('/connections/skills/new')).toBe('profile')
+        expect(getViewForPath('/settings/repositories')).toBe('profile')
         expect(getViewForPath('/settings/secrets')).toBe('profile')
     })
 
-    test('old urls redirect into /connections', () => {
+    test('old urls redirect into /settings/connections', () => {
         renderAt('/settings/repositories')
-        expect(location()).toBe('/connections/apps/github')
+        expect(location()).toBe('/settings/connections/apps/github')
         cleanup()
         renderAt('/integrations')
-        expect(location()).toBe('/connections/apps')
+        expect(location()).toBe('/settings/connections/apps')
         cleanup()
         renderAt('/connections')
-        expect(location()).toBe('/connections/apps')
+        expect(location()).toBe('/settings/connections/apps')
         cleanup()
-        renderAt('/connections/nope')
-        expect(location()).toBe('/connections/apps')
+        renderAt('/connections/mcps/sentry')
+        expect(location()).toBe('/settings/connections/mcps/sentry')
+        cleanup()
+        renderAt('/settings/connections')
+        expect(location()).toBe('/settings/connections/apps')
+        cleanup()
+        renderAt('/settings/connections/nope')
+        expect(location()).toBe('/settings/connections/apps')
     })
 
-    test('search points at the new pages', () => {
+    test('search points at the pages under settings', () => {
         const paths = SETTINGS_PAGES.map((page) => page.path)
-        expect(paths).toContain('/connections/apps')
-        expect(paths).toContain('/connections/mcps')
-        expect(paths).not.toContain('/settings/connections')
+        expect(paths).toContain('/settings/connections/apps')
+        expect(paths).toContain('/settings/connections/mcps')
+        expect(paths).not.toContain('/connections/apps')
         expect(paths).not.toContain('/settings/repositories')
     })
 })
@@ -110,7 +117,7 @@ describe('without demo mode', () => {
     beforeEach(() => setConnectionsDemo(false))
 
     test('apps tab lists github with connect, other apps are soon', () => {
-        renderAt('/connections/apps')
+        renderAt('/settings/connections/apps')
         expect(screen.getByRole('heading', { name: 'Connections' })).toBeDefined()
         expect(screen.getByText('GitHub')).toBeDefined()
         expect(screen.getByRole('button', { name: 'Connect' })).toBeDefined()
@@ -118,24 +125,24 @@ describe('without demo mode', () => {
     })
 
     test('connected github shows the connected pill and account', () => {
-        renderAt('/connections/apps', { githubConnected: true, githubUsername: 'octo' })
+        renderAt('/settings/connections/apps', { githubConnected: true, githubUsername: 'octo' })
         expect(screen.getByText('Connected')).toBeDefined()
         expect(screen.getByText('octo')).toBeDefined()
     })
 
     test('tabs without a backend say they are coming soon', () => {
-        renderAt('/connections/skills')
+        renderAt('/settings/connections/skills')
         expect(screen.getByText('Skills are coming soon')).toBeDefined()
         expect(screen.queryByText('write-tests')).toBeNull()
         cleanup()
-        renderAt('/connections/memory')
+        renderAt('/settings/connections/memory')
         expect(screen.getByText('Memory is coming soon')).toBeDefined()
     })
 
     test('the tab buttons switch the url', () => {
-        renderAt('/connections/apps')
+        renderAt('/settings/connections/apps')
         fireEvent.click(screen.getByRole('radio', { name: 'MCPs' }))
-        expect(location()).toBe('/connections/mcps')
+        expect(location()).toBe('/settings/connections/mcps')
     })
 })
 
@@ -143,7 +150,7 @@ describe('demo mode', () => {
     beforeEach(() => setConnectionsDemo(true))
 
     test('skills list shows source and a working switch', () => {
-        renderAt('/connections/skills')
+        renderAt('/settings/connections/skills')
         expect(screen.getByText('write-tests')).toBeDefined()
         expect(screen.getByText('release-notes')).toBeDefined()
         fireEvent.click(screen.getByRole('switch', { name: 'Turn write-tests on or off' }))
@@ -153,7 +160,7 @@ describe('demo mode', () => {
     })
 
     test('new skill checks the name and saves', () => {
-        renderAt('/connections/skills/new')
+        renderAt('/settings/connections/skills/new')
         const save = screen.getByRole('button', { name: 'Save skill' }) as HTMLButtonElement
         expect(save.disabled).toBe(true)
 
@@ -169,13 +176,13 @@ describe('demo mode', () => {
         fireEvent.click(save)
 
         expect(useConnectionsStore.getState().skills.some((s) => s.name === 'lint-fix')).toBe(true)
-        expect(location()).toBe('/connections/skills/lint-fix')
+        expect(location()).toBe('/settings/connections/skills/lint-fix')
         expect(screen.getByText('Saved')).toBeDefined()
     })
 
     test('turning a plugin off locks its items', () => {
         useConnectionsStore.getState().setPluginEnabled('release-kit', false)
-        renderAt('/connections/skills')
+        renderAt('/settings/connections/skills')
         const sw = screen.getByRole('switch', {
             name: 'Turn release-notes on or off',
         }) as HTMLButtonElement
@@ -184,29 +191,29 @@ describe('demo mode', () => {
 
     test('uninstalled plugin items are hidden', () => {
         useConnectionsStore.getState().setPluginInstalled('release-kit', false)
-        renderAt('/connections/skills')
+        renderAt('/settings/connections/skills')
         expect(screen.queryByText('release-notes')).toBeNull()
     })
 
     test('mcp list shows each status, and remove asks first', () => {
-        renderAt('/connections/mcps')
+        renderAt('/settings/connections/mcps')
         expect(screen.getAllByText('Connected').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Needs sign-in').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Error').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Off').length).toBeGreaterThan(0)
 
         cleanup()
-        renderAt('/connections/mcps/sentry')
+        renderAt('/settings/connections/mcps/sentry')
         fireEvent.click(screen.getByRole('button', { name: 'MCP options' }))
         fireEvent.click(screen.getByText('Remove MCP'))
         expect(screen.getByText('Remove sentry?')).toBeDefined()
         fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
         expect(useConnectionsStore.getState().mcps.some((m) => m.name === 'sentry')).toBe(false)
-        expect(location()).toBe('/connections/mcps')
+        expect(location()).toBe('/settings/connections/mcps')
     })
 
     test('add mcp modal opens from ?add and checks the url', () => {
-        renderAt('/connections/mcps?add=1')
+        renderAt('/settings/connections/mcps?add=1')
         expect(screen.getByText('Add MCP', { selector: 'h2' })).toBeDefined()
         typeInto(screen.getByLabelText('Name'), 'vercel')
         typeInto(screen.getByLabelText('Server URL'), 'mcp.vercel')
@@ -214,11 +221,11 @@ describe('demo mode', () => {
         typeInto(screen.getByLabelText('Server URL'), 'https://mcp.vercel.com')
         fireEvent.click(screen.getByText('Add MCP', { selector: 'button[type="submit"]' }))
         expect(useConnectionsStore.getState().mcps.some((m) => m.name === 'vercel')).toBe(true)
-        expect(location()).toBe('/connections/mcps/vercel')
+        expect(location()).toBe('/settings/connections/mcps/vercel')
     })
 
     test('hooks json view rejects invalid json', () => {
-        renderAt('/connections/hooks')
+        renderAt('/settings/connections/hooks')
         expect(screen.getByText('./scripts/check.sh')).toBeDefined()
         fireEvent.click(screen.getByRole('radio', { name: 'JSON' }))
         const editor = screen.getByLabelText('hooks.json') as HTMLTextAreaElement
@@ -231,13 +238,13 @@ describe('demo mode', () => {
     })
 
     test('rule editor warns past 16 KiB', () => {
-        renderAt('/connections/rules/new')
+        renderAt('/settings/connections/rules/new')
         typeInto(screen.getByLabelText('Rule'), 'x'.repeat(17000))
         expect(screen.getByText('Only the first 16 KiB is used.')).toBeDefined()
     })
 
     test('memory: delete all asks first, then empties the list', () => {
-        renderAt('/connections/memory')
+        renderAt('/settings/connections/memory')
         expect(screen.getByText('Prefers bun over npm')).toBeDefined()
         fireEvent.click(screen.getByRole('button', { name: 'Memory options' }))
         fireEvent.click(screen.getByText('Delete all'))
@@ -247,7 +254,7 @@ describe('demo mode', () => {
     })
 
     test('plugin install shows the notice once', async () => {
-        renderAt('/connections/plugins')
+        renderAt('/settings/connections/plugins')
         fireEvent.click(screen.getAllByRole('button', { name: 'Install' })[0])
         expect(screen.getByText('Plugins can run commands in your sessions.')).toBeDefined()
         fireEvent.click(screen.getAllByRole('button', { name: 'Install' }).at(-1) as HTMLElement)

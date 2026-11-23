@@ -2,6 +2,8 @@ import { Laptop } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
 import { HomeHeader } from './HomeHeader'
+import { HomeStatusStrip } from './HomeStatusStrip'
+import { HomeTabs } from './HomeTabs'
 import PromptInput from './PromptInput'
 
 import type { HomeHeroProps } from '@/features/home/types'
@@ -9,13 +11,14 @@ import type { HomeHeroProps } from '@/features/home/types'
 import { useAppStore } from '@/app/store'
 import { OutOfCreditsModal } from '@/features/billing/components/OutOfCreditsModal'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { takeHomeDraft } from '@/features/home/draft'
 import { MobileInboxButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const HomeHero: React.FC<HomeHeroProps> = ({
     onPromptSubmit,
     onOpenAuth,
-    onOpenProject: _onOpenProject,
+    onOpenProject,
     onResetImportState: _onResetImportState,
 }) => {
     const {
@@ -27,7 +30,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         setShowOutOfCreditsModal,
     } = useAppStore()
     const { data: overview } = useBillingOverview(Boolean(isAuthenticated))
-    const [prompt, setPrompt] = React.useState('')
+    // a slash command that opened another page leaves the text here for the way back
+    const [prompt, setPrompt] = React.useState(() => takeHomeDraft() ?? '')
     const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
     useEffect(() => {
@@ -85,29 +89,38 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                             </h2>
                         </div>
                     </div>
-                    <PromptInput
-                        value={prompt}
-                        onChange={setPrompt}
-                        onSubmit={(submittedPrompt, options) => {
-                            // own-key runs are paid by the user's provider, so an empty wallet is fine
-                            if (
-                                isAuthenticated &&
-                                options?.billingSource !== 'OWN_KEY' &&
-                                overview !== undefined &&
-                                (overview.creditBalance ?? 0) <= 0
-                            ) {
-                                setShowOutOfCreditsModal(true)
-                                return
-                            }
-                            onPromptSubmit(submittedPrompt, options)
-                        }}
-                        isLoading={isGenerating}
-                        onUpload={() => {}}
-                        isAuthenticated={isAuthenticated}
-                        onOpenAuth={onOpenAuth}
-                        mode="agent"
-                        acceptPrefill
-                    />
+                    {/* above the strip and the tabs, so the menus of the box open over them */}
+                    <div className="relative z-10">
+                        <PromptInput
+                            value={prompt}
+                            onChange={setPrompt}
+                            onSubmit={(submittedPrompt, options) => {
+                                // own-key runs are paid by the user's provider, so an empty wallet is fine
+                                if (
+                                    isAuthenticated &&
+                                    options?.billingSource !== 'OWN_KEY' &&
+                                    overview !== undefined &&
+                                    (overview.creditBalance ?? 0) <= 0
+                                ) {
+                                    setShowOutOfCreditsModal(true)
+                                    return
+                                }
+                                onPromptSubmit(submittedPrompt, options)
+                            }}
+                            isLoading={isGenerating}
+                            onUpload={() => {}}
+                            isAuthenticated={isAuthenticated}
+                            onOpenAuth={onOpenAuth}
+                            mode="agent"
+                            acceptPrefill
+                        />
+                    </div>
+                    {isAuthenticated && (
+                        <>
+                            <HomeStatusStrip />
+                            <HomeTabs onOpenProject={onOpenProject} />
+                        </>
+                    )}
                 </div>
             </div>
 

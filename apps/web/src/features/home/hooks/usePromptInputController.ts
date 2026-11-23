@@ -1,12 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
 import { KeyRound, Folder } from 'lucide-react'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 
 import type { BillingSource } from '@/features/home/model-selection'
+import type { SlashPickOption } from '@/features/home/slash/useSlashMenu'
 import type { PromptInputSubmitOptions } from '@/features/home/types'
 
-import { DEFAULT_SELECTION, useModelSelection } from '@/features/home/model-selection'
+import {
+    CREDIT_TIERS,
+    CREDIT_TIER_LABELS,
+    DEFAULT_SELECTION,
+    getCreditTier,
+    useModelSelection,
+    type CreditTier,
+} from '@/features/home/model-selection'
 import { onHomePrefill, takeHomePrefill } from '@/features/home/prefill'
+import { usePromptConfig } from '@/features/home/promptConfig'
+import { useSlashMenu } from '@/features/home/slash/useSlashMenu'
 import { profileAPI } from '@/features/profile/api/profile'
 import { secretsAPI } from '@/features/profile/api/secrets'
 import { useByokList } from '@/features/profile/hooks/useByokData'
@@ -49,6 +59,8 @@ export const usePromptInputController = ({
     initialModel,
     initialProvider,
     acceptPrefill = false,
+    onModelChange,
+    onNavigate,
 }: {
     value?: string
     onChange?: (val: string) => void
@@ -61,6 +73,10 @@ export const usePromptInputController = ({
     initialProvider?: string
     /** take a prompt or repo handed over by requestHomePrefill (Home only) */
     acceptPrefill?: boolean
+    /** told when /model picks a model, the same as a pick from the model button */
+    onModelChange?: (model: string, provider?: string) => void
+    /** opens a page of the app, for slash commands such as /mcp */
+    onNavigate?: (path: string) => void
 }) => {
     const [internalInput, setInternalInput] = useState('')
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -206,6 +222,137 @@ export const usePromptInputController = ({
 
     const currentCursor = cursorPosition !== null ? cursorPosition : input.length
     const textBeforeCursor = input.slice(0, currentCursor)
+
+    /**
+     * writes the prompt text and puts the caret at the given position. the caret is set
+     * right after the new text is in the box, so a key typed next cannot land before it
+     */
+    const pendingCaretRef = useRef<number | null>(null)
+    const placeCaret = useCallback((cursor: number) => {
+        const el = textareaRef.current
+        if (!el) return
+        el.focus()
+        el.setSelectionRange(cursor, cursor)
+    }, [])
+    const setInputAt = useCallback(
+        (val: string, cursor: number) => {
+            setCursorPosition(cursor)
+            if (val === input) {
+                // the text is already in the box
+                placeCaret(cursor)
+                return
+            }
+            pendingCaretRef.current = cursor
+            handleInputChange(val)
+        },
+        [handleInputChange, input, placeCaret]
+    )
+    useLayoutEffect(() => {
+        if (pendingCaretRef.current === null) return
+        const cursor = pendingCaretRef.current
+        pendingCaretRef.current = null
+        placeCaret(cursor)
+    }, [input, placeCaret])
+
+    // choices for /model, /effort and /switch. they change the same state as the footer
+    const pickModel = useCallback(
+        (model: string, provider: string, source: BillingSource) => () => {
+            handleSelectModel(model, provider, source)
+            onModelChange?.(model, provider)
+        },
+        [handleSelectModel, onModelChange]
+    )
+    const isOnCredits = selectedSource !== 'OWN_KEY'
+
+    const slashEffortOptions = useMemo<SlashPickOption[]>(
+        () =>
+            (Object.keys(CREDIT_TIERS) as CreditTier[]).map((tier) => ({
+                id: tier,
+                label: CREDIT_TIER_LABELS[tier],
+                selected: isOnCredits && getCreditTier(selectedModel) === tier,
+                pick: pickModel(CREDIT_TIERS[tier].model, CREDIT_TIERS[tier].provider, 'CREDITS'),
+            })),
+        [isOnCredits, selectedModel, pickModel]
+    )
+
+    const keyModelOptions = useMemo<SlashPickOption[]>(
+        () =>
+            (byokData?.credentials || []).flatMap((credential) => {
+                const providerName =
+                    byokData?.providers.find((p) => p.id === credential.provider)?.name ||
+                    credential.provider
+                return credential.models.map((model) => ({
+                    id: `${credential.provider}:${model}`,
+                    label: model,
+                    hint: providerName,
+                    selected:
+                        !isOnCredits &&
+                        selectedProvider === credential.provider &&
+                        selectedModel === model,
+                    pick: pickModel(model, credential.provider, 'OWN_KEY'),
+                }))
+            }),
+        [byokData, isOnCredits, selectedModel, selectedProvider, pickModel]
+    )
+    // on credits December picks the model, so /model offers the two speeds
+    const slashModelOptions = isOnCredits ? slashEffortOptions : keyModelOptions
+
+    const lastCreditTier = useModelSelection((state) => state.lastCreditTier)
+    const lastOwnKey = useModelSelection((state) => state.lastOwnKey)
+    const slashSourceOptions = useMemo<SlashPickOption[]>(() => {
+        const credits: SlashPickOption = {
+            id: 'credits',
+            label: 'December credits',
+            selected: isOnCredits,
+            pick: pickModel(
+                CREDIT_TIERS[lastCreditTier].model,
+                CREDIT_TIERS[lastCreditTier].provider,
+                'CREDITS'
+            ),
+        }
+        const credentials = byokData?.credentials || []
+        if (credentials.length === 0) {
+            return [
+                credits,
+                {
+                    id: 'add-key',
+                    label: 'Add your own key',
+                    pick: () => onNavigate?.('/settings/models'),
+                },
+            ]
+        }
+        // the last model used on a key, when that key is still saved
+        const last = lastOwnKey
+        const remembered =
+            last &&
+            credentials.some((c) => c.provider === last.provider && c.models.includes(last.model))
+                ? last
+                : { model: credentials[0].defaultModel, provider: credentials[0].provider }
+        return [
+            credits,
+            {
+                id: 'keys',
+                label: 'Your keys',
+                hint: remembered.model.split('/').pop(),
+                selected: !isOnCredits,
+                pick: pickModel(remembered.model, remembered.provider, 'OWN_KEY'),
+            },
+        ]
+    }, [byokData, isOnCredits, lastCreditTier, lastOwnKey, pickModel, onNavigate])
+
+    const slash = useSlashMenu({
+        input,
+        cursor: currentCursor,
+        scope: mode === 'chat' ? 'session' : 'home',
+        isAuthenticated,
+        onOpenAuth,
+        setInput: setInputAt,
+        onCredits: isOnCredits,
+        modelOptions: slashModelOptions,
+        effortOptions: slashEffortOptions,
+        sourceOptions: slashSourceOptions,
+        onNavigate,
+    })
 
     const reposMatch = textBeforeCursor?.match(/@repos?:([^\s]*)$/)
     const isReposTriggered = !!reposMatch
@@ -394,22 +541,37 @@ export const usePromptInputController = ({
         })
     }
 
-    const handleSelectSession = (session: any) => {
-        const title = session.title || session.id
-        const newValue = (input || '').replace(/@sessions?:[^\s]*$/, `@session:${title} `)
-        handleInputChange(newValue)
+    /** swaps the "@word" being typed for the mention, or adds the mention at the end */
+    const insertMention = (pattern: RegExp, mention: string) => {
+        const text = input || ''
+        const next = pattern.test(text)
+            ? text.replace(pattern, mention)
+            : `${text}${text && !/\s$/.test(text) ? ' ' : ''}${mention}`
+        handleInputChange(next)
         textareaRef.current?.focus()
     }
 
+    const handleSelectSession = (session: any) => {
+        insertMention(/@sessions?:[^\s]*$/, `@session:${session.title || session.id} `)
+    }
+
     const handleSelectSecret = (secret: any) => {
-        const newValue = (input || '').replace(/@secrets?:[^\s]*$/, `@secret:${secret.name} `)
-        handleInputChange(newValue)
-        textareaRef.current?.focus()
+        insertMention(/@secrets?:[^\s]*$/, `@secret:${secret.name} `)
     }
 
     const handleSubmit = (event?: React.FormEvent) => {
         event?.preventDefault()
         handleAuthCheck(() => {
+            // a command typed in full (/rename new title) runs here and is not sent
+            const command = slash.trySubmitCommand(input || '')
+            if (command) {
+                if (command.clear) {
+                    if (!isControlled) setInternalInput('')
+                    onChange?.('')
+                }
+                return
+            }
+
             if ((!input?.trim() && selectedRepos.length === 0) || isLoading) return
 
             let finalPrompt = input || ''
@@ -456,11 +618,16 @@ export const usePromptInputController = ({
             onChange?.('')
             setSelectedRepos([])
             setSelectedBranch('')
+            slash.clearChips()
+            // a new session starts from the saved configuration. a running session keeps its own
+            if (mode !== 'chat') usePromptConfig.getState().reset()
             if (textareaRef.current) textareaRef.current.style.height = 'auto'
         })
     }
 
     const handleKeyDown = (event: React.KeyboardEvent) => {
+        if (slash.onKeyDown(event)) return
+
         const isDropdownOpen =
             isAtTriggered || isReposTriggered || isSessionsTriggered || isSecretsTriggered
 
@@ -510,9 +677,13 @@ export const usePromptInputController = ({
             }
         }
 
-        if (event.key === 'Backspace' && !input && selectedRepos.length > 0) {
-            setSelectedRepos((prev) => prev.slice(0, -1))
-            return
+        if (event.key === 'Backspace' && !input) {
+            // chips go first (they sit after the repos), then the repos
+            if (slash.popChip()) return
+            if (selectedRepos.length > 0) {
+                setSelectedRepos((prev) => prev.slice(0, -1))
+                return
+            }
         }
 
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -584,5 +755,6 @@ export const usePromptInputController = ({
         setSelectedProvider,
         selectedSource,
         handleSelectModel,
+        slash,
     }
 }

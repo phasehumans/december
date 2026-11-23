@@ -1,9 +1,12 @@
 import { KeyRound } from 'lucide-react'
 import React, { useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import type { ChatPromptInputProps } from '@/features/chat/types'
 
 import { usePromptInputController } from '@/features/home/hooks/usePromptInputController'
+import { SlashHelpPanel, SlashMenu } from '@/features/home/slash/SlashMenu'
+import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 
 export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<string, any>> = (
@@ -17,6 +20,7 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
     const onSubmit = props.onSubmit ?? props.handleApplyEdit ?? (() => {})
     const { isApplyingEdit, isAuthenticated, onOpenAuth } = props
 
+    const navigate = useNavigate()
     const isGenerating = props.isGenerating ?? props.isApplyingEdit ?? false
     const prevGeneratingRef = useRef(isGenerating)
 
@@ -44,6 +48,7 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         selectedProvider,
         selectedSource,
         handleSelectModel,
+        slash,
     } = usePromptInputController({
         value,
         onChange,
@@ -56,6 +61,8 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         mode: props.mode || 'chat',
         initialModel: props.selectedModel,
         initialProvider: props.selectedProvider,
+        onModelChange: props.onModelChange,
+        onNavigate: navigate,
     })
 
     // Auto-focus on mount and when mode changes
@@ -86,16 +93,53 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
     const placeholderText = props.placeholder || 'Ask December...'
 
     return (
-        <div className="w-full bg-[#141414] shrink-0 z-30">
+        <div data-prompt-box className="relative w-full bg-[#141414] shrink-0 z-30">
+            {slash.note && (
+                // the result of a command (/copy, /rename): one grey line, no toast
+                <div
+                    role="status"
+                    className="px-2 pb-1.5 text-[12.5px] text-[#8F8E8D] animate-in fade-in duration-150"
+                >
+                    {slash.note}
+                </div>
+            )}
+            <SlashMenu menu={slash} anchorRef={textareaRef} placement="top" />
+            <SlashHelpPanel menu={slash} />
             <div
                 onClick={handleContainerClick}
                 className="relative group rounded-[17px] bg-[#1F1F1F] border border-[#313131] focus-within:border-white/10 transition-all duration-300 ease-out flex flex-col cursor-text"
             >
                 <div className="pt-[12px] pl-5 pr-5 pb-1 min-h-[64px] relative">
+                    {slash.chips.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                            {slash.chips.map((chip) => (
+                                <div
+                                    key={chip.id}
+                                    className="flex items-center gap-1.5 text-[#E8E8E8] font-sans font-medium bg-[#2A2928] px-2 py-0.5 rounded-[6px]"
+                                >
+                                    <span className="text-[12.5px] leading-relaxed">
+                                        {chip.label}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => slash.removeChip(chip.id)}
+                                        className="text-[#8F8E8D] hover:text-white transition-colors ml-0.5"
+                                        aria-label={`Remove ${chip.label}`}
+                                    >
+                                        <Icons.X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <textarea
                         ref={textareaRef}
                         value={input}
-                        onChange={(e) => handleInputChange(e.target.value)}
+                        onChange={(e) => {
+                            handleInputChange(e.target.value)
+                            // the caret moves with the text, so the menus see the new word at once
+                            handleSelect(e)
+                        }}
                         onKeyDown={handleKeyDown}
                         onSelect={handleSelect}
                         onKeyUp={handleSelect}
@@ -222,6 +266,9 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
                         handleInputChange((input || '') + separator + '@' + trigger)
                         textareaRef.current?.focus()
                     }}
+                    onSlash={() => slash.open()}
+                    onPickSecret={handleSelectSecret}
+                    onPickSkill={slash.addSkillChip}
                 />
             </div>
         </div>

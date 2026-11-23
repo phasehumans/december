@@ -30,8 +30,11 @@ import type { ProfileSettingsProps } from '@/features/profile/types'
 
 import { useAppStore } from '@/app/store'
 import { getProfileTabFromSlug, getSlugForProfileTab } from '@/app/types'
+import { ConnectionsPage } from '@/features/connections/components/ConnectionsPage'
+import { CONNECTIONS_BASE_PATH } from '@/features/connections/lib/paths'
 import { MobileBackButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
+import { Icons } from '@/shared/components/ui/Icons'
 import { getWebUrl } from '@/shared/config/env'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
@@ -63,7 +66,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         }
     }, [activeTabSlug, navigate])
 
-    const activeTab = getProfileTabFromSlug(activeTabSlug)
+    // connections is a page of settings. its old urls open it too, and the page redirects them
+    const isConnections =
+        /^\/(?:integrations|connections|connectors)(?:\/|$)/.test(location.pathname) ||
+        ['connections', 'integrations', 'repositories'].includes(activeTabSlug ?? '')
+    const activeTab = isConnections ? 'Connections' : getProfileTabFromSlug(activeTabSlug)
     const isPublicTab = activeTabSlug === 'privacy' || activeTabSlug === 'terms'
 
     React.useEffect(() => {
@@ -230,6 +237,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                             <UserCircle className="w-[18px] h-[18px]" strokeWidth={1.5} />
                             Account
                         </button>
+
+                        <button
+                            onClick={() => navigate(CONNECTIONS_BASE_PATH)}
+                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                                activeTab === 'Connections'
+                                    ? 'bg-[#242323] text-[#D6D5C9]'
+                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
+                            }`}
+                        >
+                            <Icons.Connections className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                            Connections
+                        </button>
                         <button
                             onClick={() => navigate(`/settings/${getSlugForProfileTab('Secrets')}`)}
                             className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
@@ -338,60 +357,66 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                     </div>
                 </div>
 
-                {/* Mobile View with top bar and direct subpage content */}
-                <div className="flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                    {/* Mobile top bar: list page at /settings, "‹ Settings" on a page */}
-                    {isMobileRoot ? (
-                        <MobileTopBar title="Settings" />
-                    ) : (
-                        <MobileTopBar
-                            left={
-                                <MobileBackButton
-                                    label="Settings"
-                                    onClick={() => navigate('/settings')}
-                                />
-                            }
-                        />
-                    )}
-
-                    {isMobileRoot && (
-                        <MobileSettingsList
-                            onOpenPage={(slug) => navigate(`/settings/${slug}`)}
-                            onSignOut={onSignOut}
-                        />
-                    )}
-
-                    {/* Mobile Content: Active Tab Content directly rendered */}
-                    <div
-                        className={cn(
-                            'md:hidden flex-col p-4 pb-6 w-full no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]',
-                            isMobileRoot ? 'hidden' : 'flex'
-                        )}
-                    >
-                        {profileErrorMessage && (
-                            <div className="mb-4">
-                                <ErrorAlert
-                                    message={profileErrorMessage}
-                                    onClear={() => setProfileActionError(null)}
-                                />
-                            </div>
-                        )}
-                        {renderTabContent()}
+                {activeTab === 'Connections' ? (
+                    // the connections page brings its own top bar, tabs and scrolling
+                    <div className="flex-1 min-w-0 min-h-0">
+                        <ConnectionsPage />
                     </div>
+                ) : (
+                    <div className="flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                        {/* Mobile top bar: list page at /settings, "‹ Settings" on a page */}
+                        {isMobileRoot ? (
+                            <MobileTopBar title="Settings" />
+                        ) : (
+                            <MobileTopBar
+                                left={
+                                    <MobileBackButton
+                                        label="Settings"
+                                        onClick={() => navigate('/settings')}
+                                    />
+                                }
+                            />
+                        )}
 
-                    {/* Desktop Content Render: always visible on md: and up */}
-                    <div className="hidden md:flex flex-1 justify-center px-6 md:px-16 pt-8 md:pt-12 pb-6 md:pb-8 relative z-10 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                        <div className="flex flex-col items-end gap-2 absolute top-8 md:top-12 right-6 md:right-16">
-                            {profileErrorMessage && (
-                                <ErrorAlert
-                                    message={profileErrorMessage}
-                                    onClear={() => setProfileActionError(null)}
-                                />
+                        {isMobileRoot && (
+                            <MobileSettingsList
+                                onOpenPage={(slug) => navigate(`/settings/${slug}`)}
+                                onSignOut={onSignOut}
+                            />
+                        )}
+
+                        {/* Mobile Content: Active Tab Content directly rendered */}
+                        <div
+                            className={cn(
+                                'md:hidden flex-col p-4 pb-6 w-full no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]',
+                                isMobileRoot ? 'hidden' : 'flex'
                             )}
+                        >
+                            {profileErrorMessage && (
+                                <div className="mb-4">
+                                    <ErrorAlert
+                                        message={profileErrorMessage}
+                                        onClear={() => setProfileActionError(null)}
+                                    />
+                                </div>
+                            )}
+                            {renderTabContent()}
                         </div>
-                        {renderTabContent()}
+
+                        {/* Desktop Content Render: always visible on md: and up */}
+                        <div className="hidden md:flex flex-1 justify-center px-6 md:px-16 pt-8 md:pt-12 pb-6 md:pb-8 relative z-10 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                            <div className="flex flex-col items-end gap-2 absolute top-8 md:top-12 right-6 md:right-16">
+                                {profileErrorMessage && (
+                                    <ErrorAlert
+                                        message={profileErrorMessage}
+                                        onClear={() => setProfileActionError(null)}
+                                    />
+                                )}
+                            </div>
+                            {renderTabContent()}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             <ProfileNameModal

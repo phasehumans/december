@@ -75,11 +75,10 @@ const MenuLevel: React.FC<
     // session urls are /sessions/<slug>, so only the bare list page counts as Sessions
     const isSessionsActive =
         path === '/sessions' || path === '/all-projects' || path === '/projects'
-    const isConnectionsActive = getViewForPath(path) === 'connections'
-    const isSettingsActive =
-        !isConnectionsActive && (path.startsWith('/settings') || path.startsWith('/profile'))
+    const isPullRequestsActive = getViewForPath(path) === 'pullrequests'
+    const isSettingsActive = getViewForPath(path) === 'profile'
     const isOnSession =
-        path !== '/' && !isSessionsActive && !isSettingsActive && !isConnectionsActive
+        path !== '/' && !isSessionsActive && !isPullRequestsActive && !isSettingsActive
 
     const recent = React.useMemo(
         () =>
@@ -138,10 +137,10 @@ const MenuLevel: React.FC<
                 onClick={() => closeThen(onSessions)}
             />
             <SheetRow
-                icon={<Icons.Connections className="w-[17px] h-[17px]" />}
-                label="Connections"
-                active={isConnectionsActive}
-                onClick={() => requireAuth(() => closeThen(() => navigate('/connections')))}
+                icon={<Icons.GitPullRequest className="w-[17px] h-[17px]" />}
+                label="Pull requests"
+                active={isPullRequestsActive}
+                onClick={() => requireAuth(() => closeThen(() => navigate('/pull-requests')))}
             />
             <SheetRow
                 icon={<Icons.Settings className="w-[17px] h-[17px]" />}

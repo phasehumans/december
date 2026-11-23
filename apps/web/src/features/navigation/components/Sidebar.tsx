@@ -15,6 +15,7 @@ import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
+import { OPEN_SEARCH_EVENT } from '@/shared/lib/appEvents'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
 
@@ -122,6 +123,13 @@ const Sidebar: React.FC<
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
+    // the /resume command opens search from the prompt box
+    React.useEffect(() => {
+        const openSearch = () => setIsSearchOpen(true)
+        window.addEventListener(OPEN_SEARCH_EVENT, openSearch)
+        return () => window.removeEventListener(OPEN_SEARCH_EVENT, openSearch)
+    }, [])
+
     const handleToggleArchive = async (sessionId: string, currentArchived: boolean) => {
         const nextArchived = !currentArchived
         // Instant optimistic cache update
@@ -221,9 +229,9 @@ const Sidebar: React.FC<
         path.startsWith('/projects') ||
         path.startsWith('/all-projects') ||
         path.startsWith('/sessions')
-    const isConnectionsActive = getViewForPath(path) === 'connections'
-    const isSettingsActive =
-        !isConnectionsActive && (path.startsWith('/settings') || path.startsWith('/profile'))
+    const isPullRequestsActive = getViewForPath(path) === 'pullrequests'
+    // connections is a page of settings, so its urls count as settings too
+    const isSettingsActive = getViewForPath(path) === 'profile'
 
     let activeIndex = 0
     if (isSearchOpen) {
@@ -232,7 +240,7 @@ const Sidebar: React.FC<
         activeIndex = 2
     } else if (!isHomeActive) {
         if (isProjectsActive) activeIndex = 3
-        else if (isConnectionsActive) activeIndex = 4
+        else if (isPullRequestsActive) activeIndex = 4
         else if (isSettingsActive) activeIndex = 5
         else activeIndex = -1
     } else {
@@ -302,11 +310,11 @@ const Sidebar: React.FC<
             onClick: onSessions,
         },
         {
-            id: 'connections',
-            label: 'Connections',
-            icon: <Icons.Connections className="w-[17px] h-[17px]" />,
+            id: 'pullrequests',
+            label: 'Pull requests',
+            icon: <Icons.GitPullRequest className="w-[17px] h-[17px]" />,
             onClick: () => {
-                if (isAuthenticated) navigate('/connections')
+                if (isAuthenticated) navigate('/pull-requests')
                 else if (onOpenAuth) onOpenAuth()
             },
         },
