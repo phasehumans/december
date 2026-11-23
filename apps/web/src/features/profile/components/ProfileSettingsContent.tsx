@@ -1,62 +1,84 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import React from 'react'
 
+import { AccountPreferencesSection } from './AccountPreferencesSection'
+import { AccountPreviewSections } from './AccountPreviewSections'
+import { SettingsPageHeader, SettingsSectionHeading } from './SettingsPageHeader'
+import { PAGE_SUBTITLES, sectionBoxClass } from './settingsStyles'
+import { usePreviewOn } from './SettingsUi'
+
 import type { Profile } from '../types'
 
-import { profileAPI } from '@/features/profile/api/profile'
+import { Switch } from '@/features/connections/components/ConnectionsUi'
 import { useIsPhone } from '@/shared/lib/useIsPhone'
+import { cn } from '@/shared/lib/utils'
 
 interface ProfileSettingsContentProps {
     profile?: Profile
     resolvedName: string
-    hasProfile: boolean
-    isGithubConnected: boolean
-    emailNotifications?: boolean
     productUpdates: boolean
     securityAlerts: boolean
-    isNotificationPending: boolean
     onOpenNameModal: () => void
     onNotificationToggle: (
         field: 'notifyProjectActivity' | 'notifyProductUpdates' | 'notifySecurityAlerts',
         value: boolean
     ) => void
-    onConnectGithub: () => void
     onSignOut: () => void
     onOpenSignOutAllSessionsModal: () => void
     onOpenDeleteAccountModal: () => void
 }
 
-const NotificationSwitch: React.FC<{
-    label: string
-    checked: boolean
-    onChange: (checked: boolean) => void
-}> = ({ label, checked, onChange }) => (
-    <button
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-            checked ? 'bg-[#87B2F4]' : 'bg-[#100E12] border-[#383736]'
-        }`}
-    >
-        <span
-            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
-                checked ? 'translate-x-4 bg-[#100E12]' : 'translate-x-0 bg-[#383736]'
-            }`}
-        />
-    </button>
-)
-
-const sectionTitleClass = 'text-[16px] font-medium text-[#D6D5C9] mb-3'
-const sectionBodyClass = 'flex flex-col border-t border-[#242323] pt-2'
+const outlineButtonClass =
+    'shrink-0 px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors cursor-pointer'
 const phoneRowClass =
     'flex items-center justify-between gap-3 min-h-11 py-1.5 -mx-1 px-1 rounded-lg text-left text-[14px] text-[#D6D5C9]'
+// phone rows are 44px tall, so the box needs less padding than on desktop
+const phoneBoxClass = 'flex flex-col bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl px-4 py-1'
 const phoneButtonRowClass = `${phoneRowClass} w-full active:bg-[#1F1F1F] transition-colors outline-none cursor-pointer`
 
+/** the letter avatar, the same one as the name row in the phone menu sheet (N21-A) */
+const LetterAvatar: React.FC<{ name: string; className?: string }> = ({ name, className }) => (
+    <span
+        aria-hidden="true"
+        className={cn(
+            'rounded-full bg-[#2F3B4F] text-[#CFE0FF] font-semibold flex items-center justify-center shrink-0 select-none',
+            className
+        )}
+    >
+        {name.trim().charAt(0).toUpperCase() || 'A'}
+    </span>
+)
+
+/** who is signed in: the letter avatar, the name and email, and Edit. on desktop and phones */
+const ProfileSection: React.FC<{
+    name: string
+    email?: string | null
+    onEdit: () => void
+}> = ({ name, email, onEdit }) => (
+    <div className="flex flex-col">
+        <SettingsSectionHeading title="Profile" description="Your name and email." />
+        <div className={cn(sectionBoxClass, 'flex-row items-center gap-3')}>
+            <LetterAvatar name={name} className="w-9 h-9 text-[14px]" />
+            <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                <span className="text-[14px] font-medium text-[#EDEDED] truncate">{name}</span>
+                <span className="text-[13px] text-[#7B7A79] truncate">
+                    {email || 'No email set'}
+                </span>
+            </div>
+            <button
+                type="button"
+                onClick={onEdit}
+                aria-label="Edit name"
+                className={outlineButtonClass}
+            >
+                Edit
+            </button>
+        </div>
+    </div>
+)
+
 /**
- * Account on phones (C1): rows instead of stacked full-width buttons, no description lines.
+ * Account on phones (P1-A): who you are first, then rows.
  * Sign out stays here: it is the only sign out on phones.
  */
 const PhoneAccountSettings: React.FC<ProfileSettingsContentProps> = (props) => {
@@ -71,89 +93,90 @@ const PhoneAccountSettings: React.FC<ProfileSettingsContentProps> = (props) => {
         onOpenSignOutAllSessionsModal,
         onOpenDeleteAccountModal,
     } = props
+    // with the preview on, notifications have their own page and devices replace sign in
+    const isPreview = usePreviewOn()
+    const name = profile?.name || resolvedName || 'Account'
     const chevron = <ChevronRight className="w-4 h-4 text-[#7B7A79] shrink-0" strokeWidth={1.75} />
 
     return (
-        <div className="flex flex-col gap-6 w-full text-[#D6D5C9]">
+        <div className="flex flex-col gap-5 w-full text-[#D6D5C9]">
             <div className="flex flex-col">
-                <h1 className={sectionTitleClass}>Account</h1>
-                <div className={sectionBodyClass}>
-                    <div className={phoneRowClass}>
-                        <div className="flex flex-col min-w-0">
-                            <span>Full Name</span>
-                            <span className="text-[13px] text-[#7B7A79] truncate">
-                                {profile?.name || resolvedName}
-                            </span>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={onOpenNameModal}
-                            className="shrink-0 px-2 py-1 -mr-2 rounded-md text-[13px] font-medium text-[#87B2F4] active:bg-[#1F1F1F] outline-none cursor-pointer"
-                        >
-                            Edit
-                        </button>
-                    </div>
-                    <div className={phoneRowClass}>
-                        <div className="flex flex-col min-w-0">
-                            <span>Email</span>
-                            <span className="text-[13px] text-[#7B7A79] truncate">
-                                {profile?.email || 'No email set'}
-                            </span>
-                        </div>
-                    </div>
-                </div>
+                <SettingsPageHeader title="Account" subtitle={PAGE_SUBTITLES.account} />
+                <ProfileSection name={name} email={profile?.email} onEdit={onOpenNameModal} />
             </div>
 
-            <div className="flex flex-col">
-                <h2 className={sectionTitleClass}>Notifications</h2>
-                <div className={sectionBodyClass}>
-                    <div className={phoneRowClass}>
-                        <span>Product updates</span>
-                        <NotificationSwitch
-                            label="Product updates"
-                            checked={productUpdates}
-                            onChange={(value) =>
-                                onNotificationToggle('notifyProductUpdates', value)
-                            }
-                        />
-                    </div>
-                    <div className={phoneRowClass}>
-                        <span>Security alerts</span>
-                        <NotificationSwitch
-                            label="Security alerts"
-                            checked={securityAlerts}
-                            onChange={(value) =>
-                                onNotificationToggle('notifySecurityAlerts', value)
-                            }
-                        />
-                    </div>
-                </div>
-            </div>
+            <AccountPreferencesSection />
 
-            <div className="flex flex-col">
-                <h2 className={sectionTitleClass}>System</h2>
-                <div className={sectionBodyClass}>
-                    <button type="button" onClick={onSignOut} className={phoneButtonRowClass}>
-                        Sign out
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onOpenSignOutAllSessionsModal}
-                        className={phoneButtonRowClass}
-                    >
-                        Sign out of all sessions
-                        {chevron}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onOpenDeleteAccountModal}
-                        className={`${phoneButtonRowClass} text-[#E57373]`}
-                    >
-                        Delete account
-                        {chevron}
-                    </button>
-                </div>
-            </div>
+            {isPreview ? (
+                <AccountPreviewSections
+                    onSignOut={onSignOut}
+                    onOpenSignOutAllSessionsModal={onOpenSignOutAllSessionsModal}
+                    onOpenDeleteAccountModal={onOpenDeleteAccountModal}
+                />
+            ) : (
+                <>
+                    <div className="flex flex-col">
+                        <SettingsSectionHeading
+                            title="Notifications"
+                            description="Emails December sends you."
+                        />
+                        <div className={phoneBoxClass}>
+                            <div className={phoneRowClass}>
+                                <span>Product updates</span>
+                                <Switch
+                                    label="Product updates"
+                                    checked={productUpdates}
+                                    onChange={(value) =>
+                                        onNotificationToggle('notifyProductUpdates', value)
+                                    }
+                                />
+                            </div>
+                            <div className={phoneRowClass}>
+                                <span>Security alerts</span>
+                                <Switch
+                                    label="Security alerts"
+                                    checked={securityAlerts}
+                                    onChange={(value) =>
+                                        onNotificationToggle('notifySecurityAlerts', value)
+                                    }
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col">
+                        <SettingsSectionHeading
+                            title="Sign in"
+                            description="Sign out here or on every device."
+                        />
+                        <div className={phoneBoxClass}>
+                            <button
+                                type="button"
+                                onClick={onSignOut}
+                                className={phoneButtonRowClass}
+                            >
+                                Sign out
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onOpenSignOutAllSessionsModal}
+                                className={phoneButtonRowClass}
+                            >
+                                Sign out everywhere
+                                {chevron}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onOpenDeleteAccountModal}
+                                className={`${phoneButtonRowClass} text-[#E57373]`}
+                            >
+                                Delete account
+                                {chevron}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     )
 }
@@ -162,210 +185,115 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
     const {
         profile,
         resolvedName,
-        hasProfile,
-        isGithubConnected,
         productUpdates,
         securityAlerts,
-        isNotificationPending,
         onOpenNameModal,
         onNotificationToggle,
-        onConnectGithub,
         onSignOut,
         onOpenSignOutAllSessionsModal,
         onOpenDeleteAccountModal,
     } = props
 
-    const queryClient = useQueryClient()
-    const updateAvatarMutation = useMutation({
-        mutationFn: profileAPI.updateAvatarUrl,
-        onMutate: async ({ avatarUrl }) => {
-            await queryClient.cancelQueries({ queryKey: ['profile'] })
-            const previousProfile = queryClient.getQueryData<any>(['profile'])
-            queryClient.setQueryData<any>(['profile'], (old: any) =>
-                old ? { ...old, avatarUrl } : old
-            )
-            return { previousProfile }
-        },
-        onError: (_err, _vars, context) => {
-            if (context?.previousProfile) {
-                queryClient.setQueryData(['profile'], context.previousProfile)
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['profile'] })
-        },
-    })
-
-    const userName = profile?.name || resolvedName || 'User'
-
-    const handleChangeAvatar = () => {
-        const randomSeed = Math.random().toString(36).substring(2, 8)
-        const newUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${randomSeed}&backgroundColor=2B2A29`
-        updateAvatarMutation.mutate({ avatarUrl: newUrl })
-    }
-
-    const currentAvatarUrl =
-        profile?.avatarUrl ||
-        `https://api.dicebear.com/7.x/notionists/svg?seed=${userName}&backgroundColor=2B2A29`
-
-    const joinDateStr = profile?.createdAt
-        ? new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(
-              new Date(profile.createdAt)
-          )
-        : ''
-
-    const isLoading = !hasProfile && !resolvedName
     // one layout at a time, so the page never holds two copies of every row
     const isPhone = useIsPhone()
+    const isPreview = usePreviewOn()
     if (isPhone) return <PhoneAccountSettings {...props} />
 
+    const name = profile?.name || resolvedName || 'Account'
+
     return (
-        <>
-            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
-                {/* account */}
-                <div className="flex flex-col mb-6">
-                    <h1 className="text-[16px] font-medium mb-3">Account</h1>
-                    <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
-                        {/* full name row */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-[14px] text-[#D6D5C9]">Full Name</span>
-                                <span className="text-[13px] text-[#7B7A79]">
-                                    {profile?.name || resolvedName}
-                                </span>
-                            </div>
-                            <button
-                                onClick={onOpenNameModal}
-                                className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                            >
-                                Change full name
-                            </button>
-                        </div>
-
-                        {/* email row */}
-                        <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-[14px] text-[#D6D5C9]">Email</span>
-                                <span className="text-[13px] text-[#7B7A79]">
-                                    {profile?.email || 'No email set'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* notifications */}
-                <div className="flex flex-col mb-6">
-                    <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Notifications</h2>
-                    <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-[14px] text-[#D6D5C9]">Product updates</span>
-                                <span className="text-[13px] text-[#7B7A79]">
-                                    Get notification updates about new features and improvements
-                                </span>
-                            </div>
-                            <button
-                                role="switch"
-                                onClick={() =>
-                                    onNotificationToggle('notifyProductUpdates', !productUpdates)
-                                }
-                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                    productUpdates
-                                        ? 'bg-[#87B2F4]'
-                                        : 'bg-[#100E12] border-[#383736]'
-                                }`}
-                            >
-                                <span
-                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
-                                        productUpdates
-                                            ? 'translate-x-4 bg-[#100E12]'
-                                            : 'translate-x-0 bg-[#383736]'
-                                    }`}
-                                />
-                            </button>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-[14px] text-[#D6D5C9]">Security alerts</span>
-                                <span className="text-[13px] text-[#7B7A79]">
-                                    Get notification updates for important security notices
-                                </span>
-                            </div>
-                            <button
-                                role="switch"
-                                onClick={() =>
-                                    onNotificationToggle('notifySecurityAlerts', !securityAlerts)
-                                }
-                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                    securityAlerts
-                                        ? 'bg-[#87B2F4]'
-                                        : 'bg-[#100E12] border-[#383736]'
-                                }`}
-                            >
-                                <span
-                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
-                                        securityAlerts
-                                            ? 'translate-x-4 bg-[#100E12]'
-                                            : 'translate-x-0 bg-[#383736]'
-                                    }`}
-                                />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* system */}
-                <div className="flex flex-col mb-0">
-                    <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">System</h2>
-                    <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                            <span className="text-[14px] text-[#D6D5C9]">
-                                You are signed in as {profile?.name || resolvedName || 'User'}
-                            </span>
-                            <button
-                                onClick={onSignOut}
-                                className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                            >
-                                Sign out
-                            </button>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-[14px] text-[#D6D5C9]">
-                                    Sign out of all sessions
-                                </span>
-                                <span className="text-[13px] text-[#7B7A79]">
-                                    Devices or browsers where you are signed in
-                                </span>
-                            </div>
-                            <button
-                                onClick={onOpenSignOutAllSessionsModal}
-                                className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                            >
-                                Sign out of all sessions
-                            </button>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-[14px] text-[#D6D5C9]">Delete account</span>
-                                <span className="text-[13px] text-[#7B7A79]">
-                                    Permanently delete your account and data
-                                </span>
-                            </div>
-                            <button
-                                onClick={onOpenDeleteAccountModal}
-                                className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors"
-                            >
-                                Delete Account
-                            </button>
-                        </div>
-                    </div>
-                </div>
+        <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9]">
+            {/* account: who is signed in */}
+            <SettingsPageHeader title="Account" subtitle={PAGE_SUBTITLES.account} />
+            <div className="mb-5">
+                <ProfileSection name={name} email={profile?.email} onEdit={onOpenNameModal} />
             </div>
-        </>
+
+            <div className="mb-5">
+                <AccountPreferencesSection />
+            </div>
+
+            {isPreview ? (
+                <div className="flex flex-col gap-5">
+                    <AccountPreviewSections
+                        onSignOut={onSignOut}
+                        onOpenSignOutAllSessionsModal={onOpenSignOutAllSessionsModal}
+                        onOpenDeleteAccountModal={onOpenDeleteAccountModal}
+                    />
+                </div>
+            ) : (
+                <>
+                    {/* notifications */}
+                    <div className="flex flex-col mb-5">
+                        <SettingsSectionHeading
+                            title="Notifications"
+                            description="Emails December sends you."
+                        />
+                        <div className={sectionBoxClass}>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="text-[14px] text-[#D6D5C9]">Product updates</span>
+                                <Switch
+                                    label="Product updates"
+                                    checked={productUpdates}
+                                    onChange={(value) =>
+                                        onNotificationToggle('notifyProductUpdates', value)
+                                    }
+                                />
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="text-[14px] text-[#D6D5C9]">Security alerts</span>
+                                <Switch
+                                    label="Security alerts"
+                                    checked={securityAlerts}
+                                    onChange={(value) =>
+                                        onNotificationToggle('notifySecurityAlerts', value)
+                                    }
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* sign in: each button says its action, the label says what it acts on */}
+                    <div className="flex flex-col mb-0">
+                        <SettingsSectionHeading
+                            title="Sign in"
+                            description="Sign out here or on every device."
+                        />
+                        <div className={sectionBoxClass}>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="text-[14px] text-[#D6D5C9]">This browser</span>
+                                <button
+                                    type="button"
+                                    onClick={onSignOut}
+                                    className={outlineButtonClass}
+                                >
+                                    Sign out
+                                </button>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="text-[14px] text-[#D6D5C9]">All devices</span>
+                                <button
+                                    type="button"
+                                    onClick={onOpenSignOutAllSessionsModal}
+                                    className={outlineButtonClass}
+                                >
+                                    Sign out everywhere
+                                </button>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="text-[14px] text-[#D6D5C9]">Delete account</span>
+                                <button
+                                    type="button"
+                                    onClick={onOpenDeleteAccountModal}
+                                    className={outlineButtonClass}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
     )
 }

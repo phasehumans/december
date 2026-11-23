@@ -7,6 +7,7 @@ import { useAppController } from './app/hooks/useAppController'
 import { AuthModal } from './features/auth/components/AuthModal'
 import { githubOAuth } from './features/auth/githubOAuth'
 import { OnboardingPage } from './features/onboarding/components/OnboardingPage'
+import { useFinishSound } from './features/profile/hooks/useFinishSound'
 import { SuperCrewCard } from './features/supercrew/components/SuperCrewCard'
 
 import { useAppStore } from '@/app/store'
@@ -50,6 +51,9 @@ const App: React.FC = () => {
         isOnboardingRoute,
         isCheckingOnboarding,
     } = useAppController()
+
+    // the finish sound from Settings, Preferences
+    useFinishSound()
 
     const location = useLocation()
     const navigate = useNavigate()

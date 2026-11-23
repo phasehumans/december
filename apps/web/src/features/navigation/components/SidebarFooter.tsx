@@ -11,7 +11,6 @@ import type { SidebarFooterProps } from '@/features/navigation/types'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { notificationAPI } from '@/features/notification/api/notification'
 import { profileAPI } from '@/features/profile/api/profile'
-import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
 export const SidebarFooter: React.FC<
@@ -224,18 +223,20 @@ export const SidebarFooter: React.FC<
                                 )}
                                 style={isCollapsed ? {} : { maxWidth: 'calc(100% - 28px)' }}
                             >
+                                {/* the letter avatar, the same as Account and the phone menu */}
                                 <div
+                                    aria-hidden="true"
                                     className={cn(
-                                        'flex items-center justify-center rounded-full bg-white/[0.04] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors shrink-0',
-                                        isCollapsed ? 'w-[26px] h-[26px]' : 'w-[24px] h-[24px]'
+                                        'flex items-center justify-center rounded-full bg-[#2F3B4F] text-[#CFE0FF] font-semibold select-none shrink-0',
+                                        isCollapsed
+                                            ? 'w-[26px] h-[26px] text-[11px]'
+                                            : 'w-[24px] h-[24px] text-[10.5px]'
                                     )}
                                 >
-                                    <Icons.UserCircle
-                                        className={cn(
-                                            'relative -top-[1px]',
-                                            isCollapsed ? 'w-[15px] h-[15px]' : 'w-[13px] h-[13px]'
-                                        )}
-                                    />
+                                    {(user?.name || profile?.name || quickInfo?.fullName || 'A')
+                                        .trim()
+                                        .charAt(0)
+                                        .toUpperCase() || 'A'}
                                 </div>
                                 {!isCollapsed && (
                                     <span className="font-medium text-[13px] text-[#8F8E8D] group-hover:text-[#CBCACA] transition-colors truncate tracking-tight text-left">

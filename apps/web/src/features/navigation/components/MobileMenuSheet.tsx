@@ -14,6 +14,7 @@ import { notificationAPI } from '@/features/notification/api/notification'
 import { useInbox } from '@/features/notification/hooks/useInbox'
 import { profileAPI } from '@/features/profile/api/profile'
 import { MobileSettingsLevel } from '@/features/profile/components/MobileSettingsLevel'
+import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { SessionSheetItems } from '@/features/sessions/components/SessionMenu'
 import { useSessionActions } from '@/features/sessions/hooks/useSessionActions'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
@@ -531,6 +532,7 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
     const [note, setNote] = React.useState<Notification | null>(null)
     const [held, setHeld] = React.useState<HeldSession | null>(null)
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
+    const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false)
 
     // archiving or deleting the session on screen closes the sheet and lands on home (M4-a)
     const actions = useSessionActions(() => {
@@ -620,7 +622,13 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
         )
     } else if (level === 'settings') {
         header = <SheetHeader title="Settings" onBack={() => setLevel('menu')} />
-        body = <MobileSettingsLevel isAuthenticated={isAuthenticated} onOpenAuth={onOpenAuth} />
+        body = (
+            <MobileSettingsLevel
+                isAuthenticated={isAuthenticated}
+                onOpenAuth={onOpenAuth}
+                onSendFeedback={() => setIsFeedbackOpen(true)}
+            />
+        )
     } else if (level === 'inbox') {
         const hasRead = inbox.notifications.some((n) => n.isRead)
         header = (
@@ -724,6 +732,10 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
                 isAuthenticated={isAuthenticated}
             />
             {actions.modals}
+            <ProfileFeedbackModal
+                isOpen={isFeedbackOpen}
+                onClose={() => setIsFeedbackOpen(false)}
+            />
         </>
     )
 }

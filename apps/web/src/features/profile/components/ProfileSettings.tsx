@@ -6,38 +6,176 @@ import {
     ArrowUpRight,
     KeyRound,
     FileText,
-    Activity,
-    Cpu,
+    BarChart3,
+    Lock,
+    MessageSquare,
+    Plus,
+    Bell,
+    Settings2,
+    Box,
+    Users,
 } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
+import { SettingsTopBarContext, type SettingsTopBarAction } from '../lib/settingsTopBar'
 
 import { ProfileBillingSettings } from './ProfileBillingSettings'
+import { ProfileDefaultsSettings } from './ProfileDefaultsSettings'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
+import { ProfileFeedbackModal } from './ProfileFeedbackModal'
+import { ProfileMembersSettings } from './ProfileMembersSettings'
 import { ProfileModelKeysSettings } from './ProfileModelKeysSettings'
 import { ProfileNameModal } from './ProfileNameModal'
+import { ProfileNotificationsSettings } from './ProfileNotificationsSettings'
+import { ProfilePullRequestSettings } from './ProfilePullRequestSettings'
 import { ProfileRepositoriesSettings } from './ProfileRepositoriesSettings'
+import { ProfileSandboxSettings } from './ProfileSandboxSettings'
 import { ProfileSecretsSettings } from './ProfileSecretsSettings'
 import { ProfileSettingsContent } from './ProfileSettingsContent'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import { ProfileSignOutAllSessionsModal } from './ProfileSignOutAllSessionsModal'
 import { ProfileUsageSettings } from './ProfileUsageSettings'
+import { usePreviewOn } from './SettingsUi'
 
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
 import { useAppStore } from '@/app/store'
-import { getProfileTabFromSlug, getSlugForProfileTab } from '@/app/types'
+import { getProfileTabFromSlug, getSlugForProfileTab, type ProfileTab } from '@/app/types'
 import { ConnectionsPage } from '@/features/connections/components/ConnectionsPage'
+import { SoonPill } from '@/features/connections/components/ConnectionsUi'
 import { CONNECTIONS_BASE_PATH } from '@/features/connections/lib/paths'
-import { MobileBackButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
+import {
+    MobileBackButton,
+    MobileIconButton,
+    MobileTopBar,
+} from '@/features/navigation/components/MobileTopBar'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
 import { getWebUrl } from '@/shared/config/env'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { useIsPhone } from '@/shared/lib/useIsPhone'
 import { cn } from '@/shared/lib/utils'
+
+const navIconClass = 'w-[18px] h-[18px]'
+
+const navItemClass = (active: boolean) =>
+    cn(
+        'flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium text-[#D6D5C9] transition-colors whitespace-nowrap shrink-0 cursor-pointer',
+        active ? 'bg-[#242323]' : 'hover:bg-[#191919]'
+    )
+
+interface SettingsNavItem {
+    label: string
+    to: string
+    tabs: ProfileTab[]
+    icon: React.ReactNode
+    /** the page is ui only: normal users see a "Soon" pill and a coming soon page */
+    soon?: boolean
+}
+
+// the settings list: one flat list, in one order on desktop and phones. a new page joins
+// here, and SETTINGS_ROWS in MobileSettingsLevel for phones
+const NAV_ITEMS: SettingsNavItem[] = [
+    {
+        label: 'Account',
+        to: `/settings/${getSlugForProfileTab('Account')}`,
+        tabs: ['Account'],
+        icon: <UserCircle className={navIconClass} strokeWidth={1.5} />,
+    },
+    {
+        label: 'Notifications',
+        to: `/settings/${getSlugForProfileTab('Notifications')}`,
+        tabs: ['Notifications'],
+        icon: <Bell className={navIconClass} strokeWidth={1.5} />,
+        soon: true,
+    },
+    {
+        label: 'Defaults',
+        to: `/settings/${getSlugForProfileTab('Defaults')}`,
+        tabs: ['Defaults'],
+        icon: <Settings2 className={navIconClass} strokeWidth={1.5} />,
+        soon: true,
+    },
+    {
+        label: 'Repositories',
+        to: `/settings/${getSlugForProfileTab('Repositories')}`,
+        tabs: ['Repositories'],
+        icon: <Icons.Github className={navIconClass} />,
+    },
+    {
+        label: 'Pull requests',
+        to: `/settings/${getSlugForProfileTab('PullRequests')}`,
+        tabs: ['PullRequests'],
+        // the same icon as Pull requests in the main sidebar
+        icon: <Icons.GitPullRequest className={navIconClass} strokeWidth={1.5} />,
+        soon: true,
+    },
+    {
+        label: 'Sandbox',
+        to: `/settings/${getSlugForProfileTab('Sandbox')}`,
+        tabs: ['Sandbox'],
+        icon: <Box className={navIconClass} strokeWidth={1.5} />,
+        soon: true,
+    },
+    {
+        label: 'Connections',
+        to: CONNECTIONS_BASE_PATH,
+        tabs: ['Connections'],
+        icon: <Icons.Connections className={navIconClass} strokeWidth={1.5} />,
+    },
+    {
+        label: 'Secrets',
+        to: `/settings/${getSlugForProfileTab('Secrets')}`,
+        tabs: ['Secrets'],
+        icon: <Lock className={navIconClass} strokeWidth={1.5} />,
+    },
+    {
+        label: 'Your keys',
+        to: `/settings/${getSlugForProfileTab('Models')}`,
+        tabs: ['Models'],
+        // the key, the same icon as "Your keys" in the model switch of the prompt box
+        icon: <KeyRound className={navIconClass} strokeWidth={1.5} />,
+    },
+    {
+        label: 'Billing',
+        to: `/settings/${getSlugForProfileTab('Billing')}`,
+        tabs: ['Billing'],
+        icon: <CreditCard className={navIconClass} strokeWidth={1.5} />,
+    },
+    {
+        label: 'Usage',
+        to: `/settings/${getSlugForProfileTab('Usage')}`,
+        tabs: ['Usage', 'Analytics'],
+        icon: <BarChart3 className={navIconClass} strokeWidth={1.5} />,
+    },
+    {
+        label: 'Members',
+        to: `/settings/${getSlugForProfileTab('Members')}`,
+        tabs: ['Members'],
+        icon: <Users className={navIconClass} strokeWidth={1.5} />,
+        soon: true,
+    },
+]
+
+const NAV_LINKS = [
+    {
+        label: 'Changelog',
+        path: '/docs/changelog',
+        icon: <FileClock className={navIconClass} strokeWidth={1.5} />,
+    },
+    {
+        label: 'Privacy Policy',
+        path: '/privacy',
+        icon: <FileText className={navIconClass} strokeWidth={1.5} />,
+    },
+    {
+        label: 'Terms of Service',
+        path: '/terms',
+        icon: <FileText className={navIconClass} strokeWidth={1.5} />,
+    },
+]
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onBack }) => {
     const location = useLocation()
@@ -46,6 +184,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const isAuthRestored = useAppStore((s) => s.isAuthRestored)
     const openMobileSheet = useAppStore((s) => s.openMobileSheet)
     const isPhone = useIsPhone()
+    const isPreview = usePreviewOn()
 
     const activeTabMatch = location.pathname.match(
         /^\/(?:profile|settings|integrations|connections|connectors)(?:\/([^/]+))?/
@@ -71,7 +210,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     // connections is a page of settings. its old urls open it too, and the page redirects them
     const isConnections =
         /^\/(?:integrations|connections|connectors)(?:\/|$)/.test(location.pathname) ||
-        ['connections', 'integrations', 'repositories'].includes(activeTabSlug ?? '')
+        ['connections', 'integrations'].includes(activeTabSlug ?? '')
     const activeTab = isConnections ? 'Connections' : getProfileTabFromSlug(activeTabSlug)
     const isPublicTab = activeTabSlug === 'privacy' || activeTabSlug === 'terms'
 
@@ -103,6 +242,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     }, [navigate])
     const [deleteAccountModalOpen, setDeleteAccountModalOpen] = React.useState(false)
     const [signOutAllSessionsModalOpen, setSignOutAllSessionsModalOpen] = React.useState(false)
+    const [feedbackModalOpen, setFeedbackModalOpen] = React.useState(false)
+    const [topBarAction, setTopBarAction] = React.useState<SettingsTopBarAction | null>(null)
 
     const {
         profile,
@@ -116,9 +257,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         setNameModalOpen,
         setTempName,
         updateNameMutation,
-        updateNotificationMutation,
         isGithubConnected,
-        emailNotifications,
         productUpdates,
         securityAlerts,
         resolvedName,
@@ -136,9 +275,30 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
               ? 'Failed to load profile'
               : null)
 
-    const hasProfile = Boolean(profile)
-
     const renderTabContent = () => {
+        // these pages keep their values in the browser, so they do not wait for the profile
+        // ui-only pages: sample values with the preview on, "coming soon" for everyone else
+        if (activeTab === 'Notifications') {
+            return (
+                <ProfileNotificationsSettings
+                    productUpdates={productUpdates}
+                    securityAlerts={securityAlerts}
+                    onNotificationToggle={handleNotificationToggle}
+                />
+            )
+        }
+        if (activeTab === 'Defaults') return <ProfileDefaultsSettings />
+        if (activeTab === 'PullRequests') return <ProfilePullRequestSettings />
+        if (activeTab === 'Sandbox') return <ProfileSandboxSettings />
+        if (activeTab === 'Members') {
+            return (
+                <ProfileMembersSettings
+                    ownerName={profile?.name || resolvedName}
+                    ownerEmail={profile?.email || ''}
+                />
+            )
+        }
+
         if (isProfileLoading && !profile) {
             return <ProfileSettingsSkeleton activeTab={activeTab} />
         }
@@ -172,15 +332,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                     <ProfileSettingsContent
                         profile={profile}
                         resolvedName={resolvedName}
-                        hasProfile={hasProfile}
-                        isGithubConnected={isGithubConnected}
-                        emailNotifications={emailNotifications}
                         productUpdates={productUpdates}
                         securityAlerts={securityAlerts}
-                        isNotificationPending={updateNotificationMutation.isPending}
                         onOpenNameModal={openNameModal}
                         onNotificationToggle={handleNotificationToggle}
-                        onConnectGithub={connectGithub}
                         onSignOut={onSignOut}
                         onOpenDeleteAccountModal={() => setDeleteAccountModalOpen(true)}
                         onOpenSignOutAllSessionsModal={() => setSignOutAllSessionsModalOpen(true)}
@@ -216,249 +371,186 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     }
 
     return (
-        <div className="flex w-full h-full bg-[#141414] md:bg-[#100E12] overflow-hidden p-0 md:p-[8px] no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-            <div className="flex flex-col md:flex-row w-full h-full bg-[#141414] rounded-none md:rounded-lg border-0 md:border md:border-[#242323] overflow-hidden no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                {/* Desktop sidebar: visible only on md: and up */}
-                <div className="hidden md:flex w-[220px] shrink-0 border-r border-[#242323] flex-col py-4 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                    <div className="px-4 mb-6">
-                        <button
-                            onClick={onBack}
-                            className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#191919] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer"
-                        >
-                            <ChevronLeft className="w-4 h-4 mr-2" />
-                            Back
-                        </button>
-                    </div>
-
-                    <div className="flex flex-col gap-[2px] px-3 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                        <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mb-1">
-                            Settings
+        <SettingsTopBarContext.Provider value={setTopBarAction}>
+            <div className="flex w-full h-full bg-[#141414] md:bg-[#100E12] overflow-hidden p-0 md:p-[8px] no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                <div className="flex flex-col md:flex-row w-full h-full bg-[#141414] rounded-none md:rounded-lg border-0 md:border md:border-[#242323] overflow-hidden no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                    {/* Desktop sidebar: visible only on md: and up */}
+                    <div className="hidden md:flex w-[220px] shrink-0 border-r border-[#242323] flex-col py-4 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                        <div className="px-4 mb-6">
+                            <button
+                                onClick={onBack}
+                                className="flex items-center text-[#7B7A79] hover:text-[#D6D5D4] hover:bg-[#191919] px-2 py-1 -ml-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer"
+                            >
+                                <ChevronLeft className="w-4 h-4 mr-2" />
+                                Back
+                            </button>
                         </div>
 
-                        <button
-                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Account')}`)}
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Account'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <UserCircle className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Account
-                        </button>
+                        <div className="flex flex-col gap-[2px] px-3 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                            {NAV_ITEMS.map((item) => (
+                                <button
+                                    key={item.label}
+                                    onClick={() => navigate(item.to)}
+                                    className={navItemClass(item.tabs.includes(activeTab))}
+                                >
+                                    {item.icon}
+                                    {item.label}
+                                    {item.soon && !isPreview && (
+                                        <span className="ml-auto flex">
+                                            <SoonPill />
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
 
-                        <button
-                            onClick={() => navigate(CONNECTIONS_BASE_PATH)}
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Connections'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Icons.Connections className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Connections
-                        </button>
-                        <button
-                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Secrets')}`)}
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Secrets'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <KeyRound className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Secrets
-                        </button>
-                        <button
-                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Models')}`)}
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Models'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Cpu className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Model keys
-                        </button>
-                        <button
-                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Billing')}`)}
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Billing'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <CreditCard className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                            Billing
-                        </button>
-                        <button
-                            onClick={() => navigate(`/settings/${getSlugForProfileTab('Usage')}`)}
-                            className={`flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                                activeTab === 'Usage' || activeTab === 'Analytics'
-                                    ? 'bg-[#242323] text-[#D6D5C9]'
-                                    : 'text-[#D6D5C9] hover:bg-[#191919]'
-                            }`}
-                        >
-                            <Activity className="w-[18px] h-[18px]" strokeWidth={1.75} />
-                            Usage
-                        </button>
-
-                        <div className="px-3 py-2 text-[12px] font-medium text-[#7B7A79] mt-4 mb-1">
-                            Resources
+                            {/* links: the one gap in the list sets them apart */}
+                            <div className="h-3 shrink-0" />
+                            {NAV_LINKS.map((link) => (
+                                <a
+                                    key={link.label}
+                                    href={`${getWebUrl()}${link.path}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => {
+                                        e.preventDefault()
+                                        window.open(
+                                            `${getWebUrl()}${link.path}`,
+                                            '_blank',
+                                            'noopener,noreferrer'
+                                        )
+                                    }}
+                                    className={cn(navItemClass(false), 'justify-between')}
+                                >
+                                    <span className="flex items-center gap-3">
+                                        {link.icon}
+                                        {link.label}
+                                    </span>
+                                    <ArrowUpRight
+                                        className="w-[14px] h-[14px] text-[#7B7A79]"
+                                        strokeWidth={1.5}
+                                    />
+                                </a>
+                            ))}
+                            <button
+                                onClick={() => setFeedbackModalOpen(true)}
+                                className={navItemClass(false)}
+                            >
+                                <MessageSquare className={navIconClass} strokeWidth={1.5} />
+                                Send feedback
+                            </button>
                         </div>
-                        <a
-                            href={`${getWebUrl()}/privacy`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => {
-                                e.preventDefault()
-                                window.open(
-                                    `${getWebUrl()}/privacy`,
-                                    '_blank',
-                                    'noopener,noreferrer'
-                                )
-                            }}
-                            className="flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group whitespace-nowrap shrink-0 cursor-pointer"
-                        >
-                            <div className="flex items-center gap-3">
-                                <FileText className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                                Privacy Policy
-                            </div>
-                            <ArrowUpRight
-                                className="w-[14px] h-[14px] text-[#7B7A79]"
-                                strokeWidth={1.5}
-                            />
-                        </a>
-                        <a
-                            href={`${getWebUrl()}/terms`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => {
-                                e.preventDefault()
-                                window.open(`${getWebUrl()}/terms`, '_blank', 'noopener,noreferrer')
-                            }}
-                            className="flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group whitespace-nowrap shrink-0 cursor-pointer"
-                        >
-                            <div className="flex items-center gap-3">
-                                <FileText className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                                Terms of Service
-                            </div>
-                            <ArrowUpRight
-                                className="w-[14px] h-[14px] text-[#7B7A79]"
-                                strokeWidth={1.5}
-                            />
-                        </a>
-                        <a
-                            href={`${getWebUrl()}/docs/changelog`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between px-3 py-1.5 rounded-[10px] text-[#D6D5C9] hover:bg-[#191919] text-[13px] font-medium transition-colors group whitespace-nowrap shrink-0"
-                        >
-                            <div className="flex items-center gap-3">
-                                <FileClock className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                                Changelog
-                            </div>
-                            <ArrowUpRight
-                                className="w-[14px] h-[14px] text-[#7B7A79]"
-                                strokeWidth={1.5}
-                            />
-                        </a>
                     </div>
+
+                    {activeTab === 'Connections' ? (
+                        // the connections page brings its own top bar, tabs and scrolling
+                        <div className="flex-1 min-w-0 min-h-0">
+                            <ConnectionsPage />
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                            {/* Mobile top bar: "‹ Settings" opens the Settings level of the menu sheet */}
+                            <MobileTopBar
+                                left={
+                                    <MobileBackButton
+                                        label="Back"
+                                        onClick={() => openMobileSheet('settings')}
+                                    />
+                                }
+                                right={
+                                    topBarAction && (
+                                        <MobileIconButton
+                                            onClick={topBarAction.onClick}
+                                            label={topBarAction.label}
+                                            filled
+                                        >
+                                            <Plus className="w-[18px] h-[18px]" strokeWidth={1.8} />
+                                        </MobileIconButton>
+                                    )
+                                }
+                            />
+
+                            {/* Mobile Content: Active Tab Content directly rendered */}
+                            <div
+                                className={cn(
+                                    'md:hidden flex-col p-4 pb-6 w-full no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]',
+                                    isMobileRoot ? 'hidden' : 'flex'
+                                )}
+                            >
+                                {profileErrorMessage && (
+                                    <div className="mb-4">
+                                        <ErrorAlert
+                                            message={profileErrorMessage}
+                                            onClear={() => setProfileActionError(null)}
+                                        />
+                                    </div>
+                                )}
+                                {renderTabContent()}
+                            </div>
+
+                            {/* Desktop Content Render: always visible on md: and up */}
+                            <div className="hidden md:flex flex-1 justify-center px-6 md:px-16 pt-8 md:pt-16 pb-6 md:pb-8 relative z-10 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
+                                <div className="flex flex-col items-end gap-2 absolute top-8 md:top-16 right-6 md:right-16">
+                                    {profileErrorMessage && (
+                                        <ErrorAlert
+                                            message={profileErrorMessage}
+                                            onClear={() => setProfileActionError(null)}
+                                        />
+                                    )}
+                                </div>
+                                {renderTabContent()}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {activeTab === 'Connections' ? (
-                    // the connections page brings its own top bar, tabs and scrolling
-                    <div className="flex-1 min-w-0 min-h-0">
-                        <ConnectionsPage />
-                    </div>
-                ) : (
-                    <div className="flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                        {/* Mobile top bar: "‹ Settings" opens the Settings level of the menu sheet */}
-                        <MobileTopBar
-                            left={
-                                <MobileBackButton
-                                    label="Settings"
-                                    onClick={() => openMobileSheet('settings')}
-                                />
-                            }
-                        />
+                <ProfileNameModal
+                    isOpen={nameModalOpen}
+                    value={tempName}
+                    isPending={updateNameMutation.isPending}
+                    errorMessage={nameModalOpen ? profileActionError : null}
+                    onClose={() => {
+                        setNameModalOpen(false)
+                        setProfileActionError(null)
+                    }}
+                    onChange={setTempName}
+                    onSave={handleSaveName}
+                />
 
-                        {/* Mobile Content: Active Tab Content directly rendered */}
-                        <div
-                            className={cn(
-                                'md:hidden flex-col p-4 pb-6 w-full no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]',
-                                isMobileRoot ? 'hidden' : 'flex'
-                            )}
-                        >
-                            {profileErrorMessage && (
-                                <div className="mb-4">
-                                    <ErrorAlert
-                                        message={profileErrorMessage}
-                                        onClear={() => setProfileActionError(null)}
-                                    />
-                                </div>
-                            )}
-                            {renderTabContent()}
-                        </div>
+                <ProfileDeleteAccountModal
+                    isOpen={deleteAccountModalOpen}
+                    onClose={() => setDeleteAccountModalOpen(false)}
+                    onConfirm={async () => {
+                        try {
+                            const { profileAPI } = await import('@/features/profile/api/profile')
+                            await profileAPI.deleteAccount()
+                            setDeleteAccountModalOpen(false)
+                            onSignOut()
+                        } catch (error) {
+                            console.error('Failed to delete account', error)
+                        }
+                    }}
+                />
 
-                        {/* Desktop Content Render: always visible on md: and up */}
-                        <div className="hidden md:flex flex-1 justify-center px-6 md:px-16 pt-8 md:pt-12 pb-6 md:pb-8 relative z-10 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
-                            <div className="flex flex-col items-end gap-2 absolute top-8 md:top-12 right-6 md:right-16">
-                                {profileErrorMessage && (
-                                    <ErrorAlert
-                                        message={profileErrorMessage}
-                                        onClear={() => setProfileActionError(null)}
-                                    />
-                                )}
-                            </div>
-                            {renderTabContent()}
-                        </div>
-                    </div>
-                )}
+                <ProfileSignOutAllSessionsModal
+                    isOpen={signOutAllSessionsModalOpen}
+                    onClose={() => setSignOutAllSessionsModalOpen(false)}
+                    onConfirm={async () => {
+                        try {
+                            const { profileAPI } = await import('@/features/profile/api/profile')
+                            await profileAPI.signoutAll()
+                            setSignOutAllSessionsModalOpen(false)
+                            onSignOut()
+                        } catch (error) {
+                            console.error('Failed to sign out of all sessions', error)
+                        }
+                    }}
+                />
+
+                <ProfileFeedbackModal
+                    isOpen={feedbackModalOpen}
+                    onClose={() => setFeedbackModalOpen(false)}
+                />
             </div>
-
-            <ProfileNameModal
-                isOpen={nameModalOpen}
-                value={tempName}
-                isPending={updateNameMutation.isPending}
-                errorMessage={nameModalOpen ? profileActionError : null}
-                onClose={() => {
-                    setNameModalOpen(false)
-                    setProfileActionError(null)
-                }}
-                onChange={setTempName}
-                onSave={handleSaveName}
-            />
-
-            <ProfileDeleteAccountModal
-                isOpen={deleteAccountModalOpen}
-                onClose={() => setDeleteAccountModalOpen(false)}
-                onConfirm={async () => {
-                    try {
-                        const { profileAPI } = await import('@/features/profile/api/profile')
-                        await profileAPI.deleteAccount()
-                        setDeleteAccountModalOpen(false)
-                        onSignOut()
-                    } catch (error) {
-                        console.error('Failed to delete account', error)
-                    }
-                }}
-            />
-
-            <ProfileSignOutAllSessionsModal
-                isOpen={signOutAllSessionsModalOpen}
-                onClose={() => setSignOutAllSessionsModalOpen(false)}
-                onConfirm={async () => {
-                    try {
-                        const { profileAPI } = await import('@/features/profile/api/profile')
-                        await profileAPI.signoutAll()
-                        setSignOutAllSessionsModalOpen(false)
-                        onSignOut()
-                    } catch (error) {
-                        console.error('Failed to sign out of all sessions', error)
-                    }
-                }}
-            />
-        </div>
+        </SettingsTopBarContext.Provider>
     )
 }

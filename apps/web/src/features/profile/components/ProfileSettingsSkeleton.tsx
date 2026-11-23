@@ -1,6 +1,9 @@
 import { Plus, RotateCw, Search } from 'lucide-react'
 import React from 'react'
 
+import { SettingsPageHeader } from './SettingsPageHeader'
+import { PAGE_SUBTITLES } from './settingsStyles'
+
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
 interface ProfileSettingsSkeletonProps {
@@ -93,15 +96,10 @@ export const ProfileSecretsSkeleton: React.FC = () => (
 )
 
 export const ProfileUsageSkeleton: React.FC = () => (
-    <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
+    <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-200">
         <div className="flex flex-col mb-0">
-            <h1 className="text-[16px] font-medium mb-3">Usage</h1>
-            <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
-                <p className="text-[13px] text-[#7B7A79]">
-                    Track your token consumption, credit deductions, and generation costs across
-                    recent model sessions.
-                </p>
-
+            <SettingsPageHeader title="Usage" subtitle={PAGE_SUBTITLES.usage} />
+            <div className="flex flex-col gap-4">
                 {/* controls row */}
                 <div className="flex items-center justify-between mb-2">
                     {/* quick filters */}
@@ -127,7 +125,7 @@ export const ProfileUsageSkeleton: React.FC = () => (
                 </div>
 
                 {/* table skeleton */}
-                <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden min-h-[380px]">
+                <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden">
                     <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2.5 text-[12px] text-[#7B7A79] font-medium">
                         <div className="flex md:hidden items-center justify-between">
                             <span>Project / Date</span>
@@ -137,7 +135,7 @@ export const ProfileUsageSkeleton: React.FC = () => (
                             <div>Date</div>
                             <div>Project</div>
                             <div>Model</div>
-                            <div>Token Usage</div>
+                            <div>Tokens</div>
                             <div className="text-right">Cost</div>
                         </div>
                     </div>
@@ -243,7 +241,7 @@ export const ProfileUsageSkeleton: React.FC = () => (
 )
 
 export const ProfileBillingHistorySkeleton: React.FC = () => (
-    <div className="flex flex-col divide-y divide-[#242323]/40">
+    <div className="flex flex-col divide-y divide-[#242323]">
         {[
             { titleW: 'w-36', dateW: 'w-24', statusW: 'w-14', amountW: 'w-12' },
             { titleW: 'w-48', dateW: 'w-20', statusW: 'w-16', amountW: 'w-14' },
@@ -288,53 +286,43 @@ export const ProfileBillingHistorySkeleton: React.FC = () => (
 export const ProfileBillingSkeleton: React.FC<{ onAddCredits?: () => void }> = ({
     onAddCredits,
 }) => (
-    <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
-        {/* credits section */}
+    <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-200">
+        {/* balance */}
         <div className="flex flex-col mb-6">
-            <h1 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits</h1>
-            <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                <p className="text-[13px] text-[#7B7A79]">
-                    Prepaid credits are used to power AI model completions and agent execution in
-                    your workspaces.
-                </p>
-
-                {/* compact credits balance box */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191919] rounded-xl p-4 sm:p-5 w-full max-w-[560px]">
+            <SettingsPageHeader title="Billing" subtitle={PAGE_SUBTITLES.billing} />
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191919] rounded-xl p-4 sm:p-5 w-full">
                     <div className="flex flex-col gap-1">
-                        <span className="text-[12px] font-medium text-[#7B7A79]">
-                            Wallet Balance
-                        </span>
-                        <div className="flex items-baseline gap-1.5">
-                            <Skeleton className="h-7 sm:h-8 w-28 bg-white/[0.05] rounded" />
-                            <span className="text-[11px] text-[#7B7A79] font-mono">USD</span>
-                        </div>
+                        <span className="text-[12px] font-medium text-[#7B7A79]">Balance</span>
+                        <Skeleton className="h-7 sm:h-8 w-28 bg-white/[0.05] rounded" />
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-2">
+                        <span className="hidden md:block px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9]">
+                            Redeem code
+                        </span>
                         <button
                             type="button"
                             onClick={onAddCredits}
                             className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] text-[13px] font-medium transition-colors cursor-pointer text-center shadow-sm"
                         >
-                            Add Credits
+                            Add credits
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        {/* credits history section */}
+        {/* history */}
         <div className="flex flex-col mb-0">
-            <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits History</h2>
-            <div className="flex flex-col border-t border-[#242323] pt-4">
-                <div className="flex flex-col">
-                    {/* Header row */}
-                    <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 pb-1">
-                        <div className="hidden md:block md:col-span-3">Date</div>
-                        <div className="col-span-7 md:col-span-5">Details</div>
-                        <div className="hidden md:block md:col-span-2">Status</div>
-                        <div className="col-span-5 md:col-span-2 text-right">Amount</div>
-                    </div>
-
+            <h2 className="text-[16px] md:text-[15px] font-medium text-[#D6D5C9] mb-3">History</h2>
+            <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden flex flex-col">
+                <div className="hidden md:grid grid-cols-12 gap-2 bg-[#202020] border-b border-[#242323] px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-[#7B7A79]">
+                    <div className="col-span-3">Date</div>
+                    <div className="col-span-5">Details</div>
+                    <div className="col-span-2">Status</div>
+                    <div className="col-span-2 text-right">Amount</div>
+                </div>
+                <div className="px-3.5 md:px-4">
                     <ProfileBillingHistorySkeleton />
                 </div>
             </div>
@@ -343,86 +331,82 @@ export const ProfileBillingSkeleton: React.FC<{ onAddCredits?: () => void }> = (
 )
 
 export const ProfileAccountSkeleton: React.FC = () => (
-    <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
-        {/* account */}
+    <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-200">
+        {/* account: page heading, then avatar, name and email, Edit */}
+        <div className="flex flex-col gap-2 mb-6">
+            <Skeleton className="h-5 w-24 bg-white/[0.04] rounded" />
+            <Skeleton className="h-3.5 w-72 bg-white/[0.025] rounded" />
+        </div>
         <div className="flex flex-col mb-6">
             <div className="h-6 flex items-center mb-3">
-                <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
+                <Skeleton className="h-4 w-16 bg-white/[0.04] rounded" />
             </div>
-            <div className="flex flex-col gap-2 border-t border-[#242323] pt-4">
-                {/* full name row */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                    <div className="flex flex-col gap-0.5">
-                        <Skeleton className="h-4 w-16 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-3.5 w-28 bg-white/[0.025] rounded" />
-                    </div>
-                    <Skeleton className="w-full sm:w-[138px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
+            <div className="flex items-center gap-3 bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl px-4 py-3">
+                <Skeleton className="w-9 h-9 rounded-full bg-white/[0.05] shrink-0" />
+                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                    <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
+                    <Skeleton className="h-3.5 w-44 bg-white/[0.025] rounded" />
                 </div>
+                <Skeleton className="w-[58px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
+            </div>
+        </div>
 
-                {/* email row */}
-                <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-0.5">
-                        <Skeleton className="h-4 w-12 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-3.5 w-44 bg-white/[0.025] rounded" />
-                    </div>
+        {/* preferences: label and control. the switch shape uses another tone than the
+            notification switches, which a test counts */}
+        <div className="flex flex-col mb-6">
+            <div className="h-6 flex items-center mb-3">
+                <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
+            </div>
+            <div className="flex flex-col gap-3 bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl px-4 py-3">
+                <div className="flex items-center justify-between min-h-8">
+                    <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
+                    <Skeleton className="h-[30px] w-[150px] rounded-lg bg-white/[0.03] shrink-0" />
+                </div>
+                <div className="flex items-center justify-between min-h-8">
+                    <Skeleton className="h-4 w-52 bg-white/[0.04] rounded" />
+                    <Skeleton className="h-5 w-9 rounded-full bg-white/[0.035] shrink-0" />
+                </div>
+                <div className="flex items-center justify-between min-h-8">
+                    <Skeleton className="h-4 w-36 bg-white/[0.04] rounded" />
+                    <Skeleton className="w-[62px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
                 </div>
             </div>
         </div>
 
-        {/* notifications */}
+        {/* notifications: label and switch */}
         <div className="flex flex-col mb-6">
             <div className="h-6 flex items-center mb-3">
                 <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
             </div>
-            <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                {/* product updates */}
+            <div className="flex flex-col gap-4 bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-0.5">
-                        <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-3.5 w-72 sm:w-96 bg-white/[0.025] rounded" />
-                    </div>
+                    <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
                     <Skeleton className="h-5 w-9 rounded-full bg-white/[0.04] shrink-0" />
                 </div>
-
-                {/* security alerts */}
                 <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-0.5">
-                        <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-3.5 w-64 sm:w-80 bg-white/[0.025] rounded" />
-                    </div>
+                    <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
                     <Skeleton className="h-5 w-9 rounded-full bg-white/[0.04] shrink-0" />
                 </div>
             </div>
         </div>
 
-        {/* system */}
+        {/* sign in: label and button */}
         <div className="flex flex-col mb-0">
             <div className="h-6 flex items-center mb-3">
                 <Skeleton className="h-4 w-16 bg-white/[0.04] rounded" />
             </div>
-            <div className="flex flex-col gap-6 sm:gap-2 border-t border-[#242323] pt-4">
-                {/* signed in as */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                    <Skeleton className="h-4 w-52 bg-white/[0.04] rounded" />
-                    <Skeleton className="w-full sm:w-[78px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
+            <div className="flex flex-col gap-2 bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                    <Skeleton className="h-4 w-24 bg-white/[0.04] rounded" />
+                    <Skeleton className="w-[78px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
                 </div>
-
-                {/* sign out of all sessions */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                    <div className="flex flex-col gap-0.5">
-                        <Skeleton className="h-4 w-40 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-3.5 w-56 sm:w-72 bg-white/[0.025] rounded" />
-                    </div>
-                    <Skeleton className="w-full sm:w-[176px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
+                <div className="flex items-center justify-between gap-3">
+                    <Skeleton className="h-4 w-20 bg-white/[0.04] rounded" />
+                    <Skeleton className="w-[148px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
                 </div>
-
-                {/* delete account */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                    <div className="flex flex-col gap-0.5">
-                        <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
-                        <Skeleton className="h-3.5 w-48 sm:w-64 bg-white/[0.025] rounded" />
-                    </div>
-                    <Skeleton className="w-full sm:w-[124px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
+                <div className="flex items-center justify-between gap-3">
+                    <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
+                    <Skeleton className="w-[68px] h-[31px] rounded-lg bg-white/[0.03] shrink-0" />
                 </div>
             </div>
         </div>
@@ -441,13 +425,13 @@ const CONNECTION_SKELETON_ITEMS = [
 ]
 
 export const ProfileConnectionsSkeleton: React.FC = () => (
-    <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
+    <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-200">
         {/* connections section */}
         <div className="flex flex-col mb-0">
             <div className="h-6 flex items-center mb-3">
                 <Skeleton className="h-4 w-28 bg-white/[0.04] rounded" />
             </div>
-            <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
+            <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5 mb-1">
                     <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />
                     <Skeleton className="h-3.5 w-2/3 bg-white/[0.025] rounded" />
@@ -491,17 +475,19 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
 
     if (activeTab === 'Repositories') {
         return (
-            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150">
+            <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-150">
                 <div className="flex flex-col mb-0">
-                    <h1 className="text-[16px] font-medium mb-3">Repositories</h1>
+                    <SettingsPageHeader
+                        title="Repositories"
+                        subtitle={
+                            <>
+                                Use a repository in a prompt as{' '}
+                                <span className="text-[#87B2F4]">@repos:name</span>.
+                            </>
+                        }
+                    />
 
-                    <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
-                        <p className="text-[13px] text-[#7B7A79]">
-                            Reference a repository with an at sign, e.g.{' '}
-                            <span className="text-[#87B2F4]">@repos:spacetime</span>. Connected
-                            repositories are cloned directly into your workspace sandbox.
-                        </p>
-
+                    <div className="flex flex-col gap-4">
                         {/* Top Control Bar */}
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-2">
                             <div className="relative w-full max-w-full sm:max-w-[340px]">
@@ -540,16 +526,18 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
 
     if (activeTab === 'Secrets') {
         return (
-            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150">
+            <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-150">
                 <div className="flex flex-col mb-0">
-                    <h1 className="text-[16px] font-medium mb-3">Secrets</h1>
-                    <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
-                        <p className="text-[13px] text-[#7B7A79]">
-                            Reference a secret with a dollar sign, e.g.{' '}
-                            <span className="text-[#87B2F4]">$SERVICE_USERNAME</span>. Secrets are
-                            encrypted at rest and injected into your sandbox sessions.
-                        </p>
-
+                    <SettingsPageHeader
+                        title="Secrets"
+                        subtitle={
+                            <>
+                                Use a secret in a session as{' '}
+                                <span className="text-[#87B2F4]">$NAME</span>.
+                            </>
+                        }
+                    />
+                    <div className="flex flex-col gap-4">
                         {/* Controls Row: Search Input + Action Buttons */}
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                             <div className="relative flex-1 max-w-full sm:max-w-[280px]">
@@ -562,7 +550,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                                 />
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="hidden md:flex items-center gap-2">
                                 <button
                                     type="button"
                                     className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg border border-[#282828] bg-[#202020] text-[12.5px] font-medium text-[#D6D5C9] transition-colors"
@@ -581,13 +569,9 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                         </div>
 
                         {/* Secrets Table Container */}
-                        <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1 min-h-[380px] flex flex-col">
-                            <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2.5 text-[12px] font-medium text-[#7B7A79]">
-                                <div className="flex md:hidden items-center justify-between">
-                                    <span>Name</span>
-                                    <span className="pr-6">Updated at</span>
-                                </div>
-                                <div className="hidden md:grid grid-cols-12">
+                        <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1 flex flex-col">
+                            <div className="hidden md:block bg-[#202020] border-b border-[#242323] px-4 py-2.5 text-[12px] font-medium text-[#7B7A79]">
+                                <div className="grid grid-cols-12">
                                     <div className="col-span-4">Name</div>
                                     <div className="col-span-4">Note</div>
                                     <div className="col-span-2">Updated at</div>
@@ -613,7 +597,7 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
 
     if (activeTab === 'Privacy' || activeTab === 'Terms') {
         return (
-            <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-150 gap-4">
+            <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-150 gap-4">
                 <Skeleton className="h-5 w-36 bg-white/[0.04] rounded mb-2" />
                 <div className="flex flex-col gap-2.5">
                     <Skeleton className="h-3.5 w-full bg-white/[0.025] rounded" />

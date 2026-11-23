@@ -85,7 +85,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
 
         // Real header and description
         expect(container.textContent).toContain('Repositories')
-        expect(container.textContent).toContain('Reference a repository with an at sign, e.g.')
+        expect(container.textContent).toContain('Use a repository in a prompt as @repos:name.')
 
         // Real search input and button
         const searchInput = container.querySelector('input[placeholder="Search repositories..."]')
@@ -106,7 +106,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
 
         // Real header and description
         expect(container.textContent).toContain('Secrets')
-        expect(container.textContent).toContain('Reference a secret with a dollar sign, e.g.')
+        expect(container.textContent).toContain('Use a secret in a session as $NAME.')
 
         // Real search input and action buttons
         const searchInput = container.querySelector('input[placeholder="Search secrets"]')
@@ -131,7 +131,8 @@ describe('Skeleton UI Standards & Preview Mode', () => {
 
         // Real header and description
         expect(container.textContent).toContain('Usage')
-        expect(container.textContent).toContain('Track your token consumption, credit deductions')
+        // the page has no explainer under the title (U1)
+        expect(container.textContent).not.toContain('Track your token consumption')
 
         // Real quick filters
         expect(container.textContent).toContain('1d')
@@ -146,7 +147,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(container.textContent).toContain('Date')
         expect(container.textContent).toContain('Project')
         expect(container.textContent).toContain('Model')
-        expect(container.textContent).toContain('Token Usage')
+        expect(container.textContent).toContain('Tokens')
         expect(container.textContent).toContain('Cost')
 
         // Skeletons only for rows
@@ -157,19 +158,18 @@ describe('Skeleton UI Standards & Preview Mode', () => {
     test('ProfileSettingsSkeleton renders Billing tab with real Credits header, description, balance box with Add Credits button, Credits History header, table header, and skeleton rows only', () => {
         const { container } = render(<ProfileSettingsSkeleton activeTab="Billing" />)
 
-        // Real Credits header and description
-        expect(container.textContent).toContain('Credits')
-        expect(container.textContent).toContain(
-            'Prepaid credits are used to power AI model completions'
-        )
+        // Real Billing header, with no explainer under it (U1, U2)
+        expect(container.textContent).toContain('Billing')
+        expect(container.textContent).not.toContain('Prepaid credits are used')
 
-        // Real balance box layout with Add Credits button
-        expect(container.textContent).toContain('Wallet Balance')
-        expect(container.textContent).toContain('USD')
-        expect(container.textContent).toContain('Add Credits')
+        // Real balance box with Redeem code and Add credits (U4)
+        expect(container.textContent).toContain('Balance')
+        expect(container.textContent).toContain('Redeem code')
+        expect(container.textContent).toContain('Add credits')
+        expect(container.textContent).not.toContain('Promotions')
 
-        // Real Credits History header and table header
-        expect(container.textContent).toContain('Credits History')
+        // Real History header and table header
+        expect(container.textContent).toContain('History')
         expect(container.textContent).toContain('Date')
         expect(container.textContent).toContain('Details')
         expect(container.textContent).toContain('Status')
@@ -247,7 +247,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         )
 
         expect(container.textContent).toContain('Repositories')
-        expect(container.textContent).toContain('Reference a repository with an at sign, e.g.')
+        expect(container.textContent).toContain('Use a repository in a prompt as @repos:name.')
         expect(
             container.querySelector('input[placeholder="Search repositories..."]')
         ).not.toBeNull()
@@ -281,14 +281,12 @@ describe('Skeleton UI Standards & Preview Mode', () => {
             </QueryClientProvider>
         )
 
-        expect(container.textContent).toContain('Credits')
-        expect(container.textContent).toContain(
-            'Prepaid credits are used to power AI model completions'
-        )
-        expect(container.textContent).toContain('Wallet Balance')
-        expect(container.textContent).toContain('USD')
-        expect(container.textContent).toContain('Add Credits')
-        expect(container.textContent).toContain('Credits History')
+        expect(container.textContent).toContain('Billing')
+        expect(container.textContent).not.toContain('Prepaid credits are used')
+        expect(container.textContent).toContain('Balance')
+        expect(container.textContent).toContain('Redeem code')
+        expect(container.textContent).toContain('Add credits')
+        expect(container.textContent).toContain('History')
         expect(container.textContent).toContain('Date')
         expect(container.textContent).toContain('Details')
         expect(container.textContent).toContain('Status')
@@ -313,7 +311,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         )
 
         expect(container.textContent).toContain('Secrets')
-        expect(container.textContent).toContain('Reference a secret with a dollar sign, e.g.')
+        expect(container.textContent).toContain('Use a secret in a session as $NAME.')
         expect(container.querySelector('input[placeholder="Search secrets"]')).not.toBeNull()
         expect(container.textContent).toContain('Bulk add')
         expect(container.textContent).toContain('Add secret')
@@ -340,7 +338,8 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         )
 
         expect(container.textContent).toContain('Usage')
-        expect(container.textContent).toContain('Track your token consumption, credit deductions')
+        // the page has no explainer under the title (U1)
+        expect(container.textContent).not.toContain('Track your token consumption')
         expect(container.textContent).toContain('1d')
         expect(container.textContent).toContain('7d')
         expect(container.textContent).toContain('30d')
@@ -349,7 +348,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(container.textContent).toContain('Date')
         expect(container.textContent).toContain('Project')
         expect(container.textContent).toContain('Model')
-        expect(container.textContent).toContain('Token Usage')
+        expect(container.textContent).toContain('Tokens')
         expect(container.textContent).toContain('Cost')
 
         const desktopRows = container.querySelectorAll('.hidden.md\\:flex, .hidden.md\\:grid')

@@ -63,13 +63,15 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
         <Modal
             isOpen={isOpen}
             onClose={handleClose}
-            title={showThankYou ? 'Thank you!' : 'Give feedback'}
+            title={showThankYou ? 'Thank you' : 'Send feedback'}
             description={
                 showThankYou
-                    ? 'Your feedback helps us make december better for everyone.'
-                    : "We'd love to hear what went well or how we can improve the product experience."
+                    ? 'Your feedback helps us make December better.'
+                    : 'Tell us what went well or what to fix.'
             }
             variant="premium"
+            showLogo={false}
+            sheetOnPhone
         >
             {showThankYou ? (
                 <div className="flex flex-col items-center justify-center py-6 text-center animate-in fade-in duration-300">

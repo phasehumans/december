@@ -20,6 +20,7 @@ import { useSlashMenu } from '@/features/home/slash/useSlashMenu'
 import { profileAPI } from '@/features/profile/api/profile'
 import { secretsAPI } from '@/features/profile/api/secrets'
 import { useByokList } from '@/features/profile/hooks/useByokData'
+import { usePreferences } from '@/features/profile/lib/preferences'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { Icons } from '@/shared/components/ui/Icons'
 
@@ -687,6 +688,9 @@ export const usePromptInputController = ({
         }
 
         if (event.key === 'Enter' && !event.shiftKey) {
+            // "Send with Ctrl + Enter" (Settings, Preferences): a plain Enter is a new line
+            const sendKey = usePreferences.getState().sendKey
+            if (sendKey === 'mod-enter' && !event.ctrlKey && !event.metaKey) return
             event.preventDefault()
             handleSubmit()
         }

@@ -1,4 +1,4 @@
-import { Folder, KeyRound, Paperclip, Plug, Server, SlidersHorizontal, Zap } from 'lucide-react'
+import { Folder, Lock, Paperclip, Plug, Server, SlidersHorizontal, Zap } from 'lucide-react'
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -193,12 +193,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         {
             id: 'secrets',
             label: 'Secrets',
-            icon: (
-                <KeyRound
-                    className={plusIconClass}
-                    style={{ transform: 'scaleY(-1) rotate(-135deg)' }}
-                />
-            ),
+            icon: <Lock className={plusIconClass} />,
             side:
                 onPickSecret && sideWhenSignedIn(<SecretSideList onPick={picked(onPickSecret)} />),
             onPick: run(() => onOptionSelect?.('secrets:')),

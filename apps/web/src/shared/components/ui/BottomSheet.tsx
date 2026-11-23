@@ -31,6 +31,29 @@ interface BottomSheetProps {
     children: React.ReactNode
     ariaLabel: string
     className?: string
+    /** lift the sheet above the on-screen keyboard. for sheets that hold a form */
+    avoidKeyboard?: boolean
+}
+
+/** the space the on-screen keyboard takes at the bottom of the screen */
+const useKeyboardInset = (active: boolean): number => {
+    const [inset, setInset] = React.useState(0)
+    React.useEffect(() => {
+        if (!active || typeof window === 'undefined') return
+        const vv = window.visualViewport
+        if (!vv) return
+        const update = () =>
+            setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)))
+        update()
+        vv.addEventListener('resize', update)
+        vv.addEventListener('scroll', update)
+        return () => {
+            vv.removeEventListener('resize', update)
+            vv.removeEventListener('scroll', update)
+            setInset(0)
+        }
+    }, [active])
+    return inset
 }
 
 const CLOSE_DRAG_PX = 90
@@ -43,7 +66,9 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     children,
     ariaLabel,
     className,
+    avoidKeyboard = false,
 }) => {
+    const keyboardInset = useKeyboardInset(isOpen && avoidKeyboard)
     const onCloseRef = React.useRef(onClose)
     const onBackRef = React.useRef(onBack)
     React.useEffect(() => {
@@ -102,7 +127,13 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                     dragStartRef.current === null && 'transition-transform duration-200',
                     className
                 )}
-                style={{ transform: dragY ? `translateY(${dragY}px)` : undefined }}
+                style={{
+                    transform: dragY ? `translateY(${dragY}px)` : undefined,
+                    bottom: keyboardInset || undefined,
+                    maxHeight: keyboardInset
+                        ? `calc(100dvh - ${keyboardInset}px - 24px)`
+                        : undefined,
+                }}
             >
                 <div
                     className="shrink-0 touch-none select-none cursor-grab"
@@ -118,7 +149,13 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                     {children}
                 </div>
                 {footer && <div className="shrink-0 px-2.5">{footer}</div>}
-                <div className="shrink-0 h-[max(10px,env(safe-area-inset-bottom))]" />
+                <div
+                    className={
+                        keyboardInset
+                            ? 'shrink-0 h-2.5'
+                            : 'shrink-0 h-[max(10px,env(safe-area-inset-bottom))]'
+                    }
+                />
             </div>
         </BottomSheetContext.Provider>,
         document.body

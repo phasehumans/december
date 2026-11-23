@@ -1,4 +1,4 @@
-import { Folder, KeyRound, GitBranch } from 'lucide-react'
+import { Folder, Lock, GitBranch } from 'lucide-react'
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -398,11 +398,8 @@ export const PromptInput: React.FC<
                                                 onClick={() => handleSelectSecret(secret)}
                                                 className={`flex items-start gap-3 px-3 py-1.5 rounded-xl transition-colors text-left w-full outline-none ${selectedIndex === idx ? 'bg-[#252525] dropdown-item-active' : 'hover:bg-[#252525]'}`}
                                             >
-                                                <KeyRound
+                                                <Lock
                                                     className={`w-4 h-4 mt-[2px] ${selectedIndex === idx ? 'text-[#EDEDEF]' : 'text-[#8F8E8D]'}`}
-                                                    style={{
-                                                        transform: 'scaleY(-1) rotate(-135deg)',
-                                                    }}
                                                 />
                                                 <div className="flex flex-col min-w-0 leading-tight gap-0.5">
                                                     <span className="text-[12.5px] font-medium text-[#EDEDEF] truncate">

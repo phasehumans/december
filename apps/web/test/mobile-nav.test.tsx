@@ -100,11 +100,18 @@ describe('mobile menu sheet', () => {
 
         for (const label of [
             'Account',
+            'Notifications',
+            'Defaults',
+            'Repositories',
+            'Pull requests',
+            'Sandbox',
             'Connections',
             'Secrets',
-            'Model keys',
+            'Your keys',
             'Billing',
             'Usage',
+            'Members',
+            'Send feedback',
         ]) {
             expect(screen.getByText(label)).toBeDefined()
         }
@@ -119,7 +126,7 @@ describe('mobile menu sheet', () => {
     test('a settings page reopens the sheet on the Settings level', () => {
         useAppStore.setState({ isMobileSidebarOpen: true, mobileSheetStart: 'settings' })
         wrap(<MobileMenuSheet {...props} />, '/settings/billing')
-        expect(screen.getByText('Model keys')).toBeDefined()
+        expect(screen.getByText('Your keys')).toBeDefined()
         const billing = screen.getAllByRole('button').find((b) => b.textContent === 'Billing')
         expect(billing?.className).toContain('bg-[#262626]')
     })

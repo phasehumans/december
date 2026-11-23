@@ -2,10 +2,17 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
+import { SettingsPageHeader } from './SettingsPageHeader'
+import { PAGE_SUBTITLES } from './settingsStyles'
+import { usePreviewOn } from './SettingsUi'
+import { UsagePreviewSummary } from './UsagePreviewSummary'
+
 import type { UsageEvent } from '@/features/billing/api/billing'
 
 import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { ChoiceGroup } from '@/features/connections/components/ConnectionsUi'
 import { profileAPI } from '@/features/profile/api/profile'
+import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
@@ -29,6 +36,9 @@ export const ProfileUsageSettings: React.FC = () => {
 
     const [timeRange, setTimeRange] = useState<string>('30d')
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    // the summary and the source filter are ui only (issue 638)
+    const isPreview = usePreviewOn()
+    const [source, setSource] = useState<'all' | 'credits' | 'keys'>('all')
 
     const formatRowDate = (dateStr: string) => {
         const date = new Date(dateStr)
@@ -115,8 +125,14 @@ export const ProfileUsageSettings: React.FC = () => {
     }, [activeDateRange.start, activeDateRange.end])
 
     const displayEvents = React.useMemo(() => {
-        return history?.events ?? []
-    }, [history?.events])
+        const events = history?.events ?? []
+        if (source === 'all') return events
+        return events.filter((event) =>
+            source === 'keys'
+                ? event.billingSource === 'OWN_KEY'
+                : event.billingSource !== 'OWN_KEY'
+        )
+    }, [history?.events, source])
 
     // compute metrics stats
     const stats = React.useMemo(() => {
@@ -142,39 +158,48 @@ export const ProfileUsageSettings: React.FC = () => {
     const isLoading = isOverviewLoading || isHistoryLoading || isSkeletonPreviewActive()
 
     return (
-        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9]">
             <div className="flex flex-col mb-0">
-                <h1 className="text-[16px] font-medium mb-3">Usage</h1>
-                <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
-                    <p className="text-[13px] text-[#7B7A79]">
-                        Track your token consumption, credit deductions, and generation costs across
-                        recent model sessions.
-                    </p>
-
+                <SettingsPageHeader title="Usage" subtitle={PAGE_SUBTITLES.usage} />
+                <div className="flex flex-col gap-4">
                     {/* controls row */}
-                    <div className="flex items-center justify-between mb-2">
-                        {/* quick filters */}
-                        <div className="flex items-center gap-1 bg-[#191919] p-0.5 rounded-lg border border-[#242323]">
-                            {['1d', '7d', '30d', '90d'].map((range) => {
-                                const isHighlighted = range === timeRange
-                                return (
-                                    <button
-                                        key={range}
-                                        onClick={() => setTimeRange(range)}
-                                        className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-all ${
-                                            isHighlighted
-                                                ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
-                                                : 'text-[#7B7A79] hover:text-[#D6D5C9]'
-                                        }`}
-                                    >
-                                        {range}
-                                    </button>
-                                )
-                            })}
+                    <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* quick filters */}
+                            <div className="flex items-center gap-1 bg-[#191919] p-0.5 rounded-lg border border-[#242323]">
+                                {['1d', '7d', '30d', '90d'].map((range) => {
+                                    const isHighlighted = range === timeRange
+                                    return (
+                                        <button
+                                            key={range}
+                                            onClick={() => setTimeRange(range)}
+                                            className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-all ${
+                                                isHighlighted
+                                                    ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
+                                                    : 'text-[#7B7A79] hover:text-[#D6D5C9]'
+                                            }`}
+                                        >
+                                            {range}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                            {isPreview && (
+                                <ChoiceGroup
+                                    label="Paid with"
+                                    options={[
+                                        { value: 'all', label: 'All' },
+                                        { value: 'credits', label: 'Credits' },
+                                        { value: 'keys', label: 'Your keys' },
+                                    ]}
+                                    value={source}
+                                    onChange={setSource}
+                                />
+                            )}
                         </div>
 
-                        {/* total spent in place of download button */}
-                        {isLoading ? (
+                        {/* total spent in place of download button. the preview shows it as a tile */}
+                        {isPreview ? null : isLoading ? (
                             <div className="flex items-center gap-1.5 text-[13px] text-neutral-400 font-medium">
                                 <span>Total spent:</span>
                                 <Skeleton className="h-4 w-12 bg-white/[0.06] rounded" />
@@ -189,9 +214,13 @@ export const ProfileUsageSettings: React.FC = () => {
                         )}
                     </div>
 
+                    {isPreview && !isLoading && !error && (
+                        <UsagePreviewSummary events={displayEvents} timeRange={timeRange} />
+                    )}
+
                     {/* table / loader / error */}
                     {isLoading ? (
-                        <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden min-h-[380px]">
+                        <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden">
                             <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2.5 text-[12px] text-[#7B7A79] font-medium">
                                 <div className="flex md:hidden items-center justify-between">
                                     <span>Project / Date</span>
@@ -201,7 +230,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                     <div>Date</div>
                                     <div>Project</div>
                                     <div>Model</div>
-                                    <div>Token Usage</div>
+                                    <div>Tokens</div>
                                     <div className="text-right">Cost</div>
                                 </div>
                             </div>
@@ -244,11 +273,14 @@ export const ProfileUsageSettings: React.FC = () => {
                             </div>
                         </div>
                     ) : error ? (
-                        <div className="w-full flex justify-center text-red-500 text-sm">
-                            {(error as any)?.message || 'Failed to load usage events'}
-                        </div>
+                        <>
+                            <p className="text-[13px] text-[#7B7A79]">
+                                Usage did not load. Reload the page to try again.
+                            </p>
+                            <ErrorAlert message={(error as any)?.message || 'Usage did not load'} />
+                        </>
                     ) : (
-                        <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1 min-h-[380px]">
+                        <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1">
                             {/* Table Header */}
                             <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2 font-sans text-[11px] text-[#7B7A79] uppercase tracking-wider font-medium">
                                 {/* Mobile Header (< md) */}
@@ -262,20 +294,15 @@ export const ProfileUsageSettings: React.FC = () => {
                                     <div>Date</div>
                                     <div>Project</div>
                                     <div>Model</div>
-                                    <div>Token Usage</div>
+                                    <div>Tokens</div>
                                     <div className="text-right">Cost</div>
                                 </div>
                             </div>
 
                             {/* Table Body */}
                             {paginatedEvents.length === 0 ? (
-                                <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center min-h-[320px] p-6">
-                                    <h3 className="text-[14px] font-medium text-[#D6D5C9]">
-                                        No usage events found
-                                    </h3>
-                                    <p className="text-[13px] text-[#7B7A79]">
-                                        No usage recorded for this period.
-                                    </p>
+                                <div className="px-4 py-6 text-[13px] text-[#7B7A79]">
+                                    No usage in this period
                                 </div>
                             ) : (
                                 <div className="flex flex-col divide-y divide-[#242323]">
@@ -288,7 +315,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                                         {row.session?.title ||
                                                             row.project?.name ||
                                                             usageEventLabel(row) ||
-                                                            'Workspace Event'}
+                                                            'Workspace event'}
                                                     </span>
                                                     <span className="font-mono font-medium text-[#D6D5C9] shrink-0">
                                                         {formatRowCost(row)}
@@ -339,10 +366,13 @@ export const ProfileUsageSettings: React.FC = () => {
                     )}
 
                     {/* footer controls */}
+                    {/* phones: no "Show" control, and the pager shows only with a second page */}
                     {totalEvents > 0 && (
-                        <div className="flex items-center justify-between mt-5">
+                        <div
+                            className={`items-center justify-between mt-5 ${totalPages > 1 ? 'flex' : 'hidden md:flex'}`}
+                        >
                             {/* left limit selector */}
-                            <div className="flex items-center gap-2">
+                            <div className="hidden md:flex items-center gap-2">
                                 <span className="text-[12.5px] text-[#7B7A79]">Show</span>
                                 <div className="relative">
                                     <button

@@ -16,10 +16,18 @@ import React, { useEffect, useState } from 'react'
 import { secretsAPI, type SecretSummary } from '../api/secrets'
 
 import { ProfileSecretsSkeleton } from './ProfileSettingsSkeleton'
+import { SettingsPageHeader } from './SettingsPageHeader'
+import { SettingsSelect, usePreviewOn, usePreviewValue } from './SettingsUi'
 
+import { ModalActions } from '@/features/connections/components/ConnectionsUi'
+import { useSettingsTopBarAction } from '@/features/profile/lib/settingsTopBar'
+import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Modal } from '@/shared/components/ui/Modal'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
+
+// sample choices for the ui-only "use in" field
+const USE_IN_OPTIONS = ['All repositories', 'acme/web', 'acme/api'] as const
 
 export const ProfileSecretsSettings: React.FC = () => {
     const [secrets, setSecrets] = useState<SecretSummary[]>([])
@@ -33,6 +41,12 @@ export const ProfileSecretsSettings: React.FC = () => {
 
     // Modal state for Add Secret
     const [isAddOpen, setIsAddOpen] = useState(false)
+    // a secret for one repository (N8) is ui only: the choice stays in memory (issue 637)
+    const isPreview = usePreviewOn()
+    const [useIn, setUseIn] = usePreviewValue<Record<string, string>>('secrets.useIn', {})
+    const [newUseIn, setNewUseIn] = useState<string>(USE_IN_OPTIONS[0])
+    // phones: the + in the top bar opens the Add secret dialog (P3)
+    useSettingsTopBarAction('Add secret', () => setIsAddOpen(true))
     const [newName, setNewName] = useState('')
     const [newValue, setNewValue] = useState('')
     const [newNote, setNewNote] = useState('')
@@ -171,9 +185,11 @@ export const ProfileSecretsSettings: React.FC = () => {
                 value: newValue.trim(),
                 note: newNote.trim() || undefined,
             })
+            if (isPreview) setUseIn({ ...useIn, [formattedName]: newUseIn })
             setNewName('')
             setNewValue('')
             setNewNote('')
+            setNewUseIn(USE_IN_OPTIONS[0])
             setShowNewValue(false)
             setIsAddOpen(false)
             await loadSecrets()
@@ -243,18 +259,20 @@ export const ProfileSecretsSettings: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9]">
             {/* Header */}
             <div className="flex flex-col mb-0">
-                <h1 className="text-[16px] font-medium mb-3">Secrets</h1>
-                <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
-                    <p className="text-[13px] text-[#7B7A79]">
-                        Reference a secret with a dollar sign, e.g.{' '}
-                        <span className="text-[#87B2F4]">$SERVICE_USERNAME</span>. Secrets are
-                        encrypted at rest and injected into your sandbox sessions.
-                    </p>
-
-                    {error && <p className="text-[12.5px] text-red-500 font-medium">{error}</p>}
+                <SettingsPageHeader
+                    title="Secrets"
+                    subtitle={
+                        <>
+                            Use a secret in a session as{' '}
+                            <span className="text-[#87B2F4]">$NAME</span>.
+                        </>
+                    }
+                />
+                <div className="flex flex-col gap-4">
+                    <ErrorAlert message={error} onClear={() => setError(null)} />
 
                     {/* Controls Row: Search Input + Action Buttons */}
                     {/* Controls Row: Search Input + Action Buttons */}
@@ -271,8 +289,8 @@ export const ProfileSecretsSettings: React.FC = () => {
                             />
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-2">
+                        {/* Action Buttons. phones use the + in the top bar */}
+                        <div className="hidden md:flex items-center gap-2">
                             <button
                                 onClick={() => setIsBulkAddOpen(true)}
                                 className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg border border-[#282828] bg-[#202020] hover:bg-[#282828] text-[12.5px] font-medium text-[#D6D5C9] hover:text-white transition-colors cursor-pointer text-center"
@@ -291,19 +309,13 @@ export const ProfileSecretsSettings: React.FC = () => {
                     </div>
 
                     {/* Secrets Table Container */}
-                    <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1 min-h-[380px] flex flex-col">
-                        {/* Table Header */}
-                        <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2.5 text-[12px] font-medium text-[#7B7A79]">
-                            {/* Mobile header (< md) */}
-                            <div className="flex md:hidden items-center justify-between">
-                                <span>Name</span>
-                                <span className="pr-6">Updated at</span>
-                            </div>
-
-                            {/* Desktop header (>= md) */}
-                            <div className="hidden md:grid grid-cols-12">
-                                <div className="col-span-4">Name</div>
-                                <div className="col-span-4">Note</div>
+                    <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1 flex flex-col">
+                        {/* Table Header: desktop only, phone rows explain themselves */}
+                        <div className="hidden md:block bg-[#202020] border-b border-[#242323] px-4 py-2.5 text-[12px] font-medium text-[#7B7A79]">
+                            <div className="grid grid-cols-12">
+                                <div className={isPreview ? 'col-span-3' : 'col-span-4'}>Name</div>
+                                {isPreview && <div className="col-span-2">Use in</div>}
+                                <div className={isPreview ? 'col-span-3' : 'col-span-4'}>Note</div>
                                 <div className="col-span-2">Updated at</div>
                                 <div className="col-span-2 text-right"></div>
                             </div>
@@ -313,13 +325,8 @@ export const ProfileSecretsSettings: React.FC = () => {
                         {isLoading || isSkeletonPreviewActive() ? (
                             <ProfileSecretsSkeleton />
                         ) : filteredSecrets.length === 0 ? (
-                            <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center min-h-[320px] p-6">
-                                <h3 className="text-[14px] font-medium text-[#D6D5C9]">
-                                    No secrets found
-                                </h3>
-                                <p className="text-[13px] text-[#7B7A79]">
-                                    Add your first secret to get started.
-                                </p>
+                            <div className="px-4 py-6 text-[13px] text-[#7B7A79]">
+                                {searchQuery.trim() ? 'No secrets match' : 'No secrets yet'}
                             </div>
                         ) : (
                             <div className="flex flex-col divide-y divide-[#242323]">
@@ -466,7 +473,9 @@ export const ProfileSecretsSettings: React.FC = () => {
                                             {/* Desktop row (>= md) */}
                                             <div className="group hidden md:grid grid-cols-12 items-center px-4 py-3 text-[13px]">
                                                 {/* Name / Revealed Value */}
-                                                <div className="col-span-4 font-mono font-medium truncate pr-2">
+                                                <div
+                                                    className={`${isPreview ? 'col-span-3' : 'col-span-4'} font-mono font-medium truncate pr-2`}
+                                                >
                                                     {isRevealed && decryptedVal ? (
                                                         <span className="text-[#87B2F4] select-all truncate">
                                                             {decryptedVal}
@@ -479,7 +488,17 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                 </div>
 
                                                 {/* Note */}
-                                                <div className="col-span-4 text-[#7B7A79] truncate pr-2">
+                                                {isPreview && (
+                                                    <div className="col-span-2 text-[#7B7A79] truncate pr-2">
+                                                        {useIn[sec.name] &&
+                                                        useIn[sec.name] !== USE_IN_OPTIONS[0]
+                                                            ? useIn[sec.name]
+                                                            : 'All'}
+                                                    </div>
+                                                )}
+                                                <div
+                                                    className={`${isPreview ? 'col-span-3' : 'col-span-4'} text-[#7B7A79] truncate pr-2`}
+                                                >
                                                     {sec.note || ''}
                                                 </div>
 
@@ -548,10 +567,13 @@ export const ProfileSecretsSettings: React.FC = () => {
                     </div>
 
                     {/* footer controls */}
+                    {/* phones: no "Show" control, and the pager shows only with a second page */}
                     {totalSecrets > 0 && (
-                        <div className="flex items-center justify-between mt-5">
+                        <div
+                            className={`items-center justify-between mt-5 ${totalPages > 1 ? 'flex' : 'hidden md:flex'}`}
+                        >
                             {/* left limit selector */}
-                            <div className="flex items-center gap-2">
+                            <div className="hidden md:flex items-center gap-2">
                                 <span className="text-[12.5px] text-[#7B7A79]">Show</span>
                                 <div className="relative">
                                     <button
@@ -633,9 +655,11 @@ export const ProfileSecretsSettings: React.FC = () => {
                     setNewNote('')
                     setShowNewValue(false)
                 }}
-                title="Add Secret"
-                description="Add environment variables or API keys available to your workspace."
+                title="Add secret"
+                description="Use it in a session as $NAME."
                 variant="premium"
+                showLogo={false}
+                sheetOnPhone
             >
                 <form onSubmit={handleAddSecret} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
@@ -643,13 +667,13 @@ export const ProfileSecretsSettings: React.FC = () => {
                             htmlFor="secret-name-input"
                             className="text-[12px] font-medium text-[#8F8E8D]"
                         >
-                            Secret Name
+                            Name
                         </label>
                         <input
                             id="secret-name-input"
                             type="text"
                             autoFocus
-                            placeholder="e.g. SERVICE_USERNAME"
+                            placeholder="SERVICE_USERNAME"
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
                             className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] font-mono focus:outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
@@ -662,13 +686,13 @@ export const ProfileSecretsSettings: React.FC = () => {
                             htmlFor="secret-value-input"
                             className="text-[12px] font-medium text-[#8F8E8D]"
                         >
-                            Secret Value
+                            Value
                         </label>
                         <div className="relative">
                             <input
                                 id="secret-value-input"
                                 type={showNewValue ? 'text' : 'password'}
-                                placeholder="Enter key or token value..."
+                                placeholder="Key or token"
                                 value={newValue}
                                 onChange={(e) => setNewValue(e.target.value)}
                                 className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg pl-3.5 pr-10 py-2.5 text-white text-[13px] font-mono focus:outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
@@ -691,47 +715,53 @@ export const ProfileSecretsSettings: React.FC = () => {
                         </div>
                     </div>
 
+                    {isPreview && (
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-[12px] font-medium text-[#8F8E8D]">Use in</span>
+                            <SettingsSelect
+                                label="Use in"
+                                value={newUseIn}
+                                options={USE_IN_OPTIONS}
+                                onChange={setNewUseIn}
+                                className="w-full"
+                            />
+                        </div>
+                    )}
                     <div className="flex flex-col gap-1.5">
                         <label
                             htmlFor="secret-note-input"
                             className="text-[12px] font-medium text-[#8F8E8D]"
                         >
-                            Note (Optional)
+                            Note
                         </label>
                         <input
                             id="secret-note-input"
                             type="text"
-                            placeholder="Brief note or usage purpose"
+                            placeholder="Optional"
                             value={newNote}
                             onChange={(e) => setNewNote(e.target.value)}
                             className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
                         />
                     </div>
 
-                    <div className="mt-1 flex items-center justify-end gap-2.5">
-                        <button
-                            type="button"
-                            onClick={() => setIsAddOpen(false)}
-                            disabled={isSubmitting}
-                            className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50 cursor-pointer"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!newName.trim() || !newValue.trim() || isSubmitting}
-                            className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[100px] cursor-pointer"
-                        >
-                            {isSubmitting ? (
-                                <div className="flex items-center gap-1.5 justify-center">
-                                    <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                                    <span>Saving...</span>
-                                </div>
-                            ) : (
-                                'Save Secret'
-                            )}
-                        </button>
-                    </div>
+                    <ModalActions
+                        onCancel={() => setIsAddOpen(false)}
+                        submitLabel="Add secret"
+                        submitDisabled={!newName.trim() || !newValue.trim()}
+                        isPending={isSubmitting}
+                        leading={
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsAddOpen(false)
+                                    setIsBulkAddOpen(true)
+                                }}
+                                className="text-[12.5px] font-medium text-[#87B2F4] hover:underline cursor-pointer"
+                            >
+                                Paste a .env file
+                            </button>
+                        }
+                    />
                 </form>
             </Modal>
 
@@ -742,9 +772,11 @@ export const ProfileSecretsSettings: React.FC = () => {
                     setIsBulkAddOpen(false)
                     setBulkContent('')
                 }}
-                title="Bulk Add Secrets"
-                description="Paste environment variables in KEY=VALUE format."
+                title="Add secrets"
+                description="One NAME=value on each line."
                 variant="premium"
+                showLogo={false}
+                sheetOnPhone
             >
                 <form onSubmit={handleBulkAddSecrets} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
@@ -759,30 +791,12 @@ export const ProfileSecretsSettings: React.FC = () => {
                         />
                     </div>
 
-                    <div className="mt-1 flex items-center justify-end gap-2.5">
-                        <button
-                            type="button"
-                            onClick={() => setIsBulkAddOpen(false)}
-                            disabled={isSubmitting}
-                            className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50 cursor-pointer"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!bulkContent.trim() || isSubmitting}
-                            className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[110px] cursor-pointer"
-                        >
-                            {isSubmitting ? (
-                                <div className="flex items-center gap-1.5 justify-center">
-                                    <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                                    <span>Importing...</span>
-                                </div>
-                            ) : (
-                                'Import Secrets'
-                            )}
-                        </button>
-                    </div>
+                    <ModalActions
+                        onCancel={() => setIsBulkAddOpen(false)}
+                        submitLabel="Add secrets"
+                        submitDisabled={!bulkContent.trim()}
+                        isPending={isSubmitting}
+                    />
                 </form>
             </Modal>
         </div>

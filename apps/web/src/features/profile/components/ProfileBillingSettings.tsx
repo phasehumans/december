@@ -1,14 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowUpRight, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 import { AddCreditsModal } from './AddCreditsModal'
+import { BillingPreviewSections, ReferralRow } from './BillingPreviewSections'
 import { ProfileBillingSkeleton } from './ProfileSettingsSkeleton'
 import { RedeemCodeModal } from './RedeemCodeModal'
+import { SettingsPageHeader, SettingsSectionHeading } from './SettingsPageHeader'
+import { PAGE_SUBTITLES } from './settingsStyles'
+import { usePreviewOn } from './SettingsUi'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { ListBox } from '@/features/connections/components/ConnectionsUi'
 import { profileAPI } from '@/features/profile/api/profile'
+import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 interface ProfileBillingSettingsProps {
@@ -29,7 +34,6 @@ interface CreditTransaction {
 
 export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (props) => {
     const { profile: propProfile } = props
-    const navigate = useNavigate()
     const { data: cachedProfile } = useQuery({
         queryKey: ['profile'],
         queryFn: profileAPI.getProfile,
@@ -44,6 +48,8 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
         error: overviewError,
     } = useBillingOverview()
 
+    // limits, auto top-up, referrals and receipts are ui only (issue 638)
+    const isPreview = usePreviewOn()
     const [showRedeemModal, setShowRedeemModal] = useState(false)
     const [showAddCreditsModal, setShowAddCreditsModal] = useState(false)
 
@@ -59,7 +65,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
             id: claim.id,
             date: claim.createdAt,
             type: 'gift',
-            methodOrCode: `Promo Code: ${claim.code}`,
+            methodOrCode: `Promo code ${claim.code}`,
             amountInCents: claim.amountInCents,
             status: 'SUCCESS',
         }))
@@ -92,13 +98,12 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
 
     if (overviewError || !overview) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 w-full text-red-400">
-                <span className="text-[14px] font-medium mb-2">
-                    Failed to load billing settings
-                </span>
-                <span className="text-[13px] text-[#7B7A79]">
-                    {(overviewError as any)?.message || 'Unknown error'}
-                </span>
+            <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9]">
+                <SettingsPageHeader title="Billing" subtitle={PAGE_SUBTITLES.billing} />
+                <p className="text-[13px] text-[#7B7A79]">
+                    Billing did not load. Reload the page to try again.
+                </p>
+                <ErrorAlert message={(overviewError as any)?.message || 'Billing did not load'} />
             </div>
         )
     }
@@ -106,41 +111,37 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
     const remainingInCents = overview.creditBalance ?? 0
 
     return (
-        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9] animate-in fade-in duration-200">
-            {/* credits section */}
+        <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-200">
+            {/* balance. phones show the page name in the top bar */}
             <div className="flex flex-col mb-6">
-                <h1 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits</h1>
-                <div className="flex flex-col gap-4 border-t border-[#242323] pt-4">
-                    <p className="hidden md:block text-[13px] text-[#7B7A79]">
-                        Prepaid credits are used to power AI model completions and agent execution
-                        in your workspaces.
-                    </p>
-
-                    {/* compact credits balance box */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191919] rounded-xl p-4 sm:p-5 w-full max-w-[560px]">
+                <SettingsPageHeader title="Billing" subtitle={PAGE_SUBTITLES.billing} />
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-4 w-full">
                         <div className="flex flex-col gap-1">
-                            <span className="text-[12px] font-medium text-[#7B7A79]">
-                                Wallet Balance
+                            <span className="text-[12px] font-medium text-[#7B7A79]">Balance</span>
+                            <span className="text-[24px] sm:text-[28px] font-medium text-[#D6D5C9] font-mono leading-none tracking-tight">
+                                {formatCents(remainingInCents)}
                             </span>
-                            <div className="flex items-baseline gap-1.5">
-                                <span className="text-[24px] sm:text-[28px] font-medium text-[#D6D5C9] font-mono leading-none tracking-tight">
-                                    {formatCents(remainingInCents)}
-                                </span>
-                                <span className="text-[11px] text-[#7B7A79] font-mono">USD</span>
-                            </div>
                         </div>
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowRedeemModal(true)}
+                                className="hidden md:block px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors cursor-pointer"
+                            >
+                                Redeem code
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => setShowAddCreditsModal(true)}
                                 className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] text-[13px] font-medium transition-colors cursor-pointer text-center shadow-sm"
                             >
-                                Add Credits
+                                Add credits
                             </button>
                         </div>
                     </div>
 
-                    {/* phones: one row in place of the promotions section (C2) */}
+                    {/* phones: redeem is a row, kept from the phone review */}
                     <button
                         type="button"
                         onClick={() => setShowRedeemModal(true)}
@@ -149,29 +150,39 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                         Redeem code
                         <ChevronRight className="w-4 h-4 text-[#7B7A79]" strokeWidth={1.75} />
                     </button>
+
+                    {isPreview && <ReferralRow name={profile?.name} />}
                 </div>
             </div>
 
-            {/* credits history section */}
+            {isPreview && (
+                <div className="flex flex-col gap-5 mb-5">
+                    <BillingPreviewSections />
+                </div>
+            )}
+
+            {/* history: the same list box as Secrets and Usage */}
             <div className="flex flex-col mb-0">
-                <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Credits History</h2>
-                <div className="flex flex-col border-t border-[#242323] pt-4">
+                <SettingsSectionHeading
+                    title="History"
+                    description="Payments and codes you added."
+                />
+                <ListBox>
                     {mergedHistory.length === 0 ? (
-                        <div className="text-[13px] text-[#7B7A79] py-2">
-                            No recent credit transactions.
-                        </div>
+                        <div className="px-4 py-6 text-[13px] text-[#7B7A79]">No payments yet</div>
                     ) : (
-                        <div className="flex flex-col">
-                            {/* Header row */}
-                            <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 pb-1">
-                                <div className="hidden md:block md:col-span-3">Date</div>
-                                <div className="col-span-7 md:col-span-5">Details</div>
-                                <div className="hidden md:block md:col-span-2">Status</div>
-                                <div className="col-span-5 md:col-span-2 text-right">Amount</div>
+                        <>
+                            <div className="hidden md:grid grid-cols-12 gap-2 bg-[#202020] border-b border-[#242323] px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-[#7B7A79]">
+                                <div className="col-span-3">Date</div>
+                                <div className={isPreview ? 'col-span-4' : 'col-span-5'}>
+                                    Details
+                                </div>
+                                <div className="col-span-2">Status</div>
+                                <div className="col-span-2 text-right">Amount</div>
+                                {isPreview && <div className="col-span-1 text-right">Receipt</div>}
                             </div>
 
-                            {/* Data rows */}
-                            <div className="flex flex-col divide-y divide-[#242323]/40">
+                            <div className="flex flex-col divide-y divide-[#242323]">
                                 {mergedHistory.map((tx) => {
                                     const formattedDate = new Date(tx.date).toLocaleDateString(
                                         undefined,
@@ -194,8 +205,11 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                                     }[tx.status] || { label: tx.status, color: 'text-neutral-500' }
 
                                     return (
-                                        <div key={tx.id} className="py-3 text-[13px]">
-                                            {/* Mobile row layout (< md) */}
+                                        <div
+                                            key={tx.id}
+                                            className="px-3.5 md:px-4 py-3 text-[13px]"
+                                        >
+                                            {/* phones: two lines */}
                                             <div className="md:hidden flex items-start justify-between gap-2">
                                                 <div className="flex flex-col min-w-0 pr-2">
                                                     <span className="text-[#D6D5C9] font-medium truncate">
@@ -221,12 +235,14 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                                                 </div>
                                             </div>
 
-                                            {/* Desktop grid layout (>= md) */}
-                                            <div className="hidden md:grid grid-cols-12 gap-2 items-center text-neutral-300">
+                                            {/* desktop: one grid row */}
+                                            <div className="hidden md:grid grid-cols-12 gap-2 items-center">
                                                 <div className="col-span-3 text-[#7B7A79]">
                                                     {formattedDate}
                                                 </div>
-                                                <div className="col-span-5 flex flex-col min-w-0 pr-2">
+                                                <div
+                                                    className={`${isPreview ? 'col-span-4' : 'col-span-5'} flex flex-col min-w-0 pr-2`}
+                                                >
                                                     <span
                                                         className="text-[#D6D5C9] font-medium truncate"
                                                         title={tx.methodOrCode}
@@ -248,55 +264,26 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                                                 <div className="col-span-2 text-right text-[#D6D5C9] font-medium">
                                                     +{formatCents(tx.amountInCents)}
                                                 </div>
+                                                {/* receipts are ui only: the file comes with the server part */}
+                                                {isPreview && (
+                                                    <div
+                                                        className="col-span-1 text-right text-[#7B7A79]"
+                                                        title="Receipts are coming soon"
+                                                    >
+                                                        {tx.type === 'purchase' &&
+                                                        tx.status === 'SUCCESS'
+                                                            ? 'PDF'
+                                                            : '-'}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )
                                 })}
                             </div>
-                        </div>
+                        </>
                     )}
-                </div>
-            </div>
-
-            {/* promotions & usage section. phones show only the redeem row above */}
-            <div className="hidden md:flex flex-col mb-6">
-                <h2 className="text-[16px] font-medium text-[#D6D5C9] mb-3">Promotions & Usage</h2>
-                <div className="flex flex-col gap-6 border-t border-[#242323] pt-4">
-                    {/* gifted credits / coupon */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Redeem Coupon Code</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                Have a promotional redeem code? Claim gifted credits here.
-                            </span>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setShowRedeemModal(true)}
-                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors cursor-pointer"
-                        >
-                            Claim Credits
-                        </button>
-                    </div>
-
-                    {/* usage dashboard link */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] text-[#D6D5C9]">Usage Dashboard</span>
-                            <span className="text-[13px] text-[#7B7A79]">
-                                View detailed metrics, token history, and cost distribution.
-                            </span>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => navigate('/settings/usage')}
-                            className="flex items-center justify-center w-full sm:w-auto gap-1.5 px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors cursor-pointer"
-                        >
-                            View Usage
-                            <ArrowUpRight className="w-3.5 h-3.5 text-neutral-500" />
-                        </button>
-                    </div>
-                </div>
+                </ListBox>
             </div>
 
             {/* modals */}

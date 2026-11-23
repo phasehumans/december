@@ -195,7 +195,7 @@ describe('sending a prompt on an own key', () => {
     })
 })
 
-describe('Model keys settings page', () => {
+describe('Your keys settings page', () => {
     it('shows saved keys by hint only', async () => {
         spies.push(
             spyOn(byokAPI, 'list').mockImplementation(async () => ({
@@ -229,9 +229,10 @@ describe('Model keys settings page', () => {
         expect(screen.getByRole('link', { name: /Get a Groq key/i })).toBeDefined()
         const keyInput = screen.getByLabelText('API key') as HTMLInputElement
         typeInto(keyInput, 'gsk_bad_key')
-        const saveButton = screen.getByRole('button', {
-            name: /Check and save/i,
-        }) as HTMLButtonElement
+        // the page and the dialog both have an "Add key" button, so take the dialog's submit
+        const saveButton = keyInput
+            .closest('form')!
+            .querySelector('button[type="submit"]') as HTMLButtonElement
         await waitFor(() => expect(saveButton.disabled).toBe(false))
         // happy-dom does not submit a form on a button click
         fireEvent.submit(keyInput.closest('form')!)

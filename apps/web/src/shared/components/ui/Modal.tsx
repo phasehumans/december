@@ -1,9 +1,14 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 
+import { BottomSheet, SheetHeader } from './BottomSheet'
 import { Icons } from './Icons'
 
 import { useBackToClose } from '@/shared/lib/useBackToClose'
+import { useIsPhone } from '@/shared/lib/useIsPhone'
+
+/** true inside a dialog that is shown as a bottom sheet, so its buttons can go full width */
+export const ModalSheetContext = React.createContext(false)
 
 interface ModalProps {
     isOpen: boolean
@@ -15,6 +20,8 @@ interface ModalProps {
     variant?: 'default' | 'premium'
     showLogo?: boolean
     banner?: React.ReactNode
+    /** phones show this dialog as a bottom sheet. desktop keeps the centered dialog */
+    sheetOnPhone?: boolean
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -27,11 +34,38 @@ export const Modal: React.FC<ModalProps> = ({
     variant = 'default',
     showLogo = true,
     banner,
+    sheetOnPhone = false,
 }) => {
-    // back button and back swipe close the modal instead of leaving the page
-    useBackToClose({ isOpen, onClose })
+    const isPhone = useIsPhone()
+    const asSheet = sheetOnPhone && isPhone
+    // back button and back swipe close the modal instead of leaving the page. the bottom
+    // sheet does this itself
+    useBackToClose({ isOpen: isOpen && !asSheet, onClose })
 
     if (!isOpen) return null
+
+    if (asSheet) {
+        return (
+            <ModalSheetContext.Provider value={true}>
+                <BottomSheet
+                    isOpen
+                    onClose={onClose}
+                    ariaLabel={title}
+                    header={<SheetHeader title={title} />}
+                    avoidKeyboard
+                >
+                    <div className="flex flex-col gap-3 px-1 pt-0.5 pb-1.5">
+                        {description && (
+                            <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
+                                {description}
+                            </p>
+                        )}
+                        {children}
+                    </div>
+                </BottomSheet>
+            </ModalSheetContext.Provider>
+        )
+    }
 
     if (variant === 'premium') {
         const premiumMaxWidth = maxWidth === 'max-w-[480px]' ? 'max-w-[360px]' : maxWidth

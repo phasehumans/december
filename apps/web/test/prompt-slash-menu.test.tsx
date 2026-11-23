@@ -16,6 +16,7 @@ const { setConnectionsDemo } = await import('../src/features/connections/lib/con
 const { PromptInput } = await import('../src/features/home/components/PromptInput')
 const { useModelSelection } = await import('../src/features/home/model-selection')
 const { BASE_PROMPT_CONFIG, usePromptConfig } = await import('../src/features/home/promptConfig')
+const { usePreferences } = await import('../src/features/profile/lib/preferences')
 const { sessionAPI } = await import('../src/features/sessions/api/session')
 const { PromptFooter } = await import('../src/shared/components/ui/PromptFooter')
 
@@ -99,7 +100,7 @@ const type = (value: string) => {
     fireEvent.keyUp(el)
 }
 
-const press = (key: string, options: { shiftKey?: boolean } = {}) =>
+const press = (key: string, options: { shiftKey?: boolean; ctrlKey?: boolean } = {}) =>
     fireEvent.keyDown(box(), { key, ...options })
 
 const list = () => within(screen.getByRole('listbox'))
@@ -113,6 +114,7 @@ beforeEach(() => {
         pluginsOff: [],
         mcpsOff: [],
     })
+    usePreferences.setState({ sendKey: 'enter', soundOnFinish: false })
 })
 
 afterEach(() => {
@@ -567,5 +569,30 @@ describe('prompt footer menus', () => {
         expect(screen.getByText('Saved')).not.toBeNull()
         expect(usePromptConfig.getState().defaults.planFirst).toBe(true)
         expect(screen.queryByTestId('config-changed-dot')).toBeNull()
+    })
+})
+
+describe('send key preference', () => {
+    test('with "Ctrl + Enter", a plain Enter does not send and Ctrl Enter sends', () => {
+        usePreferences.setState({ sendKey: 'mod-enter' })
+        const onSubmit = mock((_prompt: string) => {})
+        wrap(<HomeBox onSubmit={onSubmit} />)
+
+        type('fix the login redirect')
+        press('Enter')
+        expect(onSubmit).toHaveBeenCalledTimes(0)
+
+        press('Enter', { ctrlKey: true })
+        expect(onSubmit).toHaveBeenCalledTimes(1)
+        expect(onSubmit.mock.calls[0][0]).toBe('fix the login redirect')
+    })
+
+    test('with "Enter", a plain Enter sends', () => {
+        const onSubmit = mock((_prompt: string) => {})
+        wrap(<HomeBox onSubmit={onSubmit} />)
+
+        type('fix the login redirect')
+        press('Enter')
+        expect(onSubmit).toHaveBeenCalledTimes(1)
     })
 })

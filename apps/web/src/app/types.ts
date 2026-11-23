@@ -10,6 +10,11 @@ export type ProfileTab =
     | 'Usage'
     | 'Secrets'
     | 'Models'
+    | 'Notifications'
+    | 'Defaults'
+    | 'PullRequests'
+    | 'Sandbox'
+    | 'Members'
     | 'Terms'
     | 'Privacy'
 
@@ -23,6 +28,11 @@ const profileTabToSlug: Record<string, string> = {
     Usage: 'usage',
     Secrets: 'secrets',
     Models: 'models',
+    Notifications: 'notifications',
+    Defaults: 'defaults',
+    PullRequests: 'pull-requests',
+    Sandbox: 'sandbox',
+    Members: 'members',
     Terms: 'terms',
     Privacy: 'privacy',
 }

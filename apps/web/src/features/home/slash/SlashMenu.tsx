@@ -1,6 +1,7 @@
 import { ArrowUpRight, Check, ChevronLeft } from 'lucide-react'
 import React from 'react'
 
+import { ShortcutRows } from './shortcuts'
 import { getSlashGroupLabel } from './slashModel'
 
 import type { SlashMenuState } from './useSlashMenu'
@@ -172,15 +173,6 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
     )
 }
 
-const SHORTCUTS: [string, string][] = [
-    ['Commands', '/'],
-    ['Mention a repo, session or secret', '@'],
-    ['Send', 'Enter'],
-    ['New line', 'Shift Enter'],
-    ['Search', 'Ctrl K'],
-    ['Open or close the sidebar', 'Ctrl .'],
-]
-
 const tabClass = (active: boolean) =>
     cn(
         'px-2.5 py-1 text-[12px] font-medium rounded-lg transition-colors outline-none cursor-pointer',
@@ -218,35 +210,27 @@ export const SlashHelpPanel: React.FC<{ menu: SlashMenuState }> = ({ menu }) => 
                 ))}
             </div>
             <div className="flex flex-col max-h-[320px] overflow-y-auto no-scrollbar [scrollbar-width:none]">
-                {tab === 'commands'
-                    ? menu.commands.map((command) => (
-                          <div
-                              key={command.name}
-                              className="flex items-center justify-between gap-3 py-1.5 text-[13px]"
-                          >
-                              <span className="font-medium text-[#EDEDEF] whitespace-nowrap">
-                                  /{command.name}
-                                  {command.args && (
-                                      <span className="font-normal text-[#616161]">
-                                          {' '}
-                                          {command.args}
-                                      </span>
-                                  )}
-                              </span>
-                              <span className="text-[#8F8E8D] truncate">{command.description}</span>
-                          </div>
-                      ))
-                    : SHORTCUTS.map(([label, keys]) => (
-                          <div
-                              key={label}
-                              className="flex items-center justify-between gap-3 py-1.5 text-[13px] text-[#D6D5D4]"
-                          >
-                              <span>{label}</span>
-                              <kbd className="font-mono text-[11.5px] font-medium text-[#D6D5D4] bg-[#232323] border border-[#2E2E2E] rounded-md px-1.5 py-px whitespace-nowrap">
-                                  {keys}
-                              </kbd>
-                          </div>
-                      ))}
+                {tab === 'commands' ? (
+                    menu.commands.map((command) => (
+                        <div
+                            key={command.name}
+                            className="flex items-center justify-between gap-3 py-1.5 text-[13px]"
+                        >
+                            <span className="font-medium text-[#EDEDEF] whitespace-nowrap">
+                                /{command.name}
+                                {command.args && (
+                                    <span className="font-normal text-[#616161]">
+                                        {' '}
+                                        {command.args}
+                                    </span>
+                                )}
+                            </span>
+                            <span className="text-[#8F8E8D] truncate">{command.description}</span>
+                        </div>
+                    ))
+                ) : (
+                    <ShortcutRows />
+                )}
             </div>
         </Modal>
     )

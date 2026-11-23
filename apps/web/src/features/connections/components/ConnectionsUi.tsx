@@ -5,7 +5,7 @@ import { BrandIcon } from './BrandIcons'
 
 import type { BrandKey } from '../types'
 
-import { Modal } from '@/shared/components/ui/Modal'
+import { Modal, ModalSheetContext } from '@/shared/components/ui/Modal'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { cn } from '@/shared/lib/utils'
 
@@ -476,26 +476,41 @@ export const ModalActions: React.FC<{
     leading?: React.ReactNode
     danger?: boolean
     isPending?: boolean
-}> = ({ onCancel, submitLabel, submitDisabled, leading, danger, isPending }) => (
-    <div className="mt-1 flex items-center justify-end gap-2.5 flex-wrap">
-        {leading}
-        {leading && <span className="flex-1" />}
-        <button type="button" onClick={onCancel} className={ghostButtonClass}>
-            Cancel
-        </button>
-        <button
-            type="submit"
-            disabled={submitDisabled || isPending}
-            className={
-                danger
-                    ? 'bg-[#EF4444] text-white hover:bg-red-600 active:scale-[0.97] transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50 cursor-pointer whitespace-nowrap'
-                    : cn(whiteButtonClass, 'min-w-[100px]')
-            }
-        >
-            {isPending ? <Spinner dark={!danger} /> : submitLabel}
-        </button>
-    </div>
-)
+}> = ({ onCancel, submitLabel, submitDisabled, leading, danger, isPending }) => {
+    const inSheet = React.useContext(ModalSheetContext)
+    const submitClass = danger
+        ? 'bg-[#EF4444] text-white hover:bg-red-600 active:scale-[0.97] transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50 cursor-pointer whitespace-nowrap flex items-center justify-center'
+        : cn(whiteButtonClass, 'min-w-[100px]')
+
+    // phones: the dialog is a bottom sheet. one full-width button, back and drag close it
+    if (inSheet) {
+        return (
+            <div className="mt-1 flex flex-col gap-2.5">
+                <button
+                    type="submit"
+                    disabled={submitDisabled || isPending}
+                    className={cn(submitClass, 'w-full py-2.5')}
+                >
+                    {isPending ? <Spinner dark={!danger} /> : submitLabel}
+                </button>
+                {leading && <div className="flex justify-center">{leading}</div>}
+            </div>
+        )
+    }
+
+    return (
+        <div className="mt-1 flex items-center justify-end gap-2.5 flex-wrap">
+            {leading}
+            {leading && <span className="flex-1" />}
+            <button type="button" onClick={onCancel} className={ghostButtonClass}>
+                Cancel
+            </button>
+            <button type="submit" disabled={submitDisabled || isPending} className={submitClass}>
+                {isPending ? <Spinner dark={!danger} /> : submitLabel}
+            </button>
+        </div>
+    )
+}
 
 export const WhiteButton: React.FC<{
     onClick?: () => void

@@ -23,7 +23,6 @@ import {
 
 import type { BrandKey } from '../types'
 
-import { ProfileRepositoriesSettings } from '@/features/profile/components/ProfileRepositoriesSettings'
 import { useProfileSettingsController } from '@/features/profile/hooks/useProfileSettingsController'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
@@ -189,7 +188,7 @@ const GithubAppPage: React.FC<{
             </DetailHeader>
 
             {isConnected && (
-                <div className="mb-8">
+                <div>
                     <FactsBox
                         rows={[
                             { label: 'Account', value: username || 'GitHub account' },
@@ -201,11 +200,6 @@ const GithubAppPage: React.FC<{
                     />
                 </div>
             )}
-
-            <ProfileRepositoriesSettings
-                isGithubConnected={isConnected}
-                onConnectGithub={onConnect}
-            />
         </div>
     )
 }

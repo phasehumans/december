@@ -89,9 +89,7 @@ describe('ProfileSecretsSettings Pagination & Visibility', () => {
         const addSecretBtn = await screen.findByText('Add secret')
         fireEvent.click(addSecretBtn)
 
-        const valueInput = screen.getByPlaceholderText(
-            'Enter key or token value...'
-        ) as HTMLInputElement
+        const valueInput = screen.getByPlaceholderText('Key or token') as HTMLInputElement
         expect(valueInput.type).toBe('password')
 
         // Click eye toggle button

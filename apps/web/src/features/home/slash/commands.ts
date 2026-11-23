@@ -136,7 +136,7 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     },
     {
         name: 'login',
-        description: 'Model keys',
+        description: 'Your keys',
         scopes: BOTH,
         kind: 'navigate',
         to: '/settings/models',

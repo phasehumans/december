@@ -2,19 +2,27 @@ import { ArrowUpRight, ChevronRight } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+import { SoonPill } from '@/features/connections/components/ConnectionsUi'
+import { usePreviewOn } from '@/features/profile/components/SettingsUi'
 import { SheetRow, useBottomSheet } from '@/shared/components/ui/BottomSheet'
 import { getWebUrl } from '@/shared/config/env'
 
 // phones only: the Settings level of the menu sheet (A1). a row closes the sheet and opens
 // that settings page. desktop keeps its settings sidebar.
 
-const SETTINGS_ROWS = [
+const SETTINGS_ROWS: { slug: string; label: string; soon?: boolean }[] = [
     { slug: 'account', label: 'Account' },
+    { slug: 'notifications', label: 'Notifications', soon: true },
+    { slug: 'defaults', label: 'Defaults', soon: true },
+    { slug: 'repositories', label: 'Repositories' },
+    { slug: 'pull-requests', label: 'Pull requests', soon: true },
+    { slug: 'sandbox', label: 'Sandbox', soon: true },
     { slug: 'connections', label: 'Connections' },
     { slug: 'secrets', label: 'Secrets' },
-    { slug: 'models', label: 'Model keys' },
+    { slug: 'models', label: 'Your keys' },
     { slug: 'billing', label: 'Billing' },
     { slug: 'usage', label: 'Usage' },
+    { slug: 'members', label: 'Members', soon: true },
 ]
 
 const EXTERNAL_ROWS = [
@@ -27,15 +35,18 @@ const trailingIconClass = 'w-4 h-4 text-[#7B7A79] shrink-0'
 interface MobileSettingsLevelProps {
     isAuthenticated: boolean
     onOpenAuth: () => void
+    onSendFeedback: () => void
 }
 
 export const MobileSettingsLevel: React.FC<MobileSettingsLevelProps> = ({
     isAuthenticated,
     onOpenAuth,
+    onSendFeedback,
 }) => {
     const { closeThen } = useBottomSheet()
     const navigate = useNavigate()
     const path = useLocation().pathname
+    const isPreview = usePreviewOn()
 
     const openPage = (slug: string) =>
         closeThen(isAuthenticated ? () => navigate(`/settings/${slug}`) : onOpenAuth)
@@ -47,7 +58,13 @@ export const MobileSettingsLevel: React.FC<MobileSettingsLevelProps> = ({
                     key={row.slug}
                     label={row.label}
                     active={path.startsWith(`/settings/${row.slug}`)}
-                    trailing={<ChevronRight className={trailingIconClass} strokeWidth={1.75} />}
+                    trailing={
+                        row.soon && !isPreview ? (
+                            <SoonPill />
+                        ) : (
+                            <ChevronRight className={trailingIconClass} strokeWidth={1.75} />
+                        )
+                    }
                     onClick={() => openPage(row.slug)}
                 />
             ))}
@@ -64,6 +81,10 @@ export const MobileSettingsLevel: React.FC<MobileSettingsLevelProps> = ({
                     }
                 />
             ))}
+            <SheetRow
+                label="Send feedback"
+                onClick={() => closeThen(isAuthenticated ? onSendFeedback : onOpenAuth)}
+            />
         </div>
     )
 }

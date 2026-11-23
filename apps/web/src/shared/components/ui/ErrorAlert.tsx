@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 import { cn } from '@/shared/lib/utils'
 
@@ -11,6 +11,11 @@ interface ErrorAlertProps {
 
 export const ErrorAlert: React.FC<ErrorAlertProps> = ({ message, className, onClear }) => {
     const [isDismissed, setIsDismissed] = useState(false)
+
+    // a dismissed alert must not hide the next error
+    useEffect(() => {
+        setIsDismissed(false)
+    }, [message])
 
     if (!message || isDismissed) return null
 

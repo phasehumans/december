@@ -8,8 +8,9 @@ import { CONNECTIONS_BASE_PATH } from '../lib/paths'
 import { CONNECTIONS_TAB_LABELS, CONNECTIONS_TABS, type ConnectionsTab } from '../types'
 
 import { AppsTab } from './AppsTab'
-import { ChoiceGroup } from './ConnectionsUi'
+import { ChoiceGroup, SecondaryButton } from './ConnectionsUi'
 import { HooksTab } from './HooksTab'
+import { ImportSetupModal } from './ImportSetupModal'
 import { McpsTab } from './McpsTab'
 import { MemoryTab } from './MemoryTab'
 import { PluginsTab } from './PluginsTab'
@@ -23,13 +24,13 @@ import {
     MobileIconButton,
     MobileTopBar,
 } from '@/features/navigation/components/MobileTopBar'
+import { PAGE_SUBTITLES } from '@/features/profile/components/settingsStyles'
 
 const isTab = (value: string | undefined): value is ConnectionsTab =>
     Boolean(value && (CONNECTIONS_TABS as readonly string[]).includes(value))
 
 /** old urls of this page. each one moves to its place under settings */
 const redirectFor = (pathname: string, search: string): string | null => {
-    if (pathname.startsWith('/settings/repositories')) return `${CONNECTIONS_BASE_PATH}/apps/github`
     if (
         pathname.startsWith('/settings/integrations') ||
         pathname.startsWith('/integrations') ||
@@ -58,6 +59,7 @@ export const ConnectionsPage: React.FC = () => {
     const { navigate, toTab, openAdd } = useConnectionsNav()
     const openMobileSheet = useAppStore((s) => s.openMobileSheet)
     const [isDemo] = React.useState(isConnectionsDemoActive)
+    const [isImportOpen, setIsImportOpen] = React.useState(false)
 
     const redirect = redirectFor(location.pathname, location.search)
     const parts = location.pathname.slice(CONNECTIONS_BASE_PATH.length).split('/').filter(Boolean)
@@ -112,7 +114,7 @@ export const ConnectionsPage: React.FC = () => {
                 <MobileTopBar
                     left={
                         <MobileBackButton
-                            label="Settings"
+                            label="Back"
                             onClick={() => openMobileSheet('settings')}
                         />
                     }
@@ -134,12 +136,25 @@ export const ConnectionsPage: React.FC = () => {
                 />
             )}
 
-            <div className="relative z-10 mx-auto max-w-[900px] px-3.5 sm:px-6 pb-8 pt-2 md:p-16 flex flex-col">
+            <div className="relative z-10 mx-auto max-w-[900px] px-4 sm:px-6 pb-8 pt-4 md:p-16 flex flex-col">
                 {!isDetail && (
                     <>
-                        <h1 className="text-[16px] md:text-[24px] font-sans font-medium tracking-[-0.025em] text-white md:text-[#D6D5C9] mb-3 md:mb-5">
-                            Connections
-                        </h1>
+                        <div className="flex items-start justify-between gap-3 mb-5 md:mb-6">
+                            <div className="flex flex-col min-w-0">
+                                <h1 className="text-[20px] md:text-[18px] font-sans font-medium tracking-[-0.025em] text-[#D6D5C9] mb-1">
+                                    Connections
+                                </h1>
+                                <p className="text-[13px] text-[#9A9998]">
+                                    {PAGE_SUBTITLES.connections}
+                                </p>
+                            </div>
+                            {/* ui only, with the preview on (N24) */}
+                            {isDemo && (
+                                <SecondaryButton onClick={() => setIsImportOpen(true)}>
+                                    Import setup
+                                </SecondaryButton>
+                            )}
+                        </div>
                         <div className="mb-4 -mx-3.5 px-3.5 md:mx-0 md:px-0 overflow-x-auto no-scrollbar [scrollbar-width:none]">
                             <ChoiceGroup
                                 label="Connections sections"
@@ -155,6 +170,7 @@ export const ConnectionsPage: React.FC = () => {
                 )}
                 {renderTab()}
             </div>
+            <ImportSetupModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
         </div>
     )
 }

@@ -85,9 +85,8 @@ describe('connections routes', () => {
     })
 
     test('old urls redirect into /settings/connections', () => {
-        renderAt('/settings/repositories')
-        expect(location()).toBe('/settings/connections/apps/github')
-        cleanup()
+        // /settings/repositories is its own settings page again, the Connections page does not
+        // own or redirect it
         renderAt('/integrations')
         expect(location()).toBe('/settings/connections/apps')
         cleanup()
@@ -109,7 +108,7 @@ describe('connections routes', () => {
         expect(paths).toContain('/settings/connections/apps')
         expect(paths).toContain('/settings/connections/mcps')
         expect(paths).not.toContain('/connections/apps')
-        expect(paths).not.toContain('/settings/repositories')
+        expect(paths).toContain('/settings/repositories')
     })
 })
 

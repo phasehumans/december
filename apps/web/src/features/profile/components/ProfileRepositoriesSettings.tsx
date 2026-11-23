@@ -3,6 +3,7 @@ import { Github, GitBranch, Clock, Lock, Globe, Search, RotateCw, Plus } from 'l
 import React, { useState } from 'react'
 
 import { ProfileRepositoriesSkeleton } from './ProfileSettingsSkeleton'
+import { SettingsPageHeader } from './SettingsPageHeader'
 
 import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
@@ -75,17 +76,19 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
     )
 
     return (
-        <div className="flex flex-col w-full max-w-[800px] text-[#D6D5C9]">
+        <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9]">
             <div className="flex flex-col mb-0">
-                <h1 className="text-[16px] font-medium mb-3">Repositories</h1>
+                <SettingsPageHeader
+                    title="Repositories"
+                    subtitle={
+                        <>
+                            Use a repository in a prompt as{' '}
+                            <span className="text-[#87B2F4]">@repos:name</span>.
+                        </>
+                    }
+                />
 
-                <div className="flex flex-col border-t border-[#242323] pt-4 gap-4">
-                    <p className="text-[13px] text-[#7B7A79]">
-                        Reference a repository with an at sign, e.g.{' '}
-                        <span className="text-[#87B2F4]">@repos:spacetime</span>. Connected
-                        repositories are cloned directly into your workspace sandbox.
-                    </p>
-
+                <div className="flex flex-col gap-4">
                     {/* Top Control Bar */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-2">
                         <div className="relative w-full max-w-full sm:max-w-[340px]">
