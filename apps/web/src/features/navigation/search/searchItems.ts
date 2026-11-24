@@ -148,9 +148,9 @@ export const SETTINGS_PAGES: { id: string; label: string; path: string; keywords
     },
     {
         id: 'models',
-        label: 'Your keys',
+        label: 'API keys',
         path: '/settings/models',
-        keywords: ['model', 'byok', 'own key', 'api key', 'provider', 'openai', 'anthropic'],
+        keywords: ['model', 'byok', 'own key', 'your keys', 'provider', 'openai', 'anthropic'],
     },
     {
         id: 'billing',

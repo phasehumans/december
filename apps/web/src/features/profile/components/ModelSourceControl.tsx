@@ -12,7 +12,7 @@ const SOURCES = [
 
 /**
  * The source a new prompt starts with: December credits or the user's own keys.
- * A real setting, saved to the account. The Your keys page shows it, and so does Defaults.
+ * A real setting, saved to the account. The API keys page shows it, and so does Defaults.
  */
 export const ModelSourceControl: React.FC = () => {
     const { data } = useByokList(true)

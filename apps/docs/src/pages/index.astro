@@ -87,9 +87,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           <div class="sm:hidden mb-3">
             <a
               href={`${appUrl}/signup`}
-              class="w-full h-10 flex items-center justify-center bg-[#090a0f] text-white hover:bg-[#27272a] text-xs font-mono font-medium px-4 rounded-none border border-[#090a0f] transition-all active:scale-[0.98] shadow-xs"
+              class="group w-full h-10 flex items-center justify-center gap-1.5 bg-[#090a0f] text-white hover:bg-[#27272a] text-xs font-mono font-medium px-4 rounded-none border border-[#090a0f] transition-all active:scale-[0.98] shadow-xs"
             >
-              <span>Try December Cloud</span>
+              <span>Get Started</span>
+              <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
             </a>
           </div>
 
@@ -98,9 +102,13 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
           <InstallCommand />
           <a
             href={`${appUrl}/signup`}
-            class="hidden sm:inline-flex h-10 shrink-0 items-center justify-center bg-[#090a0f] text-white hover:bg-[#27272a] text-xs font-mono font-medium px-4 rounded-none border border-[#090a0f] transition-all active:scale-[0.98] whitespace-nowrap shadow-xs"
+            class="group hidden sm:inline-flex h-10 shrink-0 items-center justify-center gap-1.5 bg-[#090a0f] text-white hover:bg-[#27272a] text-xs font-mono font-medium px-4 rounded-none border border-[#090a0f] transition-all active:scale-[0.98] whitespace-nowrap shadow-xs"
           >
-            Try December Cloud
+            <span>Get Started</span>
+            <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"></path>
+              <path d="m12 5 7 7-7 7"></path>
+            </svg>
           </a>
           </div>
         </div>
@@ -304,8 +312,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] sm:bg-none sm:bg-white border border-[#d6e6fd] overflow-hidden">
-            <DitherPanel seed={7919} class="hidden sm:block" />
+          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-white border border-[#d6e6fd] overflow-hidden">
+            <DitherPanel seed={7919} />
 
             <img
               src="/illustrations/byok-chip.webp?v=2"
@@ -337,8 +345,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] sm:bg-none sm:bg-white border border-[#d6e6fd] overflow-hidden">
-            <DitherPanel seed={15838} class="hidden sm:block" />
+          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-white border border-[#d6e6fd] overflow-hidden">
+            <DitherPanel seed={15838} />
 
             <img
               src="/illustrations/vpc.webp?v=2"
@@ -370,8 +378,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] sm:bg-none sm:bg-white border border-[#d6e6fd] overflow-hidden">
-            <DitherPanel seed={23757} class="hidden sm:block" />
+          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-white border border-[#d6e6fd] overflow-hidden">
+            <DitherPanel seed={23757} />
 
             <img
               src="/illustrations/subagents.webp?v=2"
@@ -403,8 +411,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
           </div>
 
-          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] sm:bg-none sm:bg-white border border-[#d6e6fd] overflow-hidden">
-            <DitherPanel seed={31676} class="hidden sm:block" />
+          <div class="relative mt-auto flex items-center justify-center aspect-[5/2] bg-white border border-[#d6e6fd] overflow-hidden">
+            <DitherPanel seed={31676} />
 
             <img
               src="/illustrations/skills.webp?v=2"
@@ -707,8 +715,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
 
             <!-- Terminal Illustration -->
-            <div class="@container relative mt-auto overflow-hidden aspect-[16/10] border border-[#d6e6fd] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] sm:bg-none sm:bg-white">
-              <DitherPanel seed={4241} clear={false} class="hidden sm:block" />
+            <div class="@container relative mt-auto overflow-hidden aspect-[16/10] border border-[#d6e6fd] bg-white">
+              <DitherPanel seed={4241} clear={false} />
               <TerminalWindowMock />
             </div>
           </div>
@@ -727,8 +735,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </p>
 
             <!-- Web Illustration -->
-            <div class="@container relative mt-auto overflow-hidden aspect-[16/10] border border-[#d6e6fd] bg-gradient-to-b from-[#edf4fe] to-[#e2edfd] sm:bg-none sm:bg-white">
-              <DitherPanel seed={9377} clear={false} class="hidden sm:block" />
+            <div class="@container relative mt-auto overflow-hidden aspect-[16/10] border border-[#d6e6fd] bg-white">
+              <DitherPanel seed={9377} clear={false} />
               <WebWindowMock />
             </div>
           </div>

@@ -2,16 +2,18 @@ import { useQuery } from '@tanstack/react-query'
 import { Inbox, Copy, Check } from 'lucide-react'
 import React, { useState, useRef } from 'react'
 
-import sidebarWebp from '../../../../assets/sidebar.webp'
-
 import { NotificationsPopover } from './NotificationsPopover'
 
 import type { SidebarFooterProps } from '@/features/navigation/types'
 
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { notificationAPI } from '@/features/notification/api/notification'
+import { OnboardingTerminalMock } from '@/features/onboarding/components/OnboardingTerminalMock'
 import { profileAPI } from '@/features/profile/api/profile'
 import { cn } from '@/shared/lib/utils'
+
+// the fade of the Super Crew card picture (SuperCrewCard.tsx FADE_MASK)
+const CLI_FADE_MASK = 'radial-gradient(125% 105% at 50% 38%, #000 58%, transparent 99%)'
 
 export const SidebarFooter: React.FC<
     SidebarFooterProps & { user?: { name?: string }; onSignOut?: () => void }
@@ -22,11 +24,6 @@ export const SidebarFooter: React.FC<
     const anchorRef = useRef<HTMLButtonElement>(null)
     const notifAnchorRef = useRef<HTMLButtonElement>(null)
     const hideTimeoutRef = useRef<any>(null)
-
-    React.useEffect(() => {
-        const img = new Image()
-        img.src = sidebarWebp
-    }, [])
 
     React.useEffect(() => {
         const handler = () => setShowCliCard((prev) => !prev)
@@ -135,52 +132,42 @@ export const SidebarFooter: React.FC<
                 </button>
 
                 {showCliCard && (
+                    // same shape as the Super Crew card: picture on top that fades into the card,
+                    // then one 28px control. no title or text
                     <div
                         id="cli-popover-card"
-                        className="absolute bottom-11 left-3 w-[324px] z-[100] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-lg shadow-black/40 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
+                        className="absolute bottom-11 left-3 w-[286px] z-[100] bg-[#1E1E1E] border border-[#2A2928] rounded-2xl shadow-lg shadow-black/40 overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200"
                     >
-                        <div className="w-full h-[200px] bg-[#1E1E1E] relative overflow-hidden flex items-center justify-center p-1.5 pb-0">
-                            <a
-                                href="https://www.npmjs.com/package/@trydecember/cli"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full h-full relative overflow-hidden rounded-lg border border-[#2A2928] block cursor-pointer"
-                            >
-                                <img
-                                    src={sidebarWebp}
-                                    alt="December CLI preview"
-                                    decoding="async"
-                                    className="w-full h-full object-cover object-center absolute inset-0"
-                                />
-                            </a>
-                        </div>
-                        <div className="flex flex-col px-2.5 pt-2 pb-2.5 bg-[#1E1E1E] gap-2">
-                            {/* CLI title */}
-                            <div className="flex items-center justify-between px-0.5">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className="text-[14px] text-[#CBCACA] select-none leading-none">
-                                        ✱
-                                    </span>
-                                    <span className="text-[12.5px] font-medium text-[#EDEDED] truncate">
-                                        December CLI
-                                    </span>
-                                </div>
-                            </div>
-
+                        <a
+                            href="https://www.npmjs.com/package/@trydecember/cli"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="December CLI on npm"
+                            className="@container relative block w-full h-[158px] overflow-hidden cursor-pointer bg-gradient-to-b from-[#dcdcdc] to-[#cdcdcd]"
+                            style={{ WebkitMaskImage: CLI_FADE_MASK, maskImage: CLI_FADE_MASK }}
+                        >
+                            {/* the same terminal mock as the onboarding CLI card, on a neutral grey ground */}
+                            <OnboardingTerminalMock
+                                stage={500}
+                                marginLeft={0.056}
+                                marginTop={0.09}
+                            />
+                        </a>
+                        <div className="flex flex-col px-2.5 pt-2 pb-2.5">
                             {/* Command box with copy button */}
-                            <div className="flex items-center justify-between mx-0.5 px-3 py-1.5 bg-[#1E1E1E] border border-[#2A2928] rounded-lg group/cmd">
-                                <div className="flex items-center truncate mr-2">
-                                    <span className="text-[#7B7A79] mr-2 text-[11px] font-mono select-none">
+                            <div className="flex items-center justify-between h-[28px] pl-2 pr-[3px] border border-[#2A2928] rounded-[8px]">
+                                <div className="flex items-center truncate mr-1">
+                                    <span className="text-[#7B7A79] mr-1.5 text-[10.5px] font-mono select-none">
                                         $
                                     </span>
-                                    <span className="text-[#D6D5C9] text-[11px] font-mono truncate tracking-tight">
+                                    <span className="text-[#D6D5C9] text-[10.5px] font-mono truncate tracking-tight">
                                         {CLI_INSTALL_COMMAND}
                                     </span>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={handleCopy}
-                                    className="text-[#7B7A79] hover:text-[#D6D5C9] transition-colors p-1 rounded-md hover:bg-[#2A2928] outline-none shrink-0 cursor-pointer"
+                                    className="w-[22px] h-[22px] flex items-center justify-center text-[#7B7A79] hover:text-[#D6D5C9] transition-colors rounded-md hover:bg-[#2A2928] outline-none shrink-0 cursor-pointer"
                                     title="Copy command"
                                 >
                                     {isCopied ? (

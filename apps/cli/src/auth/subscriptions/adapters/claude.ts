@@ -169,6 +169,7 @@ export const claudeAdapter: SubscriptionAdapter = {
         let server: any
         try {
             server = await startLocalOAuthServer({
+                planName: 'Claude plan',
                 port: CALLBACK_PORT,
                 path: CALLBACK_PATH,
                 redirectHost: 'localhost',

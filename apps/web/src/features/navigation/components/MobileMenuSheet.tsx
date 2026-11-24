@@ -17,6 +17,7 @@ import { MobileSettingsLevel } from '@/features/profile/components/MobileSetting
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
 import { SessionSheetItems } from '@/features/sessions/components/SessionMenu'
 import { useSessionActions } from '@/features/sessions/hooks/useSessionActions'
+import { useSessionLinks } from '@/features/sessions/hooks/useSessionLinks'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import {
     BottomSheet,
@@ -497,11 +498,14 @@ const SessionLevel: React.FC<{
 }> = ({ held, actions, onDone }) => {
     const { closeThen } = useBottomSheet()
     const { session, index } = held
+    const links = useSessionLinks()(session)
     return (
         <div className="flex flex-col pb-1">
             <SessionSheetItems
                 isArchived={Boolean(session.isArchived)}
                 canStop={session.vmStatus === 'RUNNING' || session.vmStatus === 'PROVISIONING'}
+                onOpenPullRequest={links.onOpenPullRequest}
+                onNewInRepo={links.onNewInRepo}
                 onRename={() => closeThen(() => actions.openRename(session))}
                 onTags={() => closeThen(() => actions.openTags(session))}
                 onToggleArchive={() => {

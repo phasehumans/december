@@ -1,5 +1,5 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
-import { expect, test, describe, mock, afterEach } from 'bun:test'
+import { expect, test, describe, mock, spyOn, afterEach } from 'bun:test'
 import React from 'react'
 
 import { SessionListRow } from '../src/features/sessions/components/SessionListRow'
@@ -12,6 +12,7 @@ const { render, screen, fireEvent, cleanup, within } = await import('@testing-li
 
 afterEach(() => {
     cleanup()
+    mock.restore()
 })
 
 const sampleSession = {
@@ -30,7 +31,7 @@ const sampleSession = {
     prUrl: 'https://github.com/acme/web/pull/42',
 }
 
-const renderRow = (overrides: Record<string, unknown> = {}) => {
+const renderRow = (overrides: Record<string, unknown> = {}, isMenuOpen = true) => {
     const handlers = {
         onOpenRename: mock(),
         onOpenTags: mock(),
@@ -38,13 +39,13 @@ const renderRow = (overrides: Record<string, unknown> = {}) => {
         onOpenDelete: mock(),
         onStopSession: mock(),
         onCloseMenu: mock(),
+        onOpenProject: mock(),
+        onToggleMenu: mock(),
     }
     render(
         <SessionListRow
             project={{ ...sampleSession, ...overrides }}
-            isMenuOpen={true}
-            onOpenProject={mock()}
-            onToggleMenu={mock()}
+            isMenuOpen={isMenuOpen}
             {...handlers}
         />
     )
@@ -103,6 +104,72 @@ describe('SessionListRow', () => {
         expect(handlers.onOpenDelete).toHaveBeenCalled()
     })
 
+    test('desktop menu has three groups: open, manage, Delete', () => {
+        const handlers = renderRow()
+        const open = spyOn(window, 'open').mockImplementation(() => null)
+        const menu = screen.getByRole('menu')
+        const rows = within(menu)
+            .getAllByRole('menuitem')
+            .map((item) => item.textContent?.trim())
+        expect(rows).toEqual([
+            'Open pull request',
+            'New session in this repo',
+            'Open in new tab',
+            'Rename',
+            'Tags',
+            'Archive',
+            'Stop',
+            'Delete',
+        ])
+        expect(menu.querySelectorAll('.h-px').length).toBe(2)
+
+        fireEvent.click(within(menu).getByRole('menuitem', { name: 'Open in new tab' }))
+        expect(open).toHaveBeenCalledWith('/sessions/session-123', '_blank', 'noopener')
+        expect(handlers.onCloseMenu).toHaveBeenCalled()
+        expect(handlers.onOpenProject).not.toHaveBeenCalled()
+    })
+
+    test('a session with no pull request and no repository only gets Open in new tab', () => {
+        renderRow({ prNumber: null, prUrl: null, githubRepoName: null })
+        const rows = within(screen.getByRole('menu'))
+            .getAllByRole('menuitem')
+            .map((item) => item.textContent?.trim())
+        expect(rows).toEqual(['Open in new tab', 'Rename', 'Tags', 'Archive', 'Stop', 'Delete'])
+    })
+
+    test('a right-click on the desktop row opens the menu', () => {
+        const handlers = renderRow({}, false)
+        expect(screen.queryByRole('menu')).toBeNull()
+        const row = screen
+            .getByRole('link', { name: 'Test Session' })
+            .closest('.group') as HTMLElement
+        fireEvent.contextMenu(row, { clientX: 120, clientY: 80 })
+        expect(handlers.onToggleMenu).toHaveBeenCalledTimes(1)
+        expect(handlers.onToggleMenu.mock.calls[0][0]).toBe('session-123')
+    })
+
+    test('the title is a link, and a ctrl click on the row opens a new tab', () => {
+        const handlers = renderRow({}, false)
+        const open = spyOn(window, 'open').mockImplementation(() => null)
+        const link = screen.getByRole('link', { name: 'Test Session' })
+        expect(link.getAttribute('href')).toBe('/sessions/session-123')
+
+        // a plain click on the title opens the session in the app
+        fireEvent.click(link)
+        expect(handlers.onOpenProject).toHaveBeenCalledWith('session-123')
+        expect(open).not.toHaveBeenCalled()
+
+        // a ctrl click on the title is left to the browser
+        fireEvent.click(link, { ctrlKey: true })
+        expect(handlers.onOpenProject).toHaveBeenCalledTimes(1)
+        expect(open).not.toHaveBeenCalled()
+
+        // a ctrl click on the rest of the row opens a new tab
+        fireEvent.click(link.closest('.group') as HTMLElement, { ctrlKey: true })
+        expect(open).toHaveBeenCalledWith('/sessions/session-123', '_blank', 'noopener')
+        expect(handlers.onOpenProject).toHaveBeenCalledTimes(1)
+    })
+
     test('on a phone the menu opens as a bottom sheet', () => {
         withPhone(() => {
             const handlers = renderRow()
@@ -110,7 +177,16 @@ describe('SessionListRow', () => {
             const rows = within(sheet)
                 .getAllByRole('button')
                 .map((button) => button.textContent?.trim())
-            expect(rows).toEqual(['Rename', 'Tags', 'Archive', 'Stop', 'Delete'])
+            // the two open rows that fit a phone come first. no Open in new tab
+            expect(rows).toEqual([
+                'Open pull request',
+                'New session in this repo',
+                'Rename',
+                'Tags',
+                'Archive',
+                'Stop',
+                'Delete',
+            ])
             // no divider line above Delete in the sheet
             expect(sheet.querySelector('.h-\\[1px\\]')).toBeNull()
 

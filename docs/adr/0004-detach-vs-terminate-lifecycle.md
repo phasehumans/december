@@ -1,0 +1,3 @@
+# 0004. Detach versus Terminate Process Lifecycle
+
+We decided to distinguish between server worker shutdowns (`detach`) and user-initiated cancellations (`terminate`). When a worker receives a SIGTERM signal during a deployment drain, it sends a detach command to the sandbox daemon, allowing compilation or test runs to continue uninterrupted. The replacement worker attaches to the running command via its opId upon resumption. Only explicit user cancellations trigger a terminate command that kills the sandbox process. This eliminates broken builds during deployments while retaining full user abort control.

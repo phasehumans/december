@@ -8,7 +8,8 @@ if (!globalThis.document) {
 }
 
 // load react-dom and the app only after the dom exists, or react skips its input events
-const { render, screen, fireEvent, cleanup, within } = await import('@testing-library/react')
+const { render, screen, fireEvent, cleanup, within, waitFor } =
+    await import('@testing-library/react')
 const { MemoryRouter, useLocation } = await import('react-router-dom')
 const { useAppStore } = await import('../src/app/store')
 const { ChatPromptInput } = await import('../src/features/chat/components/ChatPromptInput')
@@ -105,6 +106,22 @@ const press = (key: string, options: { shiftKey?: boolean; ctrlKey?: boolean } =
 
 const list = () => within(screen.getByRole('listbox'))
 
+/** runs the checks at phone width, where menus are bottom sheets */
+const onPhone = async (run: () => void | Promise<void>) => {
+    const original = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+        matches: query.includes('max-width'),
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+    })) as never
+    try {
+        await run()
+    } finally {
+        window.matchMedia = original
+    }
+}
+
 beforeEach(() => {
     cleanup()
     useModelSelection.getState().reset()
@@ -121,6 +138,61 @@ afterEach(() => {
     cleanup()
     setConnectionsDemo(null)
     mock.restore()
+})
+
+describe('home prompt box placeholder', () => {
+    test('desktop shows the CLI line', () => {
+        wrap(<HomeBox />)
+        expect(box().placeholder).toBe(
+            'Ask December to build features, fix bugs, or work on your code...'
+        )
+    })
+
+    test('a phone shows the short line', () =>
+        onPhone(() => {
+            wrap(<HomeBox />)
+            expect(box().placeholder).toBe('Ask December to build or fix...')
+        }))
+
+    test('with a repo picked the text asks for the change', () => {
+        const client = new QueryClient({
+            defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+        })
+        client.setQueryData(['byok'], { providers: [], credentials: [] })
+        client.setQueryData(['profile'], { id: 'u1', githubConnected: true })
+        client.setQueryData(['quickinfo'], { fullName: 'Test', githubConnected: true })
+        client.setQueryData(
+            ['github-repos'],
+            [
+                {
+                    id: 123,
+                    name: 'december',
+                    fullName: 'phasehumans/december',
+                    htmlUrl: 'https://github.com/phasehumans/december',
+                    cloneUrl: 'https://github.com/phasehumans/december.git',
+                    defaultBranch: 'main',
+                    owner: { login: 'phasehumans' },
+                },
+            ]
+        )
+        render(
+            <QueryClientProvider client={client}>
+                <MemoryRouter>
+                    <HomeBox />
+                </MemoryRouter>
+            </QueryClientProvider>
+        )
+        fireEvent.click(screen.getByLabelText('Add'))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Repositories' }))
+        fireEvent.click(screen.getByText('december'))
+        expect(screen.getByLabelText('Target Branch')).not.toBeNull()
+        expect(box().placeholder).toBe('Describe the change...')
+    })
+
+    test('a session asks for a follow-up', () => {
+        wrap(<SessionBox />)
+        expect(box().placeholder).toBe('Ask a follow-up...')
+    })
 })
 
 describe('slash menu on Home', () => {
@@ -263,11 +335,60 @@ describe('slash menu on Home', () => {
         expect(screen.queryByRole('listbox')).toBeNull()
     })
 
-    test('the slash icon types a slash and opens the menu', () => {
+    test('the Commands row of the + menu opens the command list beside it', () => {
         wrap(<HomeBox />)
-        fireEvent.click(screen.getByLabelText('Commands'))
+        // the prompt box has no slash button of its own
+        expect(screen.queryByLabelText('Commands')).toBeNull()
+        fireEvent.click(screen.getByLabelText('Add'))
+        const row = screen.getByRole('menuitem', { name: 'Commands' })
+        expect(row.getAttribute('aria-haspopup')).toBe('menu')
+
+        fireEvent.click(row)
+        // the main menu stays in view beside the list, and nothing is typed
+        expect(screen.getByText('Upload attachment')).not.toBeNull()
+        expect(box().value).toBe('')
+        expect(screen.getByText('/model')).not.toBeNull()
+        // home has no session commands
+        expect(screen.queryByText('/rename')).toBeNull()
+
+        // a short fixed list: no search box
+        expect(screen.queryByLabelText('Search commands')).toBeNull()
+
+        // a pick runs the command and closes the + menu
+        fireEvent.click(screen.getByText('/mcp'))
+        expect(screen.getByTestId('location').textContent).toBe('/settings/connections/mcps')
+        expect(screen.queryByText('Upload attachment')).toBeNull()
+    })
+
+    test('a command with choices picked in the + menu opens its choices', () => {
+        wrap(<HomeBox />)
+        type('fix the tests')
+        fireEvent.click(screen.getByLabelText('Add'))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Commands' }))
+        fireEvent.click(screen.getByText('/effort'))
+
+        // the command is typed after the prompt and its choices are open
+        expect(box().value).toBe('fix the tests /effort')
+        expect(list().getByText('Fast')).not.toBeNull()
+        const deep = list().getByText('Deep').closest('[role="option"]')
+        // the current value is the selected row
+        expect(deep?.getAttribute('aria-selected')).toBe('true')
+
+        // a pick takes the command out of the prompt again
+        fireEvent.click(list().getByText('Fast'))
+        expect(box().value).toBe('fix the tests ')
+        expect(screen.queryByRole('listbox')).toBeNull()
+    })
+
+    test('signed out: the Commands row types a slash and opens the menu', () => {
+        wrap(<HomeBox isAuthenticated={false} />)
+        fireEvent.click(screen.getByLabelText('Add'))
+        const row = screen.getByRole('menuitem', { name: 'Commands' })
+        expect(row.getAttribute('aria-haspopup')).toBeNull()
+        fireEvent.click(row)
         expect(box().value).toBe('/')
         expect(screen.getByRole('listbox')).not.toBeNull()
+        expect(screen.queryByText('Upload attachment')).toBeNull()
     })
 
     test('signed out: the menu opens and a pick opens sign-up', () => {
@@ -391,25 +512,99 @@ describe('model control', () => {
         expect(onSelectModel).not.toHaveBeenCalled()
     })
 
-    test('on a phone Fast and Deep move into Configuration', () => {
-        const original = window.matchMedia
-        window.matchMedia = ((query: string) => ({
-            matches: query.includes('max-width'),
-            media: query,
-            addEventListener: () => {},
-            removeEventListener: () => {},
-        })) as never
-        try {
-            footer()
+    test('on a phone the speed is text beside the mic, and the switches are in Configuration', () =>
+        onPhone(() => {
+            const onSelectModel = mock((_m: string, _p?: string, _s?: string) => {})
+            footer({ onSelectModel }, { keys: true })
+            // the footer has no switch: only the text
             expect(screen.queryByRole('radiogroup', { name: 'Speed' })).toBeNull()
-            expect(screen.getByRole('radiogroup', { name: 'Model source' })).not.toBeNull()
+            expect(screen.queryByRole('radiogroup', { name: 'Model source' })).toBeNull()
+            const text = screen.getByRole('button', { name: 'Speed: Deep' })
+            expect(text.textContent).toBe('Deep')
 
+            fireEvent.click(text)
+            const sheet = within(screen.getByRole('dialog', { name: 'Configuration' }))
+            expect(sheet.getByText('Run on')).not.toBeNull()
+            expect(sheet.getByRole('radiogroup', { name: 'Speed' })).not.toBeNull()
+            expect(sheet.queryByText('Model')).toBeNull()
+
+            fireEvent.click(sheet.getByRole('radio', { name: 'Your keys' }))
+            expect(onSelectModel).toHaveBeenCalledWith('claude-sonnet-5', 'anthropic', 'OWN_KEY')
+            // the sheet stays open after the source changes
+            expect(screen.getByRole('dialog', { name: 'Configuration' })).not.toBeNull()
+        }))
+
+    test('on a phone and a key the text is the model name and opens the model list', () =>
+        onPhone(async () => {
+            const onSelectModel = mock((_m: string, _p?: string, _s?: string) => {})
+            footer(
+                {
+                    onSelectModel,
+                    selectedSource: 'OWN_KEY',
+                    selectedModel: 'anthropic/claude-sonnet-5',
+                    selectedProvider: 'anthropic',
+                },
+                { keys: true }
+            )
+            const text = screen.getByRole('button', { name: 'Select Model' })
+            expect(text.textContent).toBe('claude-sonnet-5')
+
+            fireEvent.click(text)
+            const models = within(screen.getByRole('dialog', { name: 'Models' }))
+            fireEvent.click(models.getByText('OpenAI'))
+            fireEvent.click(models.getByText('gpt-5.6-sol'))
+            expect(onSelectModel).toHaveBeenCalledWith('gpt-5.6-sol', 'openai', 'OWN_KEY')
+            expect(screen.queryByRole('dialog', { name: 'Models' })).toBeNull()
+
+            // Configuration has a Model row in place of Speed. It opens the same list
             fireEvent.click(screen.getByRole('button', { name: 'Configuration' }))
-            expect(screen.getByRole('radiogroup', { name: 'Speed' })).not.toBeNull()
-        } finally {
-            window.matchMedia = original
-        }
-    })
+            const sheet = within(screen.getByRole('dialog', { name: 'Configuration' }))
+            expect(sheet.queryByRole('radiogroup', { name: 'Speed' })).toBeNull()
+            fireEvent.click(sheet.getByText('Model'))
+            expect(await screen.findByRole('dialog', { name: 'Models' })).not.toBeNull()
+            expect(screen.queryByRole('dialog', { name: 'Configuration' })).toBeNull()
+        }))
+
+    test('on a phone the model list is under Configuration: Back goes up to Run on', () =>
+        onPhone(() => {
+            const onSelectModel = mock((_m: string, _p?: string, _s?: string) => {})
+            footer(
+                {
+                    onSelectModel,
+                    selectedSource: 'OWN_KEY',
+                    selectedModel: 'claude-sonnet-5',
+                    selectedProvider: 'anthropic',
+                },
+                { keys: true }
+            )
+            fireEvent.click(screen.getByRole('button', { name: 'Select Model' }))
+            const models = within(screen.getByRole('dialog', { name: 'Models' }))
+            // two keys: a key first, then its models. Back goes up one step at a time
+            fireEvent.click(models.getByText('OpenAI'))
+            expect(models.getByText('gpt-5.6-sol')).not.toBeNull()
+            fireEvent.click(models.getByRole('button', { name: 'Back' }))
+            expect(models.getByText('Anthropic')).not.toBeNull()
+            expect(models.queryByText('gpt-5.6-sol')).toBeNull()
+
+            fireEvent.click(models.getByRole('button', { name: 'Back' }))
+            const config = within(screen.getByRole('dialog', { name: 'Configuration' }))
+            expect(config.getByText('Run on')).not.toBeNull()
+            expect(config.queryByRole('button', { name: 'Back' })).toBeNull()
+            fireEvent.click(config.getByRole('radio', { name: 'December credits' }))
+            expect(onSelectModel).toHaveBeenCalledWith('gemini-2.5-pro', 'gemini', 'CREDITS')
+        }))
+
+    test('on a phone with no saved key, Your keys opens the keys page', () =>
+        onPhone(async () => {
+            const onSelectModel = mock((_m: string, _p?: string, _s?: string) => {})
+            footer({ onSelectModel })
+            fireEvent.click(screen.getByRole('button', { name: 'Configuration' }))
+            fireEvent.click(screen.getByRole('radio', { name: 'Your keys' }))
+            expect(onSelectModel).not.toHaveBeenCalled()
+            await waitFor(() =>
+                expect(screen.getByTestId('location').textContent).toBe('/settings/models')
+            )
+        }))
 
     test('the source switch moves between credits and a saved key', () => {
         const onSelectModel = mock((_m: string, _p?: string, _s?: string) => {})

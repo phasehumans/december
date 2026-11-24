@@ -8,6 +8,14 @@ import { usePromptInputController } from '@/features/home/hooks/usePromptInputCo
 import { SlashHelpPanel, SlashMenu } from '@/features/home/slash/SlashMenu'
 import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
+import { useIsPhone } from '@/shared/lib/useIsPhone'
+
+// the home box says what the CLI input says. a phone line holds about 37 characters, so
+// phones get the same thought cut to one line
+const HOME_PLACEHOLDER = 'Ask December to build features, fix bugs, or work on your code...'
+const HOME_PLACEHOLDER_PHONE = 'Ask December to build or fix...'
+// with a repo picked the box already says where, so the text asks only for the change
+const REPO_PLACEHOLDER = 'Describe the change...'
 
 export const PromptInput: React.FC<
     PromptInputProps & { onFocus?: () => void; mode?: 'agent'; acceptPrefill?: boolean }
@@ -31,6 +39,7 @@ export const PromptInput: React.FC<
     acceptPrefill,
 }) => {
     const navigate = useNavigate()
+    const isPhone = useIsPhone()
     const {
         input,
         textareaRef,
@@ -160,7 +169,11 @@ export const PromptInput: React.FC<
                         </div>
                     ))}
 
-                    <div className="relative flex-1 min-w-[100px]">
+                    {/* beside a repo chip the text needs room for its placeholder. with less
+                        than that (phones) it takes the next line */}
+                    <div
+                        className={`relative flex-1 ${selectedRepos.length > 0 ? 'min-w-[180px]' : 'min-w-[100px]'}`}
+                    >
                         <textarea
                             id="home-prompt-textarea"
                             ref={textareaRef}
@@ -180,8 +193,10 @@ export const PromptInput: React.FC<
                                 (minimized
                                     ? 'Ask a follow-up...'
                                     : selectedRepos.length > 0
-                                      ? ''
-                                      : 'Describe your idea...')
+                                      ? REPO_PLACEHOLDER
+                                      : isPhone
+                                        ? HOME_PLACEHOLDER_PHONE
+                                        : HOME_PLACEHOLDER)
                             }
                             className={`
                     w-full bg-transparent text-[#D6D5D4] placeholder-[#949494] caret-white
@@ -447,6 +462,8 @@ export const PromptInput: React.FC<
                         onModelChange?.(model, provider)
                     }}
                     onSlash={() => slash.open()}
+                    slashCommands={slash.commands}
+                    onPickCommand={slash.runCommand}
                     onPickRepo={handleSelectRepo}
                     onPickSession={handleSelectSession}
                     onPickSecret={handleSelectSecret}

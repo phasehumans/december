@@ -19,7 +19,7 @@ const SETTINGS_ROWS: { slug: string; label: string; soon?: boolean }[] = [
     { slug: 'sandbox', label: 'Sandbox', soon: true },
     { slug: 'connections', label: 'Connections' },
     { slug: 'secrets', label: 'Secrets' },
-    { slug: 'models', label: 'Your keys' },
+    { slug: 'models', label: 'API keys' },
     { slug: 'billing', label: 'Billing' },
     { slug: 'usage', label: 'Usage' },
     { slug: 'members', label: 'Members', soon: true },

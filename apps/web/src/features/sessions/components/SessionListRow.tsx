@@ -1,10 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react'
 
 import { RunStatus, listRowClass } from './ListParts'
-import { SessionMenuItems, SessionSheetItems, sessionMenuPanelClass } from './SessionMenu'
+import {
+    SESSION_MENU_WIDTH,
+    SessionMenuItems,
+    SessionSheetItems,
+    sessionMenuPanelClass,
+} from './SessionMenu'
 import { SessionPrTooltip } from './SessionPrTooltip'
 import { ListMeta, SessionTags } from './SessionRowParts'
 
+import { useSessionLinks } from '@/features/sessions/hooks/useSessionLinks'
+import {
+    isNewTabClick,
+    openSessionInNewTab,
+    sessionPath,
+} from '@/features/sessions/lib/sessionLinks'
 import { BottomSheet } from '@/shared/components/ui/BottomSheet'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
@@ -24,10 +35,19 @@ interface SessionListRowProps {
     onOpenDelete: RowAction
     onOpenTags: RowAction
     onStopSession?: (id: string, event?: React.MouseEvent) => void
+    /** which time the grey line shows. follows the sort */
+    timeField?: 'updated' | 'created'
+    /** archived rows are dim in a mixed list. off when the list shows only archived */
+    dimArchived?: boolean
 }
+
+/** the room the menu needs below the pointer or the ⋯ before it opens up instead */
+const MENU_ROOM = 320
 
 // one session in the list: title and status, then repo · branch · time. tags, the pull
 // request chip and the ⋯ menu sit on the right. on phones the menu opens as a bottom sheet.
+// on desktop a right-click opens the same menu at the pointer, the title is a link, and
+// ctrl, cmd and middle click on the row open the session in a new tab.
 export const SessionListRow: React.FC<SessionListRowProps> = ({
     project: session,
     isMenuOpen,
@@ -39,10 +59,15 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
     onOpenDelete,
     onOpenTags,
     onStopSession,
+    timeField = 'updated',
+    dimArchived = true,
 }) => {
     const [menuDirection, setMenuDirection] = useState<'down' | 'up'>('down')
+    // set by a right-click: where the menu sits inside the row. null when the ⋯ opened it
+    const [menuPoint, setMenuPoint] = useState<React.CSSProperties | null>(null)
     const desktopMenuRef = useRef<HTMLDivElement>(null)
     const isPhone = useIsPhone()
+    const linksFor = useSessionLinks()
     const isActive = session.vmStatus === 'RUNNING' || session.vmStatus === 'PROVISIONING'
     const canStop = Boolean(onStopSession) && isActive
 
@@ -57,11 +82,42 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
 
     const openMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
         const rect = e.currentTarget.getBoundingClientRect()
-        setMenuDirection(window.innerHeight - rect.bottom < 300 && rect.top > 300 ? 'up' : 'down')
+        setMenuDirection(
+            window.innerHeight - rect.bottom < MENU_ROOM && rect.top > MENU_ROOM ? 'up' : 'down'
+        )
+        setMenuPoint(null)
         onToggleMenu(session.id, e)
     }
 
+    // a right-click on the desktop row: the same menu at the pointer, kept inside the window
+    const openMenuAt = (e: React.MouseEvent<HTMLDivElement>) => {
+        // the menu key of a keyboard gives no pointer position: the browser menu stays
+        if (e.clientX === 0 && e.clientY === 0) return
+        e.preventDefault()
+        const row = e.currentTarget.getBoundingClientRect()
+        const x = Math.max(8, Math.min(e.clientX, window.innerWidth - SESSION_MENU_WIDTH - 8))
+        const up = window.innerHeight - e.clientY < MENU_ROOM && e.clientY > MENU_ROOM
+        setMenuPoint({
+            left: x - row.left,
+            ...(up ? { bottom: row.bottom - e.clientY } : { top: e.clientY - row.top }),
+        })
+        if (!isMenuOpen) onToggleMenu(session.id, e)
+    }
+
+    // ctrl, cmd and middle click open a new tab. the title link does this by itself
+    const opensNewTab = (e: React.MouseEvent) =>
+        isNewTabClick(e) && !(e.target as HTMLElement).closest('a')
+
     const title = session.title || 'Untitled session'
+    const links = linksFor(session)
+    // an "open" row of the dropdown closes the menu, then runs. the phone sheet closes itself
+    const closing = (fn?: () => void) =>
+        fn &&
+        ((e?: React.MouseEvent) => {
+            e?.stopPropagation()
+            onCloseMenu()
+            fn()
+        })
     const menuProps = {
         isArchived: Boolean(session.isArchived),
         canStop,
@@ -71,7 +127,19 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
         onStop: (e?: React.MouseEvent) => onStopSession?.(session.id, e),
         onDelete: (e?: React.MouseEvent) => onOpenDelete(session, e),
     }
-    const rowOpacity = session.isArchived && !isMenuOpen ? 'opacity-60 hover:opacity-100' : ''
+    const sheetMenuProps = {
+        ...menuProps,
+        onOpenPullRequest: links.onOpenPullRequest,
+        onNewInRepo: links.onNewInRepo,
+    }
+    const desktopMenuProps = {
+        ...menuProps,
+        onOpenPullRequest: closing(links.onOpenPullRequest),
+        onNewInRepo: closing(links.onNewInRepo),
+        onOpenInNewTab: closing(links.onOpenInNewTab),
+    }
+    const rowOpacity =
+        dimArchived && session.isArchived && !isMenuOpen ? 'opacity-60 hover:opacity-100' : ''
 
     const archivedIcon = session.isArchived && (
         <Tooltip position="top" content="This session is archived">
@@ -119,7 +187,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                     <div onClick={(e) => e.stopPropagation()}>{menuButton('')}</div>
                 </div>
                 <div className="flex items-center justify-between gap-2 min-w-0">
-                    <ListMeta session={session} />
+                    <ListMeta session={session} timeField={timeField} />
                     <div className="flex items-center gap-1.5 shrink-0">
                         <SessionTags tags={session.tags} />
                         <SessionPrTooltip session={session} />
@@ -140,7 +208,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                             </div>
                         }
                     >
-                        <SessionSheetItems {...menuProps} />
+                        <SessionSheetItems {...sheetMenuProps} />
                     </BottomSheet>
                 </div>
             )}
@@ -153,24 +221,42 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                     rowOpacity
                 )}
                 style={{ zIndex: isMenuOpen ? 50 : undefined }}
-                onClick={() => onOpenProject(session.id)}
+                onClick={(e) => {
+                    if (opensNewTab(e)) {
+                        openSessionInNewTab(session.id)
+                        return
+                    }
+                    onOpenProject(session.id)
+                }}
+                onAuxClick={(e) => {
+                    if (e.button === 1 && opensNewTab(e)) openSessionInNewTab(session.id)
+                }}
+                onContextMenu={openMenuAt}
             >
                 <div className="flex flex-1 flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
-                        <span
+                        <a
+                            href={sessionPath(session.id)}
+                            draggable={false}
+                            onClick={(e) => {
+                                // a new tab click: the browser follows the link, the row
+                                // must not also open the session here
+                                if (isNewTabClick(e)) e.stopPropagation()
+                                else e.preventDefault()
+                            }}
                             onDoubleClick={(e) => {
                                 e.stopPropagation()
                                 onOpenRename(session, e)
                             }}
-                            className="truncate text-[14px] font-medium text-[#D6D5C9] transition-colors hover:text-white"
+                            className="truncate text-[14px] font-medium text-[#D6D5C9] transition-colors hover:text-white outline-none focus-visible:underline"
                             title="Double-click to rename"
                         >
                             {title}
-                        </span>
+                        </a>
                         <RunStatus vmStatus={session.vmStatus} />
                         {archivedIcon}
                     </div>
-                    <ListMeta session={session} />
+                    <ListMeta session={session} timeField={timeField} />
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -194,7 +280,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                     onClick={(e) => e.stopPropagation()}
                 >
                     {menuButton('p-2')}
-                    {isMenuOpen && !isPhone && (
+                    {isMenuOpen && !isPhone && !menuPoint && (
                         <div
                             ref={desktopMenuRef}
                             role="menu"
@@ -205,10 +291,24 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                                 'z-50'
                             )}
                         >
-                            <SessionMenuItems {...menuProps} />
+                            <SessionMenuItems {...desktopMenuProps} />
                         </div>
                     )}
                 </div>
+
+                {/* opened by a right-click: at the pointer, and it scrolls with the row */}
+                {isMenuOpen && !isPhone && menuPoint && (
+                    <div
+                        ref={desktopMenuRef}
+                        role="menu"
+                        className={cn('absolute', sessionMenuPanelClass, 'z-50')}
+                        style={menuPoint}
+                        onClick={(e) => e.stopPropagation()}
+                        onContextMenu={(e) => e.stopPropagation()}
+                    >
+                        <SessionMenuItems {...desktopMenuProps} />
+                    </div>
+                )}
             </div>
         </>
     )

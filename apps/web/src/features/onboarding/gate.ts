@@ -10,8 +10,8 @@ type OnboardingGateInput = {
 
 /**
  * where a signed-in user must go before the app: /onboarding until they finish it.
- * Returns null when no redirect is needed. Routes outside the app (/activate, /cli/login,
- * /github/callback) never reach this check.
+ * Returns null when no redirect is needed. Routes outside the app (/activate, /github/callback)
+ * never reach this check.
  */
 export const getOnboardingRedirect = (input: OnboardingGateInput): string | null => {
     const { isAuthenticated, profile, pathname, search } = input

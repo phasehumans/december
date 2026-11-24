@@ -18,6 +18,9 @@ import { generationAPI } from '@/features/generation/api/generation'
 /** how long "Archived · Undo" stays in the list (R8-b) */
 export const ARCHIVE_UNDO_MS = 5000
 
+/** the agent needs a moment to stop. the list is read again after this */
+const STOP_REFRESH_MS = 2000
+
 export interface ArchivedUndo {
     session: BackendSession
     /** where the row was, so the undo line sits in its place */
@@ -94,10 +97,17 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
         clearUndo()
     }
 
-    const stop = (sessionId: string) => {
-        generationAPI.stopSessionStream(sessionId)
+    /** stop only interrupts the agent, so the list is read again now and a moment later */
+    const stopMany = (sessionIds: string[]) => {
+        sessionIds.forEach((sessionId) => generationAPI.stopSessionStream(sessionId))
         void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+        setTimeout(
+            () => void queryClient.invalidateQueries({ queryKey: ['sessions'] }),
+            STOP_REFRESH_MS
+        )
     }
+
+    const stop = (sessionId: string) => stopMany([sessionId])
 
     /** deletes without the modal: the phone sheet asks with a second tap instead (P7-b) */
     const deleteNow = (sessionId: string) => {
@@ -151,6 +161,7 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
         undoArchive,
         toggleArchive,
         stop,
+        stopMany,
         deleteNow,
         openRename: (session: BackendSession) =>
             setRenameModal({ isOpen: true, project: session as any, value: session.title || '' }),

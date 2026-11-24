@@ -42,6 +42,9 @@ let nextId = 1
 
 const isOwnEntryOnTop = (id: number) => window.history.state?.[STATE_KEY] === id
 
+/** true while a sheet, modal or other popup that uses this hook is open */
+export const isAnyPopupOpen = () => openStack.length > 0
+
 export const useBackToClose = ({ isOpen, onClose, onBack }: BackToCloseOptions) => {
     const onCloseRef = React.useRef(onClose)
     const onBackRef = React.useRef(onBack)

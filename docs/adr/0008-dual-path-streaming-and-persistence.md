@@ -1,0 +1,3 @@
+# 0008. Dual-Path Streaming and Discrete Step Persistence
+
+We decided to decouple real-time client token streaming from durable database persistence. During model generation and command execution, incremental chunks are broadcast ephemerally over Redis Pub/Sub, delivering sub-50ms typing latency to the frontend. Upon completion of each discrete step (model response or tool result), the full step record is committed to PostgreSQL in the DurableStep table. Clients rehydrate historical context from PostgreSQL and attach to Redis Pub/Sub for active streaming. This avoids high-frequency database writes while guaranteeing atomic step checkpoints.

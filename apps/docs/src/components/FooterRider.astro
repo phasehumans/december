@@ -13,6 +13,13 @@
 //
 // The start and finish lines are the side rails of the page column.
 //
+// Phones and tablets (below the lg breakpoint) have no side rails and no footer line, so there
+// is no race there. The horse only runs: it gallops across the screen at full speed, with no
+// walk, and comes round again after a short pause. With no line to stand on, it runs lower,
+// 10px above the footer row, so it reads as part of the footer. And with no line to show a
+// sliding hoof, it moves a little on every screen refresh, which is smoother than moving once
+// for each frame.
+//
 // The motion is real: the gallop and the walk are Muybridge's photos and drawings (public
 // domain), sampled onto a grid of round dots, like an LED sign. See
 // src/lib/footer-rider-frames.ts. Each time the frame changes, the horse moves forward exactly
@@ -21,14 +28,14 @@
 //
 // Place it as a direct child of the footer column container (the element that holds the
 // top SectionDivider). It sits on top of that line and takes no space.
-// Hidden below the lg breakpoint (phones and tablets), like the footer divider. With prefers-reduced-motion the
-// horse stands still at the start line.
+// With prefers-reduced-motion the horse stands still at the start line (on phones and tablets,
+// at the left edge of the footer text).
 ---
 
 <canvas
   data-footer-rider
   aria-hidden="true"
-  class="pointer-events-none absolute bottom-full left-1/2 hidden h-12 w-screen max-w-none -translate-x-1/2 lg:block"
+  class="pointer-events-none absolute bottom-full left-1/2 block h-12 w-screen max-w-none -translate-x-1/2 translate-y-3.5 sm:translate-y-2.5 lg:translate-y-0"
 ></canvas>
 
 <script>
@@ -72,6 +79,8 @@
   const FLASHES = 1;
   const ARM_UP_STEPS = 12; // walk frames with the arm still up
   const IDLE_MS = 2500; // off-screen before the next race
+  const RUN_IDLE_MS = 1500; // phones and tablets: off-screen before the next run
+  const MAX_DPR = 3; // canvas pixels for each CSS pixel, at most
 
   // All frames in one list
   const GALLOP_UP = GALLOP_FRAMES.length;
@@ -105,6 +114,9 @@
     return paths;
   });
   const GALLOP_W = GALLOP_FRAMES[0][0].length * PITCH;
+  const SET_W = SET_FRAMES[0][0].length * PITCH;
+  const GALLOP_STRIDE = GALLOP_ADVANCE * PITCH; // px forward for each gallop frame
+  const RUN_FROM = -PITCH * 4; // nose position when a run starts, just off the left edge
 
   // One moment of the race: from time t, show `frame` with the nose at x, and light the marks
   interface Beat {
@@ -128,13 +140,16 @@
     // The divider's ✱ marks, left then right
     const markEls = Array.from(column.querySelectorAll<SVGElement>(':scope > div[aria-hidden="true"] > svg'));
 
-    const railed = window.matchMedia('(min-width: 1024px)');
+    // From lg up the column has side rails, and the race runs between them
     const lgUp = window.matchMedia('(min-width: 1024px)');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     let width = 0;
     let height = 0;
+    let dpr = 1;
     let startX = 0;
+    let runMs = 0; // phones and tablets: time for one run across the screen
+    let runDone = false; // the run has left the screen and the canvas is clear
     let beats: Beat[] = [];
     let cycle = 0;
     let raf = 0;
@@ -157,14 +172,14 @@
     const plan = () => {
       const rect = canvas.getBoundingClientRect();
       const columnRect = column.getBoundingClientRect();
-      const start = railed.matches ? columnRect.left - rect.left : width * 0.15;
-      const finish = railed.matches ? columnRect.right - rect.left : width * 0.85;
+      const start = columnRect.left - rect.left;
+      const finish = columnRect.right - rect.left;
       const offRight = width + GALLOP_W + PITCH * 4;
       startX = start;
 
       const list: Beat[] = [];
       let t = 0;
-      let x = -PITCH * 4;
+      let x = RUN_FROM;
       const off: [boolean, boolean] = [false, false];
       let crossedAt = -1;
       // The right ✱ flashes for a moment after the nose crosses the finish
@@ -205,7 +220,7 @@
 
       // 3-5. Race. Speed s (0..1) sets both the stride (distance per frame) and the stride
       // rate (time per frame), so speed changes smoothly and the hooves stay nearly planted.
-      const stride = GALLOP_ADVANCE * PITCH;
+      const stride = GALLOP_STRIDE;
       const gallopAt = (s: number, frame: number) => {
         push(frame, RACE_FRAME_MS / Math.pow(s, 0.6));
         x += stride * Math.pow(s, 0.4);
@@ -261,16 +276,29 @@
       cycle = t;
     };
 
+    // Phones and tablets: one run, a full gallop from off-screen left to off-screen right, then
+    // a short pause off-screen
+    const planRun = () => {
+      const rect = canvas.getBoundingClientRect();
+      const columnRect = column.getBoundingClientRect();
+      // With reduced motion the horse stands at the left edge of the footer text
+      startX = columnRect.left - rect.left + parseFloat(getComputedStyle(column).paddingLeft) + SET_W;
+      runMs = ((width + GALLOP_W + PITCH * 4 - RUN_FROM) / GALLOP_STRIDE) * RACE_FRAME_MS;
+      cycle = runMs + RUN_IDLE_MS;
+    };
+
     const measure = () => {
       const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
       width = rect.width;
       height = rect.height;
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      plan();
+      if (lgUp.matches) plan();
+      else planRun();
       lastBeat = -1;
+      runDone = false;
     };
 
     // Draw a beat: its frame with the nose at x (frame -1 draws nothing)
@@ -289,6 +317,19 @@
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
       const t = (now - epoch) % cycle;
+      if (!lgUp.matches) {
+        // Run only: the position follows the clock, and the gallop frame follows the distance.
+        // The position is on whole canvas pixels, so the dots are drawn the same way each time.
+        if (t < runMs) {
+          const x = RUN_FROM + (t / RACE_FRAME_MS) * GALLOP_STRIDE;
+          render({ x: Math.round(x * dpr) / dpr, frame: Math.floor(t / RACE_FRAME_MS) % GALLOP_FRAMES.length });
+          runDone = false;
+        } else if (!runDone) {
+          render({ x: 0, frame: -1 });
+          runDone = true;
+        }
+        return;
+      }
       // Beats are in time order; find the one playing now
       let i = lastBeat >= 0 && beats[lastBeat].t <= t ? lastBeat : 0;
       while (i + 1 < beats.length && beats[i + 1].t <= t) i++;
@@ -307,7 +348,7 @@
 
     const start = () => {
       stop();
-      if (!onScreen || !lgUp.matches) return;
+      if (!onScreen) return;
       measure();
       if (reducedMotion.matches) {
         render({ x: startX, frame: SET0 });
@@ -332,7 +373,6 @@
     };
 
     window.addEventListener('resize', onResize);
-    railed.addEventListener('change', start);
     lgUp.addEventListener('change', start);
     reducedMotion.addEventListener('change', start);
 
@@ -341,7 +381,6 @@
       clearTimeout(resizeTimer);
       observer.disconnect();
       window.removeEventListener('resize', onResize);
-      railed.removeEventListener('change', start);
       lgUp.removeEventListener('change', start);
       reducedMotion.removeEventListener('change', start);
     };

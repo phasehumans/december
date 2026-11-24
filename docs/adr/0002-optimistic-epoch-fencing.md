@@ -1,0 +1,3 @@
+# 0002. Optimistic Epoch Fencing for Session Concurrency
+
+We decided to enforce single-writer concurrency per session using optimistic epoch fencing directly in PostgreSQL rather than pessimistic row locks or distributed Redis locks. Each session stores an integer epoch counter and a lease expiration timestamp. Every step commit checks that the row's epoch matches the worker's epoch. If a worker stalls and another worker claims ownership by bumping the epoch, the stalled worker's late write affects 0 rows and is rejected immediately. This prevents split-brain and zombie worker corruption while avoiding long-held database connections during multi-minute LLM inference and tool execution.

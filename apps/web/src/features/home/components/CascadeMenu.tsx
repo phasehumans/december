@@ -31,6 +31,12 @@ interface CascadeMenuProps {
 // a little longer than a pointer needs to cross a row on the way to another one
 const HOVER_OPEN_MS = 120
 const SIDE_WIDTH = 230
+const SIDE_MAX_HEIGHT = 300
+const SIDE_MIN_HEIGHT = 140
+// the space between the menu and a side list that opens under it
+const SIDE_GAP = 6
+// the space kept between a side list and the edge of the window
+const EDGE_GAP = 12
 
 const panelClass =
     'bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-lg shadow-black/40 flex flex-col'
@@ -39,6 +45,8 @@ const panelClass =
  * A prompt box menu whose rows can open a list beside it (the + menu, the key models).
  * The side list opens when the pointer rests on a row, on a click, and with the Right
  * arrow. The Left arrow or Esc closes it. In a narrow window it opens under the menu.
+ * The side list always stays inside the window: it starts level with its row and moves
+ * up when it would pass the bottom edge, so it cannot make the page behind it scroll.
  */
 export const CascadeMenu: React.FC<CascadeMenuProps> = ({
     items,
@@ -53,8 +61,16 @@ export const CascadeMenu: React.FC<CascadeMenuProps> = ({
     const hoverTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
     const [activeIndex, setActiveIndex] = React.useState(0)
     const [openId, setOpenId] = React.useState<string | null>(null)
+    const sideRef = React.useRef<HTMLDivElement>(null)
     const [sideTop, setSideTop] = React.useState(0)
     const [isSideBelow, setIsSideBelow] = React.useState(false)
+    /** how far the open side list is moved up to stay inside the window */
+    const [shift, setShift] = React.useState<{ id: string | null; px: number }>({
+        id: null,
+        px: 0,
+    })
+    const [sideMaxHeight, setSideMaxHeight] = React.useState(SIDE_MAX_HEIGHT)
+    const sideShift = shift.id === openId ? shift.px : 0
 
     const clearHoverTimer = () => {
         if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
@@ -81,6 +97,50 @@ export const CascadeMenu: React.FC<CascadeMenuProps> = ({
         },
         [openSide]
     )
+
+    // keeps the open side list inside the window. its height changes when the rows load
+    // and when a search filters them, so it is measured again on every size change
+    React.useLayoutEffect(() => {
+        const root = rootRef.current
+        const side = sideRef.current
+        if (!openId || !root || !side) return
+
+        const fit = () => {
+            const windowHeight = window.innerHeight
+            // read from the layout, so the opening zoom of the menu does not change it
+            const parentTop = root.offsetParent?.getBoundingClientRect().top ?? 0
+            const rootTop = parentTop + root.offsetTop
+
+            if (isSideBelow) {
+                const top = rootTop + root.offsetHeight + SIDE_GAP
+                const room = windowHeight - EDGE_GAP - top
+                setSideMaxHeight(Math.max(SIDE_MIN_HEIGHT, Math.min(SIDE_MAX_HEIGHT, room)))
+                return
+            }
+
+            const maxHeight = Math.min(SIDE_MAX_HEIGHT, windowHeight - 2 * EDGE_GAP)
+            setSideMaxHeight(maxHeight)
+            const top = rootTop + sideTop
+            const height = Math.min(side.offsetHeight, maxHeight)
+            const past = top + height - (windowHeight - EDGE_GAP)
+            const needed = Math.max(0, Math.min(past, top - EDGE_GAP))
+            // only ever moves up while the list is open: a search that makes the list
+            // shorter must not move the search box under the pointer
+            setShift((prev) => {
+                const px = Math.max(prev.id === openId ? prev.px : 0, needed)
+                return prev.id === openId && prev.px === px ? prev : { id: openId, px }
+            })
+        }
+
+        fit()
+        const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null
+        observer?.observe(side)
+        window.addEventListener('resize', fit)
+        return () => {
+            observer?.disconnect()
+            window.removeEventListener('resize', fit)
+        }
+    }, [openId, sideTop, isSideBelow])
 
     // the key listener reads the current rows and state through this ref
     const stateRef = React.useRef({ items, activeIndex, openId, activate, onClose })
@@ -201,14 +261,18 @@ export const CascadeMenu: React.FC<CascadeMenuProps> = ({
 
             {openItem && (
                 <div
+                    ref={sideRef}
                     role="menu"
                     aria-label={openItem.label}
                     className={cn(
-                        'absolute z-10 w-[230px] max-w-[calc(100vw-32px)] max-h-[300px] overflow-y-auto no-scrollbar [scrollbar-width:none] animate-in fade-in duration-100',
+                        'absolute z-10 w-[230px] max-w-[calc(100vw-32px)] overflow-y-auto no-scrollbar [scrollbar-width:none] animate-in fade-in duration-100',
                         panelClass,
                         isSideBelow ? 'left-6 top-[calc(100%+6px)]' : 'left-[calc(100%+6px)]'
                     )}
-                    style={isSideBelow ? undefined : { top: sideTop }}
+                    style={{
+                        maxHeight: sideMaxHeight,
+                        top: isSideBelow ? undefined : sideTop - sideShift,
+                    }}
                 >
                     {openItem.side}
                 </div>

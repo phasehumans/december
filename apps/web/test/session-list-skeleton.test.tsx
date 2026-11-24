@@ -4,6 +4,7 @@ import React from 'react'
 
 import { SessionListSkeleton } from '../src/features/sessions/components/SessionListSkeleton'
 import { SessionListView } from '../src/features/sessions/components/SessionListView'
+import { DEFAULT_SESSIONS_VIEW } from '../src/features/sessions/lib/sessionsView'
 
 if (!globalThis.document) {
     GlobalRegistrator.register()
@@ -46,8 +47,8 @@ describe('SessionListSkeleton UI', () => {
                 onOpenTags={() => {}}
                 searchQuery=""
                 onSearchChange={() => {}}
-                sortOption="newest"
-                onSortChange={() => {}}
+                view={DEFAULT_SESSIONS_VIEW}
+                onViewChange={() => {}}
                 hasUnfilteredProjects={false}
             />
         )

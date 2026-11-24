@@ -1,0 +1,3 @@
+# 0007. Project Entity Hierarchy for Persistent Always-On Workspaces
+
+We decided to introduce a first-class Project model in PostgreSQL that acts as the parent of durable agent sessions, mirroring Cursor Projects and Claude Projects. The Project holds repository connections, pinned instructions (AGENTS.md), long-term memories, and incoming mailbox queues. When the agent executes tasks (triggered by users, cron schedules, or GitHub webhooks), it runs as a child Session inheriting the project context. This separates persistent project configuration and repository knowledge from ephemeral execution runs.

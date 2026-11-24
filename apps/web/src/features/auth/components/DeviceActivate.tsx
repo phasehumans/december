@@ -2,11 +2,24 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import React, { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
+import { authPrimaryButtonClass } from './authModalStyles'
+import { AuthPageShell } from './AuthPageShell'
+
 import { AuthModal } from '@/features/auth/components/AuthModal'
 import { profileAPI } from '@/features/profile/api/profile'
 import { apiRequest } from '@/shared/api/client'
-import { Icons } from '@/shared/components/ui/Icons'
-import { getWebUrl } from '@/shared/config/env'
+import { LogoLoader } from '@/shared/components/ui/LogoLoader'
+import { resetUserQueryCache } from '@/shared/lib/query-cache'
+import { clearLoggedInCookie } from '@/shared/utils/logged-in-cookie'
+
+// the page behind the link that `december login` prints: /activate?code=ABCD-EFGH.
+// it follows the sign-up page: the logo, one grey line, then the controls.
+//
+// the user always sees the code and selects Authorize. the page never approves a code by
+// itself, also not right after sign-in: a link from another person must not sign their
+// terminal in to this account without a click.
+
+const CODE_LENGTH = 9
 
 const formatCode = (raw: string) => {
     let val = raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
@@ -16,34 +29,50 @@ const formatCode = (raw: string) => {
     return val
 }
 
-const persistDeviceActivation = (code?: string) => {
-    if (typeof window === 'undefined' || !code) return
-    window.localStorage.setItem(`december_device_code_${code}`, 'true')
+const storageKey = (code: string) => `december_device_code_${code}`
+
+/** remembers that this browser approved the code, so a reload shows the done page */
+const rememberApproved = (code: string) => {
+    if (!code) return
+    try {
+        window.localStorage.setItem(storageKey(code), 'true')
+    } catch {
+        // Intentionally swallowed: storage can be blocked, a reload then asks the server
+    }
 }
 
-const isDeviceActivatedInStorage = (code?: string): boolean => {
-    if (typeof window === 'undefined' || !code) return false
-    return window.localStorage.getItem(`december_device_code_${code}`) === 'true'
+const wasApprovedHere = (code: string): boolean => {
+    if (!code) return false
+    try {
+        return window.localStorage.getItem(storageKey(code)) === 'true'
+    } catch {
+        // Intentionally swallowed: storage can be blocked, the server status is used
+        return false
+    }
 }
+
+type Status = 'idle' | 'verifying' | 'success' | 'used' | 'error'
+
+const BAD_CODE_MESSAGE = 'This code is not valid or has expired.'
+
+const codeInputClass =
+    'w-full h-11 bg-[#141414] border border-[#2A2A2A] rounded-md text-white text-center tracking-[0.25em] font-mono text-base outline-none focus:border-[#87b2f4] transition-colors placeholder-[#444444]'
 
 export const DeviceActivate: React.FC = () => {
     const queryClient = useQueryClient()
     const [searchParams] = useSearchParams()
 
     const rawCode = searchParams.get('code') || searchParams.get('user_code') || ''
-    const initialUserCode = formatCode(rawCode)
+    const urlCode = formatCode(rawCode)
     const hasUrlCode = Boolean(rawCode)
 
-    const [userCode, setUserCode] = useState(initialUserCode)
+    const [userCode, setUserCode] = useState(urlCode)
     const [showAuthModal, setShowAuthModal] = useState(false)
-
-    // Check if previously activated in this browser
-    const [status, setStatus] = useState<
-        'idle' | 'verifying' | 'success' | 'already_activated' | 'error'
-    >(() => (isDeviceActivatedInStorage(initialUserCode) ? 'already_activated' : 'idle'))
+    const [status, setStatus] = useState<Status>(() =>
+        wasApprovedHere(urlCode) ? 'success' : 'idle'
+    )
     const [errorMessage, setErrorMessage] = useState('')
 
-    // check if user is logged in
     const {
         data: profile,
         isLoading,
@@ -54,74 +83,57 @@ export const DeviceActivate: React.FC = () => {
         retry: false,
     })
 
-    // check if device or code is already activated
+    // a code that is used, expired or unknown goes straight to its own page
     const { data: deviceStatus } = useQuery({
-        queryKey: ['device-status', initialUserCode],
+        queryKey: ['device-status', urlCode],
         queryFn: () =>
             apiRequest<{ activated: boolean; status: string }>(
-                `/auth/device/status?code=${encodeURIComponent(initialUserCode)}`
+                `/auth/device/status?code=${encodeURIComponent(urlCode)}`
             ),
-        enabled: Boolean(profile) && Boolean(initialUserCode),
+        enabled: Boolean(profile) && Boolean(urlCode),
         retry: false,
     })
 
     useEffect(() => {
-        if (
-            initialUserCode &&
-            (deviceStatus?.activated || deviceStatus?.status === 'already_activated')
-        ) {
-            setStatus('already_activated')
-            persistDeviceActivation(initialUserCode)
+        if (!urlCode || !deviceStatus) return
+        const isUsed =
+            deviceStatus.activated ||
+            deviceStatus.status === 'already_activated' ||
+            deviceStatus.status === 'expired' ||
+            deviceStatus.status === 'invalid'
+        if (isUsed) {
+            setStatus((current) => (current === 'success' ? current : 'used'))
         }
-    }, [deviceStatus, initialUserCode])
+    }, [deviceStatus, urlCode])
 
     useEffect(() => {
-        if (rawCode) {
-            const formatted = formatCode(rawCode)
-            setUserCode(formatted)
-            if (isDeviceActivatedInStorage(formatted)) {
-                setStatus('already_activated')
-            }
-        }
+        if (!rawCode) return
+        const formatted = formatCode(rawCode)
+        setUserCode(formatted)
+        if (wasApprovedHere(formatted)) setStatus('success')
     }, [rawCode])
 
     const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = formatCode(e.target.value)
-        setUserCode(val)
+        setUserCode(formatCode(e.target.value))
         setStatus('idle')
         setErrorMessage('')
     }
 
-    const handleVerify = async () => {
-        if (userCode.length !== 9) {
-            setStatus('error')
-            setErrorMessage('Please enter a valid 8-character code')
-            return
-        }
-
-        if (!profile) {
-            setShowAuthModal(true)
-            return
-        }
-
-        verifyCode()
-    }
-
     const verifyCode = useCallback(async () => {
         setStatus('verifying')
+        setErrorMessage('')
         try {
             const res = await apiRequest<{ status?: string }>('/auth/device/verify', {
                 method: 'POST',
                 body: JSON.stringify({ userCode }),
             })
 
-            persistDeviceActivation(userCode)
-
             if (res?.status === 'already_activated') {
-                setStatus('already_activated')
-            } else {
-                setStatus('success')
+                setStatus('used')
+                return
             }
+            rememberApproved(userCode)
+            setStatus('success')
         } catch (err: any) {
             const msg = (err.message || '').toLowerCase()
             const isAuthError =
@@ -133,177 +145,178 @@ export const DeviceActivate: React.FC = () => {
                 msg.includes('invalid token')
 
             if (isAuthError) {
+                // the session ended: sign in again, then the user selects Authorize again
                 queryClient.setQueryData(['profile'], null)
                 setStatus('idle')
-                setErrorMessage(
-                    'Your session has expired. Please sign in to authorize your terminal.'
-                )
                 setShowAuthModal(true)
                 return
             }
 
-            if (
-                msg.includes('no longer pending') ||
-                msg.includes('already') ||
-                (hasUrlCode && msg.includes('invalid code'))
-            ) {
-                persistDeviceActivation(userCode)
-                setStatus('already_activated')
+            const isSpent = msg.includes('no longer pending') || msg.includes('already')
+            const isBad = msg.includes('invalid code') || msg.includes('expired')
+            // a code from the link cannot be fixed on this page, so it gets the "run it again" page
+            if (isSpent || (hasUrlCode && isBad)) {
+                setStatus('used')
                 return
             }
 
             setStatus('error')
-            setErrorMessage(
-                err.message || 'Verification failed. The code may be invalid or expired.'
-            )
+            setErrorMessage(isBad ? BAD_CODE_MESSAGE : err.message || BAD_CODE_MESSAGE)
         }
     }, [userCode, hasUrlCode, queryClient])
 
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (userCode.length !== CODE_LENGTH) {
+            setStatus('error')
+            setErrorMessage('Enter the 8-character code from your terminal.')
+            return
+        }
+        void verifyCode()
+    }
+
+    // signing in does not approve the code: the user selects Authorize after it
     const handleAuthSuccess = async () => {
         setShowAuthModal(false)
         await refetch()
-        verifyCode()
     }
 
-    // Auto-open AuthModal for unauthenticated users when redirected with code in URL
+    const handleSwitchAccount = async () => {
+        clearLoggedInCookie()
+        try {
+            await profileAPI.signout()
+        } catch {
+            // Intentionally swallowed: the sign-in page opens even when the network fails
+        }
+        // also clears localStorage, so the next account never starts with this one's profile
+        resetUserQueryCache(queryClient)
+        queryClient.setQueryData(['profile'], null)
+        setStatus('idle')
+        setErrorMessage('')
+        setShowAuthModal(true)
+    }
+
+    // a signed-out user who came from the terminal link gets the sign-in page at once
+    const hasOpenedAuthRef = React.useRef(false)
     useEffect(() => {
-        if (hasUrlCode && !profile && !isLoading && status === 'idle' && !showAuthModal) {
+        if (hasOpenedAuthRef.current) return
+        if (hasUrlCode && !profile && !isLoading && status === 'idle') {
+            hasOpenedAuthRef.current = true
             setShowAuthModal(true)
         }
-    }, [hasUrlCode, profile, isLoading, status, showAuthModal])
+    }, [hasUrlCode, profile, isLoading, status])
 
-    // Auto-verify if user is already logged in and arrived with code in URL
-    useEffect(() => {
-        if (hasUrlCode && profile && userCode.length === 9 && status === 'idle' && !isLoading) {
-            verifyCode()
-        }
-    }, [hasUrlCode, profile, userCode, status, isLoading, verifyCode])
+    const authModal = (
+        <AuthModal
+            isOpen={showAuthModal}
+            onClose={() => setShowAuthModal(false)}
+            onAuthSuccess={handleAuthSuccess}
+            initialMode="login"
+        />
+    )
 
-    const isReady = userCode.length === 9
-    const isSuccess = status === 'success' || status === 'already_activated'
+    if (status === 'success') {
+        return <AuthPageShell line="December CLI is signed in. You can close this tab." />
+    }
+
+    if (status === 'used') {
+        return (
+            <AuthPageShell
+                line={
+                    <>
+                        This code is used or expired. If the terminal still waits, run{' '}
+                        <code className="font-mono text-[12px] text-white">december login</code>{' '}
+                        again.
+                    </>
+                }
+            />
+        )
+    }
+
+    if (isLoading) return <LogoLoader />
+
+    if (!profile) {
+        return (
+            <>
+                <AuthPageShell line="Log in to continue to December CLI">
+                    <button
+                        type="button"
+                        onClick={() => setShowAuthModal(true)}
+                        className={authPrimaryButtonClass}
+                    >
+                        Log in
+                    </button>
+                </AuthPageShell>
+                {authModal}
+            </>
+        )
+    }
+
+    const isVerifying = status === 'verifying'
+    const isReady = userCode.length === CODE_LENGTH
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[#141414] font-sans overflow-y-auto p-4 sm:p-6 relative selection:bg-[#87b2f4]/30 selection:text-white">
-            <div className="w-full flex items-center justify-center relative">
-                <div className="w-full max-w-[380px] relative z-10 flex flex-col">
-                    {isSuccess ? (
-                        <div className="flex flex-col items-center text-center py-2 animate-in fade-in duration-200">
-                            <div className="mb-5 text-white">
-                                <Icons.DecemberLogo className="w-[42px] h-[42px] text-white" />
-                            </div>
-
-                            <h2 className="text-[22px] sm:text-[24px] font-medium text-white tracking-[-0.025em] leading-snug mb-2">
-                                {status === 'already_activated'
-                                    ? 'Device Already Activated'
-                                    : 'Device Authorized'}
-                            </h2>
-                            <p className="text-xs sm:text-[13px] text-[#888888] font-sans leading-relaxed mb-6">
-                                {status === 'already_activated'
-                                    ? 'Your terminal session has already been linked. You can close this window and return to your terminal.'
-                                    : 'Your terminal session has been linked. You can close this window and return to your terminal.'}
-                            </p>
-
-                            <a
-                                href="/"
-                                className="w-full font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer bg-[#EDEDED] hover:bg-white text-[#090a0f] border border-transparent shadow-none"
-                            >
-                                Return
-                            </a>
-                        </div>
+        <>
+            <AuthPageShell
+                line={
+                    !hasUrlCode ? (
+                        'Enter the code from your terminal'
+                    ) : profile.email ? (
+                        <>
+                            Sign in to December CLI as{' '}
+                            <span className="text-white font-medium break-all">
+                                {profile.email}
+                            </span>
+                        </>
                     ) : (
-                        <div className="flex flex-col">
-                            <div className="flex flex-col items-center text-center mb-6">
-                                <div className="mb-5 text-white">
-                                    <Icons.DecemberLogo className="w-[42px] h-[42px] text-white" />
-                                </div>
-                                <h2 className="text-[22px] sm:text-[24px] font-medium text-white tracking-[-0.025em] leading-snug mb-1.5">
-                                    {profile ? 'Authorize Device' : 'Activate Device'}
-                                </h2>
-                                <p className="text-xs sm:text-[13px] text-[#888888] font-sans leading-relaxed">
-                                    {profile
-                                        ? profile.email
-                                            ? `Connect your terminal session to ${profile.email}.`
-                                            : 'Connect your terminal session to your December account.'
-                                        : 'Sign in to link your terminal session to December.'}
-                                </p>
-                            </div>
+                        'Sign in to December CLI'
+                    )
+                }
+            >
+                <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+                    <input
+                        id="device-code"
+                        aria-label="Code from your terminal"
+                        type="text"
+                        value={userCode}
+                        onChange={handleCodeChange}
+                        placeholder="ABCD-EFGH"
+                        maxLength={CODE_LENGTH}
+                        readOnly={hasUrlCode}
+                        disabled={isVerifying}
+                        autoFocus={!hasUrlCode}
+                        spellCheck={false}
+                        autoComplete="off"
+                        className={codeInputClass}
+                    />
 
-                            <div className="flex flex-col gap-3">
-                                {!hasUrlCode && (
-                                    <div className="flex flex-col gap-1.5">
-                                        <input
-                                            type="text"
-                                            value={userCode}
-                                            onChange={handleCodeChange}
-                                            placeholder="ABCD-EFGH"
-                                            maxLength={9}
-                                            disabled={status === 'verifying'}
-                                            autoFocus
-                                            spellCheck={false}
-                                            autoComplete="off"
-                                            className="w-full bg-[#141414] border border-[#2A2A2A] rounded-lg text-white text-center tracking-[0.25em] font-mono h-11 px-4 text-base outline-none focus:border-[#87b2f4] transition-colors placeholder-[#444444]"
-                                        />
-                                    </div>
-                                )}
-
-                                <button
-                                    type="button"
-                                    onClick={handleVerify}
-                                    disabled={status === 'verifying' || !isReady || isLoading}
-                                    className={`w-full font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 shadow-none border ${
-                                        isReady
-                                            ? 'bg-[#EDEDED] hover:bg-white text-[#090a0f] border-transparent'
-                                            : 'bg-[#202020] hover:bg-[#252525] text-[#888888] border-[#2A2A2A]'
-                                    }`}
-                                >
-                                    {isLoading
-                                        ? 'Checking session...'
-                                        : status === 'verifying'
-                                          ? 'Authorizing...'
-                                          : profile
-                                            ? 'Authorize'
-                                            : 'Sign in to Authorize'}
-                                </button>
-
-                                {status === 'error' && (
-                                    <p className="mt-1 font-sans text-xs text-red-400 px-1 text-center">
-                                        {errorMessage}
-                                    </p>
-                                )}
-                            </div>
-
-                            <p className="mt-6 text-[11px] font-sans text-[#737373] text-center leading-relaxed">
-                                By continuing, you agree to our{' '}
-                                <a
-                                    href={`${getWebUrl()}/terms`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[#a3a3a3] hover:text-white underline underline-offset-2 transition-colors"
-                                >
-                                    Terms
-                                </a>{' '}
-                                and{' '}
-                                <a
-                                    href={`${getWebUrl()}/privacy`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[#a3a3a3] hover:text-white underline underline-offset-2 transition-colors"
-                                >
-                                    Privacy Policy
-                                </a>
-                                .
-                            </p>
-                        </div>
+                    {status === 'error' && (
+                        <p role="alert" className="font-sans text-xs text-red-400 px-1 text-center">
+                            {errorMessage}
+                        </p>
                     )}
-                </div>
-            </div>
 
-            <AuthModal
-                isOpen={showAuthModal}
-                onClose={() => setShowAuthModal(false)}
-                onAuthSuccess={handleAuthSuccess}
-                initialMode="login"
-            />
-        </div>
+                    <button
+                        type="submit"
+                        disabled={isVerifying || !isReady}
+                        className={authPrimaryButtonClass}
+                    >
+                        {isVerifying ? 'Authorizing...' : 'Authorize'}
+                    </button>
+                </form>
+
+                <div className="mt-4 flex justify-center font-sans text-xs text-[#888888]">
+                    <button
+                        type="button"
+                        onClick={() => void handleSwitchAccount()}
+                        disabled={isVerifying}
+                        className="hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                        Use a different account
+                    </button>
+                </div>
+            </AuthPageShell>
+            {authModal}
+        </>
     )
 }

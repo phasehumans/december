@@ -1,0 +1,3 @@
+# 0001. Unified Durable Step Kernel over Temporal or In-Memory Loops
+
+We decided to build a unified, PostgreSQL-backed durable step kernel in `packages/agent` rather than adopting Temporal or maintaining in-memory agent loops. The kernel checkpoints every discrete model and tool step to PostgreSQL with lease epoch fencing, and serves both interactive sessions and autonomous Sentinel tasks. We rejected Temporal because workflow engines cannot fence side effects in external sandbox VMs, introduce severe determinism and versioning constraints across rapidly changing agent prompts, and impose unnecessary infrastructure overhead compared to native PostgreSQL step transactions.

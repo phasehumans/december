@@ -5,8 +5,13 @@ import { MetaDot, RelativeTime } from './ListParts'
 import { repoNameOf } from '@/features/pullrequests/lib/pullRequests'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 
-/** the grey line under a session title: repo · branch · time */
-export const ListMeta: React.FC<{ session: any }> = ({ session }) => {
+/** the grey line under a session title: repo · branch · time. the time is the last update,
+ * or the created time when the list is sorted by created date */
+export const ListMeta: React.FC<{ session: any; timeField?: 'updated' | 'created' }> = ({
+    session,
+    timeField = 'updated',
+}) => {
+    const showCreated = timeField === 'created' && Boolean(session.createdAt)
     const repo = repoNameOf(session)
     const shortRepo = repo ? repo.split('/').pop() : null
     return (
@@ -30,7 +35,13 @@ export const ListMeta: React.FC<{ session: any }> = ({ session }) => {
             )}
             <MetaDot />
             <span className="shrink-0">
-                <RelativeTime iso={session.updatedAt || session.createdAt} label="Updated" />
+                {showCreated ? (
+                    <>
+                        Created <RelativeTime iso={session.createdAt} label="Created" />
+                    </>
+                ) : (
+                    <RelativeTime iso={session.updatedAt || session.createdAt} label="Updated" />
+                )}
             </span>
         </div>
     )

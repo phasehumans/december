@@ -26,5 +26,5 @@ export const useSuperCrewWaitlist = (enabled: boolean) => {
         onSuccess: setState,
     })
 
-    return { state: query.data, join, markSeen }
+    return { state: query.data, isLoading: query.isLoading, join, markSeen }
 }

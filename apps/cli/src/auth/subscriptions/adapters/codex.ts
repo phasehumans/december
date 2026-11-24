@@ -194,6 +194,7 @@ export const codexAdapter: SubscriptionAdapter = {
         let localServer: Awaited<ReturnType<typeof startLocalOAuthServer>> | null = null
         try {
             localServer = await startLocalOAuthServer({
+                planName: 'ChatGPT plan',
                 port: 1455,
                 path: '/auth/callback',
                 timeoutMs: 180000,

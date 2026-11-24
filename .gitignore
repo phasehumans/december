@@ -85,6 +85,7 @@ bun.report-*
 **/.december/logs/
 .december/snapshots/
 **/.december/snapshots/
+.december/worktrees/
 
 # Local infrastructure & runtimes
 docker-compose.override.yml
@@ -126,7 +127,9 @@ ehthumbs.db
 deploy.md
 opencode/
 users.txt
-/docs/
+/docs/*
+!/docs/agents/
+!/docs/adr/
 ai.md
 
 # Outreach scripts and logs

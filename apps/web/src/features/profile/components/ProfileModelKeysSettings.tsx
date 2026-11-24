@@ -102,7 +102,7 @@ export const ProfileModelKeysSettings: React.FC = () => {
 
     return (
         <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9]">
-            <SettingsPageHeader title="Your keys" subtitle={PAGE_SUBTITLES.yourKeys} />
+            <SettingsPageHeader title="API keys" subtitle={PAGE_SUBTITLES.yourKeys} />
             <div className="flex flex-col gap-4">
                 {/* one row with the segmented control that Usage has (U6). with the preview on,
                     the row lives on the Defaults page (N2-B) */}

@@ -2,13 +2,15 @@ import React from 'react'
 
 import { version as cliVersion } from '../../../../../../package.json'
 
-// A December CLI session drawn in HTML, for the CLI card on the onboarding start step.
+// A December CLI session drawn in HTML, for the CLI card on the onboarding start step and the
+// "Try December CLI" card in the sidebar.
 // Same mock as the landing page (apps/docs TerminalWindowMock.astro): the window is laid out at
 // real size with the rows and colors of the TUI (packages/tui), then a 680 x 425 stage is scaled
 // down to the panel width, so the card shows only the top-left part of the window.
 // Place it inside a panel that has the Tailwind `@container` class.
 // Sizes are props so a small card can zoom in: `stage` is how many real pixels fit across the card
-// (smaller = bigger text). The window keeps the same 13% left and 17% top background margin.
+// (smaller = bigger text). The window has a 13% left and 17% top background margin by default:
+// `marginLeft` and `marginTop` (a share of the stage width and height) change it.
 
 // TUI theme colors (packages/tui/src/theme.ts)
 const c = {
@@ -45,9 +47,15 @@ const Blank = () => <p>&nbsp;</p>
 
 interface OnboardingTerminalMockProps {
     stage?: number
+    marginLeft?: number
+    marginTop?: number
 }
 
-export const OnboardingTerminalMock: React.FC<OnboardingTerminalMockProps> = ({ stage = 680 }) => (
+export const OnboardingTerminalMock: React.FC<OnboardingTerminalMockProps> = ({
+    stage = 680,
+    marginLeft = 0.13,
+    marginTop = 0.17,
+}) => (
     <div
         className="absolute inset-0 overflow-hidden"
         role="img"
@@ -62,7 +70,10 @@ export const OnboardingTerminalMock: React.FC<OnboardingTerminalMockProps> = ({ 
             }}
         >
             <div
-                style={{ left: Math.round(stage * 0.13), top: Math.round(stage * 0.625 * 0.17) }}
+                style={{
+                    left: Math.round(stage * marginLeft),
+                    top: Math.round(stage * 0.625 * marginTop),
+                }}
                 className="absolute w-[1000px] h-[420px] flex flex-col overflow-hidden rounded-[12px] border border-[#3a3a3a] bg-[#18181b] shadow-[0_20px_60px_rgba(15,23,42,0.25)]"
             >
                 <div className="relative flex items-center h-[34px] shrink-0 bg-[#111113] border-b border-[#27272a] px-[14px]">

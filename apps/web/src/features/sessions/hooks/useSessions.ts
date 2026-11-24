@@ -4,13 +4,13 @@ import { sessionAPI, type SessionFilters } from '../api/session'
 
 import { useAppStore } from '@/app/store'
 
-export const useSessions = (filters?: SessionFilters) => {
+export const useSessions = (filters?: SessionFilters, options?: { enabled?: boolean }) => {
     const isAuthenticated = useAppStore((state) => state.isAuthenticated)
 
     return useQuery({
         queryKey: ['sessions', filters],
         queryFn: () => sessionAPI.getSessions(filters),
-        enabled: isAuthenticated,
+        enabled: isAuthenticated && (options?.enabled ?? true),
         placeholderData: (previousData) => previousData,
     })
 }

@@ -1,4 +1,4 @@
-import { Check, KeyRound } from 'lucide-react'
+import { Check, ChevronRight, KeyRound } from 'lucide-react'
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -14,9 +14,8 @@ import {
     type CreditTier,
 } from '@/features/home/model-selection'
 import { useByokList } from '@/features/profile/hooks/useByokData'
-import { BottomSheet, SheetHeader } from '@/shared/components/ui/BottomSheet'
+import { useBottomSheet } from '@/shared/components/ui/BottomSheet'
 import { Icons } from '@/shared/components/ui/Icons'
-import { useIsPhone } from '@/shared/lib/useIsPhone'
 import { cn } from '@/shared/lib/utils'
 
 interface ModelControlProps {
@@ -138,26 +137,73 @@ const segmentClass = (isActive: boolean) =>
         'flex items-center justify-center w-7 h-6 rounded-full transition-colors outline-none cursor-pointer touch-manipulation',
         isActive ? 'bg-white/10 text-[#EDEDEF]' : 'text-[#8E8E8E] hover:text-[#EDEDEF]'
     )
+/** a segment with a word in it: Fast | Deep, Credits | Your keys */
+const wordSegmentClass = (isActive: boolean) =>
+    cn(
+        'px-2.5 h-6 rounded-full text-[12px] font-medium transition-colors outline-none cursor-pointer touch-manipulation',
+        isActive ? 'bg-white/10 text-[#EDEDEF]' : 'text-[#8E8E8E] hover:text-[#EDEDEF]'
+    )
+const configRowClass =
+    'flex items-center justify-between gap-3 px-3 rounded-xl font-medium text-[#EDEDEF] min-w-0'
 
 /**
- * The switch between December credits and your own keys. It sits left of the mic and
- * always shows. With no key saved, the key side opens the keys page.
+ * The switch between December credits and your own keys. With no key saved, the key
+ * side opens the keys page.
+ * - `icons` (desktop): it sits left of the mic.
+ * - `words` (phones): it is the "Run on" row of Configuration.
  */
-export const SourceSwitch: React.FC<ModelControlProps & { onOpenAuth?: () => void }> = (props) => {
-    const { isAuthenticated, onOpenAuth } = props
+export const SourceSwitch: React.FC<
+    ModelControlProps & { onOpenAuth?: () => void; variant?: 'icons' | 'words' }
+> = (props) => {
+    const { isAuthenticated, onOpenAuth, variant = 'icons' } = props
     const navigate = useNavigate()
+    // inside a sheet, the keys page opens after the sheet has closed
+    const { closeThen } = useBottomSheet()
     const { hasKeys, isOnKey, switchToCredits, switchToKey } = useModelSource(props)
 
+    const pickCredits = () => {
+        if (isOnKey) switchToCredits()
+    }
     const pickKey = () => {
         if (!isAuthenticated) {
             onOpenAuth?.()
             return
         }
         if (!hasKeys) {
-            navigate('/settings/models')
+            closeThen(() => navigate('/settings/models'))
             return
         }
         if (!isOnKey) switchToKey()
+    }
+
+    if (variant === 'words') {
+        return (
+            <div
+                role="radiogroup"
+                aria-label="Model source"
+                className={cn(groupClass, 'ml-0 shrink-0')}
+            >
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!isOnKey}
+                    aria-label="December credits"
+                    onClick={pickCredits}
+                    className={wordSegmentClass(!isOnKey)}
+                >
+                    Credits
+                </button>
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={isOnKey}
+                    onClick={pickKey}
+                    className={wordSegmentClass(isOnKey)}
+                >
+                    Your keys
+                </button>
+            </div>
+        )
     }
 
     return (
@@ -172,9 +218,7 @@ export const SourceSwitch: React.FC<ModelControlProps & { onOpenAuth?: () => voi
                     role="radio"
                     aria-checked={!isOnKey}
                     aria-label="December credits"
-                    onClick={() => {
-                        if (isOnKey) switchToCredits()
-                    }}
+                    onClick={pickCredits}
                     className={segmentClass(!isOnKey)}
                 >
                     <Icons.DecemberLogo className="w-3.5 h-3.5" strokeWidth={1} />
@@ -213,12 +257,7 @@ export const TierSwitch: React.FC<ModelControlProps & { className?: string }> = 
                         role="radio"
                         aria-checked={tier === value}
                         onClick={() => switchToCredits(value)}
-                        className={cn(
-                            'px-2.5 h-6 rounded-full text-[12px] font-medium transition-colors outline-none cursor-pointer touch-manipulation',
-                            tier === value
-                                ? 'bg-white/10 text-[#EDEDEF]'
-                                : 'text-[#8E8E8E] hover:text-[#EDEDEF]'
-                        )}
+                        className={wordSegmentClass(tier === value)}
                     >
                         {CREDIT_TIER_LABELS[value]}
                     </button>
@@ -229,13 +268,23 @@ export const TierSwitch: React.FC<ModelControlProps & { className?: string }> = 
     )
 }
 
+/** credits or your keys as the first Configuration row, for phones */
+export const SourceConfigRow: React.FC<ModelControlProps & { onOpenAuth?: () => void }> = (
+    props
+) => (
+    <div className={configRowClass}>
+        <span>Run on</span>
+        <SourceSwitch {...props} variant="words" />
+    </div>
+)
+
 /** Fast | Deep as a Configuration row, for phones. Hidden on your own key */
 export const TierConfigRow: React.FC<ModelControlProps> = (props) => {
     const { isOnKey } = useModelSource(props)
     if (isOnKey) return null
 
     return (
-        <div className="flex items-center justify-between gap-3 px-3 rounded-xl font-medium text-[#EDEDEF] min-w-0">
+        <div className={configRowClass}>
             <span>Speed</span>
             <TierSwitch {...props} className="ml-0" />
         </div>
@@ -243,64 +292,210 @@ export const TierConfigRow: React.FC<ModelControlProps> = (props) => {
 }
 
 /**
- * The model control of the prompt box, left of the box.
- * - On December credits: the Fast | Deep switch, unless `showTier` is off (phones put it
- *   in Configuration).
+ * The Model row of Configuration, for phones on your own key. It opens the model list,
+ * the level under Configuration in the same sheet.
+ */
+export const ModelConfigRow: React.FC<ModelControlProps & { onOpen: () => void }> = (props) => {
+    const { selectedModel, onOpen } = props
+    const { isOnKey } = useModelSource(props)
+    if (!isOnKey) return null
+
+    return (
+        <button
+            type="button"
+            onClick={onOpen}
+            className={cn(
+                configRowClass,
+                'w-full text-left outline-none cursor-pointer active:bg-[#242424]'
+            )}
+        >
+            <span>Model</span>
+            <span className="flex items-center gap-1.5 min-w-0 text-[12.5px] font-normal text-[#8F8E8D]">
+                <span className="truncate max-w-[160px]">{shortName(selectedModel || '')}</span>
+                <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+            </span>
+        </button>
+    )
+}
+
+/**
+ * Phones: the text left of the mic. On December credits it reads Fast or Deep and opens
+ * Configuration. On your own key it reads the model name and opens the model list, the
+ * level under Configuration: Back goes up to the credits / keys switch.
+ */
+export const PhoneModelText: React.FC<
+    ModelControlProps & {
+        onOpenAuth?: () => void
+        onOpenConfig: () => void
+        onOpenModels: () => void
+    }
+> = (props) => {
+    const { isAuthenticated, selectedModel, onOpenAuth, onOpenConfig, onOpenModels } = props
+    const { isOnKey, tier } = useModelSource(props)
+    const text = isOnKey ? shortName(selectedModel || '') : CREDIT_TIER_LABELS[tier]
+
+    return (
+        <button
+            type="button"
+            aria-label={isOnKey ? 'Select Model' : `Speed: ${text}`}
+            onClick={() => {
+                if (!isAuthenticated && onOpenAuth) {
+                    onOpenAuth()
+                    return
+                }
+                if (isOnKey) onOpenModels()
+                else onOpenConfig()
+            }}
+            className="flex items-center gap-1 h-8 px-2 rounded-full text-[12px] font-medium text-[#8E8E8E] active:bg-white/5 transition-colors outline-none cursor-pointer touch-manipulation min-w-0"
+        >
+            <span className="truncate max-w-[120px]">{text}</span>
+            <Icons.ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
+        </button>
+    )
+}
+
+const ManageKeysRow: React.FC<{ onPick: () => void }> = ({ onPick }) => (
+    <button
+        type="button"
+        onClick={onPick}
+        className="px-3 py-1.5 rounded-xl text-left text-[12.5px] font-medium text-[#8F8E8D] hover:text-[#D6D5D4] hover:bg-[#252525] transition-colors outline-none w-full cursor-pointer"
+    >
+        Manage keys
+    </button>
+)
+
+/** the rows of the phone model list: with more than one key, the keys come first */
+const KeyModelsList: React.FC<
+    ModelControlProps & {
+        groups: KeyGroup[]
+        /** the key whose models show. null for the list of keys */
+        provider: string | null
+        onProvider: (provider: string) => void
+        onPicked: () => void
+    }
+> = (props) => {
+    const { selectedModel, selectedProvider, onSelectModel, groups, provider } = props
+    const { onProvider, onPicked } = props
+    const navigate = useNavigate()
+    // the keys page opens after the sheet has closed
+    const { closeThen } = useBottomSheet()
+    const openGroup =
+        groups.length === 1 ? groups[0] : groups.find((group) => group.provider === provider)
+
+    return (
+        <div className="flex flex-col pb-1 [&>button]:py-2.5 [&>button]:text-[14px]">
+            {openGroup ? (
+                <KeyModelList
+                    group={openGroup}
+                    selectedModel={selectedModel}
+                    isSelectedProvider={selectedProvider === openGroup.provider}
+                    onPick={(model) => {
+                        onPicked()
+                        onSelectModel?.(model, openGroup.provider, 'OWN_KEY')
+                    }}
+                />
+            ) : (
+                groups.map((group) => (
+                    <button
+                        key={group.provider}
+                        type="button"
+                        onClick={() => onProvider(group.provider)}
+                        className={rowClass}
+                    >
+                        <span className="truncate">{group.name}</span>
+                        <span className="shrink-0 text-[12px] font-normal text-[#8F8E8D]">
+                            {group.models.length} {group.models.length === 1 ? 'model' : 'models'}
+                        </span>
+                    </button>
+                ))
+            )}
+            <ManageKeysRow onPick={() => closeThen(() => navigate('/settings/models'))} />
+        </div>
+    )
+}
+
+/**
+ * Phones: the model list of your keys as a level of the Configuration sheet. With more
+ * than one key the keys come first, and a key opens its models. `onPicked` runs when a
+ * model is picked.
+ */
+export const useKeyModelsLevel = (props: ModelControlProps, onPicked: () => void) => {
+    const { groups } = useModelSource(props)
+    const [provider, setProvider] = React.useState<string | null>(null)
+    // the key that is open, when the list has a step for the keys
+    const openGroup =
+        groups.length > 1 ? groups.find((group) => group.provider === provider) : undefined
+
+    return {
+        title: openGroup ? openGroup.name : 'Model',
+        /** up one step inside the list. false when the list is at its first step */
+        back: () => {
+            if (!openGroup) return false
+            setProvider(null)
+            return true
+        },
+        /** the first step again, for the next time the list opens */
+        reset: () => setProvider(null),
+        content: (
+            <KeyModelsList
+                {...props}
+                groups={groups}
+                provider={openGroup ? provider : null}
+                onProvider={setProvider}
+                onPicked={onPicked}
+            />
+        ),
+    }
+}
+
+/**
+ * The model control of the prompt box on desktop, left of the box.
+ * - On December credits: the Fast | Deep switch.
  * - On your own key: a button with the model name. Its menu lists your keys, and the
  *   models of a key open beside it.
- * The credits / keys switch is `SourceSwitch`, next to the mic.
+ * The credits / keys switch is `SourceSwitch`, next to the mic. Phones use
+ * `PhoneModelText` and the Configuration sheet in its place.
  */
-export const ModelControl: React.FC<ModelControlProps & { showTier?: boolean }> = (props) => {
-    const { selectedModel, selectedProvider, onSelectModel, showTier = true } = props
+export const ModelControl: React.FC<ModelControlProps> = (props) => {
+    const { selectedModel, selectedProvider, onSelectModel } = props
     const navigate = useNavigate()
-    const isPhone = useIsPhone()
     const { groups, isOnKey } = useModelSource(props)
     const [isMenuOpen, setIsMenuOpen] = React.useState(false)
     const [menuPlacement, setMenuPlacement] = React.useState<'top' | 'bottom'>('bottom')
-    const [sheetProvider, setSheetProvider] = React.useState<string | null>(null)
     const menuRef = React.useRef<HTMLDivElement>(null)
 
-    const closeMenu = React.useCallback(() => {
-        setIsMenuOpen(false)
-        setSheetProvider(null)
-    }, [])
+    const closeMenu = React.useCallback(() => setIsMenuOpen(false), [])
 
     React.useEffect(() => {
-        if (!isMenuOpen || isPhone) return
+        if (!isMenuOpen) return
         const onMouseDown = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) closeMenu()
         }
         document.addEventListener('mousedown', onMouseDown)
         return () => document.removeEventListener('mousedown', onMouseDown)
-    }, [isMenuOpen, isPhone, closeMenu])
+    }, [isMenuOpen, closeMenu])
 
-    const pickKeyModel = (provider: string, model: string) => {
-        closeMenu()
-        onSelectModel?.(model, provider, 'OWN_KEY')
-    }
+    if (!isOnKey) return <TierSwitch {...props} />
 
     const modelList = (group: KeyGroup) => (
         <KeyModelList
             group={group}
             selectedModel={selectedModel}
             isSelectedProvider={selectedProvider === group.provider}
-            onPick={(model) => pickKeyModel(group.provider, model)}
+            onPick={(model) => {
+                closeMenu()
+                onSelectModel?.(model, group.provider, 'OWN_KEY')
+            }}
         />
     )
-
     const manageKeys = (
-        <button
-            type="button"
-            onClick={() => {
+        <ManageKeysRow
+            onPick={() => {
                 closeMenu()
                 navigate('/settings/models')
             }}
-            className="px-3 py-1.5 rounded-xl text-left text-[12.5px] font-medium text-[#8F8E8D] hover:text-[#D6D5D4] hover:bg-[#252525] transition-colors outline-none w-full cursor-pointer"
-        >
-            Manage keys
-        </button>
+        />
     )
-
     const providerItems: CascadeItem[] = groups.map((group) => ({
         id: group.provider,
         label: group.name,
@@ -308,107 +503,53 @@ export const ModelControl: React.FC<ModelControlProps & { showTier?: boolean }> 
         side: modelList(group),
     }))
 
-    const sheetGroup = groups.find((group) => group.provider === sheetProvider)
-
     return (
-        <>
-            {!isOnKey ? (
-                showTier && <TierSwitch {...props} />
-            ) : (
-                <div className="relative ml-1 min-w-0" ref={menuRef}>
-                    <button
-                        type="button"
-                        aria-label="Select Model"
-                        aria-expanded={isMenuOpen}
-                        onClick={(event) => {
-                            if (!isMenuOpen) {
-                                const rect = event.currentTarget.getBoundingClientRect()
-                                const spaceBelow = window.innerHeight - rect.bottom
-                                setMenuPlacement(
-                                    spaceBelow < 250 && rect.top > spaceBelow ? 'top' : 'bottom'
-                                )
-                            }
-                            setIsMenuOpen(!isMenuOpen)
-                        }}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium text-[#8E8E8E] hover:text-[#EDEDEF] hover:bg-white/5 transition-all outline-none cursor-pointer touch-manipulation border border-white/5 min-w-0 max-w-full"
-                    >
-                        <span className="truncate max-w-[120px]">
-                            {shortName(selectedModel || '')}
-                        </span>
-                        <Icons.ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
-                    </button>
-
-                    {isMenuOpen &&
-                        !isPhone &&
-                        (groups.length === 1 ? (
-                            // one key: its models open at once, with no provider step
-                            <div
-                                role="menu"
-                                aria-label="Models"
-                                className={cn(
-                                    'absolute left-0 z-50 w-[230px] max-w-[calc(100vw-32px)] max-h-[320px] overflow-y-auto no-scrollbar bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-lg shadow-black/40 flex flex-col animate-in fade-in zoom-in-95 duration-150',
-                                    menuPlacement === 'top'
-                                        ? 'bottom-[calc(100%+8px)]'
-                                        : 'top-[calc(100%+8px)]'
-                                )}
-                            >
-                                {modelList(groups[0])}
-                                {manageKeys}
-                            </div>
-                        ) : (
-                            <CascadeMenu
-                                items={providerItems}
-                                ariaLabel="Your keys"
-                                placement={menuPlacement}
-                                onClose={closeMenu}
-                                footer={manageKeys}
-                            />
-                        ))}
-                </div>
-            )}
-
-            {isPhone && isOnKey && (
-                <BottomSheet
-                    isOpen={isMenuOpen}
-                    onClose={closeMenu}
-                    onBack={() => {
-                        if (!sheetProvider || groups.length === 1) return false
-                        setSheetProvider(null)
-                        return true
-                    }}
-                    ariaLabel="Models"
-                    header={
-                        sheetGroup && groups.length > 1 ? (
-                            <SheetHeader
-                                title={sheetGroup.name}
-                                onBack={() => setSheetProvider(null)}
-                            />
-                        ) : undefined
+        <div className="relative ml-1 min-w-0" ref={menuRef}>
+            <button
+                type="button"
+                aria-label="Select Model"
+                aria-expanded={isMenuOpen}
+                onClick={(event) => {
+                    if (!isMenuOpen) {
+                        const rect = event.currentTarget.getBoundingClientRect()
+                        const spaceBelow = window.innerHeight - rect.bottom
+                        setMenuPlacement(
+                            spaceBelow < 250 && rect.top > spaceBelow ? 'top' : 'bottom'
+                        )
                     }
-                >
-                    <div className="flex flex-col pb-1 [&>button]:py-2.5 [&>button]:text-[14px]">
-                        {groups.length === 1
-                            ? modelList(groups[0])
-                            : sheetGroup
-                              ? modelList(sheetGroup)
-                              : groups.map((group) => (
-                                    <button
-                                        key={group.provider}
-                                        type="button"
-                                        onClick={() => setSheetProvider(group.provider)}
-                                        className={rowClass}
-                                    >
-                                        <span className="truncate">{group.name}</span>
-                                        <span className="shrink-0 text-[12px] font-normal text-[#8F8E8D]">
-                                            {group.models.length}{' '}
-                                            {group.models.length === 1 ? 'model' : 'models'}
-                                        </span>
-                                    </button>
-                                ))}
+                    setIsMenuOpen(!isMenuOpen)
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium text-[#8E8E8E] hover:text-[#EDEDEF] hover:bg-white/5 transition-all outline-none cursor-pointer touch-manipulation border border-white/5 min-w-0 max-w-full"
+            >
+                <span className="truncate max-w-[120px]">{shortName(selectedModel || '')}</span>
+                <Icons.ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
+            </button>
+
+            {isMenuOpen &&
+                (groups.length === 1 ? (
+                    // one key: its models open at once, with no provider step
+                    <div
+                        role="menu"
+                        aria-label="Models"
+                        className={cn(
+                            'absolute left-0 z-50 w-[230px] max-w-[calc(100vw-32px)] max-h-[320px] overflow-y-auto no-scrollbar bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-lg shadow-black/40 flex flex-col animate-in fade-in zoom-in-95 duration-150',
+                            menuPlacement === 'top'
+                                ? 'bottom-[calc(100%+8px)]'
+                                : 'top-[calc(100%+8px)]'
+                        )}
+                    >
+                        {modelList(groups[0])}
                         {manageKeys}
                     </div>
-                </BottomSheet>
-            )}
-        </>
+                ) : (
+                    <CascadeMenu
+                        items={providerItems}
+                        ariaLabel="Your keys"
+                        placement={menuPlacement}
+                        onClose={closeMenu}
+                        footer={manageKeys}
+                    />
+                ))}
+        </div>
     )
 }

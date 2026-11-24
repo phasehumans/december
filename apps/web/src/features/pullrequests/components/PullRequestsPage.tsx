@@ -1,30 +1,39 @@
 import React from 'react'
 
 import { useAppStore } from '@/app/store'
-import { ChoiceGroup } from '@/features/connections/components/ConnectionsUi'
 import { MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { requestWorkspaceTab } from '@/features/preview/lib/workspaceTabRequest'
 import { useGithubConnection } from '@/features/profile/hooks/useGithubConnection'
 import {
-    PULL_REQUEST_FILTERS,
     PULL_REQUEST_STATE_LABELS,
-    filterPullRequests,
+    isOpenPullRequest,
     searchPullRequests,
     toPullRequestRows,
-    type PullRequestFilter,
     type PullRequestState,
 } from '@/features/pullrequests/lib/pullRequests'
+import {
+    activePullRequestFilters,
+    applyPullRequestsView,
+    pullRequestFacets,
+    readPullRequestsView,
+    writePullRequestsView,
+    type PullRequestsView,
+} from '@/features/pullrequests/lib/pullRequestsView'
 import {
     ListEmptyState,
     ListErrorState,
     ListRowsSkeleton,
     ListSearchInput,
+    ListSwitch,
     ListToolbar,
     MetaDot,
     RelativeTime,
+    listActionButtonClass,
     listRowClass,
 } from '@/features/sessions/components/ListParts'
+import { ViewMenu } from '@/features/sessions/components/ViewMenu'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
+import { SESSIONS_SORT_OPTIONS, shortRepoName } from '@/features/sessions/lib/sessionsView'
 import { Icons } from '@/shared/components/ui/Icons'
 import { cn } from '@/shared/lib/utils'
 
@@ -44,6 +53,10 @@ const STATE_TAG_CLASS: Record<PullRequestState, string> = {
     closed: 'bg-red-500/10 text-red-400',
 }
 
+/** a saved value stays in its list even when no loaded row has it */
+const withPicked = (values: string[], picked: string | null) =>
+    picked && !values.includes(picked) ? [...values, picked].sort() : values
+
 interface PullRequestsPageProps {
     onOpenProject: (sessionId: string) => void
 }
@@ -53,14 +66,43 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
     const isAuthenticated = useAppStore((s) => s.isAuthenticated)
     const { data, isLoading, error, refetch } = useSessions(PULL_REQUEST_QUERY)
     const github = useGithubConnection(isAuthenticated)
-    const [filter, setFilter] = React.useState<PullRequestFilter>('all')
+    // the All | Open switch next to search
+    const [onlyOpen, setOnlyOpen] = React.useState(false)
+    // the sort and filter menu. saved in the browser, like the Sessions page
+    const [view, setView] = React.useState<PullRequestsView>(readPullRequestsView)
     const [query, setQuery] = React.useState('')
+
+    const changeView = (next: Partial<PullRequestsView>) => {
+        const merged = { ...view, ...next }
+        setView(merged)
+        writePullRequestsView(merged)
+        // Merged or Closed with the switch on Open would always be empty
+        if (merged.merged || merged.closed) setOnlyOpen(false)
+    }
+    const pickOnlyOpen = (isOn: boolean) => {
+        setOnlyOpen(isOn)
+        if (isOn && (view.merged || view.closed)) {
+            const withoutStates = { ...view, merged: false, closed: false }
+            setView(withoutStates)
+            writePullRequestsView(withoutStates)
+        }
+    }
 
     const allRows = React.useMemo(() => toPullRequestRows(data?.sessions || []), [data?.sessions])
     const rows = React.useMemo(
-        () => searchPullRequests(filterPullRequests(allRows, filter), query),
-        [allRows, filter, query]
+        () => searchPullRequests(applyPullRequestsView(allRows, view, onlyOpen), query),
+        [allRows, view, onlyOpen, query]
     )
+    const openCount = React.useMemo(() => allRows.filter(isOpenPullRequest).length, [allRows])
+    const facets = React.useMemo(() => pullRequestFacets(allRows), [allRows])
+    const activeFilters = activePullRequestFilters(view)
+    const filtersOn = onlyOpen || activeFilters.length > 0
+    const clearFilters = () => {
+        changeView({ merged: false, closed: false, repo: null, tag: null })
+        setOnlyOpen(false)
+    }
+    // with Newest or Oldest the row shows the created time, like the Sessions rows
+    const showCreated = view.sort !== 'updated'
 
     const openSession = (sessionId: string) => {
         // the session opens on its pull request view
@@ -76,9 +118,14 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
             <MobileTopBar />
 
             <div className="relative z-10 mx-auto max-w-6xl px-3.5 sm:px-6 pb-8 pt-4 md:p-16 flex flex-col">
-                <h1 className="text-[24px] font-sans font-medium tracking-[-0.025em] text-[#D6D5C9] mb-6">
-                    Pull requests
-                </h1>
+                <div className="mb-6 flex flex-col">
+                    <h1 className="text-[24px] font-sans font-medium tracking-[-0.025em] text-[#D6D5C9] mb-1">
+                        Pull requests
+                    </h1>
+                    <p className="text-[13px] text-[#7B7A79]">
+                        View all pull requests opened from your sessions.
+                    </p>
+                </div>
 
                 <ListToolbar
                     search={
@@ -89,11 +136,56 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                         />
                     }
                 >
-                    <ChoiceGroup
-                        label="Pull request state"
-                        options={PULL_REQUEST_FILTERS}
-                        value={filter}
-                        onChange={setFilter}
+                    <ListSwitch
+                        onLabel="Open"
+                        isOn={onlyOpen}
+                        onChange={pickOnlyOpen}
+                        count={openCount}
+                    />
+
+                    <div className="flex-1" />
+
+                    <ViewMenu
+                        sorts={SESSIONS_SORT_OPTIONS}
+                        sort={view.sort}
+                        onSort={(sort) => changeView({ sort })}
+                        activeFilters={activeFilters}
+                        toggles={[
+                            {
+                                key: 'merged',
+                                label: 'Merged',
+                                checked: view.merged,
+                                onToggle: () => changeView({ merged: !view.merged }),
+                            },
+                            {
+                                key: 'closed',
+                                label: 'Closed',
+                                checked: view.closed,
+                                onToggle: () => changeView({ closed: !view.closed }),
+                            },
+                        ]}
+                        lists={[
+                            {
+                                key: 'repo',
+                                label: 'Repository',
+                                value: view.repo,
+                                options: withPicked(facets.repos, view.repo).map((repo) => ({
+                                    value: repo,
+                                    label: shortRepoName(repo),
+                                })),
+                                onPick: (repo) => changeView({ repo }),
+                            },
+                            {
+                                key: 'tag',
+                                label: 'Tag',
+                                value: view.tag,
+                                options: withPicked(facets.tags, view.tag).map((tag) => ({
+                                    value: tag,
+                                    label: tag,
+                                })),
+                                onPick: (tag) => changeView({ tag }),
+                            },
+                        ]}
                     />
                 </ListToolbar>
 
@@ -101,25 +193,35 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                     <ListRowsSkeleton rows={4} />
                 ) : error && allRows.length === 0 ? (
                     <ListErrorState
-                        message="Could not load pull requests."
+                        message="Could not load pull requests"
                         onRetry={() => void refetch()}
                     />
                 ) : needsGithub ? (
-                    <div className="flex min-h-[240px] flex-col items-center justify-center gap-3.5 px-6 py-12 text-center text-[13px] text-[#7B7A79]">
-                        <span>Connect GitHub to see pull requests.</span>
+                    <ListEmptyState art="connect" title="Connect GitHub to see pull requests">
                         <a
                             href={github.connectUrl}
                             className="bg-white text-black hover:bg-neutral-200 transition-colors text-[13px] font-medium px-4 py-2 rounded-lg"
                         >
                             Connect GitHub
                         </a>
-                    </div>
+                    </ListEmptyState>
                 ) : rows.length === 0 ? (
                     <ListEmptyState
+                        art={allRows.length === 0 ? 'pullRequests' : 'noResults'}
                         title={
                             allRows.length === 0 ? 'No pull requests yet' : 'No pull requests found'
                         }
-                    />
+                    >
+                        {allRows.length > 0 && filtersOn && (
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                className={listActionButtonClass}
+                            >
+                                Clear filters
+                            </button>
+                        )}
+                    </ListEmptyState>
                 ) : (
                     <div className="flex flex-col gap-1 pb-4">
                         {rows.map((row) => (
@@ -158,7 +260,17 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                                         )}
                                         <MetaDot />
                                         <span className="shrink-0">
-                                            <RelativeTime iso={row.updatedAt} label="Updated" />
+                                            {showCreated ? (
+                                                <>
+                                                    Created{' '}
+                                                    <RelativeTime
+                                                        iso={row.createdAt}
+                                                        label="Created"
+                                                    />
+                                                </>
+                                            ) : (
+                                                <RelativeTime iso={row.updatedAt} label="Updated" />
+                                            )}
                                         </span>
                                     </div>
                                 </div>

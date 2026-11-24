@@ -203,7 +203,7 @@ export const usePromptInputController = ({
             if (prefill.prompt !== undefined) handleInputChange(prefill.prompt)
             if (prefill.repo) {
                 setSelectedRepos([prefill.repo])
-                setSelectedBranch(prefill.repo.defaultBranch || 'main')
+                setSelectedBranch(prefill.branch || prefill.repo.defaultBranch || 'main')
             }
             // after the new-session reset and its own focus call
             setTimeout(() => {

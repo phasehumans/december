@@ -195,7 +195,7 @@ describe('sending a prompt on an own key', () => {
     })
 })
 
-describe('Your keys settings page', () => {
+describe('API keys settings page', () => {
     it('shows saved keys by hint only', async () => {
         spies.push(
             spyOn(byokAPI, 'list').mockImplementation(async () => ({

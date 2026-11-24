@@ -1,9 +1,10 @@
-import { X } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
+
+import { authPrimaryButtonClass } from './authModalStyles'
+import { AuthPageShell } from './AuthPageShell'
 
 import { authAPI } from '@/features/auth/api/auth'
 import { githubOAuth } from '@/features/auth/githubOAuth'
-import { Icons } from '@/shared/components/ui/Icons'
 import { LogoLoader } from '@/shared/components/ui/LogoLoader'
 import { clearPersistedQueryCache } from '@/shared/lib/query-cache'
 
@@ -23,7 +24,7 @@ export const GithubCallback = () => {
         const error = urlParams.get('error')
         const errorDescription = urlParams.get('error_description')
         const { isStateValid, returnPath } = githubOAuth.complete(urlParams.get('state'))
-        // keep where the user started (cli login, device activation) for the retry
+        // keep where the user started (device activation) for the retry
         if (returnPath !== '/') {
             setBackPath(`/login?redirect=${encodeURIComponent(returnPath)}`)
         }
@@ -64,47 +65,19 @@ export const GithubCallback = () => {
     }, [])
 
     if (status === 'error') {
+        // the look of the sign-up page: the logo, one red line, one button
         return (
-            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#141414] font-sans p-4 sm:p-6 overflow-y-auto">
+            <AuthPageShell tone="red" line={errorMsg || 'GitHub sign-in failed. Try again.'}>
                 <button
                     type="button"
                     onClick={() => {
                         window.location.href = backPath
                     }}
-                    className="flex items-center justify-center absolute top-5 right-5 text-[#888888] hover:text-[#EDEDED] p-2 rounded-lg hover:bg-white/5 transition-colors z-50 outline-none cursor-pointer"
-                    aria-label="Close"
-                    title="Close"
+                    className={authPrimaryButtonClass}
                 >
-                    <X size={16} strokeWidth={1.75} />
+                    Try again
                 </button>
-
-                <div className="w-full max-w-[380px] relative z-10 flex flex-col animate-in fade-in duration-200">
-                    <div className="flex flex-col items-center text-center mb-6">
-                        <div className="mb-5 text-white">
-                            <Icons.DecemberLogo className="w-[42px] h-[42px] text-white" />
-                        </div>
-                        <h2 className="text-[22px] sm:text-[24px] font-medium text-white tracking-[-0.025em] leading-snug mb-2">
-                            Authentication Failed
-                        </h2>
-                        <p className="text-[13px] text-[#A1A1A6] leading-relaxed max-w-sm">
-                            {errorMsg ||
-                                'An error occurred while authenticating with GitHub. Please return to login and try again.'}
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                window.location.href = backPath
-                            }}
-                            className="w-full bg-white hover:bg-[#EDEDED] text-[#090a0f] font-sans text-xs sm:text-[13px] font-medium h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer"
-                        >
-                            Back to Login
-                        </button>
-                    </div>
-                </div>
-            </div>
+            </AuthPageShell>
         )
     }
 

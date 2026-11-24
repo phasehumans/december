@@ -42,6 +42,51 @@ export const ListToolbar: React.FC<{ search: React.ReactNode; children: React.Re
     </div>
 )
 
+const switchSideClass = (active: boolean) =>
+    cn(
+        'flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium rounded-md transition-all cursor-pointer',
+        active ? 'bg-[#282828] text-white shadow-sm' : 'text-[#8F8E8D] hover:text-[#D6D5C9]'
+    )
+
+/** the All | Running and All | Open switch next to search: a green dot, a word and a count */
+export const ListSwitch: React.FC<{
+    /** the word of the second side: "Running", "Open" */
+    onLabel: string
+    isOn: boolean
+    onChange: (isOn: boolean) => void
+    count?: number
+}> = ({ onLabel, isOn, onChange, count }) => (
+    <div className="flex items-center gap-1 bg-[#1a1a1a] p-0.5 rounded-lg border border-[#282828] shrink-0">
+        <button
+            type="button"
+            aria-pressed={!isOn}
+            onClick={() => onChange(false)}
+            className={switchSideClass(!isOn)}
+        >
+            All
+        </button>
+        <button
+            type="button"
+            aria-pressed={isOn}
+            onClick={() => onChange(true)}
+            className={switchSideClass(isOn)}
+        >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>{onLabel}</span>
+            {count !== undefined && count > 0 && (
+                <span
+                    className={cn(
+                        'text-[11.5px] tabular-nums',
+                        isOn ? 'text-[#949494]' : 'text-[#6B6A69]'
+                    )}
+                >
+                    {count}
+                </span>
+            )}
+        </button>
+    </div>
+)
+
 /** running and starting sessions: a dot and a word, no pill */
 export const RunStatus: React.FC<{ vmStatus?: string | null; className?: string }> = ({
     vmStatus,
@@ -95,53 +140,154 @@ export const RelativeTime: React.FC<{ iso: string; label?: string }> = ({ iso, l
 /** grey dot between parts of a meta line */
 export const MetaDot: React.FC = () => <span className="text-[#4A4A4A]">·</span>
 
-const Cube: React.FC = () => (
-    <svg viewBox="0 0 128 112" fill="none" className="h-full w-full" aria-hidden="true">
-        <path
-            d="M28 42.5 64 22l36 20.5v43L64 106 28 85.5v-43Z"
+// the drawings of the empty states: one hand-drawn line drawing for each case (review picks
+// D1, then NS1, NP1, GH4, NR2, CL1 and size SZ2). the lines are plain paths in a 128 x 112
+// box; a small displacement filter gives the hand-drawn look. no decoration marks.
+
+export type ListArtKind = 'sessions' | 'pullRequests' | 'connect' | 'noResults' | 'loadError'
+
+const circlePath = (cx: number, cy: number, r: number) =>
+    `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`
+
+const roundRectPath = (x: number, y: number, w: number, h: number, r: number) =>
+    `M${x + r} ${y}h${w - 2 * r}a${r} ${r} 0 0 1 ${r} ${r}v${h - 2 * r}a${r} ${r} 0 0 1 ${-r} ${r}` +
+    `h${-(w - 2 * r)}a${r} ${r} 0 0 1 ${-r} ${-r}v${-(h - 2 * r)}a${r} ${r} 0 0 1 ${r} ${-r}Z`
+
+interface ListArtShapes {
+    /** drawn as strokes */
+    lines: string[]
+    /** small filled shapes, like the buttons of a window */
+    dots?: string[]
+    /** lines that cut through what is behind them: a gap in the page colour, then the line */
+    cuts?: string[]
+}
+
+const LIST_ART: Record<ListArtKind, ListArtShapes> = {
+    // no sessions yet: a terminal window with a prompt
+    sessions: {
+        lines: [roundRectPath(12, 14, 104, 84, 9), 'M12 32H116', 'M28 50l13 10-13 10', 'M48 71h20'],
+        dots: [circlePath(24, 23, 2), circlePath(32, 23, 2)],
+    },
+    // no pull requests yet: the pull request mark
+    pullRequests: {
+        lines: [
+            'M34 36V76',
+            'M94 38v12q0 16-16 16H54',
+            'M64 56l-10 10 10 10',
+            circlePath(34, 24, 11),
+            circlePath(34, 88, 11),
+            circlePath(94, 26, 11),
+        ],
+    },
+    // GitHub is not connected: a loose cable with its plug
+    connect: {
+        lines: ['M8 40q4 44 28 30t26 0', roundRectPath(62, 54, 34, 32, 8), 'M96 62h14M96 78h14'],
+    },
+    // search or a filter gives nothing: a magnifier over a list
+    noResults: {
+        lines: [
+            'M10 24h70',
+            'M10 44h44',
+            'M10 64h34',
+            'M10 84h44',
+            circlePath(84, 58, 26),
+            'M103 77l19 19',
+        ],
+    },
+    // the list could not load: a cloud with a line through it
+    loadError: {
+        lines: ['M36 88a21 21 0 0 1-2-42a28 28 0 0 1 54-6a23 23 0 0 1 4 48Z'],
+        cuts: ['M22 102L106 12'],
+    },
+}
+
+/** the drawing is shown 160 px wide. the line stays 2.4 px on screen at that size */
+const LIST_ART_STROKE = (2.4 * 128) / 160
+
+export const ListArt: React.FC<{ kind: ListArtKind }> = ({ kind }) => {
+    // useId can hold characters that do not work inside url(#...)
+    const filterId = `list-art-${React.useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
+    const art = LIST_ART[kind]
+    return (
+        <svg
+            viewBox="0 0 128 112"
+            fill="none"
             stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinejoin="round"
-        />
-        <path
-            d="M28 42.5 64 63l36-20.5M64 63v43"
-            stroke="currentColor"
-            strokeWidth="2.4"
+            strokeWidth={LIST_ART_STROKE}
             strokeLinecap="round"
             strokeLinejoin="round"
-        />
-    </svg>
-)
+            className="h-full w-full"
+            aria-hidden="true"
+        >
+            <defs>
+                <filter id={filterId} x="-8%" y="-8%" width="116%" height="116%">
+                    <feTurbulence
+                        type="fractalNoise"
+                        baseFrequency="0.045"
+                        numOctaves="2"
+                        seed="7"
+                        result="noise"
+                    />
+                    <feDisplacementMap
+                        in="SourceGraphic"
+                        in2="noise"
+                        scale="3.4"
+                        xChannelSelector="R"
+                        yChannelSelector="G"
+                    />
+                </filter>
+            </defs>
+            <g filter={`url(#${filterId})`}>
+                {art.lines.map((d) => (
+                    <path key={d} d={d} />
+                ))}
+                {art.dots?.map((d) => (
+                    <path key={d} d={d} fill="currentColor" stroke="none" />
+                ))}
+                {art.cuts?.map((d) => (
+                    <React.Fragment key={d}>
+                        <path
+                            d={d}
+                            stroke="var(--color-background, #141414)"
+                            strokeWidth={LIST_ART_STROKE * 4.5}
+                        />
+                        <path d={d} />
+                    </React.Fragment>
+                ))}
+            </g>
+        </svg>
+    )
+}
 
-/** empty list and no results: the cube and one title */
-export const ListEmptyState: React.FC<{ title: string; children?: React.ReactNode }> = ({
-    title,
-    children,
-}) => (
+/** empty list, no results, not connected: the drawing, one title, then an optional button */
+export const ListEmptyState: React.FC<{
+    title: string
+    art?: ListArtKind
+    children?: React.ReactNode
+}> = ({ title, art = 'sessions', children }) => (
     <div className="flex min-h-[360px] flex-col items-center justify-center px-6 py-16 text-center">
-        <div className="mb-6 h-24 w-28 text-[#8A8987]">
-            <Cube />
+        <div className="mb-5 h-[140px] w-40 max-w-full text-[#8A8987]">
+            <ListArt kind={art} />
         </div>
         <h2 className="text-[17px] font-medium text-[#D6D5C9]">{title}</h2>
         {children && <div className="mt-4 flex flex-col items-center gap-3">{children}</div>}
     </div>
 )
 
-/** the list could not load: say so where the rows would be, with Try again */
-export const ListErrorState: React.FC<{ message: string; onRetry: () => void }> = ({
-    message,
-    onRetry,
-}) => (
-    <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 px-6 py-12 text-center text-[13px] text-[#7B7A79]">
-        <span>{message}</span>
-        <button
-            type="button"
-            onClick={onRetry}
-            className="rounded-lg border border-[#383736] px-3 py-1 text-[12.5px] font-medium text-[#D6D5C9] transition-colors hover:bg-[#242323] cursor-pointer"
-        >
+/** the small outline button under an empty or error state */
+export const listActionButtonClass =
+    'rounded-lg border border-[#383736] px-3 py-1 text-[12.5px] font-medium text-[#D6D5C9] transition-colors hover:bg-[#242323] cursor-pointer'
+
+/** the list could not load: the same box as the empty list, with Try again */
+export const ListErrorState: React.FC<{
+    message: string
+    onRetry: () => void
+}> = ({ message, onRetry }) => (
+    <ListEmptyState title={message} art="loadError">
+        <button type="button" onClick={onRetry} className={listActionButtonClass}>
             Try again
         </button>
-    </div>
+    </ListEmptyState>
 )
 
 const SKELETON_WIDTHS = [48, 62, 38, 55, 44, 58, 50]

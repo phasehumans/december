@@ -11,6 +11,8 @@ export interface TooltipProps {
     className?: string
     shortcut?: string
     usePortal?: boolean
+    /** hides the tooltip, for a button whose menu is open */
+    disabled?: boolean
 }
 
 export const Tooltip: React.FC<TooltipProps> = ({
@@ -21,6 +23,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
     className,
     shortcut,
     usePortal = false,
+    disabled = false,
 }) => {
     const [isOpen, setIsOpen] = React.useState(false)
     const [coords, setCoords] = React.useState<{
@@ -131,7 +134,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
             className={cn('relative group/tooltip inline-flex', className)}
         >
             {children}
-            {usePortal ? (
+            {disabled ? null : usePortal ? (
                 isOpen &&
                 coords &&
                 typeof document !== 'undefined' &&

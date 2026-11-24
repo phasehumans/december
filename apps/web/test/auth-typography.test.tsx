@@ -145,17 +145,17 @@ describe('Auth Flow Typography & Landing Page Font Alignment', () => {
         expect(screen.getByRole('button', { name: 'Use a different email' })).toBeDefined()
     })
 
-    it('GithubCallback error state matches minimal auth modal layout and typography', async () => {
+    it('GithubCallback error state follows the sign-up page: logo, one red line, one button', async () => {
         const { MemoryRouter } = await import('react-router-dom')
         const { GithubCallback } = await import('@/features/auth/components/GithubCallback')
 
-        // Mock window.location.search with error
-        const originalSearch = window.location.search
+        // the page reads the reason from the address
+        const happyDOM = (window as unknown as { happyDOM: { setURL: (url: string) => void } })
+            .happyDOM
+        const originalUrl = window.location.href
         try {
-            window.history.pushState(
-                {},
-                '',
-                '/auth/github/callback?error=access_denied&error_description=GitHub+OAuth+failed'
+            happyDOM.setURL(
+                'http://localhost/github/callback?error=access_denied&error_description=GitHub+OAuth+failed'
             )
 
             const { container } = render(
@@ -164,23 +164,21 @@ describe('Auth Flow Typography & Landing Page Font Alignment', () => {
                 </MemoryRouter>
             )
 
-            const heading = screen.getByRole('heading', { level: 2 })
-            expect(heading.textContent).toBe('Authentication Failed')
-            expect(heading.className).toContain('font-medium')
-            expect(heading.className).toContain('tracking-[-0.025em]')
-            expect(heading.className).toContain('text-white')
+            // no heading and no close button: the reason is the one line under the logo
+            expect(screen.queryByRole('heading')).toBeNull()
+            expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+            const reason = screen.getByRole('alert')
+            expect(reason.textContent).toBe('GitHub OAuth failed')
+            expect(reason.className).toContain('text-red-400')
+            expect(container.querySelector('svg')?.getAttribute('class')).toContain('w-[36px]')
 
-            // Must NOT contain harsh legacy corner-brackets or 01 / OAUTH_ERROR badge
-            expect(container.querySelector('.corner-brackets')).toBeNull()
-            expect(screen.queryByText(/OAUTH_ERROR/)).toBeNull()
-
-            // Primary action button must match minimal login button
-            const backBtn = screen.getByRole('button', { name: /Back to Login/i })
-            expect(backBtn).toBeDefined()
-            expect(backBtn.className).toContain('bg-white')
-            expect(backBtn.className).toContain('text-[#090a0f]')
+            // the one action is the light button of the sign-up page
+            const retry = screen.getByRole('button', { name: 'Try again' })
+            expect(retry.className).toContain('bg-[#EDEDED]')
+            expect(retry.className).toContain('h-9')
+            expect(retry.className).toContain('rounded-md')
         } finally {
-            window.history.pushState({}, '', originalSearch || '/')
+            happyDOM.setURL(originalUrl)
         }
     })
 })

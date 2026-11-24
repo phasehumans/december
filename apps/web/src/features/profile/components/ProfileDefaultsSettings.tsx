@@ -28,7 +28,7 @@ const EFFORTS: { value: Effort; label: string }[] = [
 
 /**
  * Defaults (N2-B): what a new session starts with. Model source is the real setting, moved
- * here from the Your keys page. The other rows and the model for each step (N25) are ui only.
+ * here from the API keys page. The other rows and the model for each step (N25) are ui only.
  */
 export const ProfileDefaultsSettings: React.FC = () => {
     const isPreview = usePreviewOn()

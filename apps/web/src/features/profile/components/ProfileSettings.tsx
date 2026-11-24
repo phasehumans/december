@@ -132,7 +132,7 @@ const NAV_ITEMS: SettingsNavItem[] = [
         icon: <Lock className={navIconClass} strokeWidth={1.5} />,
     },
     {
-        label: 'Your keys',
+        label: 'API keys',
         to: `/settings/${getSlugForProfileTab('Models')}`,
         tabs: ['Models'],
         // the key, the same icon as "Your keys" in the model switch of the prompt box

@@ -1,4 +1,12 @@
-import { Folder, Lock, Paperclip, Plug, Server, SlidersHorizontal, Zap } from 'lucide-react'
+import {
+    Folder,
+    Lock,
+    Paperclip,
+    Puzzle,
+    Shapes,
+    SlidersHorizontal,
+    SquareSlash,
+} from 'lucide-react'
 import React, { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -6,13 +14,23 @@ import { BottomSheet, SheetHeader } from './BottomSheet'
 import { Icons } from './Icons'
 
 import type { BillingSource } from '@/features/home/model-selection'
+import type { SlashCommand } from '@/features/home/slash/commands'
 import type { GithubRepo } from '@/features/profile/api/profile'
 import type { BackendSession } from '@/features/sessions/api/session'
 
 import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { CascadeMenu, type CascadeItem } from '@/features/home/components/CascadeMenu'
-import { ModelControl, SourceSwitch, TierConfigRow } from '@/features/home/components/ModelControl'
 import {
+    ModelConfigRow,
+    ModelControl,
+    PhoneModelText,
+    SourceConfigRow,
+    SourceSwitch,
+    TierConfigRow,
+    useKeyModelsLevel,
+} from '@/features/home/components/ModelControl'
+import {
+    CommandSideList,
     McpSessionList,
     PluginSessionList,
     PromptConfigRows,
@@ -46,8 +64,11 @@ interface PromptFooterProps {
     selectedProvider?: string
     selectedSource?: BillingSource
     onSelectModel?: (model: string, provider?: string, source?: BillingSource) => void
-    /** the slash icon: types a slash in the box and opens the command menu */
+    /** the Commands row of the + menu for a signed-out visitor: types a slash in the box */
     onSlash?: () => void
+    /** the Commands row of the + menu: the list beside it, and what a pick runs */
+    slashCommands?: readonly SlashCommand[]
+    onPickCommand?: (command: SlashCommand) => void
     /** picks from the lists beside the + menu */
     onPickRepo?: (repo: GithubRepo) => void
     onPickSession?: (session: BackendSession) => void
@@ -77,6 +98,8 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     selectedSource = 'CREDITS',
     onSelectModel,
     onSlash,
+    slashCommands,
+    onPickCommand,
     onPickRepo,
     onPickSession,
     onPickSecret,
@@ -89,6 +112,8 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     const [sheetItemId, setSheetItemId] = useState<string | null>(null)
     const [isConfigOpen, setIsConfigOpen] = useState(false)
     const [configMenuPosition, setConfigMenuPosition] = useState<'top' | 'bottom'>('bottom')
+    /** phones: the level of the Configuration sheet. the model list is the level under it */
+    const [configLevel, setConfigLevel] = useState<'root' | 'models'>('root')
     // skills, plugins, MCPs and the configuration have no backend yet. they work in demo mode
     const [demo] = useState(isConnectionsDemoActive)
     const isConfigChanged = usePromptConfig(isPromptConfigChanged)
@@ -151,8 +176,21 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         isAuthenticated,
         selectedModel,
         selectedProvider,
-        selectedSource,
+        // the 'CREDITS' default above reads as a plain string, so the type is named again
+        selectedSource: selectedSource as BillingSource,
         onSelectModel,
+    }
+
+    // phones: the model list inside the Configuration sheet. a pick closes the sheet
+    const modelsLevel = useKeyModelsLevel(modelProps, () => setIsConfigOpen(false))
+    const openConfig = (level: 'root' | 'models') => {
+        setConfigLevel(level)
+        modelsLevel.reset()
+        setIsConfigOpen(true)
+    }
+    /** Back in the model list: up to the keys, then up to Configuration */
+    const backFromModels = () => {
+        if (!modelsLevel.back()) setConfigLevel('root')
     }
 
     const isSignedIn = Boolean(isAuthenticated)
@@ -198,10 +236,35 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                 onPickSecret && sideWhenSignedIn(<SecretSideList onPick={picked(onPickSecret)} />),
             onPick: run(() => onOptionSelect?.('secrets:')),
         },
+        ...(onSlash
+            ? [
+                  {
+                      id: 'commands',
+                      label: 'Commands',
+                      // the "/" in a box: same size and line weight as the other icons
+                      icon: <SquareSlash className={plusIconClass} />,
+                      side:
+                          slashCommands &&
+                          onPickCommand &&
+                          sideWhenSignedIn(
+                              <CommandSideList
+                                  commands={slashCommands}
+                                  onPick={picked(onPickCommand)}
+                              />
+                          ),
+                      // a signed-out visitor has no list: the row types a slash, and a pick
+                      // in that menu opens sign-up
+                      onPick: () => {
+                          closePlusMenu()
+                          onSlash()
+                      },
+                  },
+              ]
+            : []),
         {
             id: 'skills',
             label: 'Skills',
-            icon: <Zap className={plusIconClass} />,
+            icon: <Shapes className={plusIconClass} />,
             soon: !demo,
             side:
                 demo &&
@@ -217,7 +280,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         {
             id: 'plugins',
             label: 'Plugins',
-            icon: <Plug className={plusIconClass} />,
+            icon: <Puzzle className={plusIconClass} />,
             soon: !demo,
             side:
                 demo &&
@@ -231,7 +294,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         {
             id: 'mcps',
             label: 'MCPs',
-            icon: <Server className={plusIconClass} />,
+            icon: <Icons.Mcp className={plusIconClass} />,
             soon: !demo,
             side:
                 demo &&
@@ -307,7 +370,9 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                 if (!isPlusMenuOpen) {
                                     const rect = e.currentTarget.getBoundingClientRect()
                                     const spaceBelow = window.innerHeight - rect.bottom
-                                    if (spaceBelow < 250 && rect.top > spaceBelow) {
+                                    // the room the menu needs under the button, from its rows
+                                    const menuHeight = plusItems.length * 32 + 24
+                                    if (spaceBelow < menuHeight && rect.top > spaceBelow) {
                                         setPlusMenuPosition('top')
                                     } else {
                                         setPlusMenuPosition('bottom')
@@ -319,9 +384,13 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             }}
                             aria-label="Add"
                             aria-expanded={isPlusMenuOpen}
-                            className={iconButtonClass}
+                            className={cn(iconButtonClass, 'group/plus hover:bg-transparent')}
                         >
-                            <Icons.Plus className="w-[18px] h-[18px] stroke-[2.5px]" />
+                            {/* the only filled button on the left. the circle is smaller than
+                                the 32px tap area, so it does not weigh more than the icons */}
+                            <span className="flex items-center justify-center w-[26px] h-[26px] rounded-full bg-white/5 transition-colors group-hover/plus:bg-white/10">
+                                <Icons.Plus className="w-4 h-4 stroke-[2.5px]" />
+                            </span>
                         </button>
                         {!isPlusMenuOpen && (
                             <div className={cn(tooltipClass, 'left-0')}>
@@ -339,34 +408,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         )}
                     </div>
 
-                    {onSlash && (
-                        <div className="relative group/btn -ml-1.5 md:-ml-0.5">
-                            <button
-                                type="button"
-                                aria-label="Commands"
-                                onClick={() => onSlash()}
-                                className={iconButtonClass}
-                            >
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    className="w-[18px] h-[18px]"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                >
-                                    <path d="M15.5 4.5 8.5 19.5" />
-                                </svg>
-                            </button>
-                            <div className={cn(tooltipClass, 'left-1/2 -translate-x-1/2')}>
-                                <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                    Commands
-                                </span>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="relative group/btn -ml-1.5 md:-ml-0.5" ref={configRef}>
+                    <div className="relative group/btn ml-0.5" ref={configRef}>
                         <button
                             type="button"
                             aria-label="Configuration"
@@ -376,14 +418,16 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                     onOpenAuth()
                                     return
                                 }
-                                if (!isConfigOpen) {
-                                    const rect = e.currentTarget.getBoundingClientRect()
-                                    const spaceBelow = window.innerHeight - rect.bottom
-                                    setConfigMenuPosition(
-                                        spaceBelow < 250 && rect.top > spaceBelow ? 'top' : 'bottom'
-                                    )
+                                if (isConfigOpen) {
+                                    setIsConfigOpen(false)
+                                    return
                                 }
-                                setIsConfigOpen(!isConfigOpen)
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const spaceBelow = window.innerHeight - rect.bottom
+                                setConfigMenuPosition(
+                                    spaceBelow < 250 && rect.top > spaceBelow ? 'top' : 'bottom'
+                                )
+                                openConfig('root')
                             }}
                             className={cn(
                                 iconButtonClass,
@@ -422,16 +466,22 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         )}
                     </div>
 
-                    <ModelControl
-                        {...modelProps}
-                        // phones keep Fast | Deep in Configuration
-                        showTier={!isPhone}
-                    />
+                    {/* phones show the speed or the model as text beside the mic */}
+                    {!isPhone && <ModelControl {...modelProps} />}
                 </div>
             </div>
 
             <div className="flex items-center gap-0.5 md:gap-1.5 shrink-0">
-                <SourceSwitch {...modelProps} onOpenAuth={onOpenAuth} />
+                {isPhone ? (
+                    <PhoneModelText
+                        {...modelProps}
+                        onOpenAuth={onOpenAuth}
+                        onOpenConfig={() => openConfig('root')}
+                        onOpenModels={() => openConfig('models')}
+                    />
+                ) : (
+                    <SourceSwitch {...modelProps} onOpenAuth={onOpenAuth} />
+                )}
                 {isSupported && (
                     <div className="relative group/btn">
                         <button
@@ -542,12 +592,31 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     <BottomSheet
                         isOpen={isConfigOpen}
                         onClose={() => setIsConfigOpen(false)}
-                        ariaLabel="Configuration"
+                        onBack={() => {
+                            if (configLevel !== 'models') return false
+                            backFromModels()
+                            return true
+                        }}
+                        ariaLabel={configLevel === 'models' ? 'Models' : 'Configuration'}
+                        header={
+                            configLevel === 'models' ? (
+                                <SheetHeader title={modelsLevel.title} onBack={backFromModels} />
+                            ) : undefined
+                        }
                     >
-                        <div className="flex flex-col pb-1 [&>*]:py-2.5 [&>*]:text-[14px]">
-                            <TierConfigRow {...modelProps} />
-                            <PromptConfigRows demo={demo} mode={mode} />
-                        </div>
+                        {configLevel === 'models' ? (
+                            modelsLevel.content
+                        ) : (
+                            <div className="flex flex-col pb-1 [&>*]:py-2.5 [&>*]:text-[14px]">
+                                <SourceConfigRow {...modelProps} onOpenAuth={onOpenAuth} />
+                                <TierConfigRow {...modelProps} />
+                                <ModelConfigRow
+                                    {...modelProps}
+                                    onOpen={() => setConfigLevel('models')}
+                                />
+                                <PromptConfigRows demo={demo} mode={mode} />
+                            </div>
+                        )}
                     </BottomSheet>
                 </>
             )}

@@ -3,7 +3,7 @@ import React, { useCallback, useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useSessionListMutations } from '../hooks/useSessionListMutations'
-import { useInfiniteSessions } from '../hooks/useSessions'
+import { useInfiniteSessions, useSessions } from '../hooks/useSessions'
 
 import { SessionListModals } from './SessionListModals'
 import { SessionListView } from './SessionListView'
@@ -11,11 +11,23 @@ import { SessionListView } from './SessionListView'
 import type { DeleteModalState, RenameModalState } from '@/features/sessions/types'
 
 import { useAppStore } from '@/app/store'
+import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { generationAPI } from '@/features/generation/api/generation'
 import { MobileTopBar } from '@/features/navigation/components/MobileTopBar'
+import {
+    SERVER_FILTERS_REPO_AND_TAG,
+    applySessionsView,
+    collectSessionFacets,
+    readSessionsView,
+    sessionsViewFilters,
+    writeSessionsView,
+    type SessionsView,
+} from '@/features/sessions/lib/sessionsView'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
-export type SortOption = 'newest' | 'oldest'
+/** a saved value stays in the list even before a session with it has loaded */
+const withPicked = (values: string[], picked: string | null) =>
+    picked && !values.includes(picked) ? [...values, picked].sort() : values
 
 export const SessionList: React.FC<{
     onOpenProject: (projectId: string) => void
@@ -32,24 +44,70 @@ export const SessionList: React.FC<{
 
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
-    const [sortOption, setSortOption] = useState<SortOption>('newest')
+    // the list API is not ready for the Repository and Tag filters (see sessionsView.ts),
+    // so these two rows of the menu only show with the preview flag (?demo) and then
+    // filter the rows that are loaded
+    const [canFilterRepoAndTag] = useState(
+        () => SERVER_FILTERS_REPO_AND_TAG || isConnectionsDemoActive()
+    )
+    // the sort and filter menu. saved in the browser, like the sidebar Recent list
+    const [view, setView] = useState<SessionsView>(() => {
+        const saved = readSessionsView()
+        return canFilterRepoAndTag ? saved : { ...saved, repo: null, tag: null }
+    })
+    const changeView = (next: Partial<SessionsView>) => {
+        const merged = { ...view, ...next }
+        setView(merged)
+        writeSessionsView(merged)
+    }
     const [statusFilter, setStatusFilter] = useState<'all' | 'running'>('all')
     const queryClient = useQueryClient()
 
     const queryFilters = useMemo(() => {
         return {
             search: searchQuery.trim() || undefined,
-            sortBy: 'updatedAt' as const,
-            sortOrder: sortOption === 'newest' ? ('desc' as const) : ('asc' as const),
-            // the server filters running sessions, so the filter also covers rows not loaded yet
+            // the server sorts and filters, so the view also covers rows not loaded yet
+            ...sessionsViewFilters(view),
             vmStatus: statusFilter === 'running' ? ('running' as const) : undefined,
         }
-    }, [searchQuery, sortOption, statusFilter])
+    }, [searchQuery, view, statusFilter])
 
     const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
         useInfiniteSessions(queryFilters)
     const sessions = useMemo(() => data?.pages.flatMap((page) => page.sessions) || [], [data])
     const errorMessage = error instanceof Error ? error.message : null
+
+    // repositories and tags seen so far fill the menu lists. kept across filter changes,
+    // so a list does not shrink to the one value that is picked
+    const [facets, setFacets] = useState<{ repos: string[]; tags: string[] }>({
+        repos: [],
+        tags: [],
+    })
+    const nextFacets = collectSessionFacets(sessions, facets)
+    if (nextFacets !== facets) setFacets(nextFacets)
+    const repoOptions = canFilterRepoAndTag ? withPicked(facets.repos, view.repo) : []
+    const tagOptions = canFilterRepoAndTag ? withPicked(facets.tags, view.tag) : []
+
+    const filtersOn =
+        view.hasPr ||
+        view.archived ||
+        Boolean(view.repo) ||
+        Boolean(view.tag) ||
+        statusFilter !== 'all'
+    const clearFilters = () => {
+        changeView({ hasPr: false, archived: false, repo: null, tag: null })
+        setStatusFilter('all')
+    }
+
+    // archived sessions stay out of the list. when nothing else exists, the empty list
+    // offers the archived view instead of only "No sessions yet"
+    const isPlainListEmpty =
+        !isLoading && !error && sessions.length === 0 && !searchQuery.trim() && !filtersOn
+    const { data: archivedProbe } = useSessions(
+        { isArchived: true, limit: 1 },
+        { enabled: isPlainListEmpty }
+    )
+    const hasOnlyArchived = isPlainListEmpty && (archivedProbe?.sessions.length ?? 0) > 0
     const [renameModal, setRenameModal] = useState<RenameModalState>({
         isOpen: false,
         project: null,
@@ -95,7 +153,8 @@ export const SessionList: React.FC<{
     }, [sessions])
 
     const filteredAndSortedSessions = useMemo(() => {
-        let result = [...sessions]
+        // the view again on loaded rows, so an archive or a new tag shows at once
+        let result = applySessionsView(sessions, view)
 
         // search filter
         if (searchQuery.trim()) {
@@ -115,15 +174,8 @@ export const SessionList: React.FC<{
             )
         }
 
-        // sort
-        result.sort((a, b) => {
-            const dateA = new Date(a.updatedAt || a.createdAt).getTime()
-            const dateB = new Date(b.updatedAt || b.createdAt).getTime()
-            return sortOption === 'newest' ? dateB - dateA : dateA - dateB
-        })
-
         return result
-    }, [sessions, searchQuery, sortOption, statusFilter])
+    }, [sessions, searchQuery, view, statusFilter])
 
     const handleStopSession = (id: string, event?: React.MouseEvent) => {
         event?.stopPropagation()
@@ -236,10 +288,17 @@ export const SessionList: React.FC<{
                     onOpenTags={openTagsModal}
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
-                    sortOption={sortOption}
-                    onSortChange={setSortOption}
+                    view={view}
+                    onViewChange={changeView}
+                    repoOptions={repoOptions}
+                    tagOptions={tagOptions}
+                    filtersOn={filtersOn}
+                    onClearFilters={clearFilters}
+                    onShowArchived={
+                        hasOnlyArchived ? () => changeView({ archived: true }) : undefined
+                    }
                     hasUnfilteredProjects={
-                        sessions.length > 0 || Boolean(searchQuery.trim()) || statusFilter !== 'all'
+                        sessions.length > 0 || Boolean(searchQuery.trim()) || filtersOn
                     }
                     statusFilter={statusFilter}
                     onStatusFilterChange={setStatusFilter}

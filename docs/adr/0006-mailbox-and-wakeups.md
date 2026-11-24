@@ -1,0 +1,3 @@
+# 0006. Mailbox State Machine and Wake-Up Sweeper
+
+We decided to model autonomous always-on behavior using a database-backed mailbox and wake-up sweeper rather than long-running in-memory processes or delayed Redis queues. Inactive sessions transition to a PARKED status, releasing all memory handles. Inbound events and user requests enter a MailboxMessage table (QUEUED -> PLACED -> COMPLETED). A lightweight background sweeper in the worker process polls for due WakeUpTrigger rows and queued messages, enqueuing them into the BullMQ agent_jobs queue. This allows thousands of persistent project sessions to exist at zero idle memory overhead while maintaining full auditability in PostgreSQL.

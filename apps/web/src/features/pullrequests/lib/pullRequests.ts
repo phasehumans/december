@@ -4,7 +4,6 @@ import type { BackendSession } from '@/features/sessions/api/session'
 // pull request it opened. the list has no pull request title, link or line counts yet.
 
 export type PullRequestState = 'open' | 'draft' | 'merged' | 'closed'
-export type PullRequestFilter = 'all' | 'open' | 'merged' | 'closed'
 
 export interface PullRequestRow {
     sessionId: string
@@ -18,6 +17,10 @@ export interface PullRequestRow {
     /** link to the pull request on GitHub, when the repository url is known */
     url: string | null
     updatedAt: string
+    /** when the session was created. a pull request has no opened date saved */
+    createdAt: string
+    /** tags of the session */
+    tags: string[]
 }
 
 export const PULL_REQUEST_STATE_LABELS: Record<PullRequestState, string> = {
@@ -26,13 +29,6 @@ export const PULL_REQUEST_STATE_LABELS: Record<PullRequestState, string> = {
     merged: 'Merged',
     closed: 'Closed',
 }
-
-export const PULL_REQUEST_FILTERS: { value: PullRequestFilter; label: string }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'open', label: 'Open' },
-    { value: 'merged', label: 'Merged' },
-    { value: 'closed', label: 'Closed' },
-]
 
 const cleanRepoUrl = (repoUrl: string) => repoUrl.replace(/\.git$/, '').replace(/\/+$/, '')
 
@@ -64,6 +60,8 @@ export const toPullRequestRows = (sessions: BackendSession[]): PullRequestRow[] 
             branch: session.prBranch ?? session.branch ?? null,
             url: pullRequestUrlOf(session),
             updatedAt: session.updatedAt,
+            createdAt: session.createdAt,
+            tags: session.tags || [],
         }))
         .sort(
             (a, b) =>
@@ -71,15 +69,8 @@ export const toPullRequestRows = (sessions: BackendSession[]): PullRequestRow[] 
         )
 
 /** a draft is still open, so it shows under Open */
-export const filterPullRequests = (
-    rows: PullRequestRow[],
-    filter: PullRequestFilter
-): PullRequestRow[] => {
-    if (filter === 'all') return rows
-    if (filter === 'open')
-        return rows.filter((row) => row.state === 'open' || row.state === 'draft')
-    return rows.filter((row) => row.state === filter)
-}
+export const isOpenPullRequest = (row: PullRequestRow): boolean =>
+    row.state === 'open' || row.state === 'draft'
 
 /** matches the title, repository, branch or number */
 export const searchPullRequests = (rows: PullRequestRow[], query: string): PullRequestRow[] => {

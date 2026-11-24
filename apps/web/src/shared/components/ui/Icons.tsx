@@ -1457,6 +1457,25 @@ export const Icons = {
             <rect x="15" y="3" width="6" height="6" rx="1.5" />
         </svg>
     ),
+    // the Model Context Protocol mark, redrawn on the 24 grid for small sizes: the same weight
+    // as the lucide icons beside it, and wider gaps between its lines so they stay open at 16px
+    Mcp: (props: any) => (
+        <svg
+            {...props}
+            width={props.width || '18'}
+            height={props.height || '18'}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={props.strokeWidth || '2'}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M2.37 10.36L10.08 2.64A3.7 3.7 0 0 1 15.32 7.88L9.56 13.63" />
+            <path d="M15.32 7.88A3.7 3.7 0 0 1 20.55 13.11L14.27 19.39A1.23 1.23 0 0 0 14.27 21.13L15.58 22.44" />
+            <path d="M12.7 5.26L7.21 10.75A3.7 3.7 0 0 0 12.44 15.99L17.93 10.49" />
+        </svg>
+    ),
     Connections: (props: any) => (
         <svg
             {...props}

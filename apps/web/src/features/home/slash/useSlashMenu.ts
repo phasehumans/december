@@ -253,7 +253,14 @@ export const useSlashMenu = ({
         dismissedInput !== input &&
         (subKind !== null || token.atStart || items.length > 0)
 
+    // a command picked from the + menu types its name and selects a choice in one step.
+    // the name is a new query, and this flag keeps that choice selected
+    const keepIndexRef = useRef(false)
     useEffect(() => {
+        if (keepIndexRef.current) {
+            keepIndexRef.current = false
+            return
+        }
         setSelectedIndex(0)
     }, [query])
 
@@ -417,7 +424,7 @@ export const useSlashMenu = ({
 
     const dismiss = useCallback(() => setDismissedInput(input), [input])
 
-    /** types a slash and opens the menu, for the slash icon */
+    /** types a slash and opens the menu, for the Commands row of the + menu */
     const open = () => {
         const base = input || ''
         const endsWithSlash = token !== null && token.query === '' && cursor === base.length
@@ -426,6 +433,59 @@ export const useSlashMenu = ({
         setDismissedInput(null)
         setSubKind(null)
         setInput(value, value.length)
+    }
+
+    /** puts a slash word in the box: over the slash word at the caret, or at the end */
+    const typeWord = (word: string) => {
+        const base = input || ''
+        setDismissedInput(null)
+        if (token) {
+            const next = replaceSlashToken(base, cursor, token, word)
+            setInput(next.value, next.cursor)
+            return
+        }
+        const separator = base && !/\s$/.test(base) ? ' ' : ''
+        const value = `${base}${separator}${word}`
+        setInput(value, value.length)
+    }
+
+    /**
+     * runs a command picked in the Commands list of the + menu. a command with choices
+     * (/model, /effort, /switch, /skills, /check) is typed in the box and its choices
+     * open in the slash menu
+     */
+    const runCommand = (command: SlashCommand) => {
+        if (!isAuthenticated) {
+            onOpenAuth?.()
+            return
+        }
+        const { kind, name } = command
+        if (
+            kind === 'model' ||
+            kind === 'effort' ||
+            kind === 'switch' ||
+            kind === 'skills' ||
+            kind === 'check'
+        ) {
+            keepIndexRef.current = query !== name
+            typeWord(`/${name}`)
+            const options =
+                kind === 'model'
+                    ? modelOptions
+                    : kind === 'effort'
+                      ? effortOptions
+                      : kind === 'switch'
+                        ? sourceOptions
+                        : []
+            openSub(kind, options)
+            return
+        }
+        if (name === 'rename') {
+            // the title is typed after the command and sent with Enter
+            typeWord('/rename ')
+            return
+        }
+        selectCommand(command)
     }
 
     /** true when the key was used by the menu */
@@ -522,6 +582,7 @@ export const useSlashMenu = ({
         back,
         dismiss,
         open,
+        runCommand,
         onKeyDown,
         trySubmitCommand,
         chips,

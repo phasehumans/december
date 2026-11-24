@@ -107,7 +107,7 @@ describe('mobile menu sheet', () => {
             'Sandbox',
             'Connections',
             'Secrets',
-            'Your keys',
+            'API keys',
             'Billing',
             'Usage',
             'Members',
@@ -126,7 +126,7 @@ describe('mobile menu sheet', () => {
     test('a settings page reopens the sheet on the Settings level', () => {
         useAppStore.setState({ isMobileSidebarOpen: true, mobileSheetStart: 'settings' })
         wrap(<MobileMenuSheet {...props} />, '/settings/billing')
-        expect(screen.getByText('Your keys')).toBeDefined()
+        expect(screen.getByText('API keys')).toBeDefined()
         const billing = screen.getAllByRole('button').find((b) => b.textContent === 'Billing')
         expect(billing?.className).toContain('bg-[#262626]')
     })

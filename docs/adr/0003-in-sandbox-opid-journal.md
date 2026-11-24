@@ -1,0 +1,3 @@
+# 0003. In-Sandbox opId Journal for Replay Safety
+
+We decided to deploy a lightweight journal daemon inside the sandbox execution environment to track operations by unique opId rather than maintaining state only in worker memory. Commands are executed through this daemon, which records process IDs, exit codes, and output logs on the sandbox filesystem. When a worker resumes after a restart, it queries the journal: completed commands return cached output, running commands are re-attached, and only unseen commands are newly spawned. This prevents duplicate command execution and lost output during worker failovers.

@@ -14,7 +14,6 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import App from './App'
-import { CliLogin } from './features/auth/components/CliLogin'
 import { DeviceActivate } from './features/auth/components/DeviceActivate'
 import { GithubCallback } from './features/auth/components/GithubCallback'
 import { getGoogleClientId, getWebUrl } from './shared/config/env'
@@ -44,7 +43,6 @@ const app = (
         <QueryProvider>
             <GoogleOAuthProvider clientId={getGoogleClientId()}>
                 <Routes>
-                    <Route path="/cli/login" element={<CliLogin />} />
                     <Route path="/activate" element={<DeviceActivate />} />
                     <Route path="/github/callback" element={<GithubCallback />} />
                     <Route path="/pricing" element={<Navigate to="/settings/billing" replace />} />

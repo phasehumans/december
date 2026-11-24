@@ -90,7 +90,7 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         }
     }
 
-    const placeholderText = props.placeholder || 'Ask December...'
+    const placeholderText = props.placeholder || 'Ask a follow-up...'
 
     return (
         <div data-prompt-box className="relative w-full bg-[#141414] shrink-0 z-30">
@@ -264,6 +264,8 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
                         textareaRef.current?.focus()
                     }}
                     onSlash={() => slash.open()}
+                    slashCommands={slash.commands}
+                    onPickCommand={slash.runCommand}
                     onPickSecret={handleSelectSecret}
                     onPickSkill={slash.addSkillChip}
                 />

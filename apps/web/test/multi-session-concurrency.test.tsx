@@ -10,6 +10,7 @@ if (!globalThis.document) {
 const { render, screen, fireEvent } = await import('@testing-library/react')
 const { SessionListView } = await import('../src/features/sessions/components/SessionListView')
 const { SessionListRow } = await import('../src/features/sessions/components/SessionListRow')
+const { DEFAULT_SESSIONS_VIEW } = await import('../src/features/sessions/lib/sessionsView')
 
 describe('multi-session concurrency and afk background execution UI', () => {
     let queryClient: QueryClient
@@ -124,8 +125,8 @@ describe('multi-session concurrency and afk background execution UI', () => {
                 onOpenTags={mock(() => {})}
                 searchQuery=""
                 onSearchChange={mock(() => {})}
-                sortOption="newest"
-                onSortChange={mock(() => {})}
+                view={DEFAULT_SESSIONS_VIEW}
+                onViewChange={mock(() => {})}
                 hasUnfilteredProjects={true}
                 statusFilter="all"
                 onStatusFilterChange={onStatusFilterChange}

@@ -123,7 +123,7 @@ describe('apps/docs page content & layout tests', () => {
             )
         })
 
-        it('renders non-sticky navbar without divider line, mobile hidden sign-in, and Try December Cloud button', () => {
+        it('renders non-sticky navbar without divider line, mobile hidden sign-in, and Get Started button', () => {
             const html = getLandingHtml()
             const headerHtml = html.slice(html.indexOf('<header'), html.indexOf('</header>'))
 
@@ -137,7 +137,7 @@ describe('apps/docs page content & layout tests', () => {
             expect(headerHtml).toContain('december_logged_in=1')
             expect(html).not.toContain('sticky top-14')
             expect(html.match(/hidden sm:flex border-y/g)?.length).toBe(4)
-            expect(html).toContain('Try December Cloud')
+            expect(html).toContain('Get Started')
             expect(html).toContain('Try in Web')
             expect(html).not.toContain('Try in Cloud Sandbox')
             expect(html).not.toContain('Launch Cloud Sandbox')

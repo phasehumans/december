@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowUpRight } from 'lucide-react'
 import React from 'react'
 
+import type { SlashCommand } from '@/features/home/slash/commands'
 import type { GithubRepo } from '@/features/profile/api/profile'
 import type { BackendSession } from '@/features/sessions/api/session'
 
@@ -310,6 +311,31 @@ export const SecretSideList: React.FC<{ onPick: (secret: { name: string }) => vo
         </>
     )
 }
+
+/** the commands of this prompt box, the same rows as the slash menu. a pick runs the command */
+export const CommandSideList: React.FC<{
+    commands: readonly SlashCommand[]
+    onPick: (command: SlashCommand) => void
+}> = ({ commands, onPick }) => (
+    <>
+        {commands.map((command) => (
+            <button
+                key={command.name}
+                type="button"
+                onClick={() => onPick(command)}
+                className={pickRowClass}
+            >
+                <span className="shrink-0 whitespace-nowrap">/{command.name}</span>
+                <span className="flex items-center gap-1.5 min-w-0 text-[12px] font-normal text-[#8F8E8D]">
+                    <span className="truncate">{command.description}</span>
+                    {(command.kind === 'navigate' || command.kind === 'external') && (
+                        <ArrowUpRight className="w-[13px] h-[13px] shrink-0" />
+                    )}
+                </span>
+            </button>
+        ))}
+    </>
+)
 
 /** skills that are turned on. a pick adds the skill to the prompt as a chip */
 export const SkillSideList: React.FC<{

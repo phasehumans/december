@@ -9,15 +9,20 @@ import {
     type Role,
 } from '../office/officeEngine'
 
+import { cn } from '@/shared/lib/utils'
+
 const ROLES = Object.keys(ROLE_NAME) as Role[]
 const STILL_FRAME_MS = 6500
 
 // live pixel office for the super crew card. animates only while it is on screen and the
 // user has not asked for reduced motion; otherwise it shows one still frame.
-export const OfficeCanvas: React.FC<{ className?: string; style?: React.CSSProperties }> = ({
-    className,
-    style,
-}) => {
+// compact: for small frames. the office fills the frame without stretching (the sides are
+// cut off) and the name tags are left out, they do not fit at that size.
+export const OfficeCanvas: React.FC<{
+    className?: string
+    style?: React.CSSProperties
+    compact?: boolean
+}> = ({ className, style, compact = false }) => {
     const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
     const tagRefs = React.useRef<Partial<Record<Role, HTMLSpanElement | null>>>({})
 
@@ -84,20 +89,21 @@ export const OfficeCanvas: React.FC<{ className?: string; style?: React.CSSPrope
                 width={OFFICE_W}
                 height={OFFICE_H}
                 aria-hidden="true"
-                className="absolute inset-0 w-full h-full"
+                className={cn('absolute inset-0 w-full h-full', compact && 'object-cover')}
                 style={{ imageRendering: 'pixelated' }}
             />
-            {ROLES.map((role) => (
-                <span
-                    key={role}
-                    ref={(el) => {
-                        tagRefs.current[role] = el
-                    }}
-                    className="absolute hidden pointer-events-none whitespace-nowrap rounded-[4px] border border-[#282828] bg-[#1F1F1F] px-[3px] text-[8px] leading-[12px] font-medium text-[#EDEDEF]"
-                >
-                    {ROLE_NAME[role]}
-                </span>
-            ))}
+            {!compact &&
+                ROLES.map((role) => (
+                    <span
+                        key={role}
+                        ref={(el) => {
+                            tagRefs.current[role] = el
+                        }}
+                        className="absolute hidden pointer-events-none whitespace-nowrap rounded-[4px] border border-[#282828] bg-[#1F1F1F] px-[3px] text-[8px] leading-[12px] font-medium text-[#EDEDEF]"
+                    >
+                        {ROLE_NAME[role]}
+                    </span>
+                ))}
         </div>
     )
 }

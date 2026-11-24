@@ -1,10 +1,11 @@
 import React from 'react'
 
-import { SheetRow } from '@/shared/components/ui/BottomSheet'
+import { SheetRow, useBottomSheet } from '@/shared/components/ui/BottomSheet'
 import { Icons } from '@/shared/components/ui/Icons'
 
 // the one session menu (Q3-a): the Sessions page rows and the sidebar Recent rows show the
-// same items. desktop is a dropdown with a divider above Delete, phones are sheet rows.
+// same items. desktop is a dropdown in three groups (open, manage, Delete), phones are
+// sheet rows with no dividers.
 
 type MenuHandler = (event?: React.MouseEvent) => void
 
@@ -17,13 +18,23 @@ export interface SessionMenuProps {
     onToggleArchive: MenuHandler
     onStop?: MenuHandler
     onDelete: MenuHandler
+    /** the "open" rows. each one shows only when its handler is given (see useSessionLinks) */
+    onOpenPullRequest?: MenuHandler
+    onNewInRepo?: MenuHandler
+    /** desktop only: the phone sheet has no such row */
+    onOpenInNewTab?: MenuHandler
 }
 
 const itemClass =
     'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626] focus-visible:bg-[#262626] outline-none cursor-pointer'
 
+/** the width of the dropdown in px (w-52), for menus placed at the pointer */
+export const SESSION_MENU_WIDTH = 208
+
 export const sessionMenuPanelClass =
-    'z-[200] flex w-44 flex-col rounded-xl border border-[#272727] bg-[#1E1E1E] p-1 shadow-xl font-sans'
+    'z-[200] flex w-52 flex-col rounded-xl border border-[#272727] bg-[#1E1E1E] p-1 shadow-xl font-sans'
+
+const divider = <div className="mx-1.5 my-1 h-px bg-[#282828]" />
 
 /** dropdown items for desktop */
 export const SessionMenuItems: React.FC<SessionMenuProps> = ({
@@ -34,8 +45,27 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
     onToggleArchive,
     onStop,
     onDelete,
+    onOpenPullRequest,
+    onNewInRepo,
+    onOpenInNewTab,
 }) => (
     <>
+        {onOpenPullRequest && (
+            <button type="button" role="menuitem" onClick={onOpenPullRequest} className={itemClass}>
+                <Icons.GitPullRequest className="h-3.5 w-3.5 text-[#7B7A79]" /> Open pull request
+            </button>
+        )}
+        {onNewInRepo && (
+            <button type="button" role="menuitem" onClick={onNewInRepo} className={itemClass}>
+                <Icons.Plus className="h-3.5 w-3.5 text-[#7B7A79]" /> New session in this repo
+            </button>
+        )}
+        {onOpenInNewTab && (
+            <button type="button" role="menuitem" onClick={onOpenInNewTab} className={itemClass}>
+                <Icons.ExternalLink className="h-3.5 w-3.5 text-[#7B7A79]" /> Open in new tab
+            </button>
+        )}
+        {(onOpenPullRequest || onNewInRepo || onOpenInNewTab) && divider}
         <button type="button" role="menuitem" onClick={onRename} className={itemClass}>
             <Icons.Edit className="h-3.5 w-3.5 text-[#7B7A79]" /> Rename
         </button>
@@ -56,7 +86,7 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
                 <Icons.X className="h-3.5 w-3.5" /> Stop
             </button>
         )}
-        <div className="mx-1.5 my-1 h-px bg-[#282828]" />
+        {divider}
         <button
             type="button"
             role="menuitem"
@@ -69,7 +99,8 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
 )
 
 /** bottom sheet rows for phones. with confirmDelete the first tap on Delete turns the row
- * red and only the second tap deletes (P7-b) */
+ * red and only the second tap deletes (P7-b). the two "open" rows leave the page, so they
+ * close the sheet first */
 export const SessionSheetItems: React.FC<SessionMenuProps & { confirmDelete?: boolean }> = ({
     isArchived,
     canStop,
@@ -78,11 +109,28 @@ export const SessionSheetItems: React.FC<SessionMenuProps & { confirmDelete?: bo
     onToggleArchive,
     onStop,
     onDelete,
+    onOpenPullRequest,
+    onNewInRepo,
     confirmDelete,
 }) => {
     const [armed, setArmed] = React.useState(false)
+    const { closeThen } = useBottomSheet()
     return (
         <>
+            {onOpenPullRequest && (
+                <SheetRow
+                    icon={<Icons.GitPullRequest className="h-4 w-4" />}
+                    label="Open pull request"
+                    onClick={() => closeThen(() => onOpenPullRequest())}
+                />
+            )}
+            {onNewInRepo && (
+                <SheetRow
+                    icon={<Icons.Plus className="h-4 w-4" />}
+                    label="New session in this repo"
+                    onClick={() => closeThen(() => onNewInRepo())}
+                />
+            )}
             <SheetRow icon={<Icons.Edit className="h-4 w-4" />} label="Rename" onClick={onRename} />
             <SheetRow icon={<Icons.Tag className="h-4 w-4" />} label="Tags" onClick={onTags} />
             <SheetRow

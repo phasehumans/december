@@ -204,11 +204,16 @@ export const sendCampaign = async (options: CampaignOptions): Promise<void> => {
         dryRun = false,
         test = false,
         send = false,
-        testEmail = 'dev.chaitanyasonawane@gmail.com',
+        testEmail = process.env.TEST_EMAIL,
     } = options
 
     if (!dryRun && !test && !send) {
         console.log('please specify an action mode: --dry-run, --test, or --send')
+        return
+    }
+
+    if (test && !testEmail) {
+        console.log('test mode needs a recipient: pass --test-email <email> or set TEST_EMAIL')
         return
     }
 
@@ -237,7 +242,8 @@ export const sendCampaign = async (options: CampaignOptions): Promise<void> => {
     const usersPath = options.usersPath || resolve(import.meta.dir, 'users.txt')
     const allUsers = parseUsersFile(usersPath)
 
-    const recipients: UserRecipient[] = test ? [{ name: 'chaitanya', email: testEmail }] : allUsers
+    const recipients: UserRecipient[] =
+        test && testEmail ? [{ name: 'chaitanya', email: testEmail }] : allUsers
 
     if (recipients.length === 0) {
         console.log('no recipients found.')

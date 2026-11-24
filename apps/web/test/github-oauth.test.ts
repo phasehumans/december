@@ -22,11 +22,11 @@ describe('github oauth state and return path', () => {
     })
 
     test('complete accepts the stored state once and returns the start page', () => {
-        const state = githubOAuth.begin(at('/cli-login', '?redirect_uri=http://localhost:9999'))
+        const state = githubOAuth.begin(at('/activate', '?code=ABCD-EFGH'))
 
         expect(githubOAuth.complete(state)).toEqual({
             isStateValid: true,
-            returnPath: '/cli-login?redirect_uri=http://localhost:9999',
+            returnPath: '/activate?code=ABCD-EFGH',
         })
         // replaying the same callback fails: the state was consumed
         expect(githubOAuth.complete(state).isStateValid).toBe(false)

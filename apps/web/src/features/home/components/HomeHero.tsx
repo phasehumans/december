@@ -13,6 +13,7 @@ import { OutOfCreditsModal } from '@/features/billing/components/OutOfCreditsMod
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { takeHomeDraft } from '@/features/home/draft'
 import { MobileInboxButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
+import { useSwipeUpToOpenMenu } from '@/features/navigation/hooks/useSwipeUpToOpenMenu'
 import { Icons } from '@/shared/components/ui/Icons'
 
 export const HomeHero: React.FC<HomeHeroProps> = ({
@@ -34,6 +35,10 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     const [prompt, setPrompt] = React.useState(() => takeHomeDraft() ?? '')
     const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
+    // phones: a swipe up on this screen opens the menu sheet
+    const mainRef = React.useRef<HTMLElement | null>(null)
+    useSwipeUpToOpenMenu(mainRef)
+
     useEffect(() => {
         const handleNewSession = () => {
             setPrompt('')
@@ -51,6 +56,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
 
     return (
         <main
+            ref={mainRef}
             id="main-scroll-container"
             className="h-full min-h-0 overflow-hidden md:overflow-y-auto no-scrollbar scroll-smooth relative flex flex-col"
         >
@@ -129,6 +135,12 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                 <Laptop className="w-3 h-3 text-[#666666]" />
                 <span>Best experience on desktop</span>
             </div>
+            {/* phones: the handle of the menu sheet, shows that a swipe up opens it */}
+            <div
+                data-testid="home-sheet-handle"
+                aria-hidden="true"
+                className="md:hidden fixed bottom-1.5 left-1/2 -translate-x-1/2 z-10 h-1 w-9 rounded-full bg-[#333333] pointer-events-none"
+            />
 
             <OutOfCreditsModal
                 isOpen={showOutOfCreditsModal || showUpgradeModal}

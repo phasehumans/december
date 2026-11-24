@@ -157,7 +157,7 @@ const run = async () => {
     }
 
     const usersPath = getArgValue('--users') || resolve(import.meta.dir, 'users.txt')
-    const testEmail = getArgValue('--test-email') || 'phasehumans@gmail.com'
+    const testEmail = getArgValue('--test-email')
 
     if (!dryRun && !test && !send) {
         console.log('Usage:')

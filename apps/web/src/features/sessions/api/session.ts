@@ -75,6 +75,8 @@ export type SessionFilters = {
     vmStatus?: 'running'
     /** only sessions that opened a pull request */
     hasPr?: boolean
+    /** one repository by name. the list API does not accept it yet, see sessionsView.ts */
+    repoName?: string
     sortBy?: 'updatedAt' | 'createdAt'
     sortOrder?: 'asc' | 'desc'
     search?: string
@@ -93,12 +95,6 @@ export type PaginatedSessionsResponse = {
     }
 }
 
-export type UpdateGeneralSettingsInput = {
-    name?: string
-    description?: string | null
-    isStarred?: boolean
-}
-
 const buildVersionQuery = (versionId?: string | null) =>
     versionId ? `?versionId=${encodeURIComponent(versionId)}` : ''
 
@@ -110,6 +106,7 @@ export const sessionAPI = {
             queryParams.append('isArchived', filters.isArchived.toString())
         if (filters?.vmStatus) queryParams.append('vmStatus', filters.vmStatus)
         if (filters?.hasPr) queryParams.append('hasPr', 'true')
+        if (filters?.repoName) queryParams.append('repoName', filters.repoName)
         if (filters?.tags && filters.tags.length > 0)
             queryParams.append('tags', filters.tags.join(','))
         if (filters?.sortBy) queryParams.append('sortBy', filters.sortBy)
@@ -289,27 +286,6 @@ export const sessionAPI = {
             body: JSON.stringify(data),
         })
         return res.session
-    },
-
-    updateGeneralSettings: (sessionId: string, data: UpdateGeneralSettingsInput) => {
-        return apiRequest<{ message: string }>(`/session/${sessionId}/general-settings`, {
-            method: 'PATCH',
-            body: JSON.stringify(data),
-        })
-    },
-
-    toggleStarSession: (sessionId: string, isStarred: boolean) => {
-        return apiRequest<{ message: string }>(`/session/${sessionId}/star`, {
-            method: 'POST',
-            body: JSON.stringify({ isStarred }),
-        })
-    },
-
-    duplicateSession: (sessionId: string, name?: string) => {
-        return apiRequest<BackendSession>(`/session/${sessionId}/duplicate`, {
-            method: 'POST',
-            body: JSON.stringify({ name }),
-        })
     },
 
     downloadSession: async (sessionId: string, versionId?: string | null) => {
@@ -498,7 +474,5 @@ export const projectAPI = {
     updateProject: (id: string, data: { rename: string }) =>
         sessionAPI.renameSession(id, data.rename),
     deleteProject: sessionAPI.deleteSession,
-    duplicateProject: sessionAPI.duplicateSession,
-    toggleStarProject: sessionAPI.toggleStarSession,
     downloadProject: sessionAPI.downloadSession,
 }

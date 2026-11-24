@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 // same width as the tailwind "md" breakpoint, where the mobile layout ends
 const PHONE_QUERY = '(max-width: 767px)'
 
-const readIsPhone = () =>
+/** the phone check for code outside react (event handlers) */
+export const readIsPhone = () =>
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
     window.matchMedia(PHONE_QUERY).matches

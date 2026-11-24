@@ -141,7 +141,6 @@ export const isPublicPath = (pathname: string): boolean => {
         pathname === '/docs' ||
         pathname.startsWith('/docs/') ||
         pathname.startsWith('/github/callback') ||
-        pathname.startsWith('/cli-login') ||
         pathname.startsWith('/device/activate') ||
         pathname.startsWith('/s/')
     )

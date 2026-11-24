@@ -16,7 +16,11 @@ export function generatePKCE(): PKCEPair {
     return { codeVerifier, codeChallenge, state }
 }
 
-const DECEMBER_LOGO_SVG = `<svg class="logo" viewBox="5 4 14 16" fill="none" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+// the two pages the browser shows after a plan sign-in. they follow the web sign-up page:
+// the 36px logo and one line under it, grey when connected, red when not. the cli serves
+// them from the user's computer, so the style is written here and not shared with the web app.
+
+const DECEMBER_LOGO_SVG = `<svg class="logo" viewBox="5 4 14 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <line x1="12" y1="12" x2="12" y2="5.3" />
   <line x1="12" y1="7.5" x2="13.9" y2="6.4" />
   <line x1="12" y1="7.5" x2="10.1" y2="6.4" />
@@ -37,12 +41,32 @@ const DECEMBER_LOGO_SVG = `<svg class="logo" viewBox="5 4 14 16" fill="none" str
   <line x1="8.1" y1="9.75" x2="6.2" y2="10.85" />
 </svg>`
 
-const SUCCESS_HTML = `<!DOCTYPE html>
+const escapeHtml = (text: string) =>
+    text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/** the provider's reason as one sentence */
+const failureReason = (error?: string, errorDescription?: string): string => {
+    const reason = (errorDescription || error || '').trim()
+    if (!reason) return 'The sign-in was cancelled or failed.'
+    if (reason === 'access_denied') return 'Access was denied.'
+    return /[.!?]$/.test(reason) ? reason : `${reason}.`
+}
+
+function renderPage(page: { line: string; isError: boolean }): string {
+    // the tab can close itself only when the browser allows it, so the line also says it
+    const closeScript = page.isError
+        ? ''
+        : '\n  <script>\n    setTimeout(() => { window.close(); }, 3000);\n  </script>'
+
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>December - Authentication Successful</title>
+  <title>December CLI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&display=swap">
   <style>
     * {
       box-sizing: border-box;
@@ -50,7 +74,7 @@ const SUCCESS_HTML = `<!DOCTYPE html>
       padding: 0;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: #141414;
       color: #ffffff;
       display: flex;
@@ -64,126 +88,55 @@ const SUCCESS_HTML = `<!DOCTYPE html>
     }
     .container {
       width: 100%;
-      max-width: 380px;
+      max-width: 340px;
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
     }
-    .logo-container {
-      width: 42px;
-      height: 42px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
     .logo {
-      width: 42px;
-      height: 42px;
-    }
-    h1 {
-      font-size: 22px;
-      font-weight: 400;
+      width: 36px;
+      height: 36px;
       color: #ffffff;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
     }
-    p.desc {
+    .line {
+      margin-top: 12px;
       font-size: 13px;
-      color: #A3A3A3;
       line-height: 1.6;
+      color: #888888;
+    }
+    .line.error {
+      color: #f87171;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="logo-container">
-      ${DECEMBER_LOGO_SVG}
-    </div>
-    <h1>Authentication Successful</h1>
-    <p class="desc">Your subscription session has been authorized.<br>You can safely close this window and return to December CLI.</p>
-  </div>
-  <script>
-    setTimeout(() => { window.close(); }, 3000);
-  </script>
-</body>
-</html>`
-
-function getErrorHtml(errorDescription?: string): string {
-    const safeDesc = (errorDescription || 'Authentication request was cancelled or failed.')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>December - Authorization Failed</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: #141414;
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 24px;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    .container {
-      width: 100%;
-      max-width: 380px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-    .logo-container {
-      width: 42px;
-      height: 42px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .logo {
-      width: 42px;
-      height: 42px;
-    }
-    h1 {
-      font-size: 22px;
-      font-weight: 400;
-      color: #ffffff;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
-    }
-    p.desc {
-      font-size: 13px;
-      color: #EF4444;
-      line-height: 1.6;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="logo-container">
-      ${DECEMBER_LOGO_SVG.replace('stroke="white"', 'stroke="#EF4444"')}
-    </div>
-    <h1>Authorization Failed</h1>
-    <p class="desc">${safeDesc}<br>You can safely close this window and return to December CLI.</p>
-  </div>
+    ${DECEMBER_LOGO_SVG}
+    <p class="line${page.isError ? ' error' : ''}"${page.isError ? ' role="alert"' : ''}>${escapeHtml(page.line)}</p>
+  </div>${closeScript}
 </body>
 </html>`
 }
 
+/** "ChatGPT plan connected. You can close this tab." */
+export function getSuccessHtml(planName?: string): string {
+    const subject = planName ? `${planName} connected` : 'Connected'
+    return renderPage({ line: `${subject}. You can close this tab.`, isError: false })
+}
+
+/** "ChatGPT plan not connected. Access was denied." */
+export function getErrorHtml(planName?: string, error?: string, errorDescription?: string): string {
+    const subject = planName ? `${planName} not connected` : 'Not connected'
+    return renderPage({
+        line: `${subject}. ${failureReason(error, errorDescription)}`,
+        isError: true,
+    })
+}
+
 export interface LocalOAuthServerOptions {
+    /** named on the page after the sign-in, for example 'ChatGPT plan' */
+    planName?: string
     timeoutMs?: number
     path?: string
     port?: number
@@ -265,7 +218,9 @@ export async function startLocalOAuthServer(options?: LocalOAuthServerOptions): 
                 const errorDescription =
                     queryParams.error_description || queryParams.errorDescription
 
-                const htmlResponse = error ? getErrorHtml(errorDescription || error) : SUCCESS_HTML
+                const htmlResponse = error
+                    ? getErrorHtml(options?.planName, error, errorDescription)
+                    : getSuccessHtml(options?.planName)
 
                 res.writeHead(200, {
                     'Content-Type': 'text/html; charset=utf-8',

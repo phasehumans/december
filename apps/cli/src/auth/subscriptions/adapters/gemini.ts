@@ -391,7 +391,10 @@ export const geminiAdapter: SubscriptionAdapter = {
 
         let server: any
         try {
-            server = await startLocalOAuthServer({ timeoutMs: 120000 })
+            server = await startLocalOAuthServer({
+                planName: 'Gemini plan',
+                timeoutMs: 120000,
+            })
             const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
                 clientId
             )}&redirect_uri=${encodeURIComponent(

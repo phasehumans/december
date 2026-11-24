@@ -8,6 +8,8 @@ import type { GithubRepo } from '@/features/profile/api/profile'
 type HomePrefill = {
     prompt?: string
     repo?: GithubRepo
+    /** the branch to start from. without it the default branch of the repo is set */
+    branch?: string
 }
 
 const PREFILL_EVENT = 'december:home-prefill'
