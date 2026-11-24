@@ -44,6 +44,18 @@ billingRouter.post(
     billingController.verifyRazorpayPayment
 )
 
+billingRouter.get('/credit-request', billingController.getFreeCreditRequest)
+billingRouter.post(
+    '/credit-request',
+    createRateLimiter({
+        windowMs: 60 * 60 * 1000,
+        max: env.NODE_ENV === 'test' ? 1000 : 5,
+        message: 'Too many requests. Please try again later.',
+        prefix: 'rl:billing:credit-request:',
+    }),
+    billingController.requestFreeCredits
+)
+
 billingRouter.post(
     '/redeem-code',
     createRateLimiter({

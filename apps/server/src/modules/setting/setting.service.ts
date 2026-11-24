@@ -1,5 +1,6 @@
 import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
+import { isAdminEmail, isValidUnsubscribeToken } from '../admin/admin.utils'
 
 import { settingRepository } from './setting.repository'
 import { toOnboardingStep } from './setting.utils'
@@ -26,6 +27,7 @@ export const settingSelect = {
 }
 
 import type {
+    Unsubscribe,
     GetMe,
     GetProfile,
     UpdateName,
@@ -70,8 +72,30 @@ const getProfile = async (data: GetProfile) => {
             throw new AppError('user not found', 404)
         }
 
-        return profile
+        // for the web app only; every /admin route checks ADMIN_EMAILS again on the server
+        return { ...profile, isAdmin: profile.emailVerified && isAdminEmail(profile.email) }
     })
+}
+
+const checkUnsubscribe = async (data: Unsubscribe) => {
+    const { userId, token } = data
+    if (!isValidUnsubscribeToken(userId, token)) {
+        throw new AppError('this unsubscribe link is not valid', 400)
+    }
+    return { valid: true }
+}
+
+const unsubscribe = async (data: Unsubscribe) => {
+    const { userId, token } = data
+    if (!isValidUnsubscribeToken(userId, token)) {
+        throw new AppError('this unsubscribe link is not valid', 400)
+    }
+    const updated = await settingRepository.disableProductUpdates(userId)
+    if (updated.count === 0) {
+        throw new AppError('this unsubscribe link is not valid', 400)
+    }
+    await invalidateUserSettingCache(userId)
+    return { unsubscribed: true }
 }
 
 const updateName = async (data: UpdateName) => {
@@ -214,6 +238,8 @@ const submitFeedback = async (data: SubmitFeedback) => {
 }
 
 export const settingService = {
+    checkUnsubscribe,
+    unsubscribe,
     getMe,
     getProfile,
     updateName,

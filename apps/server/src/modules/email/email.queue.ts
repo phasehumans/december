@@ -3,7 +3,12 @@ import Redis from 'ioredis'
 
 import { env } from '../../env'
 
-import type { EmailJobData, SendOtpEmailParams, SendWelcomeEmailParams } from './email.types'
+import type {
+    EmailJobData,
+    SendMessageJobData,
+    SendOtpEmailParams,
+    SendWelcomeEmailParams,
+} from './email.types'
 
 let _emailQueue: Queue<EmailJobData> | null = null
 
@@ -67,4 +72,9 @@ export const enqueueWelcomeJob = async (data: SendWelcomeEmailParams) => {
             priority: 5,
         }
     )
+}
+
+export const enqueueMessageJob = async (data: Omit<SendMessageJobData, 'type'>) => {
+    const queue = getEmailQueue()
+    return queue.add('send_message', { type: 'message', ...data }, { priority: 10 })
 }

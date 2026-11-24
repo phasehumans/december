@@ -36,6 +36,23 @@ export const redeemCodeSchema = z
     })
     .strict()
 
+// #624 part 2: the free credit request form on the billing page
+export const creditRequestSchema = z
+    .object({
+        buildPlan: z
+            .string()
+            .trim()
+            .min(3, { message: 'tell us what you will build' })
+            .max(1000, { message: 'keep it under 1000 characters' }),
+        heardFrom: z
+            .string()
+            .trim()
+            .min(1, { message: 'tell us how you heard about december' })
+            .max(200, { message: 'keep it under 200 characters' }),
+        agreeToFeedback: z.literal(true, { message: 'agree to give feedback to request credits' }),
+    })
+    .strict()
+
 export const addCreditsSchema = z
     .object({
         amountInCents: z.number().int().min(100).max(5000),

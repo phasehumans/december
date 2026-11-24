@@ -19,6 +19,7 @@ import {
     disconnectSessionParamsSchema,
     rehydrateSessionParamsSchema,
     proxyPreviewParamsSchema,
+    previewActivityParamsSchema,
     streamSearchResponseParamsSchema,
     streamSearchResponseBodySchema,
     smartSearchSessionsSchema,
@@ -412,6 +413,15 @@ export const getSessionTests = asyncHandler(async (req: Request, res: Response) 
     return sendSuccess(res, 'session tests fetched successfully', result)
 })
 
+export const recordPreviewActivity = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = previewActivityParamsSchema.parse(req.params)
+
+    const result = await sessionService.recordPreviewActivity({ userId, sessionId: id })
+    return sendSuccess(res, 'preview activity recorded', result)
+})
+
 export const getSessionPreviewPort = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
     if (!userId) throw new AppError('unauthorized', 401)
@@ -472,6 +482,7 @@ export const sessionController = {
     rehydrateSession,
     disconnectSession,
     proxyPreview,
+    recordPreviewActivity,
     streamSearchResponse,
     smartSearchSessions,
     getSessionDiff,

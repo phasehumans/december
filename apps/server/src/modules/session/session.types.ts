@@ -136,6 +136,15 @@ export type RehydrateSession = {
     sessionId: string
 }
 
+export type TouchPreviewActivity = {
+    sessionId: string
+}
+
+export type RecordPreviewActivity = {
+    userId: string
+    sessionId: string
+}
+
 export type ProxyPreview = {
     userId: string
     sessionId: string

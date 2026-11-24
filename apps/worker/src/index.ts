@@ -14,6 +14,7 @@ import {
     resolveSecretsEncKey,
     tagOwnKeyErrors,
 } from './llm-source'
+import { IdleSandboxSweeper } from './sandbox-limits'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { WakeUpSweeper } from './wake-up-sweeper'
 
@@ -52,6 +53,25 @@ export const worker = new Worker(
         console.log(
             `Processing job ${job.id} (type: ${effectiveTaskType}) for session ${sessionId || reviewId}`
         )
+
+        // admin page (a9): pause or stop one sandbox, on whichever worker started it
+        if (effectiveTaskType === 'sandbox_control') {
+            const { action, sandboxId } = job.data
+            if (action === 'stop' && sandboxId) {
+                await E2BSandboxService.destroySandbox({ sandboxId })
+                await prisma.session
+                    .update({
+                        where: { id: sessionId },
+                        data: { vmStatus: 'STOPPED', sandboxStatus: 'STOPPED' },
+                    })
+                    .catch(() => {
+                        // Intentionally swallowed: the session may be gone
+                    })
+                return { status: 'STOPPED' }
+            }
+            await E2BSandboxService.pauseSandbox({ sessionId, sandboxId })
+            return { status: 'PAUSED' }
+        }
 
         // Handle GitHub Automated Issue Fix tasks
         if (effectiveTaskType === 'github_issue_fix') {
@@ -204,14 +224,6 @@ export const worker = new Worker(
                 }
             }
 
-            console.log(
-                `[WORKER ENGINE] Setting Prisma session '${sessionId}' status -> PROVISIONING`
-            )
-            await prisma.session.update({
-                where: { id: sessionId },
-                data: { vmStatus: 'PROVISIONING' },
-            })
-
             // generate short-lived jwt
             const agentTokenSecret = process.env.AGENT_TOKEN_SECRET
             if (process.env.NODE_ENV === 'production' && !agentTokenSecret) {
@@ -222,11 +234,12 @@ export const worker = new Worker(
                 expiresIn: '15m',
             })
 
-            // Provision E2B microVM container with 3x retry backoff and user LRU limit
+            // reuse, resume or provision the session's sandbox; past 10 running sandboxes
+            // per user the least recently used one is paused first
             console.log(
-                `[WORKER ENGINE] Provisioning E2B microVM container for session '${sessionId}' (userId: '${userId || 'anonymous'}')...`
+                `[WORKER ENGINE] Acquiring the sandbox for session '${sessionId}' (userId: '${userId || 'anonymous'}')...`
             )
-            const provisionResult = await E2BSandboxService.provisionSandbox({
+            const provisionResult = await E2BSandboxService.acquireSessionSandbox({
                 sessionId,
                 userId,
                 secrets,
@@ -298,8 +311,16 @@ worker.on('failed', (job: any, err: any) => {
 })
 
 export const wakeUpSweeper = new WakeUpSweeper()
+// pauses sandboxes with no agent step, terminal input or preview request for 10 minutes
+export const idleSandboxSweeper = new IdleSandboxSweeper({
+    pause: ({ sessionId, vmId }) =>
+        E2BSandboxService.pauseSandbox({ sessionId, sandboxId: vmId ?? undefined }),
+    extend: ({ sessionId, vmId }) =>
+        E2BSandboxService.extendSandboxTimeout({ sessionId, sandboxId: vmId ?? undefined }),
+})
 if (process.env.NODE_ENV !== 'test') {
     wakeUpSweeper.start()
+    idleSandboxSweeper.start()
     TerminalBridgeService.start().catch((err) => {
         console.error('[WORKER ENGINE] Failed to start TerminalBridgeService:', err)
     })
@@ -309,6 +330,7 @@ const shutdownGracefully = async () => {
     console.log('Shutting down worker process gracefully...')
     try {
         wakeUpSweeper.stop()
+        idleSandboxSweeper.stop()
         await TerminalBridgeService.stop()
         await E2BSandboxService.detachAllActiveAdapters()
         await worker.close()

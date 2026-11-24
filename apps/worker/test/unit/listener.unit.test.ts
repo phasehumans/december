@@ -1,9 +1,16 @@
 import { prisma } from '@december/database'
-import { describe, it, expect, mock } from 'bun:test'
+import { afterAll, describe, it, expect, mock } from 'bun:test'
 
 import { MUTATING_TOOL_NAMES, processGrpcStream, updateSandboxGitDiff } from '../../src/listener'
 
+// restored after the suite so later database tests in the same run get the real client
+const realSessionUpdate = prisma.session.update
+
 describe('Worker Listener Unit Tests', () => {
+    afterAll(() => {
+        prisma.session.update = realSessionUpdate
+    })
+
     it('should process grpc stream, publish to Redis, and set session status to STOPPED on success', async () => {
         const updateMock = mock(async () => ({}) as any)
         prisma.session.update = updateMock as any

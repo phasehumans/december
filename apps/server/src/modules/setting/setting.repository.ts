@@ -119,7 +119,15 @@ async function findUserByEmail(email: string) {
     })
 }
 
+async function disableProductUpdates(id: string) {
+    return prisma.user.updateMany({
+        where: { id },
+        data: { notifyProductUpdates: false },
+    })
+}
+
 export const settingRepository = {
+    disableProductUpdates,
     findUserByIdForInfo,
     findUserByIdForProfile,
     findUserByIdForExistCheck,

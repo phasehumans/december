@@ -4,6 +4,7 @@ import { sendSuccess } from '../../shared/response'
 
 import {
     creditsHistoryQuerySchema,
+    creditRequestSchema,
     redeemCodeSchema,
     createRazorpayOrderSchema,
     verifyRazorpayPaymentSchema,
@@ -126,7 +127,36 @@ const handleRazorpayWebhook = asyncHandler(async (req: Request, res: Response) =
     return sendSuccess(res, 'webhook processed successfully', result)
 })
 
+const requestFreeCredits = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const parsedBody = creditRequestSchema.parse(req.body)
+    const result = await billingService.requestFreeCredits({
+        userId,
+        buildPlan: parsedBody.buildPlan,
+        heardFrom: parsedBody.heardFrom,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') ?? undefined,
+    })
+    return sendSuccess(res, 'free credits requested', result, 201)
+})
+
+const getFreeCreditRequest = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await billingService.getFreeCreditRequest({ userId })
+    return sendSuccess(res, 'free credit request fetched', result)
+})
+
 export const billingController = {
+    requestFreeCredits,
+    getFreeCreditRequest,
     getOverview,
     createRazorpayOrder,
     verifyRazorpayPayment,

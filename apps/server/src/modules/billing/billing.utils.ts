@@ -78,3 +78,26 @@ export const verifyRazorpayWebhookSignature = (data: {
 
     return crypto.timingSafeEqual(a, b)
 }
+
+// the one-time free credits a user can request (#624 part 2)
+export const FREE_CREDITS_IN_CENTS = 500
+
+const GMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com'])
+
+/**
+ * The address a free credit request is counted under. Lowercase for every provider;
+ * for gmail the dots and the +tag are removed and googlemail counts as gmail, because
+ * gmail delivers all of those to the same inbox.
+ */
+export const normalizeEmail = (email: string): string => {
+    const lower = email.trim().toLowerCase()
+    const at = lower.lastIndexOf('@')
+    if (at <= 0) return lower
+
+    const local = lower.slice(0, at)
+    const domain = lower.slice(at + 1)
+    if (!GMAIL_DOMAINS.has(domain)) return lower
+
+    const base = local.split('+')[0]!.replace(/\./g, '')
+    return `${base}@gmail.com`
+}

@@ -51,6 +51,11 @@ export type OnboardingState = {
     ownKey: { provider: string; keyHint: string } | null
 }
 
+export type Unsubscribe = {
+    userId: string
+    token: string
+}
+
 export type SubmitFeedback = {
     userId: string
     rating: 'sad' | 'neutral' | 'happy' | null

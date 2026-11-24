@@ -71,14 +71,23 @@ export const billingRepository = {
                 },
             },
         })
-        return claims.reduce((sum, claim) => sum + (claim.redeemCode?.creditAmount || 0), 0)
+        const redeemed = claims.reduce(
+            (sum, claim) => sum + (claim.redeemCode?.creditAmount || 0),
+            0
+        )
+        // approved free credit requests count as gifted credits too
+        const grants = await prisma.walletTransaction.aggregate({
+            where: { userId, provider: 'GRANT', status: 'SUCCESS' },
+            _sum: { amountInCents: true },
+        })
+        return redeemed + (grants._sum.amountInCents ?? 0)
     },
 
     async createWalletTransaction(data: {
         userId: string
         amountInCents: number
         currency: string
-        provider: 'RAZORPAY' | 'COINBASE'
+        provider: 'RAZORPAY' | 'COINBASE' | 'GRANT' | 'ADJUSTMENT'
         providerOrderId?: string
         metadata?: any
     }) {
@@ -207,6 +216,29 @@ export const billingRepository = {
         return prisma.usageEvent.count({
             where,
         })
+    },
+
+    async findUserContact(id: string) {
+        return prisma.user.findUnique({
+            where: { id },
+            select: { id: true, email: true, name: true },
+        })
+    },
+
+    async findCreditRequestByEmail(normalizedEmail: string) {
+        return prisma.creditRequest.findUnique({ where: { normalizedEmail } })
+    },
+
+    async createCreditRequest(data: {
+        userId: string
+        normalizedEmail: string
+        buildPlan: string
+        heardFrom: string
+        agreedToFeedback: boolean
+        ipAddress?: string
+        userAgent?: string
+    }) {
+        return prisma.creditRequest.create({ data })
     },
 
     async findUserById(id: string) {

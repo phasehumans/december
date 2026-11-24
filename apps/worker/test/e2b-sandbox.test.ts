@@ -1,10 +1,17 @@
 import { prisma } from '@december/database'
-import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { describe, it, expect, afterAll, beforeEach, mock } from 'bun:test'
 
 import { E2BSandboxService } from '../src/e2b-sandbox.service'
 
+// restored after the suite so later database tests in the same run get the real client
+const realSessionUpdate = prisma.session.update
+
 describe('E2BSandboxService (Unit & Integration)', () => {
     let updateMock: ReturnType<typeof mock>
+
+    afterAll(() => {
+        prisma.session.update = realSessionUpdate
+    })
 
     beforeEach(() => {
         E2BSandboxService.resetMockClient()
@@ -32,7 +39,12 @@ describe('E2BSandboxService (Unit & Integration)', () => {
         expect(createCalls).toBe(1)
         expect(updateMock).toHaveBeenCalledWith({
             where: { id: 'sess-1' },
-            data: { vmId: 'sb-12345', vmStatus: 'RUNNING' },
+            data: {
+                vmId: 'sb-12345',
+                vmStatus: 'RUNNING',
+                sandboxStatus: 'RUNNING',
+                vmLastActivityAt: expect.any(Date),
+            },
         })
     })
 
@@ -154,46 +166,6 @@ describe('E2BSandboxService (Unit & Integration)', () => {
         expect(res.exitCode).toBe(0)
         expect(chunks.length).toBeGreaterThan(0)
         expect(chunks.join('')).toContain('Executing test script...')
-    })
-
-    it('should enforce maximum 3 active sandboxes per user with LRU auto-pausing', async () => {
-        const pausedSessions: string[] = []
-        const mockClient = {
-            create: async (params: any) => ({
-                sandboxId: `sb-${params.sessionId}`,
-                pause: async () => {
-                    pausedSessions.push(params.sessionId)
-                },
-            }),
-        }
-
-        E2BSandboxService.setMockClient(mockClient)
-
-        // Provision 3 sandboxes for user-1
-        await E2BSandboxService.provisionSandbox({
-            sessionId: 's1',
-            userId: 'usr-1',
-            backoffDelays: [1, 1, 1],
-        })
-        await E2BSandboxService.provisionSandbox({
-            sessionId: 's2',
-            userId: 'usr-1',
-            backoffDelays: [1, 1, 1],
-        })
-        await E2BSandboxService.provisionSandbox({
-            sessionId: 's3',
-            userId: 'usr-1',
-            backoffDelays: [1, 1, 1],
-        })
-
-        // Launch 4th sandbox for user-1 -> should auto-pause LRU session (s1)
-        await E2BSandboxService.provisionSandbox({
-            sessionId: 's4',
-            userId: 'usr-1',
-            backoffDelays: [1, 1, 1],
-        })
-
-        expect(pausedSessions).toContain('s1')
     })
 
     it('should execute isolated ephemeral sandboxes with in-memory credential hygiene', async () => {

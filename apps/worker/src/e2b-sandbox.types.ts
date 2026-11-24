@@ -64,6 +64,24 @@ export interface PauseSandboxInput {
 export interface ResumeSandboxInput {
     sessionId: string
     snapshotId?: string
+    // used when the sandbox cannot be resumed and a new one is provisioned
+    userId?: string
+    secrets?: Array<{ key: string; value: string }>
+}
+
+export interface AcquireSessionSandboxInput {
+    sessionId: string
+    userId?: string
+    secrets?: Array<{ key: string; value: string }>
+}
+
+export interface ExtendSandboxTimeoutInput {
+    sessionId: string
+    sandboxId?: string
+}
+
+export interface KeepSandboxAliveInput {
+    sessionId: string
 }
 
 export interface HandleDisconnectInput {

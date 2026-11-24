@@ -17,6 +17,11 @@ import { getWebUrl } from '@/shared/config/env'
 import { resetUserQueryCache } from '@/shared/lib/query-cache'
 import { useDelayedFlag } from '@/shared/lib/useDelayedFlag'
 
+// the admin page (#624) is a separate screen; its code loads only when it is opened
+const AdminPage = React.lazy(() =>
+    import('./features/admin/components/AdminPage').then((m) => ({ default: m.AdminPage }))
+)
+
 /** opening a session faster than this shows no loader, so the screen does not blink */
 const OPEN_LOADER_DELAY_MS = 300
 
@@ -116,6 +121,14 @@ const App: React.FC = () => {
 
     if (needsOnboarding) {
         return <LogoLoader />
+    }
+
+    if (location.pathname === '/admin') {
+        return (
+            <React.Suspense fallback={<LogoLoader />}>
+                <AdminPage />
+            </React.Suspense>
+        )
     }
 
     return (

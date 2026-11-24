@@ -91,7 +91,7 @@ describe('Session Service - Unit Tests', () => {
             const originalBalance = usageService.hasMinimumBalance
             const originalCount = prisma.session.count
             usageService.hasMinimumBalance = mock(async () => true) as any
-            prisma.session.count = mock(async () => 3) as any // default limit is 3
+            prisma.session.count = mock(async () => 10) as any // default limit is 10 (#624)
 
             try {
                 await expect(
@@ -100,7 +100,7 @@ describe('Session Service - Unit Tests', () => {
                         title: 'Test Session',
                     })
                 ).rejects.toThrow(
-                    new AppError('Maximum concurrent active sessions limit (3) reached', 409)
+                    new AppError('Maximum concurrent active sessions limit (10) reached', 409)
                 )
             } finally {
                 usageService.hasMinimumBalance = originalBalance

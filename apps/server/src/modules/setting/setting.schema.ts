@@ -35,3 +35,8 @@ export const updateModelSourceSchema = z.object({
         message: 'defaultModelSource must be CREDITS or OWN_KEY',
     }),
 })
+
+export const unsubscribeQuerySchema = z.object({
+    u: z.string().trim().min(1).max(100),
+    t: z.string().trim().min(1).max(200),
+})

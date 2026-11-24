@@ -6,6 +6,10 @@ import { settingController } from './setting.controller'
 
 const settingRouter = Router()
 
+// public: the link in announcement emails carries a signed token instead of a session
+settingRouter.get('/unsubscribe', settingController.showUnsubscribe)
+settingRouter.post('/unsubscribe', settingController.unsubscribe)
+
 settingRouter.use(authMiddleware)
 
 settingRouter.get('/me', settingController.getMe)

@@ -28,6 +28,7 @@ import { resolveGitToken, withGitToken } from './git-remote'
 import { notifyAgentQuestion } from './inbox-notify'
 import { clearPendingQuestion } from './pending-question'
 import { RemotePlatformAdapter } from './remote-operations'
+import { reserveSandboxSlot, touchSandboxActivity } from './sandbox-limits'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { archiveWorkspaceState } from './workspace'
 
@@ -41,6 +42,9 @@ import type {
     EmitSessionEventInput,
     PauseSandboxInput,
     ResumeSandboxInput,
+    AcquireSessionSandboxInput,
+    ExtendSandboxTimeoutInput,
+    KeepSandboxAliveInput,
     HandleDisconnectInput,
     EphemeralTaskInput,
     EphemeralTaskResult,
@@ -68,17 +72,16 @@ const getRedisPub = (): Redis => {
     return redisPub
 }
 
+// E2B lifetime without activity; keepSandboxAlive pushes it forward while the sandbox is busy
+const SANDBOX_TIMEOUT_MS = 30 * 60 * 1000
+const KEEP_ALIVE_THROTTLE_MS = 60 * 1000
+const lastKeepAliveAt = new Map<string, number>()
+
 // Active sandboxes cache in worker memory
 const activeSandboxes = new Map<string, any>()
 
 // Active platform adapters tracking for graceful detach
 const activeAdapters = new Set<RemotePlatformAdapter>()
-
-// LRU user session tracking map (userId -> Map<sessionId, { sandboxId: string, lastActiveAt: number }>)
-const userActiveSessions = new Map<
-    string,
-    Map<string, { sandboxId: string; lastActiveAt: number }>
->()
 
 // Mock client override for testing
 let mockClientOverride: any = null
@@ -90,7 +93,6 @@ const setMockClient = (mock: any) => {
 const resetMockClient = () => {
     mockClientOverride = null
     activeSandboxes.clear()
-    userActiveSessions.clear()
     activeAdapters.clear()
     TerminalBridgeService.resetForTesting()
 }
@@ -105,30 +107,6 @@ const emitSessionEvent = async (data: EmitSessionEventInput): Promise<void> => {
         }
     } catch {
         // Intentionally swallowed: Redis pub connection fallback in test environment
-    }
-}
-
-const enforceUserLruLimit = async (userId: string): Promise<void> => {
-    const userSessions = userActiveSessions.get(userId)
-    if (!userSessions || userSessions.size < 3) return
-
-    // Find least recently used session
-    let oldestSessionId: string | null = null
-    let oldestTime = Infinity
-
-    for (const [sId, info] of userSessions.entries()) {
-        if (info.lastActiveAt < oldestTime) {
-            oldestTime = info.lastActiveAt
-            oldestSessionId = sId
-        }
-    }
-
-    if (oldestSessionId) {
-        console.log(
-            `[E2BSandboxService] User ${userId} exceeded 3 active sandboxes limit. Pausing LRU idle session ${oldestSessionId}`
-        )
-        await pauseSandbox({ sessionId: oldestSessionId })
-        userSessions.delete(oldestSessionId)
     }
 }
 
@@ -160,11 +138,6 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
         }
     }
 
-    // Enforce 3 active sandboxes max per user with LRU auto-pause
-    if (userId) {
-        await enforceUserLruLimit(userId)
-    }
-
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             console.log(
@@ -183,17 +156,15 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                 activeSandboxes.set(sId, mockSandbox)
                 void TerminalBridgeService.onSandboxReady({ sessionId, sandbox: mockSandbox })
 
-                if (userId) {
-                    if (!userActiveSessions.has(userId)) userActiveSessions.set(userId, new Map())
-                    userActiveSessions
-                        .get(userId)!
-                        .set(sessionId, { sandboxId: sId, lastActiveAt: Date.now() })
-                }
-
                 await prisma.session
                     .update({
                         where: { id: sessionId },
-                        data: { vmId: sId, vmStatus: 'RUNNING' },
+                        data: {
+                            vmId: sId,
+                            vmStatus: 'RUNNING',
+                            sandboxStatus: 'RUNNING',
+                            vmLastActivityAt: new Date(),
+                        },
                     })
                     .catch(() => {
                         // Intentionally swallowed: DB fallback in test environment
@@ -323,7 +294,9 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
             const sandbox = await Sandbox.create({
                 apiKey: effectiveApiKey,
                 template: template || 'base',
-                timeoutMs: timeoutMs || 1800000,
+                timeoutMs: timeoutMs || SANDBOX_TIMEOUT_MS,
+                // a backstop for the idle sweeper: at the timeout E2B pauses, never deletes
+                lifecycle: { onTimeout: 'pause' },
                 envs: Object.keys(envsMap).length > 0 ? envsMap : undefined,
             })
 
@@ -359,13 +332,6 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
             activeSandboxes.set(sessionId, sandbox)
             activeSandboxes.set(sandboxId, sandbox)
             void TerminalBridgeService.onSandboxReady({ sessionId, sandbox })
-
-            if (userId) {
-                if (!userActiveSessions.has(userId)) userActiveSessions.set(userId, new Map())
-                userActiveSessions
-                    .get(userId)!
-                    .set(sessionId, { sandboxId, lastActiveAt: Date.now() })
-            }
 
             // Initialize sandbox workspace strictly via repository clone and task branch
             try {
@@ -455,7 +421,12 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
             await prisma.session
                 .update({
                     where: { id: sessionId },
-                    data: { vmId: sandboxId, vmStatus: 'RUNNING' },
+                    data: {
+                        vmId: sandboxId,
+                        vmStatus: 'RUNNING',
+                        sandboxStatus: 'RUNNING',
+                        vmLastActivityAt: new Date(),
+                    },
                 })
                 .catch(() => {})
 
@@ -504,44 +475,57 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
 
 const pauseSandbox = async (data: PauseSandboxInput): Promise<boolean> => {
     const { sessionId, sandboxId } = data
-    console.log(`[E2BSandboxService] Warm-pausing sandbox for session ${sessionId}`)
+    console.log(`[E2BSandboxService] Pausing sandbox for session ${sessionId}`)
 
     try {
-        const targetId = sandboxId || sessionId
-        const sandbox = activeSandboxes.get(targetId)
+        const sandbox =
+            activeSandboxes.get(sessionId) ||
+            (sandboxId ? activeSandboxes.get(sandboxId) : undefined)
 
-        // Archive workspace state to MinIO before pausing
-        await archiveWorkspaceState({
-            sessionId,
-            workspaceDir: `/workspace`,
-            sandbox,
-        }).catch((err) => {
-            console.error(
-                `[E2BSandboxService] Workspace archiving warning for session ${sessionId}:`,
-                err
-            )
-        })
+        if (sandbox) {
+            // Archive workspace state to MinIO before pausing
+            await archiveWorkspaceState({
+                sessionId,
+                workspaceDir: `/workspace`,
+                sandbox,
+            }).catch((err) => {
+                console.error(
+                    `[E2BSandboxService] Workspace archiving warning for session ${sessionId}:`,
+                    err
+                )
+            })
 
-        if (sandbox && typeof sandbox.pause === 'function') {
-            await sandbox.pause()
+            if (typeof sandbox.pause === 'function') {
+                await sandbox.pause()
+            }
+        } else if (sandboxId && !sandboxId.startsWith('mock-')) {
+            // started by another worker: pause it in E2B by its id
+            if (mockClientOverride && typeof mockClientOverride.pauseById === 'function') {
+                await mockClientOverride.pauseById(sandboxId)
+            } else if (process.env.E2B_API_KEY) {
+                await Sandbox.pause(sandboxId, { apiKey: process.env.E2B_API_KEY })
+            }
         }
 
-        activeSandboxes.delete(targetId)
         activeSandboxes.delete(sessionId)
+        if (sandboxId) activeSandboxes.delete(sandboxId)
+        if (sandbox?.sandboxId) activeSandboxes.delete(sandbox.sandboxId)
         void TerminalBridgeService.destroyPtySession({ sessionId })
 
         await prisma.session
             .update({
                 where: { id: sessionId },
-                data: { vmStatus: 'STOPPED' },
+                data: { vmStatus: 'STOPPED', sandboxStatus: 'PAUSED' },
             })
-            .catch(() => {})
+            .catch(() => {
+                // Intentionally swallowed: the session may be gone
+            })
 
         await emitSessionEvent({
             sessionId,
             event: {
                 type: 'AgentStatus',
-                message: 'E2B Sandbox warm paused & workspace archived to MinIO',
+                message: 'Sandbox paused. It resumes on the next prompt.',
             },
         })
 
@@ -553,7 +537,7 @@ const pauseSandbox = async (data: PauseSandboxInput): Promise<boolean> => {
 }
 
 const resumeSandbox = async (data: ResumeSandboxInput): Promise<ProvisionSandboxResult> => {
-    const { sessionId, snapshotId } = data
+    const { sessionId, snapshotId, userId, secrets } = data
     console.log(`[E2BSandboxService] Resuming sandbox for session ${sessionId}`)
 
     try {
@@ -562,11 +546,17 @@ const resumeSandbox = async (data: ResumeSandboxInput): Promise<ProvisionSandbox
             const sId = mockSandbox.sandboxId || snapshotId || `mock-sandbox-${sessionId}`
             activeSandboxes.set(sessionId, mockSandbox)
             activeSandboxes.set(sId, mockSandbox)
+            void TerminalBridgeService.onSandboxReady({ sessionId, sandbox: mockSandbox })
 
             await prisma.session
                 .update({
                     where: { id: sessionId },
-                    data: { vmId: sId, vmStatus: 'RUNNING' },
+                    data: {
+                        vmId: sId,
+                        vmStatus: 'RUNNING',
+                        sandboxStatus: 'RUNNING',
+                        vmLastActivityAt: new Date(),
+                    },
                 })
                 .catch(() => {})
 
@@ -574,27 +564,140 @@ const resumeSandbox = async (data: ResumeSandboxInput): Promise<ProvisionSandbox
         }
 
         if (snapshotId && process.env.E2B_API_KEY) {
-            const sandbox =
-                typeof (Sandbox as any).resume === 'function'
-                    ? await (Sandbox as any).resume(snapshotId, { apiKey: process.env.E2B_API_KEY })
-                    : await Sandbox.connect(snapshotId, { apiKey: process.env.E2B_API_KEY })
+            // connect resumes a paused sandbox with its files and memory
+            const sandbox = await Sandbox.connect(snapshotId, {
+                apiKey: process.env.E2B_API_KEY,
+                timeoutMs: SANDBOX_TIMEOUT_MS,
+            })
             activeSandboxes.set(sessionId, sandbox)
             activeSandboxes.set(sandbox.sandboxId, sandbox)
+            void TerminalBridgeService.onSandboxReady({ sessionId, sandbox })
 
             await prisma.session
                 .update({
                     where: { id: sessionId },
-                    data: { vmId: sandbox.sandboxId, vmStatus: 'RUNNING' },
+                    data: {
+                        vmId: sandbox.sandboxId,
+                        vmStatus: 'RUNNING',
+                        sandboxStatus: 'RUNNING',
+                        vmLastActivityAt: new Date(),
+                    },
                 })
                 .catch(() => {})
 
             return { sandboxId: sandbox.sandboxId, isMock: false }
         }
 
-        return provisionSandbox({ sessionId })
+        return provisionSandbox({ sessionId, userId, secrets })
     } catch (e: any) {
+        // the sandbox is gone (killed, or past E2B's paused retention): start a new one
         console.error(`[E2BSandboxService] Error resuming sandbox ${sessionId}:`, e)
-        return provisionSandbox({ sessionId })
+        return provisionSandbox({ sessionId, userId, secrets })
+    }
+}
+
+/**
+ * The sandbox for one prompt: claims a running slot (pausing the user's least recently
+ * used sandboxes past the limit, on any worker), then reuses this session's sandbox,
+ * resumes it when paused, or provisions a new one.
+ */
+const acquireSessionSandbox = async (
+    data: AcquireSessionSandboxInput
+): Promise<ProvisionSandboxResult> => {
+    const { sessionId, userId, secrets } = data
+
+    const previous = await prisma.session.findUnique({
+        where: { id: sessionId },
+        select: { vmId: true, sandboxStatus: true },
+    })
+
+    if (userId) {
+        const { toPause } = await reserveSandboxSlot({ userId, sessionId })
+        for (const victim of toPause) {
+            await pauseSandbox({
+                sessionId: victim.sessionId,
+                sandboxId: victim.vmId ?? undefined,
+            })
+        }
+    }
+
+    // a handle this worker holds is only good while the database says the sandbox still
+    // runs: another worker may have paused (sweeper, limit) or stopped (admin) it by id
+    const local = activeSandboxes.get(sessionId)
+    const localIsLive =
+        local &&
+        previous?.sandboxStatus === 'RUNNING' &&
+        (!previous.vmId || !local.sandboxId || local.sandboxId === previous.vmId)
+    if (local && !localIsLive) {
+        activeSandboxes.delete(sessionId)
+        if (local.sandboxId) activeSandboxes.delete(local.sandboxId)
+    }
+    if (local && localIsLive) {
+        const sandboxId = local.sandboxId || previous?.vmId || `mock-sandbox-${sessionId}`
+        await prisma.session
+            .update({
+                where: { id: sessionId },
+                data: {
+                    vmStatus: 'RUNNING',
+                    sandboxStatus: 'RUNNING',
+                    vmLastActivityAt: new Date(),
+                },
+            })
+            .catch(() => {
+                // Intentionally swallowed: the session may be gone
+            })
+        return { sandboxId, isMock: Boolean(local.isMock) }
+    }
+
+    const vmId = previous?.vmId
+    const canResume =
+        vmId &&
+        !vmId.startsWith('mock-') &&
+        (previous?.sandboxStatus === 'PAUSED' || previous?.sandboxStatus === 'RUNNING')
+    if (canResume) {
+        return resumeSandbox({ sessionId, snapshotId: vmId, userId, secrets })
+    }
+
+    return provisionSandbox({ sessionId, userId, secrets })
+}
+
+/**
+ * Record activity on a session's sandbox (agent step, terminal input) and keep the E2B
+ * timeout ahead of it, so a busy sandbox is never paused.
+ */
+const keepSandboxAlive = async (data: KeepSandboxAliveInput): Promise<void> => {
+    const { sessionId } = data
+    const now = Date.now()
+    if (now - (lastKeepAliveAt.get(sessionId) ?? 0) < KEEP_ALIVE_THROTTLE_MS) return
+    lastKeepAliveAt.set(sessionId, now)
+
+    await touchSandboxActivity({ sessionId, force: true })
+    const sandbox = activeSandboxes.get(sessionId)
+    if (sandbox && typeof sandbox.setTimeout === 'function') {
+        await sandbox.setTimeout(SANDBOX_TIMEOUT_MS).catch((err: any) => {
+            console.warn(
+                `[E2BSandboxService] could not extend the timeout for session ${sessionId}:`,
+                err?.message || err
+            )
+        })
+    }
+}
+
+/** Push a sandbox's E2B timeout forward while it is in use (the sweeper calls it). */
+const extendSandboxTimeout = async (data: ExtendSandboxTimeoutInput): Promise<void> => {
+    const { sessionId, sandboxId } = data
+    const local = activeSandboxes.get(sessionId)
+    if (local && typeof local.setTimeout === 'function') {
+        await local.setTimeout(SANDBOX_TIMEOUT_MS)
+        return
+    }
+    if (!sandboxId || sandboxId.startsWith('mock-')) return
+    if (mockClientOverride && typeof mockClientOverride.extendById === 'function') {
+        await mockClientOverride.extendById(sandboxId)
+    } else if (process.env.E2B_API_KEY) {
+        await Sandbox.setTimeout(sandboxId, SANDBOX_TIMEOUT_MS, {
+            apiKey: process.env.E2B_API_KEY,
+        })
     }
 }
 
@@ -619,6 +722,16 @@ const destroySandbox = async (data: DestroySandboxInput): Promise<boolean> => {
             }
             activeSandboxes.delete(sandboxId)
             void TerminalBridgeService.destroyPtySession({ sessionId: sandboxId })
+        } else if (!sandboxId.startsWith('mock-')) {
+            // started by another worker (admin stop): kill it in E2B by its id
+            if (mockClientOverride && typeof mockClientOverride.killById === 'function') {
+                await mockClientOverride.killById(sandboxId)
+            } else if (process.env.E2B_API_KEY) {
+                await Sandbox.kill(sandboxId, { apiKey: process.env.E2B_API_KEY })
+            }
+        }
+        for (const [key, value] of activeSandboxes.entries()) {
+            if (value?.sandboxId === sandboxId) activeSandboxes.delete(key)
         }
         return true
     } catch (e: any) {
@@ -1036,6 +1149,9 @@ export const E2BSandboxService = {
     provisionSandbox,
     pauseSandbox,
     resumeSandbox,
+    acquireSessionSandbox,
+    keepSandboxAlive,
+    extendSandboxTimeout,
     handleDisconnect,
     destroySandbox,
     executeCommand,

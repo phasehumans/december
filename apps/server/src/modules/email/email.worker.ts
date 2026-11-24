@@ -122,6 +122,29 @@ export const processEmailJob = async (job: Job<EmailJobData>): Promise<ProcessEm
         }
     }
 
+    if (data.type === 'message') {
+        const { to, subject, html, text } = data
+        try {
+            const result = await resend.emails.send({
+                from: `December <${fromEmail}>`,
+                to,
+                subject,
+                html,
+                text,
+            })
+            if (result?.error) {
+                throw new Error(result.error.message || `Resend error: ${result.error.name}`)
+            }
+            return { success: true, messageId: result?.data?.id || 'email-delivered' }
+        } catch (error: any) {
+            console.error(`[Email Worker] Failed to send message email:`, error?.message || error)
+            if (env.NODE_ENV === 'development' || env.NODE_ENV === 'test' || !env.RESEND_API_KEY) {
+                return { success: true, messageId: 'dev-fallback' }
+            }
+            throw error
+        }
+    }
+
     throw new Error(`Unknown email job type: ${(data as any)?.type}`)
 }
 

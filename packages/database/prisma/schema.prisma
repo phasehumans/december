@@ -8,47 +8,48 @@ datasource db {
 }
 
 model User {
-  id                     String          @id @default(uuid())
-  name                   String
-  email                  String          @unique
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
-  emailVerified          Boolean         @default(false)
-  googleId               String?
-  otpExpiresAt           DateTime?
-  otpHash                String?
-  otpAttempts            Int             @default(0)
-  githubId               String?         @unique
-  githubToken            String?
-  githubUsername         String?
-  githubConnected        Boolean         @default(false)
-  githubAppInstall       Boolean         @default(false)
-  notifyProductUpdates   Boolean         @default(true)
-  notifyProjectActivity  Boolean         @default(true)
-  notifySecurityAlerts   Boolean         @default(true)
-  deletedAt              DateTime?
-  isDeleted              Boolean         @default(false)
-  creditBalance          Float           @default(0)
+  id                    String        @id @default(uuid())
+  name                  String
+  email                 String        @unique
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  emailVerified         Boolean       @default(false)
+  googleId              String?
+  otpExpiresAt          DateTime?
+  otpHash               String?
+  otpAttempts           Int           @default(0)
+  githubId              String?       @unique
+  githubToken           String?
+  githubUsername        String?
+  githubConnected       Boolean       @default(false)
+  githubAppInstall      Boolean       @default(false)
+  notifyProductUpdates  Boolean       @default(true)
+  notifyProjectActivity Boolean       @default(true)
+  notifySecurityAlerts  Boolean       @default(true)
+  deletedAt             DateTime?
+  isDeleted             Boolean       @default(false)
+  creditBalance         Float         @default(0)
   // empty until the user finishes the /onboarding flow (finished or skipped through)
-  onboardingCompletedAt  DateTime?
+  onboardingCompletedAt DateTime?
   // last onboarding step the user was on: github | start | models
-  onboardingStep         String?
-  defaultModelSource     BillingSource   @default(CREDITS)
+  onboardingStep        String?
+  defaultModelSource    BillingSource @default(CREDITS)
 
-  notifications      Notification[]
-  authSessions       AuthSession[]
-  sessions           Session[]
-  walletTransactions WalletTransaction[]
-  usageEvents        UsageEvent[]
-  deviceCodes        DeviceCode[]
-  redeemClaims       RedeemCodeClaim[]
+  notifications       Notification[]
+  authSessions        AuthSession[]
+  sessions            Session[]
+  walletTransactions  WalletTransaction[]
+  usageEvents         UsageEvent[]
+  deviceCodes         DeviceCode[]
+  redeemClaims        RedeemCodeClaim[]
   githubInstallations GithubAppInstallation[]
-  secrets            Secret[]
-  feedbacks          Feedback[]
-  projects           Project[]
+  secrets             Secret[]
+  feedbacks           Feedback[]
+  projects            Project[]
   providerCredentials ProviderCredential[]
   gitConnections      GitConnection[]
-  featureWaitlists   FeatureWaitlist[]
+  featureWaitlists    FeatureWaitlist[]
+  creditRequests      CreditRequest[]
 }
 
 // how a cloud run pays for model tokens
@@ -121,17 +122,17 @@ model FeatureWaitlist {
 }
 
 model Notification {
-  id        String           @id @default(uuid())
+  id        String               @id @default(uuid())
   userId    String
   title     String
   message   String
-  isRead    Boolean          @default(false)
-  type      NotificationType @default(INFO)
+  isRead    Boolean              @default(false)
+  type      NotificationType     @default(INFO)
   // MENTION = a person talked to you or December (replies, review comments, @trydecember)
   category  NotificationCategory @default(GENERAL)
   link      String?
-  createdAt DateTime         @default(now())
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime             @default(now())
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, isRead])
@@ -140,19 +141,19 @@ model Notification {
 }
 
 model AuthSession {
-  id               String    @id @default(uuid())
-  userId           String
+  id                       String    @id @default(uuid())
+  userId                   String
   refreshTokenHash         String    @unique
   previousRefreshTokenHash String?
   rotatedAt                DateTime?
   userAgent                String?
-  ipAddress        String?
-  expiresAt        DateTime
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  isRevoked        Boolean   @default(false)
-  revokedAt        DateTime?
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress                String?
+  expiresAt                DateTime
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  isRevoked                Boolean   @default(false)
+  revokedAt                DateTime?
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -160,61 +161,68 @@ model AuthSession {
 }
 
 model Session {
-  id                   String      @id @default(uuid())
-  title                String?
-  description          String?
-  userId               String
-  type                 SessionType @default(WEB)
-  vmId                 String?
-  vmStatus             VmStatus    @default(STOPPED)
-  isArchived           Boolean     @default(false)
-  tags                 String[]
-  githubLastSyncedAt   DateTime?
-  githubRepoName       String?
-  githubRepoOwner      String?
-  githubRepoUrl        String?
-  gitProvider          GitProvider @default(GITHUB)
-  repoUrl              String?
-  branch               String?
-  gitRef               String?
-  issueNumber          Int?
+  id                 String         @id @default(uuid())
+  title              String?
+  description        String?
+  userId             String
+  type               SessionType    @default(WEB)
+  vmId               String?
+  vmStatus           VmStatus       @default(STOPPED)
+  isArchived         Boolean        @default(false)
+  tags               String[]
+  githubLastSyncedAt DateTime?
+  githubRepoName     String?
+  githubRepoOwner    String?
+  githubRepoUrl      String?
+  gitProvider        GitProvider    @default(GITHUB)
+  repoUrl            String?
+  branch             String?
+  gitRef             String?
+  issueNumber        Int?
   // the pull request December opened for this session (saved by the worker)
-  prNumber             Int?
-  prUrl                String?
-  prState              String?
-  prTitle              String?
-  prBranch             String?
+  prNumber           Int?
+  prUrl              String?
+  prState            String?
+  prTitle            String?
+  prBranch           String?
   // pinned sessions come first in the recent list; the date orders the pins
-  pinnedAt             DateTime?
+  pinnedAt           DateTime?
   // the agent asked a question and waits for an answer (the question itself lives in Redis)
-  pendingQuestionAt    DateTime?
-  projectId            String?
-  epoch                Int                   @default(1)
-  leaseExpiresAt       DateTime?
-  leaseOwner           String?
-  status               String                @default("IDLE")
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  deletedAt            DateTime?
+  pendingQuestionAt  DateTime?
+  projectId          String?
+  epoch              Int            @default(1)
+  leaseExpiresAt     DateTime?
+  leaseOwner         String?
+  status             String         @default("IDLE")
+  // the E2B sandbox itself, apart from the agent run (vmStatus). it stays RUNNING after a
+  // turn for the preview, terminal and next prompt until the idle sweeper pauses it
+  sandboxStatus      SandboxStatus?
+  // last agent step, terminal input or preview request on the sandbox (idle pause after 10 minutes)
+  vmLastActivityAt   DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
 
-  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project         Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project         Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
   messages        Message[]
   settings        SessionSettings?
   memories        SessionMemory[]
-  usageEvents        UsageEvent[]
-  durableSteps       DurableStep[]
-  mailboxMessages    MailboxMessage[]
-  wakeUpTriggers     WakeUpTrigger[]
+  usageEvents     UsageEvent[]
+  durableSteps    DurableStep[]
+  mailboxMessages MailboxMessage[]
+  wakeUpTriggers  WakeUpTrigger[]
 
   @@index([userId])
   @@index([userId, prNumber])
   @@index([userId, pinnedAt])
   @@index([projectId])
+  @@index([userId, sandboxStatus])
+  @@index([sandboxStatus, vmLastActivityAt])
 }
 
 model Project {
-  id            String    @id @default(uuid())
+  id            String      @id @default(uuid())
   name          String
   description   String?
   userId        String
@@ -222,14 +230,14 @@ model Project {
   repoName      String?
   repoUrl       String?
   gitProvider   GitProvider @default(GITHUB)
-  defaultBranch String?   @default("main")
+  defaultBranch String?     @default("main")
   pinnedRules   String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   deletedAt     DateTime?
 
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessions      Session[]
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions Session[]
 
   @@index([userId])
 }
@@ -245,18 +253,18 @@ model SessionSettings {
 }
 
 model DurableStep {
-  id          String   @id @default(uuid())
-  sessionId   String
-  stepIndex   Int
-  stepType    String
-  opId        String?
-  input       Json?
-  output      Json?
-  outputRef   String?
-  durationMs  Int?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  sessionId  String
+  stepIndex  Int
+  stepType   String
+  opId       String?
+  input      Json?
+  output     Json?
+  outputRef  String?
+  durationMs Int?
+  createdAt  DateTime @default(now())
 
-  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, stepIndex])
   @@index([sessionId])
@@ -266,14 +274,14 @@ model DurableStep {
 model MailboxMessage {
   id          String    @id @default(uuid())
   sessionId   String
-  sender      String    // USER | SYSTEM | WEBHOOK | CRON
+  sender      String // USER | SYSTEM | WEBHOOK | CRON
   content     String
   status      String    @default("QUEUED") // QUEUED, PLACED, COMPLETED, FAILED
   metadata    Json?
   createdAt   DateTime  @default(now())
   processedAt DateTime?
 
-  session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, status])
   @@index([status, createdAt])
@@ -283,13 +291,13 @@ model WakeUpTrigger {
   id          String    @id @default(uuid())
   sessionId   String
   triggerAt   DateTime
-  reason      String?   // scheduled_wake, cron_check, pr_review, etc.
+  reason      String? // scheduled_wake, cron_check, pr_review, etc.
   status      String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, CANCELLED
   payload     Json?
   createdAt   DateTime  @default(now())
   processedAt DateTime?
 
-  session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([triggerAt, status])
   @@index([sessionId])
@@ -305,6 +313,15 @@ enum VmStatus {
   RUNNING
   STOPPED
   FAILED
+}
+
+// #624 part 4: at most 10 STARTING or RUNNING sandboxes per user. PAUSED keeps the files
+// and memory and does not count; STOPPED is gone
+enum SandboxStatus {
+  STARTING
+  RUNNING
+  PAUSED
+  STOPPED
 }
 
 model SessionMemory {
@@ -355,6 +372,77 @@ model WalletTransaction {
 enum PaymentProvider {
   RAZORPAY
   COINBASE
+  // free credits an admin approved (credit requests)
+  GRANT
+  // credits an admin added or removed by hand, with a reason
+  ADJUSTMENT
+}
+
+enum CreditRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// a request for the one-time $5 free credits. one per normalized address, for good:
+// the row stays when the account is deleted, and a rejection is final.
+model CreditRequest {
+  id               String              @id @default(uuid())
+  userId           String?
+  normalizedEmail  String              @unique
+  status           CreditRequestStatus @default(PENDING)
+  buildPlan        String
+  heardFrom        String
+  agreedToFeedback Boolean             @default(false)
+  ipAddress        String?
+  userAgent        String?
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  rejectReason     String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([ipAddress])
+}
+
+// one row for every admin action. adminUserId is not a relation so the log outlives accounts.
+model AdminAuditLog {
+  id          String   @id @default(uuid())
+  adminUserId String
+  action      String
+  targetType  String
+  targetId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+enum AnnouncementKind {
+  ANNOUNCEMENT
+  FEEDBACK_REQUEST
+}
+
+// a message the admin page sent to users (replaces scripts/announce.py and scripts/feedback.ts)
+model Announcement {
+  id              String           @id @default(uuid())
+  kind            AnnouncementKind @default(ANNOUNCEMENT)
+  subject         String
+  body            String
+  // feedback requests: users who signed up this many days ago
+  signedUpDaysAgo Int?
+  createdBy       String
+  recipientCount  Int              @default(0)
+  skippedCount    Int              @default(0)
+  sentAt          DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@index([createdAt])
 }
 
 enum PaymentStatus {
@@ -364,21 +452,21 @@ enum PaymentStatus {
 }
 
 model UsageEvent {
-  id                String   @id @default(uuid())
+  id                String        @id @default(uuid())
   userId            String
   sessionId         String?
   model             String
-  inputTokens       Int      @default(0)
-  outputTokens      Int      @default(0)
-  totalTokens       Int      @default(0)
-  costInCents       Float    @default(0)
+  inputTokens       Int           @default(0)
+  outputTokens      Int           @default(0)
+  totalTokens       Int           @default(0)
+  costInCents       Float         @default(0)
   chatId            String?
-  externalRequestId String?  @unique
+  externalRequestId String?       @unique
   metadata          Json?
   billingSource     BillingSource @default(CREDITS)
   periodStart       DateTime
   periodEnd         DateTime
-  createdAt         DateTime @default(now())
+  createdAt         DateTime      @default(now())
 
   session Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -400,7 +488,6 @@ enum NotificationCategory {
   GENERAL
   MENTION
 }
-
 
 enum MessageRole {
   USER
@@ -466,7 +553,7 @@ model GithubAppInstallation {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -475,12 +562,12 @@ model Secret {
   id        String   @id @default(uuid())
   userId    String
   name      String
-  value     String   // Encrypted value
+  value     String // Encrypted value
   note      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, name])
   @@index([userId])
@@ -494,8 +581,7 @@ model Feedback {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
-

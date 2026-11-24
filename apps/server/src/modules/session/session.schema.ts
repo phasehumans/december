@@ -126,6 +126,10 @@ export const disconnectSessionParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
 
+export const previewActivityParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})
+
 export const rehydrateSessionParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })

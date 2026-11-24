@@ -604,6 +604,12 @@ export async function processGrpcStream(
 
             const eventType = parsedEvent.type
 
+            // every agent step counts as sandbox activity (throttled), so a busy sandbox is
+            // never paused by the idle sweeper
+            void E2BSandboxService.keepSandboxAlive({ sessionId }).catch(() => {
+                // Intentionally swallowed: keep-alive is best effort
+            })
+
             if (eventType === 'ThinkingChunk') {
                 const chunk = parsedEvent.content || parsedEvent.data?.content || ''
                 if (chunk) {
@@ -791,6 +797,8 @@ export async function processGrpcStream(
         await prisma.session
             .update({
                 where: { id: sessionId },
+                // the agent run ends here. the sandbox (sandboxStatus) keeps running for the
+                // preview, terminal and next prompt until the idle sweeper pauses it
                 data: {
                     vmStatus: hasError ? 'FAILED' : 'STOPPED',
                     status: hasError ? 'FAILED' : 'PARKED',

@@ -27,6 +27,8 @@ import {
 } from './session.utils'
 
 import type {
+    RecordPreviewActivity,
+    TouchPreviewActivity,
     GetUserSessions,
     CreateSession,
     GetSession,
@@ -231,14 +233,7 @@ const createSession = async (data: CreateSession) => {
     }
 
     if (type !== 'SEARCH') {
-        // sessions whose agent is working. an idle sandbox stays RUNNING until the worker
-        // pauses it (10 per user, least recently used first), so it does not block a new session.
-        const activeSessions = await prisma.session.count({
-            where: {
-                userId,
-                OR: [{ vmStatus: 'PROVISIONING' }, { vmStatus: 'RUNNING', status: 'RUNNING' }],
-            },
-        })
+        const activeSessions = await sessionRepository.countWorkingSessions(userId)
 
         const maxConcurrency = getMaxConcurrentSessions(userId, maxConcurrentSessions)
         if (activeSessions >= maxConcurrency) {
@@ -549,6 +544,32 @@ const disconnectSession = async (data: DisconnectSession) => {
     return { message: 'Disconnect acknowledged. Background execution continues.' }
 }
 
+// one activity write per session per 30 seconds is enough for the 10 minute idle window
+const PREVIEW_TOUCH_THROTTLE_MS = 30 * 1000
+const lastPreviewTouch = new Map<string, number>()
+
+const touchPreviewActivity = async (data: TouchPreviewActivity) => {
+    const { sessionId } = data
+    const now = Date.now()
+    if (now - (lastPreviewTouch.get(sessionId) ?? 0) < PREVIEW_TOUCH_THROTTLE_MS) return
+    lastPreviewTouch.set(sessionId, now)
+    await sessionRepository.touchSandboxActivity(sessionId)
+}
+
+/**
+ * The open preview pings this. The preview frame talks to E2B directly, so without it
+ * a sandbox someone is looking at would be paused as idle (#624 part 4).
+ */
+const recordPreviewActivity = async (data: RecordPreviewActivity) => {
+    const { userId, sessionId } = data
+    const owner = await sessionRepository.findSessionOwner(sessionId)
+    if (!owner || owner.userId !== userId) {
+        throw new AppError('Session not found', 404)
+    }
+    await touchPreviewActivity({ sessionId })
+    return { sessionId }
+}
+
 const proxyPreview = async (data: ProxyPreview) => {
     const { userId, sessionId, port, reqPath } = data
     const session = await sessionRepository.findSessionById(sessionId, userId)
@@ -557,7 +578,7 @@ const proxyPreview = async (data: ProxyPreview) => {
     }
 
     // a preview request is sandbox activity: it keeps the sandbox from the idle pause
-    await sessionRepository.touchSandboxActivity(sessionId)
+    await touchPreviewActivity({ sessionId })
 
     let targetHost = `session-${sessionId}-${port}.preview.trydecember.com`
     if (session.vmId && !session.vmId.startsWith('mock-')) {
@@ -1231,6 +1252,7 @@ const smartSearchSessions = async (data: SmartSearchSessions) => {
 }
 
 export const sessionService = {
+    recordPreviewActivity,
     loadSessionFiles,
     getUserSessions,
     createSession,

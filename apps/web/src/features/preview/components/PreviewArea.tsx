@@ -5,6 +5,7 @@ import { TestVerificationPanel } from './TestVerificationPanel'
 import type { PreviewAreaProps } from '@/features/preview/types'
 
 import { usePreviewAreaController } from '@/features/preview/hooks/usePreviewAreaController'
+import { usePreviewHeartbeat } from '@/features/preview/hooks/usePreviewHeartbeat'
 import { RUNTIME_CHECKLISTS } from '@/features/preview/utils/previewUtils'
 import { cn } from '@/shared/lib/utils'
 
@@ -29,6 +30,7 @@ export const PreviewArea: React.FC<PreviewAreaProps> = ({
     })
 
     const isLivePreview = Boolean(previewUrl) && previewState === 'Healthy'
+    usePreviewHeartbeat({ sessionId: projectId, active: isLivePreview })
     const showStructurePlaceholder = showStructureOnly && !isGenerating && !isLivePreview
 
     const showFailedState = Boolean(

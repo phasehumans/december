@@ -202,6 +202,10 @@ const ensurePtySession = async (
 const handleTerminalInput = async (data: HandleTerminalInputInput): Promise<void> => {
     const { sessionId, data: inputData } = data
     if (!inputData) return
+    // terminal input is sandbox activity: it keeps the sandbox from the idle pause
+    void E2BSandboxService.keepSandboxAlive({ sessionId }).catch(() => {
+        // Intentionally swallowed: keep-alive is best effort
+    })
 
     let session = ptySessions.get(sessionId)
     if (!session || !session.pid || session.isSpawning) {

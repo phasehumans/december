@@ -85,7 +85,9 @@ const envSchema = z
             .default('0000000000000000000000000000000000000000000000000000000000000000'),
         REDIS_URL: emptyAsUndefined,
         AGENT_TOKEN_SECRET: emptyAsUndefined,
-        MAX_CONCURRENT_SESSIONS_PER_USER: z.coerce.number().default(3),
+        MAX_CONCURRENT_SESSIONS_PER_USER: z.coerce.number().default(10),
+        // comma-separated; only these verified accounts can use /admin (#624)
+        ADMIN_EMAILS: emptyAsUndefined,
         GITHUB_APP_ID: emptyAsUndefined,
         GITHUB_APP_NAME: emptyAsUndefined,
         GITHUB_APP_PRIVATE_KEY: emptyAsUndefined,

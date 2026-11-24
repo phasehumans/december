@@ -34,12 +34,12 @@ if (connectionString.includes('sslrootcert=')) {
     }
 }
 
-const adapter = new PrismaPg({
-    connectionString,
-})
+// a separate client on the same database (tests use it when another file mocked `prisma`)
+export const createPrismaClient = () =>
+    new PrismaClient({
+        adapter: new PrismaPg({ connectionString: connectionString as string }),
+    })
 
-export const prisma = new PrismaClient({
-    adapter,
-})
+export const prisma = createPrismaClient()
 
 export * from './generated/client/index.js'

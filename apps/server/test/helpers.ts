@@ -109,3 +109,30 @@ export async function signInWithEmailCode(app: Express, email: string) {
         .set('x-forwarded-for', getRandomIP())
         .send({ email, otp: TEST_OTP })
 }
+
+/**
+ * Create a user with a live auth session and return its id and a bearer token.
+ */
+export async function createSignedInUser(data: {
+    email: string
+    name?: string
+    emailVerified?: boolean
+    createdAt?: Date
+}) {
+    const { email, name = 'Test User', emailVerified = true, createdAt } = data
+    const user = await prisma.user.create({
+        data: { name, email, emailVerified, ...(createdAt ? { createdAt } : {}) },
+    })
+    const { generateAccessToken } = await import('../src/modules/auth/auth.utils')
+    const session = await prisma.authSession.create({
+        data: {
+            userId: user.id,
+            refreshTokenHash: `test-hash-${user.id}`,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+    })
+    return {
+        userId: user.id,
+        token: generateAccessToken({ userId: user.id, sessionId: session.id }),
+    }
+}

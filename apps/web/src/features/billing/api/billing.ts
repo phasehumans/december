@@ -22,9 +22,23 @@ export interface BillingOverview {
         createdAt: string
         amountInCents: number
         currency: string
-        provider: 'RAZORPAY' | 'COINBASE'
+        provider: 'RAZORPAY' | 'COINBASE' | 'GRANT' | 'ADJUSTMENT'
         status: 'PENDING' | 'SUCCESS' | 'FAILED'
     }>
+}
+
+export interface FreeCreditRequest {
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+    createdAt: string
+    reviewedAt?: string | null
+    rejectReason?: string | null
+    amountInCents: number
+}
+
+export interface FreeCreditRequestInput {
+    buildPlan: string
+    heardFrom: string
+    agreeToFeedback: true
 }
 
 export interface CreateRazorpayOrderInput {
@@ -124,7 +138,20 @@ const redeemCode = (code: string) => {
     })
 }
 
+const getFreeCreditRequest = () => {
+    return apiRequest<FreeCreditRequest | null>('/billing/credit-request')
+}
+
+const requestFreeCredits = (data: FreeCreditRequestInput) => {
+    return apiRequest<FreeCreditRequest>('/billing/credit-request', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
 export const billingAPI = {
+    getFreeCreditRequest,
+    requestFreeCredits,
     getOverview,
     createRazorpayOrder,
     verifyRazorpayPayment,

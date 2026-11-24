@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 
 import { AddCreditsModal } from './AddCreditsModal'
 import { BillingPreviewSections, ReferralRow } from './BillingPreviewSections'
+import { FreeCreditsSection } from './FreeCreditsSection'
 import { ProfileBillingSkeleton } from './ProfileSettingsSkeleton'
 import { RedeemCodeModal } from './RedeemCodeModal'
 import { SettingsPageHeader, SettingsSectionHeading } from './SettingsPageHeader'
@@ -76,7 +77,12 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                 id: tx.id,
                 date: tx.createdAt,
                 type: 'purchase',
-                methodOrCode: 'Card/UPI (Razorpay)',
+                methodOrCode:
+                    tx.provider === 'GRANT'
+                        ? 'Free credits'
+                        : tx.provider === 'ADJUSTMENT'
+                          ? 'Credit change'
+                          : 'Card/UPI (Razorpay)',
                 amountInCents: tx.amountInCents,
                 status: tx.status as 'SUCCESS' | 'PENDING' | 'FAILED',
             }))
@@ -155,6 +161,10 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                 </div>
             </div>
 
+            <div className="flex flex-col mb-5">
+                <FreeCreditsSection />
+            </div>
+
             {isPreview && (
                 <div className="flex flex-col gap-5 mb-5">
                     <BillingPreviewSections />
@@ -230,7 +240,8 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                                                 </div>
                                                 <div className="text-right shrink-0 pt-0.5">
                                                     <span className="font-medium text-emerald-400 text-[13.5px]">
-                                                        +{formatCents(tx.amountInCents)}
+                                                        {tx.amountInCents < 0 ? '-' : '+'}
+                                                        {formatCents(Math.abs(tx.amountInCents))}
                                                     </span>
                                                 </div>
                                             </div>
@@ -262,7 +273,8 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                                                     {statusConfig.label}
                                                 </div>
                                                 <div className="col-span-2 text-right text-[#D6D5C9] font-medium">
-                                                    +{formatCents(tx.amountInCents)}
+                                                    {tx.amountInCents < 0 ? '-' : '+'}
+                                                    {formatCents(Math.abs(tx.amountInCents))}
                                                 </div>
                                                 {/* receipts are ui only: the file comes with the server part */}
                                                 {isPreview && (

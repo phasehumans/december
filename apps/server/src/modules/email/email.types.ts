@@ -26,7 +26,23 @@ export type SendWelcomeJobData = {
     name: string
 }
 
-export type EmailJobData = SendOtpJobData | SendWelcomeJobData
+export type SendMessageEmailParams = {
+    to: string
+    subject: string
+    // plain text, rendered into the december email layout
+    body: string
+    footerLinks?: Array<{ label: string; url: string }>
+}
+
+export type SendMessageJobData = {
+    type: 'message'
+    to: string
+    subject: string
+    html: string
+    text: string
+}
+
+export type EmailJobData = SendOtpJobData | SendWelcomeJobData | SendMessageJobData
 
 export type ProcessEmailJobResult = {
     success: boolean

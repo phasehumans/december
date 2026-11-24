@@ -324,18 +324,21 @@ export async function findUserRepoNames(userId: string) {
     return rows.map((row) => row.githubRepoName).filter((name): name is string => Boolean(name))
 }
 
-// one preview write per session per 30 seconds is enough for the 10 minute idle window
-const PREVIEW_TOUCH_THROTTLE_MS = 30 * 1000
-const lastPreviewTouch = new Map<string, number>()
+/**
+ * Sessions whose agent is working (vmStatus). An idle sandbox left running after a turn
+ * (sandboxStatus) does not count: the worker pauses those, 10 per user (#624).
+ */
+export async function countWorkingSessions(userId: string) {
+    return prisma.session.count({
+        where: { userId, vmStatus: { in: ['PROVISIONING', 'RUNNING'] } },
+    })
+}
 
 export async function touchSandboxActivity(sessionId: string) {
-    const now = Date.now()
-    if (now - (lastPreviewTouch.get(sessionId) ?? 0) < PREVIEW_TOUCH_THROTTLE_MS) return
-    lastPreviewTouch.set(sessionId, now)
     await prisma.session
         .updateMany({
-            where: { id: sessionId, vmStatus: 'RUNNING' },
-            data: { vmLastActivityAt: new Date(now) },
+            where: { id: sessionId, sandboxStatus: 'RUNNING' },
+            data: { vmLastActivityAt: new Date() },
         })
         .catch((err: any) => {
             // a missed touch only starts the idle window a little earlier
@@ -344,6 +347,7 @@ export async function touchSandboxActivity(sessionId: string) {
 }
 
 export const sessionRepository = {
+    countWorkingSessions,
     touchSandboxActivity,
     findManySessions,
     findUserRepoNames,

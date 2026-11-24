@@ -34,6 +34,25 @@ export type AddCredits = {
     paymentMethod: string
 }
 
+export type RequestFreeCredits = {
+    userId: string
+    buildPlan: string
+    heardFrom: string
+    ipAddress?: string
+    userAgent?: string
+}
+
+export type CreditRequestRecord = {
+    status: string
+    createdAt: Date
+    reviewedAt: Date | null
+    rejectReason: string | null
+}
+
+export type GetFreeCreditRequest = {
+    userId: string
+}
+
 export type HandleRazorpayWebhook = {
     rawBody: string | Buffer
     signature: string

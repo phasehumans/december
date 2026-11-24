@@ -8,6 +8,7 @@ import { env } from './env'
 import { parseAuthToken } from './middleware/auth.middleware'
 import { errorHandler } from './middleware/error.middleware'
 import { cliRateLimiter, globalRateLimiter, runtimeRateLimiter } from './middleware/rate-limiter'
+import adminRouter from './modules/admin/admin.routes'
 import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
 import byokRouter from './modules/byok/byok.routes'
@@ -115,6 +116,7 @@ app.use('/api/v1/sessions', sessionRouter)
 app.use('/api/v1/secrets', secretsRouter)
 app.use('/api/v1/byok', byokRouter)
 app.use('/api/v1/githubapp', githubAppRouter)
+app.use('/api/v1/admin', adminRouter)
 
 app.use(errorHandler)
 

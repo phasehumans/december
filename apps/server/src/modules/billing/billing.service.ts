@@ -3,11 +3,15 @@ import crypto from 'crypto'
 import { razorpay } from '../../config/razorpay'
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
+import { getAdminEmails } from '../admin/admin.utils'
+import { emailService } from '../email/email.service'
 import { notificationService } from '../notification/notification.service'
 
 import { billingRepository } from './billing.repository'
 import {
+    FREE_CREDITS_IN_CENTS,
     getRazorpayKeyId,
+    normalizeEmail,
     verifyRazorpayOrderPayment,
     verifyRazorpayWebhookSignature,
 } from './billing.utils'
@@ -20,7 +24,22 @@ import type {
     AddCredits,
     RedeemCode,
     HandleRazorpayWebhook,
+    RequestFreeCredits,
+    GetFreeCreditRequest,
+    CreditRequestRecord,
 } from './billing.types'
+
+// what the user sees about their request: never the form answers of another account
+const toCreditRequestView = (data: CreditRequestRecord) => {
+    const { status, createdAt, reviewedAt, rejectReason } = data
+    return {
+        status,
+        createdAt,
+        reviewedAt,
+        rejectReason: status === 'REJECTED' ? rejectReason : null,
+        amountInCents: FREE_CREDITS_IN_CENTS,
+    }
+}
 
 const getOverview = async (data: GetOverview) => {
     const { userId } = data
@@ -403,7 +422,68 @@ const handleRazorpayWebhook = async (data: HandleRazorpayWebhook) => {
     return { received: true, status: 'ignored' }
 }
 
+const requestFreeCredits = async (data: RequestFreeCredits) => {
+    const { userId, buildPlan, heardFrom, ipAddress, userAgent } = data
+    const user = await billingRepository.findUserContact(userId)
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+
+    const normalizedEmail = normalizeEmail(user.email)
+    const existing = await billingRepository.findCreditRequestByEmail(normalizedEmail)
+    if (existing) {
+        throw new AppError(
+            existing.status === 'REJECTED'
+                ? 'free credits were declined for this email'
+                : 'free credits were already requested for this email',
+            409
+        )
+    }
+
+    let created
+    try {
+        created = await billingRepository.createCreditRequest({
+            userId,
+            normalizedEmail,
+            buildPlan,
+            heardFrom,
+            agreedToFeedback: true,
+            ipAddress,
+            userAgent: userAgent?.slice(0, 500),
+        })
+    } catch (err: any) {
+        // two requests at the same time: the unique normalized email lets only one in
+        if (err?.code === 'P2002') {
+            throw new AppError('free credits were already requested for this email', 409)
+        }
+        throw err
+    }
+
+    const appUrl = (env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')
+    for (const adminEmail of getAdminEmails()) {
+        await emailService.sendMessageEmail({
+            to: adminEmail,
+            subject: 'new free credit request',
+            body: `${user.email} asked for free credits.\n\nwhat they will build: ${buildPlan}\n\nhow they heard about december: ${heardFrom}\n\nreview it: ${appUrl}/admin`,
+        })
+    }
+
+    return toCreditRequestView(created)
+}
+
+const getFreeCreditRequest = async (data: GetFreeCreditRequest) => {
+    const { userId } = data
+    const user = await billingRepository.findUserContact(userId)
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+    const request = await billingRepository.findCreditRequestByEmail(normalizeEmail(user.email))
+    return request ? toCreditRequestView(request) : null
+}
+
 export const billingService = {
+    requestFreeCredits,
+    getFreeCreditRequest,
     getOverview,
     createRazorpayOrder,
     verifyRazorpayPayment,

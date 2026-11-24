@@ -4,6 +4,7 @@ import { billingAPI } from '../api/billing'
 
 export const billingQueryKeys = {
     overview: ['billing-overview'] as const,
+    freeCredits: ['free-credit-request'] as const,
     history: (limit?: number, offset?: number, periodStart?: string, periodEnd?: string) =>
         ['credits-history', { limit, offset, periodStart, periodEnd }] as const,
 }
@@ -58,6 +59,25 @@ export const useRedeemCode = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: billingQueryKeys.overview })
             queryClient.invalidateQueries({ queryKey: ['profile'] })
+        },
+    })
+}
+
+export const useFreeCreditRequest = () => {
+    return useQuery({
+        queryKey: billingQueryKeys.freeCredits,
+        queryFn: () => billingAPI.getFreeCreditRequest(),
+        staleTime: 60 * 1000,
+    })
+}
+
+export const useRequestFreeCredits = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: billingAPI.requestFreeCredits,
+        onSuccess: (request) => {
+            queryClient.setQueryData(billingQueryKeys.freeCredits, request)
         },
     })
 }
