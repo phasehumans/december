@@ -24,7 +24,7 @@ import {
 import { Sandbox } from 'e2b'
 import Redis from 'ioredis'
 
-import { withGitToken } from './git-remote'
+import { resolveGitToken, withGitToken } from './git-remote'
 import { notifyAgentQuestion } from './inbox-notify'
 import { clearPendingQuestion } from './pending-question'
 import { RemotePlatformAdapter } from './remote-operations'
@@ -205,6 +205,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         select: {
                             repoUrl: true,
                             githubRepoUrl: true,
+                            gitProvider: true,
                             branch: true,
                             gitRef: true,
                             userId: true,
@@ -216,18 +217,11 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                 const targetBranch = sessionRecord?.branch || sessionRecord?.gitRef
                 const effectiveUserId = userId || sessionRecord?.userId
 
-                let effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
-                if (!effectiveToken && effectiveUserId) {
-                    const userRecord = await prisma.user
-                        .findUnique({
-                            where: { id: effectiveUserId },
-                            select: { githubToken: true },
-                        })
-                        .catch(() => null)
-                    if (userRecord?.githubToken) {
-                        effectiveToken = userRecord.githubToken
-                    }
-                }
+                // the job's and the env's tokens are github tokens: never use them for another host
+                const gitProvider = sessionRecord?.gitProvider ?? 'GITHUB'
+                const effectiveToken =
+                    (gitProvider === 'GITHUB' ? gitToken || envsMap['GITHUB_TOKEN'] : undefined) ||
+                    (await resolveGitToken({ userId: effectiveUserId, provider: gitProvider }))
 
                 const taskBranch = `december/${sessionId}`
 
@@ -245,7 +239,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         const cloneUrl = withGitToken({
                             repoUrl: targetRepo,
                             token: effectiveToken,
-                            provider: 'GITHUB',
+                            provider: gitProvider,
                         })
                         const branchFlag = targetBranch ? ` -b ${targetBranch}` : ''
                         await mockSandbox.commands
@@ -296,6 +290,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                     select: {
                         repoUrl: true,
                         githubRepoUrl: true,
+                        gitProvider: true,
                         branch: true,
                         gitRef: true,
                         userId: true,
@@ -378,18 +373,11 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                 const targetBranch = sessionRecord?.branch || sessionRecord?.gitRef
                 const effectiveUserId = userId || sessionRecord?.userId
 
-                let effectiveToken = gitToken || envsMap['GITHUB_TOKEN']
-                if (!effectiveToken && effectiveUserId) {
-                    const userRecord = await prisma.user
-                        .findUnique({
-                            where: { id: effectiveUserId },
-                            select: { githubToken: true },
-                        })
-                        .catch(() => null)
-                    if (userRecord?.githubToken) {
-                        effectiveToken = userRecord.githubToken
-                    }
-                }
+                // the job's and the env's tokens are github tokens: never use them for another host
+                const gitProvider = sessionRecord?.gitProvider ?? 'GITHUB'
+                const effectiveToken =
+                    (gitProvider === 'GITHUB' ? gitToken || envsMap['GITHUB_TOKEN'] : undefined) ||
+                    (await resolveGitToken({ userId: effectiveUserId, provider: gitProvider }))
 
                 const taskBranch = `december/${sessionId}`
 
@@ -407,7 +395,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         const cloneUrl = withGitToken({
                             repoUrl: targetRepo,
                             token: effectiveToken,
-                            provider: 'GITHUB',
+                            provider: gitProvider,
                         })
                         console.log(
                             `[E2BSandboxService] Initializing sandbox workspace from repository: ${targetRepo}`

@@ -1,4 +1,5 @@
 import { prisma } from '@december/database'
+import { encryptText } from '@december/shared/crypto'
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test'
 
 import { handleAutonomousTaskBranchAndPr } from '../../src/listener'
@@ -8,6 +9,7 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
     const originalFindUniqueSession = prisma.session.findUnique
     const originalFindUniqueUser = prisma.user.findUnique
     const originalUpdateSession = prisma.session.update
+    const originalFindGitConnection = prisma.gitConnection.findUnique
     let sessionUpdates: any[] = []
 
     beforeEach(() => {
@@ -26,6 +28,7 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
         prisma.session.findUnique = originalFindUniqueSession
         prisma.user.findUnique = originalFindUniqueUser
         prisma.session.update = originalUpdateSession
+        prisma.gitConnection.findUnique = originalFindGitConnection
     })
 
     it('creates dedicated task branch december/<sessionId>, commits with author identity, pushes to origin, and creates GitHub PR', async () => {
@@ -239,5 +242,112 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
         expect(result).not.toBeNull()
         expect(result?.prNumber).toBe(55)
         expect(result?.url).toBe('https://github.com/phasehumans/december/pull/55')
+    })
+
+    it('pushes a gitlab session with its own token and opens a merge request on gitlab', async () => {
+        const sessionId = 'sess-gitlab-1'
+        const userId = 'user-gitlab-1'
+        const executedCommands: string[] = []
+        const keyHex = '0'.repeat(64)
+
+        prisma.session.findUnique = mock(async () => ({
+            id: sessionId,
+            userId,
+            title: 'Add retry to the importer',
+            gitProvider: 'GITLAB',
+            githubRepoOwner: 'acme/tools',
+            githubRepoName: 'importer',
+            branch: 'develop',
+        })) as any
+        prisma.user.findUnique = mock(async () => ({
+            id: userId,
+            githubToken: 'ghp_unused',
+        })) as any
+        prisma.gitConnection.findUnique = mock(async () => ({
+            provider: 'GITLAB',
+            encryptedAccessToken: encryptText({ text: 'glpat_live', keyHex }),
+            encryptedRefreshToken: null,
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        })) as any
+
+        const mockSandbox = {
+            commands: {
+                run: mock(async (cmd: string) => {
+                    executedCommands.push(cmd)
+                    if (cmd.includes('git status --porcelain')) {
+                        return { stdout: ' M src/import.ts', exitCode: 0 }
+                    }
+                    return { stdout: '', exitCode: 0 }
+                }),
+            },
+        }
+
+        const requests: { url: string; init?: RequestInit }[] = []
+        globalThis.fetch = mock(async (url: string | URL | Request, init?: RequestInit) => {
+            requests.push({ url: url.toString(), init })
+            if (url.toString().endsWith('/merge_requests')) {
+                return new Response(
+                    JSON.stringify({
+                        iid: 8,
+                        title: 'feat: Add retry to the importer',
+                        web_url: 'https://gitlab.com/acme/tools/importer/-/merge_requests/8',
+                        state: 'opened',
+                        sha: 'def',
+                        changes_count: '1',
+                    }),
+                    { status: 201 }
+                )
+            }
+            return new Response(JSON.stringify([{ status: 'running' }]), { status: 200 })
+        }) as any
+
+        const result = await handleAutonomousTaskBranchAndPr({ sessionId, sandbox: mockSandbox })
+
+        const remoteCmd = executedCommands.find((c) => c.includes('git remote set-url'))
+        expect(remoteCmd).toContain('https://oauth2:glpat_live@gitlab.com/acme/tools/importer.git')
+        expect(executedCommands.join('\n')).not.toContain('ghp_unused')
+
+        const mrRequest = requests.find((r) => r.url.endsWith('/merge_requests'))
+        expect(mrRequest?.url).toBe(
+            'https://gitlab.com/api/v4/projects/acme%2Ftools%2Fimporter/merge_requests'
+        )
+        expect(JSON.parse(String(mrRequest?.init?.body))).toMatchObject({
+            source_branch: `december/${sessionId}`,
+            target_branch: 'develop',
+        })
+
+        expect(result?.prNumber).toBe(8)
+        expect(result?.url).toBe('https://gitlab.com/acme/tools/importer/-/merge_requests/8')
+        expect(result?.ciStatus).toBe('pending')
+        expect(sessionUpdates[0]?.data).toMatchObject({ prNumber: 8, prState: 'open' })
+    })
+
+    it('keeps the work on a local branch when the gitlab connection is missing', async () => {
+        const sessionId = 'sess-gitlab-2'
+        prisma.session.findUnique = mock(async () => ({
+            id: sessionId,
+            userId: 'user-gitlab-2',
+            title: 't',
+            gitProvider: 'GITLAB',
+            githubRepoOwner: 'acme',
+            githubRepoName: 'app',
+            branch: 'main',
+        })) as any
+        prisma.user.findUnique = mock(async () => ({ githubToken: 'ghp_unused' })) as any
+        prisma.gitConnection.findUnique = mock(async () => null) as any
+        const executedCommands: string[] = []
+        const mockSandbox = {
+            commands: {
+                run: mock(async (cmd: string) => {
+                    executedCommands.push(cmd)
+                    return { stdout: cmd.includes('status') ? ' M a.ts' : '', exitCode: 0 }
+                }),
+            },
+        }
+
+        const result = await handleAutonomousTaskBranchAndPr({ sessionId, sandbox: mockSandbox })
+
+        expect(result?.state).toBe('local')
+        expect(executedCommands.some((c) => c.includes('git push'))).toBe(false)
     })
 })

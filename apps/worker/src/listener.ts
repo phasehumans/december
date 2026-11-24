@@ -6,6 +6,7 @@ import Redis from 'ioredis'
 
 import { detectSandboxListeningPorts, pickWebPreviewPort } from './dynamic-port-detector'
 import { E2BSandboxService } from './e2b-sandbox.service'
+import { resolveGitToken } from './git-remote'
 import {
     createDefaultSessionPlan,
     inferPhaseFromToolCall,
@@ -124,6 +125,7 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                 userId: true,
                 title: true,
                 description: true,
+                gitProvider: true,
                 githubRepoOwner: true,
                 githubRepoName: true,
                 githubRepoUrl: true,
@@ -160,20 +162,14 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             // Intentionally swallowed: diff update fallback
         })
 
-        // 5. Check if GitHub repo is linked
+        // 5. Check if a repo is linked (github* columns hold the repo on any git host)
+        const gitProvider = session?.gitProvider ?? 'GITHUB'
         const repoOwner = session?.githubRepoOwner
         const repoName = session?.githubRepoName
-        let effectiveToken: string | null = null
-
-        if (session?.userId) {
-            const user = await prisma.user
-                .findUnique({
-                    where: { id: session.userId },
-                    select: { githubToken: true },
-                })
-                .catch(() => null)
-            effectiveToken = user?.githubToken ?? null
-        }
+        const effectiveToken = await resolveGitToken({
+            userId: session?.userId,
+            provider: gitProvider,
+        })
 
         // If repo and token are not present, return local task branch result
         if (!repoOwner || !repoName || !effectiveToken) {
@@ -210,7 +206,7 @@ export async function handleAutonomousTaskBranchAndPr(options: {
         }
 
         // 6. Push dedicated task branch to origin using token (NEVER force-pushing to main)
-        const provider = getGitProvider('GITHUB')
+        const provider = getGitProvider(gitProvider)
         const repoPath = `${repoOwner}/${repoName}`
         const remoteUrl = provider.getCloneUrl({ token: effectiveToken, repoPath })
         await sandbox.commands
@@ -229,7 +225,7 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                 return null
             })
 
-        // 7. Create or fetch Pull Request on GitHub
+        // 7. Create or fetch the pull request (merge request on GitLab)
         const prTitle = session?.title
             ? `feat: ${session.title}`
             : `Automated Task Branch ${taskBranch}`
