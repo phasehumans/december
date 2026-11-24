@@ -1,3 +1,43 @@
+## [0.4.22] - 2026-11-24
+
+### Features
+
+- Cloud byok, github login hardening, and landing page refresh (#626)
+- _(web,server)_ Email code sign-in and full-screen onboarding (#628)
+- _(docs,web)_ Realistic window mocks on landing and onboarding, minimal sign-up header (#629)
+- _(web,server)_ Redesigned search modal with ai session filters
+- _(web,server)_ Super crew coming-soon card and waitlist (#630)
+- _(web)_ Mobile top bar and bottom sheet navigation (#631)
+- _(web)_ Connections page in the main sidebar with customize tabs
+- _(web)_ Prompt box commands, side menus, fast and deep, pull requests page
+- _(web)_ Mobile settings and inbox sheets, prompt box source switch
+- Recent list and menus, session pull requests, inbox notifications, mobile fixes
+- _(web)_ Settings pages, flat settings list, key and lock icons
+- Sessions view menu, recent menu actions, cli sign-in pages, prompt box round 4, repo cleanup
+- Pinned sessions, needs answer state and archive merged for the recent list
+- _(database)_ Add GitConnection for git host accounts
+- _(database)_ Add gitProvider to Session and Project
+- _(shared)_ Add the gitlab git provider and token refresh
+- _(worker)_ Use the session's git provider for clone, push and pull request
+- Free credit requests, admin page and sandbox limits for december cloud
+- _(server)_ Connect gitlab, list gitlab repos and start gitlab sessions
+- _(web)_ Connect gitlab and pick gitlab repos
+- Admin waitlist view, notifications on the account page, settings and docs tweaks
+
+### Bug Fixes
+
+- Keep session rows while filters load, denser mobile dither, landing tweaks
+- Undo of an archive brings the pin back, and a refused pin says why
+- Gitlab review follow-ups for #627
+
+### Refactor
+
+- _(shared,server,worker)_ Move github behind a git provider interface
+
+### Miscellaneous Tasks
+
+- _(server)_ Remove the unused cli-token route
+
 ## [0.4.21] - 2026-11-22
 
 ### Features
@@ -18,6 +58,10 @@
 ### Styling
 
 - _(docs)_ Replace the hatched side gutters with section dividers and darker rails
+
+### Miscellaneous Tasks
+
+- _(release)_ V0.4.21
 
 ## [0.4.20] - 2026-11-21
 

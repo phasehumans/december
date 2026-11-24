@@ -1,9 +1,9 @@
 {
-    "version": "0.4.21",
-    "title": "What's New in v0.4.21",
+    "version": "0.4.22",
+    "title": "What's New in v0.4.22",
     "bullets": [
-        "Notify when december needs you, and session changes in /diff",
-        "Tidy the mobile landing page and turn /me into a minimal portfolio"
+        "Cloud byok, github login hardening, and landing page refresh",
+        "Email code sign-in and full-screen onboarding"
     ],
     "url": "https://trydecember.com/docs/changelog"
 }

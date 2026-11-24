@@ -852,6 +852,10 @@
                     "id": "glm-5.3-flashx-legal",
                     "label": "Glm 5.3 Flashx Legal",
                     "contextWindow": 1000000
+                },
+                {
+                    "id": "glm-5.4",
+                    "label": "Glm 5.4"
                 }
             ]
         },
@@ -950,7 +954,7 @@
                 {
                     "id": "GLM-5.3",
                     "label": "GLM 5.3",
-                    "contextWindow": 1048576
+                    "contextWindow": 131072
                 },
                 {
                     "id": "MiniMax-M3.1-Flash",
@@ -960,7 +964,7 @@
                 {
                     "id": "gemma-4-31B-it",
                     "label": "Gemma 4 31B It",
-                    "contextWindow": 131072
+                    "contextWindow": 262144
                 },
                 {
                     "id": "gpt-oss-120b",
@@ -2211,6 +2215,14 @@
                     "id": "DeepSeek-V4-Flash-0731-Fast",
                     "label": "DeepSeek V4 Flash 0731 Fast",
                     "contextWindow": 1000000
+                },
+                {
+                    "id": "DeepSeek-V4.1-Flash",
+                    "label": "DeepSeek V4.1 Flash"
+                },
+                {
+                    "id": "Qwen3.8-27B",
+                    "label": "Qwen3.8 27B"
                 }
             ]
         },
