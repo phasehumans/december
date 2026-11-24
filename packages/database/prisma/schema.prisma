@@ -173,6 +173,7 @@ model Session {
   githubRepoName       String?
   githubRepoOwner      String?
   githubRepoUrl        String?
+  gitProvider          GitProvider @default(GITHUB)
   repoUrl              String?
   branch               String?
   gitRef               String?
@@ -220,6 +221,7 @@ model Project {
   repoOwner     String?
   repoName      String?
   repoUrl       String?
+  gitProvider   GitProvider @default(GITHUB)
   defaultBranch String?   @default("main")
   pinnedRules   String?
   createdAt     DateTime  @default(now())
