@@ -47,6 +47,7 @@ model User {
   feedbacks          Feedback[]
   projects           Project[]
   providerCredentials ProviderCredential[]
+  gitConnections      GitConnection[]
   featureWaitlists   FeatureWaitlist[]
 }
 
@@ -73,6 +74,33 @@ model ProviderCredential {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, provider])
+  @@index([userId])
+}
+
+// the git hosts december cloud works with
+enum GitProvider {
+  GITHUB
+  GITLAB
+}
+
+// a user's account on a git host (gitlab today; github still uses the User.github* columns).
+// the tokens are aes-256-gcm with SECRETS_ENC_KEY, like ProviderCredential, and never leave the server
+// and the worker. expiresAt is when the access token stops working (gitlab tokens last 2 hours).
+model GitConnection {
+  id                    String      @id @default(uuid())
+  userId                String
+  provider              GitProvider
+  externalId            String
+  username              String
+  encryptedAccessToken  String
+  encryptedRefreshToken String?
+  expiresAt             DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  user                  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@unique([provider, externalId])
   @@index([userId])
 }
 
