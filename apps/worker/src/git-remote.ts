@@ -49,6 +49,7 @@ export const resolveGitToken = async (data: {
     if (!userId) return null
 
     if (provider === 'GITHUB') {
+        // a database error means no token: the work stays on a local branch, as before
         const user = await prisma.user
             .findUnique({ where: { id: userId }, select: { githubToken: true } })
             .catch(() => null)
@@ -56,6 +57,7 @@ export const resolveGitToken = async (data: {
     }
 
     const where = { userId_provider: { userId, provider } }
+    // a database error means no token: the work stays on a local branch
     const connection = await prisma.gitConnection
         .findUnique({ where, select: connectionSelect })
         .catch(() => null)

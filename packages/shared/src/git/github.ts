@@ -110,6 +110,7 @@ const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
     const { token, repoPath, title, head, base, body } = data
     const owner = repoPath.split('/')[0]
 
+    // a network error is handled like a refused request: the caller gets null
     const createRes = await fetch(`${API}/repos/${repoPath}/pulls`, {
         method: 'POST',
         headers: { ...headers(token), 'Content-Type': 'application/json' },
@@ -122,6 +123,7 @@ const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
 
     // 422: a pull request for this head branch is already open
     if (createRes?.status === 422) {
+        // a network error here also gives null
         const listRes = await fetch(
             `${API}/repos/${repoPath}/pulls?head=${owner}:${head}&state=all`,
             { headers: headers(token) }
@@ -138,6 +140,7 @@ const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
 
 const getCiStatus: GitProvider['getCiStatus'] = async (data) => {
     const { token, repoPath, sha } = data
+    // no answer keeps the default status, as before the provider layer
     const res = await fetch(`${API}/repos/${repoPath}/commits/${sha}/check-runs`, {
         headers: headers(token),
     }).catch(() => null)
@@ -173,6 +176,7 @@ const refreshToken: GitProvider['refreshToken'] = async (data) => {
             refresh_token: token,
         }),
     })
+    // a body that is not json is handled like an empty one: the check below fails
     const body = (await res.json().catch(() => ({}))) as any
     if (!res.ok || !body.access_token) {
         throw new GitProviderError('Failed to refresh the GitHub token', res.ok ? 400 : res.status)

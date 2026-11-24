@@ -1,5 +1,7 @@
 import { prisma } from '@december/database'
 
+import type { GitConnectionTokenUpdate } from '@december/shared/git'
+
 async function findUserById(id: string) {
     return prisma.user.findUnique({
         where: { id },
@@ -90,14 +92,7 @@ async function upsertGitlabConnection(data: {
     })
 }
 
-async function updateGitlabTokens(
-    userId: string,
-    data: {
-        encryptedAccessToken: string
-        encryptedRefreshToken: string | null
-        expiresAt: Date | null
-    }
-) {
+async function updateGitlabTokens(userId: string, data: GitConnectionTokenUpdate) {
     await prisma.gitConnection.update({ where: gitlabWhere(userId), data })
 }
 

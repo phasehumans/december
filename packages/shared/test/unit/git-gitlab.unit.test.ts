@@ -73,6 +73,7 @@ describe('git provider: gitlab', () => {
         expect(url.origin + url.pathname).toBe('https://gitlab.com/api/v4/projects')
         expect(Object.fromEntries(url.searchParams)).toEqual({
             membership: 'true',
+            min_access_level: '30',
             order_by: 'last_activity_at',
             sort: 'desc',
             per_page: '20',

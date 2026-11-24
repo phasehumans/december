@@ -94,6 +94,7 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
         return (
             <GitlabAppPage
                 username={gitlab.username}
+                connectError={gitlab.connectError}
                 isConnected={gitlab.isConnected}
                 isConnecting={isConnectingGitlab}
                 onConnect={handleConnectGitlab}
@@ -113,6 +114,11 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
             </div>
             {profileError && !profile && (
                 <p className="text-[12.5px] text-red-500 font-medium">Could not load apps</p>
+            )}
+            {gitlab.connectError && (
+                <p role="alert" className="text-[12.5px] text-red-500 font-medium">
+                    {gitlab.connectError}
+                </p>
             )}
             <ListBox>
                 <ListHeader>
@@ -242,10 +248,11 @@ const GithubAppPage: React.FC<{
 
 const GitlabAppPage: React.FC<{
     username: string | null
+    connectError: string | null
     isConnected: boolean
     isConnecting: boolean
     onConnect: () => void
-}> = ({ username, isConnected, isConnecting, onConnect }) => {
+}> = ({ username, connectError, isConnected, isConnecting, onConnect }) => {
     const { toTab } = useConnectionsNav()
     const queryClient = useQueryClient()
     const disconnect = useMutation({
@@ -294,6 +301,11 @@ const GitlabAppPage: React.FC<{
                 <div>
                     <FactsBox rows={[{ label: 'Account', value: username || 'GitLab account' }]} />
                 </div>
+            )}
+            {connectError && !isConnected && (
+                <p role="alert" className="mt-3 text-[12.5px] text-red-500 font-medium">
+                    {connectError}
+                </p>
             )}
             {disconnect.isError && (
                 <p className="mt-3 text-[12.5px] text-red-500 font-medium">Could not disconnect</p>

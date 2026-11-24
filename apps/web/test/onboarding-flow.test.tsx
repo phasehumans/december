@@ -165,6 +165,26 @@ describe('OnboardingPage', () => {
         }
     })
 
+    test('a GitLab account held by another user comes back with a short message', () => {
+        const happyDOM = (window as unknown as { happyDOM: { setURL: (url: string) => void } })
+            .happyDOM
+        const originalUrl = window.location.href
+        happyDOM.setURL('http://localhost/onboarding?gitlab=in_use')
+
+        try {
+            const { getByRole } = renderOnboarding(newUserState(), '/onboarding', {
+                available: true,
+                connected: false,
+                username: null,
+            })
+            expect(getByRole('alert').textContent).toBe(
+                'This GitLab account is connected to another December account.'
+            )
+        } finally {
+            happyDOM.setURL(originalUrl)
+        }
+    })
+
     test('shows a connected GitLab account as done', () => {
         const { getByText } = renderOnboarding(
             newUserState({

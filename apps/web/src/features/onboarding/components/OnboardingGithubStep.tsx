@@ -17,6 +17,7 @@ interface OnboardingGithubStepProps {
     /** false until the server has the GitLab app (#645): the button then says "coming soon" */
     isGitlabAvailable: boolean
     isConnectingGitlab: boolean
+    gitlabError?: string | null
     onConnectGitlab: () => void
     onContinue: () => void
     onSkip: () => void
@@ -28,6 +29,7 @@ export const OnboardingGithubStep: React.FC<OnboardingGithubStepProps> = ({
     onConnect,
     isGitlabAvailable,
     isConnectingGitlab,
+    gitlabError,
     onConnectGitlab,
     onContinue,
     onSkip,
@@ -96,6 +98,12 @@ export const OnboardingGithubStep: React.FC<OnboardingGithubStepProps> = ({
                     </span>
                 </button>
             </div>
+
+            {gitlabError && (
+                <p role="alert" className="mt-3 text-center text-[12.5px] text-red-400">
+                    {gitlabError}
+                </p>
+            )}
 
             <button
                 type="button"

@@ -69,6 +69,7 @@ const requestToken = async (body: Record<string, string>, what: string): Promise
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     })
+    // a body that is not json is handled like an empty one: the status check below fails
     const data = (await res.json().catch(() => ({}))) as any
     if (!res.ok || !data.access_token) {
         throw new GitProviderError(`GitLab refused to ${what}`, res.ok ? 400 : res.status)
@@ -100,8 +101,11 @@ const listRepos: GitProvider['listRepos'] = async (data) => {
     let projects: any[] = []
 
     for (;;) {
+        // developer (30) and up: december pushes a branch, so a guest or reporter project
+        // would end with no merge request
         const params = new URLSearchParams({
             membership: 'true',
+            min_access_level: '30',
             order_by: 'last_activity_at',
             sort: 'desc',
             per_page: String(perPage),
@@ -136,6 +140,7 @@ const listRepos: GitProvider['listRepos'] = async (data) => {
 const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
     const { token, repoPath, title, head, base, body } = data
 
+    // a network error is handled like a refused request: the caller gets null
     const createRes = await fetch(`${projectUrl(repoPath)}/merge_requests`, {
         method: 'POST',
         headers: { ...headers(token), 'Content-Type': 'application/json' },
@@ -154,6 +159,7 @@ const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
     // 409: a merge request for this source branch is already open
     if (createRes?.status === 409) {
         const params = new URLSearchParams({ source_branch: head })
+        // a network error here also gives null
         const listRes = await fetch(`${projectUrl(repoPath)}/merge_requests?${params}`, {
             headers: headers(token),
         }).catch(() => null)
@@ -169,6 +175,7 @@ const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
 
 const getCiStatus: GitProvider['getCiStatus'] = async (data) => {
     const { token, repoPath, sha } = data
+    // no answer keeps the default status, like the github check runs
     const res = await fetch(`${projectUrl(repoPath)}/pipelines?sha=${sha}&per_page=1`, {
         headers: headers(token),
     }).catch(() => null)

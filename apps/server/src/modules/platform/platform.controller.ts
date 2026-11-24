@@ -2,7 +2,11 @@ import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
-import { createGithubRepoSchema, syncGithubRepoSchema } from './platform.schema'
+import {
+    createGithubRepoSchema,
+    listReposQuerySchema,
+    syncGithubRepoSchema,
+} from './platform.schema'
 import { platformService } from './platform.service'
 
 import type { Request, Response } from 'express'
@@ -61,9 +65,7 @@ const getUserGitlabRepos = asyncHandler(async (req: Request, res: Response) => {
         throw new AppError('unauthorized', 401)
     }
 
-    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 30
-    const search = req.query.search as string | undefined
+    const { page, limit, search } = listReposQuerySchema.parse(req.query)
 
     const result = await platformService.getUserGitlabRepos({ userId, page, limit, search })
 

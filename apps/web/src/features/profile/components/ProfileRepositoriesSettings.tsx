@@ -131,6 +131,12 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                         </div>
                     </div>
 
+                    {gitlab.connectError && (
+                        <p role="alert" className="text-[12.5px] text-red-400">
+                            {gitlab.connectError}
+                        </p>
+                    )}
+
                     {reposQuery.isLoading || isSkeletonPreviewActive() ? (
                         <ProfileRepositoriesSkeleton />
                     ) : !githubConnected ? (

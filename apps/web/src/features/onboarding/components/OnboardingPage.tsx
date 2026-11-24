@@ -172,6 +172,7 @@ export const OnboardingPage: React.FC = () => {
                             onConnect={() => void connectGithub()}
                             isGitlabAvailable={gitlab.isAvailable}
                             isConnectingGitlab={isConnectingGitlab}
+                            gitlabError={gitlab.connectError}
                             onConnectGitlab={() => void connectGitlab()}
                             onContinue={goNext}
                             onSkip={goNext}
