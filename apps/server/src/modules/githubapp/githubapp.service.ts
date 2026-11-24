@@ -259,6 +259,7 @@ const getUserInstallationRepos = async (
                                 login: repo.owner?.login,
                                 avatarUrl: repo.owner?.avatar_url,
                             },
+                            provider: 'GITHUB',
                         })
                     }
                 }

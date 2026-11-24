@@ -24,6 +24,7 @@ import {
 import { Sandbox } from 'e2b'
 import Redis from 'ioredis'
 
+import { withGitToken } from './git-remote'
 import { notifyAgentQuestion } from './inbox-notify'
 import { clearPendingQuestion } from './pending-question'
 import { RemotePlatformAdapter } from './remote-operations'
@@ -241,13 +242,11 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         })
 
                     if (targetRepo) {
-                        let cloneUrl = targetRepo
-                        if (effectiveToken && cloneUrl.startsWith('https://')) {
-                            cloneUrl = cloneUrl.replace(
-                                'https://',
-                                `https://x-access-token:${effectiveToken}@`
-                            )
-                        }
+                        const cloneUrl = withGitToken({
+                            repoUrl: targetRepo,
+                            token: effectiveToken,
+                            provider: 'GITHUB',
+                        })
                         const branchFlag = targetBranch ? ` -b ${targetBranch}` : ''
                         await mockSandbox.commands
                             .run(`git clone${branchFlag} ${cloneUrl} /workspace`, {
@@ -405,13 +404,11 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         })
 
                     if (targetRepo) {
-                        let cloneUrl = targetRepo
-                        if (effectiveToken && cloneUrl.startsWith('https://')) {
-                            cloneUrl = cloneUrl.replace(
-                                'https://',
-                                `https://x-access-token:${effectiveToken}@`
-                            )
-                        }
+                        const cloneUrl = withGitToken({
+                            repoUrl: targetRepo,
+                            token: effectiveToken,
+                            provider: 'GITHUB',
+                        })
                         console.log(
                             `[E2BSandboxService] Initializing sandbox workspace from repository: ${targetRepo}`
                         )

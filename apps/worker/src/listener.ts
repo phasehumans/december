@@ -1,6 +1,7 @@
 import { DurableStepKernel, PrismaDurableStepStorage, StaleEpochError } from '@december/agent'
 import { prisma } from '@december/database'
 import { calculateGenerationCost, startOfUtcMonth, startOfNextUtcMonth } from '@december/shared'
+import { getGitProvider } from '@december/shared/git'
 import Redis from 'ioredis'
 
 import { detectSandboxListeningPorts, pickWebPreviewPort } from './dynamic-port-detector'
@@ -209,7 +210,9 @@ export async function handleAutonomousTaskBranchAndPr(options: {
         }
 
         // 6. Push dedicated task branch to origin using token (NEVER force-pushing to main)
-        const remoteUrl = `https://x-access-token:${effectiveToken}@github.com/${repoOwner}/${repoName}.git`
+        const provider = getGitProvider('GITHUB')
+        const repoPath = `${repoOwner}/${repoName}`
+        const remoteUrl = provider.getCloneUrl({ token: effectiveToken, repoPath })
         await sandbox.commands
             .run(
                 `git remote set-url origin '${remoteUrl}' 2>/dev/null || git remote add origin '${remoteUrl}'`,
@@ -239,87 +242,23 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             `- Task branch \`${taskBranch}\` pushed to origin.`,
         ].join('\n')
 
-        let prData: any = null
-
-        const createRes = await fetch(
-            `https://api.github.com/repos/${repoOwner}/${repoName}/pulls`,
-            {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${effectiveToken}`,
-                    Accept: 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': '2022-11-28',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'December-Worker',
-                },
-                body: JSON.stringify({
-                    title: prTitle,
-                    head: taskBranch,
-                    base: baseBranch,
-                    body: prBody,
-                }),
-            }
-        ).catch(() => null)
-
-        if (createRes && createRes.status === 201) {
-            prData = await createRes.json()
-        } else if (createRes && createRes.status === 422) {
-            // PR already exists, fetch list of PRs for this head branch
-            const listRes = await fetch(
-                `https://api.github.com/repos/${repoOwner}/${repoName}/pulls?head=${repoOwner}:${taskBranch}&state=all`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${effectiveToken}`,
-                        Accept: 'application/vnd.github+json',
-                        'X-GitHub-Api-Version': '2022-11-28',
-                        'User-Agent': 'December-Worker',
-                    },
-                }
-            ).catch(() => null)
-
-            if (listRes && listRes.ok) {
-                const list = (await listRes.json()) as any[]
-                prData = list && list.length > 0 ? list[0] : null
-            }
-        }
+        const prData = await provider.createPullRequest({
+            token: effectiveToken,
+            repoPath,
+            title: prTitle,
+            head: taskBranch,
+            base: baseBranch,
+            body: prBody,
+        })
 
         // 8. Query CI status if commit SHA or PR is available
-        let ciStatus: 'passing' | 'pending' | 'failed' = 'passing'
-        if (prData?.head?.sha) {
-            const checksRes = await fetch(
-                `https://api.github.com/repos/${repoOwner}/${repoName}/commits/${prData.head.sha}/check-runs`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${effectiveToken}`,
-                        Accept: 'application/vnd.github+json',
-                        'X-GitHub-Api-Version': '2022-11-28',
-                        'User-Agent': 'December-Worker',
-                    },
-                }
-            ).catch(() => null)
-
-            if (checksRes && checksRes.ok) {
-                const checksData = (await checksRes.json()) as any
-                const runs = checksData.check_runs || []
-                if (
-                    runs.some(
-                        (r: any) => r.conclusion === 'failure' || r.conclusion === 'timed_out'
-                    )
-                ) {
-                    ciStatus = 'failed'
-                } else if (
-                    runs.some((r: any) => r.status === 'in_progress' || r.status === 'queued')
-                ) {
-                    ciStatus = 'pending'
-                } else if (runs.length > 0 && runs.every((r: any) => r.conclusion === 'success')) {
-                    ciStatus = 'passing'
-                }
-            }
-        }
+        const ciStatus = prData?.headSha
+            ? await provider.getCiStatus({ token: effectiveToken, repoPath, sha: prData.headSha })
+            : 'passing'
 
         const prResult: AutonomousPrResult = {
             prNumber: prData?.number,
-            url: prData?.html_url,
+            url: prData?.url,
             title: prData?.title || prTitle,
             state: prData?.state || 'open',
             headRef: taskBranch,
@@ -328,23 +267,17 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                 additions: prData?.additions ?? 0,
                 deletions: prData?.deletions ?? 0,
                 changedFiles:
-                    prData?.changed_files ?? statusOutput.split('\n').filter(Boolean).length,
+                    prData?.changedFiles ?? statusOutput.split('\n').filter(Boolean).length,
             },
             ciStatus,
-            createdAt: prData?.created_at,
-            updatedAt: prData?.updated_at,
+            createdAt: prData?.createdAt,
+            updatedAt: prData?.updatedAt,
         }
 
         // keep the pull request on the session, so the sessions list and the Pull requests
         // page can show it after the Redis entry is gone
         if (prResult.prNumber) {
-            const prState = prData?.merged_at
-                ? 'merged'
-                : prData?.draft
-                  ? 'draft'
-                  : prData?.state === 'closed'
-                    ? 'closed'
-                    : 'open'
+            const prState = prData?.status ?? 'open'
             await prisma.session
                 .update({
                     where: { id: sessionId },

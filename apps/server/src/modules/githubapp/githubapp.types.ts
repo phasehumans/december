@@ -1,3 +1,5 @@
+import type { GitRepo } from '@december/shared/git'
+
 export type GitHubAppInstallationPayload = {
     action: string
     installation: {
@@ -95,22 +97,7 @@ export type GetUserInstallationStatus = {
     userId: string
 }
 
-export type GithubInstallationRepo = {
-    id: number
-    name: string
-    fullName: string
-    private: boolean
-    defaultBranch: string
-    updatedAt: string
-    htmlUrl: string
-    cloneUrl: string
-    language: string | null
-    description: string | null
-    owner: {
-        login: string
-        avatarUrl: string
-    }
-}
+export type GithubInstallationRepo = GitRepo
 
 export type InstallationStatusResponse = {
     installed: boolean

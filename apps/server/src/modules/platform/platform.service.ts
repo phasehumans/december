@@ -1,3 +1,5 @@
+import { GitProviderError, githubProvider } from '@december/shared/git'
+
 import { AppError } from '../../shared/appError'
 import { githubAppService } from '../githubapp/githubapp.service'
 
@@ -94,64 +96,19 @@ const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> 
         return []
     }
 
-    let repos: any[] = []
-    let page = requestedPage || 1
-    const perPage = requestedLimit ? Math.min(requestedLimit, 100) : 100
-    let hasMore = true
-
-    while (hasMore) {
-        const response = await fetch(
-            `https://api.github.com/user/repos?sort=updated&per_page=${perPage}&page=${page}`,
-            {
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer ${user.githubToken}`,
-                    Accept: 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': '2022-11-28',
-                    'User-Agent': 'December-App',
-                },
-            }
-        )
-
-        if (!response.ok) {
-            const errorText = await response.text()
-            throw new AppError(`Failed to fetch GitHub repos: ${errorText}`, 401)
+    try {
+        return await githubProvider.listRepos({
+            token: user.githubToken,
+            page: requestedPage,
+            limit: requestedLimit,
+            search,
+        })
+    } catch (error) {
+        if (error instanceof GitProviderError) {
+            throw new AppError(error.message, 401)
         }
-
-        const pageRepos = (await response.json()) as any[]
-        const filtered = search
-            ? pageRepos.filter(
-                  (r) =>
-                      r.name?.toLowerCase().includes(search.toLowerCase()) ||
-                      r.full_name?.toLowerCase().includes(search.toLowerCase())
-              )
-            : pageRepos
-
-        repos = repos.concat(filtered)
-
-        if (pageRepos.length < perPage || requestedPage !== undefined) {
-            hasMore = false
-        } else {
-            page++
-        }
+        throw error
     }
-
-    return repos.map((repo: any) => ({
-        id: repo.id,
-        name: repo.name,
-        fullName: repo.full_name,
-        private: repo.private,
-        defaultBranch: repo.default_branch,
-        updatedAt: repo.updated_at,
-        htmlUrl: repo.html_url,
-        cloneUrl: repo.clone_url,
-        language: repo.language ?? null,
-        description: repo.description ?? null,
-        owner: {
-            login: repo.owner?.login,
-            avatarUrl: repo.owner?.avatar_url,
-        },
-    }))
 }
 
 const createRepo = async (data: CreateRepo) => {

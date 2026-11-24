@@ -1,3 +1,5 @@
+import type { GitRepo } from '@december/shared/git'
+
 export type DeploySession = {
     sessionId: string
     userId: string
@@ -21,22 +23,7 @@ export type ListGithubRepos = {
     search?: string
 }
 
-export type GithubRepo = {
-    id: number
-    name: string
-    fullName: string
-    private: boolean
-    defaultBranch: string
-    updatedAt: string
-    htmlUrl: string
-    cloneUrl: string
-    language: string | null
-    description: string | null
-    owner: {
-        login: string
-        avatarUrl: string
-    }
-}
+export type GithubRepo = GitRepo
 
 export type CreateRepo = {
     userId: string
