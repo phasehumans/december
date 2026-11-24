@@ -5,7 +5,7 @@ import request from 'supertest'
 import app from '../../src/app'
 import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
-describe('Auth Flow Integration Tests (Email code sign up, Log in, CLI Token, Signout)', () => {
+describe('Auth Flow Integration Tests (Email code sign up, Log in, Signout)', () => {
     const testEmail = `flowtest-${Date.now()}@example.com`
     let testUserId: string
     let accessToken: string
@@ -68,15 +68,13 @@ describe('Auth Flow Integration Tests (Email code sign up, Log in, CLI Token, Si
         accessToken = res.body.data.accessToken
     })
 
-    it('4. GET /api/v1/auth/cli-token - returns active token and email', async () => {
+    it('4. GET /api/v1/auth/cli-token - route is removed (404)', async () => {
         const res = await request(app)
             .get('/api/v1/auth/cli-token')
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', `Bearer ${accessToken}`)
 
-        expect(res.status).toBe(200)
-        expect(res.body.data.email).toBe(testEmail)
-        expect(res.body.data.token).toBeDefined()
+        expect(res.status).toBe(404)
     })
 
     it('5. POST /api/v1/auth/signout - revokes active session', async () => {
@@ -90,7 +88,7 @@ describe('Auth Flow Integration Tests (Email code sign up, Log in, CLI Token, Si
 
         // Subsequent authenticated request should fail
         const resProtected = await request(app)
-            .get('/api/v1/auth/cli-token')
+            .get('/api/v1/setting')
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', `Bearer ${accessToken}`)
 

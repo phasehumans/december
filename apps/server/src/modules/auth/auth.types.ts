@@ -56,11 +56,6 @@ export type DeleteAccount = {
     userId: string
 }
 
-export type GetCliToken = {
-    token: string
-    userId: string
-}
-
 export type PollDeviceToken = {
     deviceCode: string
     userAgent?: string

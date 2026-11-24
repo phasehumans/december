@@ -114,21 +114,21 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         expect(resRevoked.body.message).toBe('session revoked')
     })
 
-    it('GET /api/v1/auth/cli-token - validates access token with cached session lookup', async () => {
+    it('authenticated request - validates access token with cached session lookup', async () => {
         const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
         accessToken = loginRes.body.data.accessToken
 
         const res1 = await request(app)
-            .get('/api/v1/auth/cli-token')
+            .get('/api/v1/setting')
             .set('x-forwarded-for', '10.0.0.7')
             .set('Authorization', `Bearer ${accessToken}`)
 
         expect(res1.status).toBe(200)
 
         const res2 = await request(app)
-            .get('/api/v1/auth/cli-token')
+            .get('/api/v1/setting')
             .set('x-forwarded-for', '10.0.0.7')
             .set('Authorization', `Bearer ${accessToken}`)
 
@@ -145,7 +145,7 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         expect(resSignout.body.message).toBe('signed out successfully')
 
         const resProtected = await request(app)
-            .get('/api/v1/auth/cli-token')
+            .get('/api/v1/setting')
             .set('x-forwarded-for', '10.0.0.8')
             .set('Authorization', `Bearer ${accessToken}`)
 

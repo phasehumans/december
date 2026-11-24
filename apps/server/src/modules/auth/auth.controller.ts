@@ -266,23 +266,6 @@ const deleteAccount = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'account deleted successfully')
 })
 
-const getCliToken = asyncHandler(async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization
-    const headerToken =
-        authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
-            ? authHeader.substring(7)
-            : undefined
-    const token = req.cookies?.accessToken || headerToken
-
-    if (!token || !req.user?.userId) {
-        throw new AppError('No active session found', 401)
-    }
-
-    const result = await authService.getCliToken({ token, userId: req.user.userId })
-
-    return sendSuccess(res, 'cli token retrieved successfully', result)
-})
-
 const generateDeviceCode = asyncHandler(async (req: Request, res: Response) => {
     const result = await authService.generateDeviceCode()
 
@@ -340,7 +323,6 @@ export const authController = {
     signout,
     signoutAll,
     deleteAccount,
-    getCliToken,
     generateDeviceCode,
     pollDeviceToken,
     verifyUserCode,

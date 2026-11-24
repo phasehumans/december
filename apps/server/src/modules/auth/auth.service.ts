@@ -29,7 +29,6 @@ import type {
     Signout,
     SignoutAll,
     DeleteAccount,
-    GetCliToken,
     PollDeviceToken,
     VerifyUserCode,
     VerifyUserCodeResult,
@@ -532,42 +531,6 @@ const deleteAccount = async (data: DeleteAccount) => {
     await sessionCache.invalidateUser(userId)
 }
 
-const getCliToken = async (data: GetCliToken) => {
-    const { token: _token, userId } = data
-    const user = await authRepository.findUserById(userId)
-
-    if (!user) {
-        throw new AppError('User not found', 404)
-    }
-
-    const sessionId = crypto.randomUUID()
-    const token = generateAccessToken({ userId: user.id, sessionId }, { expiresIn: '30d' })
-    const tokenHash = hashRefreshToken(token)
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-
-    await authRepository.createSession({
-        id: sessionId,
-        userId: user.id,
-        refreshTokenHash: tokenHash,
-        userAgent: 'cli-token',
-        ipAddress: 'unknown',
-        expiresAt,
-    })
-
-    await sessionCache.set(sessionId, {
-        id: sessionId,
-        userId: user.id,
-        isRevoked: false,
-        expiresAt,
-        user: {
-            id: user.id,
-            isDeleted: false,
-        },
-    })
-
-    return { token, email: user.email }
-}
-
 const generateDeviceCode = async () => {
     const maxRetries = 3
 
@@ -773,7 +736,6 @@ export const authService = {
     signout,
     signoutAll,
     deleteAccount,
-    getCliToken,
     generateDeviceCode,
     pollDeviceToken,
     verifyUserCode,

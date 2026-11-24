@@ -174,7 +174,7 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
 
         // Access protected endpoint with cookie instead of Authorization header
         const res = await request(app)
-            .get('/api/v1/auth/cli-token')
+            .get('/api/v1/setting')
             .set('x-forwarded-for', getRandomIP())
             .set('Cookie', cookieHeader)
 
