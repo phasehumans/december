@@ -7,7 +7,9 @@ const HOST = 'https://gitlab.com'
 const API = `${HOST}/api/v4`
 const SCOPES = 'api read_user'
 const CALLBACK_PATH = '/api/v1/integrations/gitlab/callback'
-const REPO_URL = /^https?:\/\/(?:www\.)?gitlab\.com\/((?:[\w.-]+\/)+)([\w.-]+?)(?:\.git)?\/?$/i
+// https, git@host:path and ssh://git@host/path; the namespace can hold subgroups
+const REPO_URL =
+    /^(?:https?:\/\/(?:www\.)?|git@|ssh:\/\/git@)gitlab\.com[/:]((?:[\w.-]+\/)+)([\w.-]+?)(?:\.git)?\/?$/i
 
 const headers = (token: string): Record<string, string> => ({
     Authorization: `Bearer ${token}`,

@@ -1,4 +1,5 @@
 import { prisma } from '@december/database'
+import { detectGitProvider, getGitProvider } from '@december/shared/git'
 import { publishEvent } from '@december/shared/queue'
 import { Queue } from 'bullmq'
 import Redis from 'ioredis'
@@ -244,18 +245,12 @@ const createSession = async (data: CreateSession) => {
         }
     }
 
-    let githubRepoOwner: string | undefined
-    let githubRepoName: string | undefined
-    let githubRepoUrl: string | undefined
-
-    if (repoUrl) {
-        githubRepoUrl = repoUrl
-        const match = repoUrl.match(/github\.com[/:]([\w.-]+)\/([\w.-]+?)(\.git)?$/i)
-        if (match) {
-            githubRepoOwner = match[1]
-            githubRepoName = match[2]
-        }
-    }
+    // the github* columns hold the repo on any git host until they get neutral names (#627)
+    const gitProvider = repoUrl ? (detectGitProvider(repoUrl) ?? 'GITHUB') : 'GITHUB'
+    const repoRef = repoUrl ? getGitProvider(gitProvider).parseRepoUrl(repoUrl) : null
+    const githubRepoOwner = repoRef?.owner
+    const githubRepoName = repoRef?.name
+    const githubRepoUrl = repoUrl
 
     const defaultTitle = githubRepoName
         ? `${githubRepoName}${issueNumber ? ` #${issueNumber}` : ''}`
@@ -271,6 +266,7 @@ const createSession = async (data: CreateSession) => {
         branch,
         gitRef,
         issueNumber,
+        gitProvider,
         githubRepoOwner,
         githubRepoName,
         githubRepoUrl,

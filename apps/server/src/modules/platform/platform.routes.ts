@@ -14,6 +14,7 @@ platformRouter.get('/:sessionId/download', platformController.downloadProject)
 
 // github
 platformRouter.get('/github/repos', platformController.getUserGithubRepos)
+platformRouter.get('/gitlab/repos', platformController.getUserGitlabRepos)
 platformRouter.post('/sessions/:sessionId/github/repository', platformController.createRepo)
 platformRouter.post('/sessions/:sessionId/github/sync', platformController.updateRepo)
 platformRouter.post('/sessions/:sessionId/github/unlink', platformController.unlinkGithubRepo)

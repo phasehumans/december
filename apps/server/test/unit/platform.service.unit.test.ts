@@ -107,6 +107,7 @@ describe('Platform Service - Unit Tests', () => {
 
             platformRepository.findSessionByIdAndUser = (async () => ({
                 id: 's1',
+                gitProvider: 'GITHUB',
                 githubRepoOwner: 'owner1',
                 githubRepoName: 'repo1',
                 vmId: 'sb-git-vm',

@@ -79,6 +79,11 @@ async function findOnboardingSource(id: string) {
                 orderBy: { verifiedAt: 'desc' },
                 take: 1,
             },
+            gitConnections: {
+                where: { provider: 'GITLAB' },
+                select: { username: true },
+                take: 1,
+            },
         },
     })
 }

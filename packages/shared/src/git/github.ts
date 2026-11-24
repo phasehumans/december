@@ -5,7 +5,9 @@ import { GitProviderError } from './types'
 import type { CiStatus, GitProvider, GitRepo, PullRequest, TokenSet } from './types'
 
 const API = 'https://api.github.com'
-const REPO_URL = /^https?:\/\/(?:www\.)?github\.com[/:]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i
+// https, git@host:path and ssh://git@host/path
+const REPO_URL =
+    /^(?:https?:\/\/(?:www\.)?|git@|ssh:\/\/git@)github\.com[/:]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i
 
 const headers = (token: string): Record<string, string> => ({
     Authorization: `Bearer ${token}`,

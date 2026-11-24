@@ -1,8 +1,22 @@
-import { env } from '../../env'
-import { asyncHandler } from '../../shared/asyncHandler'
+import crypto from 'node:crypto'
 
-import { connectOAuthQuerySchema } from './integration.schema'
+import { env } from '../../env'
+import { AppError } from '../../shared/appError'
+import { asyncHandler } from '../../shared/asyncHandler'
+import { sendSuccess } from '../../shared/response'
+
+import {
+    connectOAuthQuerySchema,
+    gitlabCallbackQuerySchema,
+    gitlabStartQuerySchema,
+} from './integration.schema'
 import { integrationsService } from './integration.service'
+import {
+    GITLAB_COOKIE_PATH,
+    GITLAB_STATE_COOKIE,
+    GITLAB_STATE_MAX_AGE_MS,
+    withQuery,
+} from './integration.utils'
 
 import type { Request, Response } from 'express'
 
@@ -40,6 +54,95 @@ const connectGithub = asyncHandler(async (req: Request, res: Response) => {
     return res.redirect(formatRedirect(redirectPath))
 })
 
+const DEFAULT_GITLAB_RETURN = '/settings/repositories'
+
+const gitlabCookieOptions = {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: GITLAB_COOKIE_PATH,
+}
+
+// GET /gitlab/start?redirect=<web path>: the browser goes here, then on to gitlab.com
+const startGitlab = asyncHandler(async (req: Request, res: Response) => {
+    const { redirect } = gitlabStartQuerySchema.parse(req.query)
+    const returnPath = redirect && isSafePath(redirect) ? redirect : DEFAULT_GITLAB_RETURN
+
+    if (!req.user?.userId) {
+        const params = new URLSearchParams({ redirect: returnPath })
+        return res.redirect(formatRedirect(`/login?${params.toString()}`))
+    }
+
+    // the nonce goes to gitlab in the state and stays in this browser in a cookie, so a
+    // callback that another site started does not link an account
+    const nonce = crypto.randomBytes(24).toString('base64url')
+    const url = await integrationsService.getGitlabAuthorizeUrl({ state: `${nonce}:${returnPath}` })
+
+    res.cookie(GITLAB_STATE_COOKIE, nonce, {
+        ...gitlabCookieOptions,
+        maxAge: GITLAB_STATE_MAX_AGE_MS,
+    })
+    return res.redirect(url)
+})
+
+// GET /gitlab/callback?code&state: gitlab sends the browser back here
+const gitlabCallback = asyncHandler(async (req: Request, res: Response) => {
+    const { code, state = '' } = gitlabCallbackQuerySchema.parse(req.query)
+    const separator = state.indexOf(':')
+    const nonce = separator > 0 ? state.slice(0, separator) : ''
+    const statePath = separator > 0 ? state.slice(separator + 1) : ''
+    const returnPath = isSafePath(statePath) ? statePath : DEFAULT_GITLAB_RETURN
+    const expected = req.cookies?.[GITLAB_STATE_COOKIE]
+
+    res.clearCookie(GITLAB_STATE_COOKIE, gitlabCookieOptions)
+    const fail = (reason: string) =>
+        res.redirect(formatRedirect(withQuery(returnPath, 'gitlab', reason)))
+
+    if (!req.user?.userId) {
+        const params = new URLSearchParams({ redirect: returnPath })
+        return res.redirect(formatRedirect(`/login?${params.toString()}`))
+    }
+
+    // no code: the user pressed "deny" on gitlab
+    if (!code || !nonce || !expected || nonce !== expected) {
+        return fail('error')
+    }
+
+    try {
+        await integrationsService.connectGitlab({ code, userId: req.user.userId })
+    } catch (error) {
+        if (error instanceof AppError && error.statusCode === 409) return fail('in_use')
+        console.error('GitLab connect failed:', error instanceof Error ? error.message : error)
+        return fail('error')
+    }
+
+    return res.redirect(formatRedirect(returnPath))
+})
+
+const getGitlabStatus = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await integrationsService.getGitlabStatus({ userId })
+    return sendSuccess(res, 'gitlab status fetched successfully', result)
+})
+
+const disconnectGitlab = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    await integrationsService.disconnectGitlab({ userId })
+    return sendSuccess(res, 'gitlab disconnected successfully')
+})
+
 export const integrationsController = {
     connectGithub,
+    startGitlab,
+    gitlabCallback,
+    getGitlabStatus,
+    disconnectGitlab,
 }

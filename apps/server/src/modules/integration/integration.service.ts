@@ -1,10 +1,21 @@
+import { encryptText } from '@december/shared/crypto'
+import { GitProviderError, gitlabOAuth, resolveAccessToken } from '@december/shared/git'
+
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { notificationService } from '../notification/notification.service'
 
 import { integrationRepository } from './integration.repository'
+import { getGitlabOAuthApp } from './integration.utils'
 
-import type { ConnectGithub, HandleGitHubOAuth } from './integration.types'
+import type {
+    ConnectGitlab,
+    ConnectGithub,
+    GetGitlabAuthorizeUrl,
+    GitlabStatus,
+    GitlabUser,
+    HandleGitHubOAuth,
+} from './integration.types'
 
 const connectGithub = async (data: ConnectGithub) => {
     const { username, accessToken, userId, githubId } = data
@@ -108,7 +119,115 @@ const handleGitHubOAuth = async (data: HandleGitHubOAuth) => {
     return connectGithub({ userId, accessToken, username, githubId })
 }
 
+const requireGitlabApp = () => {
+    const app = getGitlabOAuthApp()
+    if (!app) {
+        throw new AppError('GitLab is not available yet', 503)
+    }
+    return app
+}
+
+const getGitlabAuthorizeUrl = async (data: GetGitlabAuthorizeUrl) => {
+    const { state } = data
+    const { clientId, redirectUri } = requireGitlabApp()
+    return gitlabOAuth.getAuthorizeUrl({ clientId, redirectUri, state })
+}
+
+const connectGitlab = async (data: ConnectGitlab) => {
+    const { code, userId } = data
+    const app = requireGitlabApp()
+
+    let tokens
+    let gitlabUser
+    try {
+        tokens = await gitlabOAuth.exchangeCode({ ...app, code })
+        gitlabUser = await gitlabOAuth.getUser({ token: tokens.accessToken })
+    } catch (error) {
+        if (error instanceof GitProviderError) {
+            throw new AppError('GitLab sign-in failed', 400)
+        }
+        throw error
+    }
+
+    // one gitlab account belongs to one december account, like the github id
+    const owner = await integrationRepository.findGitlabOwner(gitlabUser.id)
+    if (owner && owner.userId !== userId) {
+        throw new AppError('This GitLab account is connected to another December account', 409)
+    }
+
+    const connection = await integrationRepository.upsertGitlabConnection({
+        userId,
+        externalId: gitlabUser.id,
+        username: gitlabUser.username,
+        encryptedAccessToken: encryptText({
+            text: tokens.accessToken,
+            keyHex: env.SECRETS_ENC_KEY,
+        }),
+        encryptedRefreshToken: tokens.refreshToken
+            ? encryptText({ text: tokens.refreshToken, keyHex: env.SECRETS_ENC_KEY })
+            : null,
+        expiresAt: tokens.expiresAt,
+    })
+
+    try {
+        await notificationService.sendNotificationToUser({
+            userId,
+            title: 'GitLab Connected',
+            message: `Successfully connected with GitLab as @${connection.username}!`,
+            type: 'SUCCESS',
+        })
+    } catch (error) {
+        console.error('Failed to send gitlab connection notification:', error)
+    }
+
+    return connection
+}
+
+const getGitlabStatus = async (data: GitlabUser): Promise<GitlabStatus> => {
+    const { userId } = data
+    const connection = await integrationRepository.findGitlabConnection(userId)
+    return {
+        available: getGitlabOAuthApp() !== null,
+        connected: connection !== null,
+        username: connection?.username ?? null,
+    }
+}
+
+const disconnectGitlab = async (data: GitlabUser) => {
+    const { userId } = data
+    await integrationRepository.deleteGitlabConnection(userId)
+}
+
+// the plain gitlab token for a server-side call; refreshed first when it is about to expire
+const getGitlabAccessToken = async (data: GitlabUser): Promise<string> => {
+    const { userId } = data
+    const connection = await integrationRepository.findGitlabConnectionTokens(userId)
+    if (!connection) {
+        throw new AppError('gitlab is not connected', 401)
+    }
+
+    try {
+        return await resolveAccessToken({
+            connection,
+            keyHex: env.SECRETS_ENC_KEY,
+            oauthApp: getGitlabOAuthApp() ?? undefined,
+            save: (update) => integrationRepository.updateGitlabTokens(userId, update),
+            reload: () => integrationRepository.findGitlabConnectionTokens(userId),
+        })
+    } catch (error) {
+        if (error instanceof GitProviderError) {
+            throw new AppError(error.message, 401)
+        }
+        throw error
+    }
+}
+
 export const integrationsService = {
     connectGithub,
     handleGitHubOAuth,
+    getGitlabAuthorizeUrl,
+    connectGitlab,
+    getGitlabStatus,
+    disconnectGitlab,
+    getGitlabAccessToken,
 }

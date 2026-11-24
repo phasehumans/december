@@ -54,6 +54,22 @@ const getUserGithubRepos = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'github repositories fetched successfully', result)
 })
 
+const getUserGitlabRepos = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 30
+    const search = req.query.search as string | undefined
+
+    const result = await platformService.getUserGitlabRepos({ userId, page, limit, search })
+
+    return sendSuccess(res, 'gitlab repositories fetched successfully', result)
+})
+
 const createRepo = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
     const sessionId = req.params.sessionId as string | undefined
@@ -121,6 +137,7 @@ const unlinkGithubRepo = asyncHandler(async (req: Request, res: Response) => {
 export const platformController = {
     downloadProject,
     getUserGithubRepos,
+    getUserGitlabRepos,
     createRepo,
     updateRepo,
     unlinkGithubRepo,

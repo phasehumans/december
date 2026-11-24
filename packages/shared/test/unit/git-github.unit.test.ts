@@ -41,6 +41,9 @@ describe('git provider: github', () => {
             path: 'acme/app',
         })
         expect(github.parseRepoUrl('https://gitlab.com/acme/app')).toBeNull()
+        expect(github.parseRepoUrl('git@github.com:acme/app.git')?.path).toBe('acme/app')
+        expect(github.parseRepoUrl('ssh://git@github.com/acme/app')?.path).toBe('acme/app')
+        expect(github.parseRepoUrl('https://evil.example/github.com/acme/app')).toBeNull()
     })
 
     it('builds the x-access-token clone url', () => {

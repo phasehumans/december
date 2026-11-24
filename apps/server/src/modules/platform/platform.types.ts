@@ -25,6 +25,15 @@ export type ListGithubRepos = {
 
 export type GithubRepo = GitRepo
 
+export type GitlabRepo = GitRepo
+
+export type ListGitlabRepos = {
+    userId: string
+    page?: number
+    limit?: number
+    search?: string
+}
+
 export type CreateRepo = {
     userId: string
     sessionId: string

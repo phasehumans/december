@@ -49,6 +49,14 @@ const envSchema = z
         GOOGLE_CLIENT_SECRET: emptyAsUndefined,
         GITHUB_CLIENT_ID: emptyAsUndefined,
         GITHUB_CLIENT_SECRET: emptyAsUndefined,
+        // the gitlab.com oauth app (#627, #645). gitlab stays "coming soon" until both are set
+        GITLAB_CLIENT_ID: emptyAsUndefined,
+        GITLAB_CLIENT_SECRET: emptyAsUndefined,
+        // default: <SERVER_URL>/api/v1/integrations/gitlab/callback
+        GITLAB_REDIRECT_URI: z.preprocess(
+            (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+            z.string().url().optional()
+        ),
         SUPABASE_CLIENT_ID: emptyAsUndefined,
         SUPABASE_CLIENT_SECRET: emptyAsUndefined,
         SUPABASE_REDIRECT_URI: z.preprocess(

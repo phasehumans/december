@@ -44,9 +44,11 @@ export type OnboardingState = {
     step: OnboardingStep | null
     steps: {
         models: boolean
+        // a connected git host: github (app or oauth) or gitlab
         github: boolean
     }
     github: { accountLogin: string | null } | null
+    gitlab: { username: string } | null
     wallet: { balanceInCents: number }
     ownKey: { provider: string; keyHint: string } | null
 }

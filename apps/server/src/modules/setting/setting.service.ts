@@ -175,23 +175,26 @@ const getOnboarding = async (data: GetOnboarding): Promise<OnboardingState> => {
 
     const installation = source.githubInstallations[0] ?? null
     const ownKey = source.providerCredentials[0] ?? null
+    const gitlab = source.gitConnections[0] ?? null
 
     return {
         completedAt: source.onboardingCompletedAt,
         step: toOnboardingStep(source.onboardingStep),
         steps: {
             models: ownKey !== null || source.creditBalance > 0,
-            // the github app install, or a github oauth connection: both give repo access
+            // the github app install, a github oauth connection or gitlab: all give repo access
             github:
                 installation !== null ||
                 Boolean(source.githubAppInstall) ||
-                Boolean(source.githubConnected),
+                Boolean(source.githubConnected) ||
+                gitlab !== null,
         },
         github: installation
             ? { accountLogin: installation.accountLogin }
             : source.githubConnected
               ? { accountLogin: source.githubUsername }
               : null,
+        gitlab: gitlab ? { username: gitlab.username } : null,
         wallet: { balanceInCents: source.creditBalance },
         ownKey: ownKey ? { provider: ownKey.provider, keyHint: ownKey.keyHint } : null,
     }

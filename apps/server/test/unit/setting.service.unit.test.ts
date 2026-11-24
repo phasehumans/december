@@ -181,6 +181,7 @@ describe('Setting Service - Unit Tests', () => {
             creditBalance: 0,
             githubInstallations: [],
             providerCredentials: [],
+            gitConnections: [],
         }
 
         it('getOnboarding should report every step as open for a new user', async () => {

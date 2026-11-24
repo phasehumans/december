@@ -53,6 +53,9 @@ describe('git provider: gitlab', () => {
         })
         expect(gitlab.parseRepoUrl('https://github.com/acme/app')).toBeNull()
         expect(gitlab.parseRepoUrl('https://gitlab.com/acme')).toBeNull()
+        expect(gitlab.parseRepoUrl('git@gitlab.com:acme/tools/app.git')?.path).toBe(
+            'acme/tools/app'
+        )
     })
 
     it('builds the oauth2 clone url', () => {

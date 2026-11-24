@@ -1,14 +1,22 @@
-import { GitProviderError, githubProvider } from '@december/shared/git'
+import {
+    GitProviderError,
+    getGitProvider,
+    githubProvider,
+    gitlabProvider,
+} from '@december/shared/git'
 
 import { AppError } from '../../shared/appError'
 import { githubAppService } from '../githubapp/githubapp.service'
+import { integrationsService } from '../integration/integration.service'
 
 import { platformRepository } from './platform.repository'
 import { executeSandboxCommand, runSandboxGitArchive } from './platform.utils'
 
 import type {
     ListGithubRepos,
+    ListGitlabRepos,
     GithubRepo,
+    GitlabRepo,
     CreateRepo,
     UpdateRepo,
     DownloadSession,
@@ -48,7 +56,12 @@ const downloadSession = async (data: DownloadSession): Promise<DownloadSessionRe
     const fileName = `${safeSessionName}.zip`
 
     if (session.githubRepoOwner && session.githubRepoName) {
-        const downloadUrl = `https://github.com/${session.githubRepoOwner}/${session.githubRepoName}/archive/refs/heads/main.zip`
+        const owner = session.githubRepoOwner
+        const name = session.githubRepoName
+        const downloadUrl =
+            session.gitProvider === 'GITLAB'
+                ? `https://gitlab.com/${owner}/${name}/-/archive/main/${name}-main.zip`
+                : `https://github.com/${owner}/${name}/archive/refs/heads/main.zip`
         return {
             fileName,
             downloadUrl,
@@ -103,6 +116,20 @@ const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> 
             limit: requestedLimit,
             search,
         })
+    } catch (error) {
+        if (error instanceof GitProviderError) {
+            throw new AppError(error.message, 401)
+        }
+        throw error
+    }
+}
+
+const getUserGitlabRepos = async (data: ListGitlabRepos): Promise<GitlabRepo[]> => {
+    const { userId, page, limit, search } = data
+    const token = await integrationsService.getGitlabAccessToken({ userId })
+
+    try {
+        return await gitlabProvider.listRepos({ token, page, limit, search })
     } catch (error) {
         if (error instanceof GitProviderError) {
             throw new AppError(error.message, 401)
@@ -178,11 +205,17 @@ const updateRepo = async (data: UpdateRepo) => {
 
     const repoOwner = session.githubRepoOwner
     const repoName = session.githubRepoName
-    const githubToken = await resolveUserGithubToken(userId, repoOwner)
+    const token =
+        session.gitProvider === 'GITLAB'
+            ? await integrationsService.getGitlabAccessToken({ userId })
+            : await resolveUserGithubToken(userId, repoOwner)
     const commitMessage = data.commitMessage ?? 'Update session files'
 
     const safeCommitMsg = commitMessage.replace(/'/g, "'\\''")
-    const remoteUrl = `https://x-access-token:${githubToken}@github.com/${repoOwner}/${repoName}.git`
+    const remoteUrl = getGitProvider(session.gitProvider).getCloneUrl({
+        token,
+        repoPath: `${repoOwner}/${repoName}`,
+    })
 
     // Determine current default branch or fallback to task branch (avoiding pushing directly to main)
     const branchRes = await executeSandboxCommand({
@@ -243,6 +276,7 @@ const unlinkGithubRepo = async (data: { sessionId: string; userId: string }) => 
 export const platformService = {
     downloadSession,
     getUserGithubRepos,
+    getUserGitlabRepos,
     createRepo,
     updateRepo,
     unlinkGithubRepo,

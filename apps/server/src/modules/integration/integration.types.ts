@@ -10,3 +10,23 @@ export type HandleGitHubOAuth = {
     code: string
     userId: string
 }
+
+export type GetGitlabAuthorizeUrl = {
+    state: string
+}
+
+export type ConnectGitlab = {
+    code: string
+    userId: string
+}
+
+export type GitlabUser = {
+    userId: string
+}
+
+export type GitlabStatus = {
+    // false until the gitlab oauth app is set on the server
+    available: boolean
+    connected: boolean
+    username: string | null
+}
