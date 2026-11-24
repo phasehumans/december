@@ -58,7 +58,7 @@ export interface PullRequest {
     number: number
     url: string
     title: string
-    // the host's own state word (github: open/closed, gitlab: opened/merged/closed/locked)
+    // github's state word: open or closed (gitlab's opened becomes open)
     state: string
     status: PullRequestStatus
     headSha?: string

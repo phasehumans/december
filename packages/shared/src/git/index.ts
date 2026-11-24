@@ -1,12 +1,16 @@
 import { githubProvider } from './github'
+import { gitlabProvider } from './gitlab'
 
 import type { GitProvider, GitProviderName } from './types'
 
 export * from './types'
 export { githubProvider } from './github'
+export { gitlabOAuth, gitlabProvider } from './gitlab'
+export * from './connection'
 
 const providers: Partial<Record<GitProviderName, GitProvider>> = {
     GITHUB: githubProvider,
+    GITLAB: gitlabProvider,
 }
 
 export const getGitProvider = (name: GitProviderName): GitProvider => {
