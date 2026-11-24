@@ -16,6 +16,7 @@ import {
     useOnboardingState,
 } from '@/features/onboarding/hooks/useOnboarding'
 import { profileAPI } from '@/features/profile/api/profile'
+import { useGitlabConnection } from '@/features/profile/hooks/useGitlabConnection'
 import { LogoLoader } from '@/shared/components/ui/LogoLoader'
 
 const STEP_TITLES: Record<OnboardingStep, string> = {
@@ -37,6 +38,8 @@ export const OnboardingPage: React.FC = () => {
     const { updateOnboarding, completeOnboarding } = useOnboardingMutations()
     const [step, setStep] = React.useState<OnboardingStep | null>(null)
     const [isConnectingGithub, setIsConnectingGithub] = React.useState(false)
+    const [isConnectingGitlab, setIsConnectingGitlab] = React.useState(false)
+    const gitlab = useGitlabConnection()
     const [finishError, setFinishError] = React.useState<string | null>(null)
 
     const redirectTarget = React.useMemo(() => {
@@ -102,6 +105,17 @@ export const OnboardingPage: React.FC = () => {
         window.location.href = profileAPI.getGithubConnectUrl(profile?.id ?? '')
     }
 
+    const connectGitlab = async () => {
+        setIsConnectingGitlab(true)
+        try {
+            // save the step first, so the return from GitLab opens this step again
+            await updateOnboarding.mutateAsync({ step: 'github' })
+        } catch {
+            // Intentionally ignored: the connect still works, the user just may land on step 1 again
+        }
+        window.location.href = gitlab.connectUrl('/onboarding')
+    }
+
     if (isLoading || (state && step === null)) {
         return <LogoLoader />
     }
@@ -156,6 +170,9 @@ export const OnboardingPage: React.FC = () => {
                             state={state}
                             isConnecting={isConnectingGithub}
                             onConnect={() => void connectGithub()}
+                            isGitlabAvailable={gitlab.isAvailable}
+                            isConnectingGitlab={isConnectingGitlab}
+                            onConnectGitlab={() => void connectGitlab()}
                             onContinue={goNext}
                             onSkip={goNext}
                         />

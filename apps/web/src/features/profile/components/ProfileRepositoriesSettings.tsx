@@ -1,11 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
 import { Github, GitBranch, Clock, Lock, Globe, Search, RotateCw, Plus } from 'lucide-react'
 import React, { useState } from 'react'
 
 import { ProfileRepositoriesSkeleton } from './ProfileSettingsSkeleton'
 import { SettingsPageHeader } from './SettingsPageHeader'
 
-import { profileAPI, type GithubRepo } from '@/features/profile/api/profile'
+import { type GithubRepo } from '@/features/profile/api/profile'
+import { repoKey, useConnectedRepos } from '@/features/profile/hooks/useConnectedRepos'
+import { useGitlabConnection } from '@/features/profile/hooks/useGitlabConnection'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
@@ -59,15 +60,11 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
 }) => {
     const [searchQuery, setSearchQuery] = useState('')
 
-    const reposQuery = useQuery({
-        queryKey: ['integrations', 'github', 'repos'],
-        queryFn: profileAPI.getGithubRepos,
-        enabled: isGithubConnected,
-        staleTime: 5 * 60 * 1000,
-    })
+    const reposQuery = useConnectedRepos({ enabled: true, isGithubConnected })
+    const gitlab = useGitlabConnection()
 
-    const githubConnected = isGithubConnected
-    const allRepos = reposQuery.data ?? []
+    const githubConnected = isGithubConnected || gitlab.isConnected
+    const allRepos = reposQuery.repos
 
     const filteredRepos = allRepos.filter(
         (repo) =>
@@ -120,6 +117,17 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                                 <Plus className="w-3.5 h-3.5" />
                                 <span>Connect GitHub</span>
                             </button>
+                            {gitlab.isAvailable && !gitlab.isConnected && (
+                                <button
+                                    onClick={() => {
+                                        window.location.href = gitlab.connectUrl()
+                                    }}
+                                    className="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg border border-[#282828] bg-[#202020] hover:bg-[#282828] text-[#D6D5C9] hover:text-white text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Connect GitLab</span>
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -169,10 +177,12 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                         /* Repositories Grid View */
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                             {filteredRepos.map((repo: GithubRepo) => {
-                                const [owner, name] = repo.fullName.split('/')
+                                // a gitlab owner can hold subgroups (a/b), so read the fields
+                                const name = repo.name
+                                const owner = repo.owner?.login
                                 return (
                                     <div
-                                        key={repo.id}
+                                        key={repoKey(repo)}
                                         onClick={() => window.open(repo.htmlUrl, '_blank')}
                                         className="group relative bg-[#1B1B1B] hover:bg-[#202020] rounded-xl p-3.5 transition-all duration-200 flex flex-col justify-between min-h-[96px] cursor-pointer"
                                     >

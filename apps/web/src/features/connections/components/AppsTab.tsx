@@ -1,3 +1,4 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowUpRight } from 'lucide-react'
 import React from 'react'
 
@@ -23,6 +24,11 @@ import {
 
 import type { BrandKey } from '../types'
 
+import { profileAPI } from '@/features/profile/api/profile'
+import {
+    GITLAB_STATUS_KEY,
+    useGitlabConnection,
+} from '@/features/profile/hooks/useGitlabConnection'
 import { useProfileSettingsController } from '@/features/profile/hooks/useProfileSettingsController'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
@@ -57,12 +63,19 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
     const { toItem } = useConnectionsNav()
     const { profile, isProfileLoading, profileError, isGithubConnected, connectGithub } =
         useProfileSettingsController()
+    const gitlab = useGitlabConnection()
     const [query, setQuery] = React.useState('')
     const [isConnecting, setIsConnecting] = React.useState(false)
+    const [isConnectingGitlab, setIsConnectingGitlab] = React.useState(false)
 
     const handleConnect = () => {
         setIsConnecting(true)
         connectGithub()
+    }
+
+    const handleConnectGitlab = () => {
+        setIsConnectingGitlab(true)
+        window.location.href = gitlab.connectUrl()
     }
 
     if (itemId === 'github') {
@@ -77,8 +90,21 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
         )
     }
 
-    // github is the only app that can connect today, so it already sits first
-    const apps = APPS.filter((app) => matchesQuery(query, app.name))
+    if (itemId === 'gitlab' && gitlab.isAvailable) {
+        return (
+            <GitlabAppPage
+                username={gitlab.username}
+                isConnected={gitlab.isConnected}
+                isConnecting={isConnectingGitlab}
+                onConnect={handleConnectGitlab}
+            />
+        )
+    }
+
+    // the apps that can connect sit first; gitlab is live once the server has its app (#645)
+    const apps = APPS.map((app) =>
+        app.id === 'gitlab' ? { ...app, available: gitlab.isAvailable } : app
+    ).filter((app) => matchesQuery(query, app.name))
 
     return (
         <div className="flex flex-col gap-4">
@@ -101,7 +127,13 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
                 ) : (
                     <ListRows>
                         {apps.map((app) => {
-                            const connected = app.id === 'github' && isGithubConnected
+                            const connected =
+                                (app.id === 'github' && isGithubConnected) ||
+                                (app.id === 'gitlab' && gitlab.isConnected)
+                            const account =
+                                app.id === 'gitlab' ? gitlab.username : profile?.githubUsername
+                            const connecting =
+                                app.id === 'gitlab' ? isConnectingGitlab : isConnecting
                             return (
                                 <ListRow
                                     key={app.id}
@@ -115,7 +147,7 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
                                         {app.name}
                                     </span>
                                     <span className="hidden md:block w-[140px] truncate text-[12.5px] text-[#7B7A79]">
-                                        {connected ? profile?.githubUsername || '' : ''}
+                                        {connected ? account || '' : ''}
                                     </span>
                                     <span className="md:w-[96px] flex justify-end">
                                         {!app.available ? (
@@ -125,10 +157,14 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
                                         ) : (
                                             <SecondaryButton
                                                 small
-                                                onClick={handleConnect}
-                                                disabled={isConnecting}
+                                                onClick={
+                                                    app.id === 'gitlab'
+                                                        ? handleConnectGitlab
+                                                        : handleConnect
+                                                }
+                                                disabled={connecting}
                                             >
-                                                {isConnecting ? (
+                                                {connecting ? (
                                                     <>
                                                         <Spinner />
                                                         Connecting
@@ -199,6 +235,68 @@ const GithubAppPage: React.FC<{
                         ]}
                     />
                 </div>
+            )}
+        </div>
+    )
+}
+
+const GitlabAppPage: React.FC<{
+    username: string | null
+    isConnected: boolean
+    isConnecting: boolean
+    onConnect: () => void
+}> = ({ username, isConnected, isConnecting, onConnect }) => {
+    const { toTab } = useConnectionsNav()
+    const queryClient = useQueryClient()
+    const disconnect = useMutation({
+        mutationFn: profileAPI.disconnectGitlab,
+        onSuccess: async () => {
+            queryClient.removeQueries({ queryKey: ['gitlab-repos'] })
+            await queryClient.invalidateQueries({ queryKey: GITLAB_STATUS_KEY })
+        },
+    })
+
+    return (
+        <div className="flex flex-col">
+            <BackLink label="Apps" onClick={() => toTab('apps')} />
+            <DetailHeader title="GitLab" logo={<LogoTile brand="gitlab" name="GitLab" large />}>
+                {isConnected && <Pill tone="ok">Connected</Pill>}
+                <span className="flex-1" />
+                {isConnected ? (
+                    <SecondaryButton
+                        onClick={() => disconnect.mutate()}
+                        disabled={disconnect.isPending}
+                    >
+                        {disconnect.isPending ? (
+                            <>
+                                <Spinner />
+                                Disconnecting
+                            </>
+                        ) : (
+                            'Disconnect'
+                        )}
+                    </SecondaryButton>
+                ) : (
+                    <SecondaryButton onClick={onConnect} disabled={isConnecting}>
+                        {isConnecting ? (
+                            <>
+                                <Spinner />
+                                Connecting
+                            </>
+                        ) : (
+                            'Connect'
+                        )}
+                    </SecondaryButton>
+                )}
+            </DetailHeader>
+
+            {isConnected && (
+                <div>
+                    <FactsBox rows={[{ label: 'Account', value: username || 'GitLab account' }]} />
+                </div>
+            )}
+            {disconnect.isError && (
+                <p className="mt-3 text-[12.5px] text-red-500 font-medium">Could not disconnect</p>
             )}
         </div>
     )

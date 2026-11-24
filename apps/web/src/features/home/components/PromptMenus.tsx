@@ -8,8 +8,8 @@ import type { BackendSession } from '@/features/sessions/api/session'
 
 import { useConnectionsStore } from '@/features/connections/hooks/useConnectionsStore'
 import { isPromptConfigChanged, usePromptConfig } from '@/features/home/promptConfig'
-import { profileAPI } from '@/features/profile/api/profile'
 import { secretsAPI } from '@/features/profile/api/secrets'
+import { repoKey, useConnectedRepos } from '@/features/profile/hooks/useConnectedRepos'
 import { useGithubConnection } from '@/features/profile/hooks/useGithubConnection'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { formatRelativeTime } from '@/shared/lib/relativeTime'
@@ -182,14 +182,16 @@ export const PromptConfigRows: React.FC<{ demo: boolean; mode: 'agent' | 'chat' 
 export const RepoSideList: React.FC<{ onPick: (repo: GithubRepo) => void }> = ({ onPick }) => {
     const github = useGithubConnection(true)
     const [query, setQuery] = React.useState('')
-    const { data: repos = [], isLoading } = useQuery({
-        queryKey: ['github-repos'],
-        queryFn: profileAPI.getGithubRepos,
-        enabled: github.isConnected,
+    const { repos, isLoading, isGitlabConnected, isGitlabReady } = useConnectedRepos({
+        enabled: true,
+        isGithubConnected: github.isConnected,
     })
 
-    if (!github.isReady || isLoading) return <div className={emptyClass}>Loading...</div>
-    if (!github.isConnected) {
+    // without GitHub, wait for the GitLab answer before showing "Connect GitHub"
+    if (!github.isReady || isLoading || (!github.isConnected && !isGitlabReady)) {
+        return <div className={emptyClass}>Loading...</div>
+    }
+    if (!github.isConnected && !isGitlabConnected) {
         return (
             <div className="px-3 py-2 text-[12.5px] text-[#8F8E8D] leading-relaxed">
                 <a
@@ -224,7 +226,7 @@ export const RepoSideList: React.FC<{ onPick: (repo: GithubRepo) => void }> = ({
             ) : (
                 shown.map((repo) => (
                     <button
-                        key={repo.id}
+                        key={repoKey(repo)}
                         type="button"
                         onClick={() => onPick(repo)}
                         className={pickRowClass}

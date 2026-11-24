@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 import { OnboardingPage } from '../src/features/onboarding/components/OnboardingPage'
 import { getOnboardingRedirect } from '../src/features/onboarding/gate'
+import { profileAPI } from '../src/features/profile/api/profile'
 
 import type { OnboardingState } from '../src/features/onboarding/api/onboarding'
 
@@ -29,7 +30,11 @@ const newUserState = (overrides: Partial<OnboardingState> = {}): OnboardingState
     ...overrides,
 })
 
-const renderOnboarding = (state: OnboardingState, entry = '/onboarding') => {
+const renderOnboarding = (
+    state: OnboardingState,
+    entry = '/onboarding',
+    gitlab = { available: false, connected: false, username: null as string | null }
+) => {
     const queryClient = new QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -60,6 +65,7 @@ const renderOnboarding = (state: OnboardingState, entry = '/onboarding') => {
         ],
     })
     queryClient.setQueryData(['profile'], { id: 'u1', name: 'Test', email: 't@example.com' })
+    queryClient.setQueryData(['integrations', 'gitlab'], gitlab)
 
     return render(
         <QueryClientProvider client={queryClient}>
@@ -133,6 +139,42 @@ describe('OnboardingPage', () => {
 
         fireEvent.click(getByText('Continue with GitLab'))
         expect(getByText('GitLab is coming soon')).not.toBeNull()
+    })
+
+    test('with the GitLab app on the server, GitLab opens the connect flow', async () => {
+        const original = profileAPI.getGitlabConnectUrl
+        const returnPaths: (string | undefined)[] = []
+        profileAPI.getGitlabConnectUrl = (returnPath?: string) => {
+            returnPaths.push(returnPath)
+            return 'about:blank#gitlab'
+        }
+
+        try {
+            const { getByText } = renderOnboarding(newUserState(), '/onboarding', {
+                available: true,
+                connected: false,
+                username: null,
+            })
+
+            fireEvent.click(getByText('Continue with GitLab'))
+
+            expect(getByText('Opening GitLab...')).not.toBeNull()
+            await waitFor(() => expect(returnPaths).toEqual(['/onboarding']))
+        } finally {
+            profileAPI.getGitlabConnectUrl = original
+        }
+    })
+
+    test('shows a connected GitLab account as done', () => {
+        const { getByText } = renderOnboarding(
+            newUserState({
+                steps: { models: false, github: true },
+                gitlab: { username: 'jo-gl' },
+            })
+        )
+
+        expect(getByText('jo-gl')).not.toBeNull()
+        expect(getByText('Continue')).not.toBeNull()
     })
 
     test('resumes at the saved step', () => {

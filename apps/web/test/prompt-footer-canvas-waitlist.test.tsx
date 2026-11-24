@@ -169,8 +169,8 @@ describe('PromptFooter & PromptInput: Mention Dropdown & Back Navigation', () =>
         // "Repositories" header is shown
         expect(screen.getByText('Repositories')).not.toBeNull()
 
-        // "Connect GitHub" should be rendered as a link with href
-        const connectLink = screen.getByRole('link', { name: /Connect GitHub/i })
+        // "Connect GitHub" should be rendered as a link with href, once the GitLab status is in
+        const connectLink = await screen.findByRole('link', { name: /Connect GitHub/i })
         expect(connectLink).not.toBeNull()
         expect(connectLink.getAttribute('href')).toContain(
             'github.com/apps/trydecember/installations/new'

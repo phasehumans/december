@@ -20,6 +20,7 @@ import { useSlashMenu } from '@/features/home/slash/useSlashMenu'
 import { profileAPI } from '@/features/profile/api/profile'
 import { secretsAPI } from '@/features/profile/api/secrets'
 import { useByokList } from '@/features/profile/hooks/useByokData'
+import { repoKey, useConnectedRepos } from '@/features/profile/hooks/useConnectedRepos'
 import { usePreferences } from '@/features/profile/lib/preferences'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { Icons } from '@/shared/components/ui/Icons'
@@ -395,7 +396,7 @@ export const usePromptInputController = ({
         enabled: isReposTriggered && !!isAuthenticated,
     })
 
-    const isGithubConnected = Boolean(
+    const hasGithub = Boolean(
         profile?.githubAppInstall || profile?.githubConnected || quickInfo?.githubConnected
     )
 
@@ -403,11 +404,19 @@ export const usePromptInputController = ({
         ? profileAPI.getGithubConnectUrl(profile.id)
         : profileAPI.getGithubConnectUrl('')
 
-    const { data: repos = [], isLoading: isReposLoading } = useQuery({
-        queryKey: ['github-repos'],
-        queryFn: profileAPI.getGithubRepos,
-        enabled: isReposTriggered && isGithubConnected,
+    const {
+        repos,
+        isLoading: isRepoListLoading,
+        isGitlabConnected,
+        isGitlabReady,
+    } = useConnectedRepos({
+        enabled: isReposTriggered && !!isAuthenticated,
+        isGithubConnected: hasGithub,
     })
+    // without GitHub, wait for the GitLab answer so "Connect GitHub" does not flash
+    const isReposLoading = isRepoListLoading || (!hasGithub && isReposTriggered && !isGitlabReady)
+    // any connected git host can list repos; the "Connect GitHub" hint shows only without one
+    const isGithubConnected = hasGithub || isGitlabConnected
 
     const filteredRepos = repos.filter(
         (repo) =>
@@ -523,7 +532,7 @@ export const usePromptInputController = ({
     const handleSelectRepo = (repo: any) => {
         const newValue = (input || '').replace(/@repos?:[^\s]*$/, '')
         handleInputChange(newValue)
-        if (!selectedRepos.some((r) => r.id === repo.id)) {
+        if (!selectedRepos.some((r) => repoKey(r) === repoKey(repo))) {
             setSelectedRepos((prev) => [...prev, repo])
             if (!selectedBranch) {
                 setSelectedBranch(repo.defaultBranch || 'main')

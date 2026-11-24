@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom'
 
 import type { PromptInputProps } from '@/features/home/types'
 
+import { BrandIcon } from '@/features/connections/components/BrandIcons'
 import { usePromptInputController } from '@/features/home/hooks/usePromptInputController'
 import { SlashHelpPanel, SlashMenu } from '@/features/home/slash/SlashMenu'
+import { repoKey } from '@/features/profile/hooks/useConnectedRepos'
 import { Icons } from '@/shared/components/ui/Icons'
 import { PromptFooter } from '@/shared/components/ui/PromptFooter'
 import { useIsPhone } from '@/shared/lib/useIsPhone'
@@ -274,14 +276,21 @@ export const PromptInput: React.FC<
                                     {filteredRepos.length > 0 ? (
                                         filteredRepos.slice(0, 10).map((repo, idx) => (
                                             <button
-                                                key={repo.id}
+                                                key={repoKey(repo)}
                                                 onMouseEnter={() => setSelectedIndex(idx)}
                                                 onClick={() => handleSelectRepo(repo)}
                                                 className={`flex items-start gap-3 px-3 py-1.5 rounded-xl transition-colors text-left w-full outline-none ${selectedIndex === idx ? 'bg-[#252525] dropdown-item-active' : 'hover:bg-[#252525]'}`}
                                             >
-                                                <Icons.Github
-                                                    className={`w-4 h-4 mt-[2px] ${selectedIndex === idx ? 'text-[#EDEDEF]' : 'text-[#8F8E8D]'}`}
-                                                />
+                                                {repo.provider === 'GITLAB' ? (
+                                                    <BrandIcon
+                                                        brand="gitlab"
+                                                        className="w-4 h-4 mt-[2px] shrink-0"
+                                                    />
+                                                ) : (
+                                                    <Icons.Github
+                                                        className={`w-4 h-4 mt-[2px] ${selectedIndex === idx ? 'text-[#EDEDEF]' : 'text-[#8F8E8D]'}`}
+                                                    />
+                                                )}
                                                 <div className="flex flex-col min-w-0 leading-tight gap-0.5">
                                                     <span className="text-[12.5px] font-medium text-[#EDEDEF] truncate">
                                                         {repo.name}

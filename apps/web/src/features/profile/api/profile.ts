@@ -1,5 +1,5 @@
 import { apiRequest } from '@/shared/api/client'
-import { getGithubAppName } from '@/shared/config/env'
+import { getApiBaseUrl, getGithubAppName } from '@/shared/config/env'
 
 export type Profile = {
     id: string
@@ -162,10 +162,38 @@ export type GithubRepo = {
         login: string
         avatarUrl: string
     }
+    // a GitLab project has the same shape; older responses have no provider (GitHub)
+    provider?: 'GITHUB' | 'GITLAB'
 }
 
 const getGithubRepos = () => {
     return apiRequest<GithubRepo[]>('/platform/github/repos')
+}
+
+export type GitlabStatus = {
+    /** false until the server has the GitLab app (#645) */
+    available: boolean
+    connected: boolean
+    username: string | null
+}
+
+const getGitlabStatus = () => apiRequest<GitlabStatus>('/integrations/gitlab')
+
+const getGitlabRepos = () => apiRequest<GithubRepo[]>('/platform/gitlab/repos')
+
+const disconnectGitlab = () =>
+    apiRequest<void>('/integrations/gitlab', {
+        method: 'DELETE',
+    })
+
+/** the server sends the browser on to gitlab.com and back to `returnPath` */
+const getGitlabConnectUrl = (returnPath?: string) => {
+    const path =
+        returnPath ??
+        (typeof window !== 'undefined'
+            ? window.location.pathname + window.location.search
+            : '/settings/repositories')
+    return `${getApiBaseUrl()}/integrations/gitlab/start?redirect=${encodeURIComponent(path)}`
 }
 
 const getGithubConnectUrl = (userId: string) => {
@@ -222,6 +250,10 @@ export const profileAPI = {
     deleteMemories,
     getGithubRepos,
     getGithubConnectUrl,
+    getGitlabStatus,
+    getGitlabRepos,
+    disconnectGitlab,
+    getGitlabConnectUrl,
     submitFeedback,
     createGithubRepo,
     syncGithubRepo,
