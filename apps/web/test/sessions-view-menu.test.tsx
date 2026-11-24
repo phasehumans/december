@@ -101,6 +101,7 @@ describe('sessions view', () => {
         const full: SessionsView = {
             sort: 'oldest',
             hasPr: true,
+            needsAnswer: false,
             archived: true,
             repo: 'acme/web',
             tag: 'bug',
@@ -122,6 +123,7 @@ describe('sessions view', () => {
         const view: SessionsView = {
             sort: 'newest',
             hasPr: true,
+            needsAnswer: true,
             archived: false,
             repo: null,
             tag: 'bug',

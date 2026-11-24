@@ -90,6 +90,11 @@ describe('sidebar Recent list', () => {
         cleanup()
         localStorage.clear()
         useAppStore.setState({ isAuthenticated: true, isAuthRestored: true, activeProjectId: null })
+        spyOn(sessionAPI, 'getSessionCounts').mockImplementation(async () => ({
+            running: 0,
+            openPullRequests: 0,
+            merged: 0,
+        }))
     })
 
     afterEach(() => {
@@ -151,6 +156,7 @@ describe('sidebar Recent list', () => {
             sort: 'updated',
             running: true,
             hasPr: false,
+            needsAnswer: false,
             group: false,
         })
         expect(getSessions.mock.calls.some((c: any[]) => c[0]?.vmStatus === 'running')).toBe(true)

@@ -103,6 +103,28 @@ export const useSessionListMutations = ({
         },
     })
 
+    const togglePinMutation = useMutation({
+        mutationFn: ({ sessionId, isPinned }: { sessionId: string; isPinned: boolean }) =>
+            isPinned ? sessionAPI.pinSession(sessionId) : sessionAPI.unpinSession(sessionId),
+        onMutate: async ({ sessionId, isPinned }) => {
+            setActionError(null)
+            await queryClient.cancelQueries({ queryKey: ['sessions'] })
+            updateAllSessionsCache((session) =>
+                session.id === sessionId ? { ...session, isPinned } : session
+            )
+        },
+        onError: (error) => {
+            setActionError(getErrorMessage(error, 'Failed to pin session'))
+        },
+        onSuccess: () => {
+            setActionError(null)
+        },
+        // the server puts pinned sessions first, so read the list again
+        onSettled: (_data, _error, variables) => {
+            invalidateAllSessionQueries(variables?.sessionId)
+        },
+    })
+
     const renameMutation = useMutation({
         mutationFn: ({ sessionId, rename }: { sessionId: string; rename: string }) =>
             sessionAPI.renameSession(sessionId, rename),
@@ -186,6 +208,7 @@ export const useSessionListMutations = ({
 
     return {
         toggleArchiveMutation,
+        togglePinMutation,
         renameMutation,
         deleteMutation,
         updateTagsMutation,

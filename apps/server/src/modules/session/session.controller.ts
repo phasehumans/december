@@ -10,6 +10,9 @@ import {
     renameSessionBodySchema,
     archiveSessionParamsSchema,
     unarchiveSessionParamsSchema,
+    pinSessionParamsSchema,
+    unpinSessionParamsSchema,
+    unarchiveSessionsBodySchema,
     updateSessionTagsParamsSchema,
     updateSessionTagsBodySchema,
     deleteSessionParamsSchema,
@@ -58,6 +61,8 @@ export const getSessions = asyncHandler(async (req: Request, res: Response) => {
     if (parsedQuery.limit) filters.limit = parsedQuery.limit
     if (parsedQuery.vmStatus) filters.vmStatus = parsedQuery.vmStatus
     if (parsedQuery.hasPr) filters.hasPr = true
+    if (parsedQuery.pinnedFirst) filters.pinnedFirst = true
+    if (parsedQuery.needsAnswer) filters.needsAnswer = true
 
     const result = await sessionService.getUserSessions({ userId, filters })
     return sendSuccess(res, 'sessions fetched successfully', {
@@ -146,6 +151,49 @@ export const unarchiveSession = asyncHandler(async (req: Request, res: Response)
         sessionId: id,
     })
     return sendSuccess(res, 'session unarchived successfully', { session })
+})
+
+export const pinSession = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = pinSessionParamsSchema.parse(req.params)
+
+    const session = await sessionService.pinSession({ userId, sessionId: id })
+    return sendSuccess(res, 'session pinned successfully', { session })
+})
+
+export const unpinSession = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = unpinSessionParamsSchema.parse(req.params)
+
+    const session = await sessionService.unpinSession({ userId, sessionId: id })
+    return sendSuccess(res, 'session unpinned successfully', { session })
+})
+
+export const archiveMergedSessions = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+
+    const result = await sessionService.archiveMergedSessions({ userId })
+    return sendSuccess(res, 'merged sessions archived successfully', result)
+})
+
+export const unarchiveSessions = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { sessionIds } = unarchiveSessionsBodySchema.parse(req.body)
+
+    const result = await sessionService.unarchiveSessions({ userId, sessionIds })
+    return sendSuccess(res, 'sessions unarchived successfully', result)
+})
+
+export const getSessionCounts = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+
+    const counts = await sessionService.getSessionCounts({ userId })
+    return sendSuccess(res, 'session counts fetched successfully', counts)
 })
 
 export const updateSessionTags = asyncHandler(async (req: Request, res: Response) => {
@@ -414,6 +462,11 @@ export const sessionController = {
     renameSession,
     archiveSession,
     unarchiveSession,
+    pinSession,
+    unpinSession,
+    archiveMergedSessions,
+    unarchiveSessions,
+    getSessionCounts,
     updateSessionTags,
     deleteSession,
     rehydrateSession,

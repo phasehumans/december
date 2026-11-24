@@ -23,6 +23,10 @@ export type SessionFilters = {
     vmStatus?: string
     /** only sessions that opened a pull request */
     hasPr?: boolean
+    /** pinned sessions first (newest pin first), then the asked sort */
+    pinnedFirst?: boolean
+    /** only sessions where the agent waits for an answer */
+    needsAnswer?: boolean
 }
 
 export type GetUserSessions = {
@@ -65,6 +69,35 @@ export type ArchiveSession = {
 export type UnarchiveSession = {
     userId: string
     sessionId: string
+}
+
+export type PinSession = {
+    userId: string
+    sessionId: string
+}
+
+export type UnpinSession = {
+    userId: string
+    sessionId: string
+}
+
+export type ArchiveMergedSessions = {
+    userId: string
+}
+
+export type UnarchiveSessions = {
+    userId: string
+    sessionIds: string[]
+}
+
+export type GetSessionCounts = {
+    userId: string
+}
+
+export type SessionCounts = {
+    running: number
+    openPullRequests: number
+    merged: number
 }
 
 export type UpdateSessionTags = {
@@ -205,6 +238,15 @@ export interface SubmitQuestionAnswer {
     sessionId: string
     questionId?: string
     answer: string | string[]
+}
+
+export interface MarkQuestionAsked {
+    sessionId: string
+}
+
+export interface ClearPendingQuestion {
+    userId: string
+    sessionId: string
 }
 
 export interface GetPendingQuestion {

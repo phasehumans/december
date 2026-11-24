@@ -15,6 +15,10 @@ export type BackendSession = {
     issueNumber?: number | null
     lastMessage: string | null
     isArchived?: boolean
+    /** pinned sessions come first in the Recent list */
+    isPinned?: boolean
+    /** the agent asked a question and waits for an answer */
+    needsAnswer?: boolean
     tags?: string[]
     prNumber?: number | null
     prState?: 'open' | 'closed' | 'merged' | 'draft' | null
@@ -75,6 +79,10 @@ export type SessionFilters = {
     vmStatus?: 'running'
     /** only sessions that opened a pull request */
     hasPr?: boolean
+    /** only sessions where the agent waits for an answer */
+    needsAnswer?: boolean
+    /** pinned sessions first (newest pin first), then the sort */
+    pinnedFirst?: boolean
     /** one repository by name. the list API does not accept it yet, see sessionsView.ts */
     repoName?: string
     sortBy?: 'updatedAt' | 'createdAt'
@@ -83,6 +91,14 @@ export type SessionFilters = {
     searchIn?: 'title' | 'all'
     page?: number
     limit?: number
+}
+
+/** counts for the list switches and menus, archived sessions left out */
+export type SessionCounts = {
+    running: number
+    openPullRequests: number
+    /** merged and not running: what "Archive merged" archives */
+    merged: number
 }
 
 export type PaginatedSessionsResponse = {
@@ -106,6 +122,8 @@ export const sessionAPI = {
             queryParams.append('isArchived', filters.isArchived.toString())
         if (filters?.vmStatus) queryParams.append('vmStatus', filters.vmStatus)
         if (filters?.hasPr) queryParams.append('hasPr', 'true')
+        if (filters?.needsAnswer) queryParams.append('needsAnswer', 'true')
+        if (filters?.pinnedFirst) queryParams.append('pinnedFirst', 'true')
         if (filters?.repoName) queryParams.append('repoName', filters.repoName)
         if (filters?.tags && filters.tags.length > 0)
             queryParams.append('tags', filters.tags.join(','))
@@ -340,6 +358,32 @@ export const sessionAPI = {
         })
         return res.session
     },
+
+    pinSession: async (id: string): Promise<BackendSession> => {
+        const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/pin`, {
+            method: 'PATCH',
+        })
+        return res.session
+    },
+
+    unpinSession: async (id: string): Promise<BackendSession> => {
+        const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/unpin`, {
+            method: 'PATCH',
+        })
+        return res.session
+    },
+
+    /** archives every merged, not running session; the ids are for the undo */
+    archiveMergedSessions: (): Promise<{ sessionIds: string[] }> =>
+        apiRequest<{ sessionIds: string[] }>('/session/archive-merged', { method: 'POST' }),
+
+    unarchiveSessions: (sessionIds: string[]): Promise<{ sessionIds: string[] }> =>
+        apiRequest<{ sessionIds: string[] }>('/session/unarchive', {
+            method: 'POST',
+            body: JSON.stringify({ sessionIds }),
+        }),
+
+    getSessionCounts: (): Promise<SessionCounts> => apiRequest<SessionCounts>('/session/counts'),
 
     updateSessionTags: async (id: string, tags: string[]): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/tags`, {

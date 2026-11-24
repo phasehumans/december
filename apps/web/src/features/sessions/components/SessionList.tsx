@@ -109,12 +109,13 @@ export const SessionList: React.FC<{
 
     const filtersOn =
         view.hasPr ||
+        view.needsAnswer ||
         view.archived ||
         Boolean(view.repo) ||
         Boolean(view.tag) ||
         statusFilter !== 'all'
     const clearFilters = () => {
-        changeView({ hasPr: false, archived: false, repo: null, tag: null })
+        changeView({ hasPr: false, needsAnswer: false, archived: false, repo: null, tag: null })
         setStatusFilter('all')
     }
 
@@ -164,12 +165,17 @@ export const SessionList: React.FC<{
         return () => window.removeEventListener('click', handleClickOutside)
     }, [menuOpenId])
 
-    const { toggleArchiveMutation, renameMutation, deleteMutation, updateTagsMutation } =
-        useSessionListMutations({
-            setActionError,
-            onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
-            onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
-        })
+    const {
+        toggleArchiveMutation,
+        togglePinMutation,
+        renameMutation,
+        deleteMutation,
+        updateTagsMutation,
+    } = useSessionListMutations({
+        setActionError,
+        onRenameMutate: () => setRenameModal({ isOpen: false, project: null, value: '' }),
+        onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
+    })
 
     const runningCount = useMemo(() => {
         return sessions.filter((s) => s.vmStatus === 'RUNNING' || s.vmStatus === 'PROVISIONING')
@@ -231,6 +237,12 @@ export const SessionList: React.FC<{
         event?.stopPropagation()
         setMenuOpenId(null)
         toggleArchiveMutation.mutate({ sessionId: session.id, isArchived: !session.isArchived })
+    }
+
+    const togglePinFromMenu = (session: any, event?: React.MouseEvent) => {
+        event?.stopPropagation()
+        setMenuOpenId(null)
+        togglePinMutation.mutate({ sessionId: session.id, isPinned: !session.isPinned })
     }
 
     const openModal = (event: React.MouseEvent | undefined, setter: () => void) => {
@@ -321,6 +333,7 @@ export const SessionList: React.FC<{
                     onToggleMenu={toggleMenu}
                     onCloseMenu={closeMenu}
                     onToggleArchiveFromMenu={toggleArchiveFromMenu}
+                    onTogglePinFromMenu={togglePinFromMenu}
                     onOpenRename={openRenameModal}
                     onOpenDelete={openDeleteModal}
                     onOpenTags={openTagsModal}

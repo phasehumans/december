@@ -63,6 +63,8 @@ export interface RemotePlatformAdapterOptions {
     timeoutMs?: number
     // called once the question is published, e.g. to put it in the user's inbox
     onQuestion?: (questions: Array<{ question: string }>) => Promise<unknown>
+    // called once the wait ends (answer or timeout), e.g. to clear the "needs answer" mark
+    onQuestionSettled?: () => Promise<unknown>
 }
 
 export class RemotePlatformAdapter implements PlatformAdapter {
@@ -319,6 +321,11 @@ export class RemotePlatformAdapter implements PlatformAdapter {
                     if (typeof redis.del === 'function') {
                         await redis.del(`session_pending_question:${sessionId}`).catch(() => {
                             // Intentionally swallowed: Redis del fallback
+                        })
+                    }
+                    if (this.options?.onQuestionSettled) {
+                        await this.options.onQuestionSettled().catch((err: unknown) => {
+                            console.error('[RemotePlatformAdapter] question settle failed:', err)
                         })
                     }
                 }

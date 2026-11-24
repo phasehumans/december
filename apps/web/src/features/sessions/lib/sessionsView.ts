@@ -11,6 +11,8 @@ export interface SessionsView {
     sort: SessionsSort
     /** only sessions that opened a pull request */
     hasPr: boolean
+    /** only sessions where the agent waits for an answer */
+    needsAnswer: boolean
     /** only archived sessions. when off, archived sessions stay out of the list */
     archived: boolean
     /** owner/name of one repository, or null for any */
@@ -21,6 +23,7 @@ export interface SessionsView {
 export const DEFAULT_SESSIONS_VIEW: SessionsView = {
     sort: 'updated',
     hasPr: false,
+    needsAnswer: false,
     archived: false,
     repo: null,
     tag: null,
@@ -53,6 +56,7 @@ export const readSessionsView = (): SessionsView => {
         return {
             sort: SESSIONS_SORTS.includes(saved.sort) ? saved.sort : 'updated',
             hasPr: saved.hasPr === true,
+            needsAnswer: saved.needsAnswer === true,
             archived: saved.archived === true,
             repo: textOrNull(saved.repo),
             tag: textOrNull(saved.tag),
@@ -78,6 +82,7 @@ export const shortRepoName = (repo: string): string => repo.split('/').pop() || 
 export const activeViewFilters = (view: SessionsView): string[] => {
     const names: string[] = []
     if (view.hasPr) names.push('Pull request')
+    if (view.needsAnswer) names.push('Needs answer')
     if (view.archived) names.push('Archived')
     if (view.repo) names.push(shortRepoName(view.repo))
     if (view.tag) names.push(view.tag)
@@ -109,10 +114,14 @@ export const SERVER_FILTERS_REPO_AND_TAG = false
 export const sessionsViewFilters = (
     view: SessionsView,
     sendRepoAndTag: boolean = SERVER_FILTERS_REPO_AND_TAG
-): Pick<SessionFilters, 'sortBy' | 'sortOrder' | 'hasPr' | 'isArchived' | 'tags' | 'repoName'> => ({
+): Pick<
+    SessionFilters,
+    'sortBy' | 'sortOrder' | 'hasPr' | 'needsAnswer' | 'isArchived' | 'tags' | 'repoName'
+> => ({
     sortBy: view.sort === 'updated' ? 'updatedAt' : 'createdAt',
     sortOrder: view.sort === 'oldest' ? 'asc' : 'desc',
     hasPr: view.hasPr || undefined,
+    needsAnswer: view.needsAnswer || undefined,
     isArchived: view.archived,
     tags: sendRepoAndTag && view.tag ? [view.tag] : undefined,
     repoName: sendRepoAndTag && view.repo ? shortRepoName(view.repo) : undefined,
@@ -132,6 +141,7 @@ export const applySessionsView = (sessions: BackendSession[], view: SessionsView
         .filter((session) => {
             if (Boolean(session.isArchived) !== view.archived) return false
             if (view.hasPr && !session.prNumber) return false
+            if (view.needsAnswer && !session.needsAnswer) return false
             if (view.repo && repoNameOf(session) !== view.repo) return false
             if (view.tag && !(session.tags || []).includes(view.tag)) return false
             return true

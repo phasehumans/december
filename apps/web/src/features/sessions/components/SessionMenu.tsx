@@ -11,6 +11,9 @@ type MenuHandler = (event?: React.MouseEvent) => void
 
 export interface SessionMenuProps {
     isArchived: boolean
+    isPinned?: boolean
+    /** shows Pin or Unpin. archived sessions cannot be pinned, so it hides for them */
+    onTogglePin?: MenuHandler
     /** true while the session is running or starting: shows Stop */
     canStop: boolean
     onRename: MenuHandler
@@ -39,6 +42,8 @@ const divider = <div className="mx-1.5 my-1 h-px bg-[#282828]" />
 /** dropdown items for desktop */
 export const SessionMenuItems: React.FC<SessionMenuProps> = ({
     isArchived,
+    isPinned,
+    onTogglePin,
     canStop,
     onRename,
     onTags,
@@ -66,6 +71,12 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
             </button>
         )}
         {(onOpenPullRequest || onNewInRepo || onOpenInNewTab) && divider}
+        {onTogglePin && !isArchived && (
+            <button type="button" role="menuitem" onClick={onTogglePin} className={itemClass}>
+                <Icons.Pin className="h-3.5 w-3.5 text-[#7B7A79]" />
+                {isPinned ? 'Unpin' : 'Pin'}
+            </button>
+        )}
         <button type="button" role="menuitem" onClick={onRename} className={itemClass}>
             <Icons.Edit className="h-3.5 w-3.5 text-[#7B7A79]" /> Rename
         </button>
@@ -103,6 +114,8 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
  * close the sheet first */
 export const SessionSheetItems: React.FC<SessionMenuProps & { confirmDelete?: boolean }> = ({
     isArchived,
+    isPinned,
+    onTogglePin,
     canStop,
     onRename,
     onTags,
@@ -129,6 +142,13 @@ export const SessionSheetItems: React.FC<SessionMenuProps & { confirmDelete?: bo
                     icon={<Icons.Plus className="h-4 w-4" />}
                     label="New session in this repo"
                     onClick={() => closeThen(() => onNewInRepo())}
+                />
+            )}
+            {onTogglePin && !isArchived && (
+                <SheetRow
+                    icon={<Icons.Pin className="h-4 w-4" />}
+                    label={isPinned ? 'Unpin' : 'Pin'}
+                    onClick={onTogglePin}
                 />
             )}
             <SheetRow icon={<Icons.Edit className="h-4 w-4" />} label="Rename" onClick={onRename} />

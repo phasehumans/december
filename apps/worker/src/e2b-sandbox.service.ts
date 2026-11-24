@@ -25,6 +25,7 @@ import { Sandbox } from 'e2b'
 import Redis from 'ioredis'
 
 import { notifyAgentQuestion } from './inbox-notify'
+import { clearPendingQuestion } from './pending-question'
 import { RemotePlatformAdapter } from './remote-operations'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { archiveWorkspaceState } from './workspace'
@@ -784,6 +785,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
                 question: questions?.[0]?.question || 'December has a question for you.',
                 redis: getRedisPub(),
             }),
+        onQuestionSettled: () => clearPendingQuestion(sessionId, getRedisPub()),
     })
     activeAdapters.add(adapter)
     // an own-key client never falls back to december keys
@@ -935,6 +937,8 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
             yield { data: JSON.stringify({ type: 'AgentEnd' }) }
         } finally {
             activeAdapters.delete(adapter)
+            // a run that ends (or is stopped) no longer waits for an answer
+            await clearPendingQuestion(sessionId, getRedisPub())
         }
     })()
 

@@ -38,6 +38,12 @@ export const SessionsViewMenu: React.FC<SessionsViewMenuProps> = ({
                 onToggle: () => onChange({ hasPr: !view.hasPr }),
             },
             {
+                key: 'needsAnswer',
+                label: 'Needs answer',
+                checked: view.needsAnswer,
+                onToggle: () => onChange({ needsAnswer: !view.needsAnswer }),
+            },
+            {
                 key: 'archived',
                 label: 'Archived',
                 checked: view.archived,

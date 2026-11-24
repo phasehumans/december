@@ -33,6 +33,12 @@ import type {
     RenameSession,
     ArchiveSession,
     UnarchiveSession,
+    PinSession,
+    UnpinSession,
+    ArchiveMergedSessions,
+    UnarchiveSessions,
+    GetSessionCounts,
+    SessionCounts,
     UpdateSessionTags,
     GetSessionMessages,
     DeleteSession,
@@ -54,6 +60,8 @@ import type {
     SessionPreviewPortResult,
     SubmitQuestionAnswer,
     GetPendingQuestion,
+    MarkQuestionAsked,
+    ClearPendingQuestion,
     GetSessionDesktopViewport,
     SessionDesktopViewportResult,
 } from './session.types'
@@ -105,6 +113,8 @@ const getUserSessions = async (data: GetUserSessions) => {
                         : 'New Chat'),
                 type: session.type,
                 isArchived: session.isArchived,
+                isPinned: Boolean(session.pinnedAt),
+                needsAnswer: Boolean(session.pendingQuestionAt),
                 tags: session.tags,
                 createdAt: session.createdAt,
                 updatedAt: session.updatedAt,
@@ -155,6 +165,8 @@ const getUserSessions = async (data: GetUserSessions) => {
         filters?.type ?? 'all',
         filters?.vmStatus ?? 'any',
         filters?.hasPr ? 'pr' : 'all-pr',
+        filters?.needsAnswer ? 'needs-answer' : 'any-answer',
+        filters?.pinnedFirst ? 'pinned-first' : 'plain',
         filters?.sortBy ?? 'updatedAt',
         filters?.sortOrder ?? 'desc',
         String(filters?.limit ?? 50),
@@ -175,7 +187,7 @@ const getMaxConcurrentSessions = (userId?: string, requestedLimit?: number): num
     if (!isNaN(envVal) && envVal > 0) {
         return envVal
     }
-    return 3
+    return 10
 }
 
 const createSession = async (data: CreateSession) => {
@@ -218,10 +230,12 @@ const createSession = async (data: CreateSession) => {
     }
 
     if (type !== 'SEARCH') {
+        // sessions whose agent is working. an idle sandbox stays RUNNING until the worker
+        // pauses it (10 per user, least recently used first), so it does not block a new session.
         const activeSessions = await prisma.session.count({
             where: {
                 userId,
-                vmStatus: { in: ['PROVISIONING', 'RUNNING'] },
+                OR: [{ vmStatus: 'PROVISIONING' }, { vmStatus: 'RUNNING', status: 'RUNNING' }],
             },
         })
 
@@ -318,8 +332,10 @@ const archiveSession = async (data: ArchiveSession) => {
     const { userId, sessionId } = data
     const existing = await sessionRepository.findSessionById(sessionId, userId)
     if (!existing) throw new AppError('Session not found', 404)
+    // an archived session leaves the recent list, so it loses its pin
     const updated = await sessionRepository.updateSession(sessionId, userId, {
         isArchived: true,
+        pinnedAt: null,
         updatedAt: existing.updatedAt,
     })
     await invalidateUserRecentSessions(userId)
@@ -336,6 +352,63 @@ const unarchiveSession = async (data: UnarchiveSession) => {
     })
     await invalidateUserRecentSessions(userId)
     return updated
+}
+
+const MAX_PINNED_SESSIONS = 10
+
+const pinSession = async (data: PinSession) => {
+    const { userId, sessionId } = data
+    const existing = await sessionRepository.findSessionById(sessionId, userId)
+    if (!existing) throw new AppError('Session not found', 404)
+    if (existing.isArchived) throw new AppError('Unarchive the session to pin it', 409)
+    if (existing.pinnedAt) return existing
+
+    const updated = await sessionRepository.pinSessionWithinLimit(
+        sessionId,
+        userId,
+        MAX_PINNED_SESSIONS
+    )
+    if (!updated) {
+        throw new AppError(`You can pin up to ${MAX_PINNED_SESSIONS} sessions`, 409)
+    }
+    await invalidateUserRecentSessions(userId)
+    return updated
+}
+
+const unpinSession = async (data: UnpinSession) => {
+    const { userId, sessionId } = data
+    const existing = await sessionRepository.findSessionById(sessionId, userId)
+    if (!existing) throw new AppError('Session not found', 404)
+    if (!existing.pinnedAt) return existing
+
+    const updated = await sessionRepository.updateSession(sessionId, userId, {
+        pinnedAt: null,
+        updatedAt: existing.updatedAt,
+    })
+    await invalidateUserRecentSessions(userId)
+    return updated
+}
+
+const archiveMergedSessions = async (data: ArchiveMergedSessions) => {
+    const { userId } = data
+    const sessionIds = await sessionRepository.archiveMergedSessions(userId)
+    if (sessionIds.length > 0) await invalidateUserRecentSessions(userId)
+    return { sessionIds }
+}
+
+/** the undo of archive merged: only sessions of this user change */
+const unarchiveSessions = async (data: UnarchiveSessions) => {
+    const { userId, sessionIds } = data
+    const changed = await sessionRepository.unarchiveSessions(userId, sessionIds)
+    if (changed.length > 0) await invalidateUserRecentSessions(userId)
+    return { sessionIds: changed }
+}
+
+// under the recent list key, so every write that clears the list clears the counts too
+const getSessionCounts = async (data: GetSessionCounts): Promise<SessionCounts> => {
+    const { userId } = data
+    const cacheKey = appCache.key('sessions', 'recent', userId, 'counts')
+    return appCache.wrap(cacheKey, 30, () => sessionRepository.countSessions(userId))
 }
 
 const updateSessionTags = async (data: UpdateSessionTags) => {
@@ -476,6 +549,9 @@ const proxyPreview = async (data: ProxyPreview) => {
     if (!session) {
         throw new AppError('Session not found', 404)
     }
+
+    // a preview request is sandbox activity: it keeps the sandbox from the idle pause
+    await sessionRepository.touchSandboxActivity(sessionId)
 
     let targetHost = `session-${sessionId}-${port}.preview.trydecember.com`
     if (session.vmId && !session.vmId.startsWith('mock-')) {
@@ -973,6 +1049,7 @@ const submitQuestionAnswer = async (data: SubmitQuestionAnswer) => {
             // Intentionally swallowed: Redis pending question cleanup fallback
         })
     }
+    await clearPendingQuestion({ userId, sessionId })
 
     return {
         success: true,
@@ -980,6 +1057,32 @@ const submitQuestionAnswer = async (data: SubmitQuestionAnswer) => {
         questionId,
         answer,
     }
+}
+
+/** the worker asked a question (AskQuestionPrompt event): mark the session in the list */
+const markQuestionAsked = async (data: MarkQuestionAsked) => {
+    const { sessionId } = data
+    const owner = await sessionRepository.setPendingQuestion(sessionId)
+    if (owner) await invalidateUserRecentSessions(owner.userId)
+}
+
+/**
+ * the worker ended a wait without the server (timeout, run end) and sent QuestionSettled.
+ * clears the mark again, in case the ask event landed after an answer, and the list cache
+ */
+const markQuestionSettled = async (data: MarkQuestionAsked) => {
+    const { sessionId } = data
+    const owner = await sessionRepository.findSessionOwner(sessionId)
+    if (!owner) return
+    await sessionRepository.clearPendingQuestion(sessionId, owner.userId)
+    await invalidateUserRecentSessions(owner.userId)
+}
+
+/** an answer or a stop ends the wait; only a session of this user changes */
+const clearPendingQuestion = async (data: ClearPendingQuestion) => {
+    const { userId, sessionId } = data
+    const changed = await sessionRepository.clearPendingQuestion(sessionId, userId)
+    if (changed) await invalidateUserRecentSessions(userId)
 }
 
 const getPendingQuestion = async (data: GetPendingQuestion) => {
@@ -1130,6 +1233,11 @@ export const sessionService = {
     renameSession,
     archiveSession,
     unarchiveSession,
+    pinSession,
+    unpinSession,
+    archiveMergedSessions,
+    unarchiveSessions,
+    getSessionCounts,
     updateSessionTags,
     deleteSession,
     rehydrateSession,
@@ -1146,5 +1254,8 @@ export const sessionService = {
     getSessionPreviewPort,
     submitQuestionAnswer,
     getPendingQuestion,
+    markQuestionAsked,
+    markQuestionSettled,
+    clearPendingQuestion,
     getSessionDesktopViewport,
 }

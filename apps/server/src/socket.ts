@@ -7,6 +7,7 @@ import { Server, Socket } from 'socket.io'
 import { env } from './env'
 import { byokService } from './modules/byok/byok.service'
 import { secretsService } from './modules/secrets/secrets.service'
+import { sessionService } from './modules/session/session.service'
 import { usageService } from './modules/usage/usage.service'
 import { AppError } from './shared/appError'
 
@@ -93,6 +94,16 @@ export function initSocket(httpServer: any) {
                     `[SERVER CORE -> CLIENT] Relaying event '${event.type || 'unknown'}' to room session:${sessionId}`
                 )
                 io.to(`session:${sessionId}`).emit('agent_event', event)
+                // the sessions list marks a session that waits for an answer
+                if (event?.type === 'AskQuestionPrompt') {
+                    sessionService.markQuestionAsked({ sessionId }).catch((error: unknown) => {
+                        console.error('[SERVER CORE] could not mark the pending question', error)
+                    })
+                } else if (event?.type === 'QuestionSettled') {
+                    sessionService.markQuestionSettled({ sessionId }).catch((error: unknown) => {
+                        console.error('[SERVER CORE] could not clear the pending question', error)
+                    })
+                }
             } catch (err) {
                 console.error(`[SERVER CORE] Failed to parse Redis message on ${channel}`, err)
             }
@@ -222,6 +233,14 @@ export function initSocket(httpServer: any) {
             'QUESTION_ANSWER',
             async (data: { sessionId: string; questionId?: string; answer: string | string[] }) => {
                 if (data?.sessionId && data?.answer !== undefined) {
+                    await sessionService
+                        .clearPendingQuestion({
+                            userId: socket.data.userId,
+                            sessionId: data.sessionId,
+                        })
+                        .catch((error: unknown) => {
+                            console.error('[Socket] could not clear the pending question', error)
+                        })
                     await pubClient
                         .publish(
                             `session_question_answer:${data.sessionId}`,
@@ -388,6 +407,13 @@ export function initSocket(httpServer: any) {
 
         socket.on('stop_session', async (data: { sessionId: string }) => {
             console.log(`[Socket] Received STOP signal for session ${data.sessionId}`)
+            if (data?.sessionId) {
+                await sessionService
+                    .clearPendingQuestion({ userId: socket.data.userId, sessionId: data.sessionId })
+                    .catch((error: unknown) => {
+                        console.error('[Socket] could not clear the pending question', error)
+                    })
+            }
             await pubClient.publish(
                 `session_interrupts:${data.sessionId}`,
                 JSON.stringify({ type: 'INTERRUPT' })

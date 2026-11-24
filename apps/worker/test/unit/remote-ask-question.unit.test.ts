@@ -123,6 +123,34 @@ describe('RemotePlatformAdapter UI ask_question Bridge (Ticket #590 - Seam 1)', 
         expect(result).toBe('Header, Footer')
     })
 
+    it('calls onQuestionSettled when the question times out, so the list mark clears', async () => {
+        const settled = mock(async () => undefined)
+        const mockRedis = {
+            status: 'ready',
+            publish: mock(async () => 1),
+            set: mock(async () => 'OK'),
+            del: mock(async () => 1),
+            duplicate: () => ({
+                status: 'ready',
+                subscribe: mock(async () => 1),
+                unsubscribe: mock(async () => 1),
+                quit: mock(async () => 'OK'),
+                on: mock(() => undefined),
+            }),
+        }
+
+        const adapter = new RemotePlatformAdapter('mock-vm-timeout', {
+            sessionId: 'sess-timeout',
+            redisClient: mockRedis as any,
+            timeoutMs: 20,
+            onQuestionSettled: settled,
+        })
+
+        const result = await adapter.ui.askQuestion([{ question: 'Pick one', options: ['A', 'B'] }])
+        expect(result).toBe('A')
+        expect(settled).toHaveBeenCalledTimes(1)
+    })
+
     it('falls back gracefully to first option when redis is unavailable', async () => {
         const adapter = new RemotePlatformAdapter('mock-vm-no-redis', {
             timeoutMs: 100,

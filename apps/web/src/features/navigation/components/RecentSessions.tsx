@@ -1,9 +1,11 @@
+import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 import { createPortal } from 'react-dom'
 
 import type { BackendSession } from '@/features/sessions/api/session'
 
 import { PULL_REQUEST_STATE_CLASS, repoNameOf } from '@/features/pullrequests/lib/pullRequests'
+import { sessionAPI } from '@/features/sessions/api/session'
 import { RunStatus } from '@/features/sessions/components/ListParts'
 import {
     SESSION_MENU_WIDTH,
@@ -26,8 +28,9 @@ import { cn } from '@/shared/lib/utils'
 // the desktop sidebar Recent list:
 // - rows fill the sidebar (up to 20) and end with "All sessions". a row is a link, so
 //   ctrl, cmd and middle click open a new tab
-// - the ⋯ next to the header sorts, filters (Running and Pull request combine), groups by
-//   repository and stops the running sessions. it opens like the inbox popover (part over
+// - pinned sessions come first and show a pin. a session that waits for an answer says so
+// - the ⋯ next to the header sorts, filters (Running, Pull request and Needs answer
+//   combine), groups by repository, stops the running sessions and archives the merged ones. it opens like the inbox popover (part over
 //   the sidebar, part over the page), stays open after a pick, and the view is remembered
 // - each row has a ⋯ with the same menu as the Sessions page. a right-click opens it at
 //   the pointer. archive leaves "Archived · Undo" for a few seconds
@@ -39,6 +42,8 @@ interface RecentView {
     running: boolean
     /** only sessions that opened a pull request */
     hasPr: boolean
+    /** only sessions where the agent waits for an answer */
+    needsAnswer: boolean
     /** rows sit under the name of their repository */
     group: boolean
 }
@@ -49,11 +54,17 @@ const RECENT_LIMIT = 20
 const RUNNING_LIMIT = 50
 const MENU_WIDTH = 180
 /** the height of the list menu with every row, to keep it inside the window */
-const VIEW_MENU_ROOM = 280
+const VIEW_MENU_ROOM = 340
 /** the room a row menu needs below its row before it opens up instead */
 const ROW_MENU_ROOM = 320
 const NO_REPO = 'No repository'
-const DEFAULT_VIEW: RecentView = { sort: 'updated', running: false, hasPr: false, group: false }
+const DEFAULT_VIEW: RecentView = {
+    sort: 'updated',
+    running: false,
+    hasPr: false,
+    needsAnswer: false,
+    group: false,
+}
 
 const readView = (): RecentView => {
     try {
@@ -63,6 +74,7 @@ const readView = (): RecentView => {
             // "show: running" is the shape saved before the filters could combine
             running: saved?.running === true || saved?.show === 'running',
             hasPr: saved?.hasPr === true,
+            needsAnswer: saved?.needsAnswer === true,
             group: saved?.group === true,
         }
     } catch (err) {
@@ -195,11 +207,21 @@ const RecentRow: React.FC<RecentRowProps> = ({
                 }}
                 className="flex flex-col min-w-0 pl-2.5 pr-1.5 py-1.5 overflow-hidden flex-1 rounded-xl outline-none cursor-pointer focus-visible:ring-1 focus-visible:ring-[#4A4A4A]"
             >
-                <span className="font-normal text-[12.5px] tracking-tight text-[#EDEDED] group-hover:text-white truncate leading-snug">
-                    {session.title || session.projectName || 'Untitled session'}
+                <span className="flex items-center gap-1 min-w-0">
+                    {session.isPinned && (
+                        <Icons.Pin
+                            aria-label="Pinned"
+                            className="w-3 h-3 shrink-0 text-[#8F8E8D]"
+                        />
+                    )}
+                    <span className="font-normal text-[12.5px] tracking-tight text-[#EDEDED] group-hover:text-white truncate leading-snug">
+                        {session.title || session.projectName || 'Untitled session'}
+                    </span>
                 </span>
                 <div className="flex items-center gap-1.5 text-[11px] text-[#8F8E8D] tracking-tight truncate mt-[2px]">
-                    {isActive(session) ? (
+                    {session.needsAnswer ? (
+                        <span className="text-amber-400">Needs answer</span>
+                    ) : isActive(session) ? (
                         <RunStatus vmStatus={session.vmStatus} className="text-[11px] gap-1" />
                     ) : (
                         <span>{formatRelativeTime(session.updatedAt)}</span>
@@ -283,8 +305,17 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
         sortOrder: 'desc',
         vmStatus: view.running ? 'running' : undefined,
         hasPr: view.hasPr || undefined,
+        needsAnswer: view.needsAnswer || undefined,
+        pinnedFirst: true,
         limit: RECENT_LIMIT,
     })
+    // under ['sessions'], so every list write reads the counts again
+    const { data: counts } = useQuery({
+        queryKey: ['sessions', 'counts'],
+        queryFn: () => sessionAPI.getSessionCounts(),
+        enabled: isAuthenticated,
+    })
+    const mergedCount = counts?.merged ?? 0
     // every running session, also when the list shows other rows: the count beside
     // Running and the sessions that "Stop running sessions" stops
     const { data: runningData } = useSessions(
@@ -320,6 +351,11 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
         }
         actions.stopMany(runningSessions.map((s) => s.id))
         setViewMenu(null)
+    }
+
+    const archiveMerged = () => {
+        setViewMenu(null)
+        void actions.archiveMerged()
     }
 
     // a closed menu forgets the first click on "Stop running sessions"
@@ -437,11 +473,30 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
             fn()
         })
 
-    const filterNames = [view.running && 'Running', view.hasPr && 'Pull request'].filter(
-        (name): name is string => Boolean(name)
-    )
+    const filterNames = [
+        view.running && 'Running',
+        view.hasPr && 'Pull request',
+        view.needsAnswer && 'Needs answer',
+    ].filter((name): name is string => Boolean(name))
     const filters = filtersLabel(filterNames)
-    const isRunningOnly = view.running && !view.hasPr
+    const isRunningOnly = view.running && !view.hasPr && !view.needsAnswer
+
+    // "Archived 4 · Undo" after Archive merged, at the top of the list
+    const mergedUndoLine = actions.mergedUndo && (
+        <div
+            key="archived-merged-undo"
+            className="flex items-center justify-between px-2.5 py-2 rounded-xl text-[12px] text-[#8F8E8D] shrink-0"
+        >
+            <span>Archived {actions.mergedUndo.sessionIds.length}</span>
+            <button
+                type="button"
+                onClick={() => void actions.undoArchiveMerged()}
+                className="font-medium text-[#E8E8E8] hover:text-white cursor-pointer"
+            >
+                Undo
+            </button>
+        </div>
+    )
 
     let body: React.ReactNode
     if (!isAuthenticated) {
@@ -471,13 +526,13 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
                 </button>
             </div>
         )
-    } else if (sessions.length === 0 && !actions.undo) {
+    } else if (sessions.length === 0 && !actions.undo && !actions.mergedUndo) {
         body = filters ? (
             <div className="px-2.5 py-1.5 flex flex-col items-start gap-1 text-[12px] text-[#8F8E8D]">
                 {isRunningOnly ? 'No running sessions' : 'No sessions found'}
                 <button
                     type="button"
-                    onClick={() => pickView({ running: false, hasPr: false })}
+                    onClick={() => pickView({ running: false, hasPr: false, needsAnswer: false })}
                     className="text-[#D6D5C9] underline decoration-[#555] underline-offset-2 hover:text-white cursor-pointer"
                 >
                     {isRunningOnly ? 'Show all' : 'Clear filters'}
@@ -511,7 +566,7 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
                 </button>
             </div>
         )
-        const rows: React.ReactNode[] = []
+        const rows: React.ReactNode[] = mergedUndoLine ? [mergedUndoLine] : []
         let lastKey: string | null = null
         sessions.forEach((session, index) => {
             const key = repoKeyOf(session)
@@ -642,15 +697,32 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
                             checked={view.hasPr}
                             onPick={() => pickView({ hasPr: !view.hasPr })}
                         />
+                        <ViewOption
+                            label="Needs answer"
+                            checked={view.needsAnswer}
+                            onPick={() => pickView({ needsAnswer: !view.needsAnswer })}
+                        />
                         {menuDivider}
                         <ViewOption
                             label="Group by repository"
                             checked={view.group}
                             onPick={() => pickView({ group: !view.group })}
                         />
+                        {(runningCount > 0 || mergedCount > 0) && menuDivider}
+                        {mergedCount > 0 && (
+                            <button
+                                type="button"
+                                role="menuitem"
+                                aria-label={`Archive merged, ${mergedCount}`}
+                                onClick={archiveMerged}
+                                className={menuItemClass}
+                            >
+                                <span>Archive merged</span>
+                                <span className="text-[#7B7A79] tabular-nums">{mergedCount}</span>
+                            </button>
+                        )}
                         {runningCount > 0 && (
                             <>
-                                {menuDivider}
                                 <button
                                     type="button"
                                     role="menuitem"
@@ -685,6 +757,8 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
                     >
                         <SessionMenuItems
                             isArchived={Boolean(rowMenu.session.isArchived)}
+                            isPinned={Boolean(rowMenu.session.isPinned)}
+                            onTogglePin={fromRowMenu((s) => actions.togglePin(s))}
                             canStop={isActive(rowMenu.session)}
                             onOpenPullRequest={closing(rowLinks?.onOpenPullRequest)}
                             onNewInRepo={closing(rowLinks?.onNewInRepo)}

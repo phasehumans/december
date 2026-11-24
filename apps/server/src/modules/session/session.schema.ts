@@ -25,6 +25,12 @@ export const getSessionsSchema = z.object({
     hasPr: z
         .preprocess((val) => (val === 'true' ? true : undefined), z.boolean().optional())
         .optional(),
+    pinnedFirst: z
+        .preprocess((val) => (val === 'true' ? true : undefined), z.boolean().optional())
+        .optional(),
+    needsAnswer: z
+        .preprocess((val) => (val === 'true' ? true : undefined), z.boolean().optional())
+        .optional(),
 })
 
 export const smartSearchSessionsSchema = z.object({
@@ -82,6 +88,18 @@ export const archiveSessionParamsSchema = z.object({
 
 export const unarchiveSessionParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
+})
+
+export const pinSessionParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})
+
+export const unpinSessionParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})
+
+export const unarchiveSessionsBodySchema = z.object({
+    sessionIds: z.array(z.string().uuid('Invalid session ID')).min(1).max(100),
 })
 
 export const updateSessionTagsParamsSchema = z.object({

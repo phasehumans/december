@@ -34,6 +34,7 @@ interface SessionListViewProps {
     onToggleMenu: (id: string, event: React.MouseEvent) => void
     onCloseMenu: () => void
     onToggleArchiveFromMenu: RowAction
+    onTogglePinFromMenu?: RowAction
     onOpenRename: RowAction
     onOpenDelete: RowAction
     onOpenTags: RowAction
@@ -69,6 +70,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
     onToggleMenu,
     onCloseMenu,
     onToggleArchiveFromMenu,
+    onTogglePinFromMenu,
     onOpenRename,
     onOpenDelete,
     onOpenTags,
@@ -184,6 +186,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                             onToggleMenu={onToggleMenu}
                             onCloseMenu={onCloseMenu}
                             onToggleArchiveFromMenu={onToggleArchiveFromMenu}
+                            onTogglePinFromMenu={onTogglePinFromMenu}
                             onOpenRename={onOpenRename}
                             onOpenDelete={onOpenDelete}
                             onOpenTags={onOpenTags}

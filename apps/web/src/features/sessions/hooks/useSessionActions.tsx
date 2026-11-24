@@ -14,6 +14,7 @@ import type { DeleteModalState, RenameModalState } from '@/features/sessions/typ
 import { useAppStore } from '@/app/store'
 import { getViewForPath } from '@/app/types'
 import { generationAPI } from '@/features/generation/api/generation'
+import { sessionAPI } from '@/features/sessions/api/session'
 
 /** how long "Archived · Undo" stays in the list (R8-b) */
 export const ARCHIVE_UNDO_MS = 5000
@@ -25,6 +26,11 @@ export interface ArchivedUndo {
     session: BackendSession
     /** where the row was, so the undo line sits in its place */
     index: number
+}
+
+/** "Archive merged" archived these sessions; Undo brings them back */
+export interface ArchivedMergedUndo {
+    sessionIds: string[]
 }
 
 /** the id of the session open on screen, or null on home, lists and settings */
@@ -52,19 +58,27 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
     const [tagsModal, setTagsModal] = React.useState(closedTags)
     const [undo, setUndo] = React.useState<ArchivedUndo | null>(null)
     const undoTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    const [mergedUndo, setMergedUndo] = React.useState<ArchivedMergedUndo | null>(null)
+    const mergedUndoTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    const { toggleArchiveMutation, renameMutation, deleteMutation, updateTagsMutation } =
-        useSessionListMutations({
-            setActionError: (message) => {
-                if (message) console.error(message)
-            },
-            onRenameMutate: () => setRenameModal(closedRename),
-            onDeleteMutate: () => setDeleteModal(closedDelete),
-        })
+    const {
+        toggleArchiveMutation,
+        togglePinMutation,
+        renameMutation,
+        deleteMutation,
+        updateTagsMutation,
+    } = useSessionListMutations({
+        setActionError: (message) => {
+            if (message) console.error(message)
+        },
+        onRenameMutate: () => setRenameModal(closedRename),
+        onDeleteMutate: () => setDeleteModal(closedDelete),
+    })
 
     React.useEffect(
         () => () => {
             if (undoTimer.current) clearTimeout(undoTimer.current)
+            if (mergedUndoTimer.current) clearTimeout(mergedUndoTimer.current)
         },
         []
     )
@@ -95,6 +109,39 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
         if (!undo) return
         toggleArchiveMutation.mutate({ sessionId: undo.session.id, isArchived: false })
         clearUndo()
+    }
+
+    const togglePin = (session: BackendSession) =>
+        togglePinMutation.mutate({ sessionId: session.id, isPinned: !session.isPinned })
+
+    const refreshLists = () => void queryClient.invalidateQueries({ queryKey: ['sessions'] })
+
+    /** archives every merged, not running session and leaves "Archived 4 · Undo" */
+    const archiveMerged = async () => {
+        try {
+            const { sessionIds } = await sessionAPI.archiveMergedSessions()
+            refreshLists()
+            if (sessionIds.length === 0) return
+            if (mergedUndoTimer.current) clearTimeout(mergedUndoTimer.current)
+            setMergedUndo({ sessionIds })
+            mergedUndoTimer.current = setTimeout(() => setMergedUndo(null), ARCHIVE_UNDO_MS)
+            if (currentSessionId && sessionIds.includes(currentSessionId)) onLeaveCurrent()
+        } catch (error) {
+            console.error('Failed to archive merged sessions', error)
+        }
+    }
+
+    const undoArchiveMerged = async () => {
+        if (!mergedUndo) return
+        if (mergedUndoTimer.current) clearTimeout(mergedUndoTimer.current)
+        mergedUndoTimer.current = null
+        setMergedUndo(null)
+        try {
+            await sessionAPI.unarchiveSessions(mergedUndo.sessionIds)
+        } catch (error) {
+            console.error('Failed to unarchive sessions', error)
+        }
+        refreshLists()
     }
 
     /** stop only interrupts the agent, so the list is read again now and a moment later */
@@ -160,6 +207,10 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
         undo,
         undoArchive,
         toggleArchive,
+        togglePin,
+        mergedUndo,
+        archiveMerged,
+        undoArchiveMerged,
         stop,
         stopMany,
         deleteNow,

@@ -31,6 +31,7 @@ interface SessionListRowProps {
     onToggleMenu: (id: string, event: React.MouseEvent) => void
     onCloseMenu: () => void
     onToggleArchiveFromMenu: RowAction
+    onTogglePinFromMenu?: RowAction
     onOpenRename: RowAction
     onOpenDelete: RowAction
     onOpenTags: RowAction
@@ -55,6 +56,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
     onToggleMenu,
     onCloseMenu,
     onToggleArchiveFromMenu,
+    onTogglePinFromMenu,
     onOpenRename,
     onOpenDelete,
     onOpenTags,
@@ -120,6 +122,10 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
         })
     const menuProps = {
         isArchived: Boolean(session.isArchived),
+        isPinned: Boolean(session.isPinned),
+        onTogglePin: onTogglePinFromMenu
+            ? (e?: React.MouseEvent) => onTogglePinFromMenu(session, e)
+            : undefined,
         canStop,
         onRename: (e?: React.MouseEvent) => onOpenRename(session, e),
         onTags: (e?: React.MouseEvent) => onOpenTags(session, e),
@@ -147,6 +153,14 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                 <Icons.Archive className="h-3 w-3 text-[#7B7A79]" />
             </span>
         </Tooltip>
+    )
+
+    // a pin before the title, and "Needs answer" after it when the agent waits
+    const pinMark = session.isPinned && (
+        <Icons.Pin aria-label="Pinned" className="h-3.5 w-3.5 shrink-0 text-[#7B7A79]" />
+    )
+    const needsAnswerMark = session.needsAnswer && (
+        <span className="shrink-0 text-[12px] text-amber-400">Needs answer</span>
     )
 
     const menuButton = (extra: string) => (
@@ -178,9 +192,11 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
             >
                 <div className="flex items-center justify-between gap-2 min-w-0">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {pinMark}
                         <span className="truncate text-[14px] font-medium text-[#D6D5C9]">
                             {title}
                         </span>
+                        {needsAnswerMark}
                         <RunStatus vmStatus={session.vmStatus} />
                         {archivedIcon}
                     </div>
@@ -235,6 +251,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
             >
                 <div className="flex flex-1 flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
+                        {pinMark}
                         <a
                             href={sessionPath(session.id)}
                             draggable={false}
@@ -253,6 +270,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                         >
                             {title}
                         </a>
+                        {needsAnswerMark}
                         <RunStatus vmStatus={session.vmStatus} />
                         {archivedIcon}
                     </div>

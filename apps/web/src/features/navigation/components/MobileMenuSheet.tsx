@@ -503,6 +503,11 @@ const SessionLevel: React.FC<{
         <div className="flex flex-col pb-1">
             <SessionSheetItems
                 isArchived={Boolean(session.isArchived)}
+                isPinned={Boolean(session.isPinned)}
+                onTogglePin={() => {
+                    actions.togglePin(session)
+                    onDone()
+                }}
                 canStop={session.vmStatus === 'RUNNING' || session.vmStatus === 'PROVISIONING'}
                 onOpenPullRequest={links.onOpenPullRequest}
                 onNewInRepo={links.onNewInRepo}

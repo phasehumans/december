@@ -155,6 +155,10 @@ model Session {
   prState              String?
   prTitle              String?
   prBranch             String?
+  // pinned sessions come first in the recent list; the date orders the pins
+  pinnedAt             DateTime?
+  // the agent asked a question and waits for an answer (the question itself lives in Redis)
+  pendingQuestionAt    DateTime?
   projectId            String?
   epoch                Int                   @default(1)
   leaseExpiresAt       DateTime?
@@ -176,6 +180,7 @@ model Session {
 
   @@index([userId])
   @@index([userId, prNumber])
+  @@index([userId, pinnedAt])
   @@index([projectId])
 }
 
