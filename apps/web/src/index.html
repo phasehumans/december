@@ -172,6 +172,20 @@
                 </svg>
             </div>
         </div>
+        <script>
+            // pin the pulse to the page's time origin; LogoLoader does the same, so the
+            // handoff to it keeps one continuous pulse
+            try {
+                document
+                    .querySelector('.initial-loader-logo')
+                    .getAnimations()
+                    .forEach(function (animation) {
+                        animation.startTime = 0
+                    })
+            } catch (error) {
+                // Intentionally swallowed: the logo still pulses, only unsynced
+            }
+        </script>
         <script type="module" src="./frontend.tsx"></script>
     </body>
 </html>

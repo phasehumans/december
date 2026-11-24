@@ -21,7 +21,6 @@ export const sectionBoxClass =
 /** the one grey line under each page heading */
 export const PAGE_SUBTITLES = {
     account: 'Manage your profile, preferences and sign-in.',
-    notifications: 'Choose what December tells you about, and where.',
     defaults: 'Set what a new session starts with.',
     pullRequests: 'Set how December opens, answers and reviews pull requests.',
     sandbox: 'See what runs now, and set when it stops.',

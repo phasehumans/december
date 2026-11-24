@@ -100,7 +100,6 @@ describe('mobile menu sheet', () => {
 
         for (const label of [
             'Account',
-            'Notifications',
             'Defaults',
             'Repositories',
             'Pull requests',

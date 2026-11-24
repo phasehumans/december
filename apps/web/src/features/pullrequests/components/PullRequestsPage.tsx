@@ -35,6 +35,7 @@ import { ViewMenu } from '@/features/sessions/components/ViewMenu'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { SESSIONS_SORT_OPTIONS, shortRepoName } from '@/features/sessions/lib/sessionsView'
 import { Icons } from '@/shared/components/ui/Icons'
+import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
 
 // the server returns only sessions that opened a pull request (hasPr). 100 is the most
@@ -189,7 +190,8 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                     />
                 </ListToolbar>
 
-                {isLoading ? (
+                {/* ?skeleton shows the loading rows, like the Sessions page */}
+                {isLoading || isSkeletonPreviewActive() ? (
                     <ListRowsSkeleton rows={4} />
                 ) : error && allRows.length === 0 ? (
                     <ListErrorState

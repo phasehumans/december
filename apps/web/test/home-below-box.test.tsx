@@ -218,7 +218,7 @@ describe('tabs under the Home prompt box', () => {
         renderHome()
         fireEvent.click(screen.getByRole('tab', { name: /Super Crew/ }))
         expect(
-            screen.getByText("A crew of agents that keep working on your repo while you're away.")
+            screen.getByText("Your own team of agents, working while you're away.")
         ).not.toBeNull()
         expect(screen.getByText('Notify me')).not.toBeNull()
         expect(screen.queryByText('View all')).toBeNull()

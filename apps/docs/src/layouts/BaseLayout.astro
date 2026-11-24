@@ -3,7 +3,6 @@ import { ClientRouter } from 'astro:transitions';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import CustomScrollbar from '../components/CustomScrollbar.astro';
-import PageLoader from '../components/PageLoader.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -15,7 +14,6 @@ interface Props {
   hideFooter?: boolean;
   /** Show the ASCII horse and jockey on the footer divider (landing page only) */
   showFooterRider?: boolean;
-  showLoader?: boolean;
   /** Hide the custom scroll indicator, for short pages that never scroll */
   hideScrollbar?: boolean;
   /** Extra JSON-LD nodes for this page only, e.g. the landing page FAQPage */
@@ -30,7 +28,6 @@ const {
   hideHeader = false,
   hideFooter = false,
   showFooterRider = false,
-  showLoader = false,
   hideScrollbar = false,
   structuredData = [],
 } = Astro.props;
@@ -222,7 +219,6 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
   </head>
   <body class="min-h-dvh flex flex-col bg-white text-[#090a0f] selection:bg-[#87b2f4] selection:text-[#0a1128] overflow-x-hidden w-full max-w-[100vw]">
     <div class="relative min-h-dvh w-full flex flex-col flex-1">
-      {showLoader && <PageLoader />}
       {!hideScrollbar && <CustomScrollbar />}
       {!hideHeader && <Header activePath={activePath} />}
       <main class="flex-1 w-full max-w-[100vw] overflow-x-hidden relative z-10 flex flex-col">

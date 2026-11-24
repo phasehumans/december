@@ -12,7 +12,6 @@ import { getWebUrl } from '@/shared/config/env'
 
 const SETTINGS_ROWS: { slug: string; label: string; soon?: boolean }[] = [
     { slug: 'account', label: 'Account' },
-    { slug: 'notifications', label: 'Notifications', soon: true },
     { slug: 'defaults', label: 'Defaults', soon: true },
     { slug: 'repositories', label: 'Repositories' },
     { slug: 'pull-requests', label: 'Pull requests', soon: true },

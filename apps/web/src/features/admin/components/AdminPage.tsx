@@ -13,6 +13,7 @@ import { AdminRedeemCodes } from './AdminRedeemCodes'
 import { AdminSandboxes } from './AdminSandboxes'
 import { AdminList, AdminRow, AdminSection, ErrorLine, Muted, shortDate } from './AdminUi'
 import { AdminUsers } from './AdminUsers'
+import { AdminWaitlist } from './AdminWaitlist'
 
 import { pageTitleClass } from '@/features/profile/components/settingsStyles'
 import { cn } from '@/shared/lib/utils'
@@ -52,6 +53,7 @@ const TABS = [
     { id: 'codes', label: 'Codes', render: () => <AdminRedeemCodes /> },
     { id: 'github', label: 'GitHub', render: () => <AdminInstallations /> },
     { id: 'sandboxes', label: 'Sandboxes', render: () => <AdminSandboxes /> },
+    { id: 'waitlist', label: 'Waitlist', render: () => <AdminWaitlist /> },
     { id: 'log', label: 'Log', render: () => <AuditLog /> },
 ] as const
 

@@ -297,24 +297,33 @@ export const ListErrorState: React.FC<{
 
 const SKELETON_WIDTHS = [48, 62, 38, 55, 44, 58, 50]
 
-/** loading rows in the same two-line shape as the real rows */
+/**
+ * loading rows in the same two-line shape as the real rows. the padding, the gap and the
+ * two line boxes (21px for the 14px title, 18px for the 12px meta line) match listRowClass
+ * rows, so each loading row is as tall as a real one (57px) and nothing moves when the
+ * rows arrive
+ */
 export const ListRowsSkeleton: React.FC<{ rows?: number }> = ({ rows = 7 }) => (
     <div className="flex flex-col gap-1" aria-busy="true">
         {SKELETON_WIDTHS.slice(0, rows).map((width, index) => (
             <div
                 key={index}
                 data-skeleton-row
-                className="flex items-center gap-3 rounded-lg px-2.5 py-2.5"
+                className="flex items-center gap-3 rounded-lg px-2.5 py-2"
             >
-                <div className="flex flex-1 flex-col gap-2 min-w-0">
-                    <Skeleton
-                        className="h-3.5 bg-white/[0.04] rounded"
-                        style={{ width: `${width}%` }}
-                    />
-                    <Skeleton
-                        className="h-2.5 bg-white/[0.02] rounded"
-                        style={{ width: `${Math.min(width + 10, 70)}%` }}
-                    />
+                <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+                    <div className="flex h-[21px] items-center">
+                        <Skeleton
+                            className="h-3.5 bg-white/[0.04] rounded"
+                            style={{ width: `${width}%` }}
+                        />
+                    </div>
+                    <div className="flex h-[18px] items-center">
+                        <Skeleton
+                            className="h-2.5 bg-white/[0.02] rounded"
+                            style={{ width: `${Math.min(width + 10, 70)}%` }}
+                        />
+                    </div>
                 </div>
                 <Skeleton className="h-4 w-12 bg-white/[0.03] rounded-md shrink-0" />
             </div>

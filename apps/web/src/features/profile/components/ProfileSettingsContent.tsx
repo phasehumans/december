@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react'
 import React from 'react'
 
+import { AccountNotificationsSection } from './AccountNotificationsSection'
 import { AccountPreferencesSection } from './AccountPreferencesSection'
 import { AccountPreviewSections } from './AccountPreviewSections'
 import { SettingsPageHeader, SettingsSectionHeading } from './SettingsPageHeader'
@@ -93,7 +94,7 @@ const PhoneAccountSettings: React.FC<ProfileSettingsContentProps> = (props) => {
         onOpenSignOutAllSessionsModal,
         onOpenDeleteAccountModal,
     } = props
-    // with the preview on, notifications have their own page and devices replace sign in
+    // with the preview on, notifications show the ui-only rows and devices replace sign in
     const isPreview = usePreviewOn()
     const name = profile?.name || resolvedName || 'Account'
     const chevron = <ChevronRight className="w-4 h-4 text-[#7B7A79] shrink-0" strokeWidth={1.75} />
@@ -108,11 +109,19 @@ const PhoneAccountSettings: React.FC<ProfileSettingsContentProps> = (props) => {
             <AccountPreferencesSection />
 
             {isPreview ? (
-                <AccountPreviewSections
-                    onSignOut={onSignOut}
-                    onOpenSignOutAllSessionsModal={onOpenSignOutAllSessionsModal}
-                    onOpenDeleteAccountModal={onOpenDeleteAccountModal}
-                />
+                <>
+                    <AccountNotificationsSection
+                        productUpdates={productUpdates}
+                        securityAlerts={securityAlerts}
+                        onNotificationToggle={onNotificationToggle}
+                        showPreviewRows
+                    />
+                    <AccountPreviewSections
+                        onSignOut={onSignOut}
+                        onOpenSignOutAllSessionsModal={onOpenSignOutAllSessionsModal}
+                        onOpenDeleteAccountModal={onOpenDeleteAccountModal}
+                    />
+                </>
             ) : (
                 <>
                     <div className="flex flex-col">
@@ -213,6 +222,15 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                 <AccountPreferencesSection />
             </div>
 
+            <div className="mb-5">
+                <AccountNotificationsSection
+                    productUpdates={productUpdates}
+                    securityAlerts={securityAlerts}
+                    onNotificationToggle={onNotificationToggle}
+                    showPreviewRows={isPreview}
+                />
+            </div>
+
             {isPreview ? (
                 <div className="flex flex-col gap-5">
                     <AccountPreviewSections
@@ -223,36 +241,6 @@ export const ProfileSettingsContent: React.FC<ProfileSettingsContentProps> = (pr
                 </div>
             ) : (
                 <>
-                    {/* notifications */}
-                    <div className="flex flex-col mb-5">
-                        <SettingsSectionHeading
-                            title="Notifications"
-                            description="Emails December sends you."
-                        />
-                        <div className={sectionBoxClass}>
-                            <div className="flex items-center justify-between gap-3">
-                                <span className="text-[14px] text-[#D6D5C9]">Product updates</span>
-                                <Switch
-                                    label="Product updates"
-                                    checked={productUpdates}
-                                    onChange={(value) =>
-                                        onNotificationToggle('notifyProductUpdates', value)
-                                    }
-                                />
-                            </div>
-                            <div className="flex items-center justify-between gap-3">
-                                <span className="text-[14px] text-[#D6D5C9]">Security alerts</span>
-                                <Switch
-                                    label="Security alerts"
-                                    checked={securityAlerts}
-                                    onChange={(value) =>
-                                        onNotificationToggle('notifySecurityAlerts', value)
-                                    }
-                                />
-                            </div>
-                        </div>
-                    </div>
-
                     {/* sign in: each button says its action, the label says what it acts on */}
                     <div className="flex flex-col mb-0">
                         <SettingsSectionHeading

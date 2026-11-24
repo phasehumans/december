@@ -235,8 +235,7 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                                     isPhone && 'col-span-2 row-start-2'
                                 )}
                             >
-                                A crew of agents that keep working on your repo while you&apos;re
-                                away.
+                                Your own team of agents, working while you&apos;re away.
                             </p>
                             {isWaitlistLoading ? (
                                 // holds the button's place, so a user on the list never sees "Notify me"
@@ -251,7 +250,10 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                                 <div
                                     className={cn(
                                         'flex h-[28px] items-center gap-1.5 rounded-[8px] bg-[#252525] px-3 text-[12.5px] font-medium text-[#D6D5D4] select-none whitespace-nowrap',
-                                        isPhone ? 'col-start-2 row-start-1' : 'mt-auto'
+                                        // phones: own line under the subheading, not beside the name
+                                        isPhone
+                                            ? 'col-span-2 row-start-3 mt-1 justify-self-start'
+                                            : 'mt-auto'
                                     )}
                                 >
                                     <Check

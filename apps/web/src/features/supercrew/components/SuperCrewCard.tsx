@@ -124,7 +124,7 @@ export const SuperCrewCard: React.FC<{ isHome: boolean }> = ({ isHome }) => {
                         </button>
                     </div>
                     <p className="text-[12px] leading-[1.45] text-[#919191]">
-                        A crew of agents that keep working on your repo while you&apos;re away.
+                        Your own team of agents, working while you&apos;re away.
                     </p>
                     {button}
                 </div>

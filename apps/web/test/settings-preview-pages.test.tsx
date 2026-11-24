@@ -10,10 +10,10 @@ if (!globalThis.document) {
 const { render, screen, cleanup, fireEvent } = await import('@testing-library/react')
 
 const { setConnectionsDemo } = await import('../src/features/connections/lib/connectionsDemo')
+const { AccountNotificationsSection } =
+    await import('../src/features/profile/components/AccountNotificationsSection')
 const { ProfileMembersSettings } =
     await import('../src/features/profile/components/ProfileMembersSettings')
-const { ProfileNotificationsSettings } =
-    await import('../src/features/profile/components/ProfileNotificationsSettings')
 const { ProfilePullRequestSettings } =
     await import('../src/features/profile/components/ProfilePullRequestSettings')
 const { ProfileSandboxSettings } =
@@ -38,14 +38,6 @@ const wrap = (ui: React.ReactNode) =>
         </QueryClientProvider>
     )
 
-const notifications = (
-    <ProfileNotificationsSettings
-        productUpdates={true}
-        securityAlerts={true}
-        onNotificationToggle={() => {}}
-    />
-)
-
 describe('settings pages that are ui only', () => {
     beforeEach(() => {
         cleanup()
@@ -62,13 +54,11 @@ describe('settings pages that are ui only', () => {
         setConnectionsDemo(false)
         wrap(
             <>
-                {notifications}
                 <ProfilePullRequestSettings />
                 <ProfileSandboxSettings />
                 <ProfileMembersSettings ownerName="Test User" ownerEmail="test@example.com" />
             </>
         )
-        expect(screen.getByText('Notification settings are coming soon')).toBeDefined()
         expect(screen.getByText('Pull request settings are coming soon')).toBeDefined()
         expect(screen.getByText('Sandbox settings are coming soon')).toBeDefined()
         expect(screen.getByText('Team accounts are coming soon')).toBeDefined()
@@ -76,14 +66,15 @@ describe('settings pages that are ui only', () => {
         expect(screen.queryAllByRole('radiogroup').length).toBe(0)
     })
 
-    test('notifications: one level, and the real product and security switches', () => {
+    test('account notifications: one level, and the real product and security switches', () => {
         setConnectionsDemo(true)
         const calls: [string, boolean][] = []
         wrap(
-            <ProfileNotificationsSettings
+            <AccountNotificationsSection
                 productUpdates={false}
                 securityAlerts={true}
                 onNotificationToggle={(field, value) => calls.push([field, value])}
+                showPreviewRows
             />
         )
         const important = screen.getByRole('radio', { name: 'Important' })
@@ -95,6 +86,19 @@ describe('settings pages that are ui only', () => {
 
         fireEvent.click(screen.getByRole('switch', { name: 'Product updates' }))
         expect(calls).toEqual([['notifyProductUpdates', true]])
+    })
+
+    test('account notifications without the preview: only the real switches', () => {
+        wrap(
+            <AccountNotificationsSection
+                productUpdates={true}
+                securityAlerts={true}
+                onNotificationToggle={() => {}}
+                showPreviewRows={false}
+            />
+        )
+        expect(screen.queryAllByRole('radiogroup').length).toBe(0)
+        expect(screen.getAllByRole('switch').length).toBe(2)
     })
 
     test('sandbox: Stop takes the row out of the running list', () => {

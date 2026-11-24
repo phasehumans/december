@@ -10,7 +10,6 @@ import {
     Lock,
     MessageSquare,
     Plus,
-    Bell,
     Settings2,
     Box,
     Users,
@@ -28,7 +27,6 @@ import { ProfileFeedbackModal } from './ProfileFeedbackModal'
 import { ProfileMembersSettings } from './ProfileMembersSettings'
 import { ProfileModelKeysSettings } from './ProfileModelKeysSettings'
 import { ProfileNameModal } from './ProfileNameModal'
-import { ProfileNotificationsSettings } from './ProfileNotificationsSettings'
 import { ProfilePullRequestSettings } from './ProfilePullRequestSettings'
 import { ProfileRepositoriesSettings } from './ProfileRepositoriesSettings'
 import { ProfileSandboxSettings } from './ProfileSandboxSettings'
@@ -83,13 +81,6 @@ const NAV_ITEMS: SettingsNavItem[] = [
         to: `/settings/${getSlugForProfileTab('Account')}`,
         tabs: ['Account'],
         icon: <UserCircle className={navIconClass} strokeWidth={1.5} />,
-    },
-    {
-        label: 'Notifications',
-        to: `/settings/${getSlugForProfileTab('Notifications')}`,
-        tabs: ['Notifications'],
-        icon: <Bell className={navIconClass} strokeWidth={1.5} />,
-        soon: true,
     },
     {
         label: 'Defaults',
@@ -278,15 +269,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const renderTabContent = () => {
         // these pages keep their values in the browser, so they do not wait for the profile
         // ui-only pages: sample values with the preview on, "coming soon" for everyone else
-        if (activeTab === 'Notifications') {
-            return (
-                <ProfileNotificationsSettings
-                    productUpdates={productUpdates}
-                    securityAlerts={securityAlerts}
-                    onNotificationToggle={handleNotificationToggle}
-                />
-            )
-        }
         if (activeTab === 'Defaults') return <ProfileDefaultsSettings />
         if (activeTab === 'PullRequests') return <ProfilePullRequestSettings />
         if (activeTab === 'Sandbox') return <ProfileSandboxSettings />

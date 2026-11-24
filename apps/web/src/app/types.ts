@@ -10,7 +10,6 @@ export type ProfileTab =
     | 'Usage'
     | 'Secrets'
     | 'Models'
-    | 'Notifications'
     | 'Defaults'
     | 'PullRequests'
     | 'Sandbox'
@@ -28,7 +27,6 @@ const profileTabToSlug: Record<string, string> = {
     Usage: 'usage',
     Secrets: 'secrets',
     Models: 'models',
-    Notifications: 'notifications',
     Defaults: 'defaults',
     PullRequests: 'pull-requests',
     Sandbox: 'sandbox',
@@ -42,6 +40,8 @@ const slugToProfileTab: Record<string, ProfileTab> = {
         Object.entries(profileTabToSlug).map(([tab, slug]) => [slug, tab as ProfileTab])
     ),
     usage: 'Usage',
+    // notifications is a section of Account now, so old links land there
+    notifications: 'Account',
     analytics: 'Usage',
     connections: 'Connections',
     integrations: 'Connections',
