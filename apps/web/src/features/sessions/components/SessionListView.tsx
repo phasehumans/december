@@ -15,6 +15,7 @@ import { SessionsViewMenu } from './SessionsViewMenu'
 import type { SessionsView } from '@/features/sessions/lib/sessionsView'
 
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
+import { cn } from '@/shared/lib/utils'
 
 type RowAction = (session: any, event?: React.MouseEvent) => void
 
@@ -22,6 +23,8 @@ interface SessionListViewProps {
     projects: any[]
     onOpenProject: (projectId: string) => void
     isInitialLoading: boolean
+    /** a sort, filter or search is loading: the rows on screen are the old ones */
+    isRefreshing?: boolean
     /** the list itself could not load */
     errorMessage: string | null
     onRetry?: () => void
@@ -58,6 +61,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
     projects: sessions,
     onOpenProject,
     isInitialLoading,
+    isRefreshing = false,
     errorMessage,
     onRetry,
     actionError,
@@ -161,7 +165,16 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                     )}
                 </ListEmptyState>
             ) : (
-                <div className="flex flex-col gap-1 pb-4">
+                <div
+                    aria-busy={isRefreshing || undefined}
+                    className={cn(
+                        'flex flex-col gap-1 pb-4 transition-opacity',
+                        // dims only when the rows take a moment, so a quick switch shows no change
+                        isRefreshing
+                            ? 'opacity-50 duration-200 delay-200'
+                            : 'opacity-100 duration-150'
+                    )}
+                >
                     {sessions.map((session) => (
                         <SessionListRow
                             key={session.id}

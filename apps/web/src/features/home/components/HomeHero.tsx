@@ -1,4 +1,3 @@
-import { Laptop } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
 import { HomeHeader } from './HomeHeader'
@@ -130,11 +129,6 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
                 </div>
             </div>
 
-            {/* Minimal Mobile Notice: Best experience on desktop (Option B) */}
-            <div className="md:hidden fixed bottom-4 left-0 right-0 z-10 flex items-center justify-center gap-1.5 text-[11px] font-sans font-medium text-[#666666] pointer-events-none select-none tracking-tight">
-                <Laptop className="w-3 h-3 text-[#666666]" />
-                <span>Best experience on desktop</span>
-            </div>
             {/* phones: the handle of the menu sheet, shows that a swipe up opens it */}
             <div
                 data-testid="home-sheet-handle"

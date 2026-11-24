@@ -25,6 +25,9 @@ import {
 } from '@/features/sessions/lib/sessionsView'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
+/** ms after the last key before the search goes to the server */
+const SEARCH_DELAY_MS = 250
+
 /** a saved value stays in the list even before a session with it has loaded */
 const withPicked = (values: string[], picked: string | null) =>
     picked && !values.includes(picked) ? [...values, picked].sort() : values
@@ -44,6 +47,12 @@ export const SessionList: React.FC<{
 
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
+    // the server search waits until typing stops, so each letter does not send a request
+    const [serverSearch, setServerSearch] = useState('')
+    useEffect(() => {
+        const timer = setTimeout(() => setServerSearch(searchQuery.trim()), SEARCH_DELAY_MS)
+        return () => clearTimeout(timer)
+    }, [searchQuery])
     // the list API is not ready for the Repository and Tag filters (see sessionsView.ts),
     // so these two rows of the menu only show with the preview flag (?demo) and then
     // filter the rows that are loaded
@@ -65,15 +74,25 @@ export const SessionList: React.FC<{
 
     const queryFilters = useMemo(() => {
         return {
-            search: searchQuery.trim() || undefined,
+            search: serverSearch || undefined,
             // the server sorts and filters, so the view also covers rows not loaded yet
             ...sessionsViewFilters(view),
             vmStatus: statusFilter === 'running' ? ('running' as const) : undefined,
         }
-    }, [searchQuery, view, statusFilter])
+    }, [serverSearch, view, statusFilter])
 
-    const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
-        useInfiniteSessions(queryFilters)
+    const {
+        data,
+        isLoading,
+        isPlaceholderData,
+        error,
+        refetch,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteSessions(queryFilters)
+    // a sort, filter or search is waiting for its rows: the old rows stay on screen
+    const isSwitching = isPlaceholderData || searchQuery.trim() !== serverSearch
     const sessions = useMemo(() => data?.pages.flatMap((page) => page.sessions) || [], [data])
     const errorMessage = error instanceof Error ? error.message : null
 
@@ -102,7 +121,12 @@ export const SessionList: React.FC<{
     // archived sessions stay out of the list. when nothing else exists, the empty list
     // offers the archived view instead of only "No sessions yet"
     const isPlainListEmpty =
-        !isLoading && !error && sessions.length === 0 && !searchQuery.trim() && !filtersOn
+        !isLoading &&
+        !isSwitching &&
+        !error &&
+        sessions.length === 0 &&
+        !searchQuery.trim() &&
+        !filtersOn
     const { data: archivedProbe } = useSessions(
         { isArchived: true, limit: 1 },
         { enabled: isPlainListEmpty }
@@ -176,6 +200,18 @@ export const SessionList: React.FC<{
 
         return result
     }, [sessions, searchQuery, view, statusFilter])
+
+    // the rows shown before a switch. while the new rows load, a filter that the old rows
+    // do not match (Archived, say) keeps these on screen, instead of "No sessions found"
+    // for a moment
+    const [lastShown, setLastShown] = useState<typeof filteredAndSortedSessions>([])
+    if (!isSwitching && lastShown !== filteredAndSortedSessions) {
+        setLastShown(filteredAndSortedSessions)
+    }
+    const shownSessions =
+        isSwitching && filteredAndSortedSessions.length === 0
+            ? lastShown
+            : filteredAndSortedSessions
 
     const handleStopSession = (id: string, event?: React.MouseEvent) => {
         event?.stopPropagation()
@@ -263,7 +299,8 @@ export const SessionList: React.FC<{
                 if (
                     target.scrollHeight - target.scrollTop - target.clientHeight < 150 &&
                     hasNextPage &&
-                    !isFetchingNextPage
+                    !isFetchingNextPage &&
+                    !isPlaceholderData
                 ) {
                     fetchNextPage()
                 }
@@ -273,9 +310,10 @@ export const SessionList: React.FC<{
             <MobileTopBar />
             <div className="relative z-10 mx-auto max-w-6xl px-3.5 sm:px-6 pb-8 pt-4 md:p-16">
                 <SessionListView
-                    projects={filteredAndSortedSessions}
+                    projects={shownSessions}
                     onOpenProject={handleOpenProjectClick}
                     isInitialLoading={isInitialLoading}
+                    isRefreshing={isSwitching}
                     errorMessage={errorMessage}
                     onRetry={() => void refetch()}
                     actionError={actionError}
@@ -298,7 +336,12 @@ export const SessionList: React.FC<{
                         hasOnlyArchived ? () => changeView({ archived: true }) : undefined
                     }
                     hasUnfilteredProjects={
-                        sessions.length > 0 || Boolean(searchQuery.trim()) || filtersOn
+                        // while a switch loads it is not known yet, so "No sessions yet"
+                        // does not flash when a search is cleared
+                        sessions.length > 0 ||
+                        Boolean(searchQuery.trim()) ||
+                        filtersOn ||
+                        isSwitching
                     }
                     statusFilter={statusFilter}
                     onStatusFilterChange={setStatusFilter}

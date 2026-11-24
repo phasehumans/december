@@ -141,7 +141,7 @@ export const RelativeTime: React.FC<{ iso: string; label?: string }> = ({ iso, l
 export const MetaDot: React.FC = () => <span className="text-[#4A4A4A]">·</span>
 
 // the drawings of the empty states: one hand-drawn line drawing for each case (review picks
-// D1, then NS1, NP1, GH4, NR2, CL1 and size SZ2). the lines are plain paths in a 128 x 112
+// D1, then NS3, NP1, GH4, NR2, CL1 and size SZ2). the lines are plain paths in a 128 x 112
 // box; a small displacement filter gives the hand-drawn look. no decoration marks.
 
 export type ListArtKind = 'sessions' | 'pullRequests' | 'connect' | 'noResults' | 'loadError'
@@ -163,10 +163,15 @@ interface ListArtShapes {
 }
 
 const LIST_ART: Record<ListArtKind, ListArtShapes> = {
-    // no sessions yet: a terminal window with a prompt
+    // no sessions yet: two chat bubbles, a message and a reply being typed
     sessions: {
-        lines: [roundRectPath(12, 14, 104, 84, 9), 'M12 32H116', 'M28 50l13 10-13 10', 'M48 71h20'],
-        dots: [circlePath(24, 23, 2), circlePath(32, 23, 2)],
+        lines: [
+            'M20 12H72a10 10 0 0 1 10 10V40a10 10 0 0 1-10 10H38L22 64l2-14H20A10 10 0 0 1 10 40V22A10 10 0 0 1 20 12Z',
+            'M24 26h44',
+            'M24 37h26',
+            'M58 56h50a10 10 0 0 1 10 10v20a10 10 0 0 1-10 10h-2l2 12-16-12H58a10 10 0 0 1-10-10V66a10 10 0 0 1 10-10Z',
+        ],
+        dots: [circlePath(68, 76, 2.4), circlePath(83, 76, 2.4), circlePath(98, 76, 2.4)],
     },
     // no pull requests yet: the pull request mark
     pullRequests: {

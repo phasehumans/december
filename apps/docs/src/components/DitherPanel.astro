@@ -38,13 +38,23 @@ const { seed = 1, clear = true, class: className } = Astro.props;
 </style>
 
 <script>
-  const PIXEL = 3; // CSS px per dither pixel
-  const OVAL_X = 0.3; // clear oval half width, as a share of the panel width
-  const OVAL_Y = 0.46; // clear oval half height, as a share of the panel height
-  const RISE_FROM = 0.9; // clouds start at this elliptical distance from the centre
-  const RISE_TO = 1.7; // clouds are at full strength from this distance
-  const PEAK = 0.55; // max share of lit pixels
-  const HAZE = 0.1; // thin dither between the clouds
+  // Panel look. Phones use a denser profile: finer dots, more fill, and a smaller clear oval,
+  // because the panels there are small and the desktop clouds look sparse and coarse.
+  interface Profile {
+    pixel: number; // CSS px per dither pixel
+    ovalX: number; // clear oval half width, as a share of the panel width
+    ovalY: number; // clear oval half height, as a share of the panel height
+    riseFrom: number; // clouds start at this elliptical distance from the centre
+    riseTo: number; // clouds are at full strength from this distance
+    peak: number; // max share of lit pixels
+    haze: number; // thin dither between the clouds
+    scale: number; // noise size multiplier (smaller = tighter clouds)
+  }
+
+  const DESKTOP: Profile = { pixel: 3, ovalX: 0.3, ovalY: 0.46, riseFrom: 0.9, riseTo: 1.7, peak: 0.55, haze: 0.1, scale: 1 };
+  const MOBILE: Profile = { pixel: 2, ovalX: 0.26, ovalY: 0.42, riseFrom: 0.75, riseTo: 1.35, peak: 0.72, haze: 0.24, scale: 0.6 };
+  const mobileQuery = window.matchMedia('(max-width: 639px)'); // below Tailwind sm
+
   const ACCENT_FROM = 0.4; // above this strength, some lit pixels take the dark accent tone
 
   const TONE: [number, number, number] = [135, 178, 244]; // #87b2f4
@@ -97,8 +107,9 @@ const { seed = 1, clear = true, class: className } = Astro.props;
     const rect = canvas.getBoundingClientRect();
     if (!ctx || rect.width === 0 || rect.height === 0) return;
 
-    const cols = Math.ceil(rect.width / PIXEL);
-    const rows = Math.ceil(rect.height / PIXEL);
+    const { pixel, ovalX, ovalY, riseFrom, riseTo, peak, haze, scale } = mobileQuery.matches ? MOBILE : DESKTOP;
+    const cols = Math.ceil(rect.width / pixel);
+    const rows = Math.ceil(rect.height / pixel);
     canvas.width = cols;
     canvas.height = rows;
     const image = ctx.createImageData(cols, rows);
@@ -107,27 +118,27 @@ const { seed = 1, clear = true, class: className } = Astro.props;
     const noise = makeNoise(Number(canvas.dataset.seed) || 1);
     const cx = rect.width / 2;
     const cy = rect.height / 2;
-    const rx = rect.width * OVAL_X;
-    const ry = rect.height * OVAL_Y;
+    const rx = rect.width * ovalX;
+    const ry = rect.height * ovalY;
     const clearOval = canvas.dataset.clear !== 'none';
 
     for (let row = 0; row < rows; row++) {
-      const y = row * PIXEL + PIXEL / 2;
+      const y = row * pixel + pixel / 2;
       const ey = (y - cy) / ry;
       for (let col = 0; col < cols; col++) {
-        const x = col * PIXEL + PIXEL / 2;
+        const x = col * pixel + pixel / 2;
         const ex = (x - cx) / rx;
         // Warped noise, as in the hero, so the clouds curl
-        const warp = noise(x / 120, y / 120);
-        const wx = x + (warp - 0.5) * 90;
-        const wy = y + (warp - 0.5) * 70;
-        const n = 0.65 * noise(wx / 70, wy / 70) + 0.35 * noise(wx / 28 + 50, wy / 28 + 50);
+        const warp = noise(x / (120 * scale), y / (120 * scale));
+        const wx = x + (warp - 0.5) * 90 * scale;
+        const wy = y + (warp - 0.5) * 70 * scale;
+        const n = 0.65 * noise(wx / (70 * scale), wy / (70 * scale)) + 0.35 * noise(wx / (28 * scale) + 50, wy / (28 * scale) + 50);
         const cloud = smooth(0.42, 0.7, n);
         // The oval edge moves in and out with the noise, so it never looks drawn
         const e = Math.sqrt(ex * ex + ey * ey) - (warp - 0.5) * 0.3;
-        const shape = clearOval ? smooth(RISE_FROM, RISE_TO, e) : 1;
+        const shape = clearOval ? smooth(riseFrom, riseTo, e) : 1;
         if (shape <= 0) continue;
-        const v = Math.min(PEAK, shape * (HAZE + (1 - HAZE) * cloud));
+        const v = Math.min(peak, shape * (haze + (1 - haze) * cloud));
         const th = BAYER[(row & 3) * 4 + (col & 3)];
         if (v <= th) continue;
         const tone = th < v - ACCENT_FROM ? ACCENT : TONE;

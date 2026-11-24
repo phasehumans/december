@@ -17,6 +17,7 @@ import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { formatRelativeTime } from '@/shared/lib/relativeTime'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
+import { useIsPhone } from '@/shared/lib/useIsPhone'
 import { cn } from '@/shared/lib/utils'
 
 // the tabs under the Home prompt box: Recent, Pull requests, Super Crew.
@@ -71,6 +72,7 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
     const [tab, setTab] = React.useState<HomeTab>(readSavedTab)
     const { data: sessionsData, isLoading: isSessionsLoading } = useSessions()
     const { state: waitlist, isLoading: isWaitlistLoading, join } = useSuperCrewWaitlist(true)
+    const isPhone = useIsPhone()
 
     const selectTab = (next: HomeTab) => {
         setTab(next)
@@ -203,13 +205,23 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                     ))}
 
                 {tab === 'super-crew' && (
-                    // the horizontal strip: office on the left, name, one line and the button
+                    // the horizontal strip: office on the left, name, one line and the button.
+                    // phones: no office, a smaller card with the button beside the name.
                     <div className="mt-0.5 flex items-stretch overflow-hidden rounded-2xl border border-[#2A2928] bg-[#1E1E1E]">
-                        <OfficeCanvas
-                            compact
-                            className="m-1.5 w-[92px] min-h-[92px] sm:w-[166px] shrink-0 overflow-hidden rounded-[10px] border border-[#2A2928] bg-[#121212]"
-                        />
-                        <div className="flex min-w-0 flex-1 flex-col items-start gap-[7px] py-2.5 pl-1 pr-3">
+                        {!isPhone && (
+                            <OfficeCanvas
+                                compact
+                                className="m-1.5 w-[166px] min-h-[92px] shrink-0 overflow-hidden rounded-[10px] border border-[#2A2928] bg-[#121212]"
+                            />
+                        )}
+                        <div
+                            className={cn(
+                                'min-w-0 flex-1',
+                                isPhone
+                                    ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-2.5'
+                                    : 'flex flex-col items-start gap-[7px] py-2.5 pl-1 pr-3'
+                            )}
+                        >
                             <div className="flex items-center gap-[7px] min-w-0">
                                 <Icons.CrewDots className="w-3.5 h-3.5 text-[#D6D5D4] shrink-0" />
                                 <span className="text-[12.5px] font-semibold text-[#EDEDED] truncate">
@@ -217,15 +229,31 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                                 </span>
                                 <SoonTag />
                             </div>
-                            <p className="text-[12px] leading-[1.45] text-[#919191]">
+                            <p
+                                className={cn(
+                                    'text-[12px] leading-[1.45] text-[#919191]',
+                                    isPhone && 'col-span-2 row-start-2'
+                                )}
+                            >
                                 A crew of agents that keep working on your repo while you&apos;re
                                 away.
                             </p>
                             {isWaitlistLoading ? (
                                 // holds the button's place, so a user on the list never sees "Notify me"
-                                <div className="mt-auto h-[28px]" aria-hidden="true" />
+                                <div
+                                    className={cn(
+                                        'h-[28px]',
+                                        isPhone ? 'col-start-2 row-start-1 w-[84px]' : 'mt-auto'
+                                    )}
+                                    aria-hidden="true"
+                                />
                             ) : waitlist?.joined ? (
-                                <div className="mt-auto flex h-[28px] items-center gap-1.5 rounded-[8px] bg-[#252525] px-3 text-[12.5px] font-medium text-[#D6D5D4] select-none">
+                                <div
+                                    className={cn(
+                                        'flex h-[28px] items-center gap-1.5 rounded-[8px] bg-[#252525] px-3 text-[12.5px] font-medium text-[#D6D5D4] select-none whitespace-nowrap',
+                                        isPhone ? 'col-start-2 row-start-1' : 'mt-auto'
+                                    )}
+                                >
                                     <Check
                                         className="w-3.5 h-3.5 text-[#87B2F4]"
                                         strokeWidth={2.5}
@@ -237,7 +265,10 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                                     type="button"
                                     onClick={() => join.mutate()}
                                     disabled={join.isPending}
-                                    className="mt-auto h-[28px] px-3 rounded-[8px] bg-[#E8E8E8] hover:bg-white text-[#141414] text-[12.5px] font-medium transition-colors cursor-pointer outline-none disabled:opacity-70 disabled:cursor-default"
+                                    className={cn(
+                                        'h-[28px] px-3 rounded-[8px] bg-[#E8E8E8] hover:bg-white text-[#141414] text-[12.5px] font-medium transition-colors cursor-pointer outline-none disabled:opacity-70 disabled:cursor-default whitespace-nowrap',
+                                        isPhone ? 'col-start-2 row-start-1' : 'mt-auto'
+                                    )}
                                 >
                                     Notify me
                                 </button>

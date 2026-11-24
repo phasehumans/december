@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useInfiniteQuery } from '@tanstack/react-query'
 
 import { sessionAPI, type SessionFilters } from '../api/session'
 
@@ -30,5 +30,8 @@ export const useInfiniteSessions = (filters?: SessionFilters) => {
         },
         initialPageParam: 1,
         enabled: isAuthenticated,
+        // a new sort, filter or search keeps the current rows on screen until its rows
+        // arrive, instead of dropping to the loading skeleton
+        placeholderData: keepPreviousData,
     })
 }

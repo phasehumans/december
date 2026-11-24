@@ -47,17 +47,8 @@ const Sidebar: React.FC<
     const path = location.pathname
 
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
-    const [isLogoAnimating, setIsLogoAnimating] = React.useState(false)
     const isSuperCrewOpen = useAppStore((s) => s.isSuperCrewOpen)
     const setIsSuperCrewOpen = useAppStore((s) => s.setIsSuperCrewOpen)
-
-    React.useEffect(() => {
-        if (isCollapsed) {
-            setIsLogoAnimating(true)
-            const timer = setTimeout(() => setIsLogoAnimating(false), 1000)
-            return () => clearTimeout(timer)
-        }
-    }, [isCollapsed])
 
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -196,25 +187,25 @@ const Sidebar: React.FC<
             {isCollapsed ? (
                 <div className="px-2 mb-2 mt-0 z-30 relative">
                     <div className="flex items-center justify-center w-full h-11 mb-2 mt-0">
-                        <div
-                            className="flex items-center justify-center w-[32px] h-[32px] relative group cursor-pointer rounded-[10px] hover:bg-[#252525] transition-colors"
+                        <button
+                            type="button"
+                            aria-label="Open sidebar"
+                            className="flex items-center justify-center w-[32px] h-[32px] relative group/expand cursor-pointer rounded-[10px] text-[#919191] hover:text-[#D4D4D8] hover:bg-[#252525] transition-colors outline-none"
                             onClick={(e) => {
                                 e.stopPropagation()
                                 onExpand?.()
                             }}
                         >
-                            <Icons.DecemberLogo
-                                className={cn(
-                                    'w-6 h-6 text-[#D6D5D4] group-hover:hidden',
-                                    isLogoAnimating
-                                        ? 'transition-transform duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] rotate-[360deg]'
-                                        : 'rotate-0'
-                                )}
-                            />
-                            <div className="hidden group-hover:flex items-center justify-center text-[#919191] hover:text-[#D4D4D8]">
-                                <Icons.SidebarToggle className="w-4 h-4 rotate-180" />
+                            <Icons.SidebarToggle className="w-4 h-4 rotate-180" />
+                            <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover/expand:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                <span className="text-[12px] font-medium text-[#EDEDEF]">
+                                    Open sidebar{' '}
+                                    <span className="text-[#919191] ml-1 text-[10px] border border-[#333] rounded px-1 py-0.5 bg-[#252525]">
+                                        Ctrl .
+                                    </span>
+                                </span>
                             </div>
-                        </div>
+                        </button>
                     </div>
                     <div className="flex flex-col gap-[2px] relative items-center">
                         {navItems.map((item, idx) => {
