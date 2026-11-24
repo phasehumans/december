@@ -114,6 +114,7 @@ const getUserSessions = async (data: GetUserSessions) => {
                 type: session.type,
                 isArchived: session.isArchived,
                 isPinned: Boolean(session.pinnedAt),
+                pinnedAt: session.pinnedAt ?? null,
                 needsAnswer: Boolean(session.pendingQuestionAt),
                 tags: session.tags,
                 createdAt: session.createdAt,
@@ -391,15 +392,20 @@ const unpinSession = async (data: UnpinSession) => {
 
 const archiveMergedSessions = async (data: ArchiveMergedSessions) => {
     const { userId } = data
-    const sessionIds = await sessionRepository.archiveMergedSessions(userId)
-    if (sessionIds.length > 0) await invalidateUserRecentSessions(userId)
-    return { sessionIds }
+    const result = await sessionRepository.archiveMergedSessions(userId)
+    if (result.sessionIds.length > 0) await invalidateUserRecentSessions(userId)
+    return result
 }
 
-/** the undo of archive merged: only sessions of this user change */
+/** the undo of an archive: only sessions of this user change, and their pins come back */
 const unarchiveSessions = async (data: UnarchiveSessions) => {
-    const { userId, sessionIds } = data
-    const changed = await sessionRepository.unarchiveSessions(userId, sessionIds)
+    const { userId, sessionIds, pins } = data
+    const changed = await sessionRepository.unarchiveSessions(
+        userId,
+        sessionIds,
+        pins ?? [],
+        MAX_PINNED_SESSIONS
+    )
     if (changed.length > 0) await invalidateUserRecentSessions(userId)
     return { sessionIds: changed }
 }

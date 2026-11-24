@@ -17,6 +17,8 @@ export type BackendSession = {
     isArchived?: boolean
     /** pinned sessions come first in the Recent list */
     isPinned?: boolean
+    /** when it was pinned. an undo of an archive sends it back to keep the pin order */
+    pinnedAt?: string | null
     /** the agent asked a question and waits for an answer */
     needsAnswer?: boolean
     tags?: string[]
@@ -91,6 +93,12 @@ export type SessionFilters = {
     searchIn?: 'title' | 'all'
     page?: number
     limit?: number
+}
+
+/** a pin that an archive removed; an undo puts it back */
+export type RemovedPin = {
+    sessionId: string
+    pinnedAt: string
 }
 
 /** counts for the list switches and menus, archived sessions left out */
@@ -373,14 +381,20 @@ export const sessionAPI = {
         return res.session
     },
 
-    /** archives every merged, not running session; the ids are for the undo */
-    archiveMergedSessions: (): Promise<{ sessionIds: string[] }> =>
-        apiRequest<{ sessionIds: string[] }>('/session/archive-merged', { method: 'POST' }),
+    /** archives every merged, not running session; the ids and pins are for the undo */
+    archiveMergedSessions: (): Promise<{ sessionIds: string[]; pins: RemovedPin[] }> =>
+        apiRequest<{ sessionIds: string[]; pins: RemovedPin[] }>('/session/archive-merged', {
+            method: 'POST',
+        }),
 
-    unarchiveSessions: (sessionIds: string[]): Promise<{ sessionIds: string[] }> =>
+    /** the undo of an archive: unarchives the sessions and puts their pins back */
+    unarchiveSessions: (
+        sessionIds: string[],
+        pins?: RemovedPin[]
+    ): Promise<{ sessionIds: string[] }> =>
         apiRequest<{ sessionIds: string[] }>('/session/unarchive', {
             method: 'POST',
-            body: JSON.stringify({ sessionIds }),
+            body: JSON.stringify({ sessionIds, pins }),
         }),
 
     getSessionCounts: (): Promise<SessionCounts> => apiRequest<SessionCounts>('/session/counts'),

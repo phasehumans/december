@@ -78,17 +78,40 @@ export const useSessionListMutations = ({
     }
 
     const toggleArchiveMutation = useMutation({
-        mutationFn: ({ sessionId, isArchived }: { sessionId: string; isArchived: boolean }) =>
-            isArchived
-                ? sessionAPI.archiveSession(sessionId)
-                : sessionAPI.unarchiveSession(sessionId),
-        onMutate: async ({ sessionId, isArchived }) => {
+        mutationFn: ({
+            sessionId,
+            isArchived,
+            restorePinnedAt,
+        }: {
+            sessionId: string
+            isArchived: boolean
+            /** an undo of an archive: the pin the archive removed comes back */
+            restorePinnedAt?: string | null
+        }): Promise<unknown> => {
+            if (isArchived) return sessionAPI.archiveSession(sessionId)
+            if (restorePinnedAt) {
+                return sessionAPI.unarchiveSessions(
+                    [sessionId],
+                    [{ sessionId, pinnedAt: restorePinnedAt }]
+                )
+            }
+            return sessionAPI.unarchiveSession(sessionId)
+        },
+        onMutate: async ({ sessionId, isArchived, restorePinnedAt }) => {
             setActionError(null)
             await queryClient.cancelQueries({ queryKey: ['sessions'] })
             await queryClient.cancelQueries({ queryKey: ['session', sessionId] })
 
+            // archive removes the pin on the server
             updateAllSessionsCache((session) =>
-                session.id === sessionId ? { ...session, isArchived } : session
+                session.id === sessionId
+                    ? {
+                          ...session,
+                          isArchived,
+                          isPinned: isArchived ? false : Boolean(restorePinnedAt),
+                          pinnedAt: isArchived ? null : (restorePinnedAt ?? null),
+                      }
+                    : session
             )
             updateSingleSessionCache(sessionId, (session) => ({ ...session, isArchived }))
         },

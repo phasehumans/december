@@ -481,6 +481,17 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
     const filters = filtersLabel(filterNames)
     const isRunningOnly = view.running && !view.hasPr && !view.needsAnswer
 
+    // why an action failed, at the top of the list for a few seconds
+    const noticeLine = actions.notice && (
+        <div
+            key="action-notice"
+            role="status"
+            className="px-2.5 py-2 rounded-xl text-[12px] text-amber-400 shrink-0"
+        >
+            {actions.notice}
+        </div>
+    )
+
     // "Archived 4 · Undo" after Archive merged, at the top of the list
     const mergedUndoLine = actions.mergedUndo && (
         <div
@@ -566,7 +577,7 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
                 </button>
             </div>
         )
-        const rows: React.ReactNode[] = mergedUndoLine ? [mergedUndoLine] : []
+        const rows: React.ReactNode[] = [noticeLine, mergedUndoLine].filter(Boolean)
         let lastKey: string | null = null
         sessions.forEach((session, index) => {
             const key = repoKeyOf(session)

@@ -2,7 +2,7 @@ import { prisma } from '@december/database'
 
 import { AppError } from '../../shared/appError'
 
-import type { SessionFilters } from './session.types'
+import type { RemovedPin, SessionFilters } from './session.types'
 import type { Prisma } from '@december/database'
 
 export async function findManySessions(userId: string, filters?: SessionFilters) {
@@ -218,34 +218,57 @@ const mergedIdleWhere = (userId: string): Prisma.SessionWhereInput => ({
     vmStatus: { notIn: [...ACTIVE_VM_STATUSES] },
 })
 
-/** archives every merged, not running session of the user; returns their ids */
+/** archives every merged, not running session of the user; returns their ids and the
+ * pins that the archive removed, for the undo */
 export async function archiveMergedSessions(userId: string) {
     return prisma.$transaction(async (tx) => {
         const rows = await tx.session.findMany({
             where: mergedIdleWhere(userId),
-            select: { id: true },
+            select: { id: true, pinnedAt: true },
         })
         const sessionIds = rows.map((row) => row.id)
+        const pins: RemovedPin[] = rows.flatMap((row) =>
+            row.pinnedAt ? [{ sessionId: row.id, pinnedAt: row.pinnedAt }] : []
+        )
         if (sessionIds.length > 0) {
             // raw SQL, because updateMany sets updatedAt and the list order would change.
             // archive drops the pin
             await tx.$executeRaw`UPDATE "Session" SET "isArchived" = true, "pinnedAt" = NULL WHERE "userId" = ${userId} AND "id" = ANY(${sessionIds})`
         }
-        return sessionIds
+        return { sessionIds, pins }
     })
 }
 
-/** unarchives the given sessions of the user; returns the ids that changed */
-export async function unarchiveSessions(userId: string, sessionIds: string[]) {
+/**
+ * unarchives the given sessions of the user and puts back the given pins of those
+ * sessions, while the user has fewer than `pinLimit` pins. returns the ids that changed
+ */
+export async function unarchiveSessions(
+    userId: string,
+    sessionIds: string[],
+    pins: RemovedPin[],
+    pinLimit: number
+) {
     return prisma.$transaction(async (tx) => {
         const rows = await tx.session.findMany({
             where: { id: { in: sessionIds }, userId, isArchived: true },
             select: { id: true },
         })
         const changed = rows.map((row) => row.id)
-        if (changed.length > 0) {
-            // raw SQL keeps updatedAt, so undo puts the sessions back where they were
-            await tx.$executeRaw`UPDATE "Session" SET "isArchived" = false WHERE "userId" = ${userId} AND "id" = ANY(${changed})`
+        if (changed.length === 0) return changed
+
+        // raw SQL keeps updatedAt, so undo puts the sessions back where they were
+        await tx.$executeRaw`UPDATE "Session" SET "isArchived" = false WHERE "userId" = ${userId} AND "id" = ANY(${changed})`
+
+        const restore = pins.filter((pin) => changed.includes(pin.sessionId))
+        if (restore.length > 0) {
+            // the same lock as a pin, so the limit holds
+            await tx.$executeRaw`SELECT 1 FROM "User" WHERE "id" = ${userId} FOR UPDATE`
+            const pinned = await tx.session.count({ where: { userId, pinnedAt: { not: null } } })
+            const room = Math.max(0, pinLimit - pinned)
+            for (const pin of restore.slice(0, room)) {
+                await tx.$executeRaw`UPDATE "Session" SET "pinnedAt" = ${pin.pinnedAt} WHERE "userId" = ${userId} AND "id" = ${pin.sessionId}`
+            }
         }
         return changed
     })

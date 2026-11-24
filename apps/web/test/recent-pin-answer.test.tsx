@@ -19,6 +19,7 @@ import {
     applySessionsView,
     sessionsViewFilters,
 } from '../src/features/sessions/lib/sessionsView'
+import { ApiError } from '../src/shared/api/client'
 
 // issue 644: pinned sessions (L1), sessions that wait for an answer (L2), archive merged (L3)
 
@@ -111,6 +112,51 @@ describe('Recent list: pin, needs answer, archive merged', () => {
         await waitFor(() => expect(unpin).toHaveBeenCalledWith('a'))
     })
 
+    test('a pin past the limit says why, for a few seconds', async () => {
+        spyOn(sessionAPI, 'getSessions').mockImplementation(async () => ({
+            sessions: [session({ id: 'b', title: 'Plain one' })] as any,
+        }))
+        spyOn(sessionAPI, 'pinSession').mockImplementation(async () => {
+            throw new ApiError('You can pin up to 10 sessions', 409)
+        })
+        renderRecent()
+        await screen.findByText('Plain one')
+
+        fireEvent.click(optionsOf('Plain one'))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Pin' }))
+        expect(await screen.findByText('You can pin up to 10 sessions')).toBeTruthy()
+    })
+
+    test('undo after archiving a pinned session brings the pin back', async () => {
+        const archived = new Set<string>()
+        const pinnedAt = '2026-01-02T00:00:00.000Z'
+        spyOn(sessionAPI, 'getSessions').mockImplementation(async () => ({
+            sessions: [session({ id: 'a', title: 'Pinned one', isPinned: true, pinnedAt })].filter(
+                (s) => !archived.has(s.id as string)
+            ) as any,
+        }))
+        spyOn(sessionAPI, 'archiveSession').mockImplementation(async (id: string) => {
+            archived.add(id)
+            return {} as any
+        })
+        const unarchive = spyOn(sessionAPI, 'unarchiveSessions').mockImplementation(
+            async (ids: string[]) => {
+                ids.forEach((id) => archived.delete(id))
+                return { sessionIds: ids }
+            }
+        )
+        renderRecent()
+        await screen.findByText('Pinned one')
+
+        fireEvent.click(optionsOf('Pinned one'))
+        fireEvent.click(screen.getByRole('menuitem', { name: /Archive/ }))
+        fireEvent.click(await screen.findByText('Undo'))
+        await waitFor(() =>
+            expect(unarchive).toHaveBeenCalledWith(['a'], [{ sessionId: 'a', pinnedAt }])
+        )
+        expect(await screen.findByText('Pinned one')).toBeTruthy()
+    })
+
     test('Needs answer filters the list and marks waiting rows', async () => {
         const getSessions = spyOn(sessionAPI, 'getSessions').mockImplementation(async () => ({
             sessions: [
@@ -153,7 +199,10 @@ describe('Recent list: pin, needs answer, archive merged', () => {
             async () => {
                 archived.add('m1')
                 archived.add('m2')
-                return { sessionIds: ['m1', 'm2'] }
+                return {
+                    sessionIds: ['m1', 'm2'],
+                    pins: [{ sessionId: 'm1', pinnedAt: '2026-01-02T00:00:00.000Z' }],
+                }
             }
         )
         const unarchive = spyOn(sessionAPI, 'unarchiveSessions').mockImplementation(
@@ -174,7 +223,12 @@ describe('Recent list: pin, needs answer, archive merged', () => {
         expect(screen.getByText('Open one')).toBeTruthy()
 
         fireEvent.click(screen.getByText('Undo'))
-        await waitFor(() => expect(unarchive).toHaveBeenCalledWith(['m1', 'm2']))
+        await waitFor(() =>
+            expect(unarchive).toHaveBeenCalledWith(
+                ['m1', 'm2'],
+                [{ sessionId: 'm1', pinnedAt: '2026-01-02T00:00:00.000Z' }]
+            )
+        )
         expect(await screen.findByText('Merged A')).toBeTruthy()
     })
 

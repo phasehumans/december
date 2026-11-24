@@ -213,6 +213,17 @@ const MenuLevel: React.FC<
             onHold={() => onHoldSession({ session: s, index })}
         />
     ))
+    if (actions.notice) {
+        recentRows.unshift(
+            <div
+                key="action-notice"
+                role="status"
+                className="h-9 px-2.5 flex items-center text-[13px] text-amber-400"
+            >
+                {actions.notice}
+            </div>
+        )
+    }
     const undo = actions.undo
     if (undo && !recent.some((s) => s.id === undo.session.id)) {
         recentRows.splice(

@@ -263,6 +263,59 @@ describe('Session recent list (pin, needs answer, archive merged)', () => {
             expect(others?.isArchived).toBe(false)
         })
 
+        it('undo brings back the pins that archive merged removed, in their old order', async () => {
+            await clearOwnerSessions()
+            const pinnedAt = new Date(Date.UTC(2026, 0, 2))
+            const merged = await makeSession(ownerId, {
+                prNumber: 1,
+                prState: 'merged',
+                pinnedAt,
+            })
+
+            const res = await as(ownerToken).post('/archive-merged')
+            expect(res.body.data.sessionIds).toEqual([merged.id])
+            expect(res.body.data.pins).toEqual([
+                { sessionId: merged.id, pinnedAt: pinnedAt.toISOString() },
+            ])
+
+            const undo = await as(ownerToken).post('/unarchive', {
+                sessionIds: res.body.data.sessionIds,
+                pins: res.body.data.pins,
+            })
+            expect(undo.status).toBe(200)
+            const rows = (await as(ownerToken).get('')).body.data.sessions
+            expect(rows.find((s: any) => s.id === merged.id).isPinned).toBe(true)
+            const saved = await prisma.session.findUnique({ where: { id: merged.id } })
+            expect(saved?.pinnedAt?.toISOString()).toBe(pinnedAt.toISOString())
+        })
+
+        it('undo restores pins only for the unarchived sessions and within the limit', async () => {
+            await clearOwnerSessions()
+            // 9 pinned sessions stay; two archived ones were pinned before
+            for (let i = 0; i < 9; i++) await makeSession(ownerId, { pinnedAt: new Date() })
+            const first = await makeSession(ownerId, { isArchived: true })
+            const second = await makeSession(ownerId, { isArchived: true })
+            const notInUndo = await makeSession(ownerId, { isArchived: true })
+            const at = new Date(Date.UTC(2026, 0, 3)).toISOString()
+
+            const res = await as(ownerToken).post('/unarchive', {
+                sessionIds: [first.id, second.id],
+                pins: [
+                    { sessionId: first.id, pinnedAt: at },
+                    { sessionId: second.id, pinnedAt: at },
+                    { sessionId: notInUndo.id, pinnedAt: at },
+                ],
+            })
+            expect(res.status).toBe(200)
+            const pinned = await prisma.session.count({
+                where: { userId: ownerId, pinnedAt: { not: null } },
+            })
+            expect(pinned).toBe(10)
+            const other = await prisma.session.findUnique({ where: { id: notInUndo.id } })
+            expect(other?.pinnedAt).toBeNull()
+            expect(other?.isArchived).toBe(true)
+        })
+
         it('bulk unarchive changes only sessions of the signed-in user', async () => {
             await clearOwnerSessions()
             const mine = await makeSession(ownerId, { isArchived: true })

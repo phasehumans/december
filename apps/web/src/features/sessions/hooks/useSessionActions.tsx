@@ -8,7 +8,7 @@ import { SessionTagsModal } from '../components/SessionTagsModal'
 
 import { useSessionListMutations } from './useSessionListMutations'
 
-import type { BackendSession } from '@/features/sessions/api/session'
+import type { BackendSession, RemovedPin } from '@/features/sessions/api/session'
 import type { DeleteModalState, RenameModalState } from '@/features/sessions/types'
 
 import { useAppStore } from '@/app/store'
@@ -31,6 +31,8 @@ export interface ArchivedUndo {
 /** "Archive merged" archived these sessions; Undo brings them back */
 export interface ArchivedMergedUndo {
     sessionIds: string[]
+    /** the pins the archive removed */
+    pins: RemovedPin[]
 }
 
 /** the id of the session open on screen, or null on home, lists and settings */
@@ -60,6 +62,9 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
     const undoTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
     const [mergedUndo, setMergedUndo] = React.useState<ArchivedMergedUndo | null>(null)
     const mergedUndoTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    // a failed action says why for a few seconds ("You can pin up to 10 sessions")
+    const [notice, setNotice] = React.useState<string | null>(null)
+    const noticeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const {
         toggleArchiveMutation,
@@ -69,7 +74,11 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
         updateTagsMutation,
     } = useSessionListMutations({
         setActionError: (message) => {
-            if (message) console.error(message)
+            if (!message) return
+            console.error(message)
+            if (noticeTimer.current) clearTimeout(noticeTimer.current)
+            setNotice(message)
+            noticeTimer.current = setTimeout(() => setNotice(null), ARCHIVE_UNDO_MS)
         },
         onRenameMutate: () => setRenameModal(closedRename),
         onDeleteMutate: () => setDeleteModal(closedDelete),
@@ -79,6 +88,7 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
         () => () => {
             if (undoTimer.current) clearTimeout(undoTimer.current)
             if (mergedUndoTimer.current) clearTimeout(mergedUndoTimer.current)
+            if (noticeTimer.current) clearTimeout(noticeTimer.current)
         },
         []
     )
@@ -107,7 +117,11 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
 
     const undoArchive = () => {
         if (!undo) return
-        toggleArchiveMutation.mutate({ sessionId: undo.session.id, isArchived: false })
+        toggleArchiveMutation.mutate({
+            sessionId: undo.session.id,
+            isArchived: false,
+            restorePinnedAt: undo.session.pinnedAt,
+        })
         clearUndo()
     }
 
@@ -119,11 +133,11 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
     /** archives every merged, not running session and leaves "Archived 4 · Undo" */
     const archiveMerged = async () => {
         try {
-            const { sessionIds } = await sessionAPI.archiveMergedSessions()
+            const { sessionIds, pins } = await sessionAPI.archiveMergedSessions()
             refreshLists()
             if (sessionIds.length === 0) return
             if (mergedUndoTimer.current) clearTimeout(mergedUndoTimer.current)
-            setMergedUndo({ sessionIds })
+            setMergedUndo({ sessionIds, pins: pins ?? [] })
             mergedUndoTimer.current = setTimeout(() => setMergedUndo(null), ARCHIVE_UNDO_MS)
             if (currentSessionId && sessionIds.includes(currentSessionId)) onLeaveCurrent()
         } catch (error) {
@@ -137,7 +151,7 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
         mergedUndoTimer.current = null
         setMergedUndo(null)
         try {
-            await sessionAPI.unarchiveSessions(mergedUndo.sessionIds)
+            await sessionAPI.unarchiveSessions(mergedUndo.sessionIds, mergedUndo.pins)
         } catch (error) {
             console.error('Failed to unarchive sessions', error)
         }
@@ -208,6 +222,7 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
         undoArchive,
         toggleArchive,
         togglePin,
+        notice,
         mergedUndo,
         archiveMerged,
         undoArchiveMerged,

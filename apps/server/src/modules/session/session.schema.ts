@@ -100,6 +100,15 @@ export const unpinSessionParamsSchema = z.object({
 
 export const unarchiveSessionsBodySchema = z.object({
     sessionIds: z.array(z.string().uuid('Invalid session ID')).min(1).max(100),
+    pins: z
+        .array(
+            z.object({
+                sessionId: z.string().uuid('Invalid session ID'),
+                pinnedAt: z.coerce.date(),
+            })
+        )
+        .max(100)
+        .optional(),
 })
 
 export const updateSessionTagsParamsSchema = z.object({

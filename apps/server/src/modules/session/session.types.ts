@@ -85,9 +85,17 @@ export type ArchiveMergedSessions = {
     userId: string
 }
 
+/** a pin that archive removed, so an undo can put it back in its old place */
+export type RemovedPin = {
+    sessionId: string
+    pinnedAt: Date
+}
+
 export type UnarchiveSessions = {
     userId: string
     sessionIds: string[]
+    /** pins to bring back with the undo, from archive merged or from the list row */
+    pins?: RemovedPin[]
 }
 
 export type GetSessionCounts = {

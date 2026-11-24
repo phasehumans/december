@@ -182,9 +182,9 @@ export const archiveMergedSessions = asyncHandler(async (req: Request, res: Resp
 export const unarchiveSessions = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
     if (!userId) throw new AppError('unauthorized', 401)
-    const { sessionIds } = unarchiveSessionsBodySchema.parse(req.body)
+    const { sessionIds, pins } = unarchiveSessionsBodySchema.parse(req.body)
 
-    const result = await sessionService.unarchiveSessions({ userId, sessionIds })
+    const result = await sessionService.unarchiveSessions({ userId, sessionIds, pins })
     return sendSuccess(res, 'sessions unarchived successfully', result)
 })
 
