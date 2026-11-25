@@ -640,10 +640,8 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
     /** `/permissions`: allow and deny rules from the global and project files */
     onLoadPermissions?: () => Promise<PermissionsData>
     onChangePermissionRule?: (change: PermissionRuleChange) => Promise<void>
-    /** `/github`: status of the December GitHub Action setup for this repo */
-    onLoadGithubSetup?: () => Promise<GithubSetupData>
-    /** runs one setup step; resolves to a message for the toast */
-    onGithubSetupAction?: (action: GithubSetupAction) => Promise<string>
+    /** `/github`: the repository in this folder and whether the December GitHub App is on it */
+    onLoadGithubApp?: () => Promise<GithubAppData>
     /** `/hooks`: hooks from the global and project hooks.json */
     onLoadHooks?: () => Promise<HooksData>
     /** ~/.december/keybindings.json; without it the default keys are used */
@@ -668,31 +666,52 @@ export interface HooksData {
     problems: string[]
 }
 
-export interface GithubSetupData {
-    ghInstalled: boolean
-    ghAuthed: boolean
-    ghAuthDetail?: string
+export interface GithubAppData {
+    /** owner/name of the GitHub repository in this folder */
     repo?: string
-    defaultBranch: string
     inGitRepo: boolean
-    workflowExists: boolean
-    workflowPath?: string
-    /** provider the action runs with, and the secret that holds its key */
-    provider: string
-    secretName: string
-    providerNote?: string
-    secretSet: boolean
-    slackSet: boolean
-    discordSet: boolean
-    secretsError?: string
-    /** set when a saved BYOK key for `provider` can be sent as the secret */
-    savedKeyAvailable: boolean
+    state: 'installed' | 'not_installed' | 'not_on_repo' | 'signed_out' | 'no_repo' | 'error'
+    /** GitHub account or organization the app is installed on */
+    accountLogin?: string
+    error?: string
+    /** page that installs the app on an account or organization */
+    installUrl: string
 }
 
-export type GithubSetupAction =
-    | { type: 'write-workflow'; overwrite: boolean }
-    | { type: 'set-secret'; name: string; value: string }
-    | { type: 'use-saved-key' }
+const DEFAULT_GITHUB_APP_INSTALL_URL = 'https://github.com/apps/trydecember/installations/new'
+
+/** the repository row and the app status row of the /github view */
+export function githubAppRows(data: GithubAppData): ReportRow[] {
+    const repoRow: ReportRow = data.repo
+        ? { text: 'Repository', tone: 'ok', detail: data.repo }
+        : {
+              text: 'Repository',
+              tone: 'warn',
+              detail: data.inGitRepo ? 'no GitHub remote' : 'not a git repository',
+          }
+    const where = data.accountLogin ? ` on ${data.accountLogin}` : ''
+    const statusRows: Record<GithubAppData['state'], ReportRow> = {
+        installed: { text: 'December GitHub App', tone: 'ok', detail: `installed${where}` },
+        not_installed: { text: 'December GitHub App', tone: 'warn', detail: 'not installed' },
+        not_on_repo: {
+            text: 'December GitHub App',
+            tone: 'warn',
+            detail: `installed${where}, not on this repository`,
+        },
+        signed_out: {
+            text: 'December GitHub App',
+            tone: 'muted',
+            detail: 'sign in with /login to check',
+        },
+        no_repo: { text: 'December GitHub App', tone: 'muted', detail: 'no repository to check' },
+        error: {
+            text: 'December GitHub App',
+            tone: 'fail',
+            detail: data.error ? `could not check: ${data.error}` : 'could not check',
+        },
+    }
+    return [repoRow, statusRows[data.state]]
+}
 
 export interface PermissionsData {
     allow: { global: string[]; project: string[] }
@@ -8465,210 +8484,57 @@ export class DifferentialApp {
             })
     }
 
-    /**
-     * /github: checks gh, the repo, the workflow file, and the secrets, then runs each step
-     * on a key press: w writes the workflow, k / u set the API key secret, s / i set the
-     * Slack / Discord webhook secrets. Secrets are sent to GitHub only on these key presses.
-     */
-    openGithubReport(keepSelection = false): void {
-        const onLoad = this.options?.onLoadGithubSetup
-        const onAction = this.options?.onGithubSetupAction
-        const previousScroll =
-            keepSelection && this.state.report?.kind === 'github'
-                ? this.state.report.scrollOffset
-                : 0
-        let confirmOverwrite = false
+    /** /github: the repository in this folder and whether the December GitHub App is on it */
+    openGithubReport(): void {
+        const onLoad = this.options?.onLoadGithubApp
+        let installUrl = DEFAULT_GITHUB_APP_INSTALL_URL
+        const footer: MenuFooterItem[] = [
+            { key: 'i', label: 'install app' },
+            { key: 'r', label: 'refresh' },
+            { key: 'esc', label: 'close' },
+        ]
 
         this.openReport({
             kind: 'github',
-            title: 'GitHub Action',
+            title: 'GitHub App',
             rows: [],
             isLoading: true,
-            loadingText: 'Checking gh, the repository, and its secrets…',
-            footer: [{ key: 'esc', label: 'close' }],
+            loadingText: 'Checking the repository…',
+            footer,
+            onKey: (key) => {
+                if (key === 'i') {
+                    openBrowserUrl(installUrl)
+                    this.showToast('Opened the GitHub App install page in browser.', 'success')
+                    return true
+                }
+                if (key === 'r' && onLoad) {
+                    this.openGithubReport()
+                    return true
+                }
+                return false
+            },
         })
-        if (!onLoad || !onAction) {
+        if (!onLoad) {
             this.updateReport('github', {
                 isLoading: false,
-                emptyText: 'GitHub setup is not available in this session.',
+                emptyText: 'The GitHub App status is not available in this session.',
             })
             return
         }
 
-        const run = (action: GithubSetupAction) => {
-            this.updateReport('github', { isLoading: true, loadingText: 'Working…' })
-            onAction(action)
-                .then((message) => {
-                    this.showToast(message, 'success')
-                    this.openGithubReport(true)
-                })
-                .catch((err: any) => {
-                    this.showToast(err?.message || String(err), 'error')
-                    this.openGithubReport(true)
-                })
-        }
-
-        const askSecret = (name: string, prompt: string) => {
-            const report = this.state.report
-            if (!report || report.kind !== 'github') return
-            report.input = {
-                prompt,
-                value: '',
-                mask: true,
-                onSubmit: (value) => {
-                    if (!value.trim()) return
-                    run({ type: 'set-secret', name, value })
-                },
-            }
-            this.render()
-        }
-
         onLoad()
             .then((data) => {
-                const rows: ReportRow[] = []
-                const footer: MenuFooterItem[] = []
-                rows.push({ text: 'Setup', tone: 'heading' })
-                rows.push(
-                    data.ghInstalled
-                        ? { text: 'GitHub CLI (gh)', tone: 'ok', detail: 'installed' }
-                        : { text: 'GitHub CLI (gh)', tone: 'fail', detail: 'not found' }
-                )
-                if (!data.ghInstalled) {
-                    rows.push({ text: '└ Install it from https://cli.github.com', tone: 'muted' })
-                } else {
-                    rows.push(
-                        data.ghAuthed
-                            ? { text: 'Signed in to GitHub', tone: 'ok' }
-                            : {
-                                  text: 'Signed in to GitHub',
-                                  tone: 'fail',
-                                  detail: data.ghAuthDetail || 'not signed in',
-                              }
-                    )
-                    if (!data.ghAuthed) {
-                        rows.push({ text: '└ Run `!gh auth login`, then press r', tone: 'muted' })
-                    }
-                }
-                if (!data.inGitRepo) {
-                    rows.push({ text: 'Repository', tone: 'fail', detail: 'not a git repository' })
-                } else if (data.ghAuthed) {
-                    rows.push(
-                        data.repo
-                            ? { text: 'Repository', tone: 'ok', detail: data.repo }
-                            : {
-                                  text: 'Repository',
-                                  tone: 'fail',
-                                  detail: 'no GitHub remote found for this repository',
-                              }
-                    )
-                }
-
-                const ready = data.ghInstalled && data.ghAuthed && Boolean(data.repo)
-                if (data.inGitRepo) {
-                    rows.push(
-                        data.workflowExists
-                            ? { text: 'Workflow file', tone: 'ok', detail: data.workflowPath }
-                            : { text: 'Workflow file', tone: 'warn', detail: 'not created' }
-                    )
-                    footer.push({
-                        key: 'w',
-                        label: data.workflowExists ? 'rewrite workflow' : 'write workflow',
-                    })
-                }
-
-                if (ready) {
-                    rows.push(
-                        data.secretSet
-                            ? { text: `Secret ${data.secretName}`, tone: 'ok', detail: 'set' }
-                            : {
-                                  text: `Secret ${data.secretName}`,
-                                  tone: 'warn',
-                                  detail: data.secretsError || 'not set',
-                              }
-                    )
-                    if (data.providerNote)
-                        rows.push({ text: `└ ${data.providerNote}`, tone: 'muted' })
-                    rows.push({
-                        text: 'Slack / Discord alerts (optional)',
-                        tone: data.slackSet || data.discordSet ? 'ok' : 'muted',
-                        detail:
-                            [data.slackSet ? 'Slack set' : '', data.discordSet ? 'Discord set' : '']
-                                .filter(Boolean)
-                                .join(', ') || 'not set',
-                    })
-                    footer.push({ key: 'k', label: 'set API key' })
-                    if (data.savedKeyAvailable) footer.push({ key: 'u', label: 'use saved key' })
-                    footer.push({ key: 's', label: 'Slack' }, { key: 'i', label: 'Discord' })
-                    rows.push({ text: '' })
-                    rows.push({
-                        text: 'Keys and webhooks are sent to GitHub as repository secrets only when you press k, u, s, or i.',
-                        tone: 'muted',
-                    })
-                }
-
-                rows.push({ text: '' })
-                rows.push({ text: 'Next steps', tone: 'heading' })
-                rows.push({
-                    text: `1. Commit and push .github/workflows/december.yml to ${data.defaultBranch}`,
-                    tone: 'normal',
+                installUrl = data.installUrl || installUrl
+                this.updateReport('github', {
+                    isLoading: false,
+                    subtitle: data.repo,
+                    rows: githubAppRows(data),
                 })
-                rows.push({
-                    text: '2. Comment "@trydecember <task>" on an issue or pull request',
-                    tone: 'normal',
-                })
-                footer.push({ key: 'r', label: 'refresh' }, { key: 'esc', label: 'close' })
-
-                const report = this.state.report
-                if (!report || report.kind !== 'github') return
-                report.rows = rows
-                report.footer = footer
-                report.isLoading = false
-                report.subtitle = data.repo
-                report.scrollOffset = previousScroll
-                report.onKey = (key) => {
-                    if (key === 'r') {
-                        this.openGithubReport(true)
-                        return true
-                    }
-                    if (key === 'w' && data.inGitRepo) {
-                        if (data.workflowExists && !confirmOverwrite) {
-                            confirmOverwrite = true
-                            this.showToast(
-                                'december.yml exists. Press w again to overwrite it.',
-                                'info'
-                            )
-                            return true
-                        }
-                        run({ type: 'write-workflow', overwrite: data.workflowExists })
-                        return true
-                    }
-                    if (!ready) return false
-                    if (key === 'k') {
-                        askSecret(data.secretName, `${data.secretName}:`)
-                        return true
-                    }
-                    if (key === 'u' && data.savedKeyAvailable) {
-                        run({ type: 'use-saved-key' })
-                        return true
-                    }
-                    if (key === 's') {
-                        askSecret('DECEMBER_SLACK_WEBHOOK', 'Slack webhook URL:')
-                        return true
-                    }
-                    if (key === 'i') {
-                        askSecret('DECEMBER_DISCORD_WEBHOOK', 'Discord webhook URL:')
-                        return true
-                    }
-                    return false
-                }
-                this.render()
             })
             .catch((err: any) => {
                 this.updateReport('github', {
                     isLoading: false,
-                    rows: [
-                        { text: 'Could not check the setup', tone: 'fail', detail: err?.message },
-                    ],
+                    rows: [{ text: 'Could not check', tone: 'fail', detail: err?.message }],
                 })
             })
     }

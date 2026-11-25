@@ -214,3 +214,60 @@ describe('GitHub Utils - Unit Tests', () => {
         })
     })
 })
+
+describe('github app helpers (#568)', () => {
+    it('parseBotCommand: "review" first is a review, anything else is a task', async () => {
+        const { parseBotCommand } = await import('../../src/utils/github')
+        expect(parseBotCommand('@trydecember review')).toEqual({
+            isMentioned: true,
+            intent: 'review',
+            instruction: '',
+        })
+        expect(parseBotCommand('@trydecember: review the auth part')).toEqual({
+            isMentioned: true,
+            intent: 'review',
+            instruction: 'the auth part',
+        })
+        expect(parseBotCommand('@trydecember fix the review button').intent).toBe('task')
+        expect(parseBotCommand('@trydecember reviewer list is wrong').intent).toBe('task')
+        expect(parseBotCommand('hello').isMentioned).toBe(false)
+        expect(parseBotCommand('@december review').isMentioned).toBe(false)
+    })
+
+    it('toBranchName keeps git-safe names', async () => {
+        const { toBranchName } = await import('../../src/pull-request-settings')
+        expect(toBranchName('december/', 'issue-4')).toBe('december/issue-4')
+        expect(toBranchName('my prefix//', 'issue-4')).toBe('my-prefix/issue-4')
+        expect(toBranchName('', 'issue-4')).toBe('issue-4')
+        expect(toBranchName('../', 'x..y')).toBe('x.y')
+    })
+
+    it('toPullRequestSettings fills defaults and drops unknown values', async () => {
+        const { toPullRequestSettings, PULL_REQUEST_SETTING_DEFAULTS } =
+            await import('../../src/pull-request-settings')
+        expect(toPullRequestSettings(null)).toEqual(PULL_REQUEST_SETTING_DEFAULTS)
+        const s = toPullRequestSettings({ autoReview: 'always', reviewRepos: ['a/b', 3] })
+        expect(s.autoReview).toBe('asked')
+        expect(s.reviewRepos).toEqual(['a/b'])
+    })
+
+    it('createGithubAppJwt signs an RS256 token GitHub can verify', async () => {
+        const { generateKeyPairSync, createVerify } = await import('node:crypto')
+        const { createGithubAppJwt } = await import('../../src/utils/github-app')
+        const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+        const pem = privateKey.export({ type: 'pkcs1', format: 'pem' }).toString()
+
+        for (const key of [pem.replace(/\n/g, '\\n'), Buffer.from(pem).toString('base64')]) {
+            const jwt = createGithubAppJwt({ appId: '123', privateKey: key, now: 1000 })
+            const [header, payload, signature] = jwt.split('.')
+            const verifier = createVerify('RSA-SHA256')
+            verifier.update(`${header}.${payload}`)
+            expect(verifier.verify(publicKey, Buffer.from(signature!, 'base64url'))).toBe(true)
+            expect(JSON.parse(Buffer.from(payload!, 'base64url').toString())).toEqual({
+                iat: 940,
+                exp: 1600,
+                iss: '123',
+            })
+        }
+    })
+})

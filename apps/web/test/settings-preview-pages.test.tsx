@@ -14,8 +14,6 @@ const { AccountNotificationsSection } =
     await import('../src/features/profile/components/AccountNotificationsSection')
 const { ProfileMembersSettings } =
     await import('../src/features/profile/components/ProfileMembersSettings')
-const { ProfilePullRequestSettings } =
-    await import('../src/features/profile/components/ProfilePullRequestSettings')
 const { ProfileSandboxSettings } =
     await import('../src/features/profile/components/ProfileSandboxSettings')
 const { resetPreviewValues } = await import('../src/features/profile/components/SettingsUi')
@@ -54,12 +52,10 @@ describe('settings pages that are ui only', () => {
         setConnectionsDemo(false)
         wrap(
             <>
-                <ProfilePullRequestSettings />
                 <ProfileSandboxSettings />
                 <ProfileMembersSettings ownerName="Test User" ownerEmail="test@example.com" />
             </>
         )
-        expect(screen.getByText('Pull request settings are coming soon')).toBeDefined()
         expect(screen.getByText('Sandbox settings are coming soon')).toBeDefined()
         expect(screen.getByText('Team accounts are coming soon')).toBeDefined()
         expect(screen.queryAllByRole('switch').length).toBe(0)

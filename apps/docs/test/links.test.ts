@@ -43,6 +43,7 @@ describe('apps/docs link integrity verification', () => {
         '/docs/prompting',
         '/docs/configuration',
         '/docs/mcp',
+        '/docs/github-app',
         '/docs/integrations',
         '/docs/security',
         '/docs/troubleshooting',

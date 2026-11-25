@@ -87,6 +87,34 @@ const updateModelSource = (defaultModelSource: 'CREDITS' | 'OWN_KEY') => {
     })
 }
 
+// how December opens and handles pull requests, and what the GitHub App does (#568)
+export type PullRequestSettings = {
+    branchPrefix: string
+    prDraft: boolean
+    prCreate: 'auto' | 'ask'
+    prAuthor: 'december' | 'user'
+    commitAuthor: 'both' | 'december'
+    archiveOnMerge: boolean
+    githubCommentsEnabled: boolean
+    reviewReplies: 'all' | 'mention' | 'off'
+    replyToBots: boolean
+    fixFailedChecks: boolean
+    autoReview: 'asked' | 'mine' | 'all'
+    reviewCadence: 'once' | 'push'
+    reviewRepos: string[]
+}
+
+const getPullRequestSettings = () => {
+    return apiRequest<PullRequestSettings>('/setting/pull-requests')
+}
+
+const updatePullRequestSettings = (data: Partial<PullRequestSettings>) => {
+    return apiRequest<PullRequestSettings>('/setting/pull-requests', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    })
+}
+
 const updateNotifications = (data: UpdateNotificationInput) => {
     return apiRequest<BackendProfile>('/setting/notifications', {
         method: 'PATCH',
@@ -241,6 +269,8 @@ export const profileAPI = {
     updateAvatarUrl,
     updateNotifications,
     updateModelSource,
+    getPullRequestSettings,
+    updatePullRequestSettings,
     getQuickInfo,
     signout,
     signoutAll,

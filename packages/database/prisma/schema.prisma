@@ -50,6 +50,7 @@ model User {
   gitConnections      GitConnection[]
   featureWaitlists    FeatureWaitlist[]
   creditRequests      CreditRequest[]
+  pullRequestSettings PullRequestSettings?
 }
 
 // how a cloud run pays for model tokens
@@ -189,6 +190,9 @@ model Session {
   pinnedAt           DateTime?
   // the agent asked a question and waits for an answer (the question itself lives in Redis)
   pendingQuestionAt  DateTime?
+  // set when the session was started from GitHub by the December GitHub App: the mode
+  // (issue | change | review), the installation, the issue or pull request and its refs
+  githubRun          Json?
   projectId          String?
   epoch              Int            @default(1)
   leaseExpiresAt     DateTime?
@@ -540,6 +544,33 @@ model RedeemCodeClaim {
 
   @@unique([redeemCodeId, userId])
   @@index([userId])
+}
+
+// how December opens and handles pull requests, and what the GitHub App does on its own.
+// one row per user; a missing row means every default below.
+model PullRequestSettings {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  // opening (#637)
+  branchPrefix          String   @default("december/")
+  prDraft               Boolean  @default(false)
+  prCreate              String   @default("auto")
+  prAuthor              String   @default("december")
+  commitAuthor          String   @default("both")
+  archiveOnMerge        Boolean  @default(true)
+  // github app (#568): pause, replies and review
+  githubCommentsEnabled Boolean  @default(true)
+  reviewReplies         String   @default("mention")
+  replyToBots           Boolean  @default(false)
+  fixFailedChecks       Boolean  @default(true)
+  autoReview            String   @default("asked")
+  reviewCadence         String   @default("once")
+  // empty means every repository the app can see
+  reviewRepos           String[] @default([])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model GithubAppInstallation {

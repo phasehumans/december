@@ -7,6 +7,7 @@ import Redis from 'ioredis'
 import { detectSandboxListeningPorts, pickWebPreviewPort } from './dynamic-port-detector'
 import { E2BSandboxService } from './e2b-sandbox.service'
 import { resolveGitToken } from './git-remote'
+import { finishGithubRun } from './github-run'
 import {
     createDefaultSessionPlan,
     inferPhaseFromToolCall,
@@ -500,7 +501,38 @@ export async function processGrpcStream(
         }
     }
 
+    // the agent's last words: the summary for a pull request, a reply or a review
+    let lastAssistantText = ''
+    let runFinished = false
+
+    // the end of the run, once: the github step for sessions the github app started,
+    // otherwise the task branch and pull request
+    const finishRun = async (runHasError: boolean) => {
+        if (runFinished) return
+        runFinished = true
+        const activeSandbox = sandbox || E2BSandboxService.getActiveSandbox(sessionId)
+        const handled = await finishGithubRun({
+            sessionId,
+            sandbox: activeSandbox,
+            hasError: runHasError,
+            summary: lastAssistantText,
+        }).catch((err: unknown) => {
+            console.error(`[WORKER LISTENER] github step failed for session ${sessionId}:`, err)
+            return true
+        })
+        if (handled || runHasError || !activeSandbox) return
+        await handleAutonomousTaskBranchAndPr({
+            sessionId,
+            sandbox: activeSandbox,
+        }).catch(() => {
+            // Intentionally swallowed: Autonomous PR creation fallback
+        })
+    }
+
     const persistTurnMessage = async () => {
+        if (currentTurn.content.trim()) {
+            lastAssistantText = currentTurn.content
+        }
         try {
             if (
                 !currentTurn.content &&
@@ -749,15 +781,7 @@ export async function processGrpcStream(
                 await persistTurnMessage()
             } else if (eventType === 'AgentEnd') {
                 await persistTurnMessage()
-                const activeSandbox = sandbox || E2BSandboxService.getActiveSandbox(sessionId)
-                if (activeSandbox) {
-                    await handleAutonomousTaskBranchAndPr({
-                        sessionId,
-                        sandbox: activeSandbox,
-                    }).catch(() => {
-                        // Intentionally swallowed: Autonomous PR creation fallback
-                    })
-                }
+                await finishRun(hasError)
             } else if (eventType === 'AgentUsage') {
                 await updateCredits(sessionId, parsedEvent, billingSource)
             } else if (eventType === 'AgentError') {
@@ -780,17 +804,7 @@ export async function processGrpcStream(
         console.error(`[WORKER LISTENER] Stream ended for ${sessionId}: ${e?.message || e}`)
     } finally {
         await persistTurnMessage()
-        if (!hasError) {
-            const activeSandbox = sandbox || E2BSandboxService.getActiveSandbox(sessionId)
-            if (activeSandbox) {
-                await handleAutonomousTaskBranchAndPr({
-                    sessionId,
-                    sandbox: activeSandbox,
-                }).catch(() => {
-                    // Intentionally swallowed: Autonomous PR creation fallback
-                })
-            }
-        }
+        await finishRun(hasError)
         console.log(
             `[WORKER LISTENER] Stream finished for session '${sessionId}'. Setting Prisma session status -> ${hasError ? 'FAILED' : 'PARKED'}`
         )

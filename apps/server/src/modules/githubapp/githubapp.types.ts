@@ -1,3 +1,4 @@
+import type { GithubRun, PullRequestSettingsValues } from '@december/shared'
 import type { GitRepo } from '@december/shared/git'
 
 export type GitHubAppInstallationPayload = {
@@ -107,17 +108,19 @@ export type InstallationStatusResponse = {
     targetType: string | null
 }
 
+type WebhookRepository = {
+    name: string
+    fullName: string
+    owner: {
+        login: string
+    }
+    defaultBranch?: string
+    private?: boolean
+}
+
 export type HandleIssueComment = {
     installationId: string
-    repository: {
-        name: string
-        fullName: string
-        owner: {
-            login: string
-        }
-        defaultBranch?: string
-        private?: boolean
-    }
+    repository: WebhookRepository
     issue: {
         number: number
         title: string
@@ -130,75 +133,132 @@ export type HandleIssueComment = {
         user: {
             login: string
             id?: number
+            type?: string
         }
         authorAssociation?: string | null
     }
 }
 
-export type HandleIssueCommentResult = {
+export type HandleGithubEventResult = {
     handled: boolean
     reason?: string
-    issueNumber?: number
-    jobId?: string
+    sessionId?: string
 }
 
-export type HandlePullRequestOpened = {
+// pull_request opened, synchronize or ready_for_review: an automatic review
+export type HandlePullRequestEvent = {
     installationId: string
-    repository: {
-        name: string
-        fullName: string
-        owner: {
-            login: string
-        }
-        defaultBranch?: string
-        private?: boolean
-    }
+    action: string
+    repository: WebhookRepository
     pullRequest: {
         number: number
         title: string
         body?: string | null
+        draft?: boolean
         head: {
             ref: string
             sha?: string
+            repoFullName?: string
         }
         base: {
             ref: string
         }
         user: {
             login: string
-            id?: number
+            type?: string
+        }
+    }
+}
+
+// pull_request_review_comment created: a comment on a line of a pull request
+export type HandleReviewComment = {
+    installationId: string
+    repository: WebhookRepository
+    pullRequest: {
+        number: number
+        title: string
+        body?: string | null
+        authorLogin?: string
+        head: {
+            ref: string
+            sha?: string
+            repoFullName?: string
+        }
+        base: {
+            ref: string
+        }
+    }
+    comment: {
+        id: number
+        body: string
+        path?: string
+        line?: number | null
+        diffHunk?: string
+        user: {
+            login: string
+            type?: string
         }
         authorAssociation?: string | null
     }
 }
 
-export type HandlePullRequestOpenedResult = {
-    handled: boolean
-    reason?: string
-    pullRequestNumber?: number
-    jobId?: string
+// check_suite completed with a failure on a pull request
+export type HandleCheckSuite = {
+    installationId: string
+    repository: WebhookRepository
+    conclusion?: string | null
+    headSha?: string
+    pullRequestNumbers: number[]
 }
 
-export type GithubIssueJobData = {
-    taskType: 'github_issue_fix'
-    installationId: string
-    gitToken: string
+export type StartGithubRun = {
+    token: string
+    userId: string
+    run: GithubRun
+    // the text the agent works from: the issue or pull request body and the request
+    body: string
+    instruction: string
+    // extra context for the prompt (a review comment's file and lines, failed checks)
+    context?: string
+    // post "on it" with the session link (runs a person asked for)
+    announce: boolean
+}
+
+export type StartGithubRunResult = {
+    started: boolean
+    reason?: string
+    sessionId?: string
+}
+
+export type ResolveRunModel = {
+    userId: string
+    defaultModelSource: 'CREDITS' | 'OWN_KEY'
+}
+
+export type RunModelChoice =
+    | {
+          ok: true
+          billingSource: 'CREDITS' | 'OWN_KEY'
+          provider?: string
+          model?: string
+      }
+    | { ok: false; message: string }
+
+export type ShouldAutoReview = {
+    settings: PullRequestSettingsValues
+    action: string
+    draft: boolean
+    authorLogin: string
+    authorType?: string
+    ownerGithubLogin?: string | null
     repoFullName: string
-    repoOwner: string
-    repoName: string
-    defaultBranch: string
-    issueNumber: number
-    issueTitle: string
-    issueBody: string
-    commentId?: number
-    commentAuthor: string
-    prompt: string
-    userId?: string | null
-    isPullRequest?: boolean
-    pullRequestHead?: string
-    pullRequestBase?: string
-    slackWebhookUrl?: string
-    discordWebhookUrl?: string
+}
+
+export type BuildGithubRunPrompt = {
+    run: GithubRun
+    body: string
+    instruction: string
+    context?: string
 }
 
 // one GitHub webhook event that may go into the owner's inbox

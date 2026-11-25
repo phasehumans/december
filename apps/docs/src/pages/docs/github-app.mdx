@@ -1,0 +1,52 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: GitHub App
+description: Start December from a comment on a GitHub issue or pull request.
+currentSlug: 'github-app'
+---
+
+This page helps you use December from comments on GitHub issues and pull requests.
+
+## Install the app
+
+1. Open the [December GitHub App](https://github.com/apps/trydecember/installations/new) page.
+2. Select an account or an organization.
+3. Select the repositories that December can use.
+
+To see the status for the repository in your current folder, type `/github` in the CLI.
+
+## Who pays for a run
+
+Each run uses the December account of the person who installed the app:
+
+- Their December Cloud wallet pays for the run.
+- December runs their default model.
+- If their default is their own key, December uses the key that they used last.
+
+Only collaborators on the repository can start a run. December adds an eyes reaction to the comment when it starts.
+
+## Commands
+
+Write the command in a comment.
+
+| Comment               | Where          | What December does                                                                  |
+| :-------------------- | :------------- | :---------------------------------------------------------------------------------- |
+| `@trydecember <task>` | An issue       | Makes the change on a new branch, runs the tests, and opens a pull request.         |
+| `@trydecember review` | A pull request | Posts one review with a summary and comments on lines. It never approves or blocks. |
+| `@trydecember <task>` | A pull request | Pushes commits to the branch of that pull request.                                  |
+
+Each run is a session in December Cloud. December replies on GitHub with a link to the session.
+
+## Settings
+
+In December Cloud, open **Settings**, then **Pull requests**.
+
+| Setting                                     | What it does                                                                                                                                                                         |
+| :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Work from GitHub comments                   | Turn it off to pause all runs from GitHub comments.                                                                                                                                  |
+| Review pull requests                        | **When asked**: only on `@trydecember review`. **My PRs**: also your new pull requests. **All**: also all new pull requests. Draft pull requests are not reviewed without a request. |
+| Review again                                | **Once**, or **On every push** to the pull request.                                                                                                                                  |
+| Repositories                                | The repositories that December reviews without a request.                                                                                                                            |
+| Answer review comments                      | **All**: every review comment on December pull requests. **Only @trydecember**: comments that mention December, on any pull request. **Off**: no review comments.                    |
+| Answer comments from bots                   | Also answer review comments that bots write.                                                                                                                                         |
+| Fix failed checks on December pull requests | When a check fails on a December pull request, December pushes a fix.                                                                                                                |

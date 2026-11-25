@@ -10,6 +10,9 @@ import {
     canClaimInstallation,
     resolveInstallReturnUrl,
 } from '../../src/modules/githubapp/githubapp.utils'
+import { secretsService } from '../../src/modules/secrets/secrets.service'
+import { sessionService } from '../../src/modules/session/session.service'
+import { AppError } from '../../src/shared/appError'
 
 describe('GitHubApp Service - Unit Tests', () => {
     describe('verifySignature', () => {
@@ -523,16 +526,17 @@ describe('GitHubApp Service - Unit Tests', () => {
         })
     })
 
-    describe('handleIssueComment', () => {
+    describe('github runs (#568)', () => {
+        const repository = {
+            name: 'test-repo',
+            fullName: 'org/test-repo',
+            owner: { login: 'org' },
+            defaultBranch: 'main',
+            private: false,
+        }
         const baseCommentData = {
             installationId: 'inst-999',
-            repository: {
-                name: 'test-repo',
-                fullName: 'org/test-repo',
-                owner: { login: 'org' },
-                defaultBranch: 'main',
-                private: false,
-            },
+            repository,
             issue: {
                 number: 101,
                 title: 'Bug in auth token',
@@ -546,236 +550,455 @@ describe('GitHubApp Service - Unit Tests', () => {
             },
         }
 
-        it('returns handled: false if comment does not mention @trydecember', async () => {
-            const res = await githubAppService.handleIssueComment(baseCommentData)
-            expect(res.handled).toBe(false)
-            expect(res.reason).toBe('not_mentioned')
-        })
-
-        it('rejects trigger and posts warning comment if sender is unauthorized', async () => {
-            const originalFetch = globalThis.fetch
-            const originalGetToken = githubAppService.getInstallationAccessToken
-            let postedCommentBody = ''
-
-            githubAppService.getInstallationAccessToken = (async () => ({
-                token: 'ghs_token_mock',
-                expiresAt: '2026-10-30T00:00:00Z',
-            })) as any
-
-            globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
-                if (url.toString().includes('/comments') && options?.method === 'POST') {
-                    postedCommentBody = JSON.parse(options.body).body
-                    return new Response(JSON.stringify({ id: 1 }), { status: 201 })
-                }
-                return new Response(JSON.stringify({}), { status: 200 })
-            }) as any
-
-            try {
-                const res = await githubAppService.handleIssueComment({
-                    ...baseCommentData,
-                    comment: {
-                        ...baseCommentData.comment,
-                        body: '@trydecember fix this',
-                        authorAssociation: 'NONE',
-                    },
-                })
-
-                expect(res.handled).toBe(false)
-                expect(res.reason).toBe('unauthorized_sender')
-                expect(postedCommentBody).toContain('collaborator')
-            } finally {
-                githubAppService.getInstallationAccessToken = originalGetToken
-                globalThis.fetch = originalFetch
-            }
-        })
-
-        it('acknowledges with eyes reaction and enqueues job for authorized mention', async () => {
-            const originalFetch = globalThis.fetch
-            const originalGetToken = githubAppService.getInstallationAccessToken
-            const originalFindByInstallationId = githubAppRepository.findByInstallationId
-            let reactionAdded = ''
-            let enqueuedJobName = ''
-            let enqueuedJobData: any = null
-
-            setAgentQueue({
-                add: (async (name: string, data: any) => {
-                    enqueuedJobName = name
-                    enqueuedJobData = data
-                    return { id: 'job-123' }
-                }) as any,
-            } as any)
-
-            githubAppService.getInstallationAccessToken = (async () => ({
-                token: 'ghs_token_mock',
-                expiresAt: '2026-10-30T00:00:00Z',
-            })) as any
-
-            githubAppRepository.findByInstallationId = (async () => ({
-                id: 'inst-rec-1',
-                installationId: 'inst-999',
-                userId: null,
-            })) as any
-
-            globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
-                if (url.toString().includes('/reactions') && options?.method === 'POST') {
-                    reactionAdded = JSON.parse(options.body).content
-                    return new Response(JSON.stringify({ id: 1, content: 'eyes' }), { status: 201 })
-                }
-                return new Response(JSON.stringify({}), { status: 200 })
-            }) as any
-
-            try {
-                const res = await githubAppService.handleIssueComment({
-                    ...baseCommentData,
-                    comment: {
-                        ...baseCommentData.comment,
-                        body: '@trydecember please fix auth token refresh and write tests',
-                        authorAssociation: 'OWNER',
-                    },
-                })
-
-                expect(res.handled).toBe(true)
-                expect(res.issueNumber).toBe(101)
-                expect(res.jobId).toBe('job-123')
-                expect(reactionAdded).toBe('eyes')
-                expect(enqueuedJobName).toBe('github_issue_fix')
-                expect(enqueuedJobData.prompt).toBe('please fix auth token refresh and write tests')
-                expect(enqueuedJobData.repoFullName).toBe('org/test-repo')
-            } finally {
-                setAgentQueue(null)
-                githubAppService.getInstallationAccessToken = originalGetToken
-                githubAppRepository.findByInstallationId = originalFindByInstallationId
-                globalThis.fetch = originalFetch
-            }
-        })
-    })
-
-    describe('handlePullRequestOpened', () => {
-        const basePrData = {
-            installationId: 'inst-pr-100',
-            repository: {
-                name: 'test-repo',
-                fullName: 'org/test-repo',
-                owner: { login: 'org' },
-                defaultBranch: 'main',
-                private: false,
-            },
-            pullRequest: {
-                number: 456,
-                title: 'feat: add user sessions',
-                body: 'Here is PR description without bot mention',
-                head: { ref: 'feat/sessions', sha: 'abc123' },
-                base: { ref: 'main' },
-                user: { login: 'contributor', id: 55 },
-                authorAssociation: 'COLLABORATOR',
-            },
+        type Stubs = {
+            settings?: Record<string, unknown> | null
+            owner?: string | null
+            modelSource?: 'CREDITS' | 'OWN_KEY'
+            ownKey?: { provider: string; defaultModel: string } | null
+            createSession?: (data: any) => Promise<any>
+            pr?: Record<string, unknown>
+            runs?: any[]
+            githubUsername?: string | null
+            prSession?: { userId: string } | null
         }
 
-        it('returns handled: false if PR body does not mention @trydecember', async () => {
-            const res = await githubAppService.handlePullRequestOpened(basePrData)
-            expect(res.handled).toBe(false)
-            expect(res.reason).toBe('not_mentioned')
-        })
-
-        it('rejects trigger and posts warning comment if sender is unauthorized', async () => {
-            const originalFetch = globalThis.fetch
-            const originalGetToken = githubAppService.getInstallationAccessToken
-            let postedCommentBody = ''
-
-            githubAppService.getInstallationAccessToken = (async () => ({
-                token: 'ghs_token_mock',
-                expiresAt: '2026-10-30T00:00:00Z',
-            })) as any
-
-            globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
-                if (url.toString().includes('/comments') && options?.method === 'POST') {
-                    postedCommentBody = JSON.parse(options.body).body
-                    return new Response(JSON.stringify({ id: 1 }), { status: 201 })
-                }
-                return new Response(JSON.stringify({}), { status: 200 })
-            }) as any
-
-            try {
-                const res = await githubAppService.handlePullRequestOpened({
-                    ...basePrData,
-                    pullRequest: {
-                        ...basePrData.pullRequest,
-                        body: '@trydecember review this pr',
-                        authorAssociation: 'NONE',
-                    },
-                })
-
-                expect(res.handled).toBe(false)
-                expect(res.reason).toBe('unauthorized_sender')
-                expect(postedCommentBody).toContain('collaborator')
-            } finally {
-                githubAppService.getInstallationAccessToken = originalGetToken
-                globalThis.fetch = originalFetch
+        // stubs every outside call; returns what the handler did
+        const withStubs = async <T>(stubs: Stubs, fn: () => Promise<T>) => {
+            const calls = {
+                comments: [] as string[],
+                reactions: [] as string[],
+                sessions: [] as any[],
+                githubRuns: [] as any[],
+                jobs: [] as { name: string; data: any }[],
             }
-        })
-
-        it('acknowledges with eyes reaction and enqueues job with PR branch details for authorized mention', async () => {
-            const originalFetch = globalThis.fetch
-            const originalGetToken = githubAppService.getInstallationAccessToken
-            const originalFindByInstallationId = githubAppRepository.findByInstallationId
-            let reactionAdded = ''
-            let reactionTargetUrl = ''
-            let enqueuedJobName = ''
-            let enqueuedJobData: any = null
-
+            const repo = githubAppRepository as any
+            const saved = {
+                findByInstallationId: repo.findByInstallationId,
+                findPullRequestSettings: repo.findPullRequestSettings,
+                findRunOwner: repo.findRunOwner,
+                findLatestOwnKey: repo.findLatestOwnKey,
+                setSessionGithubRun: repo.setSessionGithubRun,
+                findGithubRuns: repo.findGithubRuns,
+                findUserGithubUsername: repo.findUserGithubUsername,
+                findSessionByPullRequest: repo.findSessionByPullRequest,
+                createSession: sessionService.createSession,
+                getAllDecryptedSecrets: secretsService.getAllDecryptedSecrets,
+                fetch: globalThis.fetch,
+            }
+            const ownerId = stubs.owner === undefined ? 'user-1' : stubs.owner
+            repo.findByInstallationId = async () =>
+                ownerId
+                    ? { installationId: 'inst-999', userId: ownerId, accountLogin: 'org' }
+                    : null
+            repo.findPullRequestSettings = async () => stubs.settings ?? null
+            repo.findRunOwner = async () => ({
+                id: 'user-1',
+                githubUsername: stubs.githubUsername ?? 'owner-login',
+                defaultModelSource: stubs.modelSource ?? 'CREDITS',
+            })
+            repo.findLatestOwnKey = async () => stubs.ownKey ?? null
+            repo.setSessionGithubRun = async (_id: string, run: any) => {
+                calls.githubRuns.push(run)
+                return { id: _id }
+            }
+            repo.findGithubRuns = async () => stubs.runs ?? []
+            repo.findUserGithubUsername = async () => stubs.githubUsername ?? 'owner-login'
+            repo.findSessionByPullRequest = async () => stubs.prSession ?? null
+            ;(sessionService as any).createSession =
+                stubs.createSession ??
+                (async (data: any) => {
+                    calls.sessions.push(data)
+                    return { id: 'session-1' }
+                })
+            ;(secretsService as any).getAllDecryptedSecrets = async () => []
             setAgentQueue({
                 add: (async (name: string, data: any) => {
-                    enqueuedJobName = name
-                    enqueuedJobData = data
-                    return { id: 'job-pr-456' }
+                    calls.jobs.push({ name, data })
+                    return { id: 'job-1' }
                 }) as any,
             } as any)
-
-            githubAppService.getInstallationAccessToken = (async () => ({
-                token: 'ghs_token_mock',
-                expiresAt: '2026-10-30T00:00:00Z',
-            })) as any
-
-            githubAppRepository.findByInstallationId = (async () => ({
-                id: 'inst-rec-2',
-                installationId: 'inst-pr-100',
-                userId: null,
-            })) as any
-
             globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
-                if (url.toString().includes('/reactions') && options?.method === 'POST') {
-                    reactionTargetUrl = url.toString()
-                    reactionAdded = JSON.parse(options.body).content
-                    return new Response(JSON.stringify({ id: 1, content: 'eyes' }), { status: 201 })
+                const href = url.toString()
+                if (href.includes('/access_tokens')) {
+                    return new Response(JSON.stringify({ token: 'ghs_test', expires_at: 'x' }), {
+                        status: 201,
+                    })
+                }
+                if (href.includes('/reactions')) {
+                    calls.reactions.push(href)
+                    return new Response(JSON.stringify({ id: 1 }), { status: 201 })
+                }
+                if (href.includes('/comments') && options?.method === 'POST') {
+                    calls.comments.push(JSON.parse(options.body).body)
+                    return new Response(JSON.stringify({ id: 1 }), { status: 201 })
+                }
+                if (href.includes('/check-runs')) {
+                    return new Response(
+                        JSON.stringify({
+                            check_runs: [
+                                { name: 'lint', conclusion: 'failure', output: { title: 'boom' } },
+                            ],
+                        }),
+                        { status: 200 }
+                    )
+                }
+                if (href.includes('/pulls/')) {
+                    return new Response(
+                        JSON.stringify({
+                            number: 7,
+                            title: 'feat: sessions',
+                            body: 'adds sessions',
+                            draft: false,
+                            user: { login: 'contributor' },
+                            head: {
+                                ref: 'feat/sessions',
+                                sha: 'abc123',
+                                repo: { full_name: 'org/test-repo' },
+                            },
+                            base: { ref: 'main' },
+                            ...stubs.pr,
+                        }),
+                        { status: 200 }
+                    )
                 }
                 return new Response(JSON.stringify({}), { status: 200 })
             }) as any
 
             try {
-                const res = await githubAppService.handlePullRequestOpened({
-                    ...basePrData,
-                    pullRequest: {
-                        ...basePrData.pullRequest,
-                        body: '@trydecember review this pr and check for regressions',
-                        authorAssociation: 'COLLABORATOR',
-                    },
-                })
-
-                expect(res.handled).toBe(true)
-                expect(res.pullRequestNumber).toBe(456)
-                expect(res.jobId).toBe('job-pr-456')
-                expect(reactionAdded).toBe('eyes')
-                expect(reactionTargetUrl).toContain('/issues/456/reactions')
-                expect(enqueuedJobName).toBe('github_issue_fix')
-                expect(enqueuedJobData.isPullRequest).toBe(true)
-                expect(enqueuedJobData.pullRequestHead).toBe('feat/sessions')
-                expect(enqueuedJobData.prompt).toBe('review this pr and check for regressions')
+                const result = await fn()
+                return { result, calls }
             } finally {
+                Object.assign(repo, {
+                    findByInstallationId: saved.findByInstallationId,
+                    findPullRequestSettings: saved.findPullRequestSettings,
+                    findRunOwner: saved.findRunOwner,
+                    findLatestOwnKey: saved.findLatestOwnKey,
+                    setSessionGithubRun: saved.setSessionGithubRun,
+                    findGithubRuns: saved.findGithubRuns,
+                    findUserGithubUsername: saved.findUserGithubUsername,
+                    findSessionByPullRequest: saved.findSessionByPullRequest,
+                })
+                ;(sessionService as any).createSession = saved.createSession
+                ;(secretsService as any).getAllDecryptedSecrets = saved.getAllDecryptedSecrets
                 setAgentQueue(null)
-                githubAppService.getInstallationAccessToken = originalGetToken
-                githubAppRepository.findByInstallationId = originalFindByInstallationId
-                globalThis.fetch = originalFetch
+                globalThis.fetch = saved.fetch
             }
+        }
+
+        const comment = (body: string, extra: Partial<typeof baseCommentData.comment> = {}) => ({
+            ...baseCommentData,
+            comment: { ...baseCommentData.comment, body, ...extra },
+        })
+        const onPullRequest = (body: string) => ({
+            ...comment(body),
+            issue: { ...baseCommentData.issue, number: 7, pullRequest: { url: 'x' } },
+        })
+
+        it('ignores comments without @trydecember', async () => {
+            const { result, calls } = await withStubs({}, () =>
+                githubAppService.handleIssueComment(baseCommentData)
+            )
+            expect(result.reason).toBe('not_mentioned')
+            expect(calls.comments).toEqual([])
+        })
+
+        it("never answers December's own comments", async () => {
+            const { result } = await withStubs({}, () =>
+                githubAppService.handleIssueComment(
+                    comment('@trydecember opened #2', {
+                        user: { login: 'trydecember[bot]', id: 1 },
+                    })
+                )
+            )
+            expect(result.reason).toBe('bot')
+        })
+
+        it('tells people who are not collaborators that it only runs for collaborators', async () => {
+            const { result, calls } = await withStubs({}, () =>
+                githubAppService.handleIssueComment(
+                    comment('@trydecember fix this', { authorAssociation: 'NONE' })
+                )
+            )
+            expect(result.reason).toBe('unauthorized_sender')
+            expect(calls.comments[0]).toContain('collaborators')
+            expect(calls.sessions).toEqual([])
+        })
+
+        it('asks to link an installation that has no December account', async () => {
+            const { result, calls } = await withStubs({ owner: null }, () =>
+                githubAppService.handleIssueComment(comment('@trydecember fix this'))
+            )
+            expect(result.reason).toBe('no_owner')
+            expect(calls.comments[0]).toContain('not linked')
+        })
+
+        it('stays quiet when the owner paused github comments', async () => {
+            const { result, calls } = await withStubs(
+                { settings: { githubCommentsEnabled: false } },
+                () => githubAppService.handleIssueComment(comment('@trydecember fix this'))
+            )
+            expect(result.reason).toBe('paused')
+            expect(calls.comments).toEqual([])
+            expect(calls.reactions).toEqual([])
+        })
+
+        it('explains that review works on pull requests only', async () => {
+            const { result, calls } = await withStubs({}, () =>
+                githubAppService.handleIssueComment(comment('@trydecember review'))
+            )
+            expect(result.reason).toBe('review_on_issue')
+            expect(calls.comments[0]).toContain('reviews pull requests')
+        })
+
+        it('starts an issue run as a session on the default branch and links it', async () => {
+            const { result, calls } = await withStubs({}, () =>
+                githubAppService.handleIssueComment(
+                    comment('@trydecember please fix auth token refresh', {
+                        authorAssociation: 'OWNER',
+                    })
+                )
+            )
+            expect(result).toEqual({ handled: true, reason: undefined, sessionId: 'session-1' })
+            expect(calls.reactions[0]).toContain('/issues/comments/555/reactions')
+            expect(calls.sessions[0]).toMatchObject({
+                userId: 'user-1',
+                title: '#101 Bug in auth token',
+                repoUrl: 'https://github.com/org/test-repo',
+                branch: 'main',
+                issueNumber: 101,
+                billingSource: 'CREDITS',
+            })
+            expect(calls.sessions[0].prompt).toContain('please fix auth token refresh')
+            expect(calls.githubRuns[0]).toMatchObject({
+                mode: 'issue',
+                number: 101,
+                requestedBy: 'someuser',
+                baseRef: 'main',
+            })
+            expect(calls.jobs[0].name).toBe('run_agent')
+            expect(calls.jobs[0].data).toMatchObject({ sessionId: 'session-1', userId: 'user-1' })
+            expect(calls.comments[0]).toContain('/session/session-1')
+        })
+
+        it('starts a review run on a pull request with its head commit', async () => {
+            const { calls } = await withStubs({}, () =>
+                githubAppService.handleIssueComment(onPullRequest('@trydecember review'))
+            )
+            expect(calls.githubRuns[0]).toMatchObject({
+                mode: 'review',
+                number: 7,
+                baseRef: 'main',
+                headRef: 'feat/sessions',
+                headSha: 'abc123',
+            })
+            expect(calls.sessions[0].branch).toBe('main')
+            expect(calls.sessions[0].title).toBe('Review #7 feat: sessions')
+            expect(calls.comments[0]).toContain('Reviewing')
+        })
+
+        it('any other request on a pull request changes that branch', async () => {
+            const { calls } = await withStubs({}, () =>
+                githubAppService.handleIssueComment(onPullRequest('@trydecember rename the flag'))
+            )
+            expect(calls.githubRuns[0].mode).toBe('change')
+            expect(calls.sessions[0].branch).toBe('feat/sessions')
+        })
+
+        it('does not take tasks on a pull request from a fork', async () => {
+            const { result, calls } = await withStubs(
+                {
+                    pr: {
+                        head: {
+                            ref: 'patch-1',
+                            sha: 'f1',
+                            repo: { full_name: 'someone/test-repo' },
+                        },
+                    },
+                },
+                () => githubAppService.handleIssueComment(onPullRequest('@trydecember fix it'))
+            )
+            expect(result.reason).toBe('fork')
+            expect(calls.comments[0]).toContain('fork')
+            expect(calls.sessions).toEqual([])
+        })
+
+        it('runs on the own key the owner used last', async () => {
+            const { calls } = await withStubs(
+                { modelSource: 'OWN_KEY', ownKey: { provider: 'anthropic', defaultModel: 'm-1' } },
+                () => githubAppService.handleIssueComment(comment('@trydecember fix this'))
+            )
+            expect(calls.sessions[0]).toMatchObject({
+                billingSource: 'OWN_KEY',
+                provider: 'anthropic',
+                model: 'm-1',
+            })
+            expect(calls.jobs[0].data).toMatchObject({ billingSource: 'OWN_KEY', model: 'm-1' })
+        })
+
+        it('own key with no saved key: replies and starts nothing', async () => {
+            const { result, calls } = await withStubs(
+                { modelSource: 'OWN_KEY', ownKey: null },
+                () => githubAppService.handleIssueComment(comment('@trydecember fix this'))
+            )
+            expect(result.reason).toBe('no_own_key')
+            expect(calls.comments[0]).toContain('no key is saved')
+            expect(calls.sessions).toEqual([])
+        })
+
+        it('a low balance replies with the billing link', async () => {
+            const { result, calls } = await withStubs(
+                {
+                    createSession: async () => {
+                        throw new AppError('Insufficient balance.', 402)
+                    },
+                },
+                () => githubAppService.handleIssueComment(comment('@trydecember fix this'))
+            )
+            expect(result.reason).toBe('session_402')
+            expect(calls.comments[0]).toContain('/settings/billing')
+            expect(calls.jobs).toEqual([])
+        })
+
+        describe('automatic review', () => {
+            const event = (action: string, extra: Record<string, unknown> = {}) => ({
+                installationId: 'inst-999',
+                action,
+                repository,
+                pullRequest: {
+                    number: 7,
+                    title: 'feat: sessions',
+                    body: 'adds sessions',
+                    draft: false,
+                    head: { ref: 'feat/sessions', sha: 'abc123' },
+                    base: { ref: 'main' },
+                    user: { login: 'owner-login' },
+                    ...extra,
+                },
+            })
+
+            it('"when asked" never reviews on its own', async () => {
+                const { result, calls } = await withStubs({}, () =>
+                    githubAppService.handlePullRequestEvent(event('opened'))
+                )
+                expect(result.reason).toBe('not_wanted')
+                expect(calls.sessions).toEqual([])
+            })
+
+            it('"my PRs" reviews a new pull request by the owner, quietly', async () => {
+                const { result, calls } = await withStubs(
+                    { settings: { autoReview: 'mine' } },
+                    () => githubAppService.handlePullRequestEvent(event('opened'))
+                )
+                expect(result.handled).toBe(true)
+                expect(calls.githubRuns[0]).toMatchObject({
+                    mode: 'review',
+                    trigger: 'auto_review',
+                    requestedBy: 'december',
+                })
+                expect(calls.comments).toEqual([])
+            })
+
+            it('reviews a commit only once', async () => {
+                const { result } = await withStubs(
+                    {
+                        settings: { autoReview: 'all', reviewCadence: 'push' },
+                        runs: [{ githubRun: { mode: 'review', headSha: 'abc123' } }],
+                    },
+                    () => githubAppService.handlePullRequestEvent(event('synchronize'))
+                )
+                expect(result.reason).toBe('already_reviewed')
+            })
+        })
+
+        describe('review comments', () => {
+            const reviewComment = (body: string, user = 'someuser') => ({
+                installationId: 'inst-999',
+                repository,
+                pullRequest: {
+                    number: 7,
+                    title: 'feat: sessions',
+                    body: '',
+                    authorLogin: 'trydecember[bot]',
+                    head: { ref: 'feat/sessions', sha: 'abc123', repoFullName: 'org/test-repo' },
+                    base: { ref: 'main' },
+                },
+                comment: {
+                    id: 9,
+                    body,
+                    path: 'src/a.ts',
+                    line: 4,
+                    diffHunk: '@@ -1 +1 @@',
+                    user: { login: user },
+                    authorAssociation: 'MEMBER',
+                },
+            })
+
+            it('"off" answers no line comments', async () => {
+                const { result } = await withStubs({ settings: { reviewReplies: 'off' } }, () =>
+                    githubAppService.handleReviewComment(reviewComment('@trydecember fix'))
+                )
+                expect(result.reason).toBe('off')
+            })
+
+            it('a mention on a line starts a change run with the file and lines', async () => {
+                const { calls } = await withStubs({}, () =>
+                    githubAppService.handleReviewComment(reviewComment('@trydecember use a const'))
+                )
+                expect(calls.reactions[0]).toContain('/pulls/comments/9/reactions')
+                expect(calls.githubRuns[0]).toMatchObject({
+                    mode: 'change',
+                    trigger: 'review_comment',
+                })
+                expect(calls.sessions[0].prompt).toContain('src/a.ts line 4')
+            })
+
+            it('"all" answers comments without a mention on December pull requests', async () => {
+                const { result } = await withStubs(
+                    { settings: { reviewReplies: 'all' }, prSession: { userId: 'user-1' } },
+                    () => githubAppService.handleReviewComment(reviewComment('use a const here'))
+                )
+                expect(result.handled).toBe(true)
+            })
+        })
+
+        describe('failed checks', () => {
+            const suite = {
+                installationId: 'inst-999',
+                repository,
+                conclusion: 'failure',
+                headSha: 'abc123',
+                pullRequestNumbers: [7],
+            }
+
+            it('fixes failed checks on a December pull request, with the failed checks', async () => {
+                const { calls } = await withStubs({ prSession: { userId: 'user-1' } }, () =>
+                    githubAppService.handleCheckSuite(suite)
+                )
+                expect(calls.githubRuns[0]).toMatchObject({
+                    mode: 'change',
+                    trigger: 'failed_checks',
+                    headSha: 'abc123',
+                })
+                expect(calls.sessions[0].prompt).toContain('lint (failure): boom')
+            })
+
+            it('never fixes the same commit twice', async () => {
+                const { result } = await withStubs(
+                    {
+                        prSession: { userId: 'user-1' },
+                        runs: [{ githubRun: { trigger: 'failed_checks', headSha: 'abc123' } }],
+                    },
+                    () => githubAppService.handleCheckSuite(suite)
+                )
+                expect(result.reason).toBe('already_fixing')
+            })
+
+            it('leaves pull requests that are not December pull requests alone', async () => {
+                const { result } = await withStubs({}, () =>
+                    githubAppService.handleCheckSuite(suite)
+                )
+                expect(result.reason).toBe('not_december_pull_request')
+            })
         })
     })
 })

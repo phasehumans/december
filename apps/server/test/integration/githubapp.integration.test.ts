@@ -269,56 +269,215 @@ describe('GitHubApp Module Integration Tests', () => {
         }
     })
 
-    it('6b. POST /api/v1/githubapp/webhook - processes pull_request opened event (200)', async () => {
+    const signedWebhook = (event: string, payloadObj: unknown) => {
+        const payloadStr = JSON.stringify(payloadObj)
+        const secret = env.GITHUB_APP_WEBHOOK_SECRET || 'secret'
+        const hmac = crypto.createHmac('sha256', secret)
+        hmac.update(payloadStr)
+        return request(app)
+            .post('/api/v1/githubapp/webhook')
+            .set('Content-Type', 'application/json')
+            .set('x-hub-signature-256', `sha256=${hmac.digest('hex')}`)
+            .set('x-github-event', event)
+            .send(payloadStr)
+    }
+
+    const webhookRepository = {
+        name: 'my-repo',
+        full_name: 'test-org/my-repo',
+        owner: { login: 'test-org' },
+        default_branch: 'main',
+    }
+
+    it('6b. POST /api/v1/githubapp/webhook - routes pull_request events to the automatic review (200)', async () => {
         const { githubAppService } = await import('../../src/modules/githubapp/githubapp.service')
-        let handlePrOpenedCalledWith: any = null
-        const originalHandlePr = githubAppService.handlePullRequestOpened
-        githubAppService.handlePullRequestOpened = (async (data: any) => {
-            handlePrOpenedCalledWith = data
-            return { handled: true, pullRequestNumber: 123 }
+        const calls: any[] = []
+        const original = githubAppService.handlePullRequestEvent
+        githubAppService.handlePullRequestEvent = (async (data: any) => {
+            calls.push(data)
+            return { handled: false, reason: 'not_wanted' }
         }) as any
 
         try {
-            const payloadObj = {
-                action: 'opened',
-                installation: { id: 99999 },
-                repository: {
-                    name: 'my-repo',
-                    full_name: 'test-org/my-repo',
-                    owner: { login: 'test-org' },
-                    default_branch: 'main',
-                },
-                pull_request: {
+            for (const action of ['opened', 'synchronize', 'closed']) {
+                const res = await signedWebhook('pull_request', {
+                    action,
+                    installation: { id: 99999 },
+                    repository: webhookRepository,
+                    pull_request: {
+                        number: 123,
+                        title: 'test pr',
+                        body: 'adds a thing',
+                        draft: false,
+                        head: {
+                            ref: 'feat/test',
+                            sha: '111222',
+                            repo: { full_name: 'test-org/my-repo' },
+                        },
+                        base: { ref: 'main' },
+                        user: { login: 'tester', id: 44 },
+                    },
+                })
+                expect(res.status).toBe(200)
+            }
+            // closed is not a review event
+            expect(calls.map((c) => c.action)).toEqual(['opened', 'synchronize'])
+            expect(calls[0]).toMatchObject({
+                installationId: '99999',
+                pullRequest: {
                     number: 123,
-                    title: 'test pr',
-                    body: '@trydecember review this pr',
-                    head: { ref: 'feat/test', sha: '111222' },
+                    head: { ref: 'feat/test', sha: '111222', repoFullName: 'test-org/my-repo' },
+                },
+            })
+        } finally {
+            githubAppService.handlePullRequestEvent = original
+        }
+    })
+
+    it('6c. POST /api/v1/githubapp/webhook - routes review comments and failed check suites (200)', async () => {
+        const { githubAppService } = await import('../../src/modules/githubapp/githubapp.service')
+        const reviewComments: any[] = []
+        const suites: any[] = []
+        const originalComment = githubAppService.handleReviewComment
+        const originalSuite = githubAppService.handleCheckSuite
+        githubAppService.handleReviewComment = (async (data: any) => {
+            reviewComments.push(data)
+            return { handled: false }
+        }) as any
+        githubAppService.handleCheckSuite = (async (data: any) => {
+            suites.push(data)
+            return { handled: false }
+        }) as any
+
+        try {
+            await signedWebhook('pull_request_review_comment', {
+                action: 'created',
+                installation: { id: 99999 },
+                repository: webhookRepository,
+                pull_request: {
+                    number: 5,
+                    title: 'pr',
+                    user: { login: 'trydecember[bot]' },
+                    head: { ref: 'december/issue-1', sha: 'aa' },
                     base: { ref: 'main' },
-                    user: { login: 'tester', id: 44 },
+                },
+                comment: {
+                    id: 77,
+                    body: '@trydecember use a const',
+                    path: 'src/a.ts',
+                    line: 3,
+                    diff_hunk: '@@',
+                    user: { login: 'tester' },
                     author_association: 'MEMBER',
                 },
-            }
-            const payloadStr = JSON.stringify(payloadObj)
+            })
+            await signedWebhook('check_suite', {
+                action: 'completed',
+                installation: { id: 99999 },
+                repository: webhookRepository,
+                check_suite: {
+                    conclusion: 'failure',
+                    head_sha: 'bb',
+                    pull_requests: [{ number: 5 }],
+                },
+            })
 
-            const secret = env.GITHUB_APP_WEBHOOK_SECRET || 'secret'
-            const hmac = crypto.createHmac('sha256', secret)
-            hmac.update(payloadStr)
-            const signature = `sha256=${hmac.digest('hex')}`
-
-            const res = await request(app)
-                .post('/api/v1/githubapp/webhook')
-                .set('Content-Type', 'application/json')
-                .set('x-hub-signature-256', signature)
-                .set('x-github-event', 'pull_request')
-                .send(payloadStr)
-
-            expect(res.status).toBe(200)
-            expect(res.body.success).toBe(true)
-            expect(handlePrOpenedCalledWith.installationId).toBe('99999')
-            expect(handlePrOpenedCalledWith.pullRequest.number).toBe(123)
-            expect(handlePrOpenedCalledWith.pullRequest.body).toBe('@trydecember review this pr')
+            expect(reviewComments[0]).toMatchObject({
+                comment: { id: 77, path: 'src/a.ts', line: 3, authorAssociation: 'MEMBER' },
+                pullRequest: { number: 5, authorLogin: 'trydecember[bot]' },
+            })
+            expect(suites[0]).toMatchObject({
+                conclusion: 'failure',
+                headSha: 'bb',
+                pullRequestNumbers: [5],
+            })
         } finally {
-            githubAppService.handlePullRequestOpened = originalHandlePr
+            githubAppService.handleReviewComment = originalComment
+            githubAppService.handleCheckSuite = originalSuite
+        }
+    })
+
+    it('6d. POST /api/v1/githubapp/webhook - an @trydecember issue comment becomes a session with a github run (200)', async () => {
+        const { setAgentQueue } = await import('@december/shared/queue')
+        const jobs: { name: string; data: any }[] = []
+        const posted: string[] = []
+        const originalFetch = globalThis.fetch
+
+        await prisma.user.update({ where: { id: testUserId }, data: { creditBalance: 500 } })
+        await prisma.githubAppInstallation.upsert({
+            where: { installationId: '66666' },
+            create: { installationId: '66666', userId: testUserId, accountLogin: 'test-org' },
+            update: { userId: testUserId },
+        })
+        setAgentQueue({
+            add: (async (name: string, data: any) => {
+                jobs.push({ name, data })
+                return { id: 'job-6d' }
+            }) as any,
+        } as any)
+        globalThis.fetch = (async (url: string | URL | Request, options?: any) => {
+            const href = url.toString()
+            if (href.includes('/access_tokens')) {
+                return new Response(JSON.stringify({ token: 'ghs_test', expires_at: 'x' }), {
+                    status: 201,
+                })
+            }
+            if (
+                href.includes('/comments') &&
+                options?.method === 'POST' &&
+                !href.includes('/reactions')
+            ) {
+                posted.push(JSON.parse(options.body).body)
+            }
+            return new Response(JSON.stringify({ id: 1 }), { status: 201 })
+        }) as any
+
+        try {
+            const res = await signedWebhook('issue_comment', {
+                action: 'created',
+                installation: { id: 66666 },
+                repository: webhookRepository,
+                issue: { number: 42, title: 'Login breaks', body: 'Steps to reproduce' },
+                comment: {
+                    id: 1234,
+                    body: '@trydecember fix the redirect',
+                    user: { login: 'tester', type: 'User' },
+                    author_association: 'OWNER',
+                },
+            })
+            expect(res.status).toBe(200)
+
+            const session = await prisma.session.findFirst({
+                where: { userId: testUserId, issueNumber: 42 },
+                orderBy: { createdAt: 'desc' },
+            })
+            expect(session).not.toBeNull()
+            expect(session!.title).toBe('#42 Login breaks')
+            expect(session!.branch).toBe('main')
+            expect(session!.githubRun).toMatchObject({
+                mode: 'issue',
+                installationId: '66666',
+                repoFullName: 'test-org/my-repo',
+                number: 42,
+                requestedBy: 'tester',
+            })
+            expect(jobs[0]).toMatchObject({
+                name: 'run_agent',
+                data: { sessionId: session!.id, userId: testUserId, billingSource: 'CREDITS' },
+            })
+            expect(jobs[0].data.prompt).toContain('fix the redirect')
+            expect(posted.some((body) => body.includes(`/session/${session!.id}`))).toBe(true)
+        } finally {
+            setAgentQueue(null)
+            globalThis.fetch = originalFetch
+            await prisma.session.deleteMany({ where: { userId: testUserId } }).catch(() => {
+                // Intentionally swallowed: test cleanup fallback
+            })
+            await prisma.githubAppInstallation
+                .deleteMany({ where: { installationId: '66666' } })
+                .catch(() => {
+                    // Intentionally swallowed: test cleanup fallback
+                })
         }
     })
 

@@ -101,7 +101,6 @@ const NAV_ITEMS: SettingsNavItem[] = [
         tabs: ['PullRequests'],
         // the same icon as Pull requests in the main sidebar
         icon: <Icons.GitPullRequest className={navIconClass} strokeWidth={1.5} />,
-        soon: true,
     },
     {
         label: 'Sandbox',

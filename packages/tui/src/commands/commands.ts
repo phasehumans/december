@@ -155,7 +155,7 @@ export const COMMANDS: Command[] = [
     },
     {
         name: 'github',
-        description: 'Set up the December GitHub Action',
+        description: 'Show the December GitHub App for this repo',
         value: '/github',
         action: () => {
             // forwarded to differential screen

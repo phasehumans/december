@@ -36,6 +36,37 @@ export const updateModelSourceSchema = z.object({
     }),
 })
 
+// every field is optional: the page saves one row at a time
+export const updatePullRequestSettingsSchema = z
+    .object({
+        branchPrefix: z
+            .string()
+            .trim()
+            .max(40, 'branchPrefix must be at most 40 characters')
+            .regex(/^[A-Za-z0-9._/-]*$/, 'branchPrefix has characters git does not allow'),
+        prDraft: z.boolean(),
+        prCreate: z.enum(['auto', 'ask']),
+        prAuthor: z.enum(['december', 'user']),
+        commitAuthor: z.enum(['both', 'december']),
+        archiveOnMerge: z.boolean(),
+        githubCommentsEnabled: z.boolean(),
+        reviewReplies: z.enum(['all', 'mention', 'off']),
+        replyToBots: z.boolean(),
+        fixFailedChecks: z.boolean(),
+        autoReview: z.enum(['asked', 'mine', 'all']),
+        reviewCadence: z.enum(['once', 'push']),
+        reviewRepos: z
+            .array(
+                z
+                    .string()
+                    .trim()
+                    .regex(/^[\w.-]+\/[\w.-]+$/, 'reviewRepos must be owner/name')
+            )
+            .max(100),
+    })
+    .partial()
+    .strict()
+
 export const unsubscribeQuerySchema = z.object({
     u: z.string().trim().min(1).max(100),
     t: z.string().trim().min(1).max(200),

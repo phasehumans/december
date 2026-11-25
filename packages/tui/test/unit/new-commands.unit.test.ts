@@ -185,12 +185,51 @@ describe('new slash commands', () => {
         })
     })
 
+    describe('/github', () => {
+        it('shows the repository and the app status, with i, r, and esc in the footer', async () => {
+            const { app } = makeApp({
+                onLoadGithubApp: async () => ({
+                    repo: 'acme/web',
+                    inGitRepo: true,
+                    state: 'installed',
+                    accountLogin: 'acme',
+                    installUrl: 'https://github.com/apps/trydecember/installations/new',
+                }),
+            })
+            app.executeCommand('github')
+            await flush()
+            const report = app.state.report!
+            expect(report.title).toBe('GitHub App')
+            expect(report.rows).toEqual([
+                { text: 'Repository', tone: 'ok', detail: 'acme/web' },
+                { text: 'December GitHub App', tone: 'ok', detail: 'installed on acme' },
+            ])
+            expect(report.footer.map((f) => f.key)).toEqual(['i', 'r', 'esc'])
+        })
+
+        it('tells a signed-out user to sign in and still handles i', async () => {
+            const { app } = makeApp({
+                onLoadGithubApp: async () => ({
+                    repo: 'acme/web',
+                    inGitRepo: true,
+                    state: 'signed_out',
+                    installUrl: 'https://github.com/apps/trydecember/installations/new',
+                }),
+            })
+            app.executeCommand('github')
+            await flush()
+            expect(app.state.report!.rows[1]?.detail).toBe('sign in with /login to check')
+            app.handleKey('i')
+            expect(app.state.activeOverlay).toBe('report')
+        })
+    })
+
     describe('report text input', () => {
         it('masks secrets and esc cancels the input before closing', async () => {
             const { app } = makeApp()
             app.openReport({
-                kind: 'github',
-                title: 'GitHub Action',
+                kind: 'permissions',
+                title: 'Permissions',
                 rows: [],
                 isLoading: false,
                 footer: [],

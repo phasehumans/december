@@ -7,6 +7,7 @@ import {
     updateNotificationSchema,
     updateOnboardingSchema,
     updateModelSourceSchema,
+    updatePullRequestSettingsSchema,
     submitFeedbackSchema,
     unsubscribeQuerySchema,
 } from './setting.schema'
@@ -79,6 +80,29 @@ const updateModelSource = asyncHandler(async (req: Request, res: Response) => {
     const { defaultModelSource } = updateModelSourceSchema.parse(req.body)
     const result = await settingService.updateModelSource({ userId, defaultModelSource })
     return sendSuccess(res, 'default model source updated', result)
+})
+
+const getPullRequestSettings = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await settingService.getPullRequestSettings({ userId })
+    return sendSuccess(res, 'pull request settings fetched successfully', result)
+})
+
+const updatePullRequestSettings = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const settings = updatePullRequestSettingsSchema.parse(req.body)
+    const result = await settingService.updatePullRequestSettings({ userId, settings })
+    return sendSuccess(res, 'pull request settings updated', result)
 })
 
 const getOnboarding = asyncHandler(async (req: Request, res: Response) => {
@@ -167,6 +191,8 @@ export const settingController = {
     updateName,
     updateNotifications,
     updateModelSource,
+    getPullRequestSettings,
+    updatePullRequestSettings,
     getOnboarding,
     updateOnboarding,
     completeOnboarding,

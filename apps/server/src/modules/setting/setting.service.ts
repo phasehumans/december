@@ -1,3 +1,5 @@
+import { toPullRequestSettings } from '@december/shared'
+
 import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
 import { isAdminEmail, isValidUnsubscribeToken } from '../admin/admin.utils'
@@ -38,6 +40,8 @@ import type {
     OnboardingState,
     UpdateModelSource,
     SubmitFeedback,
+    GetPullRequestSettings,
+    UpdatePullRequestSettings,
 } from './setting.types'
 
 const invalidateUserSettingCache = async (userId: string) => {
@@ -240,6 +244,25 @@ const submitFeedback = async (data: SubmitFeedback) => {
     return { id: created.id }
 }
 
+// a user with no saved row gets every default
+const getPullRequestSettings = async (data: GetPullRequestSettings) => {
+    const { userId } = data
+    const row = await settingRepository.findPullRequestSettings(userId)
+    return toPullRequestSettings(row)
+}
+
+const updatePullRequestSettings = async (data: UpdatePullRequestSettings) => {
+    const { userId, settings } = data
+    const reviewRepos = settings.reviewRepos
+        ? Array.from(new Set(settings.reviewRepos.map((r) => r.toLowerCase())))
+        : undefined
+    const row = await settingRepository.upsertPullRequestSettings(userId, {
+        ...settings,
+        ...(reviewRepos ? { reviewRepos } : {}),
+    })
+    return toPullRequestSettings(row)
+}
+
 export const settingService = {
     checkUnsubscribe,
     unsubscribe,
@@ -252,4 +275,6 @@ export const settingService = {
     updateOnboarding,
     completeOnboarding,
     submitFeedback,
+    getPullRequestSettings,
+    updatePullRequestSettings,
 }

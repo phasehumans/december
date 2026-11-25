@@ -126,17 +126,11 @@ Shows the hooks that run, grouped by event. A hook is a shell command that Decem
 
 ### `/github`
 
-Sets up the December GitHub Action for the current repository. After the setup, comment `@trydecember <task>` on an issue, and December opens a pull request.
+Shows the GitHub repository in the current folder and the status of the December GitHub App on it. With the app, you can comment `@trydecember <task>` on an issue or a pull request. See [GitHub App](/docs/github-app).
 
-Before you start, install the GitHub CLI (`gh`) and run `gh auth login`.
+If you are not signed in with December, run `/login` to see the status.
 
-1. Type `/github`. December checks `gh`, the repository, the workflow file, and the secrets.
-2. Press `w` to write `.github/workflows/december.yml`.
-3. Press `k` to type an API key, or press `u` to use the key that you saved in December. December sends the key to GitHub as a repository secret.
-4. Optional: Press `s` for a Slack webhook or `i` for a Discord webhook.
-5. Commit and push the workflow file.
-
-December sends a key or webhook to GitHub only when you press `k`, `u`, `s`, or `i`. The action needs an API key. A Claude, ChatGPT, or Copilot plan does not work in GitHub Actions.
+Press `i` to open the install page of the app in your browser. Press `r` to check again.
 
 ### `/keybindings`
 

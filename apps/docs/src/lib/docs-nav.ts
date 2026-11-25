@@ -110,6 +110,11 @@ export const docCategories: DocsNavCategory[] = [
                 desc: 'Connect external tools, databases, and custom services via MCP.',
             },
             {
+                slug: 'github-app',
+                label: 'GitHub App',
+                desc: 'Start December from a comment on a GitHub issue or pull request.',
+            },
+            {
                 slug: 'integrations',
                 label: 'Model Providers & BYOK',
                 desc: 'Bring your own API keys with zero markup on token pricing.',

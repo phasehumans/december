@@ -172,6 +172,59 @@ const hasUnreadNotification = async (data: { userId: string; title: string; sinc
     return Boolean(found)
 }
 
+const findPullRequestSettings = async (userId: string) => {
+    return prisma.pullRequestSettings.findUnique({ where: { userId } })
+}
+
+// what a github run needs to know about the installer
+const findRunOwner = async (userId: string) => {
+    return prisma.user.findFirst({
+        where: { id: userId, isDeleted: false, deletedAt: null },
+        select: { id: true, githubUsername: true, defaultModelSource: true },
+    })
+}
+
+// the own key a github run uses: the one the user used last
+const findLatestOwnKey = async (userId: string) => {
+    return prisma.providerCredential.findFirst({
+        where: { userId },
+        select: { provider: true, defaultModel: true },
+        orderBy: [{ lastUsedAt: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }],
+    })
+}
+
+const setSessionGithubRun = async (sessionId: string, githubRun: Record<string, unknown>) => {
+    return prisma.session.update({
+        where: { id: sessionId },
+        data: { githubRun: githubRun as any },
+        select: { id: true },
+    })
+}
+
+// github runs for one issue or pull request, newest first (to skip duplicates)
+const findGithubRuns = async (data: {
+    userId: string
+    repoFullName: string
+    number: number
+    since: Date
+}) => {
+    const { userId, repoFullName, number, since } = data
+    return prisma.session.findMany({
+        where: {
+            userId,
+            deletedAt: null,
+            createdAt: { gte: since },
+            AND: [
+                { githubRun: { path: ['repoFullName'], equals: repoFullName } },
+                { githubRun: { path: ['number'], equals: number } },
+            ],
+        },
+        select: { id: true, status: true, githubRun: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+    })
+}
+
 export const githubAppRepository = {
     upsertInstallation,
     deleteInstallation,
@@ -184,4 +237,9 @@ export const githubAppRepository = {
     findSessionByPullRequest,
     findUserGithubUsername,
     hasUnreadNotification,
+    findPullRequestSettings,
+    findRunOwner,
+    findLatestOwnKey,
+    setSessionGithubRun,
+    findGithubRuns,
 }

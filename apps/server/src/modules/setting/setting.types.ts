@@ -1,3 +1,5 @@
+import type { PullRequestSettingsValues } from '@december/shared'
+
 export type GetMe = {
     userId: string
 }
@@ -62,4 +64,13 @@ export type SubmitFeedback = {
     userId: string
     rating: 'sad' | 'neutral' | 'happy' | null
     feedback: string
+}
+
+export type GetPullRequestSettings = {
+    userId: string
+}
+
+export type UpdatePullRequestSettings = {
+    userId: string
+    settings: Partial<PullRequestSettingsValues>
 }

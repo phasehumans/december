@@ -219,6 +219,7 @@ describe('apps/docs page content & layout tests', () => {
             { slug: 'prompting', title: 'Prompting Guide' },
             { slug: 'mcp', title: 'Model Context Protocol' },
             { slug: 'integrations', title: 'Model Providers' },
+            { slug: 'github-app', title: 'GitHub App' },
             { slug: 'security', title: 'Security &amp; Isolation' },
         ]
 

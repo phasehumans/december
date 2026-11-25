@@ -1,6 +1,7 @@
 import { prisma } from '@december/database'
 
 import type { Prisma } from '@december/database'
+import type { PullRequestSettingsValues } from '@december/shared'
 
 async function findUserByIdForInfo(id: string) {
     return prisma.user.findUnique({
@@ -55,6 +56,21 @@ async function updateModelSource(id: string, defaultModelSource: 'CREDITS' | 'OW
         where: { id },
         data: { defaultModelSource },
         select: { defaultModelSource: true },
+    })
+}
+
+async function findPullRequestSettings(userId: string) {
+    return prisma.pullRequestSettings.findUnique({ where: { userId } })
+}
+
+async function upsertPullRequestSettings(
+    userId: string,
+    settings: Partial<PullRequestSettingsValues>
+) {
+    return prisma.pullRequestSettings.upsert({
+        where: { userId },
+        create: { userId, ...settings },
+        update: settings,
     })
 }
 
@@ -140,6 +156,8 @@ export const settingRepository = {
 
     updateNotifications,
     updateModelSource,
+    findPullRequestSettings,
+    upsertPullRequestSettings,
 
     findOnboardingSource,
     updateOnboardingStep,

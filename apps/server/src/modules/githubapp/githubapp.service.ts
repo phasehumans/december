@@ -1,23 +1,32 @@
 import crypto from 'crypto'
 
-import { prisma } from '@december/database'
+import { toPullRequestSettings } from '@december/shared'
 import { enqueueJob } from '@december/shared/queue'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { notificationService } from '../notification/notification.service'
+import { secretsService } from '../secrets/secrets.service'
+import { sessionService } from '../session/session.service'
 
 import { githubAppRepository } from './githubapp.repository'
 import {
+    buildGithubRunPrompt,
     canClaimInstallation,
     createCommentReaction,
-    createIssueReaction,
     createIssueComment,
+    createReviewCommentReaction,
     extractBotMention,
     generateAppJwt,
     getInstallationDetails,
+    getPullRequest,
     isAuthorizedGithubSender,
     isDecemberBotLogin,
+    listFailedCheckRuns,
+    parseBotCommand,
+    sessionLink,
+    shouldAutoReview,
+    toGithubRunTitle,
     toInboxPreview,
 } from './githubapp.utils'
 
@@ -31,17 +40,22 @@ import type {
     GetUserInstallationStatus,
     GetUserInstallationToken,
     GithubInstallationRepo,
-    GithubIssueJobData,
+    HandleCheckSuite,
+    HandleGithubEventResult,
     HandleIssueComment,
-    HandleIssueCommentResult,
-    HandlePullRequestOpened,
-    HandlePullRequestOpenedResult,
+    HandlePullRequestEvent,
+    HandleReviewComment,
     InstallationStatusResponse,
     NotifyGithubActivity,
     ProcessInstallation,
     ProcessUninstallation,
+    ResolveRunModel,
+    RunModelChoice,
+    StartGithubRun,
+    StartGithubRunResult,
     VerifySignature,
 } from './githubapp.types'
+import type { FailedCheckRun, GithubRun, PullRequestInfo } from '@december/shared'
 
 const processInstallation = async (data: ProcessInstallation) => {
     const { installationId, userId, accountLogin, accountType, targetType, permissions } = data
@@ -303,41 +317,215 @@ const getUserInstallationStatus = async (
     }
 }
 
-const handleIssueComment = async (data: HandleIssueComment): Promise<HandleIssueCommentResult> => {
+// the model a github run uses: the installer's default source, and on own keys the key they
+// used last with its default model. own key runs never fall back to credits.
+const resolveRunModel = async (data: ResolveRunModel): Promise<RunModelChoice> => {
+    const { userId, defaultModelSource } = data
+    if (defaultModelSource !== 'OWN_KEY') {
+        return { ok: true, billingSource: 'CREDITS' }
+    }
+    const key = await githubAppRepository.findLatestOwnKey(userId)
+    if (!key) {
+        return {
+            ok: false,
+            message: `Your December account runs on your own key, but no key is saved. Add one or switch to credits: ${(env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')}/settings`,
+        }
+    }
+    return {
+        ok: true,
+        billingSource: 'OWN_KEY',
+        provider: key.provider,
+        model: key.defaultModel,
+    }
+}
+
+const replyOnGithub = async (data: { token: string; run: GithubRun; body: string }) => {
+    const { token, run, body } = data
+    try {
+        await createIssueComment({
+            token,
+            owner: run.repoOwner,
+            repo: run.repoName,
+            issueNumber: run.number,
+            body,
+        })
+    } catch (err) {
+        console.error('[GitHubApp Service] could not post a reply on GitHub:', err)
+    }
+}
+
+/**
+ * Starts one github run as a normal cloud session for the installer: the session pays from
+ * their wallet (or own key), shows in their recent list, and the worker does the GitHub part
+ * (push, pull request, review, reply) when the agent ends.
+ */
+const startGithubRun = async (data: StartGithubRun): Promise<StartGithubRunResult> => {
+    const { token, userId, run, body, instruction, context, announce } = data
+
+    const owner = await githubAppRepository.findRunOwner(userId)
+    if (!owner) return { started: false, reason: 'no_owner' }
+
+    const choice = await resolveRunModel({
+        userId,
+        defaultModelSource: owner.defaultModelSource,
+    })
+    if (!choice.ok) {
+        if (announce) await replyOnGithub({ token, run, body: choice.message })
+        return { started: false, reason: 'no_own_key' }
+    }
+
+    const prompt = buildGithubRunPrompt({ run, body, instruction, context })
+    // review runs start on the base branch; the worker checks out the pull request head
+    const branch = run.mode === 'change' ? run.headRef : run.baseRef
+
+    let session: { id: string }
+    try {
+        session = await sessionService.createSession({
+            userId,
+            title: toGithubRunTitle(run),
+            prompt,
+            repoUrl: `https://github.com/${run.repoFullName}`,
+            branch,
+            issueNumber: run.number,
+            billingSource: choice.billingSource,
+            provider: choice.provider,
+            model: choice.model,
+        })
+    } catch (err) {
+        // our own errors (no balance, too many running sessions, a bad key) are meant for people
+        if (err instanceof AppError) {
+            const billing = `${(env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')}/settings/billing`
+            const message =
+                err.statusCode === 402 ? `${err.message} Add credits: ${billing}` : err.message
+            if (announce) await replyOnGithub({ token, run, body: message })
+            return { started: false, reason: `session_${err.statusCode}` }
+        }
+        throw err
+    }
+
+    await githubAppRepository.setSessionGithubRun(session.id, { ...run })
+
+    let secrets: Array<{ key: string; value: string }> = []
+    try {
+        secrets = await secretsService.getAllDecryptedSecrets({ userId })
+    } catch (err) {
+        console.warn('[GitHubApp Service] could not load secrets for a github run:', err)
+    }
+
+    await enqueueJob('run_agent', {
+        sessionId: session.id,
+        projectId: session.id,
+        userId,
+        prompt,
+        secrets,
+        model: choice.model,
+        provider: choice.provider,
+        billingSource: choice.billingSource,
+    })
+
+    if (announce) {
+        const what = run.mode === 'review' ? 'Reviewing' : 'On it'
+        await replyOnGithub({
+            token,
+            run,
+            body: `${what}. Follow the session: ${sessionLink(session.id)}`,
+        })
+    }
+
+    return { started: true, sessionId: session.id }
+}
+
+const installationToken = async (installationId: string): Promise<string | null> => {
+    try {
+        const { token } = await getInstallationAccessToken({ installationId })
+        return token
+    } catch (err) {
+        console.error('[GitHubApp Service] Failed to obtain installation access token:', err)
+        return null
+    }
+}
+
+// the installer and their settings, or null when the installation has no linked account
+const loadInstallationOwner = async (installationId: string) => {
+    const installation = await githubAppRepository.findByInstallationId(installationId)
+    if (!installation?.userId || installation.userId === 'system') return null
+    const row = await githubAppRepository.findPullRequestSettings(installation.userId)
+    return {
+        userId: installation.userId,
+        settings: toPullRequestSettings(row),
+        accountLogin: installation.accountLogin,
+    }
+}
+
+const claimLink = () =>
+    `${(env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')}/settings/repositories`
+
+const isBotAuthor = (login?: string | null, type?: string | null) =>
+    type === 'Bot' || isDecemberBotLogin(login) || Boolean(login?.endsWith('[bot]'))
+
+/**
+ * `@trydecember` in an issue or pull request comment. "review" on a pull request reviews it;
+ * anything else is a task: a pull request for an issue, or commits on a pull request.
+ */
+const handleIssueComment = async (data: HandleIssueComment): Promise<HandleGithubEventResult> => {
     const { installationId, repository, issue, comment } = data
 
-    const { isMentioned, instruction } = extractBotMention(comment.body)
-    if (!isMentioned) {
+    const command = parseBotCommand(comment.body)
+    if (!command.isMentioned) {
         return { handled: false, reason: 'not_mentioned' }
     }
-
-    const isAuthorized = isAuthorizedGithubSender(comment.authorAssociation)
-
-    let token: string
-    try {
-        const tokenRes = await getInstallationAccessToken({ installationId })
-        token = tokenRes.token
-    } catch (err: any) {
-        console.error('[GitHubApp Service] Failed to obtain installation access token:', err)
-        return { handled: false, reason: 'token_error' }
+    // December's own comments quote the handle; never answer them
+    if (isBotAuthor(comment.user.login, comment.user.type)) {
+        return { handled: false, reason: 'bot' }
     }
 
-    if (!isAuthorized) {
-        try {
-            await createIssueComment({
-                token,
-                owner: repository.owner.login,
-                repo: repository.name,
-                issueNumber: issue.number,
-                body: `@${comment.user.login} December is configured to only execute tasks requested by repository collaborators.`,
-            })
-        } catch {
-            // Intentionally swallowed: fallback if unauthorized comment fails to post
-        }
+    const token = await installationToken(installationId)
+    if (!token) return { handled: false, reason: 'token_error' }
+
+    const base = {
+        installationId,
+        repoFullName: repository.fullName,
+        repoOwner: repository.owner.login,
+        repoName: repository.name,
+        number: issue.number,
+        title: issue.title,
+        requestedBy: comment.user.login,
+        trigger: 'comment' as const,
+    }
+
+    if (!isAuthorizedGithubSender(comment.authorAssociation)) {
+        await replyOnGithub({
+            token,
+            run: { ...base, mode: 'issue', baseRef: '' },
+            body: `@${comment.user.login} December only runs tasks that repository collaborators ask for.`,
+        })
         return { handled: false, reason: 'unauthorized_sender' }
     }
 
-    // Acknowledge immediately with an emoji reaction on the comment
+    const owner = await loadInstallationOwner(installationId)
+    if (!owner) {
+        await replyOnGithub({
+            token,
+            run: { ...base, mode: 'issue', baseRef: '' },
+            body: `@${comment.user.login} This GitHub App installation is not linked to a December account yet. Sign in and link it: ${claimLink()}`,
+        })
+        return { handled: false, reason: 'no_owner' }
+    }
+    // paused on the pull requests settings page: stay quiet
+    if (!owner.settings.githubCommentsEnabled) {
+        return { handled: false, reason: 'paused' }
+    }
+
+    const isPullRequest = Boolean(issue.pullRequest)
+    if (command.intent === 'review' && !isPullRequest) {
+        await replyOnGithub({
+            token,
+            run: { ...base, mode: 'issue', baseRef: '' },
+            body: `@${comment.user.login} December reviews pull requests. Comment \`@trydecember review\` on a pull request, or \`@trydecember <task>\` here.`,
+        })
+        return { handled: false, reason: 'review_on_issue' }
+    }
+
     try {
         await createCommentReaction({
             token,
@@ -347,169 +535,326 @@ const handleIssueComment = async (data: HandleIssueComment): Promise<HandleIssue
             reaction: 'eyes',
         })
     } catch {
-        // Intentionally swallowed: emoji reaction fallback
+        // Intentionally swallowed: the reaction is only an acknowledgement
     }
 
-    // Check installation and user wallet credits
-    const installation = await githubAppRepository.findByInstallationId(installationId)
-    const effectiveUserId = installation?.userId || null
-
-    if (effectiveUserId) {
-        const user = await prisma.user.findUnique({
-            where: { id: effectiveUserId },
-            select: { creditBalance: true },
+    if (!isPullRequest) {
+        const result = await startGithubRun({
+            token,
+            userId: owner.userId,
+            run: { ...base, mode: 'issue', baseRef: repository.defaultBranch || 'main' },
+            body: issue.body || '',
+            instruction: command.instruction,
+            announce: true,
         })
-
-        if (user && user.creditBalance < 50) {
-            try {
-                await createIssueComment({
-                    token,
-                    owner: repository.owner.login,
-                    repo: repository.name,
-                    issueNumber: issue.number,
-                    body: `@${comment.user.login} Insufficient wallet credits to run December on this issue. Please top up credits at https://app.trydecember.com/settings/billing to continue.`,
-                })
-            } catch {
-                // Intentionally swallowed: credit warning comment fallback
-            }
-            return { handled: false, reason: 'insufficient_credits' }
-        }
+        return { handled: result.started, reason: result.reason, sessionId: result.sessionId }
     }
 
-    // Dispatch job to worker queue
-    const jobData: GithubIssueJobData = {
-        taskType: 'github_issue_fix',
-        installationId,
-        gitToken: token,
-        repoFullName: repository.fullName,
-        repoOwner: repository.owner.login,
-        repoName: repository.name,
-        defaultBranch: repository.defaultBranch || 'main',
-        issueNumber: issue.number,
-        issueTitle: issue.title,
-        issueBody: issue.body || '',
-        commentId: comment.id,
-        commentAuthor: comment.user.login,
-        prompt: instruction,
-        userId: effectiveUserId,
-        isPullRequest: Boolean(issue.pullRequest),
-        slackWebhookUrl: env.SLACK_WEBHOOK_URL,
-        discordWebhookUrl: env.DISCORD_WEBHOOK_URL,
-    }
-
-    const job = await enqueueJob('github_issue_fix', jobData)
-
-    return {
-        handled: true,
-        issueNumber: issue.number,
-        jobId: job?.id?.toString(),
-    }
-}
-
-const handlePullRequestOpened = async (
-    data: HandlePullRequestOpened
-): Promise<HandlePullRequestOpenedResult> => {
-    const { installationId, repository, pullRequest } = data
-
-    const { isMentioned, instruction } = extractBotMention(pullRequest.body || '')
-    if (!isMentioned) {
-        return { handled: false, reason: 'not_mentioned' }
-    }
-
-    const isAuthorized = isAuthorizedGithubSender(pullRequest.authorAssociation)
-
-    let token: string
+    let pr: PullRequestInfo
     try {
-        const tokenRes = await getInstallationAccessToken({ installationId })
-        token = tokenRes.token
-    } catch (err: any) {
-        console.error('[GitHubApp Service] Failed to obtain installation access token:', err)
-        return { handled: false, reason: 'token_error' }
-    }
-
-    if (!isAuthorized) {
-        try {
-            await createIssueComment({
-                token,
-                owner: repository.owner.login,
-                repo: repository.name,
-                issueNumber: pullRequest.number,
-                body: `@${pullRequest.user.login} December is configured to only execute tasks requested by repository collaborators.`,
-            })
-        } catch {
-            // Intentionally swallowed: fallback if unauthorized comment fails to post
-        }
-        return { handled: false, reason: 'unauthorized_sender' }
-    }
-
-    // Acknowledge immediately with an emoji reaction on the pull request
-    try {
-        await createIssueReaction({
+        pr = await getPullRequest({
             token,
             owner: repository.owner.login,
             repo: repository.name,
-            issueNumber: pullRequest.number,
-            reaction: 'eyes',
+            pullNumber: issue.number,
         })
-    } catch {
-        // Intentionally swallowed: emoji reaction fallback
+    } catch (err) {
+        console.error('[GitHubApp Service] could not read the pull request:', err)
+        return { handled: false, reason: 'pull_request_error' }
     }
 
-    // Check installation and user wallet credits
-    const installation = await githubAppRepository.findByInstallationId(installationId)
-    const effectiveUserId = installation?.userId || null
-
-    if (effectiveUserId) {
-        const user = await prisma.user.findUnique({
-            where: { id: effectiveUserId },
-            select: { creditBalance: true },
+    const isFork =
+        Boolean(pr.headRepoFullName) &&
+        pr.headRepoFullName.toLowerCase() !== repository.fullName.toLowerCase()
+    if (command.intent === 'task' && isFork) {
+        await replyOnGithub({
+            token,
+            run: { ...base, mode: 'change', baseRef: pr.baseRef },
+            body: `@${comment.user.login} This pull request comes from a fork, so December cannot push to it. December can still review it: \`@trydecember review\`.`,
         })
-
-        if (user && user.creditBalance < 50) {
-            try {
-                await createIssueComment({
-                    token,
-                    owner: repository.owner.login,
-                    repo: repository.name,
-                    issueNumber: pullRequest.number,
-                    body: `@${pullRequest.user.login} Insufficient wallet credits to run December on this pull request. Please top up credits at https://app.trydecember.com/settings/billing to continue.`,
-                })
-            } catch {
-                // Intentionally swallowed: credit warning comment fallback
-            }
-            return { handled: false, reason: 'insufficient_credits' }
-        }
+        return { handled: false, reason: 'fork' }
     }
 
-    // Dispatch job to worker queue
-    const jobData: GithubIssueJobData = {
-        taskType: 'github_issue_fix',
+    const result = await startGithubRun({
+        token,
+        userId: owner.userId,
+        run: {
+            ...base,
+            title: pr.title || issue.title,
+            mode: command.intent === 'review' ? 'review' : 'change',
+            baseRef: pr.baseRef,
+            headRef: pr.headRef,
+            headSha: pr.headSha,
+        },
+        body: pr.body,
+        // "@trydecember review" alone has no extra request
+        instruction: command.intent === 'review' ? command.instruction : command.instruction || '',
+        announce: true,
+    })
+    return { handled: result.started, reason: result.reason, sessionId: result.sessionId }
+}
+
+// a review run already started for this commit (an automatic review runs once per commit)
+const hasReviewedCommit = async (data: { userId: string; run: GithubRun }): Promise<boolean> => {
+    const { userId, run } = data
+    const runs = await githubAppRepository.findGithubRuns({
+        userId,
+        repoFullName: run.repoFullName,
+        number: run.number,
+        since: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    })
+    return runs.some((s) => {
+        const previous = s.githubRun as GithubRun | null
+        return previous?.mode === 'review' && previous.headSha === run.headSha
+    })
+}
+
+/** an automatic review on a new pull request, or on every push when the settings ask for it */
+const handlePullRequestEvent = async (
+    data: HandlePullRequestEvent
+): Promise<HandleGithubEventResult> => {
+    const { installationId, action, repository, pullRequest } = data
+
+    const owner = await loadInstallationOwner(installationId)
+    if (!owner) return { handled: false, reason: 'no_owner' }
+
+    const ownerGithubLogin = await githubAppRepository.findUserGithubUsername(owner.userId)
+    const wanted = shouldAutoReview({
+        settings: owner.settings,
+        action,
+        draft: Boolean(pullRequest.draft),
+        authorLogin: pullRequest.user.login,
+        authorType: pullRequest.user.type,
+        ownerGithubLogin,
+        repoFullName: repository.fullName,
+    })
+    if (!wanted) return { handled: false, reason: 'not_wanted' }
+
+    const run: GithubRun = {
+        mode: 'review',
         installationId,
-        gitToken: token,
         repoFullName: repository.fullName,
         repoOwner: repository.owner.login,
         repoName: repository.name,
-        defaultBranch: repository.defaultBranch || 'main',
-        issueNumber: pullRequest.number,
-        issueTitle: pullRequest.title,
-        issueBody: pullRequest.body || '',
-        commentAuthor: pullRequest.user.login,
-        prompt: instruction,
-        userId: effectiveUserId,
-        isPullRequest: true,
-        pullRequestHead: pullRequest.head?.ref,
-        pullRequestBase: pullRequest.base?.ref || repository.defaultBranch || 'main',
-        slackWebhookUrl: env.SLACK_WEBHOOK_URL,
-        discordWebhookUrl: env.DISCORD_WEBHOOK_URL,
+        number: pullRequest.number,
+        title: pullRequest.title,
+        requestedBy: 'december',
+        baseRef: pullRequest.base.ref,
+        headRef: pullRequest.head.ref,
+        headSha: pullRequest.head.sha,
+        trigger: 'auto_review',
+    }
+    if (run.headSha && (await hasReviewedCommit({ userId: owner.userId, run }))) {
+        return { handled: false, reason: 'already_reviewed' }
     }
 
-    const job = await enqueueJob('github_issue_fix', jobData)
+    const token = await installationToken(installationId)
+    if (!token) return { handled: false, reason: 'token_error' }
 
-    return {
-        handled: true,
-        pullRequestNumber: pullRequest.number,
-        jobId: job?.id?.toString(),
+    const result = await startGithubRun({
+        token,
+        userId: owner.userId,
+        run,
+        body: pullRequest.body || '',
+        instruction: '',
+        announce: false,
+    })
+    return { handled: result.started, reason: result.reason, sessionId: result.sessionId }
+}
+
+/**
+ * A comment on a line of a pull request. With "@trydecember" it is a command, on any pull
+ * request. Without it, December answers only on its own pull requests when the settings say
+ * "All". "Off" answers no line comments at all.
+ */
+const handleReviewComment = async (data: HandleReviewComment): Promise<HandleGithubEventResult> => {
+    const { installationId, repository, pullRequest, comment } = data
+
+    if (isDecemberBotLogin(comment.user.login)) return { handled: false, reason: 'own_comment' }
+
+    const owner = await loadInstallationOwner(installationId)
+    if (!owner) return { handled: false, reason: 'no_owner' }
+    const { settings } = owner
+    if (!settings.githubCommentsEnabled || settings.reviewReplies === 'off') {
+        return { handled: false, reason: 'off' }
     }
+
+    const isBot = isBotAuthor(comment.user.login, comment.user.type)
+    if (isBot && !settings.replyToBots) return { handled: false, reason: 'bot' }
+
+    const command = parseBotCommand(comment.body)
+    if (!command.isMentioned) {
+        if (settings.reviewReplies !== 'all') return { handled: false, reason: 'not_mentioned' }
+        const prOwner = await findPullRequestOwner({
+            installationId,
+            repoOwner: repository.owner.login,
+            repoName: repository.name,
+            prNumber: pullRequest.number,
+            prAuthorLogin: pullRequest.authorLogin,
+        })
+        if (prOwner !== owner.userId) return { handled: false, reason: 'not_december_pull_request' }
+    }
+    // bots have no author association; people must be collaborators
+    if (!isBot && !isAuthorizedGithubSender(comment.authorAssociation)) {
+        return { handled: false, reason: 'unauthorized_sender' }
+    }
+
+    const isFork =
+        Boolean(pullRequest.head.repoFullName) &&
+        pullRequest.head.repoFullName!.toLowerCase() !== repository.fullName.toLowerCase()
+    const mode = command.intent === 'review' ? 'review' : 'change'
+    if (mode === 'change' && isFork) return { handled: false, reason: 'fork' }
+
+    const token = await installationToken(installationId)
+    if (!token) return { handled: false, reason: 'token_error' }
+
+    try {
+        await createReviewCommentReaction({
+            token,
+            owner: repository.owner.login,
+            repo: repository.name,
+            commentId: comment.id,
+        })
+    } catch {
+        // Intentionally swallowed: the reaction is only an acknowledgement
+    }
+
+    const location = comment.path
+        ? `${comment.path}${comment.line ? ` line ${comment.line}` : ''}`
+        : 'the pull request'
+    const context = [
+        `The request is a review comment on ${location}.`,
+        ...(comment.diffHunk
+            ? ['The lines it points at:', '```diff', comment.diffHunk, '```']
+            : []),
+    ].join('\n')
+
+    const result = await startGithubRun({
+        token,
+        userId: owner.userId,
+        run: {
+            mode,
+            installationId,
+            repoFullName: repository.fullName,
+            repoOwner: repository.owner.login,
+            repoName: repository.name,
+            number: pullRequest.number,
+            title: pullRequest.title,
+            requestedBy: comment.user.login,
+            baseRef: pullRequest.base.ref,
+            headRef: pullRequest.head.ref,
+            headSha: pullRequest.head.sha,
+            trigger: 'review_comment',
+        },
+        body: pullRequest.body || '',
+        instruction: command.isMentioned ? command.instruction : comment.body,
+        context,
+        announce: true,
+    })
+    return { handled: result.started, reason: result.reason, sessionId: result.sessionId }
+}
+
+// a failing check can fail again after a fix: at most this many fix runs per pull request a day
+const MAX_CHECK_FIXES_PER_DAY = 3
+
+/** checks failed on a December pull request: start a run that fixes them, when turned on */
+const handleCheckSuite = async (data: HandleCheckSuite): Promise<HandleGithubEventResult> => {
+    const { installationId, repository, conclusion, headSha, pullRequestNumbers } = data
+
+    if (!conclusion || !['failure', 'timed_out'].includes(conclusion)) {
+        return { handled: false, reason: 'not_failed' }
+    }
+    const prNumber = pullRequestNumbers[0]
+    if (!prNumber || !headSha) return { handled: false, reason: 'no_pull_request' }
+
+    const owner = await loadInstallationOwner(installationId)
+    if (!owner) return { handled: false, reason: 'no_owner' }
+    if (!owner.settings.githubCommentsEnabled || !owner.settings.fixFailedChecks) {
+        return { handled: false, reason: 'off' }
+    }
+
+    const token = await installationToken(installationId)
+    if (!token) return { handled: false, reason: 'token_error' }
+
+    let pr: PullRequestInfo
+    try {
+        pr = await getPullRequest({
+            token,
+            owner: repository.owner.login,
+            repo: repository.name,
+            pullNumber: prNumber,
+        })
+    } catch (err) {
+        console.error('[GitHubApp Service] could not read the pull request:', err)
+        return { handled: false, reason: 'pull_request_error' }
+    }
+
+    const prOwner = await findPullRequestOwner({
+        installationId,
+        repoOwner: repository.owner.login,
+        repoName: repository.name,
+        prNumber,
+        prAuthorLogin: pr.authorLogin,
+    })
+    if (prOwner !== owner.userId) return { handled: false, reason: 'not_december_pull_request' }
+    if (pr.headSha && pr.headSha !== headSha) return { handled: false, reason: 'stale_commit' }
+
+    const runs = await githubAppRepository.findGithubRuns({
+        userId: owner.userId,
+        repoFullName: repository.fullName,
+        number: prNumber,
+        since: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    })
+    const fixes = runs.filter((s) => (s.githubRun as GithubRun | null)?.trigger === 'failed_checks')
+    if (fixes.some((s) => (s.githubRun as GithubRun | null)?.headSha === headSha)) {
+        return { handled: false, reason: 'already_fixing' }
+    }
+    if (fixes.length >= MAX_CHECK_FIXES_PER_DAY) return { handled: false, reason: 'limit' }
+
+    let failed: FailedCheckRun[] = []
+    try {
+        failed = await listFailedCheckRuns({
+            token,
+            owner: repository.owner.login,
+            repo: repository.name,
+            sha: headSha,
+        })
+    } catch (err) {
+        console.warn('[GitHubApp Service] could not list the failed checks:', err)
+    }
+    const context = failed.length
+        ? [
+              'Failed checks on the latest commit:',
+              ...failed.map(
+                  (c) => `- ${c.name} (${c.conclusion})${c.summary ? `: ${c.summary}` : ''}`
+              ),
+          ].join('\n')
+        : undefined
+
+    const result = await startGithubRun({
+        token,
+        userId: owner.userId,
+        run: {
+            mode: 'change',
+            installationId,
+            repoFullName: repository.fullName,
+            repoOwner: repository.owner.login,
+            repoName: repository.name,
+            number: prNumber,
+            title: pr.title,
+            requestedBy: 'december',
+            baseRef: pr.baseRef,
+            headRef: pr.headRef,
+            headSha,
+            trigger: 'failed_checks',
+        },
+        body: pr.body,
+        instruction:
+            'The checks failed on the latest push to this pull request. Find the commands the CI runs (see the workflow files in .github/workflows), run the failing ones, fix the cause, and run them again.',
+        context,
+        announce: false,
+    })
+    return { handled: result.started, reason: result.reason, sessionId: result.sessionId }
 }
 
 // who owns December's pull request: the session that opened it, else (for PRs opened from an
@@ -671,6 +1016,9 @@ export const githubAppService = {
     getUserInstallationRepos,
     getUserInstallationStatus,
     handleIssueComment,
-    handlePullRequestOpened,
+    handlePullRequestEvent,
+    handleReviewComment,
+    handleCheckSuite,
+    startGithubRun,
     notifyGithubActivity,
 }

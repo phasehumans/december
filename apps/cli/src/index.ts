@@ -2055,54 +2055,11 @@ async function main() {
                 removePermissionRule(change.kind, change.scope, change.pattern, process.cwd())
             }
         },
-        onLoadGithubSetup: async () => {
-            const gh = await import('./utils/github-setup')
-            const { toDisplayPath } = await import('./utils/doctor-checks')
+        onLoadGithubApp: async () => {
+            const gh = await import('./utils/github-app')
             const cfg = await loadConfig()
-            const plan = gh.resolveGithubProvider(cfg)
-            const status = gh.getGithubSetupStatus(process.cwd())
-            return {
-                ghInstalled: status.ghInstalled,
-                ghAuthed: status.ghAuthed,
-                ghAuthDetail: status.ghAuthDetail,
-                repo: status.repo,
-                defaultBranch: status.defaultBranch,
-                inGitRepo: Boolean(status.gitRoot),
-                workflowExists: status.workflowExists,
-                workflowPath: status.workflowPath ? toDisplayPath(status.workflowPath) : undefined,
-                provider: plan.provider,
-                secretName: plan.secretName,
-                providerNote: plan.note,
-                secretSet: status.secrets.includes(plan.secretName),
-                slackSet: status.secrets.includes(gh.SLACK_SECRET),
-                discordSet: status.secrets.includes(gh.DISCORD_SECRET),
-                secretsError: status.secretsError,
-                savedKeyAvailable: Boolean(plan.savedKey),
-            }
-        },
-        onGithubSetupAction: async (action) => {
-            const gh = await import('./utils/github-setup')
-            const cfg = await loadConfig()
-            const plan = gh.resolveGithubProvider(cfg)
-            const status = gh.getGithubSetupStatus(process.cwd())
-            if (!status.gitRoot) throw new Error('This folder is not a git repository.')
-            if (action.type === 'write-workflow') {
-                gh.writeDecemberWorkflow({
-                    gitRoot: status.gitRoot,
-                    provider: plan.provider,
-                    secretName: plan.secretName,
-                    baseBranch: status.defaultBranch,
-                    overwrite: action.overwrite,
-                })
-                return `Wrote ${gh.WORKFLOW_RELATIVE_PATH}. Commit and push it to turn the action on.`
-            }
-            if (action.type === 'use-saved-key') {
-                if (!plan.savedKey) throw new Error('No saved API key for this provider.')
-                gh.setGithubSecret(status.gitRoot, plan.secretName, plan.savedKey)
-                return `Set ${plan.secretName} from your saved ${plan.provider} key.`
-            }
-            gh.setGithubSecret(status.gitRoot, action.name, action.value)
-            return `Set ${action.name}.`
+            const local = gh.readGitRepository(process.cwd())
+            return gh.getGithubAppStatus({ ...local, token: cfg.decemberToken })
         },
         keybindingsPath: path.join(getConfigDir(), 'keybindings.json'),
         onLoadHooks: async () => {

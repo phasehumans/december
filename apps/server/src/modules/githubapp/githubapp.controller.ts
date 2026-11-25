@@ -4,8 +4,7 @@ import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import { githubAppService } from './githubapp.service'
-import { toGithubActivity } from './githubapp.utils'
-import { resolveInstallReturnUrl } from './githubapp.utils'
+import { resolveInstallReturnUrl, toGithubActivity, toWebhookRepository } from './githubapp.utils'
 
 import type { Request, Response } from 'express'
 
@@ -100,15 +99,7 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
         if (installationId) {
             await githubAppService.handleIssueComment({
                 installationId,
-                repository: {
-                    name: payload.repository?.name,
-                    fullName: payload.repository?.full_name,
-                    owner: {
-                        login: payload.repository?.owner?.login,
-                    },
-                    defaultBranch: payload.repository?.default_branch || 'main',
-                    private: payload.repository?.private ?? false,
-                },
+                repository: toWebhookRepository(payload),
                 issue: {
                     number: payload.issue?.number,
                     title: payload.issue?.title,
@@ -121,42 +112,87 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
                     user: {
                         login: payload.comment?.user?.login,
                         id: payload.comment?.user?.id,
+                        type: payload.comment?.user?.type,
                     },
                     authorAssociation: payload.comment?.author_association || 'NONE',
                 },
             })
         }
-    } else if (event === 'pull_request' && payload.action === 'opened') {
+    } else if (
+        event === 'pull_request' &&
+        ['opened', 'synchronize', 'ready_for_review'].includes(payload.action)
+    ) {
         const installationId = payload.installation?.id?.toString()
         if (installationId) {
-            await githubAppService.handlePullRequestOpened({
+            await githubAppService.handlePullRequestEvent({
                 installationId,
-                repository: {
-                    name: payload.repository?.name,
-                    fullName: payload.repository?.full_name,
-                    owner: {
-                        login: payload.repository?.owner?.login,
-                    },
-                    defaultBranch: payload.repository?.default_branch || 'main',
-                    private: payload.repository?.private ?? false,
-                },
+                action: payload.action,
+                repository: toWebhookRepository(payload),
                 pullRequest: {
                     number: payload.pull_request?.number,
                     title: payload.pull_request?.title,
                     body: payload.pull_request?.body,
+                    draft: Boolean(payload.pull_request?.draft),
                     head: {
                         ref: payload.pull_request?.head?.ref,
                         sha: payload.pull_request?.head?.sha,
+                        repoFullName: payload.pull_request?.head?.repo?.full_name,
                     },
                     base: {
                         ref: payload.pull_request?.base?.ref || 'main',
                     },
                     user: {
-                        login: payload.pull_request?.user?.login,
-                        id: payload.pull_request?.user?.id,
+                        login: payload.pull_request?.user?.login || '',
+                        type: payload.pull_request?.user?.type,
                     },
-                    authorAssociation: payload.pull_request?.author_association || 'NONE',
                 },
+            })
+        }
+    } else if (event === 'pull_request_review_comment' && payload.action === 'created') {
+        const installationId = payload.installation?.id?.toString()
+        if (installationId) {
+            await githubAppService.handleReviewComment({
+                installationId,
+                repository: toWebhookRepository(payload),
+                pullRequest: {
+                    number: payload.pull_request?.number,
+                    title: payload.pull_request?.title,
+                    body: payload.pull_request?.body,
+                    authorLogin: payload.pull_request?.user?.login,
+                    head: {
+                        ref: payload.pull_request?.head?.ref,
+                        sha: payload.pull_request?.head?.sha,
+                        repoFullName: payload.pull_request?.head?.repo?.full_name,
+                    },
+                    base: {
+                        ref: payload.pull_request?.base?.ref || 'main',
+                    },
+                },
+                comment: {
+                    id: payload.comment?.id,
+                    body: payload.comment?.body || '',
+                    path: payload.comment?.path,
+                    line: payload.comment?.line ?? null,
+                    diffHunk: payload.comment?.diff_hunk,
+                    user: {
+                        login: payload.comment?.user?.login,
+                        type: payload.comment?.user?.type,
+                    },
+                    authorAssociation: payload.comment?.author_association || 'NONE',
+                },
+            })
+        }
+    } else if (event === 'check_suite' && payload.action === 'completed') {
+        const installationId = payload.installation?.id?.toString()
+        if (installationId) {
+            await githubAppService.handleCheckSuite({
+                installationId,
+                repository: toWebhookRepository(payload),
+                conclusion: payload.check_suite?.conclusion,
+                headSha: payload.check_suite?.head_sha,
+                pullRequestNumbers: (payload.check_suite?.pull_requests || [])
+                    .map((pr: any) => pr?.number)
+                    .filter((n: unknown): n is number => typeof n === 'number'),
             })
         }
     }

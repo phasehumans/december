@@ -190,4 +190,52 @@ describe('Setting Module Integration Tests', () => {
         expect(fb?.rating).toBe('happy')
         expect(fb?.feedback).toBe('Everything works smoothly!')
     })
+
+    it('pull request settings: defaults, then a partial save that round-trips', async () => {
+        const first = await request(app)
+            .get('/api/v1/setting/pull-requests')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('X-Forwarded-For', getRandomIP())
+        expect(first.status).toBe(200)
+        expect(first.body.data).toMatchObject({
+            githubCommentsEnabled: true,
+            autoReview: 'asked',
+            reviewReplies: 'mention',
+            reviewRepos: [],
+        })
+
+        const saved = await request(app)
+            .patch('/api/v1/setting/pull-requests')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('X-Forwarded-For', getRandomIP())
+            .send({ autoReview: 'mine', reviewRepos: ['Acme/Web'], githubCommentsEnabled: false })
+        expect(saved.status).toBe(200)
+        expect(saved.body.data).toMatchObject({
+            autoReview: 'mine',
+            reviewRepos: ['acme/web'],
+            githubCommentsEnabled: false,
+            fixFailedChecks: true,
+        })
+
+        const again = await request(app)
+            .get('/api/v1/setting/pull-requests')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('X-Forwarded-For', getRandomIP())
+        expect(again.body.data.autoReview).toBe('mine')
+    })
+
+    it('pull request settings: unknown fields and bad values are refused (400)', async () => {
+        for (const body of [
+            { autoReview: 'always' },
+            { slackWebhook: 'x' },
+            { reviewRepos: ['no-slash'] },
+        ]) {
+            const res = await request(app)
+                .patch('/api/v1/setting/pull-requests')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .set('X-Forwarded-For', getRandomIP())
+                .send(body)
+            expect(res.status).toBe(400)
+        }
+    })
 })

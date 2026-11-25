@@ -5,7 +5,6 @@ import Redis from 'ioredis'
 import jwt from 'jsonwebtoken'
 
 import { E2BSandboxService } from './e2b-sandbox.service'
-import { processGithubIssueFix } from './github-issue-fix.service'
 import { processGrpcStream } from './listener'
 import {
     loadOwnKeyProvider,
@@ -73,10 +72,10 @@ export const worker = new Worker(
             return { status: 'PAUSED' }
         }
 
-        // Handle GitHub Automated Issue Fix tasks
+        // the old github job: github runs are normal sessions now (Session.githubRun)
         if (effectiveTaskType === 'github_issue_fix') {
-            const fixResult = await processGithubIssueFix(job.data)
-            return fixResult
+            console.warn(`[WORKER ENGINE] Discarding old github_issue_fix job #${job.id}`)
+            return { status: 'DISCARDED', error: 'github_issue_fix jobs are no longer used' }
         }
 
         // Handle Ephemeral Tasks (One-Click Fix, Security Audit)

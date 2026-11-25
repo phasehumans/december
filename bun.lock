@@ -47,7 +47,7 @@
     },
     "apps/cli": {
       "name": "@trydecember/cli",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "bin": {
         "december": "dist/december.js",
       },
@@ -68,7 +68,7 @@
     },
     "apps/docs": {
       "name": "@december/docs",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "@astrojs/check": "^0.9.4",
         "@astrojs/mdx": "^4.1.0",
@@ -83,7 +83,7 @@
     },
     "apps/server": {
       "name": "@december/server",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1014.0",
         "@aws-sdk/s3-request-presigner": "3.1086.0",
@@ -131,7 +131,7 @@
     },
     "apps/web": {
       "name": "@december/web",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "@react-oauth/google": "^0.13.4",
         "@tanstack/react-query": "^5.90.21",
@@ -162,7 +162,7 @@
     },
     "apps/worker": {
       "name": "@december/worker",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1089.0",
         "@aws-sdk/s3-request-presigner": "3.1089.0",
@@ -184,19 +184,9 @@
         "@types/jsonwebtoken": "^9.0.9",
       },
     },
-    "packages/action": {
-      "name": "@december/action",
-      "version": "0.1.0",
-      "dependencies": {
-        "@december/agent": "workspace:*",
-        "@december/providers": "workspace:*",
-        "@december/shared": "workspace:*",
-        "@december/tools": "workspace:*",
-      },
-    },
     "packages/agent": {
       "name": "@december/agent",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "@anthropic-ai/sdk": "0.109.0",
         "@december/providers": "workspace:*",
@@ -218,7 +208,7 @@
     },
     "packages/database": {
       "name": "@december/database",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "@prisma/adapter-pg": "7.8.0",
         "@prisma/client": "7.8.0",
@@ -237,7 +227,7 @@
     },
     "packages/evals": {
       "name": "@december/evals",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "devDependencies": {
         "@types/bun": "latest",
         "@types/node": "^22.0.0",
@@ -246,7 +236,7 @@
     },
     "packages/providers": {
       "name": "@december/providers",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.112.3",
         "@december/shared": "workspace:*",
@@ -262,7 +252,7 @@
     },
     "packages/shared": {
       "name": "@december/shared",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "bullmq": "5.80.2",
         "ioredis": "5.11.1",
@@ -274,7 +264,7 @@
     },
     "packages/tools": {
       "name": "@december/tools",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "@december/shared": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.32.1",
@@ -289,7 +279,7 @@
     },
     "packages/tui": {
       "name": "@december/tui",
-      "version": "0.4.18",
+      "version": "0.4.22",
       "dependencies": {
         "@december/shared": "workspace:*",
         "cli-highlight": "2.1.11",
@@ -467,8 +457,6 @@
     "@connectrpc/connect-web": ["@connectrpc/connect-web@2.1.2", "", { "peerDependencies": { "@bufbuild/protobuf": "^2.7.0", "@connectrpc/connect": "2.1.2" } }, "sha512-1tfaK85MU+gJjwwmL31d2rzdf0XCYX99chZf63uG89SGBUd4XuZ4ZzhGo2u79TPXOE6nLIZQ2okrpyey42PYdg=="],
 
     "@conventional-changelog/git-client": ["@conventional-changelog/git-client@2.7.0", "", { "dependencies": { "@simple-libs/child-process-utils": "^1.0.0", "@simple-libs/stream-utils": "^1.2.0", "semver": "^7.5.2" }, "peerDependencies": { "conventional-commits-filter": "^5.0.0", "conventional-commits-parser": "^6.4.0" }, "optionalPeers": ["conventional-commits-filter", "conventional-commits-parser"] }, "sha512-j7A8/LBEQ+3rugMzPXoKYzyUPpw/0CBQCyvtTR7Lmu4olG4yRC/Tfkq79Mr3yuPs0SUitlO2HwGP3gitMJnRFw=="],
-
-    "@december/action": ["@december/action@workspace:packages/action"],
 
     "@december/agent": ["@december/agent@workspace:packages/agent"],
 

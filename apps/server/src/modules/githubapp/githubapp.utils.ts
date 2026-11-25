@@ -3,10 +3,12 @@ import jwt from 'jsonwebtoken'
 import { env } from '../../env'
 
 import type {
+    BuildGithubRunPrompt,
     CanClaimInstallation,
     ClaimInstallationResult,
     NotifyGithubActivity,
     ResolveInstallReturnUrl,
+    ShouldAutoReview,
 } from './githubapp.types'
 
 export const generateAppJwt = (): string => {
@@ -232,11 +234,129 @@ export const toGithubActivity = (event: unknown, payload: any): NotifyGithubActi
     return null
 }
 
+// the repository part of a webhook payload
+export const toWebhookRepository = (payload: any) => ({
+    name: payload?.repository?.name,
+    fullName: payload?.repository?.full_name,
+    owner: {
+        login: payload?.repository?.owner?.login,
+    },
+    defaultBranch: payload?.repository?.default_branch || 'main',
+    private: payload?.repository?.private ?? false,
+})
+
+// the session page on the web app
+export const sessionLink = (sessionId: string) =>
+    `${(env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')}/session/${sessionId}`
+
+const MAX_BODY = 8000
+
+const clip = (text: string, max = MAX_BODY) =>
+    text.length > max ? `${text.slice(0, max)}\n[cut at ${max} characters]` : text
+
+/**
+ * Whether a pull request event starts an automatic review. "asked" never does: a review
+ * then needs "@trydecember review". Drafts, December's own pull requests and bots are skipped.
+ */
+export const shouldAutoReview = (data: ShouldAutoReview): boolean => {
+    const { settings, action, draft, authorLogin, authorType, ownerGithubLogin, repoFullName } =
+        data
+
+    if (settings.autoReview === 'asked' || !settings.githubCommentsEnabled) return false
+    if (!['opened', 'ready_for_review', 'synchronize'].includes(action)) return false
+    if (action === 'synchronize' && settings.reviewCadence !== 'push') return false
+    if (draft) return false
+    if (authorType === 'Bot' || isDecemberBotLogin(authorLogin) || authorLogin.endsWith('[bot]')) {
+        return false
+    }
+    if (
+        settings.reviewRepos.length > 0 &&
+        !settings.reviewRepos.includes(repoFullName.toLowerCase())
+    ) {
+        return false
+    }
+    if (settings.autoReview === 'mine') {
+        return Boolean(
+            ownerGithubLogin && ownerGithubLogin.toLowerCase() === authorLogin.toLowerCase()
+        )
+    }
+    return true
+}
+
+/** the first prompt of a github run: what to do, and what December does after the agent */
+export const buildGithubRunPrompt = (data: BuildGithubRunPrompt): string => {
+    const { run, body, instruction, context } = data
+    const where = `${run.repoFullName}`
+    const request = instruction.trim()
+    const from = run.requestedBy === 'december' ? 'December settings' : `@${run.requestedBy}`
+
+    if (run.mode === 'review') {
+        return [
+            `Review pull request #${run.number} in ${where}: "${run.title}" (base branch ${run.baseRef}).`,
+            '',
+            'Pull request description:',
+            clip(body.trim() || 'No description.'),
+            '',
+            ...(request ? [`Extra request from ${from}:`, clip(request), ''] : []),
+            'How to review:',
+            `- /workspace has the pull request checked out. See the change with \`git diff origin/${run.baseRef}...HEAD\`.`,
+            '- Read the code around the change where you need to. You can run the tests. Do not change, commit or push files.',
+            '- Look for bugs, security problems, missing tests and unclear code. Skip style points that a formatter or linter finds.',
+            '- Write the review as JSON to /workspace/.december/review.json:',
+            '  {"summary": "2 to 6 sentences", "comments": [{"path": "src/a.ts", "line": 42, "body": "what is wrong and how to fix it"}]}',
+            '  "line" is a line number in the new version of the file, on a line that the diff adds or changes. Give at most 10 comments. Use an empty list when there is nothing to point at.',
+            '- End with the same summary.',
+            '- Do not use em dashes.',
+        ].join('\n')
+    }
+
+    const subject =
+        run.mode === 'issue'
+            ? `GitHub issue #${run.number} in ${where}: "${run.title}".`
+            : `pull request #${run.number} in ${where}: "${run.title}" (branch ${run.headRef}, base ${run.baseRef}).`
+    const after =
+        run.mode === 'issue'
+            ? 'It goes into the pull request description.'
+            : 'It goes into a reply on the pull request.'
+
+    return [
+        `You are working on ${subject}`,
+        '',
+        run.mode === 'issue' ? 'Issue description:' : 'Pull request description:',
+        clip(body.trim() || 'No description.'),
+        '',
+        `Request from ${from}:`,
+        clip(request || 'Do what the description asks.'),
+        '',
+        ...(context ? [clip(context, 4000), ''] : []),
+        'How to work:',
+        run.mode === 'issue'
+            ? `- The repository is in /workspace on a new branch from ${run.baseRef}.`
+            : `- The repository is in /workspace on the pull request branch ${run.headRef}.`,
+        "- Make the change. Find the repository's own test command (package.json scripts, Makefile, pytest, go test, cargo test) and run it. Fix what fails.",
+        '- Do not commit, push or open a pull request. December does that when you finish.',
+        '- If the request is only a question, answer it and do not change files.',
+        `- End with a short summary of what you changed and why. ${after}`,
+        '- Do not use em dashes.',
+    ].join('\n')
+}
+
+/** the session title for a github run */
+export const toGithubRunTitle = (data: { mode: string; number: number; title: string }) => {
+    const { mode, number, title } = data
+    const clean = title.replace(/\s+/g, ' ').trim().slice(0, 80)
+    return mode === 'review' ? `Review #${number} ${clean}` : `#${number} ${clean}`
+}
+
 export {
     extractBotMention,
+    parseBotCommand,
+    getPullRequest,
+    listFailedCheckRuns,
     isAuthorizedGithubSender,
     createCommentReaction,
     createIssueReaction,
     createIssueComment,
     createPullRequest,
+    createReviewCommentReaction,
 } from '@december/shared'

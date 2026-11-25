@@ -6,6 +6,7 @@ import {
     openrouterProvider,
     anthropicProvider,
 } from '@december/providers'
+import { isGithubRun } from '@december/shared'
 import {
     AskQuestionTool,
     BashTool,
@@ -25,6 +26,7 @@ import { Sandbox } from 'e2b'
 import Redis from 'ioredis'
 
 import { resolveGitToken, withGitToken } from './git-remote'
+import { getGithubRunToken, prepareGithubWorkspace } from './github-run'
 import { notifyAgentQuestion } from './inbox-notify'
 import { clearPendingQuestion } from './pending-question'
 import { RemotePlatformAdapter } from './remote-operations'
@@ -265,6 +267,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         branch: true,
                         gitRef: true,
                         userId: true,
+                        githubRun: true,
                     },
                 })
                 .catch(() => null)
@@ -341,7 +344,12 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
 
                 // the job's and the env's tokens are github tokens: never use them for another host
                 const gitProvider = sessionRecord?.gitProvider ?? 'GITHUB'
+                // a session the github app started clones with the installation's token
+                const githubRun = isGithubRun(sessionRecord?.githubRun)
+                    ? sessionRecord.githubRun
+                    : null
                 const effectiveToken =
+                    (githubRun ? await getGithubRunToken(githubRun) : undefined) ||
                     (gitProvider === 'GITHUB' ? gitToken || envsMap['GITHUB_TOKEN'] : undefined) ||
                     (await resolveGitToken({ userId: effectiveUserId, provider: gitProvider }))
 
@@ -391,17 +399,21 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                                 })
                         }
 
-                        await sandbox.commands
-                            .run(
-                                `git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
-                                { cwd: '/workspace' }
-                            )
-                            .catch((e: any) => {
-                                console.warn(
-                                    `[E2BSandboxService] Task branch checkout warning for session ${sessionId}:`,
-                                    e
+                        if (githubRun) {
+                            await prepareGithubWorkspace({ sandbox, sessionId, run: githubRun })
+                        } else {
+                            await sandbox.commands
+                                .run(
+                                    `git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
+                                    { cwd: '/workspace' }
                                 )
-                            })
+                                .catch((e: any) => {
+                                    console.warn(
+                                        `[E2BSandboxService] Task branch checkout warning for session ${sessionId}:`,
+                                        e
+                                    )
+                                })
+                        }
                     } else {
                         // Greenfield workspace: initialize local repo and checkout task branch
                         await sandbox.commands

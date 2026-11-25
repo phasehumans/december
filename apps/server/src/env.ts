@@ -100,8 +100,6 @@ const envSchema = z
         GITHUB_APP_NAME: emptyAsUndefined,
         GITHUB_APP_PRIVATE_KEY: emptyAsUndefined,
         GITHUB_APP_WEBHOOK_SECRET: emptyAsUndefined,
-        SLACK_WEBHOOK_URL: emptyAsUndefined,
-        DISCORD_WEBHOOK_URL: emptyAsUndefined,
     })
     .superRefine((data, ctx) => {
         if (data.NODE_ENV === 'production') {
