@@ -1,11 +1,13 @@
 ---
 layout: ../../layouts/DocsLayout.astro
 title: Slash Commands Reference
-description: Every slash command you can type in a December CLI session.
+description: Every slash command you can type in the December CLI and in December Cloud.
 currentSlug: 'slash-commands'
 ---
 
-This page lists the slash commands you can type in a December CLI session. Type `/` in the prompt to see the list. Type `/help` to see the commands and keyboard shortcuts.
+This page lists the slash commands you can type in a December CLI session and in December Cloud. Type `/` in the prompt to see the list. Type `/help` to see the commands and keyboard shortcuts.
+
+For December Cloud, see [Slash commands in December Cloud](#slash-commands-in-december-cloud).
 
 ## Available Slash Commands
 
@@ -173,6 +175,66 @@ December applies the changes when you save the file. When you move an action to 
 | `/update`             | Update the CLI, then press Enter or run `/restart` to use it.      |
 | `/usage`              | Show your token usage for this session and your usage history.     |
 | `/voice`              | Speak a prompt with your microphone (uses Deepgram).               |
+
+## Slash commands in December Cloud
+
+December Cloud has slash commands too. Type `/` in the prompt box to see them. Some commands show only inside a session.
+
+| Command                                           | What it does in December Cloud                                                      |
+| :------------------------------------------------ | :---------------------------------------------------------------------------------- |
+| `/plan [goal]`                                    | Make a plan before December changes code.                                           |
+| `/effort`                                         | Pick Fast or Deep. Shows only on December credits.                                  |
+| `/model`                                          | Pick a model.                                                                       |
+| `/switch`                                         | Change between December credits and your own keys.                                  |
+| `/voice`                                          | Speak a prompt. Shows only if your browser supports speech input.                   |
+| `/new`                                            | Leave the session and go to Home. Session only.                                     |
+| `/exit`                                           | The same as `/new`. Session only.                                                   |
+| `/resume`                                         | Open search to find an earlier session.                                             |
+| `/rename <title>`                                 | Rename the session. Session only.                                                   |
+| `/copy`                                           | Copy the last response. Session only.                                               |
+| `/diff`                                           | Open the changes of the session. Session only.                                      |
+| `/tasks`                                          | Open the shell of the session. Session only.                                        |
+| `/usage`                                          | In a session, show the tokens the session used. On Home, open **Settings > Usage**. |
+| `/mcp`, `/plugin`, `/hooks`, `/memory`, `/github` | Open the page in **Settings > Connections**.                                        |
+| `/settings`                                       | Open the settings.                                                                  |
+| `/login`                                          | Open **Settings > Models**, where you add your own keys.                            |
+| `/keybindings`                                    | Show the keyboard shortcuts.                                                        |
+| `/help`                                           | Show the commands.                                                                  |
+| `/check`                                          | Check your setup. The results show in the command menu.                             |
+| `/docs`, `/changelog`, `/feedback`                | Open the page in a new tab.                                                         |
+| `/update`                                         | Reload the page. December Cloud is always the newest version after a reload.        |
+
+These CLI commands are not in December Cloud yet: `/compact`, `/context`, `/fork`, `/rewind`, `/clear`, `/btw`, `/codesearch`, `/learn`, `/permissions`, `/open`, and `/review`.
+
+### Fast and Deep
+
+On December credits, you pick a speed, not a model:
+
+- Fast: Quick answers at a lower cost. December uses `gemini-2.5-flash`.
+- Deep: More reasoning for hard work. December uses `gemini-2.5-pro`. This is the default.
+
+To change the speed, use the **Fast | Deep** switch at the left of the prompt box, or type `/effort`. On a phone, open **Configuration** and use the **Speed** row.
+
+### Use your own keys
+
+If you want to use your own keys, add a key in **Settings > Models** first.
+
+1. Use the switch next to the microphone. Select **Your keys**.
+2. Click the model name at the left of the prompt box.
+3. Point at a key, then select a model from the list beside it.
+
+Fast and Deep do not show on your own keys. To go back to December credits, select **Credits** in the same switch.
+
+### The + menu
+
+Click **+** at the left of the prompt box. Each row opens a list beside the menu:
+
+- Repositories: Add a repository to the prompt.
+- Sessions: Mention an earlier session in the prompt.
+- Secrets: Mention a stored secret in the prompt.
+- Commands: Run a slash command.
+
+To use the keyboard, press the up and down arrows to move in the menu. Press the right arrow to move into a list, and press `Enter` to pick a row. Press the left arrow or `Esc` to go back.
 
 ## Session titles
 

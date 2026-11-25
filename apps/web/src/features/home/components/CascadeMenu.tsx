@@ -41,10 +41,15 @@ const EDGE_GAP = 12
 const panelClass =
     'bg-[#1E1E1E] border border-[#2A2928] rounded-2xl p-1 shadow-lg shadow-black/40 flex flex-col'
 
+// the parts of a side list that keys move between: its search box and its rows
+const SIDE_TARGETS = 'input, button:not([disabled]), a[href]'
+
 /**
  * A prompt box menu whose rows can open a list beside it (the + menu, the key models).
  * The side list opens when the pointer rests on a row, on a click, and with the Right
- * arrow. The Left arrow or Esc closes it. In a narrow window it opens under the menu.
+ * arrow. The Right arrow and Enter also move the keys into the side list: Up and Down
+ * move between its rows, Enter picks one, and Left or Esc go back to the menu.
+ * In a narrow window it opens under the menu.
  * The side list always stays inside the window: it starts level with its row and moves
  * up when it would pass the bottom edge, so it cannot make the page behind it scroll.
  */
@@ -98,6 +103,52 @@ export const CascadeMenu: React.FC<CascadeMenuProps> = ({
         [openSide]
     )
 
+    // where the keys were before they moved into a side list (the prompt box), so Left
+    // and Esc can give them back
+    const returnFocusRef = React.useRef<HTMLElement | null>(null)
+    // set when a key opened the side list: its first row takes the keys once it shows
+    const focusSideOnOpenRef = React.useRef(false)
+
+    const sideTargets = React.useCallback(
+        () => Array.from(sideRef.current?.querySelectorAll<HTMLElement>(SIDE_TARGETS) ?? []),
+        []
+    )
+
+    /** moves the keys to a row of the side list. does nothing while it has no rows */
+    const focusSide = React.useCallback(
+        (index: number) => {
+            const targets = sideTargets()
+            if (targets.length === 0) return
+            const active = document.activeElement as HTMLElement | null
+            if (!sideRef.current?.contains(active)) returnFocusRef.current = active
+            targets[(index + targets.length) % targets.length]?.focus()
+        },
+        [sideTargets]
+    )
+
+    const leaveSide = React.useCallback(() => {
+        setOpenId(null)
+        returnFocusRef.current?.focus()
+        returnFocusRef.current = null
+    }, [])
+
+    React.useEffect(() => {
+        if (!openId || !focusSideOnOpenRef.current) return
+        focusSideOnOpenRef.current = false
+        focusSide(0)
+    }, [openId, focusSide])
+
+    // a pick with Enter closes the menu and removes the row that had the keys: give
+    // them back to the prompt box
+    React.useEffect(
+        () => () => {
+            const back = returnFocusRef.current
+            const active = document.activeElement
+            if (back?.isConnected && (!active || active === document.body)) back.focus()
+        },
+        []
+    )
+
     // keeps the open side list inside the window. its height changes when the rows load
     // and when a search filters them, so it is measured again on every size change
     React.useLayoutEffect(() => {
@@ -143,15 +194,35 @@ export const CascadeMenu: React.FC<CascadeMenuProps> = ({
     }, [openId, sideTop, isSideBelow])
 
     // the key listener reads the current rows and state through this ref
-    const stateRef = React.useRef({ items, activeIndex, openId, activate, onClose })
+    const stateRef = React.useRef({
+        items,
+        activeIndex,
+        openId,
+        activate,
+        onClose,
+        focusSide,
+        leaveSide,
+        sideTargets,
+    })
     React.useEffect(() => {
-        stateRef.current = { items, activeIndex, openId, activate, onClose }
+        stateRef.current = {
+            items,
+            activeIndex,
+            openId,
+            activate,
+            onClose,
+            focusSide,
+            leaveSide,
+            sideTargets,
+        }
     })
 
     React.useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             const state = stateRef.current
-            const isTyping = (event.target as HTMLElement | null)?.tagName === 'INPUT'
+            const target = event.target as HTMLElement | null
+            const isTyping = target?.tagName === 'INPUT'
+            const isInSide = !!target && !!sideRef.current?.contains(target)
             const count = state.items.length
             const stop = () => {
                 event.preventDefault()
@@ -160,11 +231,32 @@ export const CascadeMenu: React.FC<CascadeMenuProps> = ({
 
             if (event.key === 'Escape') {
                 stop()
-                if (state.openId) setOpenId(null)
+                if (isInSide) state.leaveSide()
+                else if (state.openId) setOpenId(null)
                 else state.onClose()
                 return
             }
-            // a search box inside a side list keeps the other keys
+
+            // the keys are in the side list
+            if (isInSide) {
+                const targets = state.sideTargets()
+                const index = targets.indexOf(target)
+                if (event.key === 'ArrowDown') {
+                    stop()
+                    state.focusSide(index + 1)
+                } else if (event.key === 'ArrowUp') {
+                    stop()
+                    state.focusSide(index - 1)
+                } else if (event.key === 'ArrowLeft' && !isTyping) {
+                    stop()
+                    state.leaveSide()
+                }
+                // Enter and Space reach the row itself and pick it. the search box keeps
+                // Left, Right and the letters
+                return
+            }
+
+            // a search box outside a side list keeps the other keys
             if (isTyping || count === 0) return
 
             if (event.key === 'ArrowDown') {
@@ -175,7 +267,16 @@ export const CascadeMenu: React.FC<CascadeMenuProps> = ({
                 setActiveIndex((prev) => (prev - 1 + count) % count)
             } else if (event.key === 'ArrowRight' || event.key === 'Enter') {
                 stop()
-                state.activate(state.items[state.activeIndex])
+                const item = state.items[state.activeIndex]
+                if (!item?.side || item.soon) {
+                    state.activate(item)
+                } else if (state.openId === item.id) {
+                    // the list is open already: move the keys into it
+                    state.focusSide(0)
+                } else {
+                    focusSideOnOpenRef.current = true
+                    state.activate(item)
+                }
             } else if (event.key === 'ArrowLeft' && state.openId) {
                 stop()
                 setOpenId(null)
@@ -266,6 +367,9 @@ export const CascadeMenu: React.FC<CascadeMenuProps> = ({
                     aria-label={openItem.label}
                     className={cn(
                         'absolute z-10 w-[230px] max-w-[calc(100vw-32px)] overflow-y-auto no-scrollbar [scrollbar-width:none] animate-in fade-in duration-100',
+                        // the row that has the keys looks like a hovered row. a switch
+                        // keeps its own colours and lights up its row
+                        '[&_button:not([role=switch]):focus-visible]:bg-[#252525] [&_div:has(>[role=switch]:focus-visible)]:bg-[#252525]',
                         panelClass,
                         isSideBelow ? 'left-6 top-[calc(100%+6px)]' : 'left-[calc(100%+6px)]'
                     )}

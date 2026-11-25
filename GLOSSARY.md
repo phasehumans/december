@@ -63,3 +63,21 @@ _Avoid_: detach, disconnect
 **Payload Offloading**:
 The storage pattern where tool execution outputs exceeding 32KB are written to object storage, recording only a reference identifier in the durable step log.
 _Avoid_: body truncation, inline blob storage
+
+## Prompt box
+
+**Speed**:
+The choice between Fast and Deep for a run on December credits. The user picks a speed, and December picks the model for it.
+_Avoid_: effort level, tier, model size
+
+**Fast**:
+The speed that gives quick answers at a lower cost. It runs on `gemini-2.5-flash`.
+_Avoid_: lite, cheap mode
+
+**Deep**:
+The speed that reasons more for hard work, and the default on December credits. It runs on `gemini-2.5-pro`.
+_Avoid_: thinking mode, pro mode
+
+**Status Strip**:
+The one line under the Home prompt box that shows the one thing that needs action, such as GitHub not connected or no credits. It shows nothing when nothing needs action.
+_Avoid_: banner, alert bar, notice

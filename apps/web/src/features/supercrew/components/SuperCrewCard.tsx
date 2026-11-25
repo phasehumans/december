@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 
 import { useSuperCrewWaitlist } from '../hooks/useSuperCrewWaitlist'
 import { SUPER_CREW_POPUP_DELAY_MS, shouldAutoOpenSuperCrew } from '../lib/autoPopup'
+import { SUPER_CREW_LINE } from '../lib/copy'
 
 import { OfficeCanvas } from './OfficeCanvas'
 
@@ -123,9 +124,7 @@ export const SuperCrewCard: React.FC<{ isHome: boolean }> = ({ isHome }) => {
                             <Icons.X className="w-3.5 h-3.5" />
                         </button>
                     </div>
-                    <p className="text-[12px] leading-[1.45] text-[#919191]">
-                        Your own team of agents, working while you&apos;re away.
-                    </p>
+                    <p className="text-[12px] leading-[1.45] text-[#919191]">{SUPER_CREW_LINE}</p>
                     {button}
                 </div>
             </div>

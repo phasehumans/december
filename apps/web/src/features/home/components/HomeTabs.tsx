@@ -13,6 +13,7 @@ import { RunStatus } from '@/features/sessions/components/ListParts'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { OfficeCanvas } from '@/features/supercrew/components/OfficeCanvas'
 import { useSuperCrewWaitlist } from '@/features/supercrew/hooks/useSuperCrewWaitlist'
+import { SUPER_CREW_LINE } from '@/features/supercrew/lib/copy'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { formatRelativeTime } from '@/shared/lib/relativeTime'
@@ -235,7 +236,7 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                                     isPhone && 'col-span-2 row-start-2'
                                 )}
                             >
-                                Your own team of agents, working while you&apos;re away.
+                                {SUPER_CREW_LINE}
                             </p>
                             {isWaitlistLoading ? (
                                 // holds the button's place, so a user on the list never sees "Notify me"
