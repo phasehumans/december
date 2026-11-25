@@ -88,6 +88,10 @@ const envSchema = z
         // smaller top-up leaves the referral pending, so a $1 payment cannot farm the credit
         REFERRAL_MIN_TOPUP_CENTS: z.coerce.number().int().min(0).default(1000),
 
+        // team accounts are off: the product is for one person. the tables and the code stay.
+        // 'true' turns the /team routes on again (see issue 640)
+        TEAMS_ENABLED: z.preprocess((val) => val === 'true' || val === true, z.boolean()),
+
         COINBASE_API_KEY: emptyAsUndefined,
         COINBASE_WEBHOOK_SECRET: emptyAsUndefined,
 

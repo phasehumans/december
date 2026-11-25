@@ -47,6 +47,7 @@ import {
     MobileIconButton,
     MobileTopBar,
 } from '@/features/navigation/components/MobileTopBar'
+import { isTeamsEnabled } from '@/features/profile/lib/teams'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
 import { getWebUrl } from '@/shared/config/env'
@@ -134,12 +135,17 @@ const NAV_ITEMS: SettingsNavItem[] = [
         tabs: ['Usage', 'Analytics'],
         icon: <BarChart3 className={navIconClass} strokeWidth={1.5} />,
     },
-    {
-        label: 'Members',
-        to: `/settings/${getSlugForProfileTab('Members')}`,
-        tabs: ['Members'],
-        icon: <Users className={navIconClass} strokeWidth={1.5} />,
-    },
+    // off today (see lib/teams.ts): the row shows only when team accounts are on
+    ...(isTeamsEnabled()
+        ? [
+              {
+                  label: 'Members',
+                  to: `/settings/${getSlugForProfileTab('Members')}`,
+                  tabs: ['Members'] as ProfileTab[],
+                  icon: <Users className={navIconClass} strokeWidth={1.5} />,
+              },
+          ]
+        : []),
 ]
 
 const NAV_LINKS = [
@@ -260,7 +266,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         if (activeTab === 'Defaults') return <ProfileDefaultsSettings />
         if (activeTab === 'PullRequests') return <ProfilePullRequestSettings />
         if (activeTab === 'Sandbox') return <ProfileSandboxSettings />
-        if (activeTab === 'Members') {
+        if (activeTab === 'Members' && isTeamsEnabled()) {
             return (
                 <ProfileMembersSettings
                     ownerName={profile?.name || resolvedName}

@@ -200,7 +200,6 @@ export const DOCS_INDEX: DocsIndexEntry[] = [
             'sandboxes in december cloud',
             'api keys',
             'secrets in december cloud',
-            'teams in december cloud',
         ],
     },
     {

@@ -117,5 +117,5 @@ An invite link of a user. The inviter and the invited account each get a credit 
 _Avoid_: affiliate, promo code
 
 **Team**:
-The group of accounts a user invites, with the roles Owner, Admin and Member. Members share nothing yet: sessions and billing stay with each account.
+The group of accounts a user invites, with the roles Owner, Admin and Member. Team accounts are off today (`TEAMS_ENABLED`): December is for one person, and the members page is hidden.
 _Avoid_: organization, workspace

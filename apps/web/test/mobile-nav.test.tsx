@@ -106,11 +106,12 @@ describe('mobile menu sheet', () => {
             'API keys',
             'Billing',
             'Usage',
-            'Members',
             'Send feedback',
         ]) {
             expect(screen.getByText(label)).toBeDefined()
         }
+        // team accounts are off, so the list has no Members row
+        expect(screen.queryByText('Members')).toBeNull()
         expect(screen.queryByText('Sign out')).toBeNull()
         expect(screen.queryByText('Try December CLI')).toBeNull()
         expect(screen.queryByText('Super Crew')).toBeNull()

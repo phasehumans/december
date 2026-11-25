@@ -2,6 +2,7 @@ import { ArrowUpRight, ChevronRight } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+import { isTeamsEnabled } from '@/features/profile/lib/teams'
 import { SheetRow, useBottomSheet } from '@/shared/components/ui/BottomSheet'
 import { getWebUrl } from '@/shared/config/env'
 
@@ -19,7 +20,8 @@ const SETTINGS_ROWS: { slug: string; label: string }[] = [
     { slug: 'models', label: 'API keys' },
     { slug: 'billing', label: 'Billing' },
     { slug: 'usage', label: 'Usage' },
-    { slug: 'members', label: 'Members' },
+    // off today (see lib/teams.ts)
+    ...(isTeamsEnabled() ? [{ slug: 'members', label: 'Members' }] : []),
 ]
 
 const EXTERNAL_ROWS = [

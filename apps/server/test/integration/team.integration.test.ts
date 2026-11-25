@@ -56,6 +56,8 @@ describe('team accounts (the base)', () => {
     } as any
 
     beforeAll(async () => {
+        // team accounts are off by default: these tests run with the switch on
+        env.TEAMS_ENABLED = true
         setEmailQueue(mailQueue)
 
         users.owner = await createSignedInUser({ email: emails.owner, name: 'Asha Rao' })
@@ -74,6 +76,7 @@ describe('team accounts (the base)', () => {
     })
 
     afterAll(async () => {
+        env.TEAMS_ENABLED = false
         setEmailQueue(null)
         // the teams, members, invites and audit rows go with their users
         for (const user of Object.values(users)) {
@@ -813,5 +816,30 @@ describe('team accounts (the base)', () => {
         // the team of Asha has none of these rows
         const other = await as(users.owner).get('/audit?action=secret.deleted')
         expect(other.body.data.events).toEqual([])
+    })
+})
+
+describe('Team accounts are off by default (#640)', () => {
+    it('answers 404 on every team route, signed in or not', async () => {
+        const email = `team-off-${Date.now()}@example.com`
+        const user = await createSignedInUser({ email, name: 'Off' })
+        const wasOn = env.TEAMS_ENABLED
+        env.TEAMS_ENABLED = false
+        try {
+            const auth = { Authorization: `Bearer ${user.token}` }
+            const team = await request(app).get('/api/v1/team').set(auth)
+            const invite = await request(app)
+                .post('/api/v1/team/invites')
+                .set(auth)
+                .send({ email: 'friend@example.com', role: 'MEMBER' })
+            const preview = await request(app).get('/api/v1/team/invites/any-token')
+            const audit = await request(app).get('/api/v1/team/audit').set(auth)
+            expect([team.status, invite.status, preview.status, audit.status]).toEqual([
+                404, 404, 404, 404,
+            ])
+        } finally {
+            env.TEAMS_ENABLED = wasOn
+            await cleanupTestUser({ email })
+        }
     })
 })

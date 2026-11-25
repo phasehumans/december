@@ -3,6 +3,7 @@ import { Router } from 'express'
 import { env } from '../../env'
 import { authMiddleware } from '../../middleware/auth.middleware'
 import { createRateLimiter } from '../../middleware/rate-limiter'
+import { AppError } from '../../shared/appError'
 
 import { teamController } from './team.controller'
 
@@ -14,6 +15,12 @@ const inviteLimiter = createRateLimiter({
     max: env.NODE_ENV === 'test' ? 1000 : 30,
     message: 'Too many invites. Please try again later.',
     prefix: 'rl:team:invite:',
+})
+
+// team accounts are off unless TEAMS_ENABLED is set: every route here answers 404
+teamRouter.use((_req, _res, next) => {
+    if (!env.TEAMS_ENABLED) return next(new AppError('Not found', 404))
+    next()
 })
 
 // the invite page reads the invite before the user signs in
