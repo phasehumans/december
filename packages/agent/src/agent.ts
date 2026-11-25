@@ -493,7 +493,11 @@ export class Agent {
         return title
     }
 
-    public async initMcpServers(configs?: Record<string, McpServerConfig>): Promise<void> {
+    public async initMcpServers(
+        configs?: Record<string, McpServerConfig>,
+        /** a cloud run passes the guarded fetch for its url servers */
+        options?: { remoteFetch?: (url: string | URL, init?: RequestInit) => Promise<Response> }
+    ): Promise<void> {
         const { loadMcpConfig, McpClientManager, createReadMcpResourceTool } =
             await import('@december/tools')
         const finalConfigs = configs || (await loadMcpConfig({ workspaceDir: this.workspaceDir }))
@@ -503,6 +507,7 @@ export class Agent {
             this.mcpClientManager = new McpClientManager({
                 registry: this.deferredRegistry,
                 workspaceDir: this.workspaceDir,
+                ...(options?.remoteFetch ? { remoteFetch: options.remoteFetch } : {}),
             })
         }
         await this.mcpClientManager.connectAll(finalConfigs)

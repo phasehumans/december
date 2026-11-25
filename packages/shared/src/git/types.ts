@@ -51,6 +51,8 @@ export interface CreatePullRequestInput {
     head: string
     base: string
     body: string
+    // a draft pull request on github, a "Draft:" merge request on gitlab
+    draft?: boolean
 }
 
 export interface GetPullRequestInput {
@@ -90,6 +92,41 @@ export interface CommentInput {
     body: string
 }
 
+export interface RepoDirInput {
+    token: string
+    repoPath: string
+    // the folder from the repository root; '' is the root
+    path: string
+}
+
+export interface RepoBranchInput {
+    token: string
+    repoPath: string
+    branch: string
+}
+
+export interface RepoDirEntry {
+    name: string
+    // from the repository root
+    path: string
+    type: 'file' | 'dir'
+}
+
+export interface RepoFileInput {
+    token: string
+    repoPath: string
+    path: string
+    // a larger file is not returned
+    maxBytes: number
+}
+
+export interface RepoTextFile {
+    // bytes
+    size: number
+    // null when the file is larger than maxBytes
+    content: string | null
+}
+
 export interface OAuthApp {
     clientId: string
     clientSecret: string
@@ -106,8 +143,19 @@ export interface TokenSet {
     expiresAt: Date | null
 }
 
+// the account a token belongs to, as the host gives it
+export interface GitHostUser {
+    id: string
+    login: string
+    name: string | null
+    // github: the public email. gitlab: the commit email, then the account email
+    email: string | null
+}
+
 export interface GitProvider {
     name: GitProviderName
+    // the account of the token, or null when the host refuses it or does not answer
+    getUser: (data: { token: string }) => Promise<GitHostUser | null>
     // null when the url is not on this host
     parseRepoUrl: (url: string) => RepoRef | null
     getCloneUrl: (data: CloneUrlInput) => string
@@ -119,6 +167,15 @@ export interface GitProvider {
     getPullRequest: (data: GetPullRequestInput) => Promise<PullRequest | null>
     getCiStatus: (data: CiStatusInput) => Promise<CiStatus>
     comment: (data: CommentInput) => Promise<void>
+    // the files and folders of one folder at the default branch (links and submodules are
+    // left out). throws GitProviderError with the status of the host: 404 when this token
+    // cannot read the repository or the folder is not there.
+    listDir: (data: RepoDirInput) => Promise<RepoDirEntry[]>
+    // a file at the default branch as utf-8 text. throws like listDir.
+    readTextFile: (data: RepoFileInput) => Promise<RepoTextFile>
+    // true when the repository has the branch, false when the host answers 404 (no such
+    // branch, or this token cannot read the repository). throws GitProviderError otherwise.
+    hasBranch: (data: RepoBranchInput) => Promise<boolean>
     refreshToken: (data: RefreshTokenInput) => Promise<TokenSet>
 }
 
@@ -130,4 +187,12 @@ export class GitProviderError extends Error {
         this.name = 'GitProviderError'
         this.status = status
     }
+}
+
+// the base64 body of a file from a git host as utf-8 text. the size is counted here, so a
+// host that reports a wrong size cannot pass the cap.
+export const decodeRepoFile = (base64: string, maxBytes: number): RepoTextFile => {
+    const bytes = Uint8Array.from(atob(base64.replace(/\s/g, '')), (char) => char.charCodeAt(0))
+    if (bytes.length > maxBytes) return { size: bytes.length, content: null }
+    return { size: bytes.length, content: new TextDecoder().decode(bytes) }
 }

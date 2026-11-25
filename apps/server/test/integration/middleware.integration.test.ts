@@ -25,6 +25,14 @@ describe('Rate Limiter & Structured Logger Middleware Integration', () => {
         expect(res.headers['x-request-id']).toBe(customId)
     })
 
+    it('lets a page of another origin read the file name of a download', async () => {
+        const res = await request(app)
+            .get('/api/v1/core/health')
+            .set('Origin', 'https://app.trydecember.com')
+        expect(res.headers['access-control-allow-origin']).toBe('https://app.trydecember.com')
+        expect(res.headers['access-control-expose-headers']).toBe('Content-Disposition')
+    })
+
     it('returns rate limit headers (ratelimit-limit, ratelimit-remaining)', async () => {
         const res = await request(app).get('/api/v1/core/health')
         expect(res.headers['ratelimit-limit']).toBeDefined()

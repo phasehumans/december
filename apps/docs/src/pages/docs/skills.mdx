@@ -72,6 +72,32 @@ Plugins can also add skills. Type `/plugin` to manage plugins. See [Plugins & Ma
 
 December does not show a skill that is off to the agent. Press Space again to turn it on.
 
+## Skills in December Cloud
+
+In December Cloud, your skills are in **Settings > Connections > Skills**. They work in every session of your account.
+
+To add a skill:
+
+1. Open **Settings > Connections > Skills** and select **New skill**.
+2. Type a name. Use lowercase letters, numbers, and hyphens, for example `write-tests`.
+3. Type a description and the instructions.
+4. Set **Who can run it**. **You and the agent** lets December start the skill. **Only you** keeps it for your slash command.
+
+Use the switch on a skill to turn it off or on.
+
+To run a skill, type `/` and the skill name in the prompt box. You can also click **+**, select **Skills**, and pick the skill. The skill shows as a chip in the prompt. To see all your skills, type `/skills`.
+
+### Import skills from a repository
+
+If a repository has skills, you can copy them to your account.
+
+1. Open **Settings > Connections** and select **Import setup**.
+2. Pick the repository.
+3. Select the skills and MCP servers that you want.
+4. Select **Import**.
+
+December reads the skills in `.december/skills`, `.agents/skills`, `.agent/skills`, and `.claude/skills`. December reads the MCP servers in `.december/mcp.json`. The dialog also lists the rules files of the repository, such as `AGENTS.md`. December does not import them, because a session reads them from the repository.
+
 ## Write a project skill
 
 1. Make a folder at `.december/skills/<skill-name>/`.

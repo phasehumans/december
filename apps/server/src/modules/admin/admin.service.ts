@@ -266,10 +266,20 @@ const assertSupportAccess = async (data: AssertSupportAccess) => {
     return user.supportAccessUntil
 }
 
+// the list shows the titles of the user's sessions, so it is logged too: who looked at
+// which user's list, and when (the log row's date)
 const listUserSessions = async (data: ListUserSessions) => {
-    const { userId } = data
+    const { adminUserId, userId } = data
     const supportAccessUntil = await assertSupportAccess({ userId })
     const items = await adminRepository.listUserSessions(userId)
+
+    await audit({
+        adminUserId,
+        action: 'support.session.list',
+        targetType: 'user',
+        targetId: userId,
+        metadata: { sessions: items.length },
+    })
     return { supportAccessUntil, items }
 }
 

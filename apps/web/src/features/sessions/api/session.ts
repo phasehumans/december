@@ -9,6 +9,8 @@ export type BackendSession = {
     projectId?: string | null
     projectName?: string | null
     repoUrl?: string | null
+    /** the owner of the repository. the list sends it apart from the name */
+    githubRepoOwner?: string | null
     githubRepoName?: string | null
     branch?: string | null
     gitRef?: string | null
@@ -56,6 +58,8 @@ export type BackendMessage = {
     sequence: number
     createdAt: string
     updatedAt: string
+    /** the files sent with a user message (#634) */
+    attachments?: Array<{ id: string; name: string; contentType: string; sizeBytes: number }>
 }
 
 export type BackendSessionDetail = {
@@ -85,7 +89,7 @@ export type SessionFilters = {
     needsAnswer?: boolean
     /** pinned sessions first (newest pin first), then the sort */
     pinnedFirst?: boolean
-    /** one repository by name. the list API does not accept it yet, see sessionsView.ts */
+    /** one repository: owner/name, or a name alone for that name under any owner */
     repoName?: string
     sortBy?: 'updatedAt' | 'createdAt'
     sortOrder?: 'asc' | 'desc'
@@ -107,6 +111,12 @@ export type SessionCounts = {
     openPullRequests: number
     /** merged and not running: what "Archive merged" archives */
     merged: number
+}
+
+/** every repository (owner/name) and tag of the user, for the sort and filter menus */
+export type SessionFacets = {
+    repos: string[]
+    tags: string[]
 }
 
 export type PaginatedSessionsResponse = {
@@ -150,6 +160,16 @@ export interface SetupCheck {
     credits: { balanceInCents: number; enoughToStart: boolean }
     keys: Array<{ provider: string; keyHint: string }>
     machine: { vmStatus: string; sandboxStatus: string | null } | null
+    /** the MCP servers of the account. an answer from an older server has none */
+    mcpServers?: Array<{
+        name: string
+        enabled: boolean
+        /** what the last session found: `unknown`, `connected` or `error` */
+        status: string
+        lastError: string | null
+        toolCount: number
+        checkedAt: string | null
+    }>
 }
 
 export interface BackendPullRequest {
@@ -178,6 +198,25 @@ export interface PullRequestsPagination {
     limit: number
     total: number
     totalPages: number
+}
+
+/** the filters, sort and page of GET /session/pull-requests */
+export interface PullRequestsParams {
+    /** one state or several, comma separated: "open,draft" */
+    state?: string
+    /** owner/name */
+    repo?: string
+    tag?: string
+    search?: string
+    sortBy?: 'updatedAt' | 'createdAt' | 'prOpenedAt'
+    sortOrder?: 'asc' | 'desc'
+    page?: number
+    limit?: number
+}
+
+export interface PullRequestsResponse {
+    pullRequests: BackendPullRequest[]
+    pagination: PullRequestsPagination
 }
 
 export const sessionAPI = {
@@ -346,6 +385,9 @@ export const sessionAPI = {
         planFirst?: boolean
         effort?: 'fast' | 'deep'
         openPullRequest?: boolean
+        /** plugins and MCP servers switched off for this session only */
+        disabledPlugins?: string[]
+        disabledMcps?: string[]
     }): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>('/session', {
             method: 'POST',
@@ -461,6 +503,10 @@ export const sessionAPI = {
 
     getSessionCounts: (): Promise<SessionCounts> => apiRequest<SessionCounts>('/session/counts'),
 
+    /** hasPr: only from the sessions that opened a pull request */
+    getSessionFacets: (options?: { hasPr?: boolean }): Promise<SessionFacets> =>
+        apiRequest<SessionFacets>(`/session/facets${options?.hasPr ? '?hasPr=true' : ''}`),
+
     // the slash commands of a session (#632 section 3)
     getContext: (id: string) => apiRequest<SessionContextUse>(`/session/${id}/context`),
     compactSession: (id: string, focus?: string) =>
@@ -503,16 +549,7 @@ export const sessionAPI = {
         ),
 
     // the pull requests list (#632): one row per session that opened a pull request
-    getPullRequests: (params: {
-        state?: string
-        repo?: string
-        tag?: string
-        search?: string
-        sortBy?: 'updatedAt' | 'createdAt' | 'prOpenedAt'
-        sortOrder?: 'asc' | 'desc'
-        page?: number
-        limit?: number
-    }): Promise<{ pullRequests: BackendPullRequest[]; pagination: PullRequestsPagination }> => {
+    getPullRequests: (params: PullRequestsParams): Promise<PullRequestsResponse> => {
         const query = new URLSearchParams()
         for (const [key, value] of Object.entries(params)) {
             if (value !== undefined && value !== '') query.set(key, String(value))

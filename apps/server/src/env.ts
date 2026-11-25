@@ -80,6 +80,13 @@ const envSchema = z
         RAZORPAY_PRO_PLAN_ID: emptyAsUndefined,
         RAZORPAY_WEBHOOK_SECRET: emptyAsUndefined,
         USD_TO_INR_RATE: z.coerce.number().default(92.68),
+        // referrals (#638): the credit for the inviter and for the new account, paid when the
+        // new account first pays for credits, and how many paid referrals one inviter can have
+        REFERRAL_CREDIT_CENTS: z.coerce.number().int().min(0).default(500),
+        REFERRAL_MAX_PER_INVITER: z.coerce.number().int().min(0).default(20),
+        // the smallest paid top-up of the new account that pays the referral credits. a
+        // smaller top-up leaves the referral pending, so a $1 payment cannot farm the credit
+        REFERRAL_MIN_TOPUP_CENTS: z.coerce.number().int().min(0).default(1000),
 
         COINBASE_API_KEY: emptyAsUndefined,
         COINBASE_WEBHOOK_SECRET: emptyAsUndefined,

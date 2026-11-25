@@ -153,6 +153,18 @@ export async function findCheckUser(userId: string) {
             githubInstallations: { select: { accountLogin: true } },
             gitConnections: { select: { provider: true, username: true } },
             providerCredentials: { select: { provider: true, keyHint: true } },
+            // the saved mcp servers and what the last run found; never their headers
+            mcpServers: {
+                select: {
+                    name: true,
+                    enabled: true,
+                    status: true,
+                    lastError: true,
+                    tools: true,
+                    checkedAt: true,
+                },
+                orderBy: { name: 'asc' },
+            },
         },
     })
 }

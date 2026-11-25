@@ -379,6 +379,15 @@ const getCheck = async (data: GetCheck) => {
         machine: session
             ? { vmStatus: session.vmStatus, sandboxStatus: session.sandboxStatus ?? null }
             : null,
+        // the saved mcp servers, with what the last run found when it connected to each
+        mcpServers: user.mcpServers.map((server) => ({
+            name: server.name,
+            enabled: server.enabled,
+            status: server.status,
+            lastError: server.lastError,
+            toolCount: server.tools.length,
+            checkedAt: server.checkedAt,
+        })),
     }
 }
 

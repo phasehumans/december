@@ -35,14 +35,12 @@ import { ProfileSettingsContent } from './ProfileSettingsContent'
 import { ProfileSettingsSkeleton } from './ProfileSettingsSkeleton'
 import { ProfileSignOutAllSessionsModal } from './ProfileSignOutAllSessionsModal'
 import { ProfileUsageSettings } from './ProfileUsageSettings'
-import { usePreviewOn } from './SettingsUi'
 
 import type { ProfileSettingsProps } from '@/features/profile/types'
 
 import { useAppStore } from '@/app/store'
 import { getProfileTabFromSlug, getSlugForProfileTab, type ProfileTab } from '@/app/types'
 import { ConnectionsPage } from '@/features/connections/components/ConnectionsPage'
-import { SoonPill } from '@/features/connections/components/ConnectionsUi'
 import { CONNECTIONS_BASE_PATH } from '@/features/connections/lib/paths'
 import {
     MobileBackButton,
@@ -69,8 +67,6 @@ interface SettingsNavItem {
     to: string
     tabs: ProfileTab[]
     icon: React.ReactNode
-    /** the page is ui only: normal users see a "Soon" pill and a coming soon page */
-    soon?: boolean
 }
 
 // the settings list: one flat list, in one order on desktop and phones. a new page joins
@@ -87,7 +83,6 @@ const NAV_ITEMS: SettingsNavItem[] = [
         to: `/settings/${getSlugForProfileTab('Defaults')}`,
         tabs: ['Defaults'],
         icon: <Settings2 className={navIconClass} strokeWidth={1.5} />,
-        soon: true,
     },
     {
         label: 'Repositories',
@@ -107,7 +102,6 @@ const NAV_ITEMS: SettingsNavItem[] = [
         to: `/settings/${getSlugForProfileTab('Sandbox')}`,
         tabs: ['Sandbox'],
         icon: <Box className={navIconClass} strokeWidth={1.5} />,
-        soon: true,
     },
     {
         label: 'Connections',
@@ -145,7 +139,6 @@ const NAV_ITEMS: SettingsNavItem[] = [
         to: `/settings/${getSlugForProfileTab('Members')}`,
         tabs: ['Members'],
         icon: <Users className={navIconClass} strokeWidth={1.5} />,
-        soon: true,
     },
 ]
 
@@ -174,7 +167,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const isAuthRestored = useAppStore((s) => s.isAuthRestored)
     const openMobileSheet = useAppStore((s) => s.openMobileSheet)
     const isPhone = useIsPhone()
-    const isPreview = usePreviewOn()
 
     const activeTabMatch = location.pathname.match(
         /^\/(?:profile|settings|integrations|connections|connectors)(?:\/([^/]+))?/
@@ -265,7 +257,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
 
     const renderTabContent = () => {
         // these pages keep their values in the browser, so they do not wait for the profile
-        // ui-only pages: sample values with the preview on, "coming soon" for everyone else
         if (activeTab === 'Defaults') return <ProfileDefaultsSettings />
         if (activeTab === 'PullRequests') return <ProfilePullRequestSettings />
         if (activeTab === 'Sandbox') return <ProfileSandboxSettings />
@@ -372,11 +363,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 >
                                     {item.icon}
                                     {item.label}
-                                    {item.soon && !isPreview && (
-                                        <span className="ml-auto flex">
-                                            <SoonPill />
-                                        </span>
-                                    )}
                                 </button>
                             ))}
 

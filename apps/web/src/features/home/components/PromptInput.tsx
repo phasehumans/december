@@ -33,8 +33,6 @@ export const PromptInput: React.FC<
     onOpenAuth,
     onFocus,
     mode,
-    isThinkingMode,
-    onToggleThinking,
     selectedModel: propSelectedModel,
     selectedProvider: propSelectedProvider,
     onModelChange,
@@ -82,8 +80,19 @@ export const PromptInput: React.FC<
         selectedModel,
         selectedProvider,
         selectedSource,
+        selectedSpeed,
         handleSelectModel,
+        handleSelectCredits,
+        handleSelectSpeed,
         slash,
+        attachments,
+        attachmentNote,
+        refusedAttachment,
+        handlePaste,
+        handleDrop,
+        handleDragOver,
+        addAttachments,
+        removeAttachment,
     } = usePromptInputController({
         value,
         onChange,
@@ -102,6 +111,8 @@ export const PromptInput: React.FC<
     return (
         <div
             data-prompt-box
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
             className={`relative w-full transition-all duration-300 ${minimized ? 'max-w-full' : 'max-w-3xl'}`}
         >
             <div
@@ -171,6 +182,30 @@ export const PromptInput: React.FC<
                         </div>
                     ))}
 
+                    {attachments.map((file, index) => (
+                        <div
+                            key={`${file.name}-${index}`}
+                            // the file the server refused shows in the error colour
+                            {...(file === refusedAttachment ? { 'data-refused': 'true' } : {})}
+                            className={`flex items-center gap-1.5 font-sans text-xs font-medium mr-1.5 mb-1 bg-[#2A2928] px-2 py-0.5 rounded-[6px] max-w-full ${file === refusedAttachment ? 'text-red-400' : 'text-[#E8E8E8]'}`}
+                        >
+                            <span className="text-[12.5px] leading-relaxed truncate max-w-[180px]">
+                                {file.name}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    removeAttachment(index)
+                                }}
+                                className="text-[#8F8E8D] hover:text-white transition-colors ml-0.5"
+                                aria-label={`Remove ${file.name}`}
+                            >
+                                <Icons.X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    ))}
+
                     {/* beside a repo chip the text needs room for its placeholder. with less
                         than that (phones) it takes the next line */}
                     <div
@@ -186,6 +221,7 @@ export const PromptInput: React.FC<
                                 handleSelect(event)
                             }}
                             onKeyDown={handleKeyDown}
+                            onPaste={handlePaste}
                             onSelect={handleSelect}
                             onKeyUp={handleSelect}
                             onClick={handleSelect}
@@ -446,8 +482,19 @@ export const PromptInput: React.FC<
                     )}
                 </div>
 
+                {attachmentNote && (
+                    // a refused file: one grey line, as the session box shows a note
+                    <div
+                        role="status"
+                        className="px-5 pb-1.5 text-[12.5px] text-[#8F8E8D] animate-in fade-in duration-150"
+                    >
+                        {attachmentNote}
+                    </div>
+                )}
+
                 <PromptFooter
                     onUpload={() => handleAuthCheck(() => onUpload?.())}
+                    onFiles={addAttachments}
                     onSubmit={() => handleSubmit()}
                     hasInput={!!input?.trim()}
                     isLoading={isLoading}
@@ -461,15 +508,16 @@ export const PromptInput: React.FC<
                         textareaRef.current?.focus()
                     }}
                     mode={mode}
-                    isThinkingMode={isThinkingMode}
-                    onToggleThinking={onToggleThinking}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
                     selectedSource={selectedSource}
+                    selectedSpeed={selectedSpeed}
                     onSelectModel={(model, provider, source) => {
                         handleSelectModel(model, provider, source)
                         onModelChange?.(model, provider)
                     }}
+                    onSelectCredits={handleSelectCredits}
+                    onSelectSpeed={handleSelectSpeed}
                     onSlash={() => slash.open()}
                     slashCommands={slash.commands}
                     onPickCommand={slash.runCommand}

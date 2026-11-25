@@ -276,6 +276,22 @@ describe('account settings api', () => {
             expect(detail.body.data.supportAccessUntil).toBe(res.body.data.supportAccessUntil)
         })
 
+        it('listing the sessions of a user is logged: who, when and which user', async () => {
+            const list = await adminGet(admin.token, '/sessions')
+            expect(list.status).toBe(200)
+            expect(list.body.data.items.map((item: { title: string }) => item.title)).toEqual([
+                'fix the login page',
+            ])
+
+            const logs = await prisma.adminAuditLog.findMany({
+                where: { adminUserId: admin.userId, action: 'support.session.list' },
+            })
+            expect(logs).toHaveLength(1)
+            expect(logs[0]).toMatchObject({ targetType: 'user', targetId: user.userId })
+            expect(logs[0]?.metadata).toEqual({ sessions: 1 })
+            expect(logs[0]?.createdAt.getTime()).toBeGreaterThan(Date.now() - 60_000)
+        })
+
         it('the admin page lists the sessions and opens one, with a log row', async () => {
             const list = await adminGet(admin.token, '/sessions')
             expect(list.status).toBe(200)

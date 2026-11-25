@@ -45,3 +45,8 @@ export const pushSubscribeSchema = z.object({
 export const pushUnsubscribeSchema = z.object({
     endpoint: z.string().url('endpoint must be a url').max(1000),
 })
+
+// the endpoint is in the body, not the url: it is a secret of the browser
+export const pushStatusSchema = z.object({
+    endpoint: z.string().url('endpoint must be a url').max(1000),
+})

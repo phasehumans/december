@@ -1,11 +1,15 @@
-import { toPullRequestSettings } from '@december/shared'
+import { toDefaultOpenPullRequest, toPrCreate, toPullRequestSettings } from '@december/shared'
 
 import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
 import { deleteObject, getBinaryFile, putBinaryFile } from '../../shared/project-storage'
 import { buildZip, type ZipEntry } from '../../shared/zip'
 import { isAdminEmail, isValidUnsubscribeToken } from '../admin/admin.utils'
+import { byokService } from '../byok/byok.service'
 import { emailService } from '../email/email.service'
+import { notificationService } from '../notification/notification.service'
+import { appUrl } from '../notification/notification.utils'
+import { sessionService } from '../session/session.service'
 
 import { enqueueDataExport } from './setting.queue'
 import { settingRepository } from './setting.repository'
@@ -20,6 +24,8 @@ import {
     toDataExportState,
     toOnboardingStep,
     toPreferences,
+    toSandboxSettings,
+    cleanSetupCommands,
 } from './setting.utils'
 
 export const settingSelect = {
@@ -49,6 +55,10 @@ export const settingSelect = {
     defaultPlanFirst: true,
     defaultEffort: true,
     defaultOpenPullRequest: true,
+    defaultOwnKeyProvider: true,
+    defaultOwnKeyModel: true,
+    defaultRepository: true,
+    defaultBaseBranch: true,
     supportAccessUntil: true,
     preferences: true,
 }
@@ -75,7 +85,13 @@ import type {
     RequestDataExport,
     GetDataExport,
     ProcessDataExport,
+    TellDataExportFailed,
     DownloadDataExport,
+    PurgeDataExports,
+    GetSandboxSettings,
+    UpdateSandboxSettings,
+    UpdateSetupCommands,
+    ArchiveInactiveSessions,
 } from './setting.types'
 
 const invalidateUserSettingCache = async (userId: string) => {
@@ -170,17 +186,27 @@ const updateModelSource = async (data: UpdateModelSource) => {
 }
 
 const updateSessionDefaults = async (data: UpdateSessionDefaults) => {
-    const { userId, defaultPlanFirst, defaultEffort, defaultOpenPullRequest } = data
+    const { userId, defaultOwnKeyProvider, defaultOwnKeyModel, ...otherDefaults } = data
 
     const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
     if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
+    // a default model must be one a saved key of the user serves
+    if (defaultOwnKeyProvider && defaultOwnKeyModel) {
+        await byokService.assertOwnKeyUsable({
+            userId,
+            provider: defaultOwnKeyProvider,
+            model: defaultOwnKeyModel,
+        })
+    }
+
+    // a field left out is undefined here, and keeps its value
     const updated = await settingRepository.updateSessionDefaults(userId, {
-        ...(defaultPlanFirst !== undefined ? { defaultPlanFirst } : {}),
-        ...(defaultEffort !== undefined ? { defaultEffort } : {}),
-        ...(defaultOpenPullRequest !== undefined ? { defaultOpenPullRequest } : {}),
+        ...otherDefaults,
+        defaultOwnKeyProvider,
+        defaultOwnKeyModel,
     })
     await invalidateUserSettingCache(userId)
 
@@ -254,9 +280,38 @@ const requestDataExport = async (data: RequestDataExport) => {
     return { export: toDataExportState(created) }
 }
 
-// the background job: a json file per session in a zip, stored, then emailed as a link
+// the last attempt failed: the inbox, and a mail when the user has email on
+const tellDataExportFailed = async (data: TellDataExportFailed) => {
+    const { userId, email, notifyEmail } = data
+    const message = 'We could not build your data export. You can ask for it again now.'
+    try {
+        await notificationService.sendNotificationToUser({
+            userId,
+            title: 'Your data export failed',
+            message,
+            type: 'ERROR',
+            link: '/settings/account',
+        })
+        if (notifyEmail) {
+            await emailService.sendMessageEmail({
+                to: email,
+                subject: 'Your December data export failed',
+                body: `${message}\n\nAsk again on the Account page: ${appUrl()}/settings/account`,
+            })
+        }
+    } catch (error) {
+        // the export is marked failed in any case, and the user can ask again
+        console.error('[Setting] could not tell the user about the failed export:', error)
+    }
+}
+
+/**
+ * The background job: a json file per session in a zip, stored, then emailed as a link.
+ * The queue runs a failed job again. Only when the last attempt fails is the export
+ * failed and the user told.
+ */
 const processDataExport = async (data: ProcessDataExport) => {
-    const { exportId } = data
+    const { exportId, isLastAttempt = true } = data
 
     const record = await settingRepository.findDataExport(exportId)
     if (!record || record.status !== 'PENDING') return { status: record?.status ?? 'MISSING' }
@@ -306,20 +361,49 @@ const processDataExport = async (data: ProcessDataExport) => {
         })
 
         const until = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-        await emailService.sendMessageEmail({
-            to: user.email,
-            subject: 'Your December data export',
-            body: [
-                'Your data export is ready. It has your account and every session with its messages, as JSON files in a zip.',
-                `Download it here: ${buildDataExportUrl(exportId)}`,
-                `The link works until ${until}.`,
-            ].join('\n\n'),
-        })
+        const downloadUrl = buildDataExportUrl(exportId)
+        // the inbox always has the link: the mail can fail, and it tells nobody (review C5)
+        try {
+            await notificationService.sendNotificationToUser({
+                userId: record.userId,
+                title: 'Your data export is ready',
+                message: `Download your data as a zip. The link works until ${until}.`,
+                type: 'SUCCESS',
+                link: downloadUrl,
+            })
+        } catch (error) {
+            // the file is ready and the mail below still has the link
+            console.error('[Setting] could not write the inbox notice of the export:', error)
+        }
+        const sent = await emailService
+            .sendMessageEmail({
+                to: user.email,
+                subject: 'Your December data export',
+                body: [
+                    'Your data export is ready. It has your account and every session with its messages, as JSON files in a zip.',
+                    `Download it here: ${downloadUrl}`,
+                    `The link works until ${until}.`,
+                ].join('\n\n'),
+            })
+            .catch(() => null)
+        if (!sent) {
+            console.warn(`[Setting] the mail of data export ${exportId} was not sent`)
+        }
 
         return { status: 'READY', sessions: sessionIds.length, sizeBytes: zip.length }
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
+        if (!isLastAttempt) {
+            // the row stays PENDING, so the next attempt of the queue does the work again
+            await settingRepository.markDataExportRetrying(exportId, message)
+            throw error
+        }
         await settingRepository.markDataExportFailed(exportId, message)
+        await tellDataExportFailed({
+            userId: record.userId,
+            email: record.user.email,
+            notifyEmail: record.user.notifyEmail,
+        })
         throw error
     }
 }
@@ -349,8 +433,8 @@ const downloadDataExport = async (data: DownloadDataExport) => {
 }
 
 // the daily sweep: files whose link ended, and exports that never finished
-const purgeDataExports = async () => {
-    const now = new Date()
+const purgeDataExports = async (data: PurgeDataExports) => {
+    const { now = new Date() } = data
     const stale = await settingRepository.findStaleDataExports(
         now,
         new Date(now.getTime() - DATA_EXPORT_LINK_MS)
@@ -399,6 +483,11 @@ const updateNotifications = async (data: UpdateNotifications) => {
     )
     if (Object.keys(updateData).length === 0) {
         throw new AppError('at least one notification setting must be provided', 400)
+    }
+
+    // before the save: the first summary covers the time from now, not the time it was off
+    if (settings.digestEnabled === true) {
+        await notificationService.startDigestWindow({ userId })
     }
 
     const updatedUser = await settingRepository.updateNotifications(userId, updateData)
@@ -483,23 +572,84 @@ const submitFeedback = async (data: SubmitFeedback) => {
     return { id: created.id }
 }
 
-// a user with no saved row gets every default
+// a user with no saved row gets every default. "create the pull request" is the user's
+// "open pull request" default (#632, #637): one stored value for this page and the prompt box
 const getPullRequestSettings = async (data: GetPullRequestSettings) => {
     const { userId } = data
-    const row = await settingRepository.findPullRequestSettings(userId)
-    return toPullRequestSettings(row)
+    const [row, user] = await Promise.all([
+        settingRepository.findPullRequestSettings(userId),
+        settingRepository.findOpenPullRequestDefault(userId),
+    ])
+    return {
+        ...toPullRequestSettings(row),
+        prCreate: toPrCreate(user?.defaultOpenPullRequest ?? true),
+    }
 }
 
 const updatePullRequestSettings = async (data: UpdatePullRequestSettings) => {
     const { userId, settings } = data
-    const reviewRepos = settings.reviewRepos
-        ? Array.from(new Set(settings.reviewRepos.map((r) => r.toLowerCase())))
+    const { prCreate, ...rowSettings } = settings
+    const reviewRepos = rowSettings.reviewRepos
+        ? Array.from(new Set(rowSettings.reviewRepos.map((r) => r.toLowerCase())))
         : undefined
-    const row = await settingRepository.upsertPullRequestSettings(userId, {
-        ...settings,
-        ...(reviewRepos ? { reviewRepos } : {}),
-    })
-    return toPullRequestSettings(row)
+
+    // saved on the user, where the session defaults and the profile read it
+    if (prCreate !== undefined) {
+        await settingRepository.updateSessionDefaults(userId, {
+            defaultOpenPullRequest: toDefaultOpenPullRequest(prCreate),
+        })
+        await invalidateUserSettingCache(userId)
+    }
+
+    if (Object.keys(rowSettings).length > 0) {
+        await settingRepository.upsertPullRequestSettings(userId, {
+            ...rowSettings,
+            ...(reviewRepos ? { reviewRepos } : {}),
+        })
+    }
+    return getPullRequestSettings({ userId })
+}
+
+const getSandboxSettings = async (data: GetSandboxSettings) => {
+    const { userId } = data
+    const row = await settingRepository.findSandboxSettings(userId)
+    if (!row) {
+        throw new AppError('user not found', 404)
+    }
+    return toSandboxSettings(row)
+}
+
+const updateSandboxSettings = async (data: UpdateSandboxSettings) => {
+    const { userId, settings } = data
+    await settingRepository.updateSandboxSettings(userId, settings)
+    return getSandboxSettings({ userId })
+}
+
+/** the setup commands of one repository (#637). an empty text removes the row */
+const updateSetupCommands = async (data: UpdateSetupCommands) => {
+    const { userId, repoFullName, commands } = data
+    // lower case, so the worker finds the row for any spelling of the repository
+    const repo = repoFullName.toLowerCase()
+    const text = cleanSetupCommands(commands)
+    if (text) {
+        await settingRepository.upsertSetupCommands(userId, repo, text)
+    } else {
+        await settingRepository.deleteSetupCommands(userId, repo)
+    }
+    return getSandboxSettings({ userId })
+}
+
+/**
+ * The daily archive job (#637): archives the sessions of users with archiveAfterDays set
+ * that were not updated for that many days. Pinned sessions and sessions with a running
+ * sandbox stay. Nothing is deleted.
+ */
+const archiveInactiveSessions = async (data: ArchiveInactiveSessions) => {
+    const { now = new Date() } = data
+    const userIds = await settingRepository.archiveInactiveSessions(now)
+    // an archived session leaves the recent list
+    await Promise.all(userIds.map((userId) => sessionService.invalidateRecentSessions({ userId })))
+    return { users: userIds.length }
 }
 
 export const settingService = {
@@ -526,4 +676,8 @@ export const settingService = {
     submitFeedback,
     getPullRequestSettings,
     updatePullRequestSettings,
+    getSandboxSettings,
+    updateSandboxSettings,
+    updateSetupCommands,
+    archiveInactiveSessions,
 }

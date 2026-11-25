@@ -3,7 +3,12 @@ import React, { useCallback, useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useSessionListMutations } from '../hooks/useSessionListMutations'
-import { useInfiniteSessions, useSessions } from '../hooks/useSessions'
+import {
+    useInfiniteSessions,
+    useSessionCounts,
+    useSessionFacets,
+    useSessions,
+} from '../hooks/useSessions'
 
 import { SessionListModals } from './SessionListModals'
 import { SessionListView } from './SessionListView'
@@ -11,15 +16,13 @@ import { SessionListView } from './SessionListView'
 import type { DeleteModalState, RenameModalState } from '@/features/sessions/types'
 
 import { useAppStore } from '@/app/store'
-import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { generationAPI } from '@/features/generation/api/generation'
 import { MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import {
-    SERVER_FILTERS_REPO_AND_TAG,
     applySessionsView,
-    collectSessionFacets,
     readSessionsView,
     sessionsViewFilters,
+    withPicked,
     writeSessionsView,
     type SessionsView,
 } from '@/features/sessions/lib/sessionsView'
@@ -27,10 +30,6 @@ import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 /** ms after the last key before the search goes to the server */
 const SEARCH_DELAY_MS = 250
-
-/** a saved value stays in the list even before a session with it has loaded */
-const withPicked = (values: string[], picked: string | null) =>
-    picked && !values.includes(picked) ? [...values, picked].sort() : values
 
 export const SessionList: React.FC<{
     onOpenProject: (projectId: string) => void
@@ -53,17 +52,8 @@ export const SessionList: React.FC<{
         const timer = setTimeout(() => setServerSearch(searchQuery.trim()), SEARCH_DELAY_MS)
         return () => clearTimeout(timer)
     }, [searchQuery])
-    // the list API is not ready for the Repository and Tag filters (see sessionsView.ts),
-    // so these two rows of the menu only show with the preview flag (?demo) and then
-    // filter the rows that are loaded
-    const [canFilterRepoAndTag] = useState(
-        () => SERVER_FILTERS_REPO_AND_TAG || isConnectionsDemoActive()
-    )
     // the sort and filter menu. saved in the browser, like the sidebar Recent list
-    const [view, setView] = useState<SessionsView>(() => {
-        const saved = readSessionsView()
-        return canFilterRepoAndTag ? saved : { ...saved, repo: null, tag: null }
-    })
+    const [view, setView] = useState<SessionsView>(readSessionsView)
     const changeView = (next: Partial<SessionsView>) => {
         const merged = { ...view, ...next }
         setView(merged)
@@ -96,16 +86,11 @@ export const SessionList: React.FC<{
     const sessions = useMemo(() => data?.pages.flatMap((page) => page.sessions) || [], [data])
     const errorMessage = error instanceof Error ? error.message : null
 
-    // repositories and tags seen so far fill the menu lists. kept across filter changes,
-    // so a list does not shrink to the one value that is picked
-    const [facets, setFacets] = useState<{ repos: string[]; tags: string[] }>({
-        repos: [],
-        tags: [],
-    })
-    const nextFacets = collectSessionFacets(sessions, facets)
-    if (nextFacets !== facets) setFacets(nextFacets)
-    const repoOptions = canFilterRepoAndTag ? withPicked(facets.repos, view.repo) : []
-    const tagOptions = canFilterRepoAndTag ? withPicked(facets.tags, view.tag) : []
+    // every repository and tag of the user fills the menu lists, also from sessions that
+    // are not loaded. the server filters by them (#641)
+    const { data: facets } = useSessionFacets()
+    const repoOptions = withPicked(facets?.repos ?? [], view.repo)
+    const tagOptions = withPicked(facets?.tags ?? [], view.tag)
 
     const filtersOn =
         view.hasPr ||
@@ -177,10 +162,9 @@ export const SessionList: React.FC<{
         onDeleteMutate: () => setDeleteModal({ isOpen: false, project: null }),
     })
 
-    const runningCount = useMemo(() => {
-        return sessions.filter((s) => s.vmStatus === 'RUNNING' || s.vmStatus === 'PROVISIONING')
-            .length
-    }, [sessions])
+    // every running session of the user, not only the loaded rows (archived left out)
+    const { data: counts } = useSessionCounts()
+    const runningCount = counts?.running
 
     const filteredAndSortedSessions = useMemo(() => {
         // the view again on loaded rows, so an archive or a new tag shows at once

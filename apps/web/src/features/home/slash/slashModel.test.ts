@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test'
 
 import {
     buildSlashItems,
-    formatTokenCount,
     getSlashGroupLabel,
     parseRenameCommand,
     parseSlashToken,
@@ -24,8 +23,6 @@ const build = (options: Partial<Parameters<typeof buildSlashItems>[0]> = {}) =>
     buildSlashItems({
         token: atStart(),
         scope: 'home',
-        demo: false,
-        onCredits: true,
         skills: [],
         ...options,
     })
@@ -61,11 +58,12 @@ describe('buildSlashItems', () => {
         expect(home.slice(-1)).toEqual(['update'])
     })
 
-    test('leaves out what needs the server, and session commands on Home', () => {
+    test('Home has /plan, /effort and /skills, and no session commands', () => {
         const home = names(build())
-        // /plan works for everyone since the server reads plan first (#632)
+        // the server reads plan first, the effort on any source, and skills (#632)
         expect(home).toContain('plan')
-        expect(home).not.toContain('skills')
+        expect(home).toContain('effort')
+        expect(home).toContain('skills')
         expect(home).not.toContain('compact')
         expect(home).not.toContain('rename')
     })
@@ -76,15 +74,9 @@ describe('buildSlashItems', () => {
         )
     })
 
-    test('/effort is only there on December credits', () => {
-        expect(names(build({ onCredits: true }))).toContain('effort')
-        expect(names(build({ onCredits: false }))).not.toContain('effort')
-    })
-
-    test('demo mode adds /skills and the skills, plugin skills last', () => {
-        const items = build({ demo: true, skills })
+    test('the skills follow the commands, plugin skills last', () => {
+        const items = build({ skills })
         expect(names(items)[0]).toBe('plan')
-        expect(names(items)).toContain('skills')
         expect(names(items).slice(-4)).toEqual([
             'write-tests',
             'pr-summary',
@@ -104,7 +96,6 @@ describe('buildSlashItems', () => {
 
     test('a slash in the middle of a sentence lists only skills', () => {
         const items = build({
-            demo: true,
             skills,
             token: { query: '', start: 8, atStart: false },
         })
@@ -122,7 +113,7 @@ describe('getSlashGroupLabel', () => {
     })
 
     test('with skills, each group starts with its label', () => {
-        const items = build({ demo: true, skills, token: atStart('e') })
+        const items = build({ skills, token: atStart('e') })
         const labels = items
             .map((item, index) => [item.name, getSlashGroupLabel(items, index)] as const)
             .filter(([, label]) => label !== null)
@@ -162,13 +153,5 @@ describe('parseRenameCommand', () => {
     test('a normal prompt is not a rename', () => {
         expect(parseRenameCommand('please /rename this')).toBeNull()
         expect(parseRenameCommand('/renamed')).toBeNull()
-    })
-})
-
-describe('formatTokenCount', () => {
-    test('shortens large counts', () => {
-        expect(formatTokenCount(512)).toBe('512')
-        expect(formatTokenCount(84_000)).toBe('84k')
-        expect(formatTokenCount(1_230_000)).toBe('1.2M')
     })
 })

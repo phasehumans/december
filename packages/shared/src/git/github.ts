@@ -1,8 +1,8 @@
 import { createIssueComment } from '../utils/github'
 
-import { GitProviderError } from './types'
+import { GitProviderError, decodeRepoFile } from './types'
 
-import type { CiStatus, GitProvider, GitRepo, PullRequest, TokenSet } from './types'
+import type { CiStatus, GitProvider, GitRepo, PullRequest, RepoDirEntry, TokenSet } from './types'
 
 const API = 'https://api.github.com'
 // https, git@host:path and ssh://git@host/path
@@ -109,15 +109,18 @@ const listRepos: GitProvider['listRepos'] = async (data) => {
 }
 
 const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
-    const { token, repoPath, title, head, base, body } = data
+    const { token, repoPath, title, head, base, body, draft } = data
     const owner = repoPath.split('/')[0]
 
     // a network error is handled like a refused request: the caller gets null
-    const createRes = await fetch(`${API}/repos/${repoPath}/pulls`, {
-        method: 'POST',
-        headers: { ...headers(token), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, head, base, body }),
-    }).catch(() => null)
+    const open = (asDraft: boolean) =>
+        fetch(`${API}/repos/${repoPath}/pulls`, {
+            method: 'POST',
+            headers: { ...headers(token), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, head, base, body, ...(asDraft ? { draft: true } : {}) }),
+        }).catch(() => null)
+
+    const createRes = await open(Boolean(draft))
 
     if (createRes?.status === 201) {
         return toPullRequest(await createRes.json())
@@ -133,7 +136,14 @@ const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
 
         if (listRes?.ok) {
             const list = (await listRes.json()) as any[]
-            return list?.length ? toPullRequest(list[0]) : null
+            if (list?.length) return toPullRequest(list[0])
+        }
+
+        // 422 with no pull request for the branch: the repository's plan has no drafts.
+        // a ready pull request is better than none
+        if (draft) {
+            const readyRes = await open(false)
+            if (readyRes?.status === 201) return toPullRequest(await readyRes.json())
         }
     }
 
@@ -174,6 +184,58 @@ const comment: GitProvider['comment'] = async (data) => {
     await createIssueComment({ token, owner, repo, issueNumber, body })
 }
 
+// a path in the url of the contents api: every part is encoded, the slashes stay
+const contentsUrl = (repoPath: string, path: string) =>
+    `${API}/repos/${repoPath}/contents/${path.split('/').map(encodeURIComponent).join('/')}`
+
+const listDir: GitProvider['listDir'] = async (data) => {
+    const { token, repoPath, path } = data
+    // no ref: github answers for the default branch
+    const res = await fetch(contentsUrl(repoPath, path), { headers: headers(token) })
+    if (!res.ok) {
+        throw new GitProviderError(`Failed to list ${path || 'the repository'}`, res.status)
+    }
+    const body = (await res.json()) as any
+    // a file answers with one object, not a list
+    if (!Array.isArray(body)) return []
+    const entries: RepoDirEntry[] = []
+    for (const item of body) {
+        if (item?.type !== 'file' && item?.type !== 'dir') continue
+        entries.push({ name: String(item.name), path: String(item.path), type: item.type })
+    }
+    return entries
+}
+
+const readTextFile: GitProvider['readTextFile'] = async (data) => {
+    const { token, repoPath, path, maxBytes } = data
+    const res = await fetch(contentsUrl(repoPath, path), { headers: headers(token) })
+    if (!res.ok) {
+        throw new GitProviderError(`Failed to read ${path}`, res.status)
+    }
+    const body = (await res.json()) as any
+    if (Array.isArray(body) || body?.type !== 'file') {
+        throw new GitProviderError(`${path} is not a file`, 404)
+    }
+    const size = Number(body.size) || 0
+    // github sends no content for a file over 1 MB, so the size is checked first
+    if (size > maxBytes || body.encoding !== 'base64') return { size, content: null }
+    return decodeRepoFile(String(body.content ?? ''), maxBytes)
+}
+
+const hasBranch: GitProvider['hasBranch'] = async (data) => {
+    const { token, repoPath, branch } = data
+    // every part of the branch name is encoded, the slashes stay
+    const name = branch.split('/').map(encodeURIComponent).join('/')
+    const res = await fetch(`${API}/repos/${repoPath}/branches/${name}`, {
+        headers: headers(token),
+    })
+    if (res.status === 404) return false
+    if (!res.ok) {
+        throw new GitProviderError(`Failed to read the branch ${branch}`, res.status)
+    }
+    return true
+}
+
 // for github app user tokens that expire; classic oauth tokens never need it
 const refreshToken: GitProvider['refreshToken'] = async (data) => {
     const { refreshToken: token, clientId, clientSecret } = data
@@ -200,8 +262,25 @@ const refreshToken: GitProvider['refreshToken'] = async (data) => {
     return tokens
 }
 
+const getUser: GitProvider['getUser'] = async (data) => {
+    const { token } = data
+    // a network error is handled like a refused token
+    const res = await fetch(`${API}/user`, { headers: headers(token) }).catch(() => null)
+    if (!res?.ok) return null
+    // a body that is not json is handled like no answer
+    const user = (await res.json().catch(() => null)) as any
+    if (!user?.login) return null
+    return {
+        id: String(user.id ?? ''),
+        login: user.login,
+        name: user.name ?? null,
+        email: user.email ?? null,
+    }
+}
+
 export const githubProvider: GitProvider = {
     name: 'GITHUB',
+    getUser,
     parseRepoUrl,
     getCloneUrl,
     listRepos,
@@ -209,5 +288,8 @@ export const githubProvider: GitProvider = {
     getPullRequest,
     getCiStatus,
     comment,
+    listDir,
+    readTextFile,
+    hasBranch,
     refreshToken,
 }

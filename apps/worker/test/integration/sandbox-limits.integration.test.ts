@@ -196,6 +196,25 @@ describe('sandbox limits (#624 part 4)', () => {
         expect(extended).toContain(previewed.id)
     })
 
+    it('the sweeper uses the idle time of each user (#637)', async () => {
+        await clearSessions()
+        await prisma.user.update({ where: { id: userId }, data: { idleStopMinutes: 30 } })
+        const idle11 = await createRunning(minutesAgo(11), 'idle-11')
+        const idle20 = await createRunning(minutesAgo(20), 'idle-20')
+        const idle31 = await createRunning(minutesAgo(31), 'idle-31')
+        const { sweeper, paused, extended } = recordingSweeper()
+
+        await sweeper.sweep()
+        await prisma.user.update({ where: { id: userId }, data: { idleStopMinutes: 10 } })
+
+        expect(paused).toEqual([idle31.id])
+        // idle past the middle of the E2B timeout: the timeout is pushed forward
+        expect(extended).toEqual([idle20.id])
+        expect(await sandboxOf(idle11.id)).toBe('RUNNING')
+        expect(await sandboxOf(idle20.id)).toBe('RUNNING')
+        expect(await sandboxOf(idle31.id)).toBe('PAUSED')
+    })
+
     it('a paused session resumes its own sandbox on the next prompt', async () => {
         await clearSessions()
         const session = await prisma.session.create({
@@ -250,6 +269,39 @@ describe('sandbox limits (#624 part 4)', () => {
         await E2BSandboxService.acquireSessionSandbox({ sessionId: session.id, userId })
 
         expect(resumed).toEqual([`vm-held-${stamp}`])
+        E2BSandboxService.resetMockClient()
+    })
+
+    it('saves when the sandbox started: at a new sandbox and at a resume, not at a reuse', async () => {
+        await clearSessions()
+        const session = await prisma.session.create({
+            data: { userId, title: 'started-at', createdAt: new Date('2026-11-01T08:00:00Z') },
+        })
+        const startedAt = async () =>
+            (await prisma.session.findUniqueOrThrow({ where: { id: session.id } })).sandboxStartedAt
+        E2BSandboxService.setMockClient({
+            create: async () => ({ sandboxId: `vm-started-${stamp}` }),
+            resume: async ({ snapshotId }: any) => ({ sandboxId: snapshotId }),
+        })
+        expect(await startedAt()).toBe(null)
+
+        const before = Date.now()
+        await E2BSandboxService.acquireSessionSandbox({ sessionId: session.id, userId })
+        const first = await startedAt()
+        expect(first!.getTime()).toBeGreaterThanOrEqual(before)
+
+        // the next prompt uses the sandbox that runs: the same start
+        await E2BSandboxService.acquireSessionSandbox({ sessionId: session.id, userId })
+        expect(await startedAt()).toEqual(first)
+
+        // paused and resumed: a new start
+        await prisma.session.update({
+            where: { id: session.id },
+            data: { sandboxStatus: 'PAUSED', vmStatus: 'STOPPED' },
+        })
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        await E2BSandboxService.acquireSessionSandbox({ sessionId: session.id, userId })
+        expect((await startedAt())!.getTime()).toBeGreaterThan(first!.getTime())
         E2BSandboxService.resetMockClient()
     })
 

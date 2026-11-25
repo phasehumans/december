@@ -6,6 +6,7 @@ import { useAppStore } from '@/app/store'
 import { getPathForView, type ViewState } from '@/app/types'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
+import { turnOffBrowserPushOnSignOut } from '@/features/profile/hooks/useBrowserPush'
 import { getWebUrl } from '@/shared/config/env'
 import { resetUserQueryCache } from '@/shared/lib/query-cache'
 import { clearLoggedInCookie } from '@/shared/utils/logged-in-cookie'
@@ -102,6 +103,8 @@ export const useNavigationController = () => {
     const handleSignOut = React.useCallback(async () => {
         const landingUrl = getWebUrl()
         clearLoggedInCookie()
+        // before the sign out: it needs the session. the next user here starts with push off
+        await turnOffBrowserPushOnSignOut()
         try {
             await profileAPI.signout()
         } catch {

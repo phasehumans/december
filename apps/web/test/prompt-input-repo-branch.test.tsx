@@ -80,8 +80,9 @@ describe('usePromptInputController - repository and branch onboarding', () => {
             repoUrl: 'https://github.com/phasehumans/december',
             branch: 'feature/auth-v2',
             issueNumber: 583,
-            model: 'gemini-2.5-pro',
-            provider: 'gemini',
+            // on December credits the server picks the model, so the browser names none
+            model: undefined,
+            provider: undefined,
             billingSource: 'CREDITS',
             // the session configuration goes with the prompt (#632)
             runConfig: { planFirst: false, effort: 'deep', openPullRequest: true },

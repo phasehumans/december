@@ -1,7 +1,9 @@
 import { PlatformAdapter } from '@december/agent'
 
 import { BROWSER_RUNNER_SCRIPT } from './browser-runner-script'
+import { subscribeWhenReady } from './redis-subscriber'
 import { executeCommand } from './runtime'
+import { shellQuote } from './shell-quote'
 
 import type {
     BrowserActionInput,
@@ -14,10 +16,6 @@ import type {
     LspOperations,
     OutlineItem,
 } from '@december/shared'
-
-const escapeShellArg = (arg: string): string => {
-    return `'${arg.replace(/'/g, "'\\''")}'`
-}
 
 const extractWordAtPosition = (lineContent: string, column: number): string | null => {
     if (!lineContent || column < 1) return null
@@ -65,6 +63,8 @@ export interface RemotePlatformAdapterOptions {
     onQuestion?: (questions: Array<{ question: string }>) => Promise<unknown>
     // called once the wait ends (answer or timeout), e.g. to clear the "needs answer" mark
     onQuestionSettled?: () => Promise<unknown>
+    // the stop signal of the run (#637): kills the command in flight, ends a wait for an answer
+    signal?: AbortSignal
 }
 
 export class RemotePlatformAdapter implements PlatformAdapter {
@@ -106,7 +106,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
         exitCode?: number
         output?: string
     }> {
-        const statusCmd = `node /tmp/hands-daemon.mjs status ${escapeShellArg(opId)}`
+        const statusCmd = `node /tmp/hands-daemon.mjs status ${shellQuote(opId)}`
         let statusOutput = ''
         try {
             const exitCode = await executeCommand(this.vmId, statusCmd, (chunk) => {
@@ -115,7 +115,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
             if (exitCode === 0 && statusOutput.trim()) {
                 const parsed = JSON.parse(statusOutput.trim())
                 if (parsed.status === 'done') {
-                    const readCmd = `node /tmp/hands-daemon.mjs read ${escapeShellArg(opId)} 0`
+                    const readCmd = `node /tmp/hands-daemon.mjs read ${shellQuote(opId)} 0`
                     let logOutput = ''
                     await executeCommand(this.vmId, readCmd, (chunk) => {
                         logOutput += chunk
@@ -159,10 +159,15 @@ export class RemotePlatformAdapter implements PlatformAdapter {
 
             let output = ''
             try {
-                const exitCode = await executeCommand(this.vmId, command, (chunk) => {
-                    output += chunk
-                    if (onData) onData(chunk)
-                })
+                const exitCode = await executeCommand(
+                    this.vmId,
+                    command,
+                    (chunk) => {
+                        output += chunk
+                        if (onData) onData(chunk)
+                    },
+                    this.options?.signal
+                )
                 return { exitCode, output, taskId: opId, opId }
             } finally {
                 this.activeOpIds.delete(opId)
@@ -186,7 +191,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
         readFile: async (filepath: string) => {
             const targetPath = resolveWorkspacePath(filepath)
             console.log(`[AGENT REMOTE TOOL] VM '${this.vmId}' reading file: ${targetPath}`)
-            const { exitCode, output } = await this.bash.exec(`cat ${escapeShellArg(targetPath)}`)
+            const { exitCode, output } = await this.bash.exec(`cat ${shellQuote(targetPath)}`)
             if (exitCode !== 0) throw new Error(`Failed to read file ${targetPath}: ${output}`)
             return output
         },
@@ -196,9 +201,9 @@ export class RemotePlatformAdapter implements PlatformAdapter {
                 `[AGENT REMOTE TOOL] VM '${this.vmId}' writing file: ${targetPath} (${content.length} bytes)`
             )
             const base64Content = Buffer.from(content).toString('base64')
-            await this.bash.exec(`mkdir -p "$(dirname ${escapeShellArg(targetPath)})"`)
+            await this.bash.exec(`mkdir -p "$(dirname ${shellQuote(targetPath)})"`)
             const { exitCode, output } = await this.bash.exec(
-                `echo ${escapeShellArg(base64Content)} | base64 -d > ${escapeShellArg(targetPath)}`
+                `echo ${shellQuote(base64Content)} | base64 -d > ${shellQuote(targetPath)}`
             )
             if (exitCode !== 0) throw new Error(`Failed to write file ${targetPath}: ${output}`)
 
@@ -209,9 +214,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
         },
         readdir: async (dirPath: string) => {
             const targetPath = resolveWorkspacePath(dirPath)
-            const { exitCode, output } = await this.bash.exec(
-                `ls -1p ${escapeShellArg(targetPath)}`
-            )
+            const { exitCode, output } = await this.bash.exec(`ls -1p ${shellQuote(targetPath)}`)
             if (exitCode !== 0) throw new Error(`Failed to read dir ${targetPath}: ${output}`)
             return output
                 .split('\n')
@@ -225,13 +228,13 @@ export class RemotePlatformAdapter implements PlatformAdapter {
             const targetPath = resolveWorkspacePath(dirPath)
             const flag = options?.recursive ? '-p ' : ''
             const { exitCode, output } = await this.bash.exec(
-                `mkdir ${flag}${escapeShellArg(targetPath)}`
+                `mkdir ${flag}${shellQuote(targetPath)}`
             )
             if (exitCode !== 0) throw new Error(`Failed to mkdir ${targetPath}: ${output}`)
         },
         exists: async (filepath: string) => {
             const targetPath = resolveWorkspacePath(filepath)
-            const { exitCode } = await this.bash.exec(`test -e ${escapeShellArg(targetPath)}`)
+            const { exitCode } = await this.bash.exec(`test -e ${shellQuote(targetPath)}`)
             return exitCode === 0
         },
     }
@@ -239,13 +242,13 @@ export class RemotePlatformAdapter implements PlatformAdapter {
     search = {
         find: async (dirPath: string, query: string) => {
             const { output } = await this.bash.exec(
-                `find ${escapeShellArg(dirPath)} -name ${escapeShellArg(query)}`
+                `find ${shellQuote(dirPath)} -name ${shellQuote(query)}`
             )
             return output
         },
         grep: async (dirPath: string, query: string) => {
             const { output } = await this.bash.exec(
-                `grep -rnI ${escapeShellArg(query)} ${escapeShellArg(dirPath)}`
+                `grep -rnI ${shellQuote(query)} ${shellQuote(dirPath)}`
             )
             return output
         },
@@ -344,6 +347,18 @@ export class RemotePlatformAdapter implements PlatformAdapter {
                     return
                 }
 
+                // a stop of the run (#637) ends the wait, so it cannot settle inside a later run
+                const stopSignal = this.options?.signal
+                const onStop = async () => {
+                    if (settled) return
+                    settled = true
+                    clearTimeout(timer)
+                    await cleanup()
+                    resolve(fallbackOption)
+                }
+                if (stopSignal?.aborted) void onStop()
+                else stopSignal?.addEventListener('abort', onStop, { once: true })
+
                 if (typeof sub.on === 'function') {
                     sub.on('message', async (channel: string, message: string) => {
                         if (channel === `session_question_answer:${sessionId}` && !settled) {
@@ -369,9 +384,13 @@ export class RemotePlatformAdapter implements PlatformAdapter {
                     })
                 }
 
-                if (typeof sub.subscribe === 'function') {
-                    sub.subscribe(`session_question_answer:${sessionId}`).catch(() => {
-                        // Intentionally swallowed: Subscribe error fallback
+                if (typeof sub.subscribe === 'function' && typeof sub.on === 'function') {
+                    // the duplicate is not connected yet and has no offline queue: a
+                    // subscribe sent now is refused, and the answer never arrives
+                    subscribeWhenReady({
+                        client: sub,
+                        subscribe: () => sub.subscribe(`session_question_answer:${sessionId}`),
+                        label: 'RemotePlatformAdapter',
                     })
                 }
             })
@@ -388,7 +407,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
         try {
             const base64Script = Buffer.from(BROWSER_RUNNER_SCRIPT).toString('base64')
             await this.bash.exec(
-                `echo ${escapeShellArg(base64Script)} | base64 -d > /tmp/december-browser-runner.mjs && chmod +x /tmp/december-browser-runner.mjs`
+                `echo ${shellQuote(base64Script)} | base64 -d > /tmp/december-browser-runner.mjs && chmod +x /tmp/december-browser-runner.mjs`
             )
             this.browserRunnerInstalled = true
         } catch {
@@ -450,7 +469,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
             await this.ensureBrowserRunner()
             const payload = JSON.stringify({ action: 'navigate', url })
             const { output } = await this.bash.exec(
-                `node /tmp/december-browser-runner.mjs ${escapeShellArg(payload)}`
+                `node /tmp/december-browser-runner.mjs ${shellQuote(payload)}`
             )
 
             const parsed = this.parseBrowserResult(output)
@@ -476,7 +495,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
             await this.ensureBrowserRunner()
             const payload = JSON.stringify(params)
             const { output } = await this.bash.exec(
-                `node /tmp/december-browser-runner.mjs ${escapeShellArg(payload)}`
+                `node /tmp/december-browser-runner.mjs ${shellQuote(payload)}`
             )
 
             const parsed = this.parseBrowserResult(output)
@@ -547,7 +566,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
                 // Search for definitions across /workspace with regex character and shell escaping
                 const safeWordRegex = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
                 const defPattern = `(export\\s+)?(default\\s+)?(async\\s+)?(function|class|interface|type|const|let|var)\\s+${safeWordRegex}\\b|${safeWordRegex}\\s*[:=]\\s*(function|\\([^)]*\\)\\s*=>)|${safeWordRegex}\\s*\\([^)]*\\)\\s*\\{`
-                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E ${escapeShellArg(defPattern)} /workspace || true`
+                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E ${shellQuote(defPattern)} /workspace || true`
                 const { output } = await this.bash.exec(queryCmd)
                 const matches: LocationItem[] = []
 
@@ -577,7 +596,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
 
                 // Fallback to broader identifier search with escaped pattern
                 const fallbackPattern = `\\b${safeWordRegex}\\b`
-                const fallbackCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E ${escapeShellArg(fallbackPattern)} /workspace || true`
+                const fallbackCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E ${shellQuote(fallbackPattern)} /workspace || true`
                 const fallbackRes = await this.bash.exec(fallbackCmd)
                 if (fallbackRes.output.trim()) {
                     const fbLines = fallbackRes.output.split('\n').filter(Boolean)
@@ -631,7 +650,7 @@ export class RemotePlatformAdapter implements PlatformAdapter {
 
                 const safeWordRegex = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
                 const refPattern = `\\b${safeWordRegex}\\b`
-                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E ${escapeShellArg(refPattern)} /workspace || true`
+                const queryCmd = `grep -rnI --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.december -E ${shellQuote(refPattern)} /workspace || true`
                 const { output } = await this.bash.exec(queryCmd)
                 const refs: LocationItem[] = []
 

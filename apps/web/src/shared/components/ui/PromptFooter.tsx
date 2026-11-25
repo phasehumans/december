@@ -1,3 +1,4 @@
+import { ATTACHMENT_ACCEPT } from '@december/shared/attachments'
 import {
     Folder,
     Lock,
@@ -13,11 +14,12 @@ import { useNavigate } from 'react-router-dom'
 import { BottomSheet, SheetHeader } from './BottomSheet'
 import { Icons } from './Icons'
 
-import type { BillingSource } from '@/features/home/model-selection'
+import type { BillingSource, Speed } from '@/features/home/model-selection'
 import type { SlashCommand } from '@/features/home/slash/commands'
 import type { GithubRepo } from '@/features/profile/api/profile'
 import type { BackendSession } from '@/features/sessions/api/session'
 
+import { DemoPill } from '@/features/connections/components/ConnectionsUi'
 import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { CascadeMenu, type CascadeItem } from '@/features/home/components/CascadeMenu'
 import {
@@ -26,7 +28,8 @@ import {
     PhoneModelText,
     SourceConfigRow,
     SourceSwitch,
-    TierConfigRow,
+    SpeedConfigRow,
+    SpeedSwitch,
     useKeyModelsLevel,
 } from '@/features/home/components/ModelControl'
 import {
@@ -48,9 +51,15 @@ import { cn } from '@/shared/lib/utils'
 
 interface PromptFooterProps {
     onUpload: () => void
+    /** the files picked with "Upload attachment" */
+    onFiles?: (files: File[]) => void
     onSubmit: () => void
     hasInput: boolean
     isLoading: boolean
+    /** a session takes a new message while December works (#637): send stays on */
+    sendWhileLoading?: boolean
+    /** stops the run. the stop button shows while December works */
+    onStop?: () => void
     onVoiceTranscript?: (text: string) => void
     onVoiceStateChange?: (isListening: boolean) => void
     isAuthenticated?: boolean
@@ -58,12 +67,14 @@ interface PromptFooterProps {
     /** types "@repos:" and so on into the box. used when a row has no pick handler */
     onOptionSelect?: (trigger: string) => void
     mode?: 'agent' | 'chat'
-    isThinkingMode?: boolean
-    onToggleThinking?: (enabled: boolean) => void
     selectedModel?: string
     selectedProvider?: string
     selectedSource?: BillingSource
+    /** Fast or Deep, on December credits and on your own key */
+    selectedSpeed?: Speed
     onSelectModel?: (model: string, provider?: string, source?: BillingSource) => void
+    onSelectCredits?: () => void
+    onSelectSpeed?: (speed: Speed) => void
     /** the Commands row of the + menu for a signed-out visitor: types a slash in the box */
     onSlash?: () => void
     /** the Commands row of the + menu: the list beside it, and what a pick runs */
@@ -84,9 +95,12 @@ const plusIconClass = 'w-4 h-4 text-[#8F8E8D]'
 
 export const PromptFooter: React.FC<PromptFooterProps> = ({
     onUpload,
+    onFiles,
     onSubmit,
     hasInput,
     isLoading,
+    sendWhileLoading,
+    onStop,
     onVoiceTranscript,
     onVoiceStateChange,
     isAuthenticated,
@@ -96,7 +110,10 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     selectedModel,
     selectedProvider,
     selectedSource = 'CREDITS',
+    selectedSpeed,
     onSelectModel,
+    onSelectCredits,
+    onSelectSpeed,
     onSlash,
     slashCommands,
     onPickCommand,
@@ -105,6 +122,8 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     onPickSecret,
     onPickSkill,
 }) => {
+    // during a run the send button is off, but not in a session that takes new messages
+    const sendBlocked = isLoading && !sendWhileLoading
     const navigate = useNavigate()
     const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false)
     const [plusMenuPosition, setPlusMenuPosition] = useState<'top' | 'bottom'>('bottom')
@@ -114,7 +133,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     const [configMenuPosition, setConfigMenuPosition] = useState<'top' | 'bottom'>('bottom')
     /** phones: the level of the Configuration sheet. the model list is the level under it */
     const [configLevel, setConfigLevel] = useState<'root' | 'models'>('root')
-    // skills, plugins and MCPs have no backend yet. they work in demo mode
+    // installing plugins is not built yet. the preview shows sample plugins
     const [demo] = useState(isConnectionsDemoActive)
     const isConfigChanged = usePromptConfig(isPromptConfigChanged)
     const isPhone = useIsPhone()
@@ -178,7 +197,10 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
         selectedProvider,
         // the 'CREDITS' default above reads as a plain string, so the type is named again
         selectedSource: selectedSource as BillingSource,
+        selectedSpeed,
         onSelectModel,
+        onSelectCredits,
+        onSelectSpeed,
     }
 
     // phones: the model list inside the Configuration sheet. a pick closes the sheet
@@ -265,9 +287,9 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             id: 'skills',
             label: 'Skills',
             icon: <Shapes className={plusIconClass} />,
-            soon: !demo,
+            // with the preview on the list holds sample skills
+            tag: demo ? <DemoPill /> : undefined,
             side:
-                demo &&
                 onPickSkill &&
                 sideWhenSignedIn(
                     <SkillSideList
@@ -282,6 +304,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             label: 'Plugins',
             icon: <Puzzle className={plusIconClass} />,
             soon: !demo,
+            tag: demo ? <DemoPill /> : undefined,
             side:
                 demo &&
                 sideWhenSignedIn(
@@ -295,14 +318,11 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             id: 'mcps',
             label: 'MCPs',
             icon: <Icons.Mcp className={plusIconClass} />,
-            soon: !demo,
-            side:
-                demo &&
-                sideWhenSignedIn(
-                    <McpSessionList
-                        onManage={() => openConnections('/settings/connections/mcps')}
-                    />
-                ),
+            // with the preview on the list holds sample servers
+            tag: demo ? <DemoPill /> : undefined,
+            side: sideWhenSignedIn(
+                <McpSessionList onManage={() => openConnections('/settings/connections/mcps')} />
+            ),
             onPick: run(() => undefined),
         },
     ]
@@ -349,11 +369,11 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                 ref={fileInputRef}
                 className="hidden"
                 multiple
-                accept="image/*,.pdf,.doc,.docx,.txt"
+                accept={ATTACHMENT_ACCEPT}
                 onChange={(e) => {
-                    // file handling will be implemented here
+                    // the prompt box keeps the files and checks each one
                     if (e.target.files && e.target.files.length > 0) {
-                        console.log('Files selected:', e.target.files)
+                        onFiles?.(Array.from(e.target.files))
                     }
                     // reset input so the same file can be selected again
                     if (fileInputRef.current) {
@@ -467,7 +487,12 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                     </div>
 
                     {/* phones show the speed or the model as text beside the mic */}
-                    {!isPhone && <ModelControl {...modelProps} />}
+                    {!isPhone && (
+                        <>
+                            <SpeedSwitch {...modelProps} />
+                            <ModelControl {...modelProps} />
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -509,20 +534,32 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         </div>
                     </div>
                 )}
+                {isLoading && onStop && (
+                    <button
+                        type="button"
+                        aria-label="Stop"
+                        title="Stop"
+                        onClick={onStop}
+                        className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2C2C2E] text-[#D6D5D4] hover:bg-[#3A3A3C] transition-colors duration-200 outline-none touch-manipulation"
+                    >
+                        <span className="block w-2.5 h-2.5 rounded-[2px] bg-current" />
+                    </button>
+                )}
                 <div className="relative group/submitbtn">
                     <button
                         onClick={onSubmit}
-                        disabled={!hasInput || isLoading}
+                        aria-label="Send"
+                        disabled={!hasInput || sendBlocked}
                         className={`
                             flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 outline-none touch-manipulation
                             ${
-                                hasInput && !isLoading
+                                hasInput && !sendBlocked
                                     ? 'bg-[#D6D5D4] text-black hover:bg-white'
                                     : 'bg-[#2C2C2E] text-[#4A4A4A] cursor-not-allowed'
                             }
                         `}
                     >
-                        {isLoading ? (
+                        {sendBlocked ? (
                             <div className="w-4 h-4 border-2 border-neutral-500 border-t-neutral-800 rounded-full animate-spin" />
                         ) : (
                             <Icons.ArrowRight className="w-4 h-4 stroke-[2px]" />
@@ -532,7 +569,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         <span className="text-[12px] font-medium text-[#EDEDEF]">
                             {!hasInput
                                 ? 'Prompt required'
-                                : isLoading
+                                : sendBlocked
                                   ? 'Generating...'
                                   : 'Enter to send'}
                         </span>
@@ -584,6 +621,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                               {item.icon}
                                               <span>{item.label}</span>
                                           </span>
+                                          {item.tag}
                                           {item.soon && <SoonTag />}
                                       </button>
                                   ))}
@@ -609,7 +647,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                         ) : (
                             <div className="flex flex-col pb-1 [&>*]:py-2.5 [&>*]:text-[14px]">
                                 <SourceConfigRow {...modelProps} onOpenAuth={onOpenAuth} />
-                                <TierConfigRow {...modelProps} />
+                                <SpeedConfigRow {...modelProps} />
                                 <ModelConfigRow
                                     {...modelProps}
                                     onOpen={() => setConfigLevel('models')}

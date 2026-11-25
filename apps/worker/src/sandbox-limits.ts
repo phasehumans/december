@@ -1,9 +1,18 @@
 import { prisma } from '@december/database'
+import { DEFAULT_IDLE_STOP_MINUTES, IDLE_STOP_MINUTES } from '@december/shared'
 
 // #624 part 4: running sandboxes are counted per user in the database (Session.sandboxStatus),
 // so the limit holds with any number of workers. paused sandboxes do not count.
 export const MAX_RUNNING_SANDBOXES_PER_USER = 10
-export const SANDBOX_IDLE_PAUSE_MS = 10 * 60 * 1000
+// the idle time of a user who did not choose one (User.idleStopMinutes, #637)
+export const SANDBOX_IDLE_PAUSE_MS = DEFAULT_IDLE_STOP_MINUTES * 60 * 1000
+// E2B pauses a sandbox this long after its timeout was last set (create, resume, extend)
+export const E2B_SANDBOX_TIMEOUT_MS = 30 * 60 * 1000
+// a sandbox that must stay up past the E2B timeout gets it pushed forward from this idle
+// time on: half of the timeout, so a few missed sweeps do no harm
+const EXTEND_IDLE_FROM_MS = E2B_SANDBOX_TIMEOUT_MS / 2
+// a sandbox with activity in this window is in use
+const ACTIVE_WINDOW_MS = 2 * 60 * 1000
 
 // a sandbox that has been starting this long is left over from a crashed worker
 const STALE_STARTING_MS = 15 * 60 * 1000
@@ -108,28 +117,73 @@ export const touchSandboxActivity = async (data: TouchSandboxActivityInput): Pro
         })
 }
 
-type IdleSandboxSweeperOptions = {
-    pause: (data: SandboxToPause) => Promise<unknown>
-    // pushes the E2B timeout of a sandbox that is in use forward (preview, terminal, agent)
-    extend?: (data: SandboxToPause) => Promise<unknown>
-    intervalMs?: number
-    idleMs?: number
+type PauseAfterIdleInput = {
+    // the user's setting (User.idleStopMinutes): 10, 30 or 60
+    idleStopMinutes: number
+    // the agent is provisioning or running (Session.vmStatus)
+    agentWorking: boolean
 }
 
-/** Pauses (never deletes) sandboxes with no activity for 10 minutes. Safe with many workers. */
+/**
+ * How long a sandbox may have no activity before it is paused. A working agent (a long
+ * tool call sends no events) is left alone until its run looks abandoned.
+ */
+export const pauseAfterIdleMs = (data: PauseAfterIdleInput): number => {
+    const { idleStopMinutes, agentWorking } = data
+    const limitMs = (IDLE_STOP_MINUTES as readonly number[]).includes(idleStopMinutes)
+        ? idleStopMinutes * 60 * 1000
+        : SANDBOX_IDLE_PAUSE_MS
+    return agentWorking ? Math.max(limitMs, STALE_AGENT_RUN_MS) : limitMs
+}
+
+export type IdleSandboxAction = 'pause' | 'extend' | 'leave'
+
+type DecideIdleSandboxInput = PauseAfterIdleInput & {
+    // time since the last agent step, terminal input or preview request
+    idleForMs: number
+    // a sandbox with activity in this window is in use. default: 2 minutes
+    activeWindowMs?: number
+}
+
+/**
+ * What the sweeper does with one running sandbox (#637):
+ * - pause: no activity for longer than the user's idle time
+ * - extend: push the E2B timeout forward. For a sandbox in use (preview requests reach E2B
+ *   directly), and for an idle one that must outlive the E2B timeout: a 30 or 60 minute
+ *   idle time, or a working agent
+ * - leave: nothing. The E2B timeout is still far away
+ */
+export const decideIdleSandbox = (data: DecideIdleSandboxInput): IdleSandboxAction => {
+    const { idleStopMinutes, agentWorking, idleForMs, activeWindowMs = ACTIVE_WINDOW_MS } = data
+    if (idleForMs > pauseAfterIdleMs({ idleStopMinutes, agentWorking })) return 'pause'
+    if (idleForMs <= activeWindowMs) return 'extend'
+    // every pause before this point came from the sweeper; from here on E2B could pause first
+    if (idleForMs >= EXTEND_IDLE_FROM_MS) return 'extend'
+    return 'leave'
+}
+
+type IdleSandboxSweeperOptions = {
+    pause: (data: SandboxToPause) => Promise<unknown>
+    // pushes the E2B timeout of a sandbox forward (see decideIdleSandbox)
+    extend?: (data: SandboxToPause) => Promise<unknown>
+    intervalMs?: number
+}
+
+/**
+ * Pauses (never deletes) sandboxes with no activity for the idle time of their user: 10
+ * minutes, or 30 or 60 when the user chose that (#637). Safe with many workers.
+ */
 export class IdleSandboxSweeper {
     private timer: NodeJS.Timeout | null = null
     private isSweeping = false
     private readonly pause: IdleSandboxSweeperOptions['pause']
     private readonly extend: IdleSandboxSweeperOptions['extend']
     private readonly intervalMs: number
-    private readonly idleMs: number
 
     constructor(options: IdleSandboxSweeperOptions) {
         this.pause = options.pause
         this.extend = options.extend
         this.intervalMs = options.intervalMs ?? 60 * 1000
-        this.idleMs = options.idleMs ?? SANDBOX_IDLE_PAUSE_MS
     }
 
     start(): void {
@@ -155,44 +209,73 @@ export class IdleSandboxSweeper {
 
         try {
             const now = Date.now()
-            const cutoff = new Date(now - this.idleMs)
-            const staleRun = new Date(now - STALE_AGENT_RUN_MS)
-            const idleWhere = {
-                sandboxStatus: 'RUNNING' as const,
-                AND: [
-                    {
+            const activeWindowMs = this.intervalMs * 2
+            // the shortest idle time: nothing before it is paused or needs a longer timeout
+            const idleSince = new Date(now - SANDBOX_IDLE_PAUSE_MS)
+            const sessions = await prisma.session.findMany({
+                where: {
+                    sandboxStatus: 'RUNNING',
+                    OR: [
+                        { vmLastActivityAt: { gte: new Date(now - activeWindowMs) } },
+                        { vmLastActivityAt: { lt: idleSince } },
+                        { vmLastActivityAt: null, updatedAt: { lt: idleSince } },
+                    ],
+                },
+                select: {
+                    id: true,
+                    vmId: true,
+                    vmStatus: true,
+                    vmLastActivityAt: true,
+                    updatedAt: true,
+                    user: { select: { idleStopMinutes: true } },
+                },
+                // the longest idle first, so the pauses come before the extends
+                orderBy: { vmLastActivityAt: { sort: 'asc', nulls: 'first' } },
+                take: 1000,
+            })
+
+            for (const session of sessions) {
+                const agentWorking = AGENT_WORKING.includes(session.vmStatus as 'RUNNING')
+                const idleStopMinutes = session.user.idleStopMinutes
+                const lastActivityAt = session.vmLastActivityAt ?? session.updatedAt
+                const action = decideIdleSandbox({
+                    idleStopMinutes,
+                    agentWorking,
+                    idleForMs: now - lastActivityAt.getTime(),
+                    activeWindowMs,
+                })
+
+                if (action === 'extend') {
+                    if (!this.extend || !session.vmId) continue
+                    await this.extend({ sessionId: session.id, vmId: session.vmId }).catch(
+                        (err) => {
+                            console.warn(
+                                `[IDLE SANDBOX SWEEPER] could not extend sandbox for session ${session.id}:`,
+                                err?.message || err
+                            )
+                        }
+                    )
+                    continue
+                }
+                if (action !== 'pause') continue
+
+                // claim it: a touch, a new run or another worker in between makes this match nothing
+                const cutoff = new Date(now - pauseAfterIdleMs({ idleStopMinutes, agentWorking }))
+                const claimed = await prisma.session.updateMany({
+                    where: {
+                        id: session.id,
+                        sandboxStatus: 'RUNNING',
+                        vmStatus: session.vmStatus,
                         OR: [
                             { vmLastActivityAt: { lt: cutoff } },
                             { vmLastActivityAt: null, updatedAt: { lt: cutoff } },
                         ],
                     },
-                    // a working agent (a long tool call sends no events) is left alone,
-                    // unless its run looks abandoned
-                    {
-                        OR: [
-                            { vmStatus: { notIn: AGENT_WORKING } },
-                            { vmLastActivityAt: { lt: staleRun } },
-                            { vmLastActivityAt: null, updatedAt: { lt: staleRun } },
-                        ],
-                    },
-                ],
-            }
-            const idle = await prisma.session.findMany({
-                where: idleWhere,
-                select: { id: true, vmId: true, vmStatus: true },
-                orderBy: { vmLastActivityAt: { sort: 'asc', nulls: 'first' } },
-                take: 50,
-            })
-
-            for (const session of idle) {
-                // claim it: a touch or another worker in between makes this match nothing
-                const claimed = await prisma.session.updateMany({
-                    where: { id: session.id, ...idleWhere },
                     data: { sandboxStatus: 'PAUSED' },
                 })
                 if (claimed.count === 0) continue
 
-                if (AGENT_WORKING.includes(session.vmStatus as 'RUNNING')) {
+                if (agentWorking) {
                     // an abandoned run: stop showing it as running
                     await prisma.session.updateMany({
                         where: { id: session.id, vmStatus: { in: AGENT_WORKING } },
@@ -208,36 +291,10 @@ export class IdleSandboxSweeper {
                 })
                 paused++
             }
-
-            if (this.extend) {
-                await this.extendActive(now)
-            }
         } finally {
             this.isSweeping = false
         }
 
         return paused
-    }
-
-    // preview requests reach E2B directly, so a sandbox in use gets its E2B timeout pushed
-    // forward here; otherwise E2B would pause it at the timeout
-    private async extendActive(now: number): Promise<void> {
-        const active = await prisma.session.findMany({
-            where: {
-                sandboxStatus: 'RUNNING',
-                vmId: { not: null },
-                vmLastActivityAt: { gte: new Date(now - this.intervalMs * 2) },
-            },
-            select: { id: true, vmId: true },
-            take: 500,
-        })
-        for (const session of active) {
-            await this.extend!({ sessionId: session.id, vmId: session.vmId }).catch((err) => {
-                console.warn(
-                    `[IDLE SANDBOX SWEEPER] could not extend sandbox for session ${session.id}:`,
-                    err?.message || err
-                )
-            })
-        }
     }
 }

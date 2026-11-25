@@ -18,6 +18,8 @@ export interface InteractiveQuestionCardProps {
     onAnswerSubmitted?: (answer: string | string[]) => void
     disabled?: boolean
     initialAnswer?: string | string[]
+    /** the heading of the card. the agent's question when not given */
+    title?: string
 }
 
 export const InteractiveQuestionCard: React.FC<InteractiveQuestionCardProps> = ({
@@ -27,6 +29,7 @@ export const InteractiveQuestionCard: React.FC<InteractiveQuestionCardProps> = (
     onAnswerSubmitted,
     disabled = false,
     initialAnswer,
+    title = 'Agent Clarification',
 }) => {
     const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string[]>>({})
     const [submittedAnswer, setSubmittedAnswer] = useState<string | string[] | null>(
@@ -105,7 +108,7 @@ export const InteractiveQuestionCard: React.FC<InteractiveQuestionCardProps> = (
                 <div className="flex items-center gap-2 text-[#87B2F4]">
                     <HelpCircle size={16} />
                     <span className="text-[12px] font-semibold tracking-wide uppercase text-white">
-                        Agent Clarification
+                        {title}
                     </span>
                 </div>
 

@@ -5,6 +5,8 @@ import bcrypt from 'bcrypt'
 import { redisClient } from '../../config/redis'
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
+import { auditService } from '../audit/audit.service'
+import { billingService } from '../billing/billing.service'
 import { notificationService } from '../notification/notification.service'
 
 import { sessionCache } from './auth.cache'
@@ -29,6 +31,7 @@ import type {
     RefreshSession,
     Signout,
     SignoutAll,
+    RemoveSignedOutPush,
     DeleteAccount,
     PollDeviceToken,
     VerifyUserCode,
@@ -64,6 +67,7 @@ const issueSession = async (data: IssueSession) => {
         ipAddress,
         expiresAt,
     })
+    await auditService.recordSignIn({ userId, method: 'email', ip: ipAddress })
 
     await sessionCache.set(sessionId, {
         id: sessionId,
@@ -128,7 +132,7 @@ const startEmailAuth = async (data: StartEmailAuth) => {
 }
 
 const verifyEmailAuth = async (data: VerifyEmailAuth) => {
-    const { email, otp, userAgent, ipAddress } = data
+    const { email, otp, userAgent, ipAddress, referralCode } = data
 
     const user = await authRepository.findUserByEmail(email)
 
@@ -182,6 +186,13 @@ const verifyEmailAuth = async (data: VerifyEmailAuth) => {
     const tokens = await issueSession({ userId: user.id, userAgent, ipAddress })
 
     if (isNewUser) {
+        // a new account that came from an invite link (#638). an account that exists never gets one
+        await billingService.attachReferral({
+            inviteeId: user.id,
+            inviteeEmail: user.email,
+            code: referralCode,
+        })
+
         try {
             await notificationService.sendNotificationToUser({
                 userId: user.id,
@@ -205,7 +216,7 @@ const verifyEmailAuth = async (data: VerifyEmailAuth) => {
 }
 
 const google = async (data: Google) => {
-    const { name, email, sub, userAgent, ipAddress } = data
+    const { name, email, sub, userAgent, ipAddress, referralCode } = data
     const normalizedEmail = email.trim().toLowerCase()
 
     let user = await authRepository.findUserByEmail(normalizedEmail)
@@ -216,6 +227,11 @@ const google = async (data: Google) => {
             emailVerified: true,
             googleId: sub,
             name: name,
+        })
+        await billingService.attachReferral({
+            inviteeId: user.id,
+            inviteeEmail: user.email,
+            code: referralCode,
         })
 
         try {
@@ -238,11 +254,21 @@ const google = async (data: Google) => {
     } else if (user.deletedAt || user.isDeleted) {
         throw new AppError('account has been deleted', 403)
     } else if (!user.googleId) {
+        // a row with no verified email is an email sign-up that was started and not
+        // finished: this is still a new account, so the invite code attaches (review C8)
+        const startedWithEmail = !user.emailVerified
         user = await authRepository.updateUser(user.id, {
             googleId: sub,
             emailVerified: true,
             ...clearedOtp,
         })
+        if (startedWithEmail) {
+            await billingService.attachReferral({
+                inviteeId: user.id,
+                inviteeEmail: user.email,
+                code: referralCode,
+            })
+        }
     } else if (user.googleId !== sub) {
         throw new AppError('google id mismatch', 400)
     }
@@ -265,6 +291,7 @@ const google = async (data: Google) => {
         ipAddress: ipAddress,
         expiresAt,
     })
+    await auditService.recordSignIn({ userId: user.id, method: 'google', ip: ipAddress })
 
     await sessionCache.set(sessionId, {
         id: sessionId,
@@ -284,7 +311,7 @@ const google = async (data: Google) => {
 }
 
 const github = async (data: Github) => {
-    const { name, email, sub, username: ghUsername, userAgent, ipAddress } = data
+    const { name, email, sub, username: ghUsername, userAgent, ipAddress, referralCode } = data
     const normalizedEmail = email.trim().toLowerCase()
 
     // the github id is stable, the primary email is not: match on the id first
@@ -292,7 +319,10 @@ const github = async (data: Github) => {
         (await authRepository.findUserByGithubId(sub)) ??
         (await authRepository.findUserByEmail(normalizedEmail))
 
-    const isNewUser = !user
+    // a row with no verified email is an email sign-up that was started and not
+    // finished: this is still a new account (review C8)
+    const startedWithEmail = Boolean(user && !user.emailVerified && !user.githubId)
+    const isNewUser = !user || startedWithEmail
 
     if (!user) {
         user = await authRepository.createUser({
@@ -301,6 +331,11 @@ const github = async (data: Github) => {
             githubId: sub,
             ...(ghUsername ? { githubUsername: ghUsername } : {}),
             name: name,
+        })
+        await billingService.attachReferral({
+            inviteeId: user.id,
+            inviteeEmail: user.email,
+            code: referralCode,
         })
 
         try {
@@ -329,6 +364,13 @@ const github = async (data: Github) => {
             emailVerified: true,
             ...clearedOtp,
         })
+        if (startedWithEmail) {
+            await billingService.attachReferral({
+                inviteeId: user.id,
+                inviteeEmail: user.email,
+                code: referralCode,
+            })
+        }
     } else if (user.githubId !== sub) {
         throw new AppError('github id mismatch', 400)
     } else if (ghUsername && user.githubUsername !== ghUsername) {
@@ -355,6 +397,7 @@ const github = async (data: Github) => {
         ipAddress: ipAddress,
         expiresAt,
     })
+    await auditService.recordSignIn({ userId: user.id, method: 'github', ip: ipAddress })
 
     await sessionCache.set(sessionId, {
         id: sessionId,
@@ -498,6 +541,20 @@ const refreshSession = async (data: RefreshSession) => {
     throw new AppError('invalid refresh token', 401)
 }
 
+/**
+ * A signed-out browser gets no more push (#636): the browsers of one sign-in, or every
+ * browser of the user when no sign-in is given. Sign out still works when this fails; a
+ * revoked sign-in is not sent to in any case.
+ */
+const removeSignedOutPush = async (data: RemoveSignedOutPush) => {
+    const { userId, sessionId } = data
+    try {
+        await notificationService.removePushOnSignOut({ userId, authSessionId: sessionId })
+    } catch (error) {
+        console.error('[Auth] could not remove the push of a signed-out browser:', error)
+    }
+}
+
 const signout = async (data: Signout) => {
     const { userId, sessionId } = data
 
@@ -509,6 +566,7 @@ const signout = async (data: Signout) => {
 
     await authRepository.revokeSession(sessionId)
     await sessionCache.invalidate(sessionId)
+    await removeSignedOutPush({ userId, sessionId })
 }
 
 const signoutAll = async (data: SignoutAll) => {
@@ -516,6 +574,7 @@ const signoutAll = async (data: SignoutAll) => {
 
     await authRepository.revokeAllSessions(userId)
     await sessionCache.invalidateUser(userId)
+    await removeSignedOutPush({ userId })
 }
 
 const listSignedInSessions = async (data: ListSignedInSessions): Promise<SignedInSession[]> => {
@@ -547,6 +606,7 @@ const revokeSignedInSession = async (data: RevokeSignedInSession) => {
 
     await authRepository.revokeSession(sessionId)
     await sessionCache.invalidate(sessionId)
+    await removeSignedOutPush({ userId, sessionId })
 
     return { id: sessionId, isCurrent: sessionId === currentSessionId }
 }
@@ -566,6 +626,7 @@ const deleteAccount = async (data: DeleteAccount) => {
 
     await authRepository.deleteAccount(userId)
     await sessionCache.invalidateUser(userId)
+    await removeSignedOutPush({ userId })
 }
 
 const generateDeviceCode = async () => {
@@ -645,6 +706,7 @@ const pollDeviceToken = async (data: PollDeviceToken) => {
             ipAddress: ipAddress || 'unknown',
             expiresAt,
         })
+        await auditService.recordSignIn({ userId: user.id, method: 'cli', ip: ipAddress })
 
         await sessionCache.set(sessionId, {
             id: sessionId,

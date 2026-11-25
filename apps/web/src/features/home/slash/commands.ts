@@ -32,10 +32,6 @@ export interface SlashCommand {
     kind: SlashCommandKind
     /** path or link for navigate and external commands */
     to?: string
-    /** the server cannot do this yet, so only demo mode lists it */
-    demoOnly?: boolean
-    /** Fast and Deep exist only on December credits */
-    creditsOnly?: boolean
     /** the tab the help panel opens on */
     helpTab?: 'commands' | 'shortcuts'
 }
@@ -50,7 +46,7 @@ type SlashCommandSpec = Omit<SlashCommand, 'name' | 'description'> & { name: Sho
 const BOTH = ['home', 'session'] as const
 const SESSION = ['session'] as const
 
-export const FEEDBACK_URL = 'https://github.com/phasehumans/december/issues/new/choose'
+const FEEDBACK_URL = 'https://github.com/phasehumans/december/issues/new/choose'
 
 // names and descriptions come from the shared list in packages/shared/src/commands, which
 // the cli uses too. the order is by group: run, session, customize, help.
@@ -62,12 +58,7 @@ const SLASH_COMMAND_SPECS: readonly SlashCommandSpec[] = [
         scopes: BOTH,
         kind: 'plan',
     },
-    {
-        name: 'effort',
-        scopes: BOTH,
-        kind: 'effort',
-        creditsOnly: true,
-    },
+    { name: 'effort', scopes: BOTH, kind: 'effort' },
     { name: 'model', scopes: BOTH, kind: 'model' },
     { name: 'switch', scopes: BOTH, kind: 'switch' },
     { name: 'voice', scopes: BOTH, kind: 'action' },
@@ -104,12 +95,7 @@ const SLASH_COMMAND_SPECS: readonly SlashCommandSpec[] = [
         kind: 'navigate',
         to: '/settings/connections/plugins',
     },
-    {
-        name: 'skills',
-        scopes: BOTH,
-        kind: 'skills',
-        demoOnly: true,
-    },
+    { name: 'skills', scopes: BOTH, kind: 'skills' },
     {
         name: 'hooks',
         scopes: BOTH,

@@ -1,4 +1,4 @@
-import { isOpenPullRequest, type PullRequestRow } from './pullRequests'
+import type { PullRequestsParams } from '@/features/sessions/api/session'
 
 import {
     SESSIONS_SORTS,
@@ -7,8 +7,8 @@ import {
 } from '@/features/sessions/lib/sessionsView'
 
 // the Pull requests page view: the same sort and filter menu as the Sessions page.
-// the All | Open switch in the toolbar is not part of it. the page loads every row at
-// once, so the view runs in the browser.
+// the All | Open switch in the toolbar is not part of it. the server filters, sorts and
+// pages the rows (GET /session/pull-requests), so the view also covers rows not loaded.
 
 export interface PullRequestsView {
     /** Newest and Oldest go by the opened date of the pull request */
@@ -69,44 +69,31 @@ export const activePullRequestFilters = (view: PullRequestsView): string[] => {
     return names
 }
 
-const time = (iso: string): number => new Date(iso).getTime() || 0
+/** the filters and the sort of one list request, without the page */
+export type PullRequestsViewParams = Pick<
+    PullRequestsParams,
+    'state' | 'repo' | 'tag' | 'search' | 'sortBy' | 'sortOrder'
+>
 
 /**
- * the rows of the view. onlyOpen is the All | Open switch. Merged and Closed together
- * show both states.
+ * the view as GET /session/pull-requests filters. onlyOpen is the All | Open switch: a
+ * draft is still open, so it shows under Open. Merged and Closed together ask for both
+ * states. Newest and Oldest sort by the opened date of the pull request.
  */
-export const applyPullRequestsView = (
-    rows: PullRequestRow[],
+export const pullRequestsViewParams = (
     view: PullRequestsView,
-    onlyOpen: boolean
-): PullRequestRow[] =>
-    rows
-        .filter((row) => {
-            if (onlyOpen && !isOpenPullRequest(row)) return false
-            if (view.merged || view.closed) {
-                const isPicked =
-                    (view.merged && row.state === 'merged') ||
-                    (view.closed && row.state === 'closed')
-                if (!isPicked) return false
-            }
-            if (view.repo && row.repo !== view.repo) return false
-            if (view.tag && !row.tags.includes(view.tag)) return false
-            return true
-        })
-        .sort((a, b) => {
-            if (view.sort === 'updated') return time(b.updatedAt) - time(a.updatedAt)
-            return view.sort === 'oldest'
-                ? time(a.createdAt) - time(b.createdAt)
-                : time(b.createdAt) - time(a.createdAt)
-        })
-
-/** repositories and tags of the loaded rows, for the menu lists */
-export const pullRequestFacets = (rows: PullRequestRow[]): { repos: string[]; tags: string[] } => {
-    const repos = new Set<string>()
-    const tags = new Set<string>()
-    for (const row of rows) {
-        if (row.repo) repos.add(row.repo)
-        for (const tag of row.tags) tags.add(tag)
+    onlyOpen: boolean,
+    search: string
+): PullRequestsViewParams => {
+    const states = onlyOpen
+        ? ['open', 'draft']
+        : [view.merged ? 'merged' : null, view.closed ? 'closed' : null].filter(Boolean)
+    return {
+        state: states.length > 0 ? states.join(',') : undefined,
+        repo: view.repo || undefined,
+        tag: view.tag || undefined,
+        search: search.trim() || undefined,
+        sortBy: view.sort === 'updated' ? 'updatedAt' : 'prOpenedAt',
+        sortOrder: view.sort === 'oldest' ? 'asc' : 'desc',
     }
-    return { repos: [...repos].sort(), tags: [...tags].sort() }
 }

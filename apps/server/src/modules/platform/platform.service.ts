@@ -1,3 +1,4 @@
+import { splitRepoFullName } from '@december/shared'
 import {
     GitProviderError,
     getGitProvider,
@@ -22,6 +23,7 @@ import type {
     DownloadSession,
     DownloadSessionResult,
     ResolveRepoToken,
+    CheckRepoBranch,
 } from './platform.types'
 
 const resolveUserGithubToken = async (userId: string, owner?: string): Promise<string> => {
@@ -142,6 +144,30 @@ const getUserGitlabRepos = async (data: ListGitlabRepos): Promise<GitlabRepo[]> 
     } catch (error) {
         if (error instanceof GitProviderError) {
             throw new AppError(error.message, 401)
+        }
+        throw error
+    }
+}
+
+/** does the repository have this branch. the prompt box asks before it uses a default (#637) */
+const checkRepoBranch = async (data: CheckRepoBranch): Promise<{ exists: boolean }> => {
+    const { userId, gitProvider, repository, branch } = data
+    const token = await resolveRepoToken({
+        userId,
+        gitProvider,
+        owner: splitRepoFullName(repository)?.owner ?? '',
+    })
+
+    try {
+        const exists = await getGitProvider(gitProvider).hasBranch({
+            token,
+            repoPath: repository,
+            branch,
+        })
+        return { exists }
+    } catch (error) {
+        if (error instanceof GitProviderError) {
+            throw new AppError(error.message, 502)
         }
         throw error
     }
@@ -287,6 +313,7 @@ export const platformService = {
     downloadSession,
     getUserGithubRepos,
     getUserGitlabRepos,
+    checkRepoBranch,
     createRepo,
     updateRepo,
     unlinkGithubRepo,

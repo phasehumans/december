@@ -17,9 +17,14 @@ import { cn } from '@/shared/lib/utils'
 
 export interface PullRequestsWorkspaceProps {
     sessionId?: string
+    /** the saved branch of the session (`prBranch`), when the api gives it */
+    branch?: string | null
 }
 
-export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({ sessionId }) => {
+export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
+    sessionId,
+    branch,
+}) => {
     const pullRequest = useAppStore((state) => state.pullRequest)
     const setPullRequest = useAppStore((state) => state.setPullRequest)
 
@@ -51,10 +56,15 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({ se
                         </span>
                         <span className="text-[12px] text-[#8E8D8C]">
                             When your task completes, an autonomous pull request will be generated
-                            for branch{' '}
-                            <code className="text-[#A1A1AA] bg-[#202022] px-1 py-0.5 rounded">
-                                december/{sessionId || 'task'}
-                            </code>
+                            {branch ? (
+                                <>
+                                    {' '}
+                                    for branch{' '}
+                                    <code className="text-[#A1A1AA] bg-[#202022] px-1 py-0.5 rounded">
+                                        {branch}
+                                    </code>
+                                </>
+                            ) : null}
                             .
                         </span>
                     </div>
@@ -68,12 +78,14 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({ se
         title,
         url,
         state = 'open',
-        headRef,
+        headRef: pullRequestBranch,
         baseRef = 'main',
         diffSummary,
         ciStatus = 'passing',
     } = pullRequest
 
+    // the branch of the pull request, or the saved branch of the session
+    const headRef = pullRequestBranch || branch || null
     const additions = diffSummary?.additions ?? 0
     const deletions = diffSummary?.deletions ?? 0
     const changedFiles = diffSummary?.changedFiles ?? 0
@@ -130,11 +142,15 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({ se
 
                     {/* Branch metadata */}
                     <div className="flex items-center gap-2 pt-2 border-t border-[#2A2A2D] text-xs font-mono text-[#A1A1AA]">
-                        <div className="flex items-center gap-1.5 bg-[#202022] px-2 py-1 rounded border border-[#2E2E31] text-[#E4E4E7]">
-                            <GitBranch className="w-3.5 h-3.5 text-[#8E8D8C]" />
-                            <span>{headRef || `december/${sessionId}`}</span>
-                        </div>
-                        <ArrowRight className="w-3.5 h-3.5 text-[#6E6E73]" />
+                        {headRef && (
+                            <>
+                                <div className="flex items-center gap-1.5 bg-[#202022] px-2 py-1 rounded border border-[#2E2E31] text-[#E4E4E7]">
+                                    <GitBranch className="w-3.5 h-3.5 text-[#8E8D8C]" />
+                                    <span>{headRef}</span>
+                                </div>
+                                <ArrowRight className="w-3.5 h-3.5 text-[#6E6E73]" />
+                            </>
+                        )}
                         <div className="flex items-center gap-1.5 bg-[#202022] px-2 py-1 rounded border border-[#2E2E31] text-[#A1A1AA]">
                             <GitCommit className="w-3.5 h-3.5 text-[#8E8D8C]" />
                             <span>{baseRef}</span>
@@ -207,20 +223,15 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({ se
                         <p>
                             • Isolated sandbox container environment build & tests executed cleanly.
                         </p>
-                        <p>
-                            • Changes committed autonomously under author{' '}
-                            <code className="text-[#A1A1AA] bg-[#202022] px-1 py-0.5 rounded">
-                                December Agent &lt;agent@trydecember.com&gt;
-                            </code>
-                            .
-                        </p>
-                        <p>
-                            • Pushed directly to branch{' '}
-                            <code className="text-[#A1A1AA] bg-[#202022] px-1 py-0.5 rounded">
-                                {headRef}
-                            </code>{' '}
-                            without default branch overwrite.
-                        </p>
+                        {headRef && (
+                            <p>
+                                • Pushed directly to branch{' '}
+                                <code className="text-[#A1A1AA] bg-[#202022] px-1 py-0.5 rounded">
+                                    {headRef}
+                                </code>{' '}
+                                without default branch overwrite.
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>

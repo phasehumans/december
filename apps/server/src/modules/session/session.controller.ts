@@ -4,6 +4,7 @@ import { sendSuccess } from '../../shared/response'
 
 import {
     getSessionsSchema,
+    getSessionFacetsSchema,
     getPullRequestsSchema,
     createSessionSchema,
     getSessionByIdSchema,
@@ -22,6 +23,7 @@ import {
     rehydrateSessionParamsSchema,
     proxyPreviewParamsSchema,
     previewActivityParamsSchema,
+    stopSessionParamsSchema,
     streamSearchResponseParamsSchema,
     streamSearchResponseBodySchema,
     smartSearchSessionsSchema,
@@ -56,6 +58,7 @@ export const getSessions = asyncHandler(async (req: Request, res: Response) => {
             .map((t) => t.trim())
             .filter(Boolean)
     }
+    if (parsedQuery.repoName) filters.repoName = parsedQuery.repoName
     if (parsedQuery.sortBy) filters.sortBy = parsedQuery.sortBy
     if (parsedQuery.sortOrder) filters.sortOrder = parsedQuery.sortOrder
     if (parsedQuery.search) filters.search = parsedQuery.search
@@ -222,6 +225,17 @@ export const getSessionCounts = asyncHandler(async (req: Request, res: Response)
 
     const counts = await sessionService.getSessionCounts({ userId })
     return sendSuccess(res, 'session counts fetched successfully', counts)
+})
+
+// the user's repositories and tags, for the sort and filter menu (#641)
+export const getSessionFacets = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+
+    const { hasPr } = getSessionFacetsSchema.parse(req.query)
+
+    const facets = await sessionService.getSessionFacets({ userId, hasPr })
+    return sendSuccess(res, 'session facets fetched successfully', facets)
 })
 
 export const updateSessionTags = asyncHandler(async (req: Request, res: Response) => {
@@ -459,6 +473,23 @@ export const recordPreviewActivity = asyncHandler(async (req: Request, res: Resp
     return sendSuccess(res, 'preview activity recorded', result)
 })
 
+export const stopSession = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { id } = stopSessionParamsSchema.parse(req.params)
+
+    const result = await sessionService.stopSession({ userId, sessionId: id })
+    return sendSuccess(res, 'session stopped', result)
+})
+
+export const getRunningSandboxes = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+
+    const result = await sessionService.getRunningSandboxes({ userId })
+    return sendSuccess(res, 'running sandboxes fetched successfully', result)
+})
+
 export const getSessionPreviewPort = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
     if (!userId) throw new AppError('unauthorized', 401)
@@ -514,6 +545,7 @@ export const sessionController = {
     archiveMergedSessions,
     unarchiveSessions,
     getSessionCounts,
+    getSessionFacets,
     getPullRequests,
     updateSessionTags,
     deleteSession,
@@ -522,6 +554,8 @@ export const sessionController = {
     disconnectSession,
     proxyPreview,
     recordPreviewActivity,
+    stopSession,
+    getRunningSandboxes,
     streamSearchResponse,
     smartSearchSessions,
     getSessionDiff,

@@ -1,3 +1,4 @@
+import { isRepoFullName } from '@december/shared'
 import { z } from 'zod'
 
 const skillName = z
@@ -53,3 +54,33 @@ export const updateMcpServerSchema = z
     })
     .partial()
     .refine((value) => Object.keys(value).length > 0, { message: 'send enabled or disabledTools' })
+
+// import setup (#637 section 6)
+
+const repoFullName = z
+    .string()
+    .trim()
+    .max(200)
+    // a part of dots only would point the request at another path of the git host
+    .refine(isRepoFullName, 'use owner/name')
+
+const importRepoShape = {
+    repoFullName,
+    provider: z.enum(['GITHUB', 'GITLAB']).default('GITHUB'),
+}
+
+const isHostPath = (value: { repoFullName: string; provider: 'GITHUB' | 'GITLAB' }) =>
+    value.provider === 'GITLAB' || value.repoFullName.split('/').length === 2
+
+export const importPreviewSchema = z
+    .object(importRepoShape)
+    .refine(isHostPath, { message: 'use owner/name', path: ['repoFullName'] })
+
+export const importSetupSchema = z
+    .object({
+        ...importRepoShape,
+        skills: z.array(z.string().trim().min(1).max(100)).max(100).default([]),
+        mcps: z.array(z.string().trim().min(1).max(100)).max(100).default([]),
+        overwrite: z.boolean().default(false),
+    })
+    .refine(isHostPath, { message: 'use owner/name', path: ['repoFullName'] })

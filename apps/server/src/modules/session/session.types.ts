@@ -1,4 +1,9 @@
-import type { SessionEffort, SessionRunConfig, SessionSwitches } from '@december/shared'
+import type {
+    SessionEffort,
+    SessionRunConfig,
+    SessionSwitches,
+    SpendLimitKind,
+} from '@december/shared'
 
 export type StoredSessionFile = {
     path: string
@@ -18,7 +23,7 @@ export type SessionFilters = {
     /** title contains any of these words (AI search filters) */
     titleAny?: string[]
     updatedAfter?: Date
-    /** GitHub repo name, matched without case */
+    /** one repository, matched without case: `owner/name`, or a name alone (any owner) */
     repoName?: string
     page?: number
     limit?: number
@@ -34,6 +39,7 @@ export type SessionFilters = {
 export type PullRequestFilters = {
     /** the states to keep; 'open' also matches a row with no saved state */
     states?: Array<'open' | 'draft' | 'merged' | 'closed'>
+    /** not sent: an open or draft pull request of an archived session is left out */
     isArchived?: boolean
     /** owner/name, or a name alone */
     repo?: string
@@ -117,8 +123,78 @@ export type RecordUserPrompt = {
     prompt: string
 }
 
+/** what a new prompt does (#637): start a run, reach the running agent, or wait in the web */
+export type PromptRoute = 'run' | 'steer' | 'queued'
+
+/** the account preference `messageWhileWorking` */
+export type MessageWhileWorking = 'queue' | 'send'
+
+export type DecidePromptRoute = {
+    runActive: boolean
+    mode: MessageWhileWorking
+}
+
+export type RoutePrompt = {
+    userId?: string
+    sessionId: string
+}
+
+/** what a prompt does, and the id of the run it claimed when it starts one */
+export type RoutedPrompt = {
+    route: PromptRoute
+    runId: string | null
+}
+
+/** `run`: the run ended in between, and this message claimed a new one */
+export type SteeringDelivery =
+    | { delivery: 'steered'; runId: null }
+    | { delivery: 'run'; runId: string }
+
+/** a message for the running agent, as the worker reads it (run-steering.ts) */
+export type SteeringMessage = {
+    prompt: string
+    userMessageSequence?: number
+    attachments?: unknown[]
+    skills?: string[]
+    clientMessageId?: string
+}
+
+export type DeliverSteering = {
+    sessionId: string
+    message: SteeringMessage
+}
+
+export type ClaimSessionRun = {
+    sessionId: string
+}
+
+export type ReleaseRun = {
+    sessionId: string
+    /** the run that was claimed and not queued */
+    runId: string
+}
+
 export type GetUserRunDefaults = {
     userId: string
+}
+
+export type ResolveOwnKeyModel = {
+    userId: string
+    provider?: string
+    model?: string
+}
+
+export type ResolveOwnKeyTurnModel = {
+    userId: string
+    sessionId: string
+    provider?: string
+    model?: string
+}
+
+/** the model of a session on the user's own key. empty when the request named none */
+export type OwnKeyModel = {
+    provider?: string
+    model?: string
 }
 
 export type TurnConfig = SessionRunConfig &
@@ -183,6 +259,39 @@ export type SessionCounts = {
     running: number
     openPullRequests: number
     merged: number
+}
+
+/** the repository filter of the list, split: owner is null for a name alone */
+export type RepoFilter = {
+    owner: string | null
+    name: string
+}
+
+export type GetSessionFacets = {
+    userId: string
+    /** only sessions that opened a pull request (the Pull requests page) */
+    hasPr?: boolean
+}
+
+/** the user's repositories (`owner/name` when the owner is known) and tags, for the menus */
+export type SessionFacets = {
+    repos: string[]
+    tags: string[]
+}
+
+/** one spelling of a repository on the user's sessions, as the facets query reads it */
+export type SessionFacetRepoRow = {
+    githubRepoOwner: string | null
+    githubRepoName: string | null
+    /** only for an old row that has no saved name */
+    repoUrl: string | null
+    /** how many sessions have this spelling */
+    sessions: number
+}
+
+export type SessionFacetRows = {
+    repos: SessionFacetRepoRow[]
+    tags: string[]
 }
 
 export type UpdateSessionTags = {
@@ -351,6 +460,12 @@ export interface ClearPendingQuestion {
     sessionId: string
 }
 
+/** a socket event names a session: the id comes from the client, so it can be anything */
+export interface OwnsSession {
+    userId?: string | null
+    sessionId: unknown
+}
+
 export interface GetPendingQuestion {
     userId: string
     sessionId: string
@@ -377,11 +492,137 @@ export interface SessionDesktopViewportResult {
 /** one event of a run, relayed from the worker by socket.ts (#636) */
 export type HandleRunEvent = {
     sessionId: string
-    event: { type?: string; error?: unknown; balanceInCents?: unknown }
+    event: {
+        type?: string
+        error?: unknown
+        balanceInCents?: unknown
+        /** on AgentEnd: the run failed (the worker sent an AgentError before it) */
+        failed?: unknown
+        /** on AgentEnd: the run was stopped (#637), with the reason ('user' | 'limit') */
+        stopped?: unknown
+        reason?: unknown
+        /** on SpendLimitReached (#638): the limit the charge or the start reached */
+        kind?: unknown
+    }
+}
+
+// spend limits (#638)
+export type PauseAtLimit = {
+    sessionId: string
+}
+
+export type AnswerLimitQuestion = {
+    userId: string
+    sessionId: string
+    /** the id of the question card. an answer to another card is not for the limit question */
+    questionId?: string
+    answer: string | string[]
+}
+
+/** what a held run adds to the run of a new prompt (the held text is in the history) */
+export type HeldRunParts = {
+    attachments: unknown[]
+    skills: string[]
+}
+
+export type MergeHeldRun = {
+    /** the held run that the new prompt replaces, or null */
+    heldRun: HeldRunParts | null
+    /** the files and skills of the new prompt */
+    attachments: unknown[]
+    skills: string[]
+}
+
+export type ContinueAtLimit = {
+    userId: string
+    sessionId: string
+    kind: SpendLimitKind
+    /** the run that was held before it started; none when a running session was paused */
+    heldRun: Record<string, unknown> | null
+}
+
+export type PromptAtLimit = {
+    /** empty for a socket that is not signed in */
+    userId?: string
+    sessionId: string
+    billingSource: 'CREDITS' | 'OWN_KEY'
+}
+
+export type InvalidateRecentSessions = {
+    userId: string
+}
+
+/** what the limit question is made from */
+export type ToLimitQuestionPrompt = {
+    sessionId: string
+    kind: SpendLimitKind
+    limitCents: number
+}
+
+/** the limit question, in the shape of the agent's question (AskQuestionPrompt) */
+export type LimitQuestionPrompt = {
+    type: 'AskQuestionPrompt'
+    source: 'spend-limit'
+    kind: SpendLimitKind
+    sessionId: string
+    questionId: string
+    questions: Array<{ question: string; options: string[] }>
+}
+
+export type IsUserWatchingSession = {
+    sessionId: string
+    userId: string
 }
 
 export type NotifySessionOwner = {
     owner: { id: string; userId: string; title: string | null }
-    kind: 'SESSION_FINISHED' | 'SESSION_NEEDS_INPUT' | 'SESSION_FAILED' | 'LOW_CREDITS'
+    kind:
+        | 'SESSION_FINISHED'
+        | 'SESSION_NEEDS_INPUT'
+        | 'SESSION_FAILED'
+        | 'LOW_CREDITS'
+        | 'SPEND_LIMIT'
     detail?: string
+}
+
+/** who asks for the stop of a run (#637): the user (stop button) or a spend limit */
+export type RunStopReason = 'user' | 'limit'
+
+export type RequestRunStop = {
+    sessionId: string
+    /** the owner of the session */
+    userId: string
+    reason: RunStopReason
+}
+
+export type StopSession = {
+    userId: string
+    sessionId: string
+}
+
+/**
+ * The state the stop leads to. The worker saves it a moment later, when the run has ended
+ * and the sandbox is paused.
+ */
+export type StopSessionResult = {
+    sessionId: string
+    vmStatus: string
+    sandboxStatus: string | null
+}
+
+export type GetRunningSandboxes = {
+    userId: string
+}
+
+/** one row of the "running now" list of the sandbox settings (#637) */
+export type RunningSandbox = {
+    sessionId: string
+    title: string | null
+    /** `owner/name`, null for a session with no repository */
+    repoFullName: string | null
+    /** when the sandbox last started or resumed; the start of the session when not saved */
+    startedAt: Date
+    /** the session's cost so far on december credits */
+    costInCents: number
+    sandboxStatus: 'STARTING' | 'RUNNING'
 }

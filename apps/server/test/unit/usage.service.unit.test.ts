@@ -260,6 +260,8 @@ describe('Usage Service - Unit Tests', () => {
             usageRepository.findUserCredits = (async () => ({
                 id: 'u1',
                 creditBalance: 100,
+                // the low balance alert is off for this user: this test is about the charge
+                lowBalanceAlertCents: null,
             })) as any
             usageRepository.updateUserCredits = (async (data: any) => {
                 updatedCreditsPayload = data

@@ -63,7 +63,10 @@ describe('Google OAuth Verification, Privacy & Terms', () => {
         expect(content).toContain('team@trydecember.com')
 
         // No model training on private user data
-        expect(content).toContain('No Model Training')
+        expect(content).toContain('We Do Not Train On Your Code')
+        expect(content).toContain(
+            'We do not use your source code, prompts, git repositories, or Google account information to train'
+        )
     })
 
     test('Landing page terms contains December terms and code ownership terms', () => {
@@ -75,7 +78,8 @@ describe('Google OAuth Verification, Privacy & Terms', () => {
         expect(content).toContain('https://trydecember.com')
 
         // Ownership clause
-        expect(content).toContain('Code Ownership & IP')
+        expect(content).toContain('Your Code Belongs to You')
+        expect(content).toContain('You own 100% of your source code')
 
         // Support contact email
         expect(content).toContain('team@trydecember.com')

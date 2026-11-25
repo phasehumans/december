@@ -1,6 +1,6 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { describe, it, expect, mock, beforeEach } from 'bun:test'
+import { describe, it, expect, mock, beforeEach, spyOn } from 'bun:test'
 import React from 'react'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -9,13 +9,13 @@ if (!globalThis.document) {
 }
 
 const { renderHook, act } = await import('@testing-library/react')
-const { render, fireEvent, screen } = await import('@testing-library/react')
+const { render, fireEvent, screen, waitFor } = await import('@testing-library/react')
 const { usePromptInputController } =
     await import('../src/features/home/hooks/usePromptInputController')
 const { PromptFooter } = await import('../src/shared/components/ui/PromptFooter')
 const { useModelSelection } = await import('../src/features/home/model-selection')
 
-describe('Model and provider routing', () => {
+describe('Speed, model and provider routing', () => {
     let queryClient: QueryClient
 
     beforeEach(() => {
@@ -32,7 +32,7 @@ describe('Model and provider routing', () => {
         </MemoryRouter>
     )
 
-    it('defaults to gemini-2.5-pro and submits selected model and provider in PromptInputSubmitOptions', () => {
+    it('on December credits the prompt goes out with the speed and no model', () => {
         const onSubmit = mock((prompt: string, options?: any) => {})
 
         const { result } = renderHook(
@@ -45,22 +45,18 @@ describe('Model and provider routing', () => {
             { wrapper }
         )
 
-        expect(result.current.selectedModel).toBe('gemini-2.5-pro')
-        expect(result.current.selectedProvider).toBe('gemini')
+        // credits are the default, and Deep is the default speed
+        expect(result.current.selectedSource).toBe('CREDITS')
+        expect(result.current.selectedSpeed).toBe('deep')
 
-        // Switch model to Claude 3.7 Sonnet
         act(() => {
-            result.current.handleSelectModel('claude-3-7-sonnet-latest', 'anthropic')
+            result.current.handleSelectSpeed('fast')
         })
+        expect(result.current.selectedSpeed).toBe('fast')
 
-        expect(result.current.selectedModel).toBe('claude-3-7-sonnet-latest')
-        expect(result.current.selectedProvider).toBe('anthropic')
-
-        // Submit prompt
         act(() => {
             result.current.handleInputChange('Analyze code architecture')
         })
-
         act(() => {
             result.current.handleSubmit()
         })
@@ -68,20 +64,61 @@ describe('Model and provider routing', () => {
         expect(onSubmit).toHaveBeenCalledTimes(1)
         const [submittedPrompt, submittedOptions] = onSubmit.mock.calls[0]
         expect(submittedPrompt).toBe('Analyze code architecture')
+        // the server picks the model of the speed, so the browser names none (#632)
         expect(submittedOptions).toEqual({
             repoUrl: undefined,
             branch: undefined,
             issueNumber: undefined,
-            model: 'claude-3-7-sonnet-latest',
-            provider: 'anthropic',
+            model: undefined,
+            provider: undefined,
             billingSource: 'CREDITS',
-            // any credit model that is not the fast one is deep (#632)
-            runConfig: { planFirst: false, effort: 'deep', openPullRequest: true },
+            runConfig: { planFirst: false, effort: 'fast', openPullRequest: true },
         })
     })
 
-    it('shows Fast and Deep on December credits and calls onSelectModel with the model of the speed', () => {
+    it('on your own key the prompt goes out with the model, the provider and the speed', () => {
+        const onSubmit = mock((prompt: string, options?: any) => {})
+
+        const { result } = renderHook(
+            () =>
+                usePromptInputController({
+                    onSubmit,
+                    isAuthenticated: true,
+                    mode: 'agent',
+                }),
+            { wrapper }
+        )
+
+        act(() => {
+            result.current.handleSelectModel('claude-sonnet-5', 'anthropic', 'OWN_KEY')
+        })
+        expect(result.current.selectedModel).toBe('claude-sonnet-5')
+        expect(result.current.selectedProvider).toBe('anthropic')
+
+        act(() => {
+            result.current.handleSelectSpeed('fast')
+        })
+        act(() => {
+            result.current.handleInputChange('Analyze code architecture')
+        })
+        act(() => {
+            result.current.handleSubmit()
+        })
+
+        expect(onSubmit.mock.calls[0][1]).toEqual({
+            repoUrl: undefined,
+            branch: undefined,
+            issueNumber: undefined,
+            model: 'claude-sonnet-5',
+            provider: 'anthropic',
+            billingSource: 'OWN_KEY',
+            runConfig: { planFirst: false, effort: 'fast', openPullRequest: true },
+        })
+    })
+
+    it('shows Fast and Deep on December credits, and a pick tells the speed and no model', () => {
         const onSelectModel = mock((model: string, provider?: string) => {})
+        const onSelectSpeed = mock((speed: string) => {})
 
         render(
             <MemoryRouter>
@@ -92,28 +129,28 @@ describe('Model and provider routing', () => {
                         hasInput={true}
                         isLoading={false}
                         isAuthenticated={true}
-                        selectedModel="gemini-2.5-pro"
-                        selectedProvider="gemini"
+                        selectedSpeed="deep"
                         onSelectModel={onSelectModel}
+                        onSelectSpeed={onSelectSpeed}
                     />
                 </QueryClientProvider>
             </MemoryRouter>
         )
 
-        // no model names on credits: gemini-2.5-pro is "Deep"
+        // no model names on credits
         const deep = screen.getByRole('radio', { name: 'Deep' })
         const fast = screen.getByRole('radio', { name: 'Fast' })
         expect(deep.getAttribute('aria-checked')).toBe('true')
         expect(screen.queryByRole('button', { name: /Select Model/i })).toBeNull()
-        expect(screen.queryByText('Gemini 2.5 Pro')).toBeNull()
 
         fireEvent.click(fast)
 
-        expect(onSelectModel).toHaveBeenCalledTimes(1)
-        expect(onSelectModel).toHaveBeenCalledWith('gemini-2.5-flash', 'gemini', 'CREDITS')
+        expect(onSelectSpeed).toHaveBeenCalledTimes(1)
+        expect(onSelectSpeed).toHaveBeenCalledWith('fast')
+        expect(onSelectModel).not.toHaveBeenCalled()
     })
 
-    it('sends model and provider in send_prompt socket event via generateProjectStream', async () => {
+    it('on credits send_prompt has the tier and no model or provider', async () => {
         const { generationAPI, getSharedSocket } =
             await import('../src/features/generation/api/generation')
         const socket = getSharedSocket()
@@ -128,11 +165,11 @@ describe('Model and provider routing', () => {
             }
         }) as any
 
+        useModelSelection.getState().setSpeed('fast')
         void generationAPI.generateProjectStream({
             prompt: 'Test prompt',
             sessionId: 'test-session-123',
-            model: 'claude-3-7-sonnet-latest',
-            provider: 'anthropic',
+            billingSource: 'CREDITS',
             onEvent: () => {},
         })
 
@@ -140,11 +177,48 @@ describe('Model and provider routing', () => {
             sessionId: 'test-session-123',
             projectId: 'test-session-123',
             prompt: 'Test prompt',
-            model: 'claude-3-7-sonnet-latest',
-            provider: 'anthropic',
             billingSource: 'CREDITS',
-            // on credits the server picks the model from the tier (#632)
-            tier: 'deep',
+            // the server maps the tier to a model (#632)
+            tier: 'fast',
         })
+    })
+
+    it('on credits a new session is created with the tier and no model or provider', async () => {
+        const { generationAPI, getSharedSocket } =
+            await import('../src/features/generation/api/generation')
+        const { sessionAPI } = await import('../src/features/sessions/api/session')
+        const socket = getSharedSocket()
+        Object.defineProperty(socket, 'connected', {
+            get: () => true,
+            configurable: true,
+        })
+        socket.emit = mock(() => {}) as any
+        let createdWith: any = null
+        const create = spyOn(sessionAPI, 'createSession').mockImplementation(async (data: any) => {
+            createdWith = data
+            return { id: 'session-credits' } as any
+        })
+
+        void generationAPI.generateProjectStream({
+            prompt: 'Test prompt',
+            billingSource: 'CREDITS',
+            runConfig: { planFirst: false, effort: 'deep', openPullRequest: true },
+            onEvent: () => {},
+        })
+
+        await waitFor(() => expect(createdWith).not.toBeNull())
+        expect(createdWith).toEqual({
+            prompt: 'Test prompt',
+            type: 'WEB',
+            repoUrl: undefined,
+            branch: undefined,
+            gitRef: undefined,
+            issueNumber: undefined,
+            tier: 'deep',
+            planFirst: false,
+            effort: 'deep',
+            openPullRequest: true,
+        })
+        create.mockRestore()
     })
 })

@@ -5,9 +5,11 @@ import { sendSuccess } from '../../shared/response'
 import {
     creditsHistoryQuerySchema,
     creditRequestSchema,
+    receiptParamsSchema,
     redeemCodeSchema,
     createRazorpayOrderSchema,
     verifyRazorpayPaymentSchema,
+    updateLimitsSchema,
 } from './billing.schema'
 import { billingService } from './billing.service'
 
@@ -73,8 +75,27 @@ const getCreditsHistory = asyncHandler(async (req: Request, res: Response) => {
         offset,
         periodStart: parsedQuery.periodStart,
         periodEnd: parsedQuery.periodEnd,
+        billingSource: parsedQuery.billingSource,
+        timezone: parsedQuery.timezone,
     })
     return sendSuccess(res, 'credits history fetched successfully', result)
+})
+
+// the answer is the pdf file itself, not json
+const getReceipt = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { id } = receiptParamsSchema.parse(req.params)
+
+    const { body, fileName } = await billingService.getReceipt({ userId, transactionId: id })
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+    res.setHeader('Cache-Control', 'private, no-store')
+    return res.status(200).send(body)
 })
 
 const redeemCode = asyncHandler(async (req: Request, res: Response) => {
@@ -154,13 +175,48 @@ const getFreeCreditRequest = asyncHandler(async (req: Request, res: Response) =>
     return sendSuccess(res, 'free credit request fetched', result)
 })
 
+const getReferral = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await billingService.getReferral({ userId })
+    return sendSuccess(res, 'referral fetched successfully', result)
+})
+
+const getLimits = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await billingService.getLimits({ userId })
+    return sendSuccess(res, 'limits fetched successfully', result)
+})
+
+const updateLimits = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const parsedBody = updateLimitsSchema.parse(req.body)
+    const result = await billingService.updateLimits({ userId, ...parsedBody })
+    return sendSuccess(res, 'limits updated successfully', result)
+})
+
 export const billingController = {
+    getLimits,
+    updateLimits,
+    getReferral,
     requestFreeCredits,
     getFreeCreditRequest,
     getOverview,
     createRazorpayOrder,
     verifyRazorpayPayment,
     getCreditsHistory,
+    getReceipt,
     redeemCode,
     addCredits,
     handleRazorpayWebhook,

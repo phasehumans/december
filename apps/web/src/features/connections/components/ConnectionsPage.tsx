@@ -8,7 +8,7 @@ import { CONNECTIONS_BASE_PATH } from '../lib/paths'
 import { CONNECTIONS_TAB_LABELS, CONNECTIONS_TABS, type ConnectionsTab } from '../types'
 
 import { AppsTab } from './AppsTab'
-import { ChoiceGroup, SecondaryButton } from './ConnectionsUi'
+import { ChoiceGroup, DemoPill, SecondaryButton } from './ConnectionsUi'
 import { HooksTab } from './HooksTab'
 import { ImportSetupModal } from './ImportSetupModal'
 import { McpsTab } from './McpsTab'
@@ -45,6 +45,12 @@ const redirectFor = (pathname: string, search: string): string | null => {
     return null
 }
 
+/** the tabs with a server behind them. the other tabs run on sample values (preview only) */
+const LIVE_TABS: ConnectionsTab[] = ['apps', 'skills', 'mcps']
+
+/** live tabs that list sample values while the preview is on, so they are marked then */
+const PREVIEW_SAMPLE_TABS: ConnectionsTab[] = ['skills', 'mcps']
+
 /** what the phone top bar "+" does on each tab (only tabs with an add action) */
 const mobileAddTarget: Partial<Record<ConnectionsTab, 'modal' | 'page'>> = {
     plugins: 'modal',
@@ -73,7 +79,7 @@ export const ConnectionsPage: React.FC = () => {
         return <Navigate to={`${CONNECTIONS_BASE_PATH}/apps`} replace />
     }
 
-    const isSoon = tab !== 'apps' && !isDemo
+    const isSoon = !isDemo && !LIVE_TABS.includes(tab)
     const isDetail = Boolean(itemId) && !isSoon
     const addTarget = isSoon ? undefined : mobileAddTarget[tab]
 
@@ -148,19 +154,28 @@ export const ConnectionsPage: React.FC = () => {
                                     {PAGE_SUBTITLES.connections}
                                 </p>
                             </div>
-                            {/* ui only, with the preview on (N24) */}
-                            {isDemo && (
-                                <SecondaryButton onClick={() => setIsImportOpen(true)}>
-                                    Import setup
-                                </SecondaryButton>
-                            )}
+                            {/* reads a repository for skills and mcp servers (N24, #637) */}
+                            <SecondaryButton onClick={() => setIsImportOpen(true)}>
+                                Import setup
+                            </SecondaryButton>
                         </div>
                         <div className="mb-4 -mx-3.5 px-3.5 md:mx-0 md:px-0 overflow-x-auto no-scrollbar [scrollbar-width:none]">
                             <ChoiceGroup
                                 label="Connections sections"
                                 options={CONNECTIONS_TABS.map((value) => ({
                                     value,
-                                    label: CONNECTIONS_TAB_LABELS[value],
+                                    // a tab on sample values says so, with the preview on
+                                    label:
+                                        isDemo &&
+                                        (!LIVE_TABS.includes(value) ||
+                                            PREVIEW_SAMPLE_TABS.includes(value)) ? (
+                                            <span className="inline-flex items-center gap-1.5">
+                                                {CONNECTIONS_TAB_LABELS[value]}
+                                                <DemoPill />
+                                            </span>
+                                        ) : (
+                                            CONNECTIONS_TAB_LABELS[value]
+                                        ),
                                 }))}
                                 value={tab}
                                 onChange={toTab}

@@ -3,7 +3,6 @@ import React from 'react'
 
 import { SettingsSectionHeading } from './SettingsPageHeader'
 import { sectionBoxClass } from './settingsStyles'
-import { usePreviewOn } from './SettingsUi'
 
 import { ChoiceGroup, Switch } from '@/features/connections/components/ConnectionsUi'
 import { ShortcutRows } from '@/features/home/slash/shortcuts'
@@ -32,8 +31,6 @@ export const AccountPreferencesSection: React.FC = () => {
     const setPreference = usePreferences((s) => s.setPreference)
     const queryClient = useQueryClient()
     const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
-    // the prompt box cannot take a message during a run yet, so that row is preview only (#637)
-    const isPreview = usePreviewOn()
 
     const savePreference = React.useCallback(
         <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
@@ -70,20 +67,18 @@ export const AccountPreferencesSection: React.FC = () => {
                         onChange={(value) => savePreference('sendKey', value)}
                     />
                 </div>
-                {isPreview && (
-                    <div className={`${rowClass} flex-wrap`}>
-                        <span className={labelClass}>New messages while December works</span>
-                        <ChoiceGroup
-                            label="New messages while December works"
-                            options={[
-                                { value: 'queue', label: 'Queue' },
-                                { value: 'send', label: 'Send now' },
-                            ]}
-                            value={whileWorking}
-                            onChange={(value) => savePreference('messageWhileWorking', value)}
-                        />
-                    </div>
-                )}
+                <div className={`${rowClass} flex-wrap`}>
+                    <span className={labelClass}>New messages while December works</span>
+                    <ChoiceGroup
+                        label="New messages while December works"
+                        options={[
+                            { value: 'queue', label: 'Queue' },
+                            { value: 'send', label: 'Send now' },
+                        ]}
+                        value={whileWorking}
+                        onChange={(value) => savePreference('messageWhileWorking', value)}
+                    />
+                </div>
                 <div className={rowClass}>
                     <span className={labelClass}>Sound when a session finishes</span>
                     <Switch

@@ -13,6 +13,8 @@ import {
     updateSupportAccessSchema,
     dataExportDownloadSchema,
     updatePullRequestSettingsSchema,
+    updateSandboxSettingsSchema,
+    updateSetupCommandsSchema,
     submitFeedbackSchema,
     unsubscribeQuerySchema,
 } from './setting.schema'
@@ -87,13 +89,24 @@ const updateSessionDefaults = asyncHandler(async (req: Request, res: Response) =
         throw new AppError('unauthorized', 401)
     }
 
-    const { defaultPlanFirst, defaultEffort, defaultOpenPullRequest } =
-        updateSessionDefaultsSchema.parse(req.body)
+    const {
+        defaultPlanFirst,
+        defaultEffort,
+        defaultOpenPullRequest,
+        defaultOwnKeyProvider,
+        defaultOwnKeyModel,
+        defaultRepository,
+        defaultBaseBranch,
+    } = updateSessionDefaultsSchema.parse(req.body)
     const result = await settingService.updateSessionDefaults({
         userId,
         defaultPlanFirst,
         defaultEffort,
         defaultOpenPullRequest,
+        defaultOwnKeyProvider,
+        defaultOwnKeyModel,
+        defaultRepository,
+        defaultBaseBranch,
     })
     return sendSuccess(res, 'session defaults updated', result)
 })
@@ -186,6 +199,41 @@ const updatePullRequestSettings = asyncHandler(async (req: Request, res: Respons
     return sendSuccess(res, 'pull request settings updated', result)
 })
 
+const getSandboxSettings = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await settingService.getSandboxSettings({ userId })
+    return sendSuccess(res, 'sandbox settings fetched successfully', result)
+})
+
+const updateSandboxSettings = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const settings = updateSandboxSettingsSchema.parse(req.body)
+    const result = await settingService.updateSandboxSettings({ userId, settings })
+    return sendSuccess(res, 'sandbox settings updated', result)
+})
+
+const updateSetupCommands = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { repoFullName, commands } = updateSetupCommandsSchema.parse(req.body)
+    const result = await settingService.updateSetupCommands({ userId, repoFullName, commands })
+    return sendSuccess(res, 'setup commands updated', result)
+})
+
 const getOnboarding = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
@@ -267,7 +315,7 @@ const unsubscribe = asyncHandler(async (req: Request, res: Response) => {
 })
 
 // the link in the export email: a browser opens it, so errors are a small page, not json
-const downloadDataExport = async (req: Request, res: Response) => {
+const downloadDataExport = asyncHandler(async (req: Request, res: Response) => {
     try {
         const { id, t } = dataExportDownloadSchema.parse({ id: req.params.id, t: req.query.t })
         const { body, fileName } = await settingService.downloadDataExport({
@@ -297,7 +345,7 @@ const downloadDataExport = async (req: Request, res: Response) => {
                 )
             )
     }
-}
+})
 
 export const settingController = {
     getDataExport,
@@ -317,6 +365,9 @@ export const settingController = {
     updatePreferences,
     getPullRequestSettings,
     updatePullRequestSettings,
+    getSandboxSettings,
+    updateSandboxSettings,
+    updateSetupCommands,
     getOnboarding,
     updateOnboarding,
     completeOnboarding,

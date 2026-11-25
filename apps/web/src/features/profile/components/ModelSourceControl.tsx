@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 
+import { segmentClass, segmentGroupClass } from './settingsStyles'
+
 import { profileAPI } from '@/features/profile/api/profile'
 import { useByokList, useByokMutations } from '@/features/profile/hooks/useByokData'
 import { cn } from '@/shared/lib/utils'
@@ -23,11 +25,7 @@ export const ModelSourceControl: React.FC = () => {
     const defaultSource = profile?.defaultModelSource ?? 'CREDITS'
 
     return (
-        <div
-            className="flex items-center gap-1 bg-[#191919] p-0.5 rounded-lg border border-[#242323]"
-            role="radiogroup"
-            aria-label="Default model source"
-        >
+        <div className={segmentGroupClass} role="radiogroup" aria-label="Default model source">
             {SOURCES.map(([value, label]) => (
                 <button
                     key={value}
@@ -37,10 +35,8 @@ export const ModelSourceControl: React.FC = () => {
                     disabled={updateModelSource.isPending || (value === 'OWN_KEY' && !hasKeys)}
                     onClick={() => updateModelSource.mutate(value)}
                     className={cn(
-                        'px-3 py-1.5 rounded-md text-[12px] font-medium transition-all cursor-pointer disabled:opacity-40 disabled:cursor-default',
-                        defaultSource === value
-                            ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
-                            : 'text-[#7B7A79] hover:text-[#D6D5C9]'
+                        segmentClass(defaultSource === value),
+                        'disabled:opacity-40 disabled:cursor-default'
                     )}
                 >
                     {label}

@@ -6,6 +6,7 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { env } from '../../src/env'
+import { sessionService } from '../../src/modules/session/session.service'
 import { cleanupTestUser, getRandomIP } from '../helpers'
 
 describe('GitHubApp Module Integration Tests', () => {
@@ -466,6 +467,13 @@ describe('GitHubApp Module Integration Tests', () => {
                 data: { sessionId: session!.id, userId: testUserId, billingSource: 'CREDITS' },
             })
             expect(jobs[0].data.prompt).toContain('fix the redirect')
+            // the run claimed the session: its id is the owner of the run mark
+            expect(typeof jobs[0].data.runId).toBe('string')
+            expect(await sessionService.claimSessionRun({ sessionId: session!.id })).toBe(null)
+            await sessionService.releaseRun({
+                sessionId: session!.id,
+                runId: jobs[0].data.runId,
+            })
             expect(posted.some((body) => body.includes(`/session/${session!.id}`))).toBe(true)
         } finally {
             setAgentQueue(null)

@@ -2,9 +2,13 @@ import React from 'react'
 
 import { ChatMessage } from './ChatMessage'
 import { ChatPromptInput } from './ChatPromptInput'
+import { QueuedMessages } from './QueuedMessages'
+import { SpendLimitQuestionCard } from './SpendLimitQuestionCard'
 
 import type { ChatSidebarProps } from '@/features/chat/types'
+import type { PromptInputSubmitOptions } from '@/features/home/types'
 
+import { generationAPI } from '@/features/generation/api/generation'
 import { cn } from '@/shared/lib/utils'
 
 export const ChatThread: React.FC<ChatSidebarProps> = ({
@@ -102,14 +106,14 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
         }
     }, [shouldAutoScroll])
 
-    const handleSubmit = () => {
+    const handleSubmit = (options?: PromptInputSubmitOptions) => {
         const nextPrompt = editPrompt.trim()
 
         if (!nextPrompt) {
             return
         }
 
-        onPromptSubmit(nextPrompt)
+        onPromptSubmit(nextPrompt, options)
         setEditPrompt('')
     }
 
@@ -123,6 +127,7 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                         id={msg.id}
                         role={msg.role === 'system' ? 'assistant' : msg.role}
                         content={msg.content}
+                        attachments={msg.attachments}
                         blocks={msg.blocks}
                         thoughts={msg.thoughts}
                         plan={msg.plan}
@@ -144,18 +149,31 @@ export const ChatThread: React.FC<ChatSidebarProps> = ({
                     />
                 )
             })}
+            {/* a session paused at a spend limit asks "Continue?" here (#638) */}
+            {projectId && isAuthenticated && (
+                <SpendLimitQuestionCard sessionId={projectId} isRunning={isGenerating} />
+            )}
         </div>
     )
 
+    // the box takes a new message while December works (#637): it is queued or sent now.
+    // the stop button ends the run; the session and its files stay
+    const isWorking = isGenerating || isApplyingEdit
     const promptInput = (
-        <ChatPromptInput
-            value={editPrompt}
-            onChange={setEditPrompt}
-            onSubmit={handleSubmit}
-            isApplyingEdit={isApplyingEdit}
-            isAuthenticated={isAuthenticated}
-            onOpenAuth={onOpenAuth}
-        />
+        <>
+            <QueuedMessages sessionId={projectId} isWorking={isWorking} />
+            <ChatPromptInput
+                value={editPrompt}
+                onChange={setEditPrompt}
+                onSubmit={handleSubmit}
+                sessionId={projectId}
+                isGenerating={isGenerating}
+                isApplyingEdit={isApplyingEdit}
+                isAuthenticated={isAuthenticated}
+                onOpenAuth={onOpenAuth}
+                onStop={projectId ? () => generationAPI.stopSessionStream(projectId) : undefined}
+            />
+        </>
     )
 
     if (mode === 'mobile') {

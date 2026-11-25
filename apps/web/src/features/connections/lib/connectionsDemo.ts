@@ -1,9 +1,10 @@
 /**
  * Connections demo mode
  *
- * Only the Apps tab has a backend today. The other tabs (plugins, skills, MCPs,
- * hooks, rules, memory) run on local demo data and stay hidden behind this flag.
- * Normal users see a "coming soon" state on those tabs.
+ * The Apps, Skills and MCPs tabs have a backend. The other tabs (plugins, hooks,
+ * rules, memory) run on local demo data and stay hidden behind this flag: normal
+ * users see a "coming soon" state on those tabs. With the flag on, Skills and MCPs
+ * also read the local demo data, because the sample plugins add skills and servers.
  *
  * To turn it on: open any /connections page with ?demo, or set
  * localStorage.preview_connections = 'true'. To turn it off: ?demo=off.

@@ -1,10 +1,31 @@
 import { prisma } from '@december/database'
-import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { afterAll, describe, it, expect, beforeEach, mock } from 'bun:test'
 
 import { processGrpcStream } from '../../src/listener'
 import { syncWorkspaceFilesToS3 } from '../../src/workspace'
 
+// put back after the suite: the next test files in the same run use the real database
+const real = {
+    messageCreate: prisma.message.create,
+    messageFindFirst: prisma.message.findFirst,
+    usageCreate: prisma.usageEvent.create,
+    sessionFindUnique: prisma.session.findUnique,
+    sessionUpdate: prisma.session.update,
+    userUpdate: prisma.user.update,
+    transaction: prisma.$transaction,
+}
+
 describe('Worker Automated Persistence & S3 Workspace Sync', () => {
+    afterAll(() => {
+        prisma.message.create = real.messageCreate
+        prisma.message.findFirst = real.messageFindFirst
+        prisma.usageEvent.create = real.usageCreate
+        prisma.session.findUnique = real.sessionFindUnique
+        prisma.session.update = real.sessionUpdate
+        prisma.user.update = real.userUpdate
+        prisma.$transaction = real.transaction
+    })
+
     let messageCreateMock: ReturnType<typeof mock>
     let messageFindFirstMock: ReturnType<typeof mock>
     let usageCreateMock: ReturnType<typeof mock>

@@ -1,10 +1,17 @@
 import { prisma } from '@december/database'
-import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { afterAll, describe, it, expect, beforeEach, mock } from 'bun:test'
 
 import { E2BSandboxService } from '../../src/e2b-sandbox.service'
 
+// put back after the suite: the next test files in the same run use the real database
+const realSessionUpdate = prisma.session.update
+
 describe('Worker Engine Integration Tests (Mock E2B)', () => {
     let updateMock: ReturnType<typeof mock>
+
+    afterAll(() => {
+        prisma.session.update = realSessionUpdate
+    })
 
     beforeEach(() => {
         E2BSandboxService.resetMockClient()

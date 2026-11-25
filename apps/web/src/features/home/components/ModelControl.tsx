@@ -6,12 +6,12 @@ import { CascadeMenu, type CascadeItem } from './CascadeMenu'
 import { ListSearch } from './PromptMenus'
 
 import {
-    CREDIT_TIERS,
-    CREDIT_TIER_LABELS,
-    getCreditTier,
+    DEFAULT_SPEED,
+    SPEEDS,
+    SPEED_LABELS,
     useModelSelection,
     type BillingSource,
-    type CreditTier,
+    type Speed,
 } from '@/features/home/model-selection'
 import { useByokList } from '@/features/profile/hooks/useByokData'
 import { useBottomSheet } from '@/shared/components/ui/BottomSheet'
@@ -20,10 +20,16 @@ import { cn } from '@/shared/lib/utils'
 
 interface ModelControlProps {
     isAuthenticated?: boolean
+    /** the model of the user's own key. December credits have no model in the browser */
     selectedModel?: string
     selectedProvider?: string
     selectedSource: BillingSource
+    selectedSpeed?: Speed
+    /** a model of one of the user's own keys */
     onSelectModel?: (model: string, provider?: string, source?: BillingSource) => void
+    /** the switch to December credits */
+    onSelectCredits?: () => void
+    onSelectSpeed?: (speed: Speed) => void
 }
 
 interface KeyGroup {
@@ -32,8 +38,7 @@ interface KeyGroup {
     models: string[]
 }
 
-const TIERS: CreditTier[] = ['fast', 'deep']
-const TIER_TIPS: Record<CreditTier, string> = {
+const SPEED_TIPS: Record<Speed, string> = {
     fast: 'Fast: quick answers, lower cost',
     deep: 'Deep: more reasoning for hard work',
 }
@@ -89,9 +94,8 @@ const KeyModelList: React.FC<{
 
 /** the saved keys and the actions that move a run between credits and a key */
 const useModelSource = (props: ModelControlProps) => {
-    const { isAuthenticated, selectedModel, selectedSource, onSelectModel } = props
+    const { isAuthenticated, selectedSource, onSelectModel, onSelectCredits } = props
     const { data: byokData } = useByokList(Boolean(isAuthenticated))
-    const lastCreditTier = useModelSelection((s) => s.lastCreditTier)
     const lastOwnKey = useModelSelection((s) => s.lastOwnKey)
 
     const groups = React.useMemo<KeyGroup[]>(
@@ -107,10 +111,8 @@ const useModelSource = (props: ModelControlProps) => {
     )
     const hasKeys = groups.length > 0
     const isOnKey = selectedSource === 'OWN_KEY' && hasKeys
-    const tier = getCreditTier(selectedModel)
 
-    const switchToCredits = (next: CreditTier = lastCreditTier) =>
-        onSelectModel?.(CREDIT_TIERS[next].model, CREDIT_TIERS[next].provider, 'CREDITS')
+    const switchToCredits = () => onSelectCredits?.()
 
     const switchToKey = () => {
         // the last model used on a key, when that key is still saved
@@ -129,7 +131,7 @@ const useModelSource = (props: ModelControlProps) => {
         if (first) onSelectModel?.(first.defaultModel, first.provider, 'OWN_KEY')
     }
 
-    return { groups, hasKeys, isOnKey, tier, switchToCredits, switchToKey }
+    return { groups, hasKeys, isOnKey, switchToCredits, switchToKey }
 }
 
 const segmentClass = (isActive: boolean) =>
@@ -242,31 +244,32 @@ export const SourceSwitch: React.FC<
     )
 }
 
-/** the Fast | Deep switch for December credits */
-export const TierSwitch: React.FC<ModelControlProps & { className?: string }> = (props) => {
-    const { className } = props
-    const { isOnKey, tier, switchToCredits } = useModelSource(props)
-    if (isOnKey) return null
-
-    return (
-        <div role="radiogroup" aria-label="Speed" className={cn(groupClass, className)}>
-            {TIERS.map((value) => (
-                <div key={value} className="relative group/seg">
-                    <button
-                        type="button"
-                        role="radio"
-                        aria-checked={tier === value}
-                        onClick={() => switchToCredits(value)}
-                        className={wordSegmentClass(tier === value)}
-                    >
-                        {CREDIT_TIER_LABELS[value]}
-                    </button>
-                    <span className={tooltipClass}>{TIER_TIPS[value]}</span>
-                </div>
-            ))}
-        </div>
-    )
-}
+/**
+ * The Fast | Deep switch. On December credits the server picks the model for the
+ * speed. On your own key the speed is how much the picked model reasons.
+ */
+export const SpeedSwitch: React.FC<ModelControlProps & { className?: string }> = ({
+    selectedSpeed = DEFAULT_SPEED,
+    onSelectSpeed,
+    className,
+}) => (
+    <div role="radiogroup" aria-label="Speed" className={cn(groupClass, 'shrink-0', className)}>
+        {SPEEDS.map((value) => (
+            <div key={value} className="relative group/seg">
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={selectedSpeed === value}
+                    onClick={() => onSelectSpeed?.(value)}
+                    className={wordSegmentClass(selectedSpeed === value)}
+                >
+                    {SPEED_LABELS[value]}
+                </button>
+                <span className={tooltipClass}>{SPEED_TIPS[value]}</span>
+            </div>
+        ))}
+    </div>
+)
 
 /** credits or your keys as the first Configuration row, for phones */
 export const SourceConfigRow: React.FC<ModelControlProps & { onOpenAuth?: () => void }> = (
@@ -278,18 +281,13 @@ export const SourceConfigRow: React.FC<ModelControlProps & { onOpenAuth?: () => 
     </div>
 )
 
-/** Fast | Deep as a Configuration row, for phones. Hidden on your own key */
-export const TierConfigRow: React.FC<ModelControlProps> = (props) => {
-    const { isOnKey } = useModelSource(props)
-    if (isOnKey) return null
-
-    return (
-        <div className={configRowClass}>
-            <span>Speed</span>
-            <TierSwitch {...props} className="ml-0" />
-        </div>
-    )
-}
+/** Fast | Deep as a Configuration row, for phones */
+export const SpeedConfigRow: React.FC<ModelControlProps> = (props) => (
+    <div className={configRowClass}>
+        <span>Speed</span>
+        <SpeedSwitch {...props} className="ml-0" />
+    </div>
+)
 
 /**
  * The Model row of Configuration, for phones on your own key. It opens the model list,
@@ -330,9 +328,10 @@ export const PhoneModelText: React.FC<
         onOpenModels: () => void
     }
 > = (props) => {
-    const { isAuthenticated, selectedModel, onOpenAuth, onOpenConfig, onOpenModels } = props
-    const { isOnKey, tier } = useModelSource(props)
-    const text = isOnKey ? shortName(selectedModel || '') : CREDIT_TIER_LABELS[tier]
+    const { isAuthenticated, selectedModel, selectedSpeed = DEFAULT_SPEED } = props
+    const { onOpenAuth, onOpenConfig, onOpenModels } = props
+    const { isOnKey } = useModelSource(props)
+    const text = isOnKey ? shortName(selectedModel || '') : SPEED_LABELS[selectedSpeed]
 
     return (
         <button
@@ -449,10 +448,9 @@ export const useKeyModelsLevel = (props: ModelControlProps, onPicked: () => void
 }
 
 /**
- * The model control of the prompt box on desktop, left of the box.
- * - On December credits: the Fast | Deep switch.
- * - On your own key: a button with the model name. Its menu lists your keys, and the
- *   models of a key open beside it.
+ * The model button of the prompt box on desktop, after the Fast | Deep switch. It
+ * shows only on your own key: December credits have no model to pick. Its menu lists
+ * your keys, and the models of a key open beside it.
  * The credits / keys switch is `SourceSwitch`, next to the mic. Phones use
  * `PhoneModelText` and the Configuration sheet in its place.
  */
@@ -475,7 +473,7 @@ export const ModelControl: React.FC<ModelControlProps> = (props) => {
         return () => document.removeEventListener('mousedown', onMouseDown)
     }, [isMenuOpen, closeMenu])
 
-    if (!isOnKey) return <TierSwitch {...props} />
+    if (!isOnKey) return null
 
     const modelList = (group: KeyGroup) => (
         <KeyModelList

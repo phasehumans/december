@@ -70,6 +70,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     id,
     role,
     content,
+    attachments,
     blocks,
     thoughts,
     plan,
@@ -133,6 +134,19 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                 <div className="bg-[#1B1B1B] px-4 py-2.5 rounded-xl text-[13.5px] leading-relaxed text-[#EDEDED] selection:bg-blue-500/20 shadow-sm max-w-[95%] break-words whitespace-pre-wrap border-none">
                     {content}
                 </div>
+                {attachments && attachments.length > 0 && (
+                    // the files sent with this message, in the chip style of the prompt box
+                    <div className="flex flex-wrap justify-end gap-1.5 max-w-[95%]">
+                        {attachments.map((file, fileIndex) => (
+                            <span
+                                key={file.id ?? `${file.name}-${fileIndex}`}
+                                className="bg-[#2A2928] text-[#E8E8E8] text-[12.5px] font-medium leading-relaxed px-2 py-0.5 rounded-[6px] truncate max-w-[220px]"
+                            >
+                                {file.name}
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
         )
     }

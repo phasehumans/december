@@ -30,6 +30,37 @@ const currentSubscription = async () => {
     return (await registration?.pushManager.getSubscription()) ?? null
 }
 
+/** sign out waits this long for push to turn off, then goes on */
+const SIGN_OUT_WAIT_MS = 3000
+
+/**
+ * Sign out: push stops in this browser for the user who leaves, and the browser gives up its
+ * subscription, so the next user here starts with push off. It never throws, so sign out
+ * goes on in any case (the server also removes the push of a sign-in that ends).
+ */
+export const turnOffBrowserPushOnSignOut = async () => {
+    if (!isSupported()) return
+    const turnOff = async () => {
+        const subscription = await currentSubscription()
+        if (!subscription) return
+        try {
+            await profileAPI.unsubscribePush(subscription.endpoint)
+        } catch (err) {
+            // the server removes it with the sign-in; the browser still drops its side below
+            console.warn('[push] could not turn push off on the server', err)
+        }
+        await subscription.unsubscribe()
+    }
+    try {
+        await Promise.race([
+            turnOff(),
+            new Promise((resolve) => setTimeout(resolve, SIGN_OUT_WAIT_MS)),
+        ])
+    } catch (err) {
+        console.warn('[push] could not turn push off at sign out', err)
+    }
+}
+
 /** browser push for this device (#636): turn on asks for permission and subscribes */
 export const useBrowserPush = () => {
     const queryClient = useQueryClient()
@@ -57,9 +88,15 @@ export const useBrowserPush = () => {
             return
         }
         let cancelled = false
+        // the browser keeps its subscription when another user signs in, so the server says
+        // if this browser has push for this user
         currentSubscription()
-            .then((subscription) => {
-                if (!cancelled) setState(subscription ? 'on' : 'off')
+            .then(async (subscription) => {
+                if (!subscription) return false
+                return (await profileAPI.getPushStatus(subscription.endpoint)).subscribed
+            })
+            .then((subscribed) => {
+                if (!cancelled) setState(subscribed ? 'on' : 'off')
             })
             .catch((err: unknown) => {
                 console.warn('[push] could not read the subscription', err)

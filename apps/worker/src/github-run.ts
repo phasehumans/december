@@ -9,6 +9,8 @@ import {
     toPullRequestSettings,
 } from '@december/shared'
 
+import { shellQuote as sh } from './shell-quote'
+
 import type { GithubRun, ReviewLineComment } from '@december/shared'
 
 /**
@@ -31,9 +33,6 @@ const WORKSPACE = '/workspace'
 const REVIEW_FILE = '.december/review.json'
 const MAX_REVIEW_COMMENTS = 10
 const TEST_TIMEOUT_MS = 15 * 60 * 1000
-
-// single quotes for a shell argument
-const sh = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`
 
 const run = async (sandbox: SandboxLike, cmd: string, timeoutMs = 120_000) => {
     try {

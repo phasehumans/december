@@ -1,9 +1,11 @@
-import { Github, GitBranch, Clock, Lock, Globe, Search, RotateCw, Plus } from 'lucide-react'
+import { GitBranch, Clock, Lock, Globe, Search, RotateCw, Plus } from 'lucide-react'
 import React, { useState } from 'react'
 
 import { ProfileRepositoriesSkeleton } from './ProfileSettingsSkeleton'
 import { SettingsPageHeader } from './SettingsPageHeader'
+import { blueButtonClass, boxSurfaceClass, outlineButtonClass } from './settingsStyles'
 
+import { EmptyRow, ListBox } from '@/features/connections/components/ConnectionsUi'
 import { type GithubRepo } from '@/features/profile/api/profile'
 import { repoKey, useConnectedRepos } from '@/features/profile/hooks/useConnectedRepos'
 import { useGitlabConnection } from '@/features/profile/hooks/useGitlabConnection'
@@ -87,7 +89,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
 
                 <div className="flex flex-col gap-4">
                     {/* Top Control Bar */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                         <div className="relative w-full max-w-full sm:max-w-[340px]">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7B7A79]" />
                             <input
@@ -95,7 +97,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search repositories..."
-                                className="w-full pl-9 pr-3 py-1.5 bg-[#202020] border border-[#282828] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none focus:border-[#5A5A5A] transition-colors"
+                                className="w-full pl-9 pr-3 py-1.5 bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none focus:border-[#5A5A5A] transition-colors"
                             />
                         </div>
 
@@ -103,7 +105,8 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                             <Tooltip position="top" content="Refresh repositories">
                                 <button
                                     onClick={() => reposQuery.refetch()}
-                                    className="p-2 rounded-lg border border-[#282828] bg-[#202020] hover:bg-[#282828] text-[#949494] hover:text-white transition-colors cursor-pointer"
+                                    aria-label="Refresh repositories"
+                                    className="p-2 rounded-lg border border-[#383736] hover:bg-[#242323] text-[#949494] hover:text-[#D6D5C9] transition-colors cursor-pointer"
                                 >
                                     <RotateCw
                                         className={`w-3.5 h-3.5 ${reposQuery.isRefetching ? 'animate-spin text-[#87B2F4]' : ''}`}
@@ -112,7 +115,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                             </Tooltip>
                             <button
                                 onClick={onConnectGithub}
-                                className="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                                className={`${blueButtonClass} flex-1 sm:flex-initial flex items-center justify-center gap-1.5`}
                             >
                                 <Plus className="w-3.5 h-3.5" />
                                 <span>Connect GitHub</span>
@@ -122,7 +125,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                                     onClick={() => {
                                         window.location.href = gitlab.connectUrl()
                                     }}
-                                    className="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg border border-[#282828] bg-[#202020] hover:bg-[#282828] text-[#D6D5C9] hover:text-white text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                    className={`${outlineButtonClass} flex-1 sm:flex-initial flex items-center justify-center gap-1.5`}
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Connect GitLab</span>
@@ -140,45 +143,42 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                     {reposQuery.isLoading || isSkeletonPreviewActive() ? (
                         <ProfileRepositoriesSkeleton />
                     ) : !githubConnected ? (
-                        <div className="border border-dashed border-[#383736] rounded-xl py-16 flex flex-col items-center justify-center gap-4 bg-[#100E12]/30 hover:border-[#4A4948] transition-colors">
-                            <div className="w-12 h-12 rounded-xl bg-[#191919] border border-[#383736] flex items-center justify-center">
-                                <Github className="w-6 h-6 text-[#7B7A79]" />
-                            </div>
-                            <div className="flex flex-col items-center gap-1 text-center">
-                                <span className="text-[14px] font-medium text-[#D6D5C9]">
-                                    Connect GitHub to view all repositories
-                                </span>
-                                <span className="text-[13px] text-[#7B7A79] max-w-[320px]">
-                                    Import any repository to start working on it with december.
-                                </span>
-                            </div>
-                            <button
-                                onClick={onConnectGithub}
-                                className="flex items-center gap-2 px-5 py-2 rounded-xl border border-[#383736] text-[13px] font-medium text-[#D6D5C9] bg-[#242323] hover:bg-[#2F2E2E] transition-colors mt-1"
+                        // the empty box of every settings list: one line and one outline button
+                        <ListBox>
+                            <EmptyRow
+                                action={
+                                    <button
+                                        type="button"
+                                        onClick={onConnectGithub}
+                                        className={outlineButtonClass}
+                                    >
+                                        Connect GitHub
+                                    </button>
+                                }
                             >
-                                <Github className="w-4 h-4" />
-                                Connect GitHub
-                            </button>
-                        </div>
+                                Connect GitHub to view all repositories
+                            </EmptyRow>
+                        </ListBox>
                     ) : reposQuery.isError ? (
-                        <div className="border border-[#242323] rounded-xl py-16 flex flex-col items-center justify-center gap-3 bg-[#1B1B1B]">
-                            <span className="text-[13px] text-red-400">
-                                Failed to load repositories.
-                            </span>
-                            <button
-                                onClick={() => reposQuery.refetch()}
-                                className="px-4 py-1.5 rounded-xl border border-[#383736] text-[13px] text-[#D6D5C9] bg-[#202020] hover:bg-[#282828] transition-colors"
+                        <ListBox>
+                            <EmptyRow
+                                action={
+                                    <button
+                                        type="button"
+                                        onClick={() => reposQuery.refetch()}
+                                        className={outlineButtonClass}
+                                    >
+                                        Retry
+                                    </button>
+                                }
                             >
-                                Retry
-                            </button>
-                        </div>
+                                Failed to load repositories.
+                            </EmptyRow>
+                        </ListBox>
                     ) : allRepos.length === 0 ? (
-                        <div className="border border-[#242323] rounded-xl py-16 flex flex-col items-center justify-center gap-3 bg-[#1B1B1B]">
-                            <Github className="w-6 h-6 text-[#7B7A79]" />
-                            <span className="text-[13px] text-[#7B7A79]">
-                                No repositories found on this account.
-                            </span>
-                        </div>
+                        <ListBox>
+                            <EmptyRow>No repositories found on this account.</EmptyRow>
+                        </ListBox>
                     ) : (
                         /* Repositories Grid View */
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
@@ -190,7 +190,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                                     <div
                                         key={repoKey(repo)}
                                         onClick={() => window.open(repo.htmlUrl, '_blank')}
-                                        className="group relative bg-[#1B1B1B] hover:bg-[#202020] rounded-xl p-3.5 transition-all duration-200 flex flex-col justify-between min-h-[96px] cursor-pointer"
+                                        className={`group relative ${boxSurfaceClass} hover:bg-[#242424] p-3.5 transition-colors duration-200 flex flex-col justify-between min-h-[96px] cursor-pointer`}
                                     >
                                         {/* Card Header */}
                                         <div className="flex items-start justify-between gap-2">
@@ -205,12 +205,12 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
 
                                             {/* Public / Private Badge */}
                                             {repo.private ? (
-                                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#2B2A29] text-[10px] text-[#8F8E8D] bg-[#202020] shrink-0">
+                                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#383736] text-[10px] text-[#8F8E8D] shrink-0">
                                                     <Lock className="w-2.5 h-2.5" />
                                                     Private
                                                 </span>
                                             ) : (
-                                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#2B2A29] text-[10px] text-[#8F8E8D] bg-[#202020] shrink-0">
+                                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#383736] text-[10px] text-[#8F8E8D] shrink-0">
                                                     <Globe className="w-2.5 h-2.5" />
                                                     Public
                                                 </span>

@@ -1,7 +1,7 @@
 import { SLASH_COMMANDS, type SlashCommand, type SlashScope } from './commands'
 
 /** the "/word" the caret is in */
-export interface SlashToken {
+interface SlashToken {
     query: string
     /** index of the slash in the text */
     start: number
@@ -50,17 +50,8 @@ const byPrefixFirst =
     }
 
 /** the commands a prompt box can run, in menu order */
-export const listSlashCommands = (options: {
-    scope: SlashScope
-    demo: boolean
-    onCredits: boolean
-}): SlashCommand[] =>
-    SLASH_COMMANDS.filter(
-        (command) =>
-            command.scopes.includes(options.scope) &&
-            (options.demo || !command.demoOnly) &&
-            (options.onCredits || !command.creditsOnly)
-    )
+export const listSlashCommands = (options: { scope: SlashScope }): SlashCommand[] =>
+    SLASH_COMMANDS.filter((command) => command.scopes.includes(options.scope))
 
 /**
  * the rows of the slash menu: commands first, then the user's skills, then the skills
@@ -70,8 +61,6 @@ export const listSlashCommands = (options: {
 export const buildSlashItems = (options: {
     token: SlashToken
     scope: SlashScope
-    demo: boolean
-    onCredits: boolean
     skills: SlashSkill[]
 }): SlashItem[] => {
     const { token, skills } = options
@@ -163,11 +152,4 @@ export const parseRenameCommand = (text: string): { title: string } | null => {
     const match = /^\s*\/rename(?:\s+([\s\S]*))?$/i.exec(text)
     if (!match) return null
     return { title: (match[1] || '').trim() }
-}
-
-/** "1.2M", "84k", "512" */
-export const formatTokenCount = (tokens: number): string => {
-    if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`
-    if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}k`
-    return String(tokens)
 }

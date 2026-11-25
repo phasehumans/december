@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+const isDate = (value: string) => !Number.isNaN(Date.parse(value))
+
 export const createRazorpayOrderSchema = z
     .object({
         amountInCents: z
@@ -22,8 +24,17 @@ export const verifyRazorpayPaymentSchema = z
 export const creditsHistoryQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(100).default(25),
     offset: z.coerce.number().int().min(0).default(0),
-    periodStart: z.string().optional(),
-    periodEnd: z.string().optional(),
+    periodStart: z.string().refine(isDate, { message: 'periodStart must be a date' }).optional(),
+    periodEnd: z.string().refine(isDate, { message: 'periodEnd must be a date' }).optional(),
+    // the "all, credits, your keys" control. no value is all
+    billingSource: z.enum(['CREDITS', 'OWN_KEY']).optional(),
+    // the time zone of the days and hours, sent by the browser. with no value, or a name the
+    // server does not know, the days are in the time zone saved for the user
+    timezone: z.string().min(1).max(64).optional(),
+})
+
+export const receiptParamsSchema = z.object({
+    id: z.string().trim().min(1).max(64),
 })
 
 export const redeemCodeSchema = z
@@ -52,6 +63,25 @@ export const creditRequestSchema = z
         agreeToFeedback: z.literal(true, { message: 'agree to give feedback to request credits' }),
     })
     .strict()
+
+// #638 section 1: an amount in whole cents ($1 to $1000), or null to turn it off
+const limitAmount = z
+    .number()
+    .int({ message: 'the amount must be in whole cents' })
+    .min(100, { message: 'the amount must be at least $1' })
+    .max(100000, { message: 'the amount cannot be more than $1000' })
+    .nullable()
+
+export const updateLimitsSchema = z
+    .object({
+        lowBalanceAlertCents: limitAmount.optional(),
+        sessionLimitCents: limitAmount.optional(),
+        dayLimitCents: limitAmount.optional(),
+    })
+    .strict()
+    .refine((value) => Object.values(value).some((amount) => amount !== undefined), {
+        message: 'send at least one amount',
+    })
 
 export const addCreditsSchema = z
     .object({

@@ -126,7 +126,7 @@ export const FreeCreditsSection: React.FC = () => {
                 : '$5 in credits, once'
 
     return (
-        <SettingsSection title="Free credits">
+        <SettingsSection title="Free credits" description="Credits to try December with.">
             <SettingsRow label={label}>
                 {!status && (
                     <button

@@ -408,21 +408,35 @@ const startGithubRun = async (data: StartGithubRun): Promise<StartGithubRunResul
 
     let secrets: Array<{ key: string; value: string }> = []
     try {
-        secrets = await secretsService.getAllDecryptedSecrets({ userId })
+        // "all repositories" secrets plus the ones of the repository of this run
+        secrets = await secretsService.getAllDecryptedSecrets({
+            userId,
+            repoFullName: run.repoFullName,
+        })
     } catch (err) {
         console.warn('[GitHubApp Service] could not load secrets for a github run:', err)
     }
 
-    await enqueueJob('run_agent', {
-        sessionId: session.id,
-        projectId: session.id,
-        userId,
-        prompt,
-        secrets,
-        model: choice.model,
-        provider: choice.provider,
-        billingSource: choice.billingSource,
-    })
+    // one run for a session: the run of this new session claims it like any other run
+    const runId = await sessionService.claimSessionRun({ sessionId: session.id })
+    if (!runId) return { started: false, reason: 'session_busy', sessionId: session.id }
+    try {
+        await enqueueJob('run_agent', {
+            sessionId: session.id,
+            projectId: session.id,
+            userId,
+            runId,
+            prompt,
+            secrets,
+            model: choice.model,
+            provider: choice.provider,
+            billingSource: choice.billingSource,
+        })
+    } catch (err) {
+        // no run was queued: the session is free again
+        await sessionService.releaseRun({ sessionId: session.id, runId })
+        throw err
+    }
 
     if (announce) {
         const what = run.mode === 'review' ? 'Reviewing' : 'On it'

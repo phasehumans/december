@@ -1,24 +1,27 @@
+import { ATTACHMENT_MAX_FILES, checkAttachment } from '@december/shared/attachments'
 import { useQuery } from '@tanstack/react-query'
 import { KeyRound, Folder } from 'lucide-react'
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 
-import type { BillingSource } from '@/features/home/model-selection'
-import type { SlashPickOption } from '@/features/home/slash/useSlashMenu'
-import type { PromptInputSubmitOptions } from '@/features/home/types'
+import { hasDefaultRepository, useRepoStartValues } from './useRepoStartValues'
 
+import type { BillingSource, Speed } from '@/features/home/model-selection'
+import type { SlashPickOption } from '@/features/home/slash/useSlashMenu'
+import type { PromptInputSubmitOptions, UploadedAttachment } from '@/features/home/types'
+
+import { attachmentAPI } from '@/features/generation/api/attachments'
+import { generationAPI } from '@/features/generation/api/generation'
 import {
-    CREDIT_TIERS,
-    CREDIT_TIER_LABELS,
     DEFAULT_SELECTION,
-    getCreditTier,
+    SPEEDS,
+    SPEED_LABELS,
     useModelSelection,
-    type CreditTier,
 } from '@/features/home/model-selection'
 import { onHomePrefill, takeHomePrefill } from '@/features/home/prefill'
 import { usePromptConfig } from '@/features/home/promptConfig'
 import { useSlashMenu } from '@/features/home/slash/useSlashMenu'
 import { profileAPI } from '@/features/profile/api/profile'
-import { secretsAPI } from '@/features/profile/api/secrets'
+import { SECRETS_MENTION_KEY, secretsAPI, uniqueSecretNames } from '@/features/profile/api/secrets'
 import { useByokList } from '@/features/profile/hooks/useByokData'
 import { repoKey, useConnectedRepos } from '@/features/profile/hooks/useConnectedRepos'
 import { usePreferences } from '@/features/profile/lib/preferences'
@@ -61,6 +64,7 @@ export const usePromptInputController = ({
     initialModel,
     initialProvider,
     acceptPrefill = false,
+    sessionId,
     onModelChange,
     onNavigate,
 }: {
@@ -75,6 +79,8 @@ export const usePromptInputController = ({
     initialProvider?: string
     /** take a prompt or repo handed over by requestHomePrefill (Home only) */
     acceptPrefill?: boolean
+    /** the open session (session box). its files are stored there before the prompt goes */
+    sessionId?: string | null
     /** told when /model picks a model, the same as a pick from the model button */
     onModelChange?: (model: string, provider?: string) => void
     /** opens a page of the app, for slash commands such as /mcp */
@@ -103,20 +109,184 @@ export const usePromptInputController = ({
     const voiceBaseRef = useRef('')
     const isVoiceActiveRef = useRef(false)
 
+    // the files picked for this prompt (#634). they are stored on the server when the
+    // prompt is sent, before the box is cleared: a refused file leaves the box as it was
+    const [attachments, setAttachments] = useState<File[]>([])
+    const [attachmentNote, setAttachmentNote] = useState<string | null>(null)
+    /** the file the server refused in the last send */
+    const [refusedAttachment, setRefusedAttachment] = useState<File | null>(null)
+    const [isUploading, setIsUploading] = useState(false)
+    const isUploadingRef = useRef(false)
+    /** the session made for the files of a first prompt. a retry stores its files there */
+    const pendingSessionRef = useRef<{ key: string; session: { id: string } } | null>(null)
+    const attachmentNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    useEffect(
+        () => () => {
+            if (attachmentNoteTimerRef.current) clearTimeout(attachmentNoteTimerRef.current)
+        },
+        []
+    )
+
+    /** adds picked files. a refused file shows one short line for a few seconds */
+    const addAttachments = (files: File[]) => {
+        const next = [...attachments]
+        let problem: string | null = null
+        for (const file of files) {
+            const reason = checkAttachment({ name: file.name, size: file.size, count: next.length })
+            if (!reason) {
+                next.push(file)
+                continue
+            }
+            problem ??=
+                reason === 'count'
+                    ? `Up to ${ATTACHMENT_MAX_FILES} files for each prompt.`
+                    : reason === 'size'
+                      ? `${file.name} is over 5 MB.`
+                      : reason === 'empty'
+                        ? `${file.name} is empty.`
+                        : `${file.name} cannot be attached. Use images or text files.`
+        }
+        setAttachments(next)
+        if (attachmentNoteTimerRef.current) clearTimeout(attachmentNoteTimerRef.current)
+        setAttachmentNote(problem)
+        if (problem) {
+            attachmentNoteTimerRef.current = setTimeout(() => setAttachmentNote(null), 5000)
+        }
+    }
+
+    const removeAttachment = (index: number) => {
+        if (attachments[index] === refusedAttachment) {
+            // the reason goes with its file
+            if (attachmentNoteTimerRef.current) clearTimeout(attachmentNoteTimerRef.current)
+            setRefusedAttachment(null)
+            setAttachmentNote(null)
+        }
+        setAttachments((prev) => prev.filter((_, i) => i !== index))
+    }
+
+    /** files pasted into the text: the same checks and chips as the file picker */
+    const handlePaste = (event: React.ClipboardEvent) => {
+        const files = Array.from(event.clipboardData?.files ?? [])
+        // pasted text has no files: the text box takes it
+        if (files.length === 0) return
+        event.preventDefault()
+        handleAuthCheck(() => addAttachments(files))
+    }
+
+    /** files dropped on the box: the same checks and chips as the file picker */
+    const handleDrop = (event: React.DragEvent) => {
+        const files = Array.from(event.dataTransfer?.files ?? [])
+        if (files.length === 0) return
+        // without this the browser opens the file in place of the app
+        event.preventDefault()
+        handleAuthCheck(() => addAttachments(files))
+    }
+
+    /** lets the box take a drop of files */
+    const handleDragOver = (event: React.DragEvent) => {
+        if (Array.from(event.dataTransfer?.types ?? []).includes('Files')) event.preventDefault()
+    }
+
+    /** the session that takes the files: the open one, or one made for this first prompt */
+    const sessionForFiles = async (prompt: string, options: PromptInputSubmitOptions) => {
+        if (mode === 'chat') {
+            if (!sessionId) throw new Error('The session is not ready. Send again in a moment.')
+            return { id: sessionId, created: undefined }
+        }
+        // a retry with the same repository and payment source uses the session of the
+        // first try. a change of those makes a new one, and the old one goes
+        const key = JSON.stringify([
+            options.repoUrl,
+            options.branch,
+            options.issueNumber,
+            options.billingSource,
+            options.model,
+            options.provider,
+        ])
+        const pending = pendingSessionRef.current
+        if (pending?.key === key) return { id: pending.session.id, created: pending.session }
+        if (pending) {
+            pendingSessionRef.current = null
+            void sessionAPI.deleteSession(pending.session.id).catch((error: unknown) => {
+                console.warn('[PromptBox] could not remove the unused session:', error)
+            })
+        }
+        const session = await generationAPI.createPromptSession({ prompt, ...options })
+        pendingSessionRef.current = { key, session }
+        return { id: session.id, created: session }
+    }
+
+    /**
+     * Stores the files of a prompt, in order. It gives the stored files and the session,
+     * or null when a file was refused: then the box keeps its text and chips, the line
+     * under it tells the server's reason, and the files stored before it are removed so
+     * they do not count to the session cap.
+     */
+    const storeAttachments = async (prompt: string, options: PromptInputSubmitOptions) => {
+        const files = attachments
+        const stored: UploadedAttachment[] = []
+        let targetId: string | null = null
+        let current: File | null = null
+        try {
+            const target = await sessionForFiles(prompt, options)
+            targetId = target.id
+            for (const file of files) {
+                current = file
+                const info = await attachmentAPI.upload(target.id, file)
+                stored.push({ id: info.id, name: info.name })
+            }
+            return { stored, session: target.created }
+        } catch (error) {
+            for (const file of stored) {
+                if (!targetId) break
+                void attachmentAPI.remove(targetId, file.id).catch((cleanupError: unknown) => {
+                    console.warn('[PromptBox] could not remove a stored file:', cleanupError)
+                })
+            }
+            const reason =
+                error instanceof Error && error.message ? error.message : 'Upload failed.'
+            if (attachmentNoteTimerRef.current) clearTimeout(attachmentNoteTimerRef.current)
+            setRefusedAttachment(current)
+            setAttachmentNote(current ? `${current.name}: ${reason}` : reason)
+            return null
+        }
+    }
+
+    // Fast or Deep: on credits the server picks the model for it, on a key it is how
+    // much the model reasons. every prompt box shows the same speed
+    const selectedSpeed = useModelSelection((state) => state.speed)
+    const handleSelectSpeed = useCallback(
+        (speed: Speed) => useModelSelection.getState().setSpeed(speed),
+        []
+    )
+
+    /** December credits: there is no model to pick */
+    const handleSelectCredits = useCallback(() => {
+        setSelectedModel(DEFAULT_SELECTION.model)
+        setSelectedProvider(DEFAULT_SELECTION.provider)
+        setSelectedSource('CREDITS')
+        useModelSelection.getState().select({ ...DEFAULT_SELECTION })
+    }, [])
+
+    /** a model of one of the user's own keys */
     const handleSelectModel = useCallback(
-        (model: string, provider?: string, source: BillingSource = 'CREDITS') => {
+        (model: string, provider?: string, source: BillingSource = 'OWN_KEY') => {
+            if (source !== 'OWN_KEY') {
+                handleSelectCredits()
+                return
+            }
             setSelectedModel(model)
-            setSelectedSource(source)
+            setSelectedSource('OWN_KEY')
             if (provider) {
                 setSelectedProvider(provider)
             }
             useModelSelection.getState().select({
                 model,
                 provider: provider ?? useModelSelection.getState().provider,
-                source,
+                source: 'OWN_KEY',
             })
         },
-        []
+        [handleSelectCredits]
     )
 
     // follow changes made elsewhere (another prompt box, or "switch to december credits")
@@ -143,7 +313,16 @@ export const usePromptInputController = ({
         if (!byokData) return
         const store = useModelSelection.getState()
         const credentials = byokData.credentials
-        const first = credentials[0]
+        // the model of the account for own keys (#637) when its key is still saved, else
+        // the default model of the first key
+        const saved = credentials.find(
+            (c) =>
+                c.provider === defaultsProfile?.defaultOwnKeyProvider &&
+                c.models.includes(defaultsProfile?.defaultOwnKeyModel ?? '')
+        )
+        const first = saved
+            ? { provider: saved.provider, defaultModel: defaultsProfile?.defaultOwnKeyModel ?? '' }
+            : credentials[0]
 
         if (
             selectedSource === 'OWN_KEY' &&
@@ -154,6 +333,11 @@ export const usePromptInputController = ({
             setSelectedSource('CREDITS')
             store.reset()
             return
+        }
+
+        // on credits, the switch to "Your keys" starts on the model of the account
+        if (saved && first && !initialModel) {
+            store.applyDefaultOwnKey({ model: first.defaultModel, provider: first.provider })
         }
 
         if (
@@ -182,7 +366,16 @@ export const usePromptInputController = ({
             planFirst: defaultsProfile.defaultPlanFirst,
             openPullRequest: defaultsProfile.defaultOpenPullRequest,
         })
+        // the speed of the account (#637), until the user picks one in a prompt box
+        if (defaultsProfile.defaultEffort) {
+            useModelSelection.getState().applyDefaultSpeed(defaultsProfile.defaultEffort)
+        }
     }, [defaultsProfile])
+
+    // the default repository of the account (#637) starts in the box of a new session
+    const repoStartedRef = useRef(false)
+    const startRepository = mode !== 'chat' ? defaultsProfile?.defaultRepository : undefined
+    const needsRepoList = hasDefaultRepository(startRepository) && selectedRepos.length === 0
 
     const isControlled = value !== undefined
     const input = isControlled ? value : internalInput
@@ -212,6 +405,7 @@ export const usePromptInputController = ({
             if (!prefill) return
             if (prefill.prompt !== undefined) handleInputChange(prefill.prompt)
             if (prefill.repo) {
+                repoStartedRef.current = true
                 setSelectedRepos([prefill.repo])
                 setSelectedBranch(prefill.branch || prefill.repo.defaultBranch || 'main')
             }
@@ -267,8 +461,8 @@ export const usePromptInputController = ({
 
     // choices for /model, /effort and /switch. they change the same state as the footer
     const pickModel = useCallback(
-        (model: string, provider: string, source: BillingSource) => () => {
-            handleSelectModel(model, provider, source)
+        (model: string, provider: string) => () => {
+            handleSelectModel(model, provider, 'OWN_KEY')
             onModelChange?.(model, provider)
         },
         [handleSelectModel, onModelChange]
@@ -277,13 +471,13 @@ export const usePromptInputController = ({
 
     const slashEffortOptions = useMemo<SlashPickOption[]>(
         () =>
-            (Object.keys(CREDIT_TIERS) as CreditTier[]).map((tier) => ({
-                id: tier,
-                label: CREDIT_TIER_LABELS[tier],
-                selected: isOnCredits && getCreditTier(selectedModel) === tier,
-                pick: pickModel(CREDIT_TIERS[tier].model, CREDIT_TIERS[tier].provider, 'CREDITS'),
+            SPEEDS.map((speed) => ({
+                id: speed,
+                label: SPEED_LABELS[speed],
+                selected: selectedSpeed === speed,
+                pick: () => handleSelectSpeed(speed),
             })),
-        [isOnCredits, selectedModel, pickModel]
+        [selectedSpeed, handleSelectSpeed]
     )
 
     const keyModelOptions = useMemo<SlashPickOption[]>(
@@ -300,7 +494,7 @@ export const usePromptInputController = ({
                         !isOnCredits &&
                         selectedProvider === credential.provider &&
                         selectedModel === model,
-                    pick: pickModel(model, credential.provider, 'OWN_KEY'),
+                    pick: pickModel(model, credential.provider),
                 }))
             }),
         [byokData, isOnCredits, selectedModel, selectedProvider, pickModel]
@@ -308,18 +502,13 @@ export const usePromptInputController = ({
     // on credits December picks the model, so /model offers the two speeds
     const slashModelOptions = isOnCredits ? slashEffortOptions : keyModelOptions
 
-    const lastCreditTier = useModelSelection((state) => state.lastCreditTier)
     const lastOwnKey = useModelSelection((state) => state.lastOwnKey)
     const slashSourceOptions = useMemo<SlashPickOption[]>(() => {
         const credits: SlashPickOption = {
             id: 'credits',
             label: 'December credits',
             selected: isOnCredits,
-            pick: pickModel(
-                CREDIT_TIERS[lastCreditTier].model,
-                CREDIT_TIERS[lastCreditTier].provider,
-                'CREDITS'
-            ),
+            pick: handleSelectCredits,
         }
         const credentials = byokData?.credentials || []
         if (credentials.length === 0) {
@@ -346,10 +535,10 @@ export const usePromptInputController = ({
                 label: 'Your keys',
                 hint: remembered.model.split('/').pop(),
                 selected: !isOnCredits,
-                pick: pickModel(remembered.model, remembered.provider, 'OWN_KEY'),
+                pick: pickModel(remembered.model, remembered.provider),
             },
         ]
-    }, [byokData, isOnCredits, lastCreditTier, lastOwnKey, pickModel, onNavigate])
+    }, [byokData, isOnCredits, lastOwnKey, pickModel, handleSelectCredits, onNavigate])
 
     const slash = useSlashMenu({
         input,
@@ -358,7 +547,6 @@ export const usePromptInputController = ({
         isAuthenticated,
         onOpenAuth,
         setInput: setInputAt,
-        onCredits: isOnCredits,
         modelOptions: slashModelOptions,
         effortOptions: slashEffortOptions,
         sourceOptions: slashSourceOptions,
@@ -419,8 +607,18 @@ export const usePromptInputController = ({
         isGitlabConnected,
         isGitlabReady,
     } = useConnectedRepos({
-        enabled: isReposTriggered && !!isAuthenticated,
+        enabled: (isReposTriggered || needsRepoList) && !!isAuthenticated,
         isGithubConnected: hasGithub,
+    })
+    const { startBranchFor } = useRepoStartValues({
+        enabled: mode !== 'chat' && !!isAuthenticated,
+        defaultRepository: startRepository,
+        defaultBaseBranch: defaultsProfile?.defaultBaseBranch,
+        repos,
+        selectedCount: selectedRepos.length,
+        startedRef: repoStartedRef,
+        setSelectedRepos,
+        setSelectedBranch,
     })
     // without GitHub, wait for the GitLab answer so "Connect GitHub" does not flash
     const isReposLoading = isRepoListLoading || (!hasGithub && isReposTriggered && !isGitlabReady)
@@ -447,12 +645,12 @@ export const usePromptInputController = ({
     )
 
     const { data: secretsData, isLoading: isSecretsLoading } = useQuery({
-        queryKey: ['secrets', 'mention'],
+        queryKey: SECRETS_MENTION_KEY,
         queryFn: secretsAPI.getSecrets,
         enabled: isSecretsTriggered && !!isAuthenticated,
     })
 
-    const secrets = secretsData?.secrets || []
+    const secrets = uniqueSecretNames(secretsData?.secrets || [])
     const filteredSecrets = secrets.filter((secret) =>
         secret.name.toLowerCase().includes(secretsSearchQuery)
     )
@@ -544,7 +742,7 @@ export const usePromptInputController = ({
         if (!selectedRepos.some((r) => repoKey(r) === repoKey(repo))) {
             setSelectedRepos((prev) => [...prev, repo])
             if (!selectedBranch) {
-                setSelectedBranch(repo.defaultBranch || 'main')
+                startBranchFor(repo)
             }
         }
         textareaRef.current?.focus()
@@ -581,6 +779,12 @@ export const usePromptInputController = ({
     const handleSubmit = (event?: React.FormEvent) => {
         event?.preventDefault()
         handleAuthCheck(() => {
+            // on December credits the server picks the model, so the prompt names none
+            const ownKeyModel =
+                selectedSource === 'OWN_KEY'
+                    ? { model: selectedModel, provider: selectedProvider }
+                    : { model: undefined, provider: undefined }
+
             // a command typed in full (/rename new title) runs here and is not sent
             const command = slash.trySubmitCommand(input || '')
             if (command) {
@@ -588,11 +792,10 @@ export const usePromptInputController = ({
                     if (!isControlled) setInternalInput('')
                     onChange?.('')
                 }
-                // /review: a new session runs the review prompt on the picked model
+                // /review: a new session runs the review prompt on the picked source
                 if (command.submit && !isLoading) {
                     onSubmit(command.submit.prompt, {
-                        model: selectedModel,
-                        provider: selectedProvider,
+                        ...ownKeyModel,
                         billingSource: selectedSource,
                         ...command.submit.options,
                     })
@@ -601,6 +804,8 @@ export const usePromptInputController = ({
             }
 
             if ((!input?.trim() && selectedRepos.length === 0) || isLoading) return
+            // a send that still stores its files is not sent twice
+            if (isUploadingRef.current) return
 
             let finalPrompt = input || ''
             let repoUrl: string | undefined
@@ -632,31 +837,66 @@ export const usePromptInputController = ({
                 issueNumber = parseInt(issueMatch[1], 10)
             }
 
-            const configValues = usePromptConfig.getState().values
+            const { values: configValues, pluginsOff, mcpsOff } = usePromptConfig.getState()
+            const skills = slash.pickedSkills
+            // a running session cannot change its plugins or MCP servers
+            const isNewSession = mode !== 'chat'
             const submitOptions: PromptInputSubmitOptions = {
                 repoUrl,
                 branch,
                 issueNumber,
-                model: selectedModel,
-                provider: selectedProvider,
+                ...ownKeyModel,
                 billingSource: selectedSource,
                 runConfig: {
                     planFirst: configValues.planFirst,
-                    // fast or deep: on credits the tier, on a key the reasoning depth
-                    effort: selectedSource === 'OWN_KEY' ? undefined : getCreditTier(selectedModel),
-                    ...(mode !== 'chat' ? { openPullRequest: configValues.openPullRequest } : {}),
+                    // fast or deep: on credits the tier, on a key how much the model reasons
+                    effort: selectedSpeed,
+                    ...(isNewSession ? { openPullRequest: configValues.openPullRequest } : {}),
+                    ...(skills.length > 0 ? { skills } : {}),
+                    ...(isNewSession && pluginsOff.length > 0
+                        ? { disabledPlugins: pluginsOff }
+                        : {}),
+                    ...(isNewSession && mcpsOff.length > 0 ? { disabledMcps: mcpsOff } : {}),
                 },
             }
 
-            onSubmit(finalPrompt, submitOptions)
-            if (!isControlled) setInternalInput('')
-            onChange?.('')
-            setSelectedRepos([])
-            setSelectedBranch('')
-            slash.clearChips()
-            // a new session starts from the saved configuration. a running session keeps its own
-            if (mode !== 'chat') usePromptConfig.getState().reset()
-            if (textareaRef.current) textareaRef.current.style.height = 'auto'
+            const send = (options: PromptInputSubmitOptions) => {
+                onSubmit(finalPrompt, options)
+                setAttachments([])
+                setRefusedAttachment(null)
+                setAttachmentNote(null)
+                if (!isControlled) setInternalInput('')
+                onChange?.('')
+                setSelectedRepos([])
+                setSelectedBranch('')
+                slash.clearChips()
+                // a new session starts from the saved configuration. a running session keeps its own
+                if (isNewSession) usePromptConfig.getState().reset()
+                if (textareaRef.current) textareaRef.current.style.height = 'auto'
+            }
+
+            if (attachments.length === 0) {
+                send(submitOptions)
+                return
+            }
+
+            // the files go to the server first. nothing is cleared or sent until all are stored
+            isUploadingRef.current = true
+            setIsUploading(true)
+            void storeAttachments(finalPrompt, submitOptions)
+                .then((result) => {
+                    if (!result) return
+                    pendingSessionRef.current = null
+                    send({
+                        ...submitOptions,
+                        attachments: result.stored,
+                        ...(result.session ? { session: result.session } : {}),
+                    })
+                })
+                .finally(() => {
+                    isUploadingRef.current = false
+                    setIsUploading(false)
+                })
         })
     }
 
@@ -792,7 +1032,19 @@ export const usePromptInputController = ({
         selectedProvider,
         setSelectedProvider,
         selectedSource,
+        selectedSpeed,
         handleSelectModel,
+        handleSelectCredits,
+        handleSelectSpeed,
         slash,
+        attachments,
+        attachmentNote,
+        refusedAttachment,
+        isUploading,
+        addAttachments,
+        removeAttachment,
+        handlePaste,
+        handleDrop,
+        handleDragOver,
     }
 }

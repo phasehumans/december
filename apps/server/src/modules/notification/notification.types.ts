@@ -54,16 +54,25 @@ export type NotifyEventKind =
     | 'SESSION_NEEDS_INPUT'
     | 'SESSION_FAILED'
     | 'LOW_CREDITS'
+    // a session is paused at a spend limit and asks to continue (#638)
+    | 'SPEND_LIMIT'
 
 export type NotifyEvent = {
     userId: string
     kind: NotifyEventKind
     sessionId?: string
     sessionTitle?: string | null
-    // the error of a failed run, or the balance in cents for low credits
+    // the error of a failed run, the balance in cents for low credits, or the question of
+    // a spend limit ("Reached $5. Continue?")
     detail?: string
     // the user has the session open: the inbox gets it, email and push do not
     isWatching?: boolean
+}
+
+export type NotifyLowCredits = {
+    userId: string
+    // the balance after the charge that took it under the alert amount
+    balanceInCents: number
 }
 
 export type NotifyEventMessage = {
@@ -82,8 +91,21 @@ export type SendPushToUser = {
     urgency?: 'normal' | 'high'
 }
 
+export type InvalidateProfileCache = {
+    userId: string
+}
+
+export type GetPushConfig = Record<string, never>
+
+export type GetPushStatus = {
+    userId: string
+    endpoint: string
+}
+
 export type SubscribePush = {
     userId: string
+    // the sign-in of the browser. push stops when this sign-in ends
+    authSessionId?: string
     endpoint: string
     p256dh: string
     auth: string
@@ -95,12 +117,23 @@ export type UnsubscribePush = {
     endpoint: string
 }
 
+export type RemovePushOnSignOut = {
+    userId: string
+    // the sign-in that ended. with none, every browser of the user (sign out everywhere)
+    authSessionId?: string
+}
+
 export type SendDailyDigests = {
     now?: Date
 }
 
+export type StartDigestWindow = {
+    userId: string
+    now?: Date
+}
+
 export type DigestSummary = {
-    sessionsWorkedOn: number
+    sessionsFinished: number
     pullRequestsOpened: number
     creditsUsedCents: number
 }

@@ -38,6 +38,15 @@ model User {
   deletedAt              DateTime?
   isDeleted              Boolean       @default(false)
   creditBalance          Float         @default(0)
+  // spend limits (#638), whole cents, null is off. the low balance alert goes out once when
+  // the balance goes under lowBalanceAlertCents; lowBalanceAlertedAt marks that it went out
+  lowBalanceAlertCents   Int?          @default(100)
+  lowBalanceAlertedAt    DateTime?
+  sessionLimitCents      Int?
+  dayLimitCents          Int?
+  // "continue" at the day limit: the cost of that day (YYYY-MM-DD in timezone) that was let through
+  dayLimitAllowanceDay   String?
+  dayLimitAllowanceCents Float         @default(0)
   // empty until the user finishes the /onboarding flow (finished or skipped through)
   onboardingCompletedAt  DateTime?
   // last onboarding step the user was on: github | start | models
@@ -47,12 +56,25 @@ model User {
   defaultPlanFirst       Boolean       @default(false)
   defaultEffort          String        @default("deep")
   defaultOpenPullRequest Boolean       @default(true)
+  // more defaults for a new session (#637): the model of the user's own key, the repository
+  // ('last-used' or a full name) and the base branch ('default' or a branch name)
+  defaultOwnKeyProvider  String?
+  defaultOwnKeyModel     String?
+  defaultRepository      String        @default("last-used")
+  defaultBaseBranch      String        @default("default")
   // tool calls the agent may never make in cloud sessions (/permissions, #632)
   toolDenyRules          String[]      @default([])
   // the admin page can open this user's sessions until this date (#636). null means off
   supportAccessUntil     DateTime?
   // web preferences kept across devices (#636): sendKey, soundOnFinish, messageWhileWorking
   preferences            Json?
+  // the code of this user's invite link (#638). empty until the user first reads the link
+  referralCode           String?       @unique
+  // sandbox settings (#637): the sandbox is paused after this many minutes with no activity
+  // (10, 30 or 60), and sessions not updated for archiveAfterDays (7 or 30) are archived.
+  // null means never archive
+  idleStopMinutes        Int           @default(10)
+  archiveAfterDays       Int?
 
   notifications       Notification[]
   authSessions        AuthSession[]
@@ -72,8 +94,15 @@ model User {
   featureWaitlists    FeatureWaitlist[]
   creditRequests      CreditRequest[]
   pullRequestSettings PullRequestSettings?
+  repositorySettings  RepositorySetting[]
   skills              UserSkill[]
   mcpServers          UserMcpServer[]
+  ownedTeam           Team?
+  teamMemberships     TeamMember[]
+  teamInvitesSent     TeamInvite[]
+  auditEvents         AuditEvent[]
+  referralsMade       Referral[]           @relation("ReferralInviter")
+  referredBy          Referral?            @relation("ReferralInvitee")
 }
 
 // how a cloud run pays for model tokens
@@ -178,6 +207,8 @@ model AuthSession {
   isRevoked                Boolean   @default(false)
   revokedAt                DateTime?
   user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // browsers that turned push on while signed in with this session (#636)
+  pushSubscriptions        PushSubscription[]
 
   @@index([userId])
   @@index([expiresAt])
@@ -223,6 +254,13 @@ model Session {
   pinnedAt             DateTime?
   // the agent asked a question and waits for an answer (the question itself lives in Redis)
   pendingQuestionAt    DateTime?
+  // spend limits (#638). limitAllowanceCents: the cost on credits that a "continue" let
+  // through. limitQuestionKind (session | day) and limitQuestionCents: the open question
+  // "Reached $5. Continue?". limitHeldRun: the run that waits for the answer (no secrets)
+  limitAllowanceCents  Float          @default(0)
+  limitQuestionKind    String?
+  limitQuestionCents   Int?
+  limitHeldRun         Json?
   // set when the session was started from GitHub by the December GitHub App: the mode
   // (issue | change | review), the installation, the issue or pull request and its refs
   githubRun            Json?
@@ -236,6 +274,8 @@ model Session {
   sandboxStatus        SandboxStatus?
   // last agent step, terminal input or preview request on the sandbox (idle pause after 10 minutes)
   vmLastActivityAt     DateTime?
+  // when the sandbox last started or resumed (the "running now" list of the sandbox settings)
+  sandboxStartedAt     DateTime?
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   deletedAt            DateTime?
@@ -243,6 +283,7 @@ model Session {
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   project         Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
   messages        Message[]
+  attachments     MessageAttachment[]
   settings        SessionSettings?
   memories        SessionMemory[]
   usageEvents     UsageEvent[]
@@ -387,9 +428,28 @@ model Message {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session     Session             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  attachments MessageAttachment[]
 
   @@unique([sessionId, sequence])
+}
+
+// a file the user sent with a prompt (#634). the bytes are in the file store under fileKey
+model MessageAttachment {
+  id          String   @id @default(uuid())
+  sessionId   String
+  // empty until the prompt that carries the file is sent
+  messageId   String?
+  name        String
+  contentType String
+  sizeBytes   Int
+  fileKey     String
+  createdAt   DateTime @default(now())
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  message     Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([messageId])
 }
 
 model WalletTransaction {
@@ -414,6 +474,8 @@ enum PaymentProvider {
   GRANT
   // credits an admin added or removed by hand, with a reason
   ADJUSTMENT
+  // a referral credit (#638): the inviter and the new account each get one row
+  REFERRAL
 }
 
 enum CreditRequestStatus {
@@ -450,17 +512,22 @@ model CreditRequest {
 // one row for every admin action. adminUserId is not a relation so the log outlives accounts.
 // one browser that turned on push for the user (#636). keys come from PushManager.subscribe
 model PushSubscription {
-  id         String    @id @default(uuid())
-  userId     String
-  endpoint   String    @unique
-  p256dh     String
-  auth       String
-  userAgent  String?
-  createdAt  DateTime  @default(now())
-  lastUsedAt DateTime?
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String       @id @default(uuid())
+  userId        String
+  // the sign-in of the browser that turned push on. signing it out removes the row.
+  // null for rows from before this field
+  authSessionId String?
+  endpoint      String       @unique
+  p256dh        String
+  auth          String
+  userAgent     String?
+  createdAt     DateTime     @default(now())
+  lastUsedAt    DateTime?
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  authSession   AuthSession? @relation(fields: [authSessionId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([authSessionId])
 }
 
 // a zip of the user's sessions and messages (#636). the email link works until expiresAt
@@ -492,6 +559,79 @@ model AdminAuditLog {
 
   @@index([createdAt])
   @@index([targetType, targetId])
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// a team of people (#640). every user owns one team. members share nothing yet: sessions,
+// secrets, keys, credits and github installs stay with each user
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members     TeamMember[]
+  invites     TeamInvite[]
+  auditEvents AuditEvent[]
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  teamId    String
+  userId    String
+  role      TeamRole @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+// an invite by email. the link has a random token, only its sha256 hash is saved
+model TeamInvite {
+  id          String    @id @default(uuid())
+  teamId      String
+  // lower case
+  email       String
+  role        TeamRole  @default(MEMBER)
+  tokenHash   String    @unique
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  team      Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedBy User @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([teamId, email])
+}
+
+// what happened in a team: member changes, sign-ins, secret, key and billing changes.
+// actorId is empty when the account of the actor is gone
+model AuditEvent {
+  id        String   @id @default(uuid())
+  teamId    String
+  actorId   String?
+  action    String
+  target    String?
+  ip        String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  team  Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([teamId, createdAt])
 }
 
 enum AnnouncementKind {
@@ -619,6 +759,31 @@ model RedeemCodeClaim {
   @@index([userId])
 }
 
+enum ReferralStatus {
+  // the new account has not paid for credits yet
+  PENDING
+  // both accounts got the credit
+  CREDITED
+  // the inviter was at the cap when the new account paid: nobody got a credit
+  SKIPPED
+}
+
+// a new account that signed up with the invite link of another user (#638). the credits are
+// paid once, when the new account makes its first paid top-up
+model Referral {
+  id         String         @id @default(uuid())
+  inviterId  String
+  // one referral for each new account
+  inviteeId  String         @unique
+  status     ReferralStatus @default(PENDING)
+  creditedAt DateTime?
+  createdAt  DateTime       @default(now())
+  inviter    User           @relation("ReferralInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee    User           @relation("ReferralInvitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@index([inviterId, status])
+}
+
 // how December opens and handles pull requests, and what the GitHub App does on its own.
 // one row per user; a missing row means every default below.
 model PullRequestSettings {
@@ -627,6 +792,7 @@ model PullRequestSettings {
   // opening (#637)
   branchPrefix          String   @default("december/")
   prDraft               Boolean  @default(false)
+  // not used: "create the pull request" is User.defaultOpenPullRequest (one stored value)
   prCreate              String   @default("auto")
   prAuthor              String   @default("december")
   commitAuthor          String   @default("both")
@@ -644,6 +810,21 @@ model PullRequestSettings {
   updatedAt             DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// what a user set for one repository (#637): the setup commands run after the clone in a
+// new sandbox. repoFullName is lower case (owner/name, or a gitlab group path)
+model RepositorySetting {
+  id            String   @id @default(uuid())
+  userId        String
+  repoFullName  String
+  setupCommands String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, repoFullName])
 }
 
 model GithubAppInstallation {
@@ -668,12 +849,14 @@ model Secret {
   name      String
   value     String // Encrypted value
   note      String?
+  // the repository that gets this secret, as 'owner/name'. '' means all repositories (#637)
+  repoFullName String @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, name])
+  @@unique([userId, name, repoFullName])
   @@index([userId])
 }
 

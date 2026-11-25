@@ -47,18 +47,32 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
         selectedModel,
         selectedProvider,
         selectedSource,
+        selectedSpeed,
         handleSelectModel,
+        handleSelectCredits,
+        handleSelectSpeed,
         slash,
+        attachments,
+        attachmentNote,
+        refusedAttachment,
+        handlePaste,
+        handleDrop,
+        handleDragOver,
+        addAttachments,
+        removeAttachment,
     } = usePromptInputController({
         value,
         onChange,
-        onSubmit: () => {
-            if (value.trim()) onSubmit()
+        // the options carry the speed, plan first and the picked skills to the socket
+        onSubmit: (_prompt, options) => {
+            if (value.trim()) onSubmit(options)
         },
         isAuthenticated,
         onOpenAuth,
-        isLoading: isGenerating,
+        // a new message can be sent while December works (#637): it is queued or sent now
+        isLoading: false,
         mode: props.mode || 'chat',
+        sessionId: props.sessionId,
         initialModel: props.selectedModel,
         initialProvider: props.selectedProvider,
         onModelChange: props.onModelChange,
@@ -93,14 +107,20 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
     const placeholderText = props.placeholder || 'Ask a follow-up...'
 
     return (
-        <div data-prompt-box className="relative w-full bg-[#141414] shrink-0 z-30">
-            {slash.note && (
-                // the result of a command (/copy, /rename): one grey line, no toast
+        <div
+            data-prompt-box
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            className="relative w-full bg-[#141414] shrink-0 z-30"
+        >
+            {(attachmentNote || slash.note) && (
+                // the result of a command (/copy, /rename) or a refused file: one grey
+                // line, no toast
                 <div
                     role="status"
                     className="px-2 pb-1.5 text-[12.5px] text-[#8F8E8D] animate-in fade-in duration-150"
                 >
-                    {slash.note}
+                    {attachmentNote || slash.note}
                 </div>
             )}
             <SlashMenu menu={slash} anchorRef={textareaRef} placement="top" />
@@ -110,8 +130,30 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
                 className="relative group rounded-[17px] bg-[#1F1F1F] border border-[#313131] focus-within:border-white/10 transition-all duration-300 ease-out flex flex-col cursor-text"
             >
                 <div className="pt-[12px] pl-5 pr-5 pb-1 min-h-[64px] relative">
-                    {slash.chips.length > 0 && (
+                    {(slash.chips.length > 0 || attachments.length > 0) && (
                         <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                            {attachments.map((file, index) => (
+                                <div
+                                    key={`${file.name}-${index}`}
+                                    // the file the server refused shows in the error colour
+                                    {...(file === refusedAttachment
+                                        ? { 'data-refused': 'true' }
+                                        : {})}
+                                    className={`flex items-center gap-1.5 font-sans font-medium bg-[#2A2928] px-2 py-0.5 rounded-[6px] max-w-full ${file === refusedAttachment ? 'text-red-400' : 'text-[#E8E8E8]'}`}
+                                >
+                                    <span className="text-[12.5px] leading-relaxed truncate max-w-[180px]">
+                                        {file.name}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeAttachment(index)}
+                                        className="text-[#8F8E8D] hover:text-white transition-colors ml-0.5"
+                                        aria-label={`Remove ${file.name}`}
+                                    >
+                                        <Icons.X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
                             {slash.chips.map((chip) => (
                                 <div
                                     key={chip.id}
@@ -141,6 +183,7 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
                             handleSelect(e)
                         }}
                         onKeyDown={handleKeyDown}
+                        onPaste={handlePaste}
                         onSelect={handleSelect}
                         onKeyUp={handleSelect}
                         onClick={handleSelect}
@@ -242,22 +285,26 @@ export const ChatPromptInput: React.FC<Partial<ChatPromptInputProps> & Record<st
 
                 <PromptFooter
                     onUpload={props.onUpload || (() => {})}
+                    onFiles={addAttachments}
                     onSubmit={() => handleSubmit()}
                     hasInput={!!input?.trim()}
                     isLoading={!!isApplyingEdit || !!props.isGenerating || !!props.isLoading}
+                    sendWhileLoading
+                    onStop={props.onStop}
                     onVoiceTranscript={handleVoiceTranscript}
                     isAuthenticated={isAuthenticated}
                     onOpenAuth={onOpenAuth}
                     mode={props.mode || 'chat'}
-                    isThinkingMode={props.isThinkingMode}
-                    onToggleThinking={props.onToggleThinking}
                     selectedModel={selectedModel}
                     selectedProvider={selectedProvider}
                     selectedSource={selectedSource}
+                    selectedSpeed={selectedSpeed}
                     onSelectModel={(model, provider, source) => {
                         handleSelectModel(model, provider, source)
                         props.onModelChange?.(model, provider)
                     }}
+                    onSelectCredits={handleSelectCredits}
+                    onSelectSpeed={handleSelectSpeed}
                     onOptionSelect={(trigger) => {
                         const separator = input && !input.endsWith(' ') ? ' ' : ''
                         handleInputChange((input || '') + separator + '@' + trigger)

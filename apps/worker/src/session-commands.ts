@@ -1,20 +1,28 @@
 import { buildCheckpointCommand, findMatchingRule, getLearnPrompt } from '@december/shared'
 
+import { withAttachments } from './attachments'
+import { withPickedSkills } from './connections'
 import { withPlanFirst } from './plan-first'
 
+import type { TurnAttachment } from './attachments'
+import type { SkillRow } from './connections'
 import type { AgentHooks } from '@december/shared'
 
 /**
  * What a cloud turn does with the slash commands that run as an agent turn (#632):
- * /learn becomes the learn prompt, plan first wraps the prompt. Everything else is sent
- * as typed.
+ * /learn becomes the learn prompt, the skills picked for the message are added in full,
+ * plan first wraps the prompt. Everything else is sent as typed.
  */
 export const buildTurnPrompt = async (data: {
     prompt: string
     planFirst: boolean
     sandbox?: any
+    /** the saved skills the user picked with /name for this message */
+    skills?: Array<Pick<SkillRow, 'name' | 'description' | 'body'>>
+    /** the files sent with this message and their paths in the sandbox (#634) */
+    attachments?: TurnAttachment[]
 }): Promise<string> => {
-    const { prompt, planFirst, sandbox } = data
+    const { prompt, planFirst, sandbox, skills = [], attachments = [] } = data
     const learn = prompt.trim().match(/^\/learn(?:\s+([\s\S]*))?$/)
     if (learn) {
         const target = await findLearnTarget(sandbox)
@@ -27,7 +35,8 @@ export const buildTurnPrompt = async (data: {
             existingSkillNames: target.skillNames,
         })
     }
-    return planFirst ? withPlanFirst(prompt) : prompt
+    const withSkills = withAttachments(withPickedSkills(prompt, skills), attachments)
+    return planFirst ? withPlanFirst(withSkills) : withSkills
 }
 
 /** whether AGENTS.md exists and which project skills there are, in the session machine */

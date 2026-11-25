@@ -73,7 +73,43 @@ export const toPullRequestSettings = (
     }
 }
 
-// a branch name made of the prefix and a suffix, with characters git refuses taken out
+// "create the pull request" (prCreate) and the "open pull request" default of a new session
+// are one stored value: User.defaultOpenPullRequest. 'auto' is on, 'ask' is off. the
+// prCreate column of the settings row is not read or written.
+export const toPrCreate = (
+    defaultOpenPullRequest: boolean
+): PullRequestSettingsValues['prCreate'] => (defaultOpenPullRequest ? 'auto' : 'ask')
+
+export const toDefaultOpenPullRequest = (
+    prCreate: PullRequestSettingsValues['prCreate']
+): boolean => prCreate === 'auto'
+
+/**
+ * Is this a branch name git takes (the rules of `git check-ref-format --branch`), made
+ * only of letters, digits and `. _ / -`. So: no `..`, no part that starts with `.` or
+ * ends with `.lock`, no control characters, spaces or `~ ^ : ? * [ \`, no `@{`, no `/`
+ * or `.` at the end, no `/` or `-` at the start, no empty part.
+ */
+export const isValidBranchName = (name: string): boolean => {
+    if (!name || name.length > 200) return false
+    if (!/^[A-Za-z0-9._/-]+$/.test(name)) return false
+    if (name.startsWith('-') || name.startsWith('/')) return false
+    if (name.endsWith('/') || name.endsWith('.')) return false
+    if (name.includes('..') || name.includes('//') || name.includes('@{')) return false
+    return name.split('/').every((part) => !part.startsWith('.') && !part.endsWith('.lock'))
+}
+
+/**
+ * Can this branch prefix be saved: `<prefix><session id>` must be a valid branch name.
+ * An empty prefix is allowed (the branch is the session id).
+ */
+export const checkBranchPrefix = (prefix: string): { ok: true } | { ok: false; reason: string } =>
+    isValidBranchName(`${prefix}session-1`)
+        ? { ok: true }
+        : { ok: false, reason: 'branchPrefix does not give a branch name git allows' }
+
+// a branch name made of the prefix and a suffix, with characters git refuses taken out.
+// a name git still refuses becomes december/<suffix>
 export const toBranchName = (prefix: string, suffix: string): string => {
     const clean = `${prefix}${suffix}`
         .replace(/[^A-Za-z0-9._/-]+/g, '-')
@@ -81,7 +117,7 @@ export const toBranchName = (prefix: string, suffix: string): string => {
         .replace(/\.{2,}/g, '.')
         .replace(/^[/.-]+/, '')
         .replace(/[/.]+$/, '')
-    return clean || `december/${suffix}`
+    return isValidBranchName(clean) ? clean : `december/${suffix}`
 }
 
 /** the github run a session was started for (Session.githubRun) */

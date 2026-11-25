@@ -12,7 +12,7 @@ export interface Preferences {
     /** 'enter': Enter sends, Shift Enter is a new line. 'mod-enter': Ctrl or Cmd Enter sends */
     sendKey: SendKey
     soundOnFinish: boolean
-    /** the web form of the CLI steeringMode. its row shows only with the preview on (#637) */
+    /** the web form of the CLI steeringMode: queue a message sent during a run, or send it now (#637) */
     messageWhileWorking: MessageWhileWorking
 }
 

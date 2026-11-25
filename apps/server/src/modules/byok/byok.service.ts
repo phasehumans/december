@@ -3,6 +3,7 @@ import { decryptText, encryptText } from '@december/shared/crypto'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
+import { auditService } from '../audit/audit.service'
 
 import { byokRepository } from './byok.repository'
 import {
@@ -71,6 +72,7 @@ const saveCredential = async (data: SaveCredential) => {
         defaultModel: verified.defaultModel,
         verifiedAt: new Date(),
     })
+    await auditService.recordForUser({ userId, action: 'key.created', target: provider })
     return toCredentialSummary(row)
 }
 
@@ -104,6 +106,7 @@ const deleteCredential = async (data: DeleteCredential) => {
     const { userId, provider } = data
     const deleted = await byokRepository.deleteCredential(userId, provider)
     if (deleted === 0) throw new AppError(`no ${providerName(provider)} key saved`, 404)
+    await auditService.recordForUser({ userId, action: 'key.deleted', target: provider })
 }
 
 // gate for cloud runs that pay with the user's own key: a key must be saved for the

@@ -1,30 +1,30 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test'
 import React from 'react'
 
 if (!globalThis.document) {
     GlobalRegistrator.register()
 }
 
-const { render, screen, fireEvent, cleanup } = await import('@testing-library/react')
+const { render, screen, fireEvent, cleanup, waitFor } = await import('@testing-library/react')
 const { MemoryRouter } = await import('react-router-dom')
 const { useAppStore } = await import('../src/app/store')
 const { getPathForView, getViewForPath } = await import('../src/app/types')
+const { notificationAPI } = await import('../src/features/notification/api/notification')
 const { peekWorkspaceTabRequest, clearWorkspaceTabRequest } =
     await import('../src/features/preview/lib/workspaceTabRequest')
 const { PullRequestsPage } =
     await import('../src/features/pullrequests/components/PullRequestsPage')
-const { isOpenPullRequest, toPullRequestRows } =
-    await import('../src/features/pullrequests/lib/pullRequests')
+const { toPullRequestRows } = await import('../src/features/pullrequests/lib/pullRequests')
 const {
     DEFAULT_PULL_REQUESTS_VIEW,
     activePullRequestFilters,
-    applyPullRequestsView,
-    pullRequestFacets,
+    pullRequestsViewParams,
     readPullRequestsView,
     writePullRequestsView,
 } = await import('../src/features/pullrequests/lib/pullRequestsView')
+const { sessionAPI } = await import('../src/features/sessions/api/session')
 
 const base = {
     type: 'WEB' as const,
@@ -90,45 +90,91 @@ const asPullRequests = (list: any[]) =>
             prBranch: session.prBranch ?? null,
             additions: session.additions ?? null,
             deletions: session.deletions ?? null,
-            prOpenedAt: null,
+            prOpenedAt: session.prOpenedAt ?? null,
             prMergedAt: null,
             prClosedAt: null,
             createdAt: session.createdAt,
             updatedAt: session.updatedAt,
         }))
 
-const renderPageWithContainer = (list: unknown[] = sessions, githubConnected = true) => {
-    const client = new QueryClient({
-        defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-    })
-    client.setQueryData(['sessions', 'pull-requests'], asPullRequests(list))
-    client.setQueryData(['profile'], { id: 'user-1', githubConnected })
-    client.setQueryData(['quickinfo'], { fullName: 'Test', githubConnected })
-    return render(
-        <QueryClientProvider client={client}>
-            <MemoryRouter initialEntries={['/pull-requests']}>
-                <PullRequestsPage onOpenProject={() => {}} />
-            </MemoryRouter>
-        </QueryClientProvider>
-    )
+type ListParams = Parameters<typeof sessionAPI.getPullRequests>[0]
+
+const time = (iso: string | null) => (iso ? new Date(iso).getTime() : 0)
+
+/** a small fake server: it filters, sorts and pages like GET /session/pull-requests */
+const serve = (list: any[]) => async (params: ListParams) => {
+    const states = params.state?.split(',')
+    const needle = params.search?.toLowerCase().replace(/^#/, '')
+    const rows = asPullRequests(list)
+        .filter(
+            (pr) =>
+                (!states || states.includes(pr.prState)) &&
+                (!params.repo || pr.repo === params.repo) &&
+                (!params.tag || pr.tags.includes(params.tag)) &&
+                (!needle ||
+                    [pr.title, pr.prBranch, pr.repo, String(pr.prNumber)].some((value) =>
+                        (value || '').toLowerCase().includes(needle)
+                    ))
+        )
+        .sort((a, b) => {
+            const by = (pr: typeof a) =>
+                params.sortBy === 'prOpenedAt'
+                    ? time(pr.prOpenedAt ?? pr.createdAt)
+                    : time(pr.updatedAt)
+            return params.sortOrder === 'asc' ? by(a) - by(b) : by(b) - by(a)
+        })
+    const page = params.page ?? 1
+    const limit = params.limit ?? 50
+    return {
+        pullRequests: rows.slice((page - 1) * limit, page * limit),
+        pagination: { page, limit, total: rows.length, totalPages: Math.ceil(rows.length / limit) },
+    }
 }
 
-const renderPage = (list: unknown[] = sessions, githubConnected = true) => {
+let getPullRequests: ReturnType<typeof spyOn>
+let getSessionFacets: ReturnType<typeof spyOn>
+
+/** the list requests so far, without the paging fields */
+const requests = () =>
+    getPullRequests.mock.calls.map((call: any[]) => {
+        const { page: _page, limit: _limit, ...rest } = call[0]
+        return rest
+    })
+const lastRequest = () => requests().at(-1)
+
+const renderPage = (
+    list: unknown[] = sessions,
+    options: { githubConnected?: boolean; open?: number; facets?: object } = {}
+) => {
+    const { githubConnected = true, open = 2, facets } = options
+    getPullRequests = spyOn(sessionAPI, 'getPullRequests').mockImplementation(
+        serve(list as any[]) as any
+    )
+    getSessionFacets = spyOn(sessionAPI, 'getSessionFacets').mockImplementation(
+        async () => (facets ?? { repos: ['acme/api', 'acme/web'], tags: ['bug'] }) as any
+    )
+    spyOn(sessionAPI, 'getSessionCounts').mockImplementation(async () => ({
+        running: 0,
+        openPullRequests: open,
+        merged: 0,
+    }))
+    spyOn(sessionAPI, 'getSessions').mockImplementation(async () => ({ sessions: [] }))
+    spyOn(notificationAPI, 'getUnreadCount').mockImplementation(async () => ({ count: 0 }))
+
     const client = new QueryClient({
         defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
-    client.setQueryData(['sessions', 'pull-requests'], asPullRequests(list))
     client.setQueryData(['profile'], { id: 'user-1', githubConnected })
     client.setQueryData(['quickinfo'], { fullName: 'Test', githubConnected })
     const onOpenProject = mock((_id: string) => {})
-    render(
+    const view = render(
         <QueryClientProvider client={client}>
             <MemoryRouter initialEntries={['/pull-requests']}>
                 <PullRequestsPage onOpenProject={onOpenProject} />
             </MemoryRouter>
         </QueryClientProvider>
     )
-    return onOpenProject
+    return { onOpenProject, container: view.container }
 }
 
 // the Open side of the All | Open switch (the top bar also has an "Open menu" button)
@@ -145,6 +191,8 @@ const typeInto = (el: HTMLElement, value: string) => {
     fireEvent.focusOut(el)
 }
 
+const gone = (text: string) => waitFor(() => expect(screen.queryAllByText(text).length).toBe(0))
+
 beforeEach(() => {
     cleanup()
     localStorage.clear()
@@ -154,14 +202,15 @@ beforeEach(() => {
 
 afterEach(() => {
     cleanup()
+    mock.restore()
     useAppStore.setState({ isAuthenticated: false })
 })
 
 describe('pull request rows', () => {
-    test('come from sessions that opened a pull request, newest first', () => {
-        const rows = toPullRequestRows(asPullRequests(sessions))
-        expect(rows.map((row) => row.number)).toEqual([412, 409, 77, 75])
-        expect(rows[0]).toMatchObject({
+    test('keep the order of the server, with the saved details', () => {
+        const rows = toPullRequestRows(asPullRequests([sessions[2], sessions[0], sessions[1]]))
+        expect(rows.map((row) => row.number)).toEqual([77, 412, 409])
+        expect(rows[1]).toMatchObject({
             sessionId: 's1',
             repo: 'acme/web',
             state: 'open',
@@ -177,43 +226,62 @@ describe('pull request rows', () => {
         expect(rows[0].url).toBe('https://github.com/acme/other/pull/409')
     })
 
-    test('a draft counts as open', () => {
-        const rows = toPullRequestRows(asPullRequests(sessions))
-        expect(rows.filter(isOpenPullRequest).map((row) => row.number)).toEqual([412, 77])
+    test('the row date is the opened date, the session date for old rows', () => {
+        const rows = toPullRequestRows(
+            asPullRequests([
+                { ...sessions[0], prOpenedAt: '2026-11-21T08:00:00.000Z' },
+                sessions[1],
+            ])
+        )
+        expect(rows.map((row) => row.createdAt)).toEqual([
+            '2026-11-21T08:00:00.000Z',
+            '2026-11-20T10:00:00.000Z',
+        ])
     })
 })
 
 describe('pull requests view', () => {
-    const rows = toPullRequestRows(
-        asPullRequests([
-            { ...sessions[0], createdAt: '2026-11-01T10:00:00.000Z', tags: ['bug'] },
-            { ...sessions[1], createdAt: '2026-11-10T10:00:00.000Z', githubRepoName: 'acme/api' },
-            { ...sessions[2], createdAt: '2026-11-05T10:00:00.000Z' },
-            { ...sessions[3], createdAt: '2026-11-20T10:00:00.000Z' },
-        ])
-    )
-    const numbers = (view: object, onlyOpen = false) =>
-        applyPullRequestsView(rows, { ...DEFAULT_PULL_REQUESTS_VIEW, ...view }, onlyOpen).map(
-            (row) => row.number
-        )
+    const params = (view: object, onlyOpen = false, search = '') =>
+        pullRequestsViewParams({ ...DEFAULT_PULL_REQUESTS_VIEW, ...view }, onlyOpen, search)
 
-    test('the switch, the state rows, repository and tag filter the rows', () => {
-        expect(numbers({})).toEqual([412, 409, 77, 75])
-        expect(numbers({}, true)).toEqual([412, 77])
-        expect(numbers({ merged: true })).toEqual([409])
-        expect(numbers({ closed: true })).toEqual([75])
-        expect(numbers({ merged: true, closed: true })).toEqual([409, 75])
-        expect(numbers({ repo: 'acme/api' })).toEqual([409])
-        expect(numbers({ tag: 'bug' })).toEqual([412])
+    test('the switch and the state rows go to the server as the state filter', () => {
+        expect(params({}).state).toBeUndefined()
+        // a draft is still open
+        expect(params({}, true).state).toBe('open,draft')
+        expect(params({ merged: true }).state).toBe('merged')
+        expect(params({ closed: true }).state).toBe('closed')
+        expect(params({ merged: true, closed: true }).state).toBe('merged,closed')
     })
 
-    test('Newest and Oldest go by the opened date, the session date for old rows', () => {
-        expect(numbers({ sort: 'newest' })).toEqual([75, 409, 77, 412])
-        expect(numbers({ sort: 'oldest' })).toEqual([412, 77, 409, 75])
+    test('repository, tag and search go to the server, and nothing is sent when they are off', () => {
+        expect(params({})).toEqual({
+            state: undefined,
+            repo: undefined,
+            tag: undefined,
+            search: undefined,
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
+        })
+        expect(params({ repo: 'acme/api', tag: 'bug' }, false, '  #409 ')).toMatchObject({
+            repo: 'acme/api',
+            tag: 'bug',
+            search: '#409',
+        })
     })
 
-    test('the menu lists come from the rows, and the button names the filters', () => {
-        expect(pullRequestFacets(rows)).toEqual({ repos: ['acme/api', 'acme/web'], tags: ['bug'] })
+    test('Newest and Oldest sort by the opened date', () => {
+        expect(params({ sort: 'updated' })).toMatchObject({
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
+        })
+        expect(params({ sort: 'newest' })).toMatchObject({
+            sortBy: 'prOpenedAt',
+            sortOrder: 'desc',
+        })
+        expect(params({ sort: 'oldest' })).toMatchObject({ sortBy: 'prOpenedAt', sortOrder: 'asc' })
+    })
+
+    test('the button names the filters that are on', () => {
         expect(
             activePullRequestFilters({
                 ...DEFAULT_PULL_REQUESTS_VIEW,
@@ -239,31 +307,46 @@ describe('Pull requests page', () => {
         expect(getPathForView('pullrequests')).toBe('/pull-requests')
     })
 
-    test('lists pull requests, with an All | Open switch in place of the four tabs', () => {
-        renderPage()
-        expect(screen.getByText('fix: login redirect loop')).not.toBeNull()
+    test('lists pull requests, with an All | Open switch in place of the four tabs', async () => {
+        // the server counts 7 open pull requests; only 2 of them are on this page
+        renderPage(sessions, { open: 7 })
+        expect(await screen.findByText('fix: login redirect loop')).not.toBeNull()
         expect(screen.getByText('refactor: billing')).not.toBeNull()
-        expect(screen.queryByText('No pull request here')).toBeNull()
-        expect(screen.queryByRole('radio', { name: 'Merged' })).toBeNull()
+        expect(screen.queryAllByText('No pull request here').length).toBe(0)
+        expect(screen.queryAllByRole('radio', { name: 'Merged' }).length).toBe(0)
+        // the first request: last updated first, 30 rows, no filter
+        expect(getPullRequests.mock.calls[0][0]).toEqual({
+            state: undefined,
+            repo: undefined,
+            tag: undefined,
+            search: undefined,
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
+            page: 1,
+            limit: 30,
+        })
 
-        // open and draft count as open: 2 of the 4
-        const open = openSwitch()
-        expect(open.textContent).toBe('Open2')
-        fireEvent.click(open)
+        // the count beside Open is the server count, not the loaded rows
+        await waitFor(() => expect(openSwitch().textContent).toBe('Open7'))
+        fireEvent.click(openSwitch())
+        // open and draft count as open; the server filters
+        await gone('feat: csv export')
+        expect(lastRequest().state).toBe('open,draft')
         expect(screen.getByText('fix: login redirect loop')).not.toBeNull()
         expect(screen.getByText('chore: upgrade react')).not.toBeNull()
-        expect(screen.queryByText('feat: csv export')).toBeNull()
-        expect(screen.queryByText('refactor: billing')).toBeNull()
+        expect(screen.queryAllByText('refactor: billing').length).toBe(0)
     })
 
-    test('the sort and filter menu filters by state and turns the switch back to All', () => {
+    test('the sort and filter menu filters by state and turns the switch back to All', async () => {
         renderPage()
+        await screen.findByText('fix: login redirect loop')
         fireEvent.click(openSwitch())
         fireEvent.click(screen.getByRole('button', { name: 'Sort and filter' }))
         fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Merged' }))
 
+        await gone('fix: login redirect loop')
+        expect(lastRequest().state).toBe('merged')
         expect(screen.getByText('feat: csv export')).not.toBeNull()
-        expect(screen.queryByText('fix: login redirect loop')).toBeNull()
         expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe(
             'true'
         )
@@ -275,74 +358,151 @@ describe('Pull requests page', () => {
 
         // Open on the switch takes Merged off again
         fireEvent.click(openSwitch())
-        expect(screen.getByText('fix: login redirect loop')).not.toBeNull()
+        expect(await screen.findByText('fix: login redirect loop')).not.toBeNull()
+        // the open rows again (asked before, so the page has them)
+        expect(screen.queryAllByText('feat: csv export').length).toBe(0)
         expect(readPullRequestsView().merged).toBe(false)
     })
 
-    test('the menu sorts, and rows show the opened time under Newest and Oldest', () => {
-        renderPage()
-        expect(screen.queryByText(/Opened/)).toBeNull()
+    test('the menu sorts on the server, and rows show the opened time under Newest and Oldest', async () => {
+        renderPage([
+            { ...sessions[0], prOpenedAt: '2026-11-01T10:00:00.000Z' },
+            { ...sessions[1], prOpenedAt: '2026-11-10T10:00:00.000Z' },
+        ])
+        await screen.findByText('fix: login redirect loop')
+        expect(screen.queryAllByText(/Opened/).length).toBe(0)
+        const titles = () =>
+            screen
+                .getAllByText(/^(fix: login redirect loop|feat: csv export)$/)
+                .map((el) => el.textContent)
+        expect(titles()).toEqual(['fix: login redirect loop', 'feat: csv export'])
+
         fireEvent.click(screen.getByRole('button', { name: 'Sort and filter' }))
         fireEvent.click(screen.getByRole('menuitemradio', { name: 'Newest' }))
-        // one for each of the 4 rows (the hover text with the full date matches too)
-        expect(screen.getAllByText(/Opened/).length).toBeGreaterThanOrEqual(4)
+        // one for each of the 2 rows (the hover text with the full date matches too)
+        await waitFor(() => expect(screen.getAllByText(/Opened/).length).toBeGreaterThanOrEqual(2))
+        expect(lastRequest()).toMatchObject({ sortBy: 'prOpenedAt', sortOrder: 'desc' })
+        await waitFor(() =>
+            expect(titles()).toEqual(['feat: csv export', 'fix: login redirect loop'])
+        )
+
+        fireEvent.click(screen.getByRole('menuitemradio', { name: 'Oldest' }))
+        await waitFor(() =>
+            expect(titles()).toEqual(['fix: login redirect loop', 'feat: csv export'])
+        )
+        expect(lastRequest()).toMatchObject({ sortBy: 'prOpenedAt', sortOrder: 'asc' })
     })
 
-    test('the Repository list filters, and no results offers Clear filters', () => {
-        renderPage([...sessions.slice(0, 2), { ...sessions[2], githubRepoName: 'acme/api' }])
+    test('the Repository and Tag lists come from the server, for sessions with a pull request', async () => {
+        renderPage(sessions, {
+            // "archive" and "old-tag" are on no loaded row
+            facets: { repos: ['acme/archive', 'acme/web'], tags: ['bug', 'old-tag'] },
+        })
+        await screen.findByText('fix: login redirect loop')
+        expect(getSessionFacets.mock.calls[0][0]).toEqual({ hasPr: true })
+
         fireEvent.click(screen.getByRole('button', { name: 'Sort and filter' }))
-        fireEvent.click(screen.getByRole('menuitem', { name: /Repository/ }))
+        fireEvent.click(await screen.findByRole('menuitem', { name: /Repository/ }))
+        expect(screen.getByRole('menuitemradio', { name: 'archive' })).not.toBeNull()
+        expect(screen.getByRole('menuitemradio', { name: 'web' })).not.toBeNull()
+        fireEvent.click(screen.getByRole('menuitem', { name: /Tag/ }))
+        expect(screen.getByRole('menuitemradio', { name: 'old-tag' })).not.toBeNull()
+
+        fireEvent.click(screen.getByRole('menuitemradio', { name: 'bug' }))
+        await waitFor(() => expect(lastRequest().tag).toBe('bug'))
+    })
+
+    test('the Repository list filters on the server, and no results offers Clear filters', async () => {
+        renderPage([...sessions.slice(0, 2), { ...sessions[2], githubRepoName: 'acme/api' }])
+        await screen.findByText('fix: login redirect loop')
+        fireEvent.click(screen.getByRole('button', { name: 'Sort and filter' }))
+        fireEvent.click(await screen.findByRole('menuitem', { name: /Repository/ }))
         fireEvent.click(screen.getByRole('menuitemradio', { name: 'api' }))
+        await gone('feat: csv export')
+        expect(lastRequest().repo).toBe('acme/api')
         expect(screen.getByText('chore: upgrade react')).not.toBeNull()
-        expect(screen.queryByText('feat: csv export')).toBeNull()
 
         // api has no merged pull request
         fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Merged' }))
-        expect(screen.getByText('No pull requests found')).not.toBeNull()
+        expect(await screen.findByText('No pull requests found')).not.toBeNull()
+        expect(lastRequest()).toMatchObject({ repo: 'acme/api', state: 'merged' })
         fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
-        expect(screen.getByText('feat: csv export')).not.toBeNull()
+        expect(await screen.findByText('feat: csv export')).not.toBeNull()
         expect(screen.getByText('chore: upgrade react')).not.toBeNull()
+        // every row is back, and the saved view has no filter
+        expect(screen.getByText('fix: login redirect loop')).not.toBeNull()
+        expect(readPullRequestsView()).toMatchObject({ merged: false, repo: null })
     })
 
-    test('search matches title, branch and number', () => {
+    test('search goes to the server and matches title, branch and number', async () => {
         renderPage()
+        await screen.findByText('fix: login redirect loop')
         const search = screen.getByRole('textbox', { name: 'Search pull requests' })
         typeInto(search, 'login-loop')
+        await gone('feat: csv export')
+        expect(lastRequest().search).toBe('login-loop')
         expect(screen.getByText('fix: login redirect loop')).not.toBeNull()
-        expect(screen.queryAllByText('feat: csv export')).toHaveLength(0)
 
         typeInto(search, '#409')
-        expect(screen.getByText('feat: csv export')).not.toBeNull()
+        expect(await screen.findByText('feat: csv export')).not.toBeNull()
+        expect(lastRequest().search).toBe('#409')
 
         typeInto(search, 'nothing like this')
-        expect(screen.getByText('No pull requests found')).not.toBeNull()
+        expect(await screen.findByText('No pull requests found')).not.toBeNull()
         // search alone is not a filter to clear
-        expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull()
+        expect(screen.queryAllByRole('button', { name: 'Clear filters' }).length).toBe(0)
     })
 
-    test('a row opens its session on the pull request view', () => {
-        const onOpenProject = renderPage()
-        fireEvent.click(screen.getByText('feat: csv export'))
+    test('more rows load on scroll, 30 at a time', async () => {
+        const many = Array.from({ length: 35 }, (_, index) => ({
+            ...base,
+            id: `many-${index}`,
+            title: `pull request ${index + 1}`,
+            // 1 is the last updated
+            updatedAt: new Date(Date.UTC(2026, 10, 23, 12, 0) - index * 60_000).toISOString(),
+            prNumber: 500 + index,
+            prState: 'open' as const,
+        }))
+        const { container } = renderPage(many)
+        await screen.findByText('pull request 1')
+        expect(screen.getByText('pull request 30')).not.toBeNull()
+        expect(screen.queryAllByText('pull request 31').length).toBe(0)
+
+        // the page scrolls inside its own box
+        fireEvent.scroll(container.firstElementChild as HTMLElement)
+        expect(await screen.findByText('pull request 35')).not.toBeNull()
+        expect(getPullRequests.mock.calls.at(-1)[0]).toMatchObject({ page: 2, limit: 30 })
+
+        // every row is loaded: another scroll asks for nothing
+        const calls = getPullRequests.mock.calls.length
+        fireEvent.scroll(container.firstElementChild as HTMLElement)
+        expect(getPullRequests.mock.calls.length).toBe(calls)
+    })
+
+    test('a row opens its session on the pull request view', async () => {
+        const { onOpenProject } = renderPage()
+        fireEvent.click(await screen.findByText('feat: csv export'))
         expect(onOpenProject).toHaveBeenCalledWith('s2')
         expect(peekWorkspaceTabRequest()).toBe('pull_requests')
     })
 
-    test('the GitHub icon links to the pull request and does not open the session', () => {
-        const onOpenProject = renderPage()
-        const link = screen.getByLabelText('Open pull request 412 on GitHub')
+    test('the GitHub icon links to the pull request and does not open the session', async () => {
+        const { onOpenProject } = renderPage()
+        const link = await screen.findByLabelText('Open pull request 412 on GitHub')
         expect(link.getAttribute('href')).toBe('https://github.com/acme/web/pull/412')
         fireEvent.click(link)
         expect(onOpenProject).not.toHaveBeenCalled()
     })
 
-    test('empty states', () => {
+    test('empty states', async () => {
         renderPage([sessions[4]])
-        expect(screen.getByText('No pull requests yet')).not.toBeNull()
+        expect(await screen.findByText('No pull requests yet')).not.toBeNull()
         cleanup()
+        mock.restore()
 
         // not connected: the same box as the empty list, one line, then the button
-        const { container } = renderPageWithContainer([], false)
-        const title = screen.getByText('Connect GitHub to see pull requests')
+        const { container } = renderPage([], { githubConnected: false })
+        const title = await screen.findByText('Connect GitHub to see pull requests')
         expect(title.tagName).toBe('H2')
         expect(screen.getByText('Connect GitHub').tagName).toBe('A')
         expect(container.querySelector('svg feDisplacementMap')).not.toBeNull()

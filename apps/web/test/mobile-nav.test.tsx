@@ -2,7 +2,6 @@ import { GlobalRegistrator } from '@happy-dom/global-registrator'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { expect, test, describe, afterEach, beforeEach, mock, spyOn } from 'bun:test'
 import React from 'react'
-import { MemoryRouter } from 'react-router-dom'
 
 if (!globalThis.document) {
     GlobalRegistrator.register()
@@ -10,17 +9,15 @@ if (!globalThis.document) {
 
 const { render, screen, fireEvent, cleanup, act } = await import('@testing-library/react')
 
-import { useAppStore } from '../src/app/store'
-import {
-    MobileMenuSheet,
-    openLabelForLink,
-} from '../src/features/navigation/components/MobileMenuSheet'
-import {
-    MobileBackButton,
-    MobileInboxButton,
-    MobileTopBar,
-} from '../src/features/navigation/components/MobileTopBar'
-import { notificationAPI } from '../src/features/notification/api/notification'
+// loaded after the DOM is there. react-dom decides at load time how it reads text input
+// events: loaded with no DOM, text input changes fail in every test file that runs after
+const { MemoryRouter } = await import('react-router-dom')
+const { useAppStore } = await import('../src/app/store')
+const { MobileMenuSheet, openLabelForLink } =
+    await import('../src/features/navigation/components/MobileMenuSheet')
+const { MobileBackButton, MobileInboxButton, MobileTopBar } =
+    await import('../src/features/navigation/components/MobileTopBar')
+const { notificationAPI } = await import('../src/features/notification/api/notification')
 
 const wrap = (ui: React.ReactNode, path = '/') => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

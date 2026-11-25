@@ -5,10 +5,20 @@ import { MUTATING_TOOL_NAMES, processGrpcStream, updateSandboxGitDiff } from '..
 
 // restored after the suite so later database tests in the same run get the real client
 const realSessionUpdate = prisma.session.update
+const realSessionFindUnique = prisma.session.findUnique
+const realUsageCreate = prisma.usageEvent.create
+const realUserUpdate = prisma.user.update
+const realQueryRaw = prisma.$queryRaw
+const realTransaction = prisma.$transaction
 
 describe('Worker Listener Unit Tests', () => {
     afterAll(() => {
         prisma.session.update = realSessionUpdate
+        prisma.session.findUnique = realSessionFindUnique
+        prisma.usageEvent.create = realUsageCreate
+        prisma.user.update = realUserUpdate
+        prisma.$queryRaw = realQueryRaw
+        prisma.$transaction = realTransaction
     })
 
     it('should process grpc stream, publish to Redis, and set session status to STOPPED on success', async () => {

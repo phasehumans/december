@@ -269,7 +269,7 @@ const PluginsList: React.FC = () => {
                         {marketplace.map((plugin) => (
                             <div
                                 key={plugin.name}
-                                className="bg-[#191919] border border-[#242323] rounded-xl p-3 flex items-center gap-2.5 min-w-0"
+                                className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-3 flex items-center gap-2.5 min-w-0"
                             >
                                 <LogoTile brand={plugin.brand} name={plugin.name} />
                                 <span className="flex-1 min-w-0 truncate text-[13px] text-[#D6D5C9]">

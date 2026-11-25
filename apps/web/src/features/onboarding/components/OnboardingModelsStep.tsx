@@ -20,6 +20,7 @@ import {
 import { onboardingQueryKey } from '@/features/onboarding/hooks/useOnboarding'
 import { detectProviderFromKey, sortProviders } from '@/features/onboarding/providerKeys'
 import { useByokList, useByokMutations } from '@/features/profile/hooks/useByokData'
+import { formatUsd } from '@/shared/lib/format'
 
 const TOP_UP_AMOUNTS = [1, 5, 10]
 const DEFAULT_TOP_UP = 10
@@ -39,8 +40,6 @@ type OpenOption = 'credits' | 'key' | null
 
 const errorText = (error: unknown, fallback: string) =>
     error instanceof Error && error.message ? error.message : fallback
-
-const formatUsd = (cents: number) => `$${(cents / 100).toFixed(2)}`
 
 interface OnboardingModelsStepProps {
     state: OnboardingState

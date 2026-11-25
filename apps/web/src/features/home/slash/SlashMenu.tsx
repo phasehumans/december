@@ -2,10 +2,12 @@ import { ArrowUpRight, Check, ChevronLeft } from 'lucide-react'
 import React from 'react'
 
 import { ShortcutRows } from './shortcuts'
+import { getSlashMenuPlacement, type SlashMenuPlacement } from './slashMenuPlacement'
 import { getSlashGroupLabel } from './slashModel'
 
 import type { SlashMenuState } from './useSlashMenu'
 
+import { DemoPill } from '@/features/connections/components/ConnectionsUi'
 import { Modal } from '@/shared/components/ui/Modal'
 import { cn } from '@/shared/lib/utils'
 
@@ -30,16 +32,41 @@ const labelClass = 'px-3 pt-1.5 pb-1 text-[11.5px] font-medium text-[#8F8E8D]'
 export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement = 'auto' }) => {
     const rootRef = React.useRef<HTMLDivElement>(null)
     const listRef = React.useRef<HTMLDivElement>(null)
-    const [side, setSide] = React.useState<'top' | 'bottom'>(placement === 'top' ? 'top' : 'bottom')
+    const [place, setPlace] = React.useState<SlashMenuPlacement | null>(null)
+    const side = place?.side ?? (placement === 'top' ? 'top' : 'bottom')
     const { isOpen, dismiss, selectedIndex } = menu
 
+    // the menu stays in the visible part of the screen. on a phone the keyboard covers
+    // the rest, so the side and the height follow the visual viewport while it is open
     React.useLayoutEffect(() => {
-        if (!isOpen || placement === 'top') return
-        const box = anchorRef.current?.closest('[data-prompt-box]')
-        if (!box) return
-        const rect = box.getBoundingClientRect()
-        const spaceBelow = window.innerHeight - rect.bottom
-        setSide(spaceBelow < 260 && rect.top > spaceBelow ? 'top' : 'bottom')
+        if (!isOpen) return
+        const update = () => {
+            const box = anchorRef.current?.closest('[data-prompt-box]')
+            if (!box) return
+            const rect = box.getBoundingClientRect()
+            const viewport = window.visualViewport
+            const next = getSlashMenuPlacement({
+                boxTop: rect.top,
+                boxBottom: rect.bottom,
+                viewportTop: viewport?.offsetTop ?? 0,
+                viewportHeight: viewport?.height ?? window.innerHeight,
+                // the 'auto' default reads as a plain string, so the type is named again
+                placement: placement as 'auto' | 'top',
+            })
+            setPlace((prev) =>
+                prev && prev.side === next.side && prev.maxHeight === next.maxHeight ? prev : next
+            )
+        }
+        update()
+        const viewport = window.visualViewport
+        viewport?.addEventListener('resize', update)
+        viewport?.addEventListener('scroll', update)
+        window.addEventListener('resize', update)
+        return () => {
+            viewport?.removeEventListener('resize', update)
+            viewport?.removeEventListener('scroll', update)
+            window.removeEventListener('resize', update)
+        }
     }, [isOpen, placement, anchorRef])
 
     React.useEffect(() => {
@@ -76,6 +103,8 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
                 // under the first line of text, over the footer of the box, as the @ menu
                 side === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[48px]'
             )}
+            // short on room (a phone keyboard): the lists inside shrink and scroll
+            style={place ? { maxHeight: place.maxHeight } : undefined}
         >
             {sub && (
                 <button
@@ -89,7 +118,7 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
             )}
 
             {sub?.text && (
-                <p className="px-3 pt-1 pb-2 max-h-[220px] overflow-y-auto text-[12.5px] leading-relaxed text-[#D6D5D4] whitespace-pre-wrap">
+                <p className="px-3 pt-1 pb-2 max-h-[220px] min-h-0 overflow-y-auto text-[12.5px] leading-relaxed text-[#D6D5D4] whitespace-pre-wrap">
                     {sub.text}
                 </p>
             )}
@@ -98,7 +127,7 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
                 ref={listRef}
                 role="listbox"
                 aria-label={sub ? sub.title : 'Commands'}
-                className="flex flex-col max-h-[252px] overflow-y-auto no-scrollbar [scrollbar-width:none]"
+                className="flex flex-col max-h-[252px] min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none]"
             >
                 {sub
                     ? sub.options.map((option, index) => (
@@ -118,6 +147,7 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
                               <span className="truncate">{option.label}</span>
                               <span className={hintClass}>
                                   {option.hint && <span className="truncate">{option.hint}</span>}
+                                  {option.demo && <DemoPill />}
                                   {option.selected && (
                                       <Check className="w-3.5 h-3.5 text-white shrink-0" />
                                   )}
@@ -131,7 +161,13 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
                               (item.command.kind === 'navigate' || item.command.kind === 'external')
                           return (
                               <React.Fragment key={item.id}>
-                                  {label && <div className={labelClass}>{label}</div>}
+                                  {label && (
+                                      <div className={cn(labelClass, 'flex items-center gap-1.5')}>
+                                          <span>{label}</span>
+                                          {/* with the preview on the skills are sample values */}
+                                          {menu.demo && item.type === 'skill' && <DemoPill />}
+                                      </div>
+                                  )}
                                   <button
                                       type="button"
                                       role="option"

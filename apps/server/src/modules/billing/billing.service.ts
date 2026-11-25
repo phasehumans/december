@@ -3,15 +3,30 @@ import crypto from 'crypto'
 import { razorpay } from '../../config/razorpay'
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
+import { buildPdf } from '../../shared/pdf'
 import { getAdminEmails } from '../admin/admin.utils'
+import { auditService } from '../audit/audit.service'
 import { emailService } from '../email/email.service'
 import { notificationService } from '../notification/notification.service'
 
 import { billingRepository } from './billing.repository'
 import {
+    buildReceiptLines,
     FREE_CREDITS_IN_CENTS,
+    generateReferralCode,
     getRazorpayKeyId,
+    isReceiptPayment,
     normalizeEmail,
+    normalizeReferralCode,
+    referralEmailKey,
+    receiptFileName,
+    referralConfig,
+    referralLink,
+    toUsageDays,
+    toUsageHours,
+    usageDayBuckets,
+    usageHourBuckets,
+    usageTimezone,
     verifyRazorpayOrderPayment,
     verifyRazorpayWebhookSignature,
 } from './billing.utils'
@@ -27,6 +42,14 @@ import type {
     RequestFreeCredits,
     GetFreeCreditRequest,
     CreditRequestRecord,
+    GetReceipt,
+    GetReferral,
+    GetLimits,
+    SpendLimits,
+    UpdateLimits,
+    AttachReferral,
+    SettleReferral,
+    CompletePaidTopUp,
 } from './billing.types'
 
 // what the user sees about their request: never the form answers of another account
@@ -154,6 +177,49 @@ const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
     }
 }
 
+/**
+ * What verify and the webhook both do with an order razorpay says is paid: the credit is
+ * added once, the referral is settled, and the first of the two writes the audit line and
+ * the notice. `user` is null when the payment was saved by an earlier request.
+ */
+const completePaidTopUp = async (data: CompletePaidTopUp) => {
+    const { transaction, paymentId, source } = data
+    const { userId, amountInCents } = transaction
+
+    if (transaction.status === 'SUCCESS') {
+        // the payment is saved. this pays a referral credit that an earlier request did not finish
+        await settleReferral({ userId, paidInCents: amountInCents })
+        return { alreadyProcessed: true, user: null }
+    }
+
+    const result = await billingRepository.verifyAndUpdateWalletTransaction(
+        transaction.id,
+        userId,
+        amountInCents,
+        paymentId
+    )
+
+    // a paid top-up of an invited account pays the referral credits, one time (#638)
+    await settleReferral({ userId, paidInCents: amountInCents })
+
+    if (result.alreadyProcessed) return { alreadyProcessed: true, user: result.user }
+
+    const amount = `$${(amountInCents / 100).toFixed(2)}`
+    await auditService.recordForUser({ userId, action: 'billing.top_up', target: amount })
+    try {
+        await notificationService.sendNotificationToUser({
+            userId,
+            title: 'Credits Added',
+            message: `Successfully added ${amount} to your wallet!`,
+            type: 'SUCCESS',
+        })
+    } catch (err) {
+        console.error(`Failed to send ${source} notification:`, err)
+    }
+
+    return { alreadyProcessed: false, user: result.user }
+}
+
 const verifyRazorpayPayment = async (data: VerifyRazorpayPayment) => {
     const { userId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = data
 
@@ -180,77 +246,75 @@ const verifyRazorpayPayment = async (data: VerifyRazorpayPayment) => {
         throw new AppError('unauthorized to verify this transaction', 403)
     }
 
-    if (transaction.status === 'SUCCESS') {
-        const user = await billingRepository.findUserById(userId)
-        return {
-            success: true,
-            alreadyProcessed: true,
-            newBalance: (user as any)?.creditBalance,
-        }
-    }
-
-    const result = await billingRepository.verifyAndUpdateWalletTransaction(
-        transaction.id,
-        userId,
-        transaction.amountInCents,
-        razorpay_payment_id
-    )
-
-    if (result.alreadyProcessed) {
-        return {
-            success: true,
-            alreadyProcessed: true,
-            newBalance: result.user.creditBalance,
-        }
-    }
-
-    try {
-        await notificationService.sendNotificationToUser({
-            userId,
-            title: 'Credits Added',
-            message: `Successfully added $${(transaction.amountInCents / 100).toFixed(2)} to your wallet!`,
-            type: 'SUCCESS',
-        })
-    } catch (err) {
-        console.error('Failed to send notification:', err)
-    }
+    const { alreadyProcessed, user: paidUser } = await completePaidTopUp({
+        transaction,
+        paymentId: razorpay_payment_id,
+        source: 'verify',
+    })
+    const user = paidUser ?? (await billingRepository.findUserByIdForCredits(userId))
 
     return {
         success: true,
-        newBalance: result.user.creditBalance,
+        ...(alreadyProcessed ? { alreadyProcessed: true } : {}),
+        newBalance: user?.creditBalance,
     }
 }
 
 const getCreditsHistory = async (data: CreditsHistory) => {
-    const { userId, limit, offset, periodStart, periodEnd } = data
+    const { userId, limit, offset, periodStart, periodEnd, billingSource, timezone } = data
     const user = await billingRepository.findUserById(userId)
 
     if (!user) {
         throw new AppError('user not found', 404)
     }
 
+    const from = periodStart ? new Date(periodStart) : undefined
+    const to = periodEnd ? new Date(periodEnd) : undefined
+    const filter = { userId, start: from, end: to, billingSource }
+
     const where: any = {
         userId,
     }
 
-    if (periodStart && periodEnd) {
+    if (from || to) {
         where.createdAt = {
-            gte: new Date(periodStart),
-            lte: new Date(periodEnd),
-        }
-    } else if (periodStart) {
-        where.createdAt = {
-            gte: new Date(periodStart),
-        }
-    } else if (periodEnd) {
-        where.createdAt = {
-            lte: new Date(periodEnd),
+            ...(from ? { gte: from } : {}),
+            ...(to ? { lte: to } : {}),
         }
     }
 
-    const [events, total] = await Promise.all([
+    if (billingSource) {
+        where.billingSource = billingSource
+    }
+
+    // the chart has a bar for each day of the range, in the time zone of the request or of
+    // the user. with no start the range begins when the account was made. with no end it ends now
+    const now = new Date()
+    const range = {
+        start: from ?? user.createdAt ?? to ?? now,
+        end: to ?? now,
+        timezone: usageTimezone(timezone, user.timezone),
+    }
+    const dayBuckets = usageDayBuckets(range)
+    const firstDay = dayBuckets[0]?.startsAt
+    // a long range keeps its latest days: the sum does not read the days before them
+    const daysFrom = firstDay && (!from || firstDay > from) ? firstDay : from
+    // a range of one day or less also gets a bar for each hour
+    const hourBuckets = usageHourBuckets(range)
+
+    // the list is one page. the totals, the days and the hours are for every event of the range
+    const [events, total, totals, daySums, hourSums] = await Promise.all([
         billingRepository.findManyUsageEvents(where, offset, limit),
         billingRepository.countUsageEvents(where),
+        billingRepository.sumUsage(filter),
+        billingRepository.sumUsageByBucket(
+            { ...filter, start: daysFrom },
+            dayBuckets.map((bucket) => bucket.startsAt)
+        ),
+        billingRepository.sumUsageByBucket(
+            filter,
+            (hourBuckets ?? []).map((bucket) => bucket.startsAt)
+        ),
     ])
 
     const periods = new Map<string, { periodStart: Date; periodEnd: Date; costInCents: number }>()
@@ -277,7 +341,42 @@ const getCreditsHistory = async (data: CreditsHistory) => {
         total,
         limit,
         offset,
+        // periods has the events of this page only. it stays for old clients: read totals
         periods: Array.from(periods.values()),
+        totals,
+        days: toUsageDays(dayBuckets, daySums),
+        ...(hourBuckets ? { hours: toUsageHours(hourBuckets, hourSums) } : {}),
+    }
+}
+
+const getReceipt = async (data: GetReceipt) => {
+    const { userId, transactionId } = data
+    const transaction = await billingRepository.findWalletTransactionForReceipt(transactionId)
+
+    // one answer for no transaction, the transaction of another user and a row that is not
+    // a payment (pending, failed, free credits, a credit change): an id tells nothing
+    if (!transaction || transaction.userId !== userId || !isReceiptPayment(transaction)) {
+        throw new AppError('receipt not found', 404)
+    }
+
+    const timezone = usageTimezone(transaction.user.timezone)
+    // a razorpay charge is in INR: the order saved the amount in paise
+    const paise = (transaction.metadata as { amountInPaise?: unknown } | null)?.amountInPaise
+    const lines = buildReceiptLines({
+        paidAt: transaction.createdAt,
+        timezone,
+        amountInCents: transaction.amountInCents,
+        currency: transaction.currency,
+        amountInPaise: typeof paise === 'number' && paise > 0 ? paise : undefined,
+        paymentId: transaction.providerPaymentId,
+        orderId: transaction.providerOrderId,
+        name: transaction.user.name,
+        email: transaction.user.email,
+    })
+
+    return {
+        fileName: receiptFileName({ id: transaction.id, paidAt: transaction.createdAt, timezone }),
+        body: buildPdf(lines),
     }
 }
 
@@ -367,36 +466,19 @@ const handleRazorpayWebhook = async (data: HandleRazorpayWebhook) => {
             return { received: true, status: 'order_not_found' }
         }
 
-        if (transaction.status === 'SUCCESS') {
+        const { alreadyProcessed, user } = await completePaidTopUp({
+            transaction,
+            paymentId,
+            source: 'webhook',
+        })
+        if (alreadyProcessed) {
             return { received: true, status: 'already_processed' }
-        }
-
-        const result = await billingRepository.verifyAndUpdateWalletTransaction(
-            transaction.id,
-            transaction.userId,
-            transaction.amountInCents,
-            paymentId
-        )
-
-        if (result.alreadyProcessed) {
-            return { received: true, status: 'already_processed' }
-        }
-
-        try {
-            await notificationService.sendNotificationToUser({
-                userId: transaction.userId,
-                title: 'Credits Added',
-                message: `Successfully added $${(transaction.amountInCents / 100).toFixed(2)} to your wallet!`,
-                type: 'SUCCESS',
-            })
-        } catch (err) {
-            console.error('Failed to send webhook notification:', err)
         }
 
         return {
             received: true,
             status: 'processed',
-            newBalance: result.user.creditBalance,
+            newBalance: user?.creditBalance,
         }
     }
 
@@ -481,13 +563,171 @@ const getFreeCreditRequest = async (data: GetFreeCreditRequest) => {
     return request ? toCreditRequestView(request) : null
 }
 
+// a code is random, so two users can get the same one: then a new one is made
+const REFERRAL_CODE_TRIES = 5
+
+const getReferral = async (data: GetReferral) => {
+    const { userId } = data
+    const user = await billingRepository.findReferralCode(userId)
+    if (!user) {
+        throw new AppError('user not found', 404)
+    }
+
+    // the code is made on the first read. the save only fills an empty code, so reads that
+    // come together end with the same one
+    let code = user.referralCode
+    for (let attempt = 0; !code && attempt < REFERRAL_CODE_TRIES; attempt++) {
+        try {
+            await billingRepository.setReferralCodeIfEmpty(userId, generateReferralCode())
+        } catch (err: any) {
+            if (err?.code !== 'P2002') throw err
+            // another user has this code: the next turn makes a new one
+            continue
+        }
+        code = (await billingRepository.findReferralCode(userId))?.referralCode ?? null
+    }
+    if (!code) {
+        throw new AppError('the invite link is not ready, try again', 500)
+    }
+
+    const { invited, credited } = await billingRepository.countReferrals(userId)
+    const { amountInCents, minTopUpInCents, maxCredited } = referralConfig()
+
+    return {
+        code,
+        link: referralLink(code),
+        amountInCents,
+        minTopUpInCents,
+        invited,
+        credited,
+        maxCredited,
+    }
+}
+
+/**
+ * Called by the three sign-up paths for a new account only. It makes a pending referral
+ * when the code belongs to another person. It never throws: a sign-up does not fail for a
+ * code that is wrong, unknown or the user's own.
+ */
+const attachReferral = async (data: AttachReferral) => {
+    const { inviteeId, inviteeEmail, code } = data
+    const referralCode = normalizeReferralCode(code)
+    if (!referralCode) return null
+
+    try {
+        const inviter = await billingRepository.findUserByReferralCode(referralCode)
+        if (!inviter || inviter.isDeleted || inviter.deletedAt) return null
+        // no self referral: the same account, or the inviter's own email written another way
+        if (
+            inviter.id === inviteeId ||
+            referralEmailKey(inviter.email) === referralEmailKey(inviteeEmail)
+        ) {
+            return null
+        }
+        return await billingRepository.createReferral({ inviterId: inviter.id, inviteeId })
+    } catch (err: any) {
+        // P2002: the account has a referral already, and it keeps that one
+        if (err?.code !== 'P2002') {
+            console.error('[Referral] could not save the referral of a new account:', err)
+        }
+        return null
+    }
+}
+
+/**
+ * Called after a paid top-up (razorpay verify or webhook), never for a grant, a redeem code
+ * or a credit change. The first paid top-up of an invited account that reaches
+ * REFERRAL_MIN_TOPUP_CENTS pays both sides once. It
+ * never throws: the payment is saved already and must not fail for a referral.
+ */
+const settleReferral = async (data: SettleReferral) => {
+    const { userId, paidInCents } = data
+    const { amountInCents, minTopUpInCents, maxCredited } = referralConfig()
+    // an amount of zero turns referral credits off. the referral stays pending
+    if (amountInCents <= 0) return null
+    // a top-up under the minimum pays nothing: the referral waits for one that reaches it
+    if (paidInCents < minTopUpInCents) return null
+
+    let payout
+    try {
+        payout = await billingRepository.payReferral({
+            inviteeId: userId,
+            amountInCents,
+            maxCredited,
+        })
+    } catch (err) {
+        // the referral stays pending: the next paid top-up of the account tries again
+        console.error('[Referral] could not pay the referral credit:', err)
+        return null
+    }
+    if (!payout || payout.status !== 'CREDITED') return payout
+
+    const amount = `$${(amountInCents / 100).toFixed(2)}`
+    const messages = [
+        {
+            receiverId: payout.inviterId,
+            message: `A friend you invited paid for credits. ${amount} was added to your balance.`,
+        },
+        {
+            receiverId: payout.inviteeId,
+            message: `You signed up with an invite link. ${amount} was added to your balance.`,
+        },
+    ]
+    for (const { receiverId, message } of messages) {
+        try {
+            await notificationService.sendNotificationToUser({
+                userId: receiverId,
+                title: 'Referral credit',
+                message,
+                type: 'SUCCESS',
+            })
+        } catch (err) {
+            console.error('Failed to send referral notification:', err)
+        }
+    }
+
+    return payout
+}
+
+// spend limits and the low balance alert (#638 section 1)
+const getLimits = async (data: GetLimits): Promise<SpendLimits> => {
+    const { userId } = data
+    const limits = await billingRepository.findLimits(userId)
+    if (!limits) throw new AppError('user not found', 404)
+    return limits
+}
+
+// only the amounts that were sent change. null turns one off
+const updateLimits = async (data: UpdateLimits): Promise<SpendLimits> => {
+    const { userId, lowBalanceAlertCents, sessionLimitCents, dayLimitCents } = data
+    const changes = {
+        ...(lowBalanceAlertCents !== undefined ? { lowBalanceAlertCents } : {}),
+        ...(sessionLimitCents !== undefined ? { sessionLimitCents } : {}),
+        ...(dayLimitCents !== undefined ? { dayLimitCents } : {}),
+    }
+    const saved = await billingRepository.updateLimits(userId, changes)
+    // a change of the limits is a billing change in the audit log (review C9)
+    await auditService.recordForUser({
+        userId,
+        action: 'billing.limits_changed',
+        target: Object.keys(changes).join(', '),
+        metadata: changes,
+    })
+    return saved
+}
+
 export const billingService = {
+    getLimits,
+    updateLimits,
+    getReferral,
+    attachReferral,
     requestFreeCredits,
     getFreeCreditRequest,
     getOverview,
     createRazorpayOrder,
     verifyRazorpayPayment,
     getCreditsHistory,
+    getReceipt,
     redeemCode,
     addCredits,
     handleRazorpayWebhook,

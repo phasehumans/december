@@ -1,20 +1,28 @@
 import { useQuery } from '@tanstack/react-query'
-import { ChevronRight } from 'lucide-react'
 import React, { useState } from 'react'
 
 import { AddCreditsModal } from './AddCreditsModal'
-import { BillingPreviewSections, ReferralRow } from './BillingPreviewSections'
+import { BillingLimitsSection, BillingPreviewSections, ReferralRow } from './BillingPreviewSections'
 import { FreeCreditsSection } from './FreeCreditsSection'
 import { ProfileBillingSkeleton } from './ProfileSettingsSkeleton'
 import { RedeemCodeModal } from './RedeemCodeModal'
-import { SettingsPageHeader, SettingsSectionHeading } from './SettingsPageHeader'
-import { PAGE_SUBTITLES } from './settingsStyles'
-import { usePreviewOn } from './SettingsUi'
+import {
+    PAGE_SUBTITLES,
+    blueButtonClass,
+    listEmptyClass,
+    listHeaderClass,
+    listRowsClass,
+    outlineButtonClass,
+    textLinkClass,
+} from './settingsStyles'
+import { SettingsPage, SettingsSection, usePreviewOn } from './SettingsUi'
 
+import { billingAPI } from '@/features/billing/api/billing'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { ListBox } from '@/features/connections/components/ConnectionsUi'
 import { profileAPI } from '@/features/profile/api/profile'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
+import { downloadBlob } from '@/shared/lib/downloadBlob'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
 interface ProfileBillingSettingsProps {
@@ -31,17 +39,18 @@ interface CreditTransaction {
     methodOrCode: string
     amountInCents: number
     status: 'SUCCESS' | 'PENDING' | 'FAILED'
+    // a payment that went through has a receipt. free credits, a credit change and a code do not
+    hasReceipt: boolean
 }
 
 export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (props) => {
     const { profile: propProfile } = props
-    const { data: cachedProfile } = useQuery({
+    // no value is read here: the query only loads the profile when the page gets none
+    useQuery({
         queryKey: ['profile'],
         queryFn: profileAPI.getProfile,
         enabled: !propProfile,
     })
-
-    const profile = propProfile || cachedProfile
 
     const {
         data: overview,
@@ -49,10 +58,29 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
         error: overviewError,
     } = useBillingOverview()
 
-    // limits, auto top-up, referrals and receipts are ui only (issue 638)
+    // auto top-up is ui only (issue 638)
     const isPreview = usePreviewOn()
     const [showRedeemModal, setShowRedeemModal] = useState(false)
     const [showAddCreditsModal, setShowAddCreditsModal] = useState(false)
+    const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null)
+    const [receiptError, setReceiptError] = useState<string | null>(null)
+
+    // the receipt is fetched, not linked: the request needs the sign-in of the user
+    const handleDownloadReceipt = async (tx: CreditTransaction) => {
+        setReceiptError(null)
+        setReceiptLoadingId(tx.id)
+        try {
+            const receipt = await billingAPI.downloadReceipt(tx.id)
+            const day = new Date(tx.date)
+            const fallbackName = `december-receipt-${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}.pdf`
+            downloadBlob(receipt.blob, receipt.fileName ?? fallbackName)
+        } catch (error) {
+            console.error('Failed to download the receipt:', error)
+            setReceiptError('The receipt did not download. Try again.')
+        } finally {
+            setReceiptLoadingId(null)
+        }
+    }
 
     const formatCents = (cents: number | null) => {
         if (cents === null) return 'Unlimited'
@@ -69,6 +97,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
             methodOrCode: `Promo code ${claim.code}`,
             amountInCents: claim.amountInCents,
             status: 'SUCCESS',
+            hasReceipt: false,
         }))
 
         const dbTransactions: CreditTransaction[] = (overview.transactions || [])
@@ -82,9 +111,14 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                         ? 'Free credits'
                         : tx.provider === 'ADJUSTMENT'
                           ? 'Credit change'
-                          : 'Card/UPI (Razorpay)',
+                          : tx.provider === 'REFERRAL'
+                            ? 'Referral'
+                            : 'Card/UPI (Razorpay)',
                 amountInCents: tx.amountInCents,
                 status: tx.status as 'SUCCESS' | 'PENDING' | 'FAILED',
+                hasReceipt:
+                    tx.status === 'SUCCESS' &&
+                    (tx.provider === 'RAZORPAY' || tx.provider === 'COINBASE'),
             }))
 
         const combined = [...dbClaims, ...dbTransactions]
@@ -104,25 +138,28 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
 
     if (overviewError || !overview) {
         return (
-            <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9]">
-                <SettingsPageHeader title="Billing" subtitle={PAGE_SUBTITLES.billing} />
+            <SettingsPage title="Billing" subtitle={PAGE_SUBTITLES.billing}>
                 <p className="text-[13px] text-[#7B7A79]">
                     Billing did not load. Reload the page to try again.
                 </p>
                 <ErrorAlert message={(overviewError as any)?.message || 'Billing did not load'} />
-            </div>
+            </SettingsPage>
         )
     }
 
     const remainingInCents = overview.creditBalance ?? 0
 
     return (
-        <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-200">
-            {/* balance. phones show the page name in the top bar */}
-            <div className="flex flex-col mb-6">
-                <SettingsPageHeader title="Billing" subtitle={PAGE_SUBTITLES.billing} />
-                <div className="flex flex-col gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-4 w-full">
+        <>
+            <SettingsPage
+                title="Billing"
+                subtitle={PAGE_SUBTITLES.billing}
+                className="animate-in fade-in duration-200"
+            >
+                {/* credits: a section like the ones on Account. the balance and its two
+                    buttons are one box on desktop and on phones */}
+                <SettingsSection title="Credits" description="Your balance, and how to add to it.">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
                         <div className="flex flex-col gap-1">
                             <span className="text-[12px] font-medium text-[#7B7A79]">Balance</span>
                             <span className="text-[24px] sm:text-[28px] font-medium text-[#D6D5C9] font-mono leading-none tracking-tight">
@@ -133,176 +170,186 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                             <button
                                 type="button"
                                 onClick={() => setShowRedeemModal(true)}
-                                className="hidden md:block px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors cursor-pointer"
+                                className={`${outlineButtonClass} flex-1 sm:flex-initial text-center`}
                             >
                                 Redeem code
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setShowAddCreditsModal(true)}
-                                className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] text-[13px] font-medium transition-colors cursor-pointer text-center shadow-sm"
+                                className={`${blueButtonClass} flex-1 sm:flex-initial text-center`}
                             >
                                 Add credits
                             </button>
                         </div>
                     </div>
+                    <ReferralRow />
+                </SettingsSection>
 
-                    {/* phones: redeem is a row, kept from the phone review */}
-                    <button
-                        type="button"
-                        onClick={() => setShowRedeemModal(true)}
-                        className="md:hidden flex items-center justify-between h-10 -mx-1 px-1 rounded-lg text-left text-[14px] text-[#D6D5C9] active:bg-[#1F1F1F] transition-colors outline-none cursor-pointer"
-                    >
-                        Redeem code
-                        <ChevronRight className="w-4 h-4 text-[#7B7A79]" strokeWidth={1.75} />
-                    </button>
-
-                    {isPreview && <ReferralRow name={profile?.name} />}
-                </div>
-            </div>
-
-            <div className="flex flex-col mb-5">
                 <FreeCreditsSection />
-            </div>
 
-            {isPreview && (
-                <div className="flex flex-col gap-5 mb-5">
-                    <BillingPreviewSections />
-                </div>
-            )}
+                <BillingLimitsSection />
 
-            {/* history: the same list box as Secrets and Usage */}
-            <div className="flex flex-col mb-0">
-                <SettingsSectionHeading
-                    title="History"
-                    description="Payments and codes you added."
-                />
-                <ListBox>
-                    {mergedHistory.length === 0 ? (
-                        <div className="px-4 py-6 text-[13px] text-[#7B7A79]">No payments yet</div>
-                    ) : (
-                        <>
-                            <div className="hidden md:grid grid-cols-12 gap-2 bg-[#202020] border-b border-[#242323] px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-[#7B7A79]">
-                                <div className="col-span-3">Date</div>
-                                <div className={isPreview ? 'col-span-4' : 'col-span-5'}>
-                                    Details
+                {/* auto top-up is ui only: it shows with the preview flag, with a Demo pill */}
+                {isPreview && <BillingPreviewSections />}
+
+                {/* history: the same list box as Secrets and Usage */}
+                <SettingsSection title="History" description="Payments and codes you added." bare>
+                    <ListBox>
+                        {mergedHistory.length === 0 ? (
+                            <div className={listEmptyClass}>No payments yet</div>
+                        ) : (
+                            <>
+                                <div
+                                    className={`hidden md:grid grid-cols-12 gap-2 ${listHeaderClass}`}
+                                >
+                                    <div className="col-span-3">Date</div>
+                                    <div className="col-span-4">Details</div>
+                                    <div className="col-span-2">Status</div>
+                                    <div className="col-span-2 text-right">Amount</div>
+                                    <div className="col-span-1 text-right">Receipt</div>
                                 </div>
-                                <div className="col-span-2">Status</div>
-                                <div className="col-span-2 text-right">Amount</div>
-                                {isPreview && <div className="col-span-1 text-right">Receipt</div>}
-                            </div>
 
-                            <div className="flex flex-col divide-y divide-[#242323]">
-                                {mergedHistory.map((tx) => {
-                                    const formattedDate = new Date(tx.date).toLocaleDateString(
-                                        undefined,
-                                        {
-                                            year: 'numeric',
-                                            month: 'short',
-                                            day: 'numeric',
+                                <div className={listRowsClass}>
+                                    {mergedHistory.map((tx) => {
+                                        const formattedDate = new Date(tx.date).toLocaleDateString(
+                                            undefined,
+                                            {
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric',
+                                            }
+                                        )
+                                        const txId =
+                                            tx.id.startsWith('claim_') || tx.id.length < 5
+                                                ? tx.id
+                                                : `tx_${tx.id}`
+
+                                        // status styling mapping
+                                        const statusConfig = {
+                                            SUCCESS: {
+                                                label: 'Success',
+                                                color: 'text-emerald-500',
+                                            },
+                                            PENDING: { label: 'Pending', color: 'text-amber-500' },
+                                            FAILED: { label: 'Failed', color: 'text-red-500' },
+                                        }[tx.status] || {
+                                            label: tx.status,
+                                            color: 'text-neutral-500',
                                         }
-                                    )
-                                    const txId =
-                                        tx.id.startsWith('claim_') || tx.id.length < 5
-                                            ? tx.id
-                                            : `tx_${tx.id}`
 
-                                    // status styling mapping
-                                    const statusConfig = {
-                                        SUCCESS: { label: 'Success', color: 'text-emerald-500' },
-                                        PENDING: { label: 'Pending', color: 'text-amber-500' },
-                                        FAILED: { label: 'Failed', color: 'text-red-500' },
-                                    }[tx.status] || { label: tx.status, color: 'text-neutral-500' }
-
-                                    return (
-                                        <div
-                                            key={tx.id}
-                                            className="px-3.5 md:px-4 py-3 text-[13px]"
-                                        >
-                                            {/* phones: two lines */}
-                                            <div className="md:hidden flex items-start justify-between gap-2">
-                                                <div className="flex flex-col min-w-0 pr-2">
-                                                    <span className="text-[#D6D5C9] font-medium truncate">
-                                                        {tx.methodOrCode}
-                                                    </span>
-                                                    <div className="flex items-center gap-1.5 text-[11.5px] text-[#7B7A79] mt-0.5">
-                                                        <span>{formattedDate}</span>
-                                                        <span>•</span>
-                                                        <span
-                                                            className={`font-medium ${statusConfig.color}`}
-                                                        >
-                                                            {statusConfig.label}
+                                        return (
+                                            <div
+                                                key={tx.id}
+                                                className="px-3.5 md:px-4 py-3 text-[13px]"
+                                            >
+                                                {/* phones: two lines */}
+                                                <div className="md:hidden flex items-start justify-between gap-2">
+                                                    <div className="flex flex-col min-w-0 pr-2">
+                                                        <span className="text-[#D6D5C9] font-medium truncate">
+                                                            {tx.methodOrCode}
+                                                        </span>
+                                                        <div className="flex items-center gap-1.5 text-[11.5px] text-[#7B7A79] mt-0.5">
+                                                            <span>{formattedDate}</span>
+                                                            <span>•</span>
+                                                            <span
+                                                                className={`font-medium ${statusConfig.color}`}
+                                                            >
+                                                                {statusConfig.label}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-[11px] text-[#7B7A79] mt-0.5 truncate select-all">
+                                                            {txId}
                                                         </span>
                                                     </div>
-                                                    <span className="text-[11px] text-[#7B7A79] mt-0.5 truncate select-all">
-                                                        {txId}
-                                                    </span>
+                                                    <div className="flex flex-col items-end gap-1 shrink-0 pt-0.5">
+                                                        <span className="font-medium text-emerald-400 text-[13.5px]">
+                                                            {tx.amountInCents < 0 ? '-' : '+'}
+                                                            {formatCents(
+                                                                Math.abs(tx.amountInCents)
+                                                            )}
+                                                        </span>
+                                                        {tx.hasReceipt && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handleDownloadReceipt(tx)
+                                                                }
+                                                                disabled={
+                                                                    receiptLoadingId === tx.id
+                                                                }
+                                                                className={`text-[12px] ${textLinkClass}`}
+                                                            >
+                                                                PDF
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="text-right shrink-0 pt-0.5">
-                                                    <span className="font-medium text-emerald-400 text-[13.5px]">
+
+                                                {/* desktop: one grid row */}
+                                                <div className="hidden md:grid grid-cols-12 gap-2 items-center">
+                                                    <div className="col-span-3 text-[#7B7A79]">
+                                                        {formattedDate}
+                                                    </div>
+                                                    <div className="col-span-4 flex flex-col min-w-0 pr-2">
+                                                        <span
+                                                            className="text-[#D6D5C9] font-medium truncate"
+                                                            title={tx.methodOrCode}
+                                                        >
+                                                            {tx.methodOrCode}
+                                                        </span>
+                                                        <span
+                                                            className="text-[11px] text-[#7B7A79] mt-0.5 truncate select-all"
+                                                            title={txId}
+                                                        >
+                                                            {txId}
+                                                        </span>
+                                                    </div>
+                                                    <div
+                                                        className={`col-span-2 font-medium ${statusConfig.color}`}
+                                                    >
+                                                        {statusConfig.label}
+                                                    </div>
+                                                    <div className="col-span-2 text-right text-[#D6D5C9] font-medium">
                                                         {tx.amountInCents < 0 ? '-' : '+'}
                                                         {formatCents(Math.abs(tx.amountInCents))}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* desktop: one grid row */}
-                                            <div className="hidden md:grid grid-cols-12 gap-2 items-center">
-                                                <div className="col-span-3 text-[#7B7A79]">
-                                                    {formattedDate}
-                                                </div>
-                                                <div
-                                                    className={`${isPreview ? 'col-span-4' : 'col-span-5'} flex flex-col min-w-0 pr-2`}
-                                                >
-                                                    <span
-                                                        className="text-[#D6D5C9] font-medium truncate"
-                                                        title={tx.methodOrCode}
-                                                    >
-                                                        {tx.methodOrCode}
-                                                    </span>
-                                                    <span
-                                                        className="text-[11px] text-[#7B7A79] mt-0.5 truncate select-all"
-                                                        title={txId}
-                                                    >
-                                                        {txId}
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    className={`col-span-2 font-medium ${statusConfig.color}`}
-                                                >
-                                                    {statusConfig.label}
-                                                </div>
-                                                <div className="col-span-2 text-right text-[#D6D5C9] font-medium">
-                                                    {tx.amountInCents < 0 ? '-' : '+'}
-                                                    {formatCents(Math.abs(tx.amountInCents))}
-                                                </div>
-                                                {/* receipts are ui only: the file comes with the server part */}
-                                                {isPreview && (
-                                                    <div
-                                                        className="col-span-1 text-right text-[#7B7A79]"
-                                                        title="Receipts are coming soon"
-                                                    >
-                                                        {tx.type === 'purchase' &&
-                                                        tx.status === 'SUCCESS'
-                                                            ? 'PDF'
-                                                            : '-'}
                                                     </div>
-                                                )}
+                                                    <div className="col-span-1 text-right text-[#7B7A79]">
+                                                        {tx.hasReceipt ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handleDownloadReceipt(tx)
+                                                                }
+                                                                disabled={
+                                                                    receiptLoadingId === tx.id
+                                                                }
+                                                                className={textLinkClass}
+                                                            >
+                                                                PDF
+                                                            </button>
+                                                        ) : (
+                                                            '-'
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </>
-                    )}
-                </ListBox>
-            </div>
+                                        )
+                                    })}
+                                </div>
+                            </>
+                        )}
+                    </ListBox>
+                </SettingsSection>
+            </SettingsPage>
+
+            <ErrorAlert message={receiptError} onClear={() => setReceiptError(null)} />
 
             {/* modals */}
             {showRedeemModal && <RedeemCodeModal onClose={() => setShowRedeemModal(false)} />}
             {showAddCreditsModal && (
                 <AddCreditsModal onClose={() => setShowAddCreditsModal(false)} />
             )}
-        </div>
+        </>
     )
 }

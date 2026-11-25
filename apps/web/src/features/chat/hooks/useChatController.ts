@@ -9,6 +9,7 @@ import type { PreviewRuntimeError } from '@/features/preview/types'
 import { useAppStore } from '@/app/store'
 import { billingAPI, type BillingOverview } from '@/features/billing/api/billing'
 import { billingQueryKeys } from '@/features/billing/hooks/useBillingData'
+import { decideRunEnd, decideSubmit, useMessageQueue } from '@/features/chat/messageQueue'
 import { mapBackendMessageToUIMessage } from '@/features/chat/utils'
 import {
     generationAPI,
@@ -16,6 +17,27 @@ import {
     type AppliedProjectChangeResult,
     type GenerationStreamEvent,
 } from '@/features/generation/api/generation'
+import { usePreferences } from '@/features/profile/lib/preferences'
+import { FOLLOW_RUN_EVENT } from '@/shared/lib/appEvents'
+
+/** a message this tab sent, until its run takes it (#637) */
+interface SentMessage {
+    sessionId: string
+    text: string
+    options?: PromptInputSubmitOptions
+    /** sent to the running agent ("send now"), not as the prompt of a new run */
+    steering: boolean
+    /** the socket has it (the files are uploaded first) */
+    emitted: boolean
+}
+
+// the worker says when a session is free for its next run (RunClosed). a queued message
+// goes out then, or after this time when that event did not come
+const QUEUE_SEND_WAIT_MS = 15_000
+
+type DeliveredSteering = NonNullable<
+    Extract<GenerationStreamEvent, { type: 'SteeringDelivered' }>['data']
+>['messages']
 
 export const useChatController = (
     view: ViewState,
@@ -68,6 +90,75 @@ export const useChatController = (
         setShowAuthModal,
         setShowOutOfCreditsModal,
     } = useAppStore()
+    const isGenerating = useAppStore((state) => state.isGenerating)
+
+    // a new message while December works (#637): the messages this tab sent that no run
+    // has taken yet, and how the last run ended
+    const sentMessagesRef = React.useRef<Map<string, SentMessage>>(new Map())
+    const runStoppedRef = React.useRef(false)
+    const queueSendTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    const clearQueueSendTimer = React.useCallback(() => {
+        if (queueSendTimerRef.current !== null) clearTimeout(queueSendTimerRef.current)
+        queueSendTimerRef.current = null
+    }, [])
+
+    /**
+     * The running agent now reads messages that were sent while it worked. They close the
+     * answer so far, and what the agent does next shows in a new answer below them. A
+     * message that still waits stays last.
+     */
+    const handleSteeringDelivered = React.useCallback(
+        (delivered: DeliveredSteering) => {
+            const list = (delivered ?? []).filter((message) => message?.prompt)
+            if (list.length === 0) return
+
+            const previousId = activeAssistantMessageIdRef.current
+            if (previousId) setAssistantStatus(previousId, 'done')
+            const assistantMessageId = `${Date.now()}-steered-assistant`
+            const deliveredIds = new Set(list.map((message) => message.clientMessageId))
+            for (const id of deliveredIds) {
+                if (id) sentMessagesRef.current.delete(id)
+            }
+            const waitingIds = new Set(
+                [...sentMessagesRef.current.entries()]
+                    .filter(([, sent]) => sent.steering)
+                    .map(([id]) => id)
+            )
+
+            setMessages((prev) => {
+                const known = new Map(prev.map((message) => [message.id, message]))
+                // a message from another tab or device is not in this chat yet
+                const read: Message[] = list.map((message, index) => {
+                    const mine = message.clientMessageId
+                        ? known.get(message.clientMessageId)
+                        : undefined
+                    return (
+                        mine ?? {
+                            id: message.clientMessageId ?? `${assistantMessageId}-user-${index}`,
+                            role: 'user',
+                            content: message.prompt ?? '',
+                        }
+                    )
+                })
+                const readIds = new Set(read.map((message) => message.id))
+                return [
+                    ...prev.filter((m) => !readIds.has(m.id) && !waitingIds.has(m.id)),
+                    ...read,
+                    {
+                        id: assistantMessageId,
+                        role: 'assistant',
+                        content: '',
+                        type: 'text',
+                        status: 'thinking',
+                    },
+                    ...prev.filter((m) => waitingIds.has(m.id)),
+                ]
+            })
+            activeAssistantMessageIdRef.current = assistantMessageId
+            setGenerationPhase('thinking')
+        },
+        [activeAssistantMessageIdRef, setAssistantStatus, setGenerationPhase, setMessages]
+    )
 
     const requireAuthOr = React.useCallback(
         (action: () => void) => {
@@ -137,6 +228,29 @@ export const useChatController = (
         ]
     )
 
+    /**
+     * The parts of a run stream that the stream of a first prompt and the stream of a
+     * later prompt share: the messages the agent now reads, and the mark of a stopped run
+     * (queued messages then wait for the user, #637). True when nothing more is to do.
+     */
+    const handleSharedRunEvent = React.useCallback(
+        (event: GenerationStreamEvent, flushNow: () => void): boolean => {
+            if (event.type === 'SteeringDelivered') {
+                flushNow()
+                handleSteeringDelivered(event.data?.messages)
+                return true
+            }
+            if (
+                event.type === 'AgentInterrupt' ||
+                (event.type === 'AgentEnd' && event.data?.stopped === true)
+            ) {
+                runStoppedRef.current = true
+            }
+            return false
+        },
+        [handleSteeringDelivered]
+    )
+
     const startGeneration = React.useCallback(
         (
             prompt: string,
@@ -146,6 +260,7 @@ export const useChatController = (
         ) => {
             abortGenerationRequest()
             resetGeneratedOutput()
+            runStoppedRef.current = false
             activeAssistantMessageIdRef.current = assistantMessageId
             setGenerationPhase('thinking')
             setActiveOperation('build')
@@ -211,6 +326,8 @@ export const useChatController = (
                         provider: options?.provider,
                         billingSource: options?.billingSource,
                         runConfig: options?.runConfig,
+                        attachments: options?.attachments,
+                        session: options?.session,
                         signal: abortController.signal,
                         onEvent: (event) => {
                             const activeMessageId = activeAssistantMessageIdRef.current
@@ -218,6 +335,15 @@ export const useChatController = (
                             if (!activeMessageId) {
                                 return
                             }
+
+                            const flushNow = () => {
+                                if (streamFrameHandle !== null) {
+                                    cancelAnimationFrame(streamFrameHandle)
+                                    streamFrameHandle = null
+                                }
+                                flushStreamBuffers()
+                            }
+                            if (handleSharedRunEvent(event, flushNow)) return
 
                             switch (event.type) {
                                 case 'connected':
@@ -373,6 +499,9 @@ export const useChatController = (
                                     flushStreamBuffers()
                                     setGenerationPhase('done')
                                     setAssistantStatus(activeMessageId, 'done')
+                                    // a turn is one step of the run: December works until
+                                    // the run ends, so a new message is queued or sent (#637)
+                                    if (event.type === 'TurnEnd') return
                                     setIsGenerating(false)
                                     void queryClient.invalidateQueries({ queryKey: ['sessions'] })
                                     const currentPid = useAppStore.getState().activeProjectId
@@ -570,6 +699,7 @@ export const useChatController = (
             appendGeneratedFileChunk,
             completeGeneratedFile,
             generationAbortControllerRef,
+            handleSharedRunEvent,
             markGeneratedFileError,
             queryClient,
             replaceGeneratedOutput,
@@ -630,6 +760,9 @@ export const useChatController = (
                     id: baseId,
                     role: 'user',
                     content: normalizedPrompt,
+                    ...(options?.attachments?.length
+                        ? { attachments: options.attachments.map(({ name }) => ({ name })) }
+                        : {}),
                 }
                 const assistantMsg: Message = {
                     id: assistantMessageId,
@@ -668,8 +801,10 @@ export const useChatController = (
             provider,
             billingSource,
             runConfig,
+            attachments,
         }: {
-            kind: 'edit' | 'fix'
+            // `follow` shows a run that the server started (#637): no prompt goes out
+            kind: 'edit' | 'fix' | 'follow'
             prompt?: string
             errorMessage?: string
             stack?: string | null
@@ -679,6 +814,8 @@ export const useChatController = (
             // the payment source the prompt box shows (December credits or the user's own key)
             billingSource?: PromptInputSubmitOptions['billingSource']
             runConfig?: PromptInputSubmitOptions['runConfig']
+            /** the stored files sent with this prompt (#634) */
+            attachments?: PromptInputSubmitOptions['attachments']
         }) => {
             if (!activeProjectId) {
                 return
@@ -686,13 +823,27 @@ export const useChatController = (
 
             abortGenerationRequest()
             setProjectLoadError(null)
+            runStoppedRef.current = false
 
             const baseId = Date.now().toString()
             const assistantMessageId = `${baseId}-assistant`
+            if (kind === 'edit' && prompt) {
+                // the server can give the prompt back when a run still works (#637)
+                sentMessagesRef.current.set(baseId, {
+                    sessionId: activeProjectId,
+                    text: prompt,
+                    options: { model, provider, billingSource, runConfig, attachments },
+                    steering: false,
+                    emitted: true,
+                })
+            }
             const userMsg: Message = {
                 id: baseId,
                 role: 'user',
                 content: visibleUserMessage,
+                ...(attachments?.length
+                    ? { attachments: attachments.map(({ name }) => ({ name })) }
+                    : {}),
             }
             const assistantMsg: Message = {
                 id: assistantMessageId,
@@ -702,10 +853,23 @@ export const useChatController = (
                 status: 'thinking',
             }
 
-            setMessages((prev) => [...prev, userMsg, assistantMsg])
+            // an answer that still waits for a run of another tab, with no content, is dropped
+            const staleAssistantId = activeAssistantMessageIdRef.current
+            setMessages((prev) => {
+                const kept = prev.filter(
+                    (message) =>
+                        message.id !== staleAssistantId ||
+                        message.status !== 'thinking' ||
+                        Boolean(message.content) ||
+                        Boolean(message.blocks?.length)
+                )
+                return kind === 'follow'
+                    ? [...kept, assistantMsg]
+                    : [...kept, userMsg, assistantMsg]
+            })
             activeAssistantMessageIdRef.current = assistantMessageId
             setGenerationPhase('thinking')
-            setActiveOperation(kind)
+            setActiveOperation(kind === 'follow' ? 'edit' : kind)
             setCurrentGenerationFilePaths([])
             setIsGenerating(true)
             setProjectType('generated')
@@ -762,6 +926,15 @@ export const useChatController = (
                         if (!activeMessageId) {
                             return
                         }
+
+                        const flushNow = () => {
+                            if (streamFrameHandle !== null) {
+                                cancelAnimationFrame(streamFrameHandle)
+                                streamFrameHandle = null
+                            }
+                            flushStreamBuffers()
+                        }
+                        if (handleSharedRunEvent(event, flushNow)) return
 
                         switch (event.type) {
                             case 'connected':
@@ -903,6 +1076,9 @@ export const useChatController = (
                                 flushStreamBuffers()
                                 setGenerationPhase('done')
                                 setAssistantStatus(activeMessageId, 'done')
+                                // a turn is one step of the run: December works until the
+                                // run ends, so a new message is queued or sent (#637)
+                                if (event.type === 'TurnEnd') return
                                 setIsGenerating(false)
                                 void queryClient.invalidateQueries({ queryKey: ['sessions'] })
                                 const currentPid = useAppStore.getState().activeProjectId
@@ -1020,32 +1196,41 @@ export const useChatController = (
                     }
 
                     const result =
-                        kind === 'edit'
-                            ? await generationAPI.applyProjectEdit({
-                                  projectId: activeProjectId,
-                                  versionId: activeProjectVersionId,
-                                  prompt: prompt ?? '',
-                                  model,
-                                  provider,
-                                  billingSource,
-                                  runConfig,
-                                  signal: abortController.signal,
-                                  onEvent: handleStreamEvent,
-                              })
-                            : await generationAPI.applyProjectFix({
-                                  projectId: activeProjectId,
-                                  versionId: activeProjectVersionId,
-                                  errorMessage: errorMessage ?? '',
-                                  ...(stack ? { stack } : {}),
-                                  signal: abortController.signal,
-                                  onEvent: handleStreamEvent,
-                              })
+                        kind === 'follow'
+                            ? await generationAPI.listenToSessionStream(
+                                  activeProjectId,
+                                  handleStreamEvent,
+                                  abortController.signal
+                              )
+                            : kind === 'edit'
+                              ? await generationAPI.applyProjectEdit({
+                                    projectId: activeProjectId,
+                                    versionId: activeProjectVersionId,
+                                    prompt: prompt ?? '',
+                                    model,
+                                    provider,
+                                    billingSource,
+                                    runConfig,
+                                    attachments,
+                                    clientMessageId: baseId,
+                                    signal: abortController.signal,
+                                    onEvent: handleStreamEvent,
+                                })
+                              : await generationAPI.applyProjectFix({
+                                    projectId: activeProjectId,
+                                    versionId: activeProjectVersionId,
+                                    errorMessage: errorMessage ?? '',
+                                    ...(stack ? { stack } : {}),
+                                    signal: abortController.signal,
+                                    onEvent: handleStreamEvent,
+                                })
 
                     if (abortController.signal.aborted) {
                         return
                     }
 
-                    if (result && !didHydrateStreamResult) {
+                    // an agent run ends with AgentEnd, which carries no project to load
+                    if (result && !didHydrateStreamResult && Array.isArray(result.appliedFiles)) {
                         hydrateAppliedProjectChange(result)
                         void queryClient.invalidateQueries({ queryKey: ['sessions'] })
                     }
@@ -1061,7 +1246,11 @@ export const useChatController = (
                     const message =
                         error instanceof Error ? error.message : 'Failed to update project'
                     setProjectLoadError(message)
-                    setAssistantError(assistantMessageId, message)
+                    // steering can open a new answer in the middle of the run (#637)
+                    setAssistantError(
+                        activeAssistantMessageIdRef.current ?? assistantMessageId,
+                        message
+                    )
                 } finally {
                     if (streamFrameHandle !== null) {
                         cancelAnimationFrame(streamFrameHandle)
@@ -1084,6 +1273,7 @@ export const useChatController = (
             activeProjectId,
             activeProjectVersionId,
             generationAbortControllerRef,
+            handleSharedRunEvent,
             hydrateAppliedProjectChange,
             queryClient,
             setAssistantAppliedFiles,
@@ -1113,6 +1303,169 @@ export const useChatController = (
         ]
     )
 
+    /** sends a queued message as the prompt of a new run: the next one, or the one named */
+    const sendQueuedMessage = React.useCallback(
+        (id?: string) => {
+            clearQueueSendTimer()
+            if (!activeProjectId) return
+            const next = useMessageQueue.getState().take(activeProjectId, id)
+            if (!next) return
+            applyProjectChange({
+                kind: 'edit',
+                prompt: next.text,
+                visibleUserMessage: next.text,
+                model: next.options?.model,
+                provider: next.options?.provider,
+                billingSource: next.options?.billingSource,
+                runConfig: next.options?.runConfig,
+                attachments: next.options?.attachments,
+            })
+        },
+        [activeProjectId, applyProjectChange, clearQueueSendTimer]
+    )
+
+    /**
+     * "Send now": the message shows in the chat at once and goes to the running agent, which
+     * reads it at its next turn. When the run ends before that, the server starts a run for
+     * the message, and the session follows it.
+     */
+    const sendToRunningAgent = React.useCallback(
+        (text: string, options?: PromptInputSubmitOptions) => {
+            if (!activeProjectId) return
+            const sessionId = activeProjectId
+            const id = Date.now().toString()
+            const sent: SentMessage = { sessionId, text, options, steering: true, emitted: false }
+            sentMessagesRef.current.set(id, sent)
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id,
+                    role: 'user',
+                    content: text,
+                    ...(options?.attachments?.length
+                        ? { attachments: options.attachments.map(({ name }) => ({ name })) }
+                        : {}),
+                },
+            ])
+            generationAPI
+                .sendMessageToRun({
+                    sessionId,
+                    prompt: text,
+                    clientMessageId: id,
+                    model: options?.model,
+                    provider: options?.provider,
+                    billingSource: options?.billingSource,
+                    runConfig: options?.runConfig,
+                    attachments: options?.attachments,
+                })
+                .then(() => {
+                    sent.emitted = true
+                    const state = useAppStore.getState()
+                    // the run ended while the files went up: the server starts a run for
+                    // the message
+                    if (
+                        sentMessagesRef.current.has(id) &&
+                        !state.isGenerating &&
+                        state.activeProjectId === sessionId
+                    ) {
+                        sentMessagesRef.current.delete(id)
+                        applyProjectChange({ kind: 'follow', visibleUserMessage: '' })
+                    }
+                })
+                .catch((error: unknown) => {
+                    // the message did not go out (a file upload failed): it waits in the queue
+                    console.error('[chat] could not send the message to the running agent', error)
+                    if (!sentMessagesRef.current.delete(id)) return
+                    setMessages((prev) => prev.filter((message) => message.id !== id))
+                    useMessageQueue.getState().putBack({ id, sessionId, text, options })
+                })
+        },
+        [activeProjectId, applyProjectChange, setMessages]
+    )
+
+    // the server gave a prompt back, because a run works in the session and new messages
+    // are queued there (another tab started it, or the account says "queue"). the message
+    // leaves the chat and waits in the queue
+    React.useEffect(
+        () =>
+            generationAPI.onPromptQueued((event) => {
+                const id = event.clientMessageId
+                const sent = id ? sentMessagesRef.current.get(id) : undefined
+                if (!id || !sent) return
+                sentMessagesRef.current.delete(id)
+                setMessages((prev) => prev.filter((message) => message.id !== id))
+                useMessageQueue.getState().putBack({
+                    id,
+                    sessionId: sent.sessionId,
+                    text: sent.text,
+                    options: sent.options,
+                })
+            }),
+        [setMessages]
+    )
+
+    // a run the server started for the open session (#638, "Continue" at a spend limit):
+    // the chat shows it live, the way it shows a run for a message the agent did not read
+    React.useEffect(() => {
+        const onFollowRun = (event: Event) => {
+            const sessionId = (event as CustomEvent<{ sessionId?: string }>).detail?.sessionId
+            if (!sessionId || sessionId !== useAppStore.getState().activeProjectId) return
+            // tells the sender that this chat follows the run
+            event.preventDefault()
+            applyProjectChange({ kind: 'follow', visibleUserMessage: '' })
+        }
+        window.addEventListener(FOLLOW_RUN_EVENT, onFollowRun)
+        return () => window.removeEventListener(FOLLOW_RUN_EVENT, onFollowRun)
+    }, [applyProjectChange])
+
+    // the "Send" of a queued message, for the list in the chat
+    React.useEffect(() => {
+        useMessageQueue.setState({ sendNow: (id) => sendQueuedMessage(id) })
+        return () => useMessageQueue.setState({ sendNow: () => {} })
+    }, [sendQueuedMessage])
+
+    // the end of a run: the next queued message goes out when the worker says that the
+    // session is free (its last work, the pull request step, is done). after a stop the
+    // queue waits for the user
+    const wasGeneratingRef = React.useRef(isGenerating)
+    React.useEffect(() => {
+        const runEnded = wasGeneratingRef.current && !isGenerating
+        wasGeneratingRef.current = isGenerating
+        if (!runEnded || !activeProjectId) return
+
+        const sent = [...sentMessagesRef.current.entries()].filter(
+            ([, message]) => message.sessionId === activeProjectId && message.emitted
+        )
+        // what the ended run took or left is settled now
+        for (const [id] of sent) sentMessagesRef.current.delete(id)
+        const step = decideRunEnd({
+            stopped: runStoppedRef.current,
+            unread: sent.filter(([, message]) => message.steering).length,
+            queued: useMessageQueue
+                .getState()
+                .queued.filter((message) => message.sessionId === activeProjectId).length,
+        })
+        if (step === 'follow') applyProjectChange({ kind: 'follow', visibleUserMessage: '' })
+        else if (step === 'send-next') {
+            clearQueueSendTimer()
+            queueSendTimerRef.current = setTimeout(() => sendQueuedMessage(), QUEUE_SEND_WAIT_MS)
+        }
+    }, [isGenerating, activeProjectId, applyProjectChange, clearQueueSendTimer, sendQueuedMessage])
+
+    React.useEffect(
+        () =>
+            generationAPI.onRunClosed((event) => {
+                if (event.sessionId !== activeProjectId) return
+                clearQueueSendTimer()
+                // a stopped run leaves the queue to the user. a run that follows (for a
+                // message the agent did not read) closes later, and the queue goes then
+                if (runStoppedRef.current || event.runFollows) return
+                sendQueuedMessage()
+            }),
+        [activeProjectId, clearQueueSendTimer, sendQueuedMessage]
+    )
+    React.useEffect(() => clearQueueSendTimer, [clearQueueSendTimer])
+
     const handleOutputPromptSubmit = React.useCallback(
         (promptText: string, options?: PromptInputSubmitOptions) => {
             requireAuthOr(() => {
@@ -1126,6 +1479,23 @@ export const useChatController = (
                     return
                 }
 
+                // a new message while December works (#637): by the account preference it
+                // waits for the end of the run, or it goes to the running agent now
+                const route = decideSubmit({
+                    isWorking: useAppStore.getState().isGenerating,
+                    mode: usePreferences.getState().messageWhileWorking,
+                })
+                if (route === 'queue') {
+                    useMessageQueue
+                        .getState()
+                        .add({ sessionId: activeProjectId, text: normalizedPrompt, options })
+                    return
+                }
+                if (route === 'steer') {
+                    sendToRunningAgent(normalizedPrompt, options)
+                    return
+                }
+
                 outputOriginViewRef.current = view
                 applyProjectChange({
                     kind: 'edit',
@@ -1135,6 +1505,7 @@ export const useChatController = (
                     provider: options?.provider,
                     billingSource: options?.billingSource,
                     runConfig: options?.runConfig,
+                    attachments: options?.attachments,
                 })
             })
         },
@@ -1142,6 +1513,7 @@ export const useChatController = (
             activeProjectId,
             applyProjectChange,
             handlePromptSubmit,
+            sendToRunningAgent,
             view,
             requireAuthOr,
             outputOriginViewRef,

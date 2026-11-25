@@ -54,3 +54,58 @@ export type UpdateMcpServer = {
     enabled?: boolean
     disabledTools?: string[]
 }
+
+// import setup from a repository (#637 section 6)
+
+export type GitHost = 'GITHUB' | 'GITLAB'
+
+export type RepoSetupRef = {
+    userId: string
+    /** owner/name; a gitlab namespace can hold subgroups */
+    repoFullName: string
+    provider: GitHost
+}
+
+export type ImportSetup = RepoSetupRef & {
+    /** the names the user ticked */
+    skills: string[]
+    mcps: string[]
+    /** without it a name that is saved already is skipped */
+    overwrite: boolean
+}
+
+export type FoundSkill = {
+    name: string
+    description: string
+    /** the skill file, from the repository root */
+    path: string
+    /** null when the skill cannot be imported */
+    body: string | null
+    importable: boolean
+    reason?: string
+}
+
+export type FoundMcp = {
+    name: string
+    /** null for a server that runs a command */
+    url: string | null
+    transport: McpTransport | 'stdio'
+    /** header names only: a header value is never read out of the file */
+    headerNames: string[]
+    importable: boolean
+    reason?: string
+}
+
+export type FoundSetup = {
+    skills: FoundSkill[]
+    mcps: FoundMcp[]
+    rules: { path: string }[]
+    /** true when the repository has more skill folders than one import reads */
+    truncated: boolean
+}
+
+export type ImportSkipped = {
+    kind: 'skill' | 'mcp'
+    name: string
+    reason: string
+}

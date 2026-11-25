@@ -3,6 +3,7 @@ import { describe, it, expect } from 'bun:test'
 import {
     CreateSecretSchema,
     BulkCreateSecretsSchema,
+    SecretRepoQuerySchema,
 } from '../../src/modules/secrets/secrets.schema'
 
 describe('Secrets Schema - Unit Tests', () => {
@@ -78,6 +79,59 @@ describe('Secrets Schema - Unit Tests', () => {
             }
             const res = BulkCreateSecretsSchema.safeParse(invalidItem)
             expect(res.success).toBe(false)
+        })
+    })
+
+    // #637 section 5
+    describe('the repository of a secret', () => {
+        it('takes owner/name', () => {
+            const res = CreateSecretSchema.safeParse({
+                name: 'KEY',
+                value: 'v',
+                repoFullName: 'acme/web',
+            })
+            expect(res.success).toBe(true)
+            if (res.success) expect(res.data.repoFullName).toBe('acme/web')
+        })
+
+        it('takes null, an empty text and no field as "all repositories"', () => {
+            for (const extra of [{ repoFullName: null }, { repoFullName: '' }, {}]) {
+                const res = CreateSecretSchema.safeParse({ name: 'KEY', value: 'v', ...extra })
+                expect(res.success).toBe(true)
+            }
+        })
+
+        it('refuses a repository that is not owner/name', () => {
+            for (const repoFullName of ['web', 'acme/web repo', '../web', 42]) {
+                const res = CreateSecretSchema.safeParse({ name: 'KEY', value: 'v', repoFullName })
+                expect(res.success).toBe(false)
+            }
+        })
+
+        it('checks the repository of the import and of each item', () => {
+            const good = BulkCreateSecretsSchema.safeParse({
+                repoFullName: 'acme/web',
+                secrets: [{ name: 'KEY', value: 'v', repoFullName: 'acme/api' }],
+            })
+            expect(good.success).toBe(true)
+            const badItem = BulkCreateSecretsSchema.safeParse({
+                secrets: [{ name: 'KEY', value: 'v', repoFullName: 'api' }],
+            })
+            expect(badItem.success).toBe(false)
+            const badImport = BulkCreateSecretsSchema.safeParse({
+                repoFullName: 'web',
+                secrets: [{ name: 'KEY', value: 'v' }],
+            })
+            expect(badImport.success).toBe(false)
+        })
+
+        it('checks the repo query of the routes that take a name', () => {
+            expect(SecretRepoQuerySchema.safeParse({}).success).toBe(true)
+            expect(SecretRepoQuerySchema.safeParse({ repo: 'acme/web' }).success).toBe(true)
+            expect(SecretRepoQuerySchema.safeParse({ repo: 'web' }).success).toBe(false)
+            expect(
+                SecretRepoQuerySchema.safeParse({ repo: ['acme/web', 'acme/api'] }).success
+            ).toBe(false)
         })
     })
 })

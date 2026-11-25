@@ -109,4 +109,58 @@ describe('Auth Device CLI Flow Integration Tests', () => {
         expect(codeStatusRes.body.data.activated).toBe(true)
         expect(codeStatusRes.body.data.status).toBe('already_activated')
     })
+
+    // #636: the devices list on the account page
+    it('6. GET /api/v1/auth/sessions - a cli sign-in shows in the devices list with kind cli', async () => {
+        // the whole device flow again, with the user agent the cli sends (apps/cli auth/device.ts)
+        const codeRes = await request(app)
+            .post('/api/v1/auth/device/code')
+            .set('x-forwarded-for', getRandomIP())
+            .send({})
+        await request(app)
+            .post('/api/v1/auth/device/verify')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${userAccessToken}`)
+            .send({ userCode: codeRes.body.data.userCode })
+        const tokenRes = await request(app)
+            .post('/api/v1/auth/device/token')
+            .set('x-forwarded-for', getRandomIP())
+            .set('User-Agent', 'december-cli/0.4.22 (linux; x64)')
+            .send({ deviceCode: codeRes.body.data.deviceCode })
+        expect(tokenRes.status).toBe(200)
+        const cliToken = tokenRes.body.data.token as string
+
+        const fromWeb = await request(app)
+            .get('/api/v1/auth/sessions')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${userAccessToken}`)
+        expect(fromWeb.status).toBe(200)
+        const rows = fromWeb.body.data as Array<{
+            label: string
+            kind: string
+            isCurrent: boolean
+        }>
+        // the web sign-in of the setup, the cli of step 4 (no user agent of its own) and this cli
+        expect(rows).toHaveLength(3)
+        expect(rows[0]).toMatchObject({ kind: 'web', isCurrent: true })
+        expect(
+            rows
+                .filter((row) => row.kind === 'cli')
+                .map((row) => row.label)
+                .sort()
+        ).toEqual(['December CLI', 'December CLI on Linux'])
+        expect(rows.filter((row) => row.kind === 'cli').every((row) => !row.isCurrent)).toBe(true)
+
+        // the cli's own token is a working sign-in: for it, its row is "this device"
+        const fromCli = await request(app)
+            .get('/api/v1/auth/sessions')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${cliToken}`)
+        expect(fromCli.status).toBe(200)
+        expect(fromCli.body.data[0]).toMatchObject({
+            label: 'December CLI on Linux',
+            kind: 'cli',
+            isCurrent: true,
+        })
+    })
 })

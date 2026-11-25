@@ -167,7 +167,65 @@ describe('git provider: github', () => {
             changedFiles: 2,
             createdAt: 'c',
             updatedAt: 'u',
+            mergedAt: null,
+            closedAt: null,
         })
+    })
+
+    it('opens a draft pull request when draft is set', async () => {
+        const calls = stubFetch(() =>
+            json({ number: 13, html_url: 'u', title: 'feat: x', state: 'open', draft: true }, 201)
+        )
+
+        const pr = await github.createPullRequest({
+            token: 'tok',
+            repoPath: 'acme/app',
+            title: 'feat: x',
+            head: 'december/s1',
+            base: 'main',
+            body: 'body',
+            draft: true,
+        })
+
+        expect(JSON.parse(String(calls[0].init?.body))).toEqual({
+            title: 'feat: x',
+            head: 'december/s1',
+            base: 'main',
+            body: 'body',
+            draft: true,
+        })
+        expect(pr?.status).toBe('draft')
+    })
+
+    it('opens a ready pull request when the repository refuses drafts', async () => {
+        // github answers 422 for a draft in a repository whose plan has no drafts
+        const calls = stubFetch((call) => {
+            if (call.init?.method !== 'POST') return json([])
+            return JSON.parse(String(call.init.body)).draft
+                ? json({ message: 'Draft pull requests are not supported' }, 422)
+                : json({ number: 14, html_url: 'u', title: 't', state: 'open' }, 201)
+        })
+
+        const pr = await github.createPullRequest({
+            token: 'tok',
+            repoPath: 'acme/app',
+            title: 't',
+            head: 'december/s1',
+            base: 'main',
+            body: '',
+            draft: true,
+        })
+
+        const posts = calls.filter((call) => call.init?.method === 'POST')
+        expect(posts).toHaveLength(2)
+        expect(JSON.parse(String(posts[1].init?.body))).toEqual({
+            title: 't',
+            head: 'december/s1',
+            base: 'main',
+            body: '',
+        })
+        expect(pr?.number).toBe(14)
+        expect(pr?.status).toBe('open')
     })
 
     it('returns the existing pull request when one is already open (422)', async () => {
@@ -234,5 +292,120 @@ describe('git provider: github', () => {
         expect(await status([{ status: 'queued' }])).toBe('pending')
         expect(await status([{ conclusion: 'success' }])).toBe('passing')
         expect(await status([])).toBe('passing')
+    })
+
+    it('lists a folder at the default branch', async () => {
+        const calls = stubFetch(() =>
+            json([
+                { name: 'deploy', path: '.december/skills/deploy', type: 'dir', size: 0 },
+                { name: 'notes.md', path: '.december/skills/notes.md', type: 'file', size: 12 },
+                { name: 'link', path: '.december/skills/link', type: 'symlink', size: 4 },
+                { name: 'vendor', path: '.december/skills/vendor', type: 'submodule', size: 0 },
+            ])
+        )
+
+        const entries = await github.listDir({
+            token: 'tok',
+            repoPath: 'acme/app',
+            path: '.december/skills',
+        })
+
+        // no ref: the host answers for the default branch
+        expect(calls[0].url).toBe('https://api.github.com/repos/acme/app/contents/.december/skills')
+        expect((calls[0].init?.headers as Record<string, string>).Authorization).toBe('Bearer tok')
+        expect(entries).toEqual([
+            { name: 'deploy', path: '.december/skills/deploy', type: 'dir' },
+            { name: 'notes.md', path: '.december/skills/notes.md', type: 'file' },
+        ])
+    })
+
+    it('lists the root folder and encodes each part of a path', async () => {
+        const calls = stubFetch(() => json([]))
+
+        await github.listDir({ token: 'tok', repoPath: 'acme/app', path: '' })
+        await github.listDir({ token: 'tok', repoPath: 'acme/app', path: 'my skills/a#b' })
+
+        expect(calls[0].url).toBe('https://api.github.com/repos/acme/app/contents/')
+        expect(calls[1].url).toBe(
+            'https://api.github.com/repos/acme/app/contents/my%20skills/a%23b'
+        )
+    })
+
+    it('throws with the status when a folder cannot be listed', async () => {
+        stubFetch(() => json({ message: 'Not Found' }, 404))
+        await expect(
+            github.listDir({ token: 'tok', repoPath: 'acme/secret', path: '' })
+        ).rejects.toMatchObject({ name: 'GitProviderError', status: 404 })
+    })
+
+    it('reads a text file', async () => {
+        const text = '---\nname: deploy\n---\nship it \u2713\n'
+        const calls = stubFetch(() =>
+            json({
+                type: 'file',
+                size: Buffer.byteLength(text),
+                encoding: 'base64',
+                // github breaks the base64 text into lines
+                content: Buffer.from(text)
+                    .toString('base64')
+                    .replace(/(.{20})/g, '$1\n'),
+            })
+        )
+
+        const file = await github.readTextFile({
+            token: 'tok',
+            repoPath: 'acme/app',
+            path: '.december/skills/deploy/SKILL.md',
+            maxBytes: 64 * 1024,
+        })
+
+        expect(calls[0].url).toBe(
+            'https://api.github.com/repos/acme/app/contents/.december/skills/deploy/SKILL.md'
+        )
+        expect(file).toEqual({ size: 33, content: text })
+    })
+
+    it('does not return a file that is over the size cap', async () => {
+        stubFetch(() =>
+            json({ type: 'file', size: 70_000, encoding: 'base64', content: 'aGVsbG8=' })
+        )
+        const file = await github.readTextFile({
+            token: 'tok',
+            repoPath: 'acme/app',
+            path: 'big.md',
+            maxBytes: 64 * 1024,
+        })
+        expect(file).toEqual({ size: 70_000, content: null })
+    })
+
+    it('checks the real size of a file, not only the size the host reports', async () => {
+        stubFetch(() =>
+            json({
+                type: 'file',
+                size: 5,
+                encoding: 'base64',
+                content: Buffer.from('x'.repeat(200)).toString('base64'),
+            })
+        )
+        const file = await github.readTextFile({
+            token: 'tok',
+            repoPath: 'acme/app',
+            path: 'big.md',
+            maxBytes: 100,
+        })
+        expect(file).toEqual({ size: 200, content: null })
+    })
+
+    it('throws with the status when a file cannot be read', async () => {
+        stubFetch(() => json({ message: 'Not Found' }, 404))
+        await expect(
+            github.readTextFile({ token: 'tok', repoPath: 'acme/app', path: 'x.md', maxBytes: 10 })
+        ).rejects.toMatchObject({ name: 'GitProviderError', status: 404 })
+
+        // a folder is not a file
+        stubFetch(() => json([{ name: 'a', path: 'x/a', type: 'file' }]))
+        await expect(
+            github.readTextFile({ token: 'tok', repoPath: 'acme/app', path: 'x', maxBytes: 10 })
+        ).rejects.toMatchObject({ name: 'GitProviderError', status: 404 })
     })
 })

@@ -7,6 +7,7 @@ import { AuthPageShell } from './AuthPageShell'
 
 import { AuthModal } from '@/features/auth/components/AuthModal'
 import { profileAPI } from '@/features/profile/api/profile'
+import { turnOffBrowserPushOnSignOut } from '@/features/profile/hooks/useBrowserPush'
 import { apiRequest } from '@/shared/api/client'
 import { LogoLoader } from '@/shared/components/ui/LogoLoader'
 import { resetUserQueryCache } from '@/shared/lib/query-cache'
@@ -183,6 +184,8 @@ export const DeviceActivate: React.FC = () => {
 
     const handleSwitchAccount = async () => {
         clearLoggedInCookie()
+        // before the sign out: it needs the session. the next account starts with push off
+        await turnOffBrowserPushOnSignOut()
         try {
             await profileAPI.signout()
         } catch {

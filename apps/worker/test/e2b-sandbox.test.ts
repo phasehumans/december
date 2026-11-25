@@ -42,6 +42,8 @@ describe('E2BSandboxService (Unit & Integration)', () => {
             data: {
                 vmId: 'sb-12345',
                 vmStatus: 'RUNNING',
+                // the start of the sandbox, for the "running now" list
+                sandboxStartedAt: expect.any(Date),
                 sandboxStatus: 'RUNNING',
                 vmLastActivityAt: expect.any(Date),
             },
@@ -412,6 +414,18 @@ describe('E2BSandboxService (Unit & Integration)', () => {
 
         const origFindUnique = prisma.session.findUnique
         const origUserFindUnique = prisma.user.findUnique
+        const origPrSettingsFindUnique = prisma.pullRequestSettings.findUnique
+        const origSessionUpdate = prisma.session.update
+        const sessionUpdates: any[] = []
+
+        // December alone as the commit author (#637), so the git host is not asked
+        prisma.pullRequestSettings.findUnique = (async () => ({
+            commitAuthor: 'december',
+        })) as any
+        prisma.session.update = (async (args: any) => {
+            sessionUpdates.push(args.data)
+            return {}
+        }) as any
 
         prisma.session.findUnique = (async ({ where }: any) => {
             if (where.id === 'sess-repo-onboard-1') {
@@ -446,8 +460,8 @@ describe('E2BSandboxService (Unit & Integration)', () => {
             // 1. Git global identity configured
             const globalIdentityCmd = executedCommands.find(
                 (cmd) =>
-                    cmd.includes('git config --global user.name "December Agent"') &&
-                    cmd.includes('git config --global user.email "agent@trydecember.com"')
+                    cmd.includes(`git config --global user.name 'December Agent'`) &&
+                    cmd.includes(`git config --global user.email 'agent@trydecember.com'`)
             )
             expect(globalIdentityCmd).toBeDefined()
 
@@ -463,12 +477,17 @@ describe('E2BSandboxService (Unit & Integration)', () => {
             const taskBranchCmd = executedCommands.find(
                 (cmd) =>
                     cmd.includes('checkout -B december/sess-repo-onboard-1') &&
-                    cmd.includes('git config user.name "December Agent"')
+                    cmd.includes(`git config user.name 'December Agent'`)
             )
             expect(taskBranchCmd).toBeDefined()
+
+            // the branch is saved, so the session keeps it when the prefix changes (#637)
+            expect(sessionUpdates).toContainEqual({ prBranch: 'december/sess-repo-onboard-1' })
         } finally {
             prisma.session.findUnique = origFindUnique
             prisma.user.findUnique = origUserFindUnique
+            prisma.pullRequestSettings.findUnique = origPrSettingsFindUnique
+            prisma.session.update = origSessionUpdate
         }
     })
 

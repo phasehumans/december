@@ -34,7 +34,12 @@ export interface McpServerInfo {
     name: string
     config: McpServerConfig
     status: McpServerStatus
+    /** why it did not connect; can hold text the server answered with, so never save it */
     error?: string
+    /** the http status of a failed connect, when there was one */
+    errorStatus?: number
+    /** a fixed reason of the guarded fetch (internal address, redirect); safe to save */
+    errorReason?: string
     serverVersion?: {
         name: string
         version?: string

@@ -7,7 +7,6 @@ import { SessionsViewMenu } from '../src/features/sessions/components/SessionsVi
 import {
     DEFAULT_SESSIONS_VIEW,
     applySessionsView,
-    collectSessionFacets,
     readSessionsView,
     sessionsViewFilters,
     sessionsViewLabel,
@@ -106,16 +105,14 @@ describe('sessions view', () => {
             repo: 'acme/web',
             tag: 'bug',
         }
-        // repository and tag are not sent until the list API is ready for them
-        expect(sessionsViewFilters(full).tags).toBeUndefined()
-        expect(sessionsViewFilters(full).repoName).toBeUndefined()
-        expect(sessionsViewFilters(full, true)).toEqual({
+        // the server filters by repository and tag: the repository goes as the menu has it
+        expect(sessionsViewFilters(full)).toEqual({
             sortBy: 'createdAt',
             sortOrder: 'asc',
             hasPr: true,
             isArchived: true,
             tags: ['bug'],
-            repoName: 'web',
+            repoName: 'acme/web',
         })
     })
 
@@ -169,26 +166,28 @@ describe('sessions view', () => {
         expect(ids({ archived: true })).toEqual(['c'])
         expect(ids({ hasPr: true })).toEqual(['b'])
         expect(ids({ tag: 'bug' })).toEqual(['b'])
-        expect(ids({ repo: 'acme/web' })).toEqual(['b'])
-        expect(ids({ repo: 'acme/api' })).toEqual([])
     })
 
-    test('repositories and tags seen on loaded rows add up and keep the same object when nothing is new', () => {
-        const first = collectSessionFacets(
-            [session({ githubRepoName: 'acme/web', tags: ['bug'] })],
-            { repos: [], tags: [] }
+    // review A4: the server filters by repository. the browser reads only github.com
+    // links, so a second filter here hid rows the server sent (old GitLab sessions)
+    test('rows the server sent for a repository filter all stay', () => {
+        const rows = [
+            session({ id: 'acme-web', githubRepoOwner: 'acme', githubRepoName: 'web' }),
+            session({ id: 'gitlab-link', repoUrl: 'https://gitlab.com/acme/web.git' }),
+            session({ id: 'gitlab-group', repoUrl: 'https://gitlab.com/acme/tools/web' }),
+        ]
+        const ids = (repo: string) =>
+            applySessionsView(rows, { ...DEFAULT_SESSIONS_VIEW, repo }).map((row) => row.id)
+
+        expect(ids('acme/web')).toEqual(['acme-web', 'gitlab-link', 'gitlab-group'])
+        expect(ids('web')).toEqual(['acme-web', 'gitlab-link', 'gitlab-group'])
+    })
+
+    test('the repository filter goes to the server as the menu has it', () => {
+        expect(sessionsViewFilters({ ...DEFAULT_SESSIONS_VIEW, repo: 'acme/web' }).repoName).toBe(
+            'acme/web'
         )
-        expect(first).toEqual({ repos: ['acme/web'], tags: ['bug'] })
-        const second = collectSessionFacets(
-            [session({ githubRepoName: 'acme/web', tags: ['bug'] })],
-            first
-        )
-        expect(second).toBe(first)
-        const third = collectSessionFacets(
-            [session({ githubRepoName: 'acme/api', tags: ['api'] })],
-            first
-        )
-        expect(third).toEqual({ repos: ['acme/api', 'acme/web'], tags: ['api', 'bug'] })
+        expect(sessionsViewFilters(DEFAULT_SESSIONS_VIEW).repoName).toBeUndefined()
     })
 })
 

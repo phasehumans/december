@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import {
     Search,
     Plus,
@@ -17,17 +18,27 @@ import { secretsAPI, type SecretSummary } from '../api/secrets'
 
 import { ProfileSecretsSkeleton } from './ProfileSettingsSkeleton'
 import { SettingsPageHeader } from './SettingsPageHeader'
-import { SettingsSelect, usePreviewOn, usePreviewValue } from './SettingsUi'
+import {
+    blueButtonClass,
+    listBoxClass,
+    listEmptyClass,
+    listHeaderClass,
+    listRowsClass,
+    outlineButtonClass,
+} from './settingsStyles'
+import { SettingsSelect } from './SettingsUi'
 
 import { ModalActions } from '@/features/connections/components/ConnectionsUi'
+import { profileAPI } from '@/features/profile/api/profile'
+import { useConnectedRepos } from '@/features/profile/hooks/useConnectedRepos'
 import { useSettingsTopBarAction } from '@/features/profile/lib/settingsTopBar'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Modal } from '@/shared/components/ui/Modal'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
-// sample choices for the ui-only "use in" field
-const USE_IN_OPTIONS = ['All repositories', 'acme/web', 'acme/api'] as const
+// the "use in" value of a secret that every repository gets
+const ALL_REPOSITORIES = ''
 
 export const ProfileSecretsSettings: React.FC = () => {
     const [secrets, setSecrets] = useState<SecretSummary[]>([])
@@ -41,10 +52,21 @@ export const ProfileSecretsSettings: React.FC = () => {
 
     // Modal state for Add Secret
     const [isAddOpen, setIsAddOpen] = useState(false)
-    // a secret for one repository (N8) is ui only: the choice stays in memory (issue 637)
-    const isPreview = usePreviewOn()
-    const [useIn, setUseIn] = usePreviewValue<Record<string, string>>('secrets.useIn', {})
-    const [newUseIn, setNewUseIn] = useState<string>(USE_IN_OPTIONS[0])
+    // a secret for one repository (N8, issue 637): '' is all repositories
+    const [newUseIn, setNewUseIn] = useState<string>(ALL_REPOSITORIES)
+    const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: profileAPI.getProfile })
+    const { repos } = useConnectedRepos({
+        enabled: Boolean(profile),
+        isGithubConnected: Boolean(profile?.githubAppInstall || profile?.githubConnected),
+    })
+    // the server keeps a repository in lower case: show the name as the git host writes it
+    const repoLabel = (repoFullName: string) =>
+        repos.find((repo) => repo.fullName.toLowerCase() === repoFullName.toLowerCase())
+            ?.fullName ?? repoFullName
+    const useInOptions = [
+        { value: ALL_REPOSITORIES, label: 'All repositories' },
+        ...repos.map((repo) => ({ value: repo.fullName, label: repo.fullName })),
+    ]
     // phones: the + in the top bar opens the Add secret dialog (P3)
     useSettingsTopBarAction('Add secret', () => setIsAddOpen(true))
     const [newName, setNewName] = useState('')
@@ -61,6 +83,7 @@ export const ProfileSecretsSettings: React.FC = () => {
     // Modal state for Bulk Add Secrets
     const [isBulkAddOpen, setIsBulkAddOpen] = useState(false)
     const [bulkContent, setBulkContent] = useState('')
+    const [bulkUseIn, setBulkUseIn] = useState<string>(ALL_REPOSITORIES)
 
     const loadSecrets = async () => {
         setIsLoading(true)
@@ -108,33 +131,35 @@ export const ProfileSecretsSettings: React.FC = () => {
         }
     }
 
-    const toggleReveal = async (name: string) => {
-        const currentlyRevealed = Boolean(revealedNames[name])
+    // a name can be there two times (all repositories and one repository), so the state
+    // of a row is kept by its id and each call names the repository of the row
+    const toggleReveal = async (sec: SecretSummary) => {
+        const currentlyRevealed = Boolean(revealedNames[sec.id])
         if (currentlyRevealed) {
-            setRevealedNames((prev) => ({ ...prev, [name]: false }))
+            setRevealedNames((prev) => ({ ...prev, [sec.id]: false }))
             return
         }
 
-        if (!decryptedValues[name]) {
+        if (!decryptedValues[sec.id]) {
             try {
-                const res = await secretsAPI.getSecretValue(name)
-                setDecryptedValues((prev) => ({ ...prev, [name]: res.secret.value }))
+                const res = await secretsAPI.getSecretValue(sec.name, sec.repoFullName)
+                setDecryptedValues((prev) => ({ ...prev, [sec.id]: res.secret.value }))
             } catch (err: unknown) {
                 const msg = err instanceof Error ? err.message : 'Failed to fetch secret value'
                 setError(msg)
                 return
             }
         }
-        setRevealedNames((prev) => ({ ...prev, [name]: true }))
+        setRevealedNames((prev) => ({ ...prev, [sec.id]: true }))
     }
 
-    const handleCopy = async (name: string) => {
-        let val = decryptedValues[name]
+    const handleCopy = async (sec: SecretSummary) => {
+        let val = decryptedValues[sec.id]
         if (!val) {
             try {
-                const res = await secretsAPI.getSecretValue(name)
+                const res = await secretsAPI.getSecretValue(sec.name, sec.repoFullName)
                 val = res.secret.value
-                setDecryptedValues((prev) => ({ ...prev, [name]: val }))
+                setDecryptedValues((prev) => ({ ...prev, [sec.id]: val }))
             } catch (err: unknown) {
                 const msg = err instanceof Error ? err.message : 'Failed to fetch secret value'
                 setError(msg)
@@ -143,23 +168,23 @@ export const ProfileSecretsSettings: React.FC = () => {
         }
         if (val) {
             await navigator.clipboard.writeText(val)
-            setCopiedName(name)
+            setCopiedName(sec.id)
             setTimeout(() => setCopiedName(null), 2000)
         }
     }
 
-    const handleDelete = async (name: string) => {
+    const handleDelete = async (sec: SecretSummary) => {
         try {
-            await secretsAPI.deleteSecret(name)
-            setSecrets((prev) => prev.filter((s) => s.name !== name))
+            await secretsAPI.deleteSecret(sec.name, sec.repoFullName)
+            setSecrets((prev) => prev.filter((s) => s.id !== sec.id))
             setDecryptedValues((prev) => {
                 const copy = { ...prev }
-                delete copy[name]
+                delete copy[sec.id]
                 return copy
             })
             setRevealedNames((prev) => {
                 const copy = { ...prev }
-                delete copy[name]
+                delete copy[sec.id]
                 return copy
             })
         } catch (err: unknown) {
@@ -184,12 +209,15 @@ export const ProfileSecretsSettings: React.FC = () => {
                 name: formattedName,
                 value: newValue.trim(),
                 note: newNote.trim() || undefined,
+                repoFullName: newUseIn || null,
             })
-            if (isPreview) setUseIn({ ...useIn, [formattedName]: newUseIn })
+            // the row may be saved again with a new value: drop the value read before
+            setDecryptedValues({})
+            setRevealedNames({})
             setNewName('')
             setNewValue('')
             setNewNote('')
-            setNewUseIn(USE_IN_OPTIONS[0])
+            setNewUseIn(ALL_REPOSITORIES)
             setShowNewValue(false)
             setIsAddOpen(false)
             await loadSecrets()
@@ -233,8 +261,12 @@ export const ProfileSecretsSettings: React.FC = () => {
         setIsSubmitting(true)
         setError(null)
         try {
-            await secretsAPI.bulkCreateSecrets({ secrets: items })
+            await secretsAPI.bulkCreateSecrets({
+                secrets: items,
+                repoFullName: bulkUseIn || null,
+            })
             setBulkContent('')
+            setBulkUseIn(ALL_REPOSITORIES)
             setIsBulkAddOpen(false)
             await loadSecrets()
         } catch (err: unknown) {
@@ -275,7 +307,6 @@ export const ProfileSecretsSettings: React.FC = () => {
                     <ErrorAlert message={error} onClear={() => setError(null)} />
 
                     {/* Controls Row: Search Input + Action Buttons */}
-                    {/* Controls Row: Search Input + Action Buttons */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                         {/* Search bar */}
                         <div className="relative flex-1 max-w-full sm:max-w-[280px]">
@@ -285,7 +316,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                                 placeholder="Search secrets"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-3 py-1.5 bg-[#202020] border border-[#282828] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none focus:border-[#5A5A5A] transition-colors"
+                                className="w-full pl-9 pr-3 py-1.5 bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none focus:border-[#5A5A5A] transition-colors"
                             />
                         </div>
 
@@ -293,14 +324,14 @@ export const ProfileSecretsSettings: React.FC = () => {
                         <div className="hidden md:flex items-center gap-2">
                             <button
                                 onClick={() => setIsBulkAddOpen(true)}
-                                className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg border border-[#282828] bg-[#202020] hover:bg-[#282828] text-[12.5px] font-medium text-[#D6D5C9] hover:text-white transition-colors cursor-pointer text-center"
+                                className={outlineButtonClass}
                             >
                                 Bulk add
                             </button>
 
                             <button
                                 onClick={() => setIsAddOpen(true)}
-                                className="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                                className={`${blueButtonClass} flex items-center justify-center gap-1.5`}
                             >
                                 <Plus className="w-3.5 h-3.5" />
                                 <span>Add secret</span>
@@ -309,13 +340,13 @@ export const ProfileSecretsSettings: React.FC = () => {
                     </div>
 
                     {/* Secrets Table Container */}
-                    <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1 flex flex-col">
+                    <div className={listBoxClass}>
                         {/* Table Header: desktop only, phone rows explain themselves */}
-                        <div className="hidden md:block bg-[#202020] border-b border-[#242323] px-4 py-2.5 text-[12px] font-medium text-[#7B7A79]">
+                        <div className={`hidden md:block ${listHeaderClass}`}>
                             <div className="grid grid-cols-12">
-                                <div className={isPreview ? 'col-span-3' : 'col-span-4'}>Name</div>
-                                {isPreview && <div className="col-span-2">Use in</div>}
-                                <div className={isPreview ? 'col-span-3' : 'col-span-4'}>Note</div>
+                                <div className="col-span-3">Name</div>
+                                <div className="col-span-2">Use in</div>
+                                <div className="col-span-3">Note</div>
                                 <div className="col-span-2">Updated at</div>
                                 <div className="col-span-2 text-right"></div>
                             </div>
@@ -325,14 +356,17 @@ export const ProfileSecretsSettings: React.FC = () => {
                         {isLoading || isSkeletonPreviewActive() ? (
                             <ProfileSecretsSkeleton />
                         ) : filteredSecrets.length === 0 ? (
-                            <div className="px-4 py-6 text-[13px] text-[#7B7A79]">
+                            <div className={listEmptyClass}>
                                 {searchQuery.trim() ? 'No secrets match' : 'No secrets yet'}
                             </div>
                         ) : (
-                            <div className="flex flex-col divide-y divide-[#242323]">
+                            <div className={listRowsClass}>
                                 {paginatedSecrets.map((sec) => {
-                                    const isRevealed = Boolean(revealedNames[sec.name])
-                                    const decryptedVal = decryptedValues[sec.name]
+                                    const isRevealed = Boolean(revealedNames[sec.id])
+                                    const decryptedVal = decryptedValues[sec.id]
+                                    const usedIn = sec.repoFullName
+                                        ? repoLabel(sec.repoFullName)
+                                        : null
 
                                     return (
                                         <React.Fragment key={sec.id}>
@@ -348,6 +382,11 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                         ) : (
                                                             <span className="font-mono font-medium text-white truncate text-[13px]">
                                                                 ${sec.name}
+                                                            </span>
+                                                        )}
+                                                        {usedIn && (
+                                                            <span className="text-[12px] text-[#8F8E8D] truncate mt-0.5">
+                                                                {usedIn}
                                                             </span>
                                                         )}
                                                         {sec.note && (
@@ -371,18 +410,18 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                                     e.stopPropagation()
                                                                     setOpenMobileMenuName(
                                                                         openMobileMenuName ===
-                                                                            sec.name
+                                                                            sec.id
                                                                             ? null
-                                                                            : sec.name
+                                                                            : sec.id
                                                                     )
                                                                 }}
-                                                                className="p-1 rounded text-[#7B7A79] hover:text-white hover:bg-[#202020] active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+                                                                className="p-1 rounded text-[#7B7A79] hover:text-white hover:bg-[#2A2A2A] active:scale-95 transition-all cursor-pointer flex items-center justify-center"
                                                                 aria-label="Secret options"
                                                             >
                                                                 <MoreHorizontal className="w-4 h-4" />
                                                             </button>
 
-                                                            {openMobileMenuName === sec.name && (
+                                                            {openMobileMenuName === sec.id && (
                                                                 <>
                                                                     <div
                                                                         className="fixed inset-0 z-40"
@@ -398,9 +437,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                                             type="button"
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation()
-                                                                                toggleReveal(
-                                                                                    sec.name
-                                                                                )
+                                                                                toggleReveal(sec)
                                                                                 setOpenMobileMenuName(
                                                                                     null
                                                                                 )
@@ -423,7 +460,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                                             type="button"
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation()
-                                                                                handleCopy(sec.name)
+                                                                                handleCopy(sec)
                                                                                 setOpenMobileMenuName(
                                                                                     null
                                                                                 )
@@ -431,14 +468,14 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                                             className="flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-[12px] text-[#D6D5C9] hover:text-white hover:bg-[#282828] transition-colors text-left cursor-pointer"
                                                                         >
                                                                             {copiedName ===
-                                                                            sec.name ? (
+                                                                            sec.id ? (
                                                                                 <Check className="w-3.5 h-3.5 text-[#34D399]" />
                                                                             ) : (
                                                                                 <Copy className="w-3.5 h-3.5 text-[#8F8E8D]" />
                                                                             )}
                                                                             <span>
                                                                                 {copiedName ===
-                                                                                sec.name
+                                                                                sec.id
                                                                                     ? 'Copied'
                                                                                     : 'Copy value'}
                                                                             </span>
@@ -448,9 +485,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                                             type="button"
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation()
-                                                                                handleDelete(
-                                                                                    sec.name
-                                                                                )
+                                                                                handleDelete(sec)
                                                                                 setOpenMobileMenuName(
                                                                                     null
                                                                                 )
@@ -473,9 +508,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                                             {/* Desktop row (>= md) */}
                                             <div className="group hidden md:grid grid-cols-12 items-center px-4 py-3 text-[13px]">
                                                 {/* Name / Revealed Value */}
-                                                <div
-                                                    className={`${isPreview ? 'col-span-3' : 'col-span-4'} font-mono font-medium truncate pr-2`}
-                                                >
+                                                <div className="col-span-3 font-mono font-medium truncate pr-2">
                                                     {isRevealed && decryptedVal ? (
                                                         <span className="text-[#87B2F4] select-all truncate">
                                                             {decryptedVal}
@@ -487,18 +520,16 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                     )}
                                                 </div>
 
-                                                {/* Note */}
-                                                {isPreview && (
-                                                    <div className="col-span-2 text-[#7B7A79] truncate pr-2">
-                                                        {useIn[sec.name] &&
-                                                        useIn[sec.name] !== USE_IN_OPTIONS[0]
-                                                            ? useIn[sec.name]
-                                                            : 'All'}
-                                                    </div>
-                                                )}
+                                                {/* Use in: the repository, or All */}
                                                 <div
-                                                    className={`${isPreview ? 'col-span-3' : 'col-span-4'} text-[#7B7A79] truncate pr-2`}
+                                                    data-use-in=""
+                                                    className="col-span-2 text-[#7B7A79] truncate pr-2"
                                                 >
+                                                    {usedIn ?? 'All'}
+                                                </div>
+
+                                                {/* Note */}
+                                                <div className="col-span-3 text-[#7B7A79] truncate pr-2">
                                                     {sec.note || ''}
                                                 </div>
 
@@ -518,8 +549,8 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                         }
                                                     >
                                                         <button
-                                                            onClick={() => toggleReveal(sec.name)}
-                                                            className="p-1 rounded text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#242323] transition-colors cursor-pointer"
+                                                            onClick={() => toggleReveal(sec)}
+                                                            className="p-1 rounded text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#2A2A2A] transition-colors cursor-pointer"
                                                         >
                                                             {isRevealed ? (
                                                                 <EyeOff className="w-3.5 h-3.5" />
@@ -534,10 +565,10 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                         content="Copy secret value"
                                                     >
                                                         <button
-                                                            onClick={() => handleCopy(sec.name)}
-                                                            className="p-1 rounded text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#242323] transition-colors cursor-pointer"
+                                                            onClick={() => handleCopy(sec)}
+                                                            className="p-1 rounded text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-[#2A2A2A] transition-colors cursor-pointer"
                                                         >
-                                                            {copiedName === sec.name ? (
+                                                            {copiedName === sec.id ? (
                                                                 <Check className="w-3.5 h-3.5 text-[#34D399]" />
                                                             ) : (
                                                                 <Copy className="w-3.5 h-3.5" />
@@ -551,8 +582,8 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                         content="Delete secret"
                                                     >
                                                         <button
-                                                            onClick={() => handleDelete(sec.name)}
-                                                            className="p-1 rounded text-[#7B7A79] hover:text-red-400 hover:bg-[#242323] transition-colors cursor-pointer"
+                                                            onClick={() => handleDelete(sec)}
+                                                            className="p-1 rounded text-[#7B7A79] hover:text-red-400 hover:bg-[#2A2A2A] transition-colors cursor-pointer"
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </button>
@@ -579,7 +610,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                        className="flex items-center justify-between w-[70px] bg-[#191919] border border-[#282828] rounded-lg px-2.5 py-1 text-[12.5px] text-[#D6D5C9] hover:bg-[#202020] transition-colors focus:outline-none focus:border-[#7B7A79] font-medium cursor-pointer"
+                                        className="flex items-center justify-between w-[70px] bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-2.5 py-1 text-[12.5px] text-[#D6D5C9] hover:bg-[#242424] transition-colors focus:outline-none focus:border-[#7B7A79] font-medium cursor-pointer"
                                     >
                                         <span>{limit}</span>
                                         <ChevronDown className="w-3.5 h-3.5 text-[#7B7A79]" />
@@ -591,7 +622,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                                                 className="fixed inset-0 z-10"
                                                 onClick={() => setIsDropdownOpen(false)}
                                             />
-                                            <div className="absolute bottom-full left-0 mb-1 z-20 w-[70px] bg-[#191919] border border-[#242323] rounded-lg shadow-xl overflow-hidden py-1">
+                                            <div className="absolute bottom-full left-0 mb-1 z-20 w-[70px] bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg shadow-xl overflow-hidden py-1">
                                                 {[10, 20, 30].map((num) => (
                                                     <button
                                                         key={num}
@@ -653,6 +684,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                     setNewName('')
                     setNewValue('')
                     setNewNote('')
+                    setNewUseIn(ALL_REPOSITORIES)
                     setShowNewValue(false)
                 }}
                 title="Add secret"
@@ -715,18 +747,16 @@ export const ProfileSecretsSettings: React.FC = () => {
                         </div>
                     </div>
 
-                    {isPreview && (
-                        <div className="flex flex-col gap-1.5">
-                            <span className="text-[12px] font-medium text-[#8F8E8D]">Use in</span>
-                            <SettingsSelect
-                                label="Use in"
-                                value={newUseIn}
-                                options={USE_IN_OPTIONS}
-                                onChange={setNewUseIn}
-                                className="w-full"
-                            />
-                        </div>
-                    )}
+                    <div className="flex flex-col gap-1.5">
+                        <span className="text-[12px] font-medium text-[#8F8E8D]">Use in</span>
+                        <SettingsSelect
+                            label="Use in"
+                            value={newUseIn}
+                            options={useInOptions}
+                            onChange={setNewUseIn}
+                            className="w-full"
+                        />
+                    </div>
                     <div className="flex flex-col gap-1.5">
                         <label
                             htmlFor="secret-note-input"
@@ -771,6 +801,7 @@ export const ProfileSecretsSettings: React.FC = () => {
                 onClose={() => {
                     setIsBulkAddOpen(false)
                     setBulkContent('')
+                    setBulkUseIn(ALL_REPOSITORIES)
                 }}
                 title="Add secrets"
                 description="One NAME=value on each line."
@@ -788,6 +819,16 @@ export const ProfileSecretsSettings: React.FC = () => {
                             rows={8}
                             className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] font-mono focus:outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948] resize-none"
                             required
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <span className="text-[12px] font-medium text-[#8F8E8D]">Use in</span>
+                        <SettingsSelect
+                            label="Use in"
+                            value={bulkUseIn}
+                            options={useInOptions}
+                            onChange={setBulkUseIn}
+                            className="w-full"
                         />
                     </div>
 

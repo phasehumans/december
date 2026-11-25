@@ -457,8 +457,17 @@ describe('Billing Service - Unit Tests', () => {
             const originalFindUser = billingRepository.findUserById
             const originalFindEvents = billingRepository.findManyUsageEvents
             const originalCountEvents = billingRepository.countUsageEvents
+            const originalSumUsage = billingRepository.sumUsage
+            const originalSumByBucket = billingRepository.sumUsageByBucket
 
             billingRepository.findUserById = (async () => ({ id: 'user-1' })) as any
+            // the sums run in the database: this test stays out of it
+            billingRepository.sumUsage = (async () => ({
+                costInCents: 80,
+                totalTokens: 0,
+                sessions: 0,
+            })) as any
+            billingRepository.sumUsageByBucket = (async () => []) as any
             const pStart = new Date('2026-01-01T00:00:00.000Z')
             const pEnd = new Date('2026-01-02T00:00:00.000Z')
 
@@ -484,6 +493,8 @@ describe('Billing Service - Unit Tests', () => {
                 billingRepository.findUserById = originalFindUser
                 billingRepository.findManyUsageEvents = originalFindEvents
                 billingRepository.countUsageEvents = originalCountEvents
+                billingRepository.sumUsage = originalSumUsage
+                billingRepository.sumUsageByBucket = originalSumByBucket
             }
         })
     })

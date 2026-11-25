@@ -9,7 +9,7 @@ import { profileAPI } from '@/features/profile/api/profile'
  * The values are sent with the prompt (#632). "Set as default" saves them on the
  * account; this browser keeps a copy so the menu is right before the profile loads.
  */
-export interface PromptConfigValues {
+interface PromptConfigValues {
     planFirst: boolean
     openPullRequest: boolean
 }

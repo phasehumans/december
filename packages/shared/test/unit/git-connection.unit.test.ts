@@ -64,7 +64,10 @@ describe('resolveAccessToken', () => {
         expect(saved).toHaveLength(1)
         expect(decryptText({ encryptedText: saved[0].encryptedAccessToken, keyHex })).toBe('a2')
         expect(decryptText({ encryptedText: saved[0].encryptedRefreshToken, keyHex })).toBe('r2')
-        expect(saved[0].encryptedAccessToken).not.toContain('a2')
+        // saved encrypted, never as the plain token. the encrypted text is random hex, so
+        // it can hold the letters "a2" by chance: only the whole value is compared
+        expect(saved[0].encryptedAccessToken).not.toBe('a2')
+        expect(saved[0].encryptedRefreshToken).not.toBe('r2')
         expect(saved[0].expiresAt).toBeInstanceOf(Date)
     })
 

@@ -35,3 +35,33 @@ export const useInfiniteSessions = (filters?: SessionFilters) => {
         placeholderData: keepPreviousData,
     })
 }
+
+/**
+ * the counts beside the toolbar switches (Running, Open), from the server, so they cover
+ * every session and not only the loaded rows. under ['sessions'], so every list write
+ * reads them again
+ */
+export const useSessionCounts = () => {
+    const isAuthenticated = useAppStore((state) => state.isAuthenticated)
+
+    return useQuery({
+        queryKey: ['sessions', 'counts'],
+        queryFn: () => sessionAPI.getSessionCounts(),
+        enabled: isAuthenticated,
+    })
+}
+
+/**
+ * every repository and tag of the user, for the Repository and Tag lists of a sort and
+ * filter menu. hasPr keeps only those of sessions that opened a pull request
+ */
+export const useSessionFacets = (options?: { hasPr?: boolean }) => {
+    const isAuthenticated = useAppStore((state) => state.isAuthenticated)
+    const hasPr = options?.hasPr ?? false
+
+    return useQuery({
+        queryKey: ['sessions', 'facets', hasPr ? 'pull-requests' : 'all'],
+        queryFn: () => sessionAPI.getSessionFacets({ hasPr }),
+        enabled: isAuthenticated,
+    })
+}

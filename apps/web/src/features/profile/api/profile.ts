@@ -33,6 +33,12 @@ export type Profile = {
     defaultPlanFirst?: boolean
     defaultEffort?: 'fast' | 'deep'
     defaultOpenPullRequest?: boolean
+    // more defaults for a new session (#637): the model of the user's own key, the
+    // repository ('last-used' or a full name) and the base branch ('default' or a name)
+    defaultOwnKeyProvider?: string | null
+    defaultOwnKeyModel?: string | null
+    defaultRepository?: string
+    defaultBaseBranch?: string
     // the admin page can open this user's sessions until this date (#636)
     supportAccessUntil?: string | null
     // preferences saved on the account (#636), null when none are saved
@@ -138,6 +144,10 @@ export type SessionDefaults = {
     defaultPlanFirst: boolean
     defaultEffort: 'fast' | 'deep'
     defaultOpenPullRequest: boolean
+    defaultOwnKeyProvider: string | null
+    defaultOwnKeyModel: string | null
+    defaultRepository: string
+    defaultBaseBranch: string
 }
 
 // /permissions (#632): tool calls the agent may never make in cloud sessions
@@ -240,6 +250,14 @@ const getPushKey = () => {
     return apiRequest<{ publicKey: string | null }>('/notification/push/key')
 }
 
+// does this browser (its push endpoint) have push for the signed-in user
+const getPushStatus = (endpoint: string) => {
+    return apiRequest<{ subscribed: boolean }>('/notification/push/status', {
+        method: 'POST',
+        body: JSON.stringify({ endpoint }),
+    })
+}
+
 const subscribePush = (subscription: PushSubscriptionJSON) => {
     return apiRequest<{ notifyPush: boolean }>('/notification/push/subscribe', {
         method: 'POST',
@@ -325,6 +343,21 @@ export type GitlabStatus = {
     username: string | null
 }
 
+// does the repository have this branch (#637). the prompt box asks before it starts on the
+// default base branch
+const checkRepoBranch = (data: {
+    repository: string
+    branch: string
+    provider?: 'GITHUB' | 'GITLAB'
+}) => {
+    const params = new URLSearchParams({
+        repository: data.repository,
+        branch: data.branch,
+        provider: data.provider ?? 'GITHUB',
+    })
+    return apiRequest<{ exists: boolean }>(`/platform/repos/branch?${params}`)
+}
+
 const getGitlabStatus = () => apiRequest<GitlabStatus>('/integrations/gitlab')
 
 const getGitlabRepos = () => apiRequest<GithubRepo[]>('/platform/gitlab/repos')
@@ -404,6 +437,7 @@ export const profileAPI = {
     getDataExport,
     requestDataExport,
     getPushKey,
+    getPushStatus,
     subscribePush,
     unsubscribePush,
     deleteAccount,
@@ -411,6 +445,7 @@ export const profileAPI = {
     updateMemories,
     deleteMemories,
     getGithubRepos,
+    checkRepoBranch,
     getGithubConnectUrl,
     getGitlabStatus,
     getGitlabRepos,

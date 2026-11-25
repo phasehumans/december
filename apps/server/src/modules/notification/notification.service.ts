@@ -37,9 +37,15 @@ import type {
     DeleteAllReadNotification,
     MarkAllAsRead,
     NotifyEvent,
+    NotifyLowCredits,
     SendPushToUser,
+    InvalidateProfileCache,
+    GetPushConfig,
+    GetPushStatus,
     SubscribePush,
     UnsubscribePush,
+    RemovePushOnSignOut,
+    StartDigestWindow,
     SendDailyDigests,
 } from './notification.types'
 
@@ -162,7 +168,8 @@ const deleteAllReadNotification = async (data: DeleteAllReadNotification) => {
 const settingsLink = () => [{ label: 'Notification settings', url: `${appUrl()}/settings/account` }]
 
 // the profile response carries notifyPush; it is cached by the setting module
-const invalidateProfileCache = async (userId: string) => {
+const invalidateProfileCache = async (data: InvalidateProfileCache) => {
+    const { userId } = data
     await appCache.del(appCache.key('setting', 'profile', userId))
 }
 
@@ -217,7 +224,7 @@ const notifyEvent = async (data: NotifyEvent) => {
         message: words.message,
         type: words.type,
         link: words.path,
-        toast: kind === 'SESSION_NEEDS_INPUT',
+        toast: kind === 'SESSION_NEEDS_INPUT' || kind === 'SPEND_LIMIT',
     })
 
     if (isWatching) return { inbox: true, email: false, push: 0 }
@@ -250,11 +257,44 @@ const notifyEvent = async (data: NotifyEvent) => {
     return { inbox: true, email, push }
 }
 
-const getPushConfig = async () => ({ publicKey: vapidKeys()?.publicKey ?? null })
+/**
+ * Low credits, from every place that charges credits: the worker's CreditsLow event (each
+ * server node gets it) and the server's own charges. All of them claim the same mark on the
+ * user, so one drop under the user's amount gives one alert, and the next one goes out only
+ * after the balance went over the amount and under it again (#638). Which charge is a drop:
+ * crossedLowCreditsAmount.
+ */
+const notifyLowCredits = async (data: NotifyLowCredits) => {
+    const { userId, balanceInCents } = data
+
+    if (!(await notificationRepository.claimLowBalanceAlert(userId))) {
+        return { inbox: false, email: false, push: 0 }
+    }
+    return notifyEvent({
+        userId,
+        kind: 'LOW_CREDITS',
+        // whole cents, rounded down: a balance just under the amount does not show the amount
+        detail: Number.isFinite(balanceInCents) ? String(Math.floor(balanceInCents)) : undefined,
+    })
+}
+
+const getPushConfig = async (_data: GetPushConfig) => ({
+    publicKey: vapidKeys()?.publicKey ?? null,
+})
+
+/**
+ * The switch on the account page: does this browser have push for this user. A browser
+ * keeps its endpoint when another user signs in on it, so only the server knows.
+ */
+const getPushStatus = async (data: GetPushStatus) => {
+    const { userId, endpoint } = data
+    const subscription = await notificationRepository.findPushSubscription({ userId, endpoint })
+    return { subscribed: subscription !== null }
+}
 
 // this browser gets push; turning it on anywhere turns it on for the account
 const subscribePush = async (data: SubscribePush) => {
-    const { userId, endpoint, p256dh, auth, userAgent } = data
+    const { userId, authSessionId, endpoint, p256dh, auth, userAgent } = data
 
     if (!vapidKeys()) {
         throw new AppError('push is not set up on this server', 503)
@@ -265,13 +305,14 @@ const subscribePush = async (data: SubscribePush) => {
 
     await notificationRepository.upsertPushSubscription({
         userId,
+        authSessionId,
         endpoint,
         p256dh,
         auth,
         userAgent: userAgent?.slice(0, 300),
     })
     const updated = await notificationRepository.updateNotifyPush(userId, true)
-    await invalidateProfileCache(userId)
+    await invalidateProfileCache({ userId })
     return updated
 }
 
@@ -282,8 +323,39 @@ const unsubscribePush = async (data: UnsubscribePush) => {
     await notificationRepository.deletePushSubscription({ userId, endpoint })
     const remaining = await notificationRepository.countPushSubscriptions(userId)
     const updated = await notificationRepository.updateNotifyPush(userId, remaining > 0)
-    await invalidateProfileCache(userId)
+    await invalidateProfileCache({ userId })
     return { ...updated, devices: remaining }
+}
+
+/**
+ * A sign-in ended (sign out, a device signed out from the list, sign out everywhere): its
+ * browsers get no more push. With no authSessionId, every browser of the user.
+ */
+const removePushOnSignOut = async (data: RemovePushOnSignOut) => {
+    const { userId, authSessionId } = data
+
+    const removed = await notificationRepository.deletePushSubscriptionsOnSignOut({
+        userId,
+        authSessionId,
+    })
+    if (removed.count === 0) return { removed: 0 }
+
+    const remaining = await notificationRepository.countPushSubscriptions(userId)
+    if (remaining === 0) {
+        await notificationRepository.updateNotifyPush(userId, false)
+        await invalidateProfileCache({ userId })
+    }
+    return { removed: removed.count }
+}
+
+/**
+ * The user turns the summary on: the window of the first summary starts now, not at the
+ * last summary from before it was off. Saving "on" again changes nothing.
+ */
+const startDigestWindow = async (data: StartDigestWindow) => {
+    const { userId, now = new Date() } = data
+    const result = await notificationRepository.startDigestWindow(userId, now)
+    return { started: result.count > 0 }
 }
 
 /**
@@ -297,9 +369,23 @@ const sendDailyDigests = async (data: SendDailyDigests) => {
     let sent = 0
     for (const user of users) {
         try {
-            if (!isDigestDue({ now, ...user })) continue
+            const since = user.lastDigestAt
+            if (!since) {
+                // no saved start (turned on before startDigestWindow): the window starts here
+                await notificationRepository.markDigestSent(user.id, now)
+                continue
+            }
+            if (
+                !isDigestDue({
+                    now,
+                    timezone: user.timezone,
+                    digestTime: user.digestTime,
+                    lastDigestAt: since,
+                })
+            ) {
+                continue
+            }
 
-            const since = user.lastDigestAt ?? new Date(now.getTime() - 24 * 60 * 60 * 1000)
             const body = digestBody(await notificationRepository.summarizeSince(user.id, since))
             if (body) {
                 await emailService.sendMessageEmail({
@@ -321,10 +407,14 @@ const sendDailyDigests = async (data: SendDailyDigests) => {
 
 export const notificationService = {
     notifyEvent,
+    notifyLowCredits,
     sendPushToUser,
     getPushConfig,
+    getPushStatus,
     subscribePush,
     unsubscribePush,
+    removePushOnSignOut,
+    startDigestWindow,
     sendDailyDigests,
     getNotifications,
     getUnreadCount,

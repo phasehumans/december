@@ -103,8 +103,8 @@ describe('Session configuration and the pull requests list (#632)', () => {
     })
 
     afterAll(async () => {
-        await cleanupTestUser(ownerEmail)
-        await cleanupTestUser(otherEmail)
+        await cleanupTestUser({ email: ownerEmail })
+        await cleanupTestUser({ email: otherEmail })
     })
 
     describe('session configuration', () => {
@@ -138,7 +138,8 @@ describe('Session configuration and the pull requests list (#632)', () => {
                 defaultOpenPullRequest: false,
             })
             expect(saved.status).toBe(200)
-            expect(saved.body.data).toEqual({
+            // the answer also holds the other defaults (#637)
+            expect(saved.body.data).toMatchObject({
                 defaultPlanFirst: true,
                 defaultEffort: 'deep',
                 defaultOpenPullRequest: false,
@@ -190,6 +191,9 @@ describe('Session configuration and the pull requests list (#632)', () => {
                 openPullRequest: true,
                 model: 'gemini-2.5-flash',
                 provider: 'gemini',
+                // the + menu switches of the session: nothing turned off
+                disabledPlugins: [],
+                disabledMcps: [],
             })
 
             // nothing sent: the saved values hold
@@ -323,6 +327,62 @@ describe('Session configuration and the pull requests list (#632)', () => {
             expect(bad.status).toBe(400)
         })
 
+        // review A4: the same match as GET /session?repoName=
+        it('finds a repository that a row knows only by its link', async () => {
+            const linkOnly = await makePrSession(ownerId, {
+                githubRepoOwner: null,
+                githubRepoName: null,
+                repoUrl: `https://gitlab.com/${repoOwner}/tools/importer.git`,
+            })
+            await makePrSession(ownerId, {
+                githubRepoOwner: null,
+                githubRepoName: null,
+                repoUrl: `https://gitlab.com/${repoOwner}/tools/other`,
+            })
+
+            const ids = async (repo: string) => {
+                const res = await as(ownerToken).get('/session/pull-requests').query({ repo })
+                expect(res.status).toBe(200)
+                return (res.body.data.pullRequests as Array<{ sessionId: string }>).map(
+                    (row) => row.sessionId
+                )
+            }
+
+            expect(await ids(`${repoOwner}/tools/importer`)).toEqual([linkOnly.id])
+            expect(await ids(`${repoOwner.toUpperCase()}/Tools/Importer`)).toEqual([linkOnly.id])
+            expect(await ids('importer')).toEqual([linkOnly.id])
+            expect(await ids(`nobody-${stamp}/importer`)).toEqual([])
+        })
+
+        it('leaves an open pull request of an archived session out, as the Open count does', async () => {
+            const open = await makePrSession(ownerId, { prState: 'open' })
+            const draft = await makePrSession(ownerId, { prState: 'draft' })
+            const archived = await makePrSession(ownerId, { prState: 'open', isArchived: true })
+            // a merge archives the session: the merged pull request stays in the list
+            const merged = await makePrSession(ownerId, { prState: 'merged', isArchived: true })
+            // a search and a deleted session are in no list and in no count
+            await makePrSession(ownerId, { prState: 'open', type: 'SEARCH' })
+            await makePrSession(ownerId, { prState: 'open', deletedAt: new Date() })
+
+            const list = await as(ownerToken).get('/session/pull-requests?state=open,draft')
+            const ids = list.body.data.pullRequests.map((row: any) => row.sessionId)
+            expect(ids.sort()).toEqual([open.id, draft.id].sort())
+            expect(list.body.data.pagination.total).toBe(2)
+
+            const counts = await as(ownerToken).get('/session/counts')
+            expect(counts.body.data.openPullRequests).toBe(2)
+
+            const all = await as(ownerToken).get('/session/pull-requests')
+            expect(all.body.data.pullRequests.map((row: any) => row.sessionId).sort()).toEqual(
+                [open.id, draft.id, merged.id].sort()
+            )
+
+            const onlyArchived = await as(ownerToken).get('/session/pull-requests?isArchived=true')
+            expect(
+                onlyArchived.body.data.pullRequests.map((row: any) => row.sessionId).sort()
+            ).toEqual([archived.id, merged.id].sort())
+        })
+
         it('sorts by the opened date, rows without one last', async () => {
             const older = await makePrSession(ownerId, {
                 prOpenedAt: new Date(Date.UTC(2026, 0, 2)),
@@ -340,6 +400,30 @@ describe('Session configuration and the pull requests list (#632)', () => {
             ).toEqual([newer.id, older.id, undated.id])
         })
 
+        it('pages do not repeat or skip rows that have the same time', async () => {
+            // the web loads this list 30 rows at a time: the id breaks a tie, newest id first
+            const sameTime = new Date(Date.UTC(2026, 0, 2))
+            const made = []
+            for (let index = 0; index < 5; index += 1) {
+                made.push(await makePrSession(ownerId, { updatedAt: sameTime }))
+            }
+            const idsNewestFirst = made
+                .map((session) => session.id)
+                .sort()
+                .reverse()
+
+            const paged: string[] = []
+            for (const page of ['1', '2', '3']) {
+                const res = await as(ownerToken)
+                    .get('/session/pull-requests')
+                    .query({ sortBy: 'updatedAt', limit: '2', page })
+                paged.push(
+                    ...res.body.data.pullRequests.map((row: { sessionId: string }) => row.sessionId)
+                )
+            }
+            expect(paged).toEqual(idsNewestFirst)
+        })
+
         it('marks a stale pull request as checked when the host cannot be asked', async () => {
             // no github connection for this user: the refresh gets no token
             const stale = await makePrSession(ownerId, { prCheckedAt: null })
@@ -351,6 +435,91 @@ describe('Session configuration and the pull requests list (#632)', () => {
             expect(row?.prState).toBe('open')
             // a check does not move the session up the sessions list
             expect(row?.updatedAt.toISOString()).toBe(stale.updatedAt.toISOString())
+        })
+
+        it('repairs an open pull request that was not checked for an hour (a missed webhook)', async () => {
+            const hoursAgo = (hours: number) => new Date(Date.now() - hours * 60 * 60 * 1000)
+            // merged on github two hours ago, and the webhook never came
+            const stale = await makePrSession(ownerId, { prCheckedAt: hoursAgo(2) })
+            // checked ten minutes ago: the host is not asked again
+            const fresh = await makePrSession(ownerId, { prCheckedAt: hoursAgo(1 / 6) })
+
+            // answers api.github.com and lets every other request through
+            const realFetch = globalThis.fetch
+            const githubCalls: { url: string; authorization?: string }[] = []
+            globalThis.fetch = (async (input: any, init?: RequestInit) => {
+                const url = String(input)
+                if (!url.startsWith('https://api.github.com')) return realFetch(input, init)
+                githubCalls.push({
+                    url,
+                    authorization: (init?.headers as Record<string, string>)?.Authorization,
+                })
+                return new Response(
+                    JSON.stringify({
+                        number: stale.prNumber,
+                        html_url: `https://github.com/${repoOwner}/web/pull/${stale.prNumber}`,
+                        title: 'feat: login page (final)',
+                        state: 'closed',
+                        draft: false,
+                        merged_at: '2026-01-04T10:00:00Z',
+                        closed_at: '2026-01-04T10:00:00Z',
+                        created_at: '2026-01-03T10:00:00Z',
+                        additions: 51,
+                        deletions: 7,
+                    }),
+                    { status: 200, headers: { 'Content-Type': 'application/json' } }
+                )
+            }) as typeof fetch
+            // the token the refresh reads the repository with
+            await prisma.user.update({
+                where: { id: ownerId },
+                data: { githubToken: 'gh-test-token' },
+            })
+
+            try {
+                const res = await as(ownerToken).get('/session/pull-requests')
+                expect(res.status).toBe(200)
+
+                // the list that was read already has the repaired state
+                const listed = res.body.data.pullRequests.find(
+                    (row: { sessionId: string }) => row.sessionId === stale.id
+                )
+                expect(listed).toMatchObject({
+                    prState: 'merged',
+                    prTitle: 'feat: login page (final)',
+                    additions: 51,
+                    deletions: 7,
+                    prMergedAt: '2026-01-04T10:00:00.000Z',
+                })
+                expect(
+                    res.body.data.pullRequests.find(
+                        (row: { sessionId: string }) => row.sessionId === fresh.id
+                    ).prState
+                ).toBe('open')
+
+                // one call, for the stale pull request only, with the user's token
+                expect(githubCalls).toEqual([
+                    {
+                        url: `https://api.github.com/repos/${repoOwner}/web/pulls/${stale.prNumber}`,
+                        authorization: 'Bearer gh-test-token',
+                    },
+                ])
+
+                const saved = await prisma.session.findUnique({ where: { id: stale.id } })
+                expect(saved?.prState).toBe('merged')
+                expect(saved?.prMergedAt?.toISOString()).toBe('2026-01-04T10:00:00.000Z')
+                expect(saved?.prOpenedAt?.toISOString()).toBe('2026-01-03T10:00:00.000Z')
+                expect(saved?.prCheckedAt?.getTime()).toBeGreaterThan(hoursAgo(1 / 60).getTime())
+                // a repair does not move the session up the sessions list
+                expect(saved?.updatedAt.toISOString()).toBe(stale.updatedAt.toISOString())
+
+                // merged now, so the next read does not ask the host again
+                await as(ownerToken).get('/session/pull-requests')
+                expect(githubCalls).toHaveLength(1)
+            } finally {
+                globalThis.fetch = realFetch
+                await prisma.user.update({ where: { id: ownerId }, data: { githubToken: null } })
+            }
         })
     })
 

@@ -1,3 +1,4 @@
+import { checkBranchPrefix, isRepoFullName } from '@december/shared'
 import { z } from 'zod'
 
 import { isValidTimezone } from '../notification/notification.utils'
@@ -54,7 +55,8 @@ export const updateModelSourceSchema = z.object({
     }),
 })
 
-// defaults for a new session (#632). every field is optional: the menu saves what changed
+// defaults for a new session (#632, #637). every field is optional: the page saves one row
+// at a time
 export const updateSessionDefaultsSchema = z
     .object({
         defaultPlanFirst: z.boolean(),
@@ -62,11 +64,38 @@ export const updateSessionDefaultsSchema = z
             message: 'defaultEffort must be fast or deep',
         }),
         defaultOpenPullRequest: z.boolean(),
+        // the model a new session uses on the user's own key. null for both: no default
+        defaultOwnKeyProvider: z.string().trim().min(1).max(64).nullable(),
+        defaultOwnKeyModel: z.string().trim().min(1).max(200).nullable(),
+        // 'last-used', or the full name of a repository (owner/name, or a gitlab group path)
+        defaultRepository: z
+            .string()
+            .trim()
+            .max(200, 'defaultRepository must be at most 200 characters')
+            .regex(
+                /^(last-used|[\w.-]+(\/[\w.-]+)+)$/,
+                'defaultRepository must be last-used or owner/name'
+            ),
+        // 'default' (the default branch of the repository), or a branch name
+        defaultBaseBranch: z
+            .string()
+            .trim()
+            .min(1, 'defaultBaseBranch cannot be empty')
+            .max(100, 'defaultBaseBranch must be at most 100 characters')
+            .regex(/^[\w./-]+$/, 'defaultBaseBranch has characters git does not allow'),
     })
     .partial()
     .refine((value) => Object.keys(value).length > 0, {
         message: 'send at least one default',
     })
+    .refine(
+        (value) =>
+            (value.defaultOwnKeyProvider === undefined && value.defaultOwnKeyModel === undefined) ||
+            (typeof value.defaultOwnKeyProvider === 'string' &&
+                typeof value.defaultOwnKeyModel === 'string') ||
+            (value.defaultOwnKeyProvider === null && value.defaultOwnKeyModel === null),
+        { message: 'send defaultOwnKeyProvider and defaultOwnKeyModel together' }
+    )
 
 // /permissions for cloud sessions (#632): tool calls the agent may never make
 export const updateToolDenyRulesSchema = z.object({
@@ -82,7 +111,11 @@ export const updatePullRequestSettingsSchema = z
             .string()
             .trim()
             .max(40, 'branchPrefix must be at most 40 characters')
-            .regex(/^[A-Za-z0-9._/-]*$/, 'branchPrefix has characters git does not allow'),
+            .regex(/^[A-Za-z0-9._/-]*$/, 'branchPrefix has characters git does not allow')
+            // git's ref rules on the branch the prefix gives (review E2)
+            .refine((value) => checkBranchPrefix(value).ok, {
+                message: 'branchPrefix does not give a branch name git allows',
+            }),
         prDraft: z.boolean(),
         prCreate: z.enum(['auto', 'ask']),
         prAuthor: z.enum(['december', 'user']),
@@ -135,4 +168,41 @@ export const updateSupportAccessSchema = z.object({
 export const dataExportDownloadSchema = z.object({
     id: z.string().uuid('export id is not valid'),
     t: z.string().trim().min(1).max(200),
+})
+
+// sandbox settings (#637). every field is optional: the page saves one row at a time
+export const updateSandboxSettingsSchema = z
+    .object({
+        idleStopMinutes: z.union([z.literal(10), z.literal(30), z.literal(60)], {
+            message: 'idleStopMinutes must be 10, 30 or 60',
+        }),
+        // null: never archive
+        archiveAfterDays: z
+            .union([z.literal(7), z.literal(30)], {
+                message: 'archiveAfterDays must be 7, 30 or null',
+            })
+            .nullable(),
+    })
+    .partial()
+    .strict()
+    .refine((value) => Object.keys(value).length > 0, {
+        message: 'send at least one sandbox setting',
+    })
+
+export const SETUP_COMMANDS_MAX_LENGTH = 4000
+
+// the setup commands of one repository (#637). an empty text removes them
+export const updateSetupCommandsSchema = z.object({
+    // owner/name, or a gitlab group path
+    repoFullName: z
+        .string({ message: 'repoFullName is required' })
+        .trim()
+        .max(200, 'repoFullName must be at most 200 characters')
+        .refine(isRepoFullName, 'repoFullName must be owner/name'),
+    commands: z
+        .string({ message: 'commands must be a text' })
+        .max(
+            SETUP_COMMANDS_MAX_LENGTH,
+            `commands must be at most ${SETUP_COMMANDS_MAX_LENGTH} characters`
+        ),
 })

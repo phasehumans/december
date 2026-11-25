@@ -54,6 +54,14 @@ export const getUserFacingGenerationError = (message: string) => {
 }
 
 export const mapBackendMessageToUIMessage = (message: BackendMessage): Message => {
+    const mapped = mapBackendMessage(message)
+    // the files sent with the message (#634)
+    return message.attachments?.length
+        ? { ...mapped, attachments: message.attachments.map(({ id, name }) => ({ id, name })) }
+        : mapped
+}
+
+const mapBackendMessage = (message: BackendMessage): Message => {
     const isAssistant = message.role !== 'USER' && message.role !== 'SYSTEM'
     let thoughts: string | undefined = undefined
     let plan: string | undefined = undefined

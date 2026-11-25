@@ -358,6 +358,9 @@ describe('Billing Integration Tests', () => {
         expect(res.status).toBe(200)
         expect(res.body.data.success).toBe(true)
         expect(res.body.data.alreadyProcessed).toBe(true)
+        // the balance comes back also for a payment that was processed before
+        expect(typeof userBefore?.creditBalance).toBe('number')
+        expect(res.body.data.newBalance).toBe(userBefore?.creditBalance)
 
         const userAfter = await prisma.user.findUnique({
             where: { id: testUserId },

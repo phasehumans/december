@@ -3,6 +3,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 
+import { McpConnectRefusedError, MCP_REFUSAL_REASONS } from './guarded-fetch'
 import { createMcpTool, formatMcpContent } from './tool-adapter'
 
 import type { McpServerConfig, McpServerInfo } from './types'
@@ -13,6 +14,40 @@ import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 export interface McpClientManagerOptions {
     registry?: DeferredToolRegistry
     workspaceDir?: string
+    /**
+     * The fetch of every url server (http and sse). A cloud run passes the guarded
+     * fetch here (`createGuardedMcpFetch`); with none, the global fetch is used.
+     */
+    remoteFetch?: (url: string | URL, init?: RequestInit) => Promise<Response>
+}
+
+/**
+ * Why a server did not connect. The http and sse transports keep the http status in
+ * `code` and not in the message, so it goes in front: "HTTP 401: ...".
+ */
+function describeConnectError(err: any): string {
+    const message = err?.message || String(err)
+    const status = typeof err?.code === 'number' && err.code >= 300 && err.code <= 599
+    return status && !message.includes(String(err.code)) ? `HTTP ${err.code}: ${message}` : message
+}
+
+/**
+ * The parts of a connect failure that are safe to save and show: the http status and a
+ * fixed reason of the guarded fetch. `error` can hold text the server answered with.
+ */
+function describeConnectFailure(err: any): { errorStatus?: number; errorReason?: string } {
+    const message = String(err?.message || err || '')
+    const errorStatus =
+        typeof err?.code === 'number' && err.code >= 300 && err.code <= 599 ? err.code : undefined
+    // the sse transport wraps the error of the fetch, so the reason is also found by its text
+    const errorReason =
+        err instanceof McpConnectRefusedError
+            ? err.reason
+            : MCP_REFUSAL_REASONS.find((reason) => message.includes(reason))
+    return {
+        ...(errorStatus !== undefined ? { errorStatus } : {}),
+        ...(errorReason ? { errorReason } : {}),
+    }
 }
 
 function extractKeywords(tool: { name: string; description?: string }): string[] {
@@ -28,10 +63,12 @@ export class McpClientManager {
     private eagerTools: Map<string, Tool> = new Map()
     private registry?: DeferredToolRegistry
     private workspaceDir?: string
+    private remoteFetch?: McpClientManagerOptions['remoteFetch']
 
     constructor(options?: McpClientManagerOptions) {
         this.registry = options?.registry
         this.workspaceDir = options?.workspaceDir
+        this.remoteFetch = options?.remoteFetch
     }
 
     public setRegistry(registry: DeferredToolRegistry): void {
@@ -96,10 +133,14 @@ export class McpClientManager {
                     )
                 }
                 const requestInit = sseConfig.headers ? { headers: sseConfig.headers } : undefined
+                const transportOptions = {
+                    requestInit,
+                    ...(this.remoteFetch ? { fetch: this.remoteFetch } : {}),
+                }
                 transport =
                     sseConfig.transport === 'http'
-                        ? new StreamableHTTPClientTransport(new URL(urlStr), { requestInit })
-                        : new SSEClientTransport(new URL(urlStr), { requestInit })
+                        ? new StreamableHTTPClientTransport(new URL(urlStr), transportOptions)
+                        : new SSEClientTransport(new URL(urlStr), transportOptions)
             }
 
             return await this.connectWithTransport(name, config, transport)
@@ -108,7 +149,8 @@ export class McpClientManager {
                 name,
                 config,
                 status: 'error',
-                error: err?.message || String(err),
+                error: describeConnectError(err),
+                ...describeConnectFailure(err),
                 tools: [],
             }
             this.servers.set(name, info)
@@ -136,13 +178,17 @@ export class McpClientManager {
         }
         this.servers.set(name, info)
 
-        try {
-            const client = new Client({ name: 'december', version: '0.4.13' }, { capabilities: {} })
+        const client = new Client({ name: 'december', version: '0.4.13' }, { capabilities: {} })
+        // kept from the start, so a server that hangs while it connects can be closed
+        this.clients.set(name, client)
+        this.transports.set(name, transport)
 
+        try {
             await client.connect(transport)
 
-            this.clients.set(name, client)
-            this.transports.set(name, transport)
+            if (this.clients.get(name) !== client) {
+                throw new Error(`MCP server "${name}" was closed while it connected`)
+            }
 
             // Negotiate capabilities & fetch metadata
             const capabilities = client.getServerCapabilities()
@@ -204,8 +250,12 @@ export class McpClientManager {
 
             return info
         } catch (err: any) {
+            // a server that did not connect keeps no client
+            if (this.clients.get(name) === client) this.clients.delete(name)
+            if (this.transports.get(name) === transport) this.transports.delete(name)
             info.status = 'error'
-            info.error = err?.message || String(err)
+            info.error = describeConnectError(err)
+            Object.assign(info, describeConnectFailure(err))
             info.tools = []
             return info
         }

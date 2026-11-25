@@ -98,6 +98,24 @@ A plugin owns its MCP servers. To remove one, uninstall the plugin in `/plugin`.
 
 The status bar shows the number of MCP servers, for example `· 2 MCP`.
 
+## MCP servers in December Cloud
+
+In December Cloud, your MCP servers are in **Settings > Connections > MCPs**. December Cloud connects to a server by its URL. It does not start a server from a command.
+
+To add a server:
+
+1. Open **Settings > Connections > MCPs** and select **Add MCP**.
+2. Type a name, for example `neon`.
+3. Type the server URL. The URL must start with `https://` and must be on the public internet.
+4. Pick the transport: **HTTP** or **SSE**.
+5. If the server needs a key, set **Auth** to **Header**. Then type the header name and value, for example `Authorization` and `Bearer <token>`.
+
+A session connects to each server that is on. After a session uses a server, the page shows its status and its tools. Use the switch on a tool to turn that tool off.
+
+To turn a server off for one session, click **+** in the prompt box before you start the session. Select **MCPs** and use the switch of the server.
+
+To copy the MCP servers of a repository to your account, use **Import setup**. See [Import skills from a repository](/docs/skills#import-skills-from-a-repository).
+
 ## Tool names
 
 December adds a prefix to each MCP tool name. This prevents conflicts with the built-in tools of December. The format is:

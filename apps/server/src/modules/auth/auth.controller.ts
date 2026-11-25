@@ -89,7 +89,14 @@ const google = asyncHandler(async (req: Request, res: Response) => {
     const userAgent = req.get('user-agent') || 'unknown'
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
-    const result = await authService.google({ email, name, sub, userAgent, ipAddress })
+    const result = await authService.google({
+        email,
+        name,
+        sub,
+        userAgent,
+        ipAddress,
+        referralCode: parseData.referralCode,
+    })
     authCookie.setAuthCookies(res, result.accessToken)
 
     return sendSuccess(res, 'login successful', result)
@@ -185,6 +192,7 @@ const github = asyncHandler(async (req: Request, res: Response) => {
         username,
         userAgent,
         ipAddress,
+        referralCode: parseData.referralCode,
     })
     authCookie.setAuthCookies(res, result.accessToken)
 

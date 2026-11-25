@@ -1,9 +1,31 @@
 import { prisma } from '@december/database'
-import { enqueueJob } from '@december/shared/queue'
+import { claimRunMark, newRunId, releaseRunMark } from '@december/shared'
+import { enqueueJob, getRedisClient } from '@december/shared/queue'
 
 import { MailboxService } from './mailbox.service'
+import { waitUntilReady } from './redis-subscriber'
 
 import type { WakeUpSweeperOptions } from './mailbox.types'
+
+// a wake-up for a session that is not free is tried again after this long
+const BUSY_RETRY_MS = 60_000
+
+/** the redis client of the queue, when it takes commands */
+const readyRedis = async () => {
+    const client = getRedisClient()
+    if (!(await waitUntilReady(client))) throw new Error('redis is not ready')
+    return client
+}
+
+// one run for a session (#637): a wake-up claims the run mark like every other run
+const claimRunInRedis = async (sessionId: string): Promise<string | null> => {
+    const runId = newRunId()
+    return (await claimRunMark(await readyRedis(), { sessionId, runId })) ? runId : null
+}
+
+const releaseRunInRedis = async (sessionId: string, runId: string): Promise<void> => {
+    await releaseRunMark(await readyRedis(), { sessionId, runId })
+}
 
 export class WakeUpSweeper {
     private timer: NodeJS.Timeout | null = null
@@ -14,11 +36,29 @@ export class WakeUpSweeper {
         userId: string
         prompt: string
         triggerId: string
+        runId: string
     }) => Promise<void>
+    private claimRun: (sessionId: string) => Promise<string | null>
+    private releaseRun: (sessionId: string, runId: string) => Promise<void>
+    private retryMs: number
 
     constructor(options?: WakeUpSweeperOptions) {
         this.intervalMs = options?.intervalMs ?? 30000
         this.jobDispatcher = options?.jobDispatcher
+        this.claimRun = options?.claimRun ?? claimRunInRedis
+        this.releaseRun = options?.releaseRun ?? releaseRunInRedis
+        this.retryMs = options?.retryMs ?? BUSY_RETRY_MS
+    }
+
+    /** frees the session of a run that was not queued. a failure only delays the next run */
+    private async freeSession(sessionId: string, runId: string): Promise<void> {
+        await this.releaseRun(sessionId, runId).catch((error: any) => {
+            // the mark ends by itself
+            console.warn(
+                `[WAKE-UP SWEEPER] Could not free session '${sessionId}':`,
+                error?.message || error
+            )
+        })
     }
 
     start(): void {
@@ -86,8 +126,7 @@ export class WakeUpSweeper {
                 }
 
                 try {
-                    await this.processTrigger(trigger)
-                    processedCount++
+                    if (await this.processTrigger(trigger)) processedCount++
                 } catch (triggerErr: any) {
                     console.error(
                         `[WAKE-UP SWEEPER] Failed processing trigger '${trigger.id}' for session '${trigger.sessionId}':`,
@@ -110,7 +149,8 @@ export class WakeUpSweeper {
         return processedCount
     }
 
-    private async processTrigger(trigger: any): Promise<void> {
+    /** true when the wake-up ran; false when it was cancelled or waits for a free session */
+    private async processTrigger(trigger: any): Promise<boolean> {
         const { id: triggerId, sessionId, session, reason, payload } = trigger
 
         if (!session) {
@@ -125,7 +165,31 @@ export class WakeUpSweeper {
                 .catch(() => {
                     // Intentionally swallowed: trigger cancellation fallback
                 })
-            return
+            return false
+        }
+
+        // one run for a session: a wake-up never starts a second job on a session that has
+        // a run. it waits, and is tried again later, with its mailbox messages still queued
+        let runId: string | null
+        try {
+            runId = await this.claimRun(sessionId)
+        } catch (claimErr: any) {
+            console.warn(
+                `[WAKE-UP SWEEPER] Could not claim session '${sessionId}':`,
+                claimErr?.message || claimErr
+            )
+            // a test dispatcher runs the turn in this process, with no queue and no redis
+            runId = this.jobDispatcher ? newRunId() : null
+        }
+        if (!runId) {
+            console.log(
+                `[WAKE-UP SWEEPER] Session '${sessionId}' has a run. Trigger '${triggerId}' waits.`
+            )
+            await prisma.wakeUpTrigger.update({
+                where: { id: triggerId },
+                data: { status: 'PENDING', triggerAt: new Date(Date.now() + this.retryMs) },
+            })
+            return false
         }
 
         console.log(
@@ -153,17 +217,24 @@ export class WakeUpSweeper {
 
         // 4. Dispatch job to BullMQ or test runner
         if (this.jobDispatcher) {
-            await this.jobDispatcher({
-                sessionId,
-                userId: session.userId,
-                prompt,
-                triggerId,
-            })
+            try {
+                await this.jobDispatcher({
+                    sessionId,
+                    userId: session.userId,
+                    prompt,
+                    triggerId,
+                    runId,
+                })
+            } finally {
+                // the dispatcher ran the turn in this process: no job will end the run
+                await this.freeSession(sessionId, runId)
+            }
         } else {
             try {
                 await enqueueJob('run_agent', {
                     sessionId,
                     userId: session.userId,
+                    runId,
                     prompt,
                     triggerId,
                 })
@@ -172,6 +243,8 @@ export class WakeUpSweeper {
                     `[WAKE-UP SWEEPER] Redis enqueue fallback for session '${sessionId}':`,
                     queueErr?.message || queueErr
                 )
+                // no run was queued: the session is free again
+                await this.freeSession(sessionId, runId)
             }
         }
 
@@ -196,5 +269,6 @@ export class WakeUpSweeper {
                 reason: 'wake_up_turn_completed',
             })
         }
+        return true
     }
 }

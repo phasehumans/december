@@ -8,8 +8,6 @@ import {
     SettingsRow,
     SettingsSection,
     SettingsSelect,
-    usePreviewOn,
-    usePreviewValue,
 } from './SettingsUi'
 
 import { ChoiceGroup, Switch } from '@/features/connections/components/ConnectionsUi'
@@ -31,11 +29,9 @@ export const PULL_REQUEST_SETTINGS_KEY = ['pull-request-settings'] as const
 
 /**
  * Pull requests (N7-A): the GitHub App switch, how December answers comments and what it
- * reviews (#568), and how it opens a pull request. "Opening" is ui only until #637 and shows
- * only with the preview on.
+ * reviews (#568), and how it opens a pull request (#637).
  */
 export const ProfilePullRequestSettings: React.FC = () => {
-    const isPreview = usePreviewOn()
     const queryClient = useQueryClient()
 
     const settingsQuery = useQuery({
@@ -64,19 +60,22 @@ export const ProfilePullRequestSettings: React.FC = () => {
                 queryClient.setQueryData(PULL_REQUEST_SETTINGS_KEY, context.previous)
             }
         },
-        onSuccess: (saved) => queryClient.setQueryData(PULL_REQUEST_SETTINGS_KEY, saved),
+        onSuccess: (saved, patch) => {
+            queryClient.setQueryData(PULL_REQUEST_SETTINGS_KEY, saved)
+            // "create the pull request" is also the "open pull request" default of the
+            // prompt box, which reads it from the profile
+            if (patch.prCreate !== undefined) {
+                void queryClient.invalidateQueries({ queryKey: ['profile'] })
+            }
+        },
     })
 
-    // opening (#637): sample values in memory, preview only
-    const [prefix, setPrefix] = usePreviewValue('pr.prefix', 'december/')
-    const [openAs, setOpenAs] = usePreviewValue<'draft' | 'ready'>('pr.openAs', 'draft')
-    const [create, setCreate] = usePreviewValue<'auto' | 'ask'>('pr.create', 'auto')
-    const [author, setAuthor] = usePreviewValue<'december' | 'user'>('pr.author', 'december')
-    const [commitAuthor, setCommitAuthor] = usePreviewValue<'both' | 'december'>(
-        'pr.commitAuthor',
-        'both'
-    )
-    const [archive, setArchive] = usePreviewValue('pr.archiveOnMerge', true)
+    // the branch prefix is typed here and saved when the field is left
+    const savedPrefix = settingsQuery.data?.branchPrefix
+    const [prefix, setPrefix] = React.useState(savedPrefix ?? '')
+    React.useEffect(() => {
+        if (savedPrefix !== undefined) setPrefix(savedPrefix)
+    }, [savedPrefix])
 
     const settings = settingsQuery.data
     if (!settings) {
@@ -116,57 +115,62 @@ export const ProfilePullRequestSettings: React.FC = () => {
                 </SettingsRow>
             </SettingsSection>
 
-            {isPreview && (
-                <SettingsSection title="Opening" description="How December opens a pull request.">
-                    <SettingsRow label="Branch name starts with">
+            <SettingsSection title="Opening" description="How December opens a pull request.">
+                <SettingsRow label="Branch name starts with">
+                    <div
+                        onBlur={() => {
+                            const next = prefix.trim()
+                            if (next !== settings.branchPrefix) set({ branchPrefix: next })
+                        }}
+                    >
                         <SettingsInput
                             label="Branch name starts with"
                             value={prefix}
                             onChange={setPrefix}
                             mono
                         />
-                    </SettingsRow>
-                    <SettingsRow label="Open as">
-                        <ChoiceGroup
-                            label="Open as"
-                            options={OPEN_AS}
-                            value={openAs}
-                            onChange={setOpenAs}
-                        />
-                    </SettingsRow>
-                    <SettingsRow label="Create the pull request">
-                        <ChoiceGroup
-                            label="Create the pull request"
-                            options={CREATE}
-                            value={create}
-                            onChange={setCreate}
-                        />
-                    </SettingsRow>
-                    <SettingsRow label="Author">
-                        <ChoiceGroup
-                            label="Author"
-                            options={AUTHOR}
-                            value={author}
-                            onChange={setAuthor}
-                        />
-                    </SettingsRow>
-                    <SettingsRow label="Commit author">
-                        <ChoiceGroup
-                            label="Commit author"
-                            options={COMMIT_AUTHOR}
-                            value={commitAuthor}
-                            onChange={setCommitAuthor}
-                        />
-                    </SettingsRow>
-                    <SettingsRow label="Archive the session when the pull request merges">
-                        <Switch
-                            label="Archive the session when the pull request merges"
-                            checked={archive}
-                            onChange={setArchive}
-                        />
-                    </SettingsRow>
-                </SettingsSection>
-            )}
+                    </div>
+                </SettingsRow>
+                <SettingsRow label="Open as">
+                    <ChoiceGroup
+                        label="Open as"
+                        options={OPEN_AS}
+                        value={settings.prDraft ? 'draft' : 'ready'}
+                        onChange={(value) => set({ prDraft: value === 'draft' })}
+                    />
+                </SettingsRow>
+                <SettingsRow label="Create the pull request">
+                    <ChoiceGroup
+                        label="Create the pull request"
+                        options={CREATE}
+                        value={settings.prCreate}
+                        onChange={(value) => set({ prCreate: value })}
+                    />
+                </SettingsRow>
+                <SettingsRow label="Author">
+                    <ChoiceGroup
+                        label="Author"
+                        options={AUTHOR}
+                        value={settings.prAuthor}
+                        onChange={(value) => set({ prAuthor: value })}
+                    />
+                </SettingsRow>
+                <SettingsRow label="Commit author">
+                    <ChoiceGroup
+                        label="Commit author"
+                        options={COMMIT_AUTHOR}
+                        value={settings.commitAuthor}
+                        onChange={(value) => set({ commitAuthor: value })}
+                    />
+                </SettingsRow>
+                <SettingsRow label="Archive the session when the pull request merges">
+                    <Switch
+                        label="Archive the session when the pull request merges"
+                        checked={settings.archiveOnMerge}
+                        onChange={(value) => set({ archiveOnMerge: value })}
+                    />
+                </SettingsRow>
+            </SettingsSection>
 
             <SettingsSection
                 title="Replies"

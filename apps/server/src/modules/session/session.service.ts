@@ -2,8 +2,12 @@ import { prisma } from '@december/database'
 import {
     DEFAULT_SESSION_RUN_CONFIG,
     isSessionEffort,
+    joinRepoFullName,
     readSessionRunConfig,
     readSessionSwitches,
+    interruptChannel,
+    SPEND_LIMIT_CONTINUE,
+    SPEND_LIMIT_STOP,
 } from '@december/shared'
 import { detectGitProvider, getGitProvider } from '@december/shared/git'
 import { enqueueJob, publishEvent } from '@december/shared/queue'
@@ -20,11 +24,19 @@ import {
     listPrefix,
     getTextFile,
 } from '../../shared/project-storage'
+import {
+    claimRun,
+    leaveStopRequest,
+    pushSteering,
+    releaseRun as releaseRunMark,
+} from '../../shared/run-mark'
 import { getIO } from '../../socket'
+import { attachmentService } from '../attachment/attachment.service'
 import { byokService } from '../byok/byok.service'
 import { cliDispatcher } from '../cli/cli.dispatcher'
 import { notificationService } from '../notification/notification.service'
 import { runtimeService } from '../runtime/runtime.service'
+import { secretsService } from '../secrets/secrets.service'
 import { usageService } from '../usage/usage.service'
 
 import { sessionRepository } from './session.repository'
@@ -33,8 +45,15 @@ import {
     CREDIT_TIER_MODELS,
     isEmptySmartSearchFilters,
     parseSmartSearchFilters,
+    decidePromptRoute,
+    isLimitQuestionId,
+    readMessageWhileWorking,
+    toHeldRunParts,
     toCreditTier,
     toPullRequestState,
+    toSessionFacets,
+    toTagsCacheKey,
+    toLimitQuestionPrompt,
 } from './session.utils'
 
 import type {
@@ -52,6 +71,8 @@ import type {
     UnarchiveSessions,
     GetSessionCounts,
     SessionCounts,
+    GetSessionFacets,
+    SessionFacets,
     UpdateSessionTags,
     GetSessionMessages,
     DeleteSession,
@@ -77,19 +98,41 @@ import type {
     GetPendingQuestion,
     MarkQuestionAsked,
     HandleRunEvent,
+    IsUserWatchingSession,
     NotifySessionOwner,
     ClearPendingQuestion,
+    OwnsSession,
+    RequestRunStop,
+    StopSession,
+    StopSessionResult,
+    GetRunningSandboxes,
+    RunningSandbox,
     GetSessionDesktopViewport,
     SessionDesktopViewportResult,
     ResolveTurnConfig,
     TurnConfig,
     GetUserRunDefaults,
+    ResolveOwnKeyModel,
+    ResolveOwnKeyTurnModel,
+    OwnKeyModel,
     RecordUserPrompt,
+    RoutePrompt,
+    RoutedPrompt,
+    DeliverSteering,
+    SteeringDelivery,
+    HeldRunParts,
+    ReleaseRun,
+    ClaimSessionRun,
     GetPullRequests,
     RefreshStalePullRequests,
     ApplyPullRequestEvent,
+    PauseAtLimit,
+    AnswerLimitQuestion,
+    ContinueAtLimit,
+    PromptAtLimit,
+    InvalidateRecentSessions,
 } from './session.types'
-import type { SessionRunConfig } from '@december/shared'
+import type { SessionRunConfig, SpendLimitKind } from '@december/shared'
 
 let sessionRedis: Redis | null = null
 
@@ -119,6 +162,12 @@ const loadSessionFiles = async (data: LoadSessionFiles) => {
 
 const invalidateUserRecentSessions = async (userId: string) => {
     await appCache.delPattern(appCache.key('sessions', 'recent', userId, '*'))
+}
+
+// for other modules: the recent list of a user changed (a session was archived, for one)
+const invalidateRecentSessions = async (data: InvalidateRecentSessions) => {
+    const { userId } = data
+    await invalidateUserRecentSessions(userId)
 }
 
 const getUserSessions = async (data: GetUserSessions) => {
@@ -163,6 +212,8 @@ const getUserSessions = async (data: GetUserSessions) => {
                 prTitle: prNumber ? (session.prTitle ?? null) : null,
                 prUrl: prNumber ? (session.prUrl ?? null) : null,
                 prBranch: prNumber ? (session.prBranch ?? null) : null,
+                // the owner apart from the name: the web joins them to match a repository
+                githubRepoOwner: session.githubRepoOwner ?? null,
                 githubRepoName: session.githubRepoName ?? null,
                 repoUrl: session.repoUrl ?? session.githubRepoUrl ?? null,
             }
@@ -196,7 +247,9 @@ const getUserSessions = async (data: GetUserSessions) => {
         filters?.sortBy ?? 'updatedAt',
         filters?.sortOrder ?? 'desc',
         String(filters?.limit ?? 50),
-        String(filters?.page ?? 1)
+        String(filters?.page ?? 1),
+        // without the tags a tag list and the full list shared one entry (#641)
+        toTagsCacheKey(filters?.tags)
     )
 
     return appCache.wrap(cacheKey, 30, fetchSessions)
@@ -241,8 +294,9 @@ const createSession = async (data: CreateSession) => {
 
     // a cloud session on the user's own key needs that key, not credits. search
     // always runs on december keys, so it always needs credits.
+    let ownKeyModel: OwnKeyModel = {}
     if (billingSource === 'OWN_KEY' && type !== 'SEARCH') {
-        await byokService.assertOwnKeyUsable({ userId, provider, model })
+        ownKeyModel = await resolveOwnKeyModel({ userId, provider, model })
     } else {
         const minBalance =
             type === 'SEARCH'
@@ -323,6 +377,7 @@ const createSession = async (data: CreateSession) => {
         session.id,
         {
             ...config,
+            ...ownKeyModel,
             ...(disabledPlugins ? { disabledPlugins } : {}),
             ...(disabledMcps ? { disabledMcps } : {}),
         },
@@ -331,7 +386,72 @@ const createSession = async (data: CreateSession) => {
 
     await invalidateUserRecentSessions(userId)
 
-    return { ...session, config }
+    return { ...session, config: { ...config, ...ownKeyModel } }
+}
+
+/**
+ * The model of a new session on the user's own key. A request with no model takes the
+ * user's default own-key model (#637) when the user still has a key for that provider and
+ * the key serves the model. Without a usable default the check is the same as before: the
+ * request must name a provider with a saved key, and no model is saved.
+ */
+const resolveOwnKeyModel = async (data: ResolveOwnKeyModel): Promise<OwnKeyModel> => {
+    const { userId, provider, model } = data
+
+    if (!model) {
+        const saved = await sessionRepository.findUserRunDefaults(userId)
+        const defaultProvider = saved?.defaultOwnKeyProvider
+        const defaultModel = saved?.defaultOwnKeyModel
+        if (defaultProvider && defaultModel && (!provider || provider === defaultProvider)) {
+            const isUsable = await byokService
+                .assertOwnKeyUsable({ userId, provider: defaultProvider, model: defaultModel })
+                .then(
+                    () => true,
+                    (error: unknown) => {
+                        // the key is gone or no longer serves the model: no default
+                        if (error instanceof AppError) return false
+                        throw error
+                    }
+                )
+            if (isUsable) return { provider: defaultProvider, model: defaultModel }
+        }
+    }
+
+    await byokService.assertOwnKeyUsable({ userId, provider, model })
+    return model ? { provider, model } : {}
+}
+
+/**
+ * The model of one message on the user's own key. A message that names no model runs on
+ * the model saved for the session (when the key still serves it), so the saved model is not
+ * replaced by the key's default. Only a session with no saved model takes the key's default.
+ */
+const resolveOwnKeyTurnModel = async (data: ResolveOwnKeyTurnModel): Promise<OwnKeyModel> => {
+    const { userId, sessionId, provider, model } = data
+
+    if (!model) {
+        const saved = await sessionRepository.findSessionRunConfig(sessionId, userId)
+        const config = (saved?.config ?? {}) as { model?: unknown; provider?: unknown }
+        const savedModel = typeof config.model === 'string' ? config.model : undefined
+        const savedProvider = typeof config.provider === 'string' ? config.provider : undefined
+        if (savedModel && savedProvider && (!provider || provider === savedProvider)) {
+            const isUsable = await byokService
+                .assertOwnKeyUsable({ userId, provider: savedProvider, model: savedModel })
+                .then(
+                    () => true,
+                    (error: unknown) => {
+                        // the key is gone or no longer serves the model: the key's default
+                        if (error instanceof AppError) return false
+                        throw error
+                    }
+                )
+            if (isUsable) return { provider: savedProvider, model: savedModel }
+        }
+    }
+
+    const credential = await byokService.assertOwnKeyUsable({ userId, provider, model })
+    // no model picked and none saved: the key's own default, never a december model
+    return { provider, model: model || credential.defaultModel || undefined }
 }
 
 const getUserRunDefaults = async (data: GetUserRunDefaults): Promise<SessionRunConfig> => {
@@ -431,6 +551,54 @@ const recordUserPrompt = async (data: RecordUserPrompt): Promise<number | null> 
     return sessionRepository.saveUserPrompt(sessionId, prompt)
 }
 
+/**
+ * What a prompt that arrives now does (#637). The run mark in redis is the truth: it is set
+ * here when no run is active (the caller then queues the run), and the worker clears it
+ * when the run ends. During a run the account preference decides: "send now" gives the
+ * message to the running agent, "queue" leaves it with the web.
+ */
+const routePrompt = async (data: RoutePrompt): Promise<RoutedPrompt> => {
+    const { userId, sessionId } = data
+    const runId = await claimRun(sessionId)
+    if (runId) return { route: 'run', runId }
+    const preferences = userId ? await sessionRepository.findUserPreferences(userId) : null
+    return {
+        route: decidePromptRoute({ runActive: true, mode: readMessageWhileWorking(preferences) }),
+        runId: null,
+    }
+}
+
+/**
+ * Gives a saved message to the running agent (#637): the worker reads it at the next turn.
+ * `run` when the run ended in between: the session is marked again, and the caller queues
+ * a normal run, so the message is never lost.
+ */
+const deliverSteering = async (data: DeliverSteering): Promise<SteeringDelivery> => {
+    const { sessionId, message } = data
+    // a run can end and another one start between the two steps: try again a few times
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (await pushSteering(sessionId, message)) return { delivery: 'steered', runId: null }
+        const runId = await claimRun(sessionId)
+        if (runId) return { delivery: 'run', runId }
+    }
+    throw new AppError('could not send the message. try again', 503)
+}
+
+/**
+ * Claims the session for a run that the server starts by itself (a github run, "Continue"
+ * at a limit). The id of the run, to put in its job, or null when a run is queued or active.
+ */
+const claimSessionRun = async (data: ClaimSessionRun): Promise<string | null> => {
+    const { sessionId } = data
+    return claimRun(sessionId)
+}
+
+/** the run that routePrompt or deliverSteering marked was not queued: the mark is removed */
+const releaseRun = async (data: ReleaseRun) => {
+    const { sessionId, runId } = data
+    await releaseRunMark(sessionId, runId)
+}
+
 const getSession = async (data: GetSession) => {
     const { userId, sessionId } = data
     const session = await sessionRepository.findSessionById(sessionId, userId)
@@ -440,6 +608,8 @@ const getSession = async (data: GetSession) => {
 
     const saved = await sessionRepository.findSessionRunConfig(sessionId, userId)
     const config = readSessionRunConfig(saved?.config, await getUserRunDefaults({ userId }))
+    // the files sent with each prompt (#634)
+    const filesByMessage = await attachmentService.getSessionAttachments({ sessionId })
 
     return {
         session: { ...session, config },
@@ -450,6 +620,7 @@ const getSession = async (data: GetSession) => {
             status: message.status,
             sequence: message.sequence,
             blocks: (message as any).blocks ?? undefined,
+            attachments: filesByMessage[message.id],
             createdAt: message.createdAt,
             updatedAt: message.updatedAt,
         })),
@@ -611,6 +782,10 @@ const refreshStalePullRequests = async (data: RefreshStalePullRequests) => {
                 }
             )
             if (pr) changed = true
+            // the webhook was missed: the merge is found here, so the archive happens here
+            if (pr?.status === 'merged') {
+                await sessionRepository.archiveSessionsOnMerge([session.id])
+            }
         })
     )
     if (changed) await invalidateUserRecentSessions(userId)
@@ -632,9 +807,9 @@ const getPullRequests = async (data: GetPullRequests) => {
             tags: row.tags,
             gitProvider: row.gitProvider,
             repo:
-                row.githubRepoOwner && row.githubRepoName
-                    ? `${row.githubRepoOwner}/${row.githubRepoName}`
-                    : (row.githubRepoName ?? null),
+                joinRepoFullName(row.githubRepoOwner, row.githubRepoName) ??
+                row.githubRepoName ??
+                null,
             prNumber: row.prNumber as number,
             prState: toPullRequestState(row.prState),
             prTitle: row.prTitle ?? null,
@@ -691,6 +866,17 @@ const applyPullRequestEvent = async (data: ApplyPullRequestEvent) => {
         }
     )
 
+    // "archive the session when the pull request merges" (#637): only when the state changes
+    // to merged, so a later event of the same pull request leaves a session the user took
+    // out of the archive
+    if (state === 'merged') {
+        await sessionRepository.archiveSessionsOnMerge(
+            sessions
+                .filter((session) => session.previousState !== 'merged')
+                .map((session) => session.id)
+        )
+    }
+
     const userIds = [...new Set(sessions.map((session) => session.userId))]
     await Promise.all(userIds.map((userId) => invalidateUserRecentSessions(userId)))
     return { updated: sessions.length }
@@ -701,6 +887,16 @@ const getSessionCounts = async (data: GetSessionCounts): Promise<SessionCounts> 
     const { userId } = data
     const cacheKey = appCache.key('sessions', 'recent', userId, 'counts')
     return appCache.wrap(cacheKey, 30, () => sessionRepository.countSessions(userId))
+}
+
+// the repositories and tags for the sort and filter menu (#641). under the recent list
+// key too, so a new session, a tag change and a delete clear them with the list
+const getSessionFacets = async (data: GetSessionFacets): Promise<SessionFacets> => {
+    const { userId, hasPr = false } = data
+    const cacheKey = appCache.key('sessions', 'recent', userId, hasPr ? 'facets-pr' : 'facets')
+    return appCache.wrap(cacheKey, 30, async () =>
+        toSessionFacets(await sessionRepository.findSessionFacets(userId, hasPr))
+    )
 }
 
 const updateSessionTags = async (data: UpdateSessionTags) => {
@@ -797,6 +993,8 @@ const deleteAllSessions = async (data: DeleteAllSessions) => {
 
     const sessionIds = sessions.map((session) => session.id)
     await endSessionRuns({ sessionIds })
+    // the files sent with prompts (#634) go now; their rows go with the sessions
+    await attachmentService.deleteSessionFiles({ sessionIds })
     const { count } = await sessionRepository.deleteSessionsByIds({ userId, sessionIds })
     await invalidateUserRecentSessions(userId)
 
@@ -815,6 +1013,8 @@ const deleteSession = async (data: DeleteSession) => {
     }
 
     await endSessionRuns({ sessionIds: [sessionId] })
+    // the files sent with prompts (#634) go now; their rows go with the session
+    await attachmentService.deleteSessionFiles({ sessionIds: [sessionId] })
 
     await sessionRepository.deleteSession(sessionId)
     await invalidateUserRecentSessions(userId)
@@ -1147,11 +1347,18 @@ const getSessionMessages = async (data: GetSessionMessages) => {
         throw new AppError('Session not found', 404)
     }
 
-    return sessionRepository.findMessagesBySessionId({
+    const messages = await sessionRepository.findMessagesBySessionId({
         sessionId,
         beforeSequence,
         limit,
     })
+    // the files sent with each prompt (#634)
+    const filesByMessage = await attachmentService.getSessionAttachments({ sessionId })
+    return messages.map((message) =>
+        filesByMessage[message.id]
+            ? { ...message, attachments: filesByMessage[message.id] }
+            : message
+    )
 }
 
 const getSessionDiff = async (data: GetSessionDiff) => {
@@ -1417,6 +1624,12 @@ const submitQuestionAnswer = async (data: SubmitQuestionAnswer) => {
         throw new AppError('Session not found', 404)
     }
 
+    // a session paused at a spend limit: the answer goes to the server, not to the agent
+    // an answer to another question card (an older agent question) goes to the agent
+    if (session.limitQuestionKind && isLimitQuestionId(questionId)) {
+        return answerLimitQuestion({ userId, sessionId, questionId, answer })
+    }
+
     const redis = getSessionRedis()
     if (redis) {
         const payload = JSON.stringify({
@@ -1453,7 +1666,7 @@ const markQuestionAsked = async (data: MarkQuestionAsked) => {
 }
 
 /** true while the user has this session open in a tab (any server node) */
-const isUserWatchingSession = async (data: { sessionId: string; userId: string }) => {
+const isUserWatchingSession = async (data: IsUserWatchingSession) => {
     const { sessionId, userId } = data
     try {
         const sockets = await getIO().in(`session:${sessionId}`).fetchSockets()
@@ -1505,6 +1718,13 @@ const handleRunEvent = async (data: HandleRunEvent) => {
             return
         }
         case 'AgentEnd': {
+            // the end of a failed run (its AgentError told the user) or of a stopped run
+            // (#637) is not a "finished". it only clears the failed mark and takes no
+            // claim, so the end of the next run still notifies
+            if (event.failed === true || event.stopped === true) {
+                await takeFlag(`run:failed:${sessionId}`)
+                return
+            }
             if (!(await claimOnce(`notify:end:${sessionId}`, 30))) return
             if (await takeFlag(`run:failed:${sessionId}`)) return
             const owner = await sessionRepository.findSessionOwner(sessionId)
@@ -1512,16 +1732,24 @@ const handleRunEvent = async (data: HandleRunEvent) => {
             await notifySessionOwner({ owner, kind: 'SESSION_FINISHED' })
             return
         }
+        case 'SpendLimitReached': {
+            // a charge or the start of a run reached a spend limit (#638)
+            await pauseAtLimit({ sessionId })
+            return
+        }
         case 'CreditsLow': {
             const owner = await sessionRepository.findSessionOwner(sessionId)
             if (!owner) return
-            if (!(await claimOnce(`notify:credits:${owner.userId}`, 600))) return
-            const balance = Number(event.balanceInCents)
-            await notifySessionOwner({
-                owner,
-                kind: 'LOW_CREDITS',
-                detail: Number.isFinite(balance) ? String(Math.round(balance)) : undefined,
-            })
+            // the same call as the server's own charges (usage.service), with one claim for
+            // both, so one drop under the amount gives one alert
+            try {
+                await notificationService.notifyLowCredits({
+                    userId: owner.userId,
+                    balanceInCents: Number(event.balanceInCents),
+                })
+            } catch (error) {
+                console.error(`[Session] could not notify LOW_CREDITS for ${owner.id}:`, error)
+            }
             return
         }
         default:
@@ -1541,6 +1769,14 @@ const markQuestionSettled = async (data: MarkQuestionAsked) => {
     await invalidateUserRecentSessions(owner.userId)
 }
 
+/** true when this session is a session of this user. every socket event checks it first */
+const ownsSession = async (data: OwnsSession): Promise<boolean> => {
+    const { userId, sessionId } = data
+    if (!userId || typeof sessionId !== 'string' || !sessionId) return false
+    const session = await sessionRepository.findSessionRunState(sessionId, userId)
+    return Boolean(session)
+}
+
 /** an answer or a stop ends the wait; only a session of this user changes */
 const clearPendingQuestion = async (data: ClearPendingQuestion) => {
     const { userId, sessionId } = data
@@ -1548,11 +1784,302 @@ const clearPendingQuestion = async (data: ClearPendingQuestion) => {
     if (changed) await invalidateUserRecentSessions(userId)
 }
 
+// spend limits (#638)
+
+/**
+ * A session reached a spend limit (the SpendLimitReached event of a charge or of a run
+ * start). The run is stopped with reason `limit`, the session waits for an answer, and the
+ * question goes to the session, the inbox, email and push. The question never answers
+ * itself. Every server node gets the event: the first one to save the question does this.
+ */
+const pauseAtLimit = async (data: PauseAtLimit) => {
+    const { sessionId } = data
+    const owner = await sessionRepository.findSessionOwner(sessionId)
+    if (!owner) return { paused: false }
+
+    // the server checks again: the event can be late (a "continue" came in between)
+    const state = await usageService.getSpendLimitState({ userId: owner.userId, sessionId })
+    if (!state.kind || state.limitCents === null) {
+        // nothing is asked, so no "Continue" will start a run the worker held: it must not
+        // stay and start with the answer to a later question
+        await sessionRepository.clearStaleHeldRun(sessionId)
+        return { paused: false }
+    }
+
+    const asked = await sessionRepository.setLimitQuestion({
+        sessionId,
+        kind: state.kind,
+        limitCents: state.limitCents,
+    })
+    if (!asked) return { paused: false }
+
+    await requestRunStop({ sessionId, userId: owner.userId, reason: 'limit' })
+    await invalidateUserRecentSessions(owner.userId)
+
+    const prompt = toLimitQuestionPrompt({
+        sessionId,
+        kind: state.kind,
+        limitCents: state.limitCents,
+    })
+    try {
+        // the open session shows the question at once
+        await publishEvent(`session_events:${sessionId}`, { ...prompt, type: 'SpendLimitQuestion' })
+    } catch (error) {
+        // the question is saved: the session shows it when it loads
+        console.error('[Session] could not publish the spend limit question:', error)
+    }
+    await notifySessionOwner({
+        owner,
+        kind: 'SPEND_LIMIT',
+        detail: prompt.questions[0]?.question,
+    })
+    return { paused: true }
+}
+
+/**
+ * "Continue" at a limit: the session (or the day) gets the same amount again, and the run
+ * starts again. A run that was held before it started runs as it was sent. A run that was
+ * paused in the middle goes on with a short prompt.
+ */
+const continueAtLimit = async (data: ContinueAtLimit) => {
+    const { userId, sessionId, kind, heldRun } = data
+    // one run for a session: a run that still closes holds the session
+    const runId = await claimSessionRun({ sessionId })
+    if (!runId) {
+        throw new AppError('December still works in this session. try again in a moment', 409)
+    }
+
+    try {
+        await usageService.continuePastLimit({ userId, sessionId, kind })
+
+        // secrets are never saved with a held run: they are read again here
+        const secrets = await secretsService
+            .getAllDecryptedSecrets({ userId, sessionId })
+            .catch((error: unknown) => {
+                console.warn('[Session] could not read the secrets for a continued run:', error)
+                return []
+            })
+
+        if (heldRun) {
+            await enqueueJob('run_agent', { ...heldRun, sessionId, userId, secrets, runId })
+            return
+        }
+
+        const turn = await resolveTurnConfig({ userId, sessionId, billingSource: 'CREDITS' })
+        const userMessageSequence = await recordUserPrompt({
+            userId,
+            sessionId,
+            prompt: SPEND_LIMIT_CONTINUE,
+        })
+        await enqueueJob('run_agent', {
+            sessionId,
+            projectId: sessionId,
+            userId,
+            runId,
+            prompt: SPEND_LIMIT_CONTINUE,
+            secrets,
+            model: turn.model,
+            provider: turn.provider,
+            billingSource: 'CREDITS',
+            // the plan of the paused run stands: the agent goes on with the work
+            planFirst: false,
+            effort: turn.effort,
+            skills: [],
+            disabledMcps: turn.disabledMcps,
+            ...(userMessageSequence ? { userMessageSequence } : {}),
+        })
+    } catch (error) {
+        // no run was queued: the session is free again
+        await releaseRunMark(sessionId, runId)
+        throw error
+    }
+}
+
+/** the user's answer to the limit question: "Continue", or "Stop here" (anything else) */
+const answerLimitQuestion = async (data: AnswerLimitQuestion) => {
+    const { userId, sessionId, questionId, answer } = data
+    const question = await sessionRepository.findLimitQuestion(sessionId, userId)
+    const kind = question?.limitQuestionKind as SpendLimitKind | null | undefined
+    const picked = Array.isArray(answer) ? answer[0] : answer
+    const result = { success: true, sessionId, questionId: `spend-limit:${kind ?? ''}`, answer }
+
+    // the web sends an answer over the socket and over http: only the first one counts.
+    // an answer to another question card (an older agent question) is not for this one
+    if (!kind || !isLimitQuestionId(questionId)) {
+        return { ...result, handled: false, continued: false }
+    }
+    if (!(await sessionRepository.takeLimitQuestion(sessionId, userId))) {
+        return { ...result, handled: true, continued: false }
+    }
+
+    const continued = picked === SPEND_LIMIT_CONTINUE
+    if (continued) {
+        const heldRun = (question?.limitHeldRun ?? null) as Record<string, unknown> | null
+        try {
+            await continueAtLimit({ userId, sessionId, kind, heldRun })
+        } catch (error) {
+            // no run was queued: the question and the held prompt come back, so the user
+            // can answer again
+            await sessionRepository.restoreLimitQuestion({
+                sessionId,
+                kind,
+                limitCents: question?.limitQuestionCents ?? null,
+                heldRun,
+            })
+            throw error
+        }
+    }
+    await invalidateUserRecentSessions(userId)
+    try {
+        await publishEvent(`session_events:${sessionId}`, {
+            type: 'SpendLimitAnswered',
+            sessionId,
+            answer: continued ? SPEND_LIMIT_CONTINUE : SPEND_LIMIT_STOP,
+        })
+    } catch (error) {
+        // the answer is saved: an open tab only misses the live update
+        console.error('[Session] could not publish the spend limit answer:', error)
+    }
+    return { ...result, handled: true, continued }
+}
+
+/**
+ * A new prompt from the user, before its run is queued. It counts as "Continue" for an
+ * open limit question, and for a session that is at its session limit: the user asks for
+ * more work in this session. The day limit is asked again when the run starts (the worker).
+ * A prompt on the user's own key only ends the question: own-key runs have no limit.
+ */
+const promptAtLimit = async (data: PromptAtLimit) => {
+    const { userId, sessionId, billingSource } = data
+    if (!userId) return { continued: false, heldRun: null }
+
+    const question = await sessionRepository.findLimitQuestion(sessionId, userId)
+    if (!question) return { continued: false, heldRun: null }
+    const open = question.limitQuestionKind as SpendLimitKind | null
+    // a prompt that was held before it started never ran. its text is saved in the
+    // conversation; its files and skills go with the run of the new prompt
+    let heldRun: HeldRunParts | null = null
+    if (open && (await sessionRepository.takeLimitQuestion(sessionId, userId))) {
+        heldRun = toHeldRunParts(question.limitHeldRun)
+        await invalidateUserRecentSessions(userId)
+    }
+    if (billingSource !== 'CREDITS') return { continued: false, heldRun }
+
+    const raised: boolean[] = []
+    for (const kind of new Set<SpendLimitKind>(open ? ['session', open] : ['session'])) {
+        const result = await usageService.continuePastLimit({ userId, sessionId, kind })
+        raised.push(result.raised)
+    }
+    return { continued: raised.includes(true), heldRun }
+}
+
+/**
+ * Asks the worker that runs this session to stop the agent (#637). The session, its files
+ * and the sandbox stay. The worker ends the run with AgentEnd { stopped: true, reason }.
+ * Safe when no run is active: no worker listens for the session then.
+ */
+const requestRunStop = async (data: RequestRunStop) => {
+    const { sessionId, userId, reason } = data
+    const session = await sessionRepository.findSessionRunState(sessionId, userId)
+    if (!session) throw new AppError('Session not found', 404)
+
+    // a stopped run no longer waits for an answer. the stop button also answers a spend
+    // limit question with "stop here". a limit stop keeps the question it just asked
+    if (reason === 'user') {
+        await clearPendingQuestion({ userId, sessionId })
+        if (await sessionRepository.takeLimitQuestion(sessionId, userId)) {
+            await invalidateUserRecentSessions(userId)
+        }
+    }
+    // a publish reaches only a worker that listens. a run that waits in the queue, or
+    // still runs its start checks, reads this request when it starts
+    const stoppedRunId = await leaveStopRequest(sessionId, reason)
+    await publishEvent(interruptChannel(sessionId), { type: 'INTERRUPT', reason })
+    return { sessionId, reason, stoppedRunId }
+}
+
+// the agent works in the session
+const WORKING_VM_STATUSES = new Set(['PROVISIONING', 'RUNNING'])
+
+/**
+ * Stop (#637): ends the agent run, then pauses the sandbox. The session, its files and the
+ * paused sandbox stay, and the next prompt resumes the sandbox.
+ */
+const stopSession = async (data: StopSession): Promise<StopSessionResult> => {
+    const { userId, sessionId } = data
+    const session = await sessionRepository.findSessionRunState(sessionId, userId)
+    if (!session) throw new AppError('Session not found', 404)
+
+    // a sandbox that still starts has nothing to pause yet: the stop cancels the start of
+    // the agent, and the idle sweep of the worker pauses the sandbox
+    const pausesSandbox = Boolean(session.vmId) && session.sandboxStatus === 'RUNNING'
+    try {
+        // always sent, because the saved status can be late: the worker knows if a run is active
+        const { stoppedRunId } = await requestRunStop({ sessionId, userId, reason: 'user' })
+        if (pausesSandbox) {
+            // pause, not stop: the worker that owns the sandbox, or any worker through the
+            // E2B api, keeps the files and the memory. the worker leaves the sandbox as it
+            // is when another run holds the session by then (a prompt sent after the stop)
+            await enqueueJob('sandbox_control', {
+                taskType: 'sandbox_control',
+                action: 'pause',
+                sessionId,
+                sandboxId: session.vmId,
+                afterStop: true,
+                stoppedRunId,
+            })
+        }
+    } catch (error) {
+        if (error instanceof AppError) throw error
+        console.error('[Session] could not stop the session:', error)
+        throw new AppError('could not stop the session. try again', 503)
+    }
+    await invalidateUserRecentSessions(userId)
+
+    return {
+        sessionId,
+        vmStatus: WORKING_VM_STATUSES.has(session.vmStatus) ? 'STOPPED' : session.vmStatus,
+        sandboxStatus: pausesSandbox ? 'PAUSED' : session.sandboxStatus,
+    }
+}
+
+/** the "running now" list of the sandbox settings (#637): sandboxes that start or run */
+const getRunningSandboxes = async (
+    data: GetRunningSandboxes
+): Promise<{ items: RunningSandbox[] }> => {
+    const { userId } = data
+    const sessions = await sessionRepository.findRunningSandboxes(userId)
+    const costs = await sessionRepository.sumCreditCostBySession(
+        sessions.map((session) => session.id)
+    )
+
+    return {
+        items: sessions.map((session) => ({
+            sessionId: session.id,
+            title: session.title,
+            // the github* columns hold the repository on any git host
+            repoFullName: joinRepoFullName(session.githubRepoOwner, session.githubRepoName),
+            startedAt: session.sandboxStartedAt ?? session.createdAt,
+            costInCents: costs.get(session.id) ?? 0,
+            sandboxStatus: session.sandboxStatus === 'STARTING' ? 'STARTING' : 'RUNNING',
+        })),
+    }
+}
+
 const getPendingQuestion = async (data: GetPendingQuestion) => {
     const { userId, sessionId } = data
     const session = await sessionRepository.findSessionById(sessionId, userId)
     if (!session) {
         throw new AppError('Session not found', 404)
+    }
+
+    // a spend limit question is saved with the session and never ends on its own (#638)
+    if (session.limitQuestionKind && session.limitQuestionCents !== null) {
+        return toLimitQuestionPrompt({
+            sessionId,
+            kind: session.limitQuestionKind as SpendLimitKind,
+            limitCents: session.limitQuestionCents,
+        })
     }
 
     const redis = getSessionRedis()
@@ -1688,6 +2215,7 @@ const smartSearchSessions = async (data: SmartSearchSessions) => {
 }
 
 export const sessionService = {
+    invalidateRecentSessions,
     recordPreviewActivity,
     loadSessionFiles,
     getUserSessions,
@@ -1702,8 +2230,14 @@ export const sessionService = {
     archiveMergedSessions,
     unarchiveSessions,
     getSessionCounts,
+    getSessionFacets,
     resolveTurnConfig,
     recordUserPrompt,
+    routePrompt,
+    deliverSteering,
+    releaseRun,
+    claimSessionRun,
+    resolveOwnKeyTurnModel,
     getPullRequests,
     applyPullRequestEvent,
     updateSessionTags,
@@ -1727,5 +2261,12 @@ export const sessionService = {
     markQuestionAsked,
     markQuestionSettled,
     clearPendingQuestion,
+    ownsSession,
+    requestRunStop,
+    pauseAtLimit,
+    answerLimitQuestion,
+    promptAtLimit,
+    stopSession,
+    getRunningSandboxes,
     getSessionDesktopViewport,
 }

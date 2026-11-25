@@ -61,7 +61,8 @@ export interface ConnectionsSkill {
 
 export type McpTransport = 'http' | 'sse'
 export type McpAuth = 'none' | 'header' | 'oauth'
-export type McpStatus = 'connected' | 'needs-signin' | 'error'
+/** `unknown`: no session has used the server yet, so nothing is known about it */
+export type McpStatus = 'connected' | 'needs-signin' | 'error' | 'unknown'
 
 export interface ConnectionsMcp {
     name: string

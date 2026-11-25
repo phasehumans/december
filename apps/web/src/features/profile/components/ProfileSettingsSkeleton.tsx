@@ -1,8 +1,17 @@
 import { Plus, RotateCw, Search } from 'lucide-react'
 import React from 'react'
 
-import { SettingsPageHeader } from './SettingsPageHeader'
-import { PAGE_SUBTITLES } from './settingsStyles'
+import { SettingsPageHeader, SettingsSectionHeading } from './SettingsPageHeader'
+import {
+    PAGE_SUBTITLES,
+    blueButtonClass,
+    listBoxClass,
+    listHeaderClass,
+    outlineButtonClass,
+    sectionBoxClass,
+    segmentClass,
+    segmentGroupClass,
+} from './settingsStyles'
 
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 
@@ -24,7 +33,7 @@ export const ProfileRepositoriesSkeleton: React.FC = () => (
         {REPO_SKELETON_ITEMS.map((item, i) => (
             <div
                 key={i}
-                className="p-3.5 bg-[#1B1B1B] rounded-xl flex flex-col justify-between gap-3 min-h-[96px]"
+                className="p-3.5 bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl flex flex-col justify-between gap-3 min-h-[96px]"
             >
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -56,7 +65,7 @@ const SECRETS_SKELETON_ROWS = [
 ]
 
 export const ProfileSecretsSkeleton: React.FC = () => (
-    <div className="flex flex-col divide-y divide-[#242323] animate-in fade-in duration-200">
+    <div className="flex flex-col divide-y divide-[#2A2A2A] animate-in fade-in duration-200">
         {SECRETS_SKELETON_ROWS.map((row, i) => (
             <React.Fragment key={i}>
                 {/* Mobile card (< md) */}
@@ -101,32 +110,25 @@ export const ProfileUsageSkeleton: React.FC = () => (
             <SettingsPageHeader title="Usage" subtitle={PAGE_SUBTITLES.usage} />
             <div className="flex flex-col gap-4">
                 {/* controls row */}
-                <div className="flex items-center justify-between mb-2">
-                    {/* quick filters */}
-                    <div className="flex items-center gap-1 bg-[#191919] p-0.5 rounded-lg border border-[#242323]">
-                        {['1d', '7d', '30d', '90d'].map((range, idx) => (
-                            <div
-                                key={range}
-                                className={`px-3 py-1.5 rounded-md text-[12px] font-medium ${
-                                    idx === 0
-                                        ? 'bg-[#2B2A29] text-[#D6D5C9] shadow-sm'
-                                        : 'text-[#7B7A79]'
-                                }`}
-                            >
+                <div className="flex items-center justify-between">
+                    {/* quick filters. 30d is the one the page opens with */}
+                    <div className={segmentGroupClass}>
+                        {['1d', '7d', '30d', '90d'].map((range) => (
+                            <div key={range} className={segmentClass(range === '30d')}>
                                 {range}
                             </div>
                         ))}
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-[13px] text-neutral-400 font-medium">
+                    <div className="flex items-center gap-1.5 text-[13px] text-[#9A9998]">
                         <span>Total spent:</span>
                         <Skeleton className="h-4 w-12 bg-white/[0.06] rounded" />
                     </div>
                 </div>
 
                 {/* table skeleton */}
-                <div className="flex flex-col bg-[#191919] border border-[#242323] rounded-xl overflow-hidden">
-                    <div className="bg-[#202020] border-b border-[#242323] px-3.5 sm:px-4 py-2.5 text-[12px] text-[#7B7A79] font-medium">
+                <div className={listBoxClass}>
+                    <div className={listHeaderClass}>
                         <div className="flex md:hidden items-center justify-between">
                             <span>Project / Date</span>
                             <span>Tokens / Cost</span>
@@ -141,7 +143,7 @@ export const ProfileUsageSkeleton: React.FC = () => (
                     </div>
 
                     {/* Mobile skeletons */}
-                    <div className="flex md:hidden flex-col divide-y divide-[#242323]">
+                    <div className="flex md:hidden flex-col divide-y divide-[#2A2A2A]">
                         {[
                             { titleW: 'w-28', costW: 'w-12', subW: 'w-36' },
                             { titleW: 'w-36', costW: 'w-10', subW: 'w-44' },
@@ -164,7 +166,7 @@ export const ProfileUsageSkeleton: React.FC = () => (
                     </div>
 
                     {/* Desktop skeletons */}
-                    <div className="hidden md:flex flex-col divide-y divide-[#242323]">
+                    <div className="hidden md:flex flex-col divide-y divide-[#2A2A2A]">
                         {[
                             {
                                 dateW: 'w-20',
@@ -241,7 +243,7 @@ export const ProfileUsageSkeleton: React.FC = () => (
 )
 
 export const ProfileBillingHistorySkeleton: React.FC = () => (
-    <div className="flex flex-col divide-y divide-[#242323]">
+    <div className="flex flex-col divide-y divide-[#2A2A2A]">
         {[
             { titleW: 'w-36', dateW: 'w-24', statusW: 'w-14', amountW: 'w-12' },
             { titleW: 'w-48', dateW: 'w-20', statusW: 'w-16', amountW: 'w-14' },
@@ -287,23 +289,30 @@ export const ProfileBillingSkeleton: React.FC<{ onAddCredits?: () => void }> = (
     onAddCredits,
 }) => (
     <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9] animate-in fade-in duration-200">
-        {/* balance */}
-        <div className="flex flex-col mb-6">
-            <SettingsPageHeader title="Billing" subtitle={PAGE_SUBTITLES.billing} />
-            <div className="flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191919] rounded-xl p-4 sm:p-5 w-full">
+        <SettingsPageHeader title="Billing" subtitle={PAGE_SUBTITLES.billing} />
+
+        {/* credits: the balance and its two buttons */}
+        <div className="flex flex-col mb-5">
+            <SettingsSectionHeading
+                title="Credits"
+                description="Your balance, and how to add to it."
+            />
+            <div className={sectionBoxClass}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
                     <div className="flex flex-col gap-1">
                         <span className="text-[12px] font-medium text-[#7B7A79]">Balance</span>
-                        <Skeleton className="h-7 sm:h-8 w-28 bg-white/[0.05] rounded" />
+                        <Skeleton className="h-6 sm:h-7 w-28 bg-white/[0.05] rounded" />
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="hidden md:block px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9]">
+                        <span
+                            className={`${outlineButtonClass} flex-1 sm:flex-initial text-center`}
+                        >
                             Redeem code
                         </span>
                         <button
                             type="button"
                             onClick={onAddCredits}
-                            className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] text-[13px] font-medium transition-colors cursor-pointer text-center shadow-sm"
+                            className={`${blueButtonClass} flex-1 sm:flex-initial text-center`}
                         >
                             Add credits
                         </button>
@@ -314,9 +323,9 @@ export const ProfileBillingSkeleton: React.FC<{ onAddCredits?: () => void }> = (
 
         {/* history */}
         <div className="flex flex-col mb-0">
-            <h2 className="text-[16px] md:text-[15px] font-medium text-[#D6D5C9] mb-3">History</h2>
-            <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden flex flex-col">
-                <div className="hidden md:grid grid-cols-12 gap-2 bg-[#202020] border-b border-[#242323] px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-[#7B7A79]">
+            <SettingsSectionHeading title="History" description="Payments and codes you added." />
+            <div className={listBoxClass}>
+                <div className={`hidden md:grid grid-cols-12 gap-2 ${listHeaderClass}`}>
                     <div className="col-span-3">Date</div>
                     <div className="col-span-5">Details</div>
                     <div className="col-span-2">Status</div>
@@ -489,27 +498,27 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
 
                     <div className="flex flex-col gap-4">
                         {/* Top Control Bar */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                             <div className="relative w-full max-w-full sm:max-w-[340px]">
                                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7B7A79]" />
                                 <input
                                     type="text"
                                     placeholder="Search repositories..."
                                     readOnly
-                                    className="w-full pl-9 pr-3 py-1.5 bg-[#202020] border border-[#282828] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none"
+                                    className="w-full pl-9 pr-3 py-1.5 bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none"
                                 />
                             </div>
 
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
-                                    className="p-2 rounded-lg border border-[#282828] bg-[#202020] text-[#949494] transition-colors"
+                                    className="p-2 rounded-lg border border-[#383736] text-[#949494] transition-colors"
                                 >
                                     <RotateCw className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                     type="button"
-                                    className="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                                    className={`${blueButtonClass} flex-1 sm:flex-initial flex items-center justify-center gap-1.5`}
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Connect GitHub</span>
@@ -546,21 +555,18 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                                     type="text"
                                     placeholder="Search secrets"
                                     readOnly
-                                    className="w-full pl-9 pr-3 py-1.5 bg-[#202020] border border-[#282828] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none"
+                                    className="w-full pl-9 pr-3 py-1.5 bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none"
                                 />
                             </div>
 
                             <div className="hidden md:flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg border border-[#282828] bg-[#202020] text-[12.5px] font-medium text-[#D6D5C9] transition-colors"
-                                >
+                                <button type="button" className={outlineButtonClass}>
                                     Bulk add
                                 </button>
 
                                 <button
                                     type="button"
-                                    className="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                                    className={`${blueButtonClass} flex items-center justify-center gap-1.5`}
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add secret</span>
@@ -569,8 +575,8 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                         </div>
 
                         {/* Secrets Table Container */}
-                        <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden mt-1 flex flex-col">
-                            <div className="hidden md:block bg-[#202020] border-b border-[#242323] px-4 py-2.5 text-[12px] font-medium text-[#7B7A79]">
+                        <div className={listBoxClass}>
+                            <div className={`hidden md:block ${listHeaderClass}`}>
                                 <div className="grid grid-cols-12">
                                     <div className="col-span-4">Name</div>
                                     <div className="col-span-4">Note</div>

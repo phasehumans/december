@@ -10,7 +10,8 @@
         "./crypto": "./src/crypto/index.ts",
         "./git": "./src/git/index.ts",
         "./commands": "./src/commands/index.ts",
-        "./review": "./src/review-prompt.ts"
+        "./review": "./src/review-prompt.ts",
+        "./attachments": "./src/attachments.ts"
     },
     "private": true,
     "scripts": {

@@ -9,6 +9,7 @@ import { parseAuthToken } from './middleware/auth.middleware'
 import { errorHandler } from './middleware/error.middleware'
 import { cliRateLimiter, globalRateLimiter, runtimeRateLimiter } from './middleware/rate-limiter'
 import adminRouter from './modules/admin/admin.routes'
+import attachmentRouter from './modules/attachment/attachment.routes'
 import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
 import byokRouter from './modules/byok/byok.routes'
@@ -23,6 +24,7 @@ import secretsRouter from './modules/secrets/secrets.routes'
 import sessionRouter from './modules/session/session.routes'
 import sessionCommandRouter from './modules/sessioncommand/sessioncommand.routes'
 import settingRouter from './modules/setting/setting.routes'
+import teamRouter from './modules/team/team.routes'
 import usageRouter from './modules/usage/usage.routes'
 import waitlistRouter from './modules/waitlist/waitlist.routes'
 
@@ -75,6 +77,8 @@ app.use(
             return callback(null, false)
         },
         credentials: true,
+        // the web reads the file name of a receipt or an export from this header
+        exposedHeaders: ['Content-Disposition'],
     })
 )
 
@@ -113,6 +117,9 @@ app.use('/api/v1/waitlist', waitlistRouter)
 app.use('/api/v1/billing', billingRouter)
 app.use('/api/v1/platform', platformRouter)
 app.use('/api/v1/cli', cliRateLimiter, cliRouter)
+// files sent with a prompt (#634): POST /session/:id/attachments
+app.use('/api/v1/session', attachmentRouter)
+app.use('/api/v1/sessions', attachmentRouter)
 // the slash commands first: their /check and /review must not reach the /:id route
 app.use('/api/v1/session', sessionCommandRouter)
 app.use('/api/v1/sessions', sessionCommandRouter)
@@ -122,6 +129,7 @@ app.use('/api/v1/secrets', secretsRouter)
 app.use('/api/v1/connections', connectionRouter)
 app.use('/api/v1/byok', byokRouter)
 app.use('/api/v1/githubapp', githubAppRouter)
+app.use('/api/v1/team', teamRouter)
 app.use('/api/v1/admin', adminRouter)
 
 app.use(errorHandler)

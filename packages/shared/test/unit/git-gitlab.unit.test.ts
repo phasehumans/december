@@ -170,7 +170,52 @@ describe('git provider: gitlab', () => {
             changedFiles: 4,
             createdAt: 'c',
             updatedAt: 'u',
+            mergedAt: null,
+            closedAt: null,
         })
+    })
+
+    it('opens a draft merge request with the "Draft:" title when draft is set', async () => {
+        const calls = stubFetch(() =>
+            json(
+                { iid: 10, web_url: 'u', title: 'Draft: feat: x', state: 'opened', draft: true },
+                201
+            )
+        )
+
+        const mr = await gitlab.createPullRequest({
+            token: 'tok',
+            repoPath: 'acme/app',
+            title: 'feat: x',
+            head: 'december/s1',
+            base: 'main',
+            body: 'body',
+            draft: true,
+        })
+
+        expect(bodyOf(calls[0])).toEqual({
+            source_branch: 'december/s1',
+            target_branch: 'main',
+            title: 'Draft: feat: x',
+            description: 'body',
+        })
+        expect(mr?.status).toBe('draft')
+    })
+
+    it('does not add "Draft:" two times', async () => {
+        const calls = stubFetch(() => json({ iid: 11, state: 'opened', draft: true }, 201))
+
+        await gitlab.createPullRequest({
+            token: 'tok',
+            repoPath: 'acme/app',
+            title: 'Draft: feat: x',
+            head: 'h',
+            base: 'main',
+            body: '',
+            draft: true,
+        })
+
+        expect(bodyOf(calls[0]).title).toBe('Draft: feat: x')
     })
 
     it('returns the existing merge request for the branch (409)', async () => {
@@ -290,6 +335,110 @@ describe('git provider: gitlab', () => {
                 redirectUri: 'cb',
             })
         ).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('lists a folder at the default branch', async () => {
+        const calls = stubFetch(() =>
+            json([
+                { name: 'deploy', path: '.december/skills/deploy', type: 'tree' },
+                { name: 'notes.md', path: '.december/skills/notes.md', type: 'blob' },
+                { name: 'vendor', path: '.december/skills/vendor', type: 'commit' },
+            ])
+        )
+
+        const entries = await gitlab.listDir({
+            token: 'tok',
+            repoPath: 'acme/tools/app',
+            path: '.december/skills',
+        })
+
+        const url = new URL(calls[0].url)
+        expect(url.origin + url.pathname).toBe(
+            'https://gitlab.com/api/v4/projects/acme%2Ftools%2Fapp/repository/tree'
+        )
+        // no ref: the host answers for the default branch
+        expect(Object.fromEntries(url.searchParams)).toEqual({
+            path: '.december/skills',
+            per_page: '100',
+            page: '1',
+        })
+        expect((calls[0].init?.headers as Record<string, string>).Authorization).toBe('Bearer tok')
+        expect(entries).toEqual([
+            { name: 'deploy', path: '.december/skills/deploy', type: 'dir' },
+            { name: 'notes.md', path: '.december/skills/notes.md', type: 'file' },
+        ])
+    })
+
+    it('reads the next page of a large folder, and sends no path for the root', async () => {
+        const calls = stubFetch((call) => {
+            const page = new URL(call.url).searchParams.get('page')
+            return json(
+                page === '1'
+                    ? Array.from({ length: 100 }, (_, i) => ({
+                          name: `f${i}`,
+                          path: `f${i}`,
+                          type: 'blob',
+                      }))
+                    : [{ name: 'AGENTS.md', path: 'AGENTS.md', type: 'blob' }]
+            )
+        })
+
+        const entries = await gitlab.listDir({ token: 'tok', repoPath: 'acme/app', path: '' })
+
+        expect(calls.length).toBe(2)
+        expect(new URL(calls[0].url).searchParams.has('path')).toBe(false)
+        expect(entries.length).toBe(101)
+        expect(entries[100]).toEqual({ name: 'AGENTS.md', path: 'AGENTS.md', type: 'file' })
+    })
+
+    it('throws with the status when a folder cannot be listed', async () => {
+        stubFetch(() => json({ message: '404 Project Not Found' }, 404))
+        await expect(
+            gitlab.listDir({ token: 'tok', repoPath: 'acme/secret', path: '' })
+        ).rejects.toMatchObject({ name: 'GitProviderError', status: 404 })
+    })
+
+    it('reads a text file', async () => {
+        const text = '---\nname: deploy\n---\nship it \u2713\n'
+        const calls = stubFetch(() =>
+            json({
+                file_name: 'SKILL.md',
+                size: Buffer.byteLength(text),
+                encoding: 'base64',
+                content: Buffer.from(text).toString('base64'),
+            })
+        )
+
+        const file = await gitlab.readTextFile({
+            token: 'tok',
+            repoPath: 'acme/tools/app',
+            path: '.december/skills/deploy/SKILL.md',
+            maxBytes: 64 * 1024,
+        })
+
+        // HEAD is the default branch
+        expect(calls[0].url).toBe(
+            'https://gitlab.com/api/v4/projects/acme%2Ftools%2Fapp/repository/files/.december%2Fskills%2Fdeploy%2FSKILL.md?ref=HEAD'
+        )
+        expect(file).toEqual({ size: 33, content: text })
+    })
+
+    it('does not return a file that is over the size cap', async () => {
+        stubFetch(() => json({ size: 70_000, encoding: 'base64', content: 'aGVsbG8=' }))
+        const file = await gitlab.readTextFile({
+            token: 'tok',
+            repoPath: 'acme/app',
+            path: 'big.md',
+            maxBytes: 64 * 1024,
+        })
+        expect(file).toEqual({ size: 70_000, content: null })
+    })
+
+    it('throws with the status when a file cannot be read', async () => {
+        stubFetch(() => json({ message: '404 File Not Found' }, 404))
+        await expect(
+            gitlab.readTextFile({ token: 'tok', repoPath: 'acme/app', path: 'x.md', maxBytes: 10 })
+        ).rejects.toMatchObject({ name: 'GitProviderError', status: 404 })
     })
 
     describe('oauth', () => {

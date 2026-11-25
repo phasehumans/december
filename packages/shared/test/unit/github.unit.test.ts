@@ -234,6 +234,70 @@ describe('github app helpers (#568)', () => {
         expect(parseBotCommand('@december review').isMentioned).toBe(false)
     })
 
+    // review E2: git's own rules for a branch name (git check-ref-format --branch)
+    it('isValidBranchName follows the ref rules of git', async () => {
+        const { isValidBranchName } = await import('../../src/pull-request-settings')
+        for (const name of ['december/s1', 'feat/ai-s1', 's1', 'a.b/c_d-1', 'x.locked/s1']) {
+            expect(isValidBranchName(name)).toBe(true)
+        }
+        for (const name of [
+            '',
+            'wip/.s1',
+            '.hidden/s1',
+            'a.lock/s1',
+            'wip/s1.lock',
+            'a..b',
+            'a//b',
+            '/a',
+            'a/',
+            'a.',
+            'a/.',
+            '-a',
+            '@',
+            'a@{b',
+            'a b',
+            'a~b',
+            'a^b',
+            'a:b',
+            'a?b',
+            'a*b',
+            'a[b',
+            'a\\b',
+            'a\tb',
+            'a\x7fb',
+            'x; rm -rf /',
+        ]) {
+            expect(isValidBranchName(name)).toBe(false)
+        }
+    })
+
+    it('checkBranchPrefix refuses a prefix that gives a branch name git refuses', async () => {
+        const { checkBranchPrefix } = await import('../../src/pull-request-settings')
+        for (const prefix of ['december/', 'feat/ai-', '', 'team.x/', 'x.lock']) {
+            expect(checkBranchPrefix(prefix)).toEqual({ ok: true })
+        }
+        for (const prefix of [
+            'wip/.',
+            'a.lock/',
+            '.x/',
+            'a..b/',
+            '/a/',
+            'a//',
+            '-a/',
+            'a b/',
+            'a@{/',
+        ]) {
+            expect(checkBranchPrefix(prefix).ok).toBe(false)
+        }
+    })
+
+    it('toBranchName falls back to december/<suffix> when the name is not valid', async () => {
+        const { toBranchName } = await import('../../src/pull-request-settings')
+        expect(toBranchName('wip/.', 's1')).toBe('december/s1')
+        expect(toBranchName('a.lock/', 's1')).toBe('december/s1')
+        expect(toBranchName('feat/', 's1')).toBe('feat/s1')
+    })
+
     it('toBranchName keeps git-safe names', async () => {
         const { toBranchName } = await import('../../src/pull-request-settings')
         expect(toBranchName('december/', 'issue-4')).toBe('december/issue-4')

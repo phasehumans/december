@@ -39,6 +39,13 @@ export type UpdateSessionDefaults = {
     defaultPlanFirst?: boolean
     defaultEffort?: 'fast' | 'deep'
     defaultOpenPullRequest?: boolean
+    // the model of the user's own key (#637). null for both: no default
+    defaultOwnKeyProvider?: string | null
+    defaultOwnKeyModel?: string | null
+    // 'last-used' or a repository full name
+    defaultRepository?: string
+    // 'default' or a branch name
+    defaultBaseBranch?: string
 }
 
 export type GetToolDenyRules = {
@@ -133,6 +140,18 @@ export type GetDataExport = {
 
 export type ProcessDataExport = {
     exportId: string
+    // false while the queue will run the job again after a failure. default: true
+    isLastAttempt?: boolean
+}
+
+export type TellDataExportFailed = {
+    userId: string
+    email: string
+    notifyEmail: boolean
+}
+
+export type PurgeDataExports = {
+    now?: Date
 }
 
 export type DownloadDataExport = {
@@ -148,4 +167,40 @@ export type DataExportState = {
     expiresAt: Date | null
     // the next time the user can ask for a new export
     nextAllowedAt: Date
+}
+
+/** the setup commands of one repository: they run after the clone in a new sandbox (#637) */
+export type RepositorySetupCommands = {
+    repoFullName: string
+    commands: string
+}
+
+/** the sandbox settings of a user (#637) */
+export type SandboxSettings = {
+    idleStopMinutes: 10 | 30 | 60
+    // null: never archive
+    archiveAfterDays: 7 | 30 | null
+    setupCommands: RepositorySetupCommands[]
+}
+
+export type GetSandboxSettings = {
+    userId: string
+}
+
+export type UpdateSandboxSettings = {
+    userId: string
+    settings: {
+        idleStopMinutes?: 10 | 30 | 60
+        archiveAfterDays?: 7 | 30 | null
+    }
+}
+
+export type UpdateSetupCommands = {
+    userId: string
+    repoFullName: string
+    commands: string
+}
+
+export type ArchiveInactiveSessions = {
+    now?: Date
 }

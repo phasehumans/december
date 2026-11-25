@@ -38,6 +38,8 @@ interface WorkspaceScreenMainContentProps {
     showStructureOnly: boolean
     projectName?: string | null
     projectId?: string | null
+    /** the saved branch of the session, for the pull request tab */
+    sessionBranch?: string | null
     versions?: BackendProjectVersionSummary[]
     activeVersionId?: string | null
     isVersionLoading?: boolean
@@ -60,6 +62,7 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
     onIframeMessage,
     showStructureOnly,
     projectId,
+    sessionBranch,
     previewSession,
     previewSessionError,
     projectType,
@@ -236,6 +239,7 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
             {activeTab === 'pull_requests' && (
                 <PullRequestsWorkspace
                     sessionId={previewSession?.previewId || projectId || undefined}
+                    branch={sessionBranch}
                 />
             )}
 

@@ -5,6 +5,7 @@ import { sendSuccess } from '../../shared/response'
 import {
     NotificationParamsSchema,
     GetNotificationsQuerySchema,
+    pushStatusSchema,
     pushSubscribeSchema,
     pushUnsubscribeSchema,
 } from './notification.schema'
@@ -117,8 +118,20 @@ const markAllAsRead = asyncHandler(async (req: Request, res: Response) => {
 })
 
 const getPushConfig = asyncHandler(async (_req: Request, res: Response) => {
-    const result = await notificationService.getPushConfig()
+    const result = await notificationService.getPushConfig({})
     return sendSuccess(res, 'push config fetched', result)
+})
+
+const getPushStatus = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { endpoint } = pushStatusSchema.parse(req.body)
+    const result = await notificationService.getPushStatus({ userId, endpoint })
+    return sendSuccess(res, 'push status fetched', result)
 })
 
 const subscribePush = asyncHandler(async (req: Request, res: Response) => {
@@ -131,6 +144,7 @@ const subscribePush = asyncHandler(async (req: Request, res: Response) => {
     const { endpoint, keys } = pushSubscribeSchema.parse(req.body)
     const result = await notificationService.subscribePush({
         userId,
+        authSessionId: req.user?.sessionId,
         endpoint,
         p256dh: keys.p256dh,
         auth: keys.auth,
@@ -153,6 +167,7 @@ const unsubscribePush = asyncHandler(async (req: Request, res: Response) => {
 
 export const notificationController = {
     getPushConfig,
+    getPushStatus,
     subscribePush,
     unsubscribePush,
     getNotifications,

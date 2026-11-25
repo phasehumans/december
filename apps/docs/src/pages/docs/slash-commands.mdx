@@ -180,62 +180,114 @@ December applies the changes when you save the file. When you move an action to 
 
 December Cloud has slash commands too. Type `/` in the prompt box to see them. Some commands show only inside a session.
 
-| Command                                           | What it does in December Cloud                                                      |
-| :------------------------------------------------ | :---------------------------------------------------------------------------------- |
-| `/plan [goal]`                                    | Make a plan before December changes code.                                           |
-| `/effort`                                         | Pick Fast or Deep. Shows only on December credits.                                  |
-| `/model`                                          | Pick a model.                                                                       |
-| `/switch`                                         | Change between December credits and your own keys.                                  |
-| `/voice`                                          | Speak a prompt. Shows only if your browser supports speech input.                   |
-| `/new`                                            | Leave the session and go to Home. Session only.                                     |
-| `/exit`                                           | The same as `/new`. Session only.                                                   |
-| `/resume`                                         | Open search to find an earlier session.                                             |
-| `/rename <title>`                                 | Rename the session. Session only.                                                   |
-| `/copy`                                           | Copy the last response. Session only.                                               |
-| `/diff`                                           | Open the changes of the session. Session only.                                      |
-| `/open <file>`                                    | Show a file of the session in a file tab. Session only.                             |
-| `/tasks`                                          | Open the shell of the session. Session only.                                        |
-| `/usage`                                          | In a session, show the tokens the session used. On Home, open **Settings > Usage**. |
-| `/mcp`, `/plugin`, `/hooks`, `/memory`, `/github` | Open the page in **Settings > Connections**.                                        |
-| `/settings`                                       | Open the settings.                                                                  |
-| `/login`                                          | Open **Settings > Models**, where you add your own keys.                            |
-| `/keybindings`                                    | Show the keyboard shortcuts.                                                        |
-| `/help`                                           | Show the commands.                                                                  |
-| `/check`                                          | Check your setup. The results show in the command menu.                             |
-| `/docs`, `/changelog`, `/feedback`                | Open the page in a new tab.                                                         |
-| `/update`                                         | Reload the page. December Cloud is always the newest version after a reload.        |
-
-These CLI commands are not in December Cloud yet: `/compact`, `/context`, `/fork`, `/rewind`, `/clear`, `/btw`, `/codesearch`, `/learn`, `/permissions`, and `/review`.
+| Command                            | What it does in December Cloud                                                      |
+| :--------------------------------- | :---------------------------------------------------------------------------------- |
+| `/plan [goal]`                     | Make a plan before December changes code.                                           |
+| `/effort`                          | Pick Fast or Deep.                                                                  |
+| `/model`                           | Pick a model.                                                                       |
+| `/switch`                          | Change between December credits and your own keys.                                  |
+| `/voice`                           | Speak a prompt. Shows only if your browser supports speech input.                   |
+| `/review <link>`                   | Review a pull request in a new session. Paste the pull request link. Home only.     |
+| `/btw <question>`                  | Ask a side question. The answer does not go into the conversation. Session only.    |
+| `/new`                             | Leave the session and go to Home. Session only.                                     |
+| `/exit`                            | The same as `/new`. Session only.                                                   |
+| `/resume`                          | Open search to find an earlier session.                                             |
+| `/rename [title]`                  | Rename the session. With no title, December writes one for you. Session only.       |
+| `/copy`                            | Copy the last response. Session only.                                               |
+| `/diff`                            | Open the changes of the session. Session only.                                      |
+| `/open <file>`                     | Show a file of the session in a file tab. Session only.                             |
+| `/codesearch <text>`               | Search the code of the session. Session only.                                       |
+| `/tasks`                           | Show the background tasks of the session. Session only.                             |
+| `/context`                         | Show how much of the context window the session uses. Session only.                 |
+| `/compact [focus]`                 | Summarize the conversation, so it uses less of the context window. Session only.    |
+| `/clear`                           | Clear the context. The next message starts fresh. Session only.                     |
+| `/rewind`                          | Go back to an earlier message. December restores the files. Session only.           |
+| `/fork`                            | Copy the session and continue in the copy. Session only.                            |
+| `/usage`                           | In a session, show the tokens the session used. On Home, open **Settings > Usage**. |
+| `/skills`                          | List your skills. Pick one to add it to the prompt.                                 |
+| `/learn [lesson]`                  | Save a lesson from the conversation. Session only.                                  |
+| `/permissions [rule]`              | Show the tools that you blocked. With a rule, block a tool. Session only.           |
+| `/mcp`, `/github`                  | Open the page in **Settings > Connections**.                                        |
+| `/plugin`, `/hooks`, `/memory`     | Open the page in **Settings > Connections**. These pages are not ready yet.         |
+| `/settings`                        | Open the settings.                                                                  |
+| `/login`                           | Open **Settings > API keys**, where you add your own keys.                          |
+| `/keybindings`                     | Show the keyboard shortcuts.                                                        |
+| `/help`                            | Show the commands.                                                                  |
+| `/check`                           | Check your setup. The results show in the command menu.                             |
+| `/docs`, `/changelog`, `/feedback` | Open the page in a new tab.                                                         |
+| `/update`                          | Reload the page. December Cloud is always the newest version after a reload.        |
 
 ### Fast and Deep
 
-On December credits, you pick a speed, not a model:
+You pick a speed for each run:
 
-- Fast: Quick answers at a lower cost. December uses `gemini-2.5-flash`.
-- Deep: More reasoning for hard work. December uses `gemini-2.5-pro`. This is the default.
+- Fast: Quick answers at a lower cost.
+- Deep: More reasoning for hard work. This is the default.
+
+On December credits, December picks the model for the speed. Fast uses `gemini-2.5-flash`. Deep uses `gemini-2.5-pro`.
+
+On your own keys, the model stays the same. The speed sets how much the model reasons.
 
 To change the speed, use the **Fast | Deep** switch at the left of the prompt box, or type `/effort`. On a phone, open **Configuration** and use the **Speed** row.
 
 ### Use your own keys
 
-If you want to use your own keys, add a key in **Settings > Models** first.
+If you want to use your own keys, add a key in **Settings > API keys** first.
 
 1. Use the switch next to the microphone. Select **Your keys**.
 2. Click the model name at the left of the prompt box.
 3. Point at a key, then select a model from the list beside it.
 
-Fast and Deep do not show on your own keys. To go back to December credits, select **Credits** in the same switch.
+Fast and Deep also work on your own keys. If a model does not support reasoning control, it runs in standard mode.
+
+To go back to December credits, select **Credits** in the same switch.
 
 ### The + menu
 
-Click **+** at the left of the prompt box. Each row opens a list beside the menu:
+Click **+** at the left of the prompt box. The first row opens a file picker. Each other row opens a list beside the menu:
 
+- Upload attachment: Send files with the prompt.
 - Repositories: Add a repository to the prompt.
 - Sessions: Mention an earlier session in the prompt.
 - Secrets: Mention a stored secret in the prompt.
 - Commands: Run a slash command.
+- Skills: Add a skill to the prompt. See [Skills in December Cloud](/docs/skills#skills-in-december-cloud).
+- MCPs: Turn an MCP server off or on for this session. See [MCP servers in December Cloud](/docs/mcp#mcp-servers-in-december-cloud).
 
 To use the keyboard, press the up and down arrows to move in the menu. Press the right arrow to move into a list, and press `Enter` to pick a row. Press the left arrow or `Esc` to go back.
+
+### Attach files
+
+1. Click **+**, then select **Upload attachment**.
+2. Pick the files. Each file shows in the prompt box.
+3. Send the prompt.
+
+You can send 5 files with one prompt. Each file can be 5 MB. All files of one session together can be 50 MB.
+
+December takes images (`png`, `jpg`, `jpeg`, `webp`, `gif`) and text files, such as `md`, `json`, `csv`, `log`, and source code. December puts the files in the sandbox, so the agent can read them.
+
+### Send a message while December works
+
+You can write a new message while December works on a run. Open **Settings > Account**. In **Preferences**, set **New messages while December works**:
+
+- Queue: December keeps the message and sends it when the run ends. The session shows the message as **Queued**. Select **Remove** to delete it before it goes.
+- Send now: December reads the message in the middle of the run.
+
+If you stop a run, the queued messages stay. Select **Send** on a message to send it.
+
+### Defaults for new sessions
+
+Open **Settings > Defaults** to set what a new session starts with. The prompt box starts from these values, and you can change them for each prompt.
+
+| Setting             | What it does                                                                |
+| :------------------ | :-------------------------------------------------------------------------- |
+| Model source        | Start on December credits or on your own keys.                              |
+| Model for your keys | The model a new session uses on your own keys. Shows after you add a key.   |
+| Speed               | Start on Fast or Deep.                                                      |
+| Plan first          | December writes a plan and waits for your approval before it changes files. |
+| Open a pull request | Turn it off to get a branch and commits only.                               |
+| Repository          | The repository a new session starts in. **Last used** keeps your last one.  |
+| Base branch         | The branch December starts from. Leave it empty to use the default branch.  |
 
 ## Session titles
 

@@ -110,8 +110,8 @@ describe('Session commands (#632)', () => {
     afterAll(async () => {
         resolveSpy.mockRestore()
         setMockSandboxRunner(null)
-        await cleanupTestUser(ownerEmail)
-        await cleanupTestUser(otherEmail)
+        await cleanupTestUser({ email: ownerEmail })
+        await cleanupTestUser({ email: otherEmail })
     })
 
     it('keeps every command to the owner of the session', async () => {
@@ -369,6 +369,76 @@ describe('Session commands (#632)', () => {
                 machine: { sandboxStatus: 'RUNNING' },
             })
             expect(res.body.data.credits.balanceInCents).toBeGreaterThan(4900)
+        })
+
+        it("/check lists the user's saved mcp servers with what the last run found", async () => {
+            const other = await prisma.user.findUniqueOrThrow({ where: { email: otherEmail } })
+            await prisma.userMcpServer.createMany({
+                data: [
+                    {
+                        userId: ownerId,
+                        name: 'linear',
+                        url: 'https://mcp.linear.app/mcp',
+                        status: 'connected',
+                        tools: ['list_issues', 'create_issue', 'delete_issue'],
+                        disabledTools: ['delete_issue'],
+                        checkedAt: new Date('2026-11-25T08:30:00.000Z'),
+                    },
+                    {
+                        userId: ownerId,
+                        name: 'sentry',
+                        url: 'https://mcp.sentry.dev/mcp',
+                        auth: 'header',
+                        encryptedHeaders: 'not-shown',
+                        headerKeys: ['Authorization'],
+                        status: 'error',
+                        lastError: 'HTTP 401',
+                        checkedAt: new Date('2026-11-25T08:31:00.000Z'),
+                    },
+                    {
+                        userId: ownerId,
+                        name: 'figma',
+                        url: 'https://mcp.figma.com/mcp',
+                        enabled: false,
+                    },
+                    { userId: other.id, name: 'private', url: 'https://mcp.example.com/mcp' },
+                ],
+            })
+
+            const res = await as(ownerToken).get('/check')
+            expect(res.status).toBe(200)
+            expect(res.body.data.mcpServers).toEqual([
+                {
+                    name: 'figma',
+                    enabled: false,
+                    status: 'unknown',
+                    lastError: null,
+                    toolCount: 0,
+                    checkedAt: null,
+                },
+                {
+                    name: 'linear',
+                    enabled: true,
+                    status: 'connected',
+                    lastError: null,
+                    toolCount: 3,
+                    checkedAt: '2026-11-25T08:30:00.000Z',
+                },
+                {
+                    name: 'sentry',
+                    enabled: true,
+                    status: 'error',
+                    lastError: 'HTTP 401',
+                    toolCount: 0,
+                    checkedAt: '2026-11-25T08:31:00.000Z',
+                },
+            ])
+
+            // a user with no saved server has an empty list, never another user's rows
+            await prisma.userMcpServer.deleteMany({ where: { userId: other.id } })
+            const empty = await as(otherToken).get('/check')
+            expect(empty.body.data.mcpServers).toEqual([])
+            await prisma.userMcpServer.deleteMany({ where: { userId: ownerId } })
         })
 
         it('/review starts a session that checks out the pull request and opens none', async () => {

@@ -184,4 +184,88 @@ describe('Mailbox Queue, Wake-Up Sweeper & Session Parking (Integration)', () =>
         })
         expect(finalSession!.status).toBe('PARKED')
     })
+
+    // #637: one run for a session. a wake-up claims the session like every other run
+    describe('a wake-up while a run works on the session', () => {
+        let ownerId: string
+
+        beforeAll(async () => {
+            const user = await prisma.user.create({
+                data: { name: 'Wake-up claim', email: `wake-up-claim-${Date.now()}@example.com` },
+            })
+            ownerId = user.id
+        })
+
+        afterAll(async () => {
+            await prisma.user.delete({ where: { id: ownerId } })
+        })
+
+        const newTrigger = async () => {
+            const session = await prisma.session.create({
+                data: { title: 'wake-up claim', userId: ownerId, type: 'WEB', status: 'IDLE' },
+            })
+            const trigger = await MailboxService.scheduleWakeUp({
+                sessionId: session.id,
+                triggerAt: new Date(Date.now() - 1000),
+                reason: 'check the build',
+            })
+            return { session, trigger }
+        }
+        const triggerRow = (id: string) => prisma.wakeUpTrigger.findUniqueOrThrow({ where: { id } })
+
+        it('waits and tries again later: no job, the trigger and its messages stay', async () => {
+            const { session, trigger } = await newTrigger()
+            const message = await MailboxService.enqueueMailboxMessage({
+                sessionId: session.id,
+                sender: 'USER',
+                content: 'for the wake-up',
+            })
+            const dispatched: unknown[] = []
+            const sweeper = new WakeUpSweeper({
+                retryMs: 60_000,
+                // a run is queued or active: the session is not free
+                claimRun: async () => null,
+                jobDispatcher: async (job) => {
+                    dispatched.push(job)
+                },
+            })
+            const before = Date.now()
+
+            const count = await sweeper.sweep()
+
+            expect(count).toBe(0)
+            expect(dispatched).toEqual([])
+            const row = await triggerRow(trigger.id)
+            expect(row.status).toBe('PENDING')
+            expect(row.triggerAt.getTime()).toBeGreaterThanOrEqual(before + 60_000)
+            expect(
+                (await prisma.mailboxMessage.findUniqueOrThrow({ where: { id: message.id } }))
+                    .status
+            ).toBe('QUEUED')
+        })
+
+        it('runs when the session is free, with the id of the run it claimed', async () => {
+            const { session, trigger } = await newTrigger()
+            const dispatched: any[] = []
+            const released: string[] = []
+            const sweeper = new WakeUpSweeper({
+                claimRun: async (sessionId) => `run-for-${sessionId}`,
+                releaseRun: async (sessionId, runId) => {
+                    released.push(`${sessionId}:${runId}`)
+                },
+                jobDispatcher: async (job) => {
+                    dispatched.push(job)
+                },
+            })
+
+            await sweeper.sweep()
+
+            const mine = dispatched.filter((job) => job.sessionId === session.id)
+            expect(mine).toHaveLength(1)
+            expect(mine[0].runId).toBe(`run-for-${session.id}`)
+            expect((await triggerRow(trigger.id)).status).toBe('COMPLETED')
+            // the dispatcher ran the turn in this process: the session is free again
+            expect(released).toContain(`${session.id}:run-for-${session.id}`)
+        })
+    })
 })

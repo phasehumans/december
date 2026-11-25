@@ -1,3 +1,4 @@
+import type { PromptInputSubmitOptions } from '@/features/home/types'
 import type { BackendProjectVersionSummary } from '@/features/sessions/api/session'
 import type { RefObject } from 'react'
 
@@ -61,7 +62,8 @@ export interface GeneratedProjectFile {
 
 export interface WorkspaceScreenProps {
     onBack?: () => void
-    onPromptSubmit: (prompt: string) => Promise<void> | void
+    /** the options are what the session prompt box shows: speed, plan first, skills */
+    onPromptSubmit: (prompt: string, options?: PromptInputSubmitOptions) => Promise<void> | void
     onRuntimeError?: (error: PreviewRuntimeError) => Promise<void> | void
     showStructureOnly?: boolean
     onSelectVersion?: (versionId: string) => void

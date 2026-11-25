@@ -45,6 +45,45 @@ If you leave out the key, December asks you for it. To send requests through a p
 
 December saves your keys in `~/.december/config.json` on your computer. If you use your own keys, the CLI sends requests straight to the provider.
 
+## December credits in December Cloud
+
+December Cloud runs on December credits or on your own keys. A run on your own keys uses no December credits.
+
+### Add credits and get a receipt
+
+Open **Settings > Billing**. The page shows your balance.
+
+- To buy credits, select **Add credits**.
+- To use a code, select **Redeem code**.
+- To get a receipt, go to **History** and select the link in the **Receipt** column of a payment. December downloads a PDF.
+
+### See your usage
+
+Open **Settings > Usage**. The page shows three totals for the period: **Spent**, **Tokens**, and **Sessions**. A chart shows the spend for each day. Below the chart, a list shows each row of usage with its date, project, model, tokens, and cost.
+
+- Use **Period** to pick 1, 7, 30, or 90 days.
+- Use **Paid with** to show runs on credits, runs on your own keys, or all runs.
+
+### Set a spend limit
+
+A spend limit stops December before it uses more credits than you want. Open **Settings > Billing** and go to **Limits**.
+
+| Limit                                  | What it does                                                     |
+| :------------------------------------- | :--------------------------------------------------------------- |
+| Tell me when the balance is under      | December tells you when your balance goes below this amount.     |
+| Pause a session when it reaches        | December pauses a session when the session reaches this amount.  |
+| Pause all sessions at a day's total of | December pauses your sessions when your day reaches this amount. |
+
+When a session reaches a limit, December pauses it and asks you, for example "Reached $5. Continue?". Select **Continue** to let the session use the same amount again. Select **Stop here** to end the run.
+
+Runs on your own keys do not count toward a limit.
+
+### Invite a friend
+
+Open **Settings > Billing**. In the **Invite a friend** row, select **Copy link** and send the link to a friend.
+
+Your friend signs up with the link. After the first payment of $10 or more of your friend, December adds the credit to both accounts. The row shows the amount.
+
 ## Link a plan from the terminal
 
 To link a plan without opening a session, run `december link` with the provider name:

@@ -56,22 +56,28 @@ describe('Auth Flow Typography & Landing Page Font Alignment', () => {
     it('AuthModalAuthStep shows the December mark with the log in link under it', () => {
         const { container } = renderAuthStep()
 
-        const heading = screen.getByRole('heading', { level: 2 })
-        expect(heading.textContent).toBe('December')
-        expect(heading.className).toContain('tracking-[-0.025em]')
-        expect(heading.className).toContain('text-white')
+        // the header is the logo only since d4c7f998 (#629): no "December" heading text
+        const mark = screen.getByRole('img', { name: 'December' })
+        expect(mark.querySelector('svg')).not.toBeNull()
+        expect(mark.textContent).toBe('')
+        expect(screen.queryByRole('heading', { level: 2 })).toBeNull()
         expect(container.querySelector('button[type="submit"]')?.textContent).toBe('Sign up')
 
+        // white links with no underline (#629)
         for (const name of ['Terms', 'Privacy Policy']) {
             const link = screen.getByRole('link', { name })
             expect(link.className).toContain('text-white')
-            expect(link.className).not.toContain('hover:')
-            expect(link.className).not.toContain('transition')
+            expect(link.className).not.toContain('underline')
         }
 
         const loginLink = screen.getByRole('button', { name: 'Log in' })
         expect(loginLink.className).toContain('text-white')
         expect(loginLink.className).not.toContain('text-[#87b2f4]')
+        expect(loginLink.className).not.toContain('underline')
+        // the log in link comes after the mark
+        expect(
+            mark.compareDocumentPosition(loginLink) & Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy()
     })
 
     it('AuthModalAuthStep orders GitHub, ChatGPT, Google with one compact style', () => {

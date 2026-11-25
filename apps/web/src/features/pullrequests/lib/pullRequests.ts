@@ -35,9 +35,14 @@ export const PULL_REQUEST_STATE_LABELS: Record<PullRequestState, string> = {
 
 const cleanRepoUrl = (repoUrl: string) => repoUrl.replace(/\.git$/, '').replace(/\/+$/, '')
 
-/** owner/name of the session repository, or null */
+/** owner/name of the session repository, the name alone when the owner is not known, or null */
 export const repoNameOf = (session: BackendSession): string | null => {
-    if (session.githubRepoName) return session.githubRepoName
+    if (session.githubRepoName) {
+        // the list sends the owner apart from the name
+        return session.githubRepoOwner && !session.githubRepoName.includes('/')
+            ? `${session.githubRepoOwner}/${session.githubRepoName}`
+            : session.githubRepoName
+    }
     if (!session.repoUrl) return null
     const match = /github\.com[/:]([\w.-]+\/[\w.-]+)/i.exec(cleanRepoUrl(session.repoUrl))
     return match ? match[1] : null
@@ -50,27 +55,22 @@ export const pullRequestUrlOf = (session: BackendSession): string | null => {
     return session.repoUrl ? `${cleanRepoUrl(session.repoUrl)}/pull/${session.prNumber}` : null
 }
 
-/** rows of the pull requests list, last updated first */
+/** rows of the pull requests list, in the order the server sorted them */
 export const toPullRequestRows = (pullRequests: BackendPullRequest[]): PullRequestRow[] =>
-    pullRequests
-        .map((pr) => ({
-            sessionId: pr.sessionId,
-            title: pr.prTitle || pr.title || 'Untitled session',
-            repo: pr.repo,
-            number: pr.prNumber,
-            state: pr.prState ?? 'open',
-            branch: pr.prBranch,
-            url: pr.prUrl,
-            additions: pr.additions,
-            deletions: pr.deletions,
-            updatedAt: pr.updatedAt,
-            createdAt: pr.prOpenedAt ?? pr.createdAt,
-            tags: pr.tags || [],
-        }))
-        .sort(
-            (a, b) =>
-                (new Date(b.updatedAt).getTime() || 0) - (new Date(a.updatedAt).getTime() || 0)
-        )
+    pullRequests.map((pr) => ({
+        sessionId: pr.sessionId,
+        title: pr.prTitle || pr.title || 'Untitled session',
+        repo: pr.repo,
+        number: pr.prNumber,
+        state: pr.prState ?? 'open',
+        branch: pr.prBranch,
+        url: pr.prUrl,
+        additions: pr.additions,
+        deletions: pr.deletions,
+        updatedAt: pr.updatedAt,
+        createdAt: pr.prOpenedAt ?? pr.createdAt,
+        tags: pr.tags || [],
+    }))
 
 /**
  * rows from the loaded sessions list, for the few rows under the Home prompt box. the
@@ -97,21 +97,6 @@ export const sessionsToPullRequestRows = (sessions: BackendSession[]): PullReque
             (a, b) =>
                 (new Date(b.updatedAt).getTime() || 0) - (new Date(a.updatedAt).getTime() || 0)
         )
-
-/** a draft is still open, so it shows under Open */
-export const isOpenPullRequest = (row: PullRequestRow): boolean =>
-    row.state === 'open' || row.state === 'draft'
-
-/** matches the title, repository, branch or number */
-export const searchPullRequests = (rows: PullRequestRow[], query: string): PullRequestRow[] => {
-    const needle = query.trim().toLowerCase().replace(/^#/, '')
-    if (!needle) return rows
-    return rows.filter((row) =>
-        [row.title, row.repo, row.branch, String(row.number)].some((value) =>
-            (value || '').toLowerCase().includes(needle)
-        )
-    )
-}
 
 export const PULL_REQUEST_STATE_CLASS: Record<PullRequestState, string> = {
     open: 'text-emerald-400',

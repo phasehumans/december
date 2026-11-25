@@ -1,3 +1,6 @@
+import type { JobAttachment } from './attachments'
+import type { RunSteering } from './run-steering'
+import type { RunStop } from './run-stop'
 import type { LLMProvider } from '@december/providers'
 import type { SessionEffort } from '@december/shared'
 
@@ -24,6 +27,8 @@ export interface ExecuteSandboxCommandInput {
     cwd?: string
     timeoutMs?: number
     onData?: (chunk: string) => void
+    /** the stop signal of the run (#637): when it aborts, the command is killed */
+    signal?: AbortSignal
 }
 
 export interface ExecuteSandboxCommandResult {
@@ -52,6 +57,16 @@ export interface RunAgentSessionInput {
     planFirst?: boolean
     /** the saved user message of this turn: history stops before it, /rewind snapshots it */
     userMessageSequence?: number
+    /** saved skills the user picked with /name for this message (#632) */
+    skills?: string[]
+    /** saved mcp servers turned off for this session (#632) */
+    disabledMcps?: string[]
+    /** the files sent with this message (#634): copied into the sandbox before the turn */
+    attachments?: JobAttachment[]
+    /** the stop watch of this run (#637): a stop aborts the agent and ends the run */
+    stop?: RunStop
+    /** the messages sent while this run works (#637): the agent reads them at its next turn */
+    steering?: RunSteering
 }
 
 export interface DestroySandboxInput {
@@ -61,6 +76,12 @@ export interface DestroySandboxInput {
 export interface EmitSessionEventInput {
     sessionId: string
     event: Record<string, any>
+}
+
+export interface EmitRunFailureInput {
+    sessionId: string
+    /** the AgentError event of the failure */
+    error: Record<string, any>
 }
 
 export interface PauseSandboxInput {
@@ -108,4 +129,12 @@ export interface EphemeralTaskResult {
     success: boolean
     data?: any
     error?: string
+}
+
+export interface RunRepositorySetupInput {
+    sessionId: string
+    userId?: string
+    sandboxId: string
+    /** the stop watch of the run: a stop kills the setup commands */
+    stop?: RunStop
 }

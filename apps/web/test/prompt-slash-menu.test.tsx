@@ -14,6 +14,8 @@ const { MemoryRouter, useLocation } = await import('react-router-dom')
 const { useAppStore } = await import('../src/app/store')
 const { ChatPromptInput } = await import('../src/features/chat/components/ChatPromptInput')
 const { setConnectionsDemo } = await import('../src/features/connections/lib/connectionsDemo')
+const { generationAPI, getSharedSocket } = await import('../src/features/generation/api/generation')
+const { promptBoxConnectionsAPI } = await import('../src/features/home/api/promptBoxConnections')
 const { PromptInput } = await import('../src/features/home/components/PromptInput')
 const { useModelSelection } = await import('../src/features/home/model-selection')
 const { BASE_PROMPT_CONFIG, usePromptConfig } = await import('../src/features/home/promptConfig')
@@ -48,12 +50,19 @@ const savedKeys = {
     ],
 }
 
-const wrap = (ui: React.ReactNode, options: { keys?: boolean } = {}) => {
+/** what GET /connections/prompt-box answers for an account with no skills or MCP servers */
+const noConnections = { skills: [], plugins: [], mcps: [] }
+
+const wrap = (ui: React.ReactNode, options: { keys?: boolean; connections?: 'api' } = {}) => {
     // the cache answers the saved-keys request, so nothing goes to the network
     const client = new QueryClient({
         defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
     client.setQueryData(['byok'], options.keys ? savedKeys : { providers: [], credentials: [] })
+    // 'api': the test answers the request itself, at promptBoxConnectionsAPI
+    if (options.connections !== 'api') {
+        client.setQueryData(['connections', 'prompt-box'], noConnections)
+    }
     return render(
         <QueryClientProvider client={client}>
             <MemoryRouter>
@@ -88,6 +97,54 @@ const HomeBox: React.FC<{
 const SessionBox: React.FC<{ onSubmit?: () => void }> = ({ onSubmit = () => {} }) => {
     const [value, setValue] = React.useState('')
     return <ChatPromptInput value={value} onChange={setValue} onSubmit={onSubmit} isAuthenticated />
+}
+
+/** every send_prompt the socket sends from now on */
+const capturePrompts = () => {
+    const socket = getSharedSocket()
+    Object.defineProperty(socket, 'connected', { get: () => true, configurable: true })
+    const sent: any[] = []
+    socket.emit = mock((event: string, data: any) => {
+        if (event === 'send_prompt') sent.push(data)
+    }) as any
+    return sent
+}
+
+/** a Home box that starts a session with its prompt, the way the app does */
+const HomeSender: React.FC = () => (
+    <HomeBox
+        onSubmit={(prompt, options) =>
+            void generationAPI.generateProjectStream({
+                prompt,
+                ...(options as object),
+                onEvent: () => {},
+            })
+        }
+    />
+)
+
+/** a session box that sends its prompt to the open session, the way the app does */
+const SessionSender: React.FC<{ sessionId: string }> = ({ sessionId }) => {
+    const [value, setValue] = React.useState('')
+    return (
+        <ChatPromptInput
+            value={value}
+            onChange={setValue}
+            isAuthenticated
+            onSubmit={(options?: any) => {
+                void generationAPI.applyProjectEdit({
+                    sessionId,
+                    prompt: value,
+                    model: options?.model,
+                    provider: options?.provider,
+                    billingSource: options?.billingSource,
+                    runConfig: options?.runConfig,
+                    onEvent: () => {},
+                })
+                setValue('')
+            }}
+        />
+    )
 }
 
 const box = () => document.querySelector('textarea') as HTMLTextAreaElement
@@ -204,9 +261,9 @@ describe('slash menu on Home', () => {
         expect(list().getByText('Pick a model')).not.toBeNull()
         expect(list().getByText('/effort')).not.toBeNull()
         expect(list().getByText('/help')).not.toBeNull()
-        // /plan works since the server reads plan first (#632); /skills waits for demo mode
+        // /plan and /skills work for everyone: the server reads plan first and skills (#632)
         expect(list().getByText('/plan')).not.toBeNull()
-        expect(list().queryByText('/skills')).toBeNull()
+        expect(list().getByText('/skills')).not.toBeNull()
         // session commands are not on Home
         expect(list().queryByText('/rename')).toBeNull()
         expect(screen.queryByRole('tablist')).toBeNull()
@@ -249,7 +306,11 @@ describe('slash menu on Home', () => {
         // Deep is the default, so it is the selected row. Up moves to Fast
         press('ArrowUp')
         press('Enter')
-        expect(onModelChange).toHaveBeenCalledWith('gemini-2.5-flash', 'gemini')
+        // the switch in the footer follows. a speed is not a model: the server picks that
+        expect(screen.getByRole('radio', { name: 'Fast' }).getAttribute('aria-checked')).toBe(
+            'true'
+        )
+        expect(onModelChange).not.toHaveBeenCalled()
         expect(box().value).toBe('')
         expect(screen.queryByRole('listbox')).toBeNull()
 
@@ -290,9 +351,14 @@ describe('slash menu on Home', () => {
             model: 'claude-sonnet-5',
             provider: 'anthropic',
         })
-        // /effort is for December credits only
-        type('/eff')
-        expect(screen.getByText('No commands found.')).not.toBeNull()
+        // /effort works on a key too: it sets how much the model reasons
+        type('/effort')
+        press('Enter')
+        fireEvent.click(list().getByText('Fast'))
+        expect(screen.getByRole('radio', { name: 'Fast' }).getAttribute('aria-checked')).toBe(
+            'true'
+        )
+        expect(useModelSelection.getState().source).toBe('OWN_KEY')
         // /model now lists the key models
         type('/model')
         press('Enter')
@@ -335,6 +401,68 @@ describe('slash menu on Home', () => {
         expect(await list().findByText('Connected')).not.toBeNull()
         expect(list().getByText('$ 12.50')).not.toBeNull()
         expect(list().getByText('None saved')).not.toBeNull()
+        // an answer with no MCP servers in it adds no rows
+        expect(list().queryByText(/^MCP:/)).toBeNull()
+        check.mockRestore()
+    })
+
+    test('/check lists the MCP servers that are turned on, with what the last session found', async () => {
+        const check = spyOn(sessionAPI, 'getCheck').mockResolvedValue({
+            github: { connected: true, appInstalled: true, accounts: ['acme'] },
+            gitlab: { connected: false, username: null },
+            credits: { balanceInCents: 1250, enoughToStart: true },
+            keys: [],
+            machine: null,
+            mcpServers: [
+                {
+                    name: 'linear',
+                    enabled: true,
+                    status: 'connected',
+                    lastError: null,
+                    toolCount: 12,
+                    checkedAt: '2026-11-25T10:00:00.000Z',
+                },
+                {
+                    name: 'sentry',
+                    enabled: true,
+                    status: 'error',
+                    lastError: 'HTTP 401',
+                    toolCount: 0,
+                    checkedAt: '2026-11-25T10:00:00.000Z',
+                },
+                {
+                    name: 'notion',
+                    enabled: true,
+                    status: 'unknown',
+                    lastError: null,
+                    toolCount: 0,
+                    checkedAt: null,
+                },
+                {
+                    name: 'old-wiki',
+                    enabled: false,
+                    status: 'unknown',
+                    lastError: null,
+                    toolCount: 0,
+                    checkedAt: null,
+                },
+            ],
+        })
+        wrap(<HomeBox />)
+        type('/check')
+        press('Enter')
+
+        const row = async (label: string) =>
+            (await list().findByText(label)).closest('[role="option"]') as HTMLElement
+        expect((await row('MCP: linear')).textContent).toContain('Connected · 12 tools')
+        expect((await row('MCP: sentry')).textContent).toContain('HTTP 401')
+        expect((await row('MCP: notion')).textContent).toContain('Not used yet')
+        // a server that is turned off is not part of a session
+        expect(list().queryByText('MCP: old-wiki')).toBeNull()
+
+        // a server with an error opens the MCP servers page
+        fireEvent.click(list().getByText('MCP: sentry'))
+        expect(screen.getByTestId('location').textContent).toBe('/settings/connections/mcps')
         check.mockRestore()
     })
 
@@ -419,6 +547,175 @@ describe('slash menu on Home', () => {
         press('Enter')
         expect(onOpenAuth).toHaveBeenCalledTimes(1)
         expect(screen.getByTestId('location').textContent).toBe('/')
+    })
+})
+
+describe('skills and MCP servers from the server', () => {
+    const answer = () =>
+        spyOn(promptBoxConnectionsAPI, 'get').mockResolvedValue({
+            skills: [
+                { name: 'ship-notes', description: 'Write the release notes', plugin: null },
+                { name: 'write-tests', description: 'Add tests for changed files', plugin: null },
+            ],
+            plugins: [],
+            mcps: [
+                { name: 'linear', enabled: true, status: 'connected', lastError: null },
+                { name: 'sentry', enabled: true, status: 'error', lastError: 'HTTP 401' },
+                { name: 'old-wiki', enabled: false, status: 'unknown', lastError: null },
+            ],
+        })
+
+    test('with the demo flag off the skills in the slash menu come from the api', async () => {
+        const get = answer()
+        wrap(<HomeBox />, { connections: 'api' })
+        type('/')
+
+        expect(await list().findByText('/ship-notes')).not.toBeNull()
+        expect(list().getByText('Write the release notes')).not.toBeNull()
+        expect(list().getByText('Skills')).not.toBeNull()
+        // the sample skills of the preview are not here
+        expect(list().queryByText('/pr-summary')).toBeNull()
+        expect(get).toHaveBeenCalledTimes(1)
+
+        // /skills lists the same skills, and a pick adds a chip
+        type('/skills')
+        press('Enter')
+        fireEvent.click(list().getByText('/ship-notes'))
+        expect(screen.getByLabelText('Remove /ship-notes')).not.toBeNull()
+    })
+
+    test('the + menu lists the skills and MCP servers of the account, and Plugins stays Soon', async () => {
+        answer()
+        wrap(<HomeBox />, { connections: 'api' })
+        fireEvent.click(screen.getByLabelText('Add'))
+        // installing plugins is not built, so only that row waits
+        expect(screen.getAllByText('Soon')).toHaveLength(1)
+        expect(
+            screen.getByRole('menuitem', { name: /Plugins/ }).getAttribute('aria-disabled')
+        ).toBe('true')
+        expect(screen.queryByText('Demo')).toBeNull()
+
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Skills' }))
+        fireEvent.click(await screen.findByText('ship-notes'))
+        expect(screen.getByLabelText('Remove /ship-notes')).not.toBeNull()
+
+        fireEvent.click(screen.getByLabelText('Add'))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'MCPs' }))
+        const linear = await screen.findByLabelText('Use linear in this session')
+        expect(linear.getAttribute('aria-checked')).toBe('true')
+        // a server with an error says why. a server turned off on the account is not listed
+        expect(screen.getByText('HTTP 401')).not.toBeNull()
+        expect(screen.queryByText('old-wiki')).toBeNull()
+
+        fireEvent.click(linear)
+        expect(usePromptConfig.getState().mcpsOff).toEqual(['linear'])
+    })
+
+    test('a skill chip and an MCP server switched off go out with the first prompt', async () => {
+        answer()
+        const sent = capturePrompts()
+        let createdWith: any = null
+        spyOn(sessionAPI, 'createSession').mockImplementation(async (data: any) => {
+            createdWith = data
+            return { id: 'session-new' } as any
+        })
+        wrap(<HomeSender />, { connections: 'api' })
+
+        // /ship-notes as a chip
+        type('/ship')
+        expect(await list().findByText('/ship-notes')).not.toBeNull()
+        press('Enter')
+        // linear off for this session, in the + menu
+        fireEvent.click(screen.getByLabelText('Add'))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'MCPs' }))
+        fireEvent.click(await screen.findByLabelText('Use linear in this session'))
+        // the list stays open while switches are flipped: close the menu, then type
+        fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+        type('write the notes for 2.4')
+        press('Enter')
+
+        await waitFor(() => expect(sent).toHaveLength(1))
+        // the session keeps the switch. skills go with each message
+        expect(createdWith).toEqual({
+            prompt: 'write the notes for 2.4',
+            type: 'WEB',
+            repoUrl: undefined,
+            branch: undefined,
+            gitRef: undefined,
+            issueNumber: undefined,
+            tier: 'deep',
+            planFirst: false,
+            effort: 'deep',
+            openPullRequest: true,
+            disabledMcps: ['linear'],
+        })
+        expect(sent[0]).toEqual({
+            sessionId: 'session-new',
+            projectId: 'session-new',
+            prompt: 'write the notes for 2.4',
+            billingSource: 'CREDITS',
+            tier: 'deep',
+            planFirst: false,
+            effort: 'deep',
+            skills: ['ship-notes'],
+            disabledMcps: ['linear'],
+        })
+        // the chip and the switch are for that one prompt and session
+        expect(screen.queryByLabelText('Remove /ship-notes')).toBeNull()
+        expect(usePromptConfig.getState().mcpsOff).toEqual([])
+    })
+
+    test('in a session a skill chip goes out with the follow-up, and the switches stay as saved', async () => {
+        answer()
+        const sent = capturePrompts()
+        // left from another box: a running session cannot change its MCP servers
+        usePromptConfig.setState({ mcpsOff: ['sentry'] })
+        wrap(<SessionSender sessionId="session-1" />, { connections: 'api' })
+
+        type('/ship')
+        expect(await list().findByText('/ship-notes')).not.toBeNull()
+        press('Enter')
+        type('now the notes')
+        press('Enter')
+
+        await waitFor(() => expect(sent).toHaveLength(1))
+        expect(sent[0]).toEqual({
+            sessionId: 'session-1',
+            projectId: 'session-1',
+            prompt: 'now the notes',
+            billingSource: 'CREDITS',
+            tier: 'deep',
+            planFirst: false,
+            effort: 'deep',
+            skills: ['ship-notes'],
+        })
+    })
+
+    test('on your own key the speed switch shows, and the effort goes out with the prompt', async () => {
+        const sent = capturePrompts()
+        wrap(<SessionSender sessionId="session-1" />, { keys: true })
+
+        // to the saved key, then Fast
+        fireEvent.click(screen.getByRole('radio', { name: 'Your keys' }))
+        const speed = within(screen.getByRole('radiogroup', { name: 'Speed' }))
+        fireEvent.click(speed.getByRole('radio', { name: 'Fast' }))
+        expect(speed.getByRole('radio', { name: 'Fast' }).getAttribute('aria-checked')).toBe('true')
+
+        type('make the tests pass')
+        press('Enter')
+
+        await waitFor(() => expect(sent).toHaveLength(1))
+        expect(sent[0]).toEqual({
+            sessionId: 'session-1',
+            projectId: 'session-1',
+            prompt: 'make the tests pass',
+            model: 'claude-sonnet-5',
+            provider: 'anthropic',
+            billingSource: 'OWN_KEY',
+            planFirst: false,
+            effort: 'fast',
+        })
     })
 })
 
@@ -622,10 +919,10 @@ describe('model control', () => {
             expect(onSelectModel).toHaveBeenCalledWith('gpt-5.6-sol', 'openai', 'OWN_KEY')
             expect(screen.queryByRole('dialog', { name: 'Models' })).toBeNull()
 
-            // Configuration has a Model row in place of Speed. It opens the same list
+            // Configuration keeps Speed on a key and adds a Model row. It opens the same list
             fireEvent.click(screen.getByRole('button', { name: 'Configuration' }))
             const sheet = within(screen.getByRole('dialog', { name: 'Configuration' }))
-            expect(sheet.queryByRole('radiogroup', { name: 'Speed' })).toBeNull()
+            expect(sheet.getByRole('radiogroup', { name: 'Speed' })).not.toBeNull()
             fireEvent.click(sheet.getByText('Model'))
             expect(await screen.findByRole('dialog', { name: 'Models' })).not.toBeNull()
             expect(screen.queryByRole('dialog', { name: 'Configuration' })).toBeNull()
@@ -634,9 +931,11 @@ describe('model control', () => {
     test('on a phone the model list is under Configuration: Back goes up to Run on', () =>
         onPhone(() => {
             const onSelectModel = mock((_m: string, _p?: string, _s?: string) => {})
+            const onSelectCredits = mock(() => {})
             footer(
                 {
                     onSelectModel,
+                    onSelectCredits,
                     selectedSource: 'OWN_KEY',
                     selectedModel: 'claude-sonnet-5',
                     selectedProvider: 'anthropic',
@@ -657,7 +956,9 @@ describe('model control', () => {
             expect(config.getByText('Run on')).not.toBeNull()
             expect(config.queryByRole('button', { name: 'Back' })).toBeNull()
             fireEvent.click(config.getByRole('radio', { name: 'December credits' }))
-            expect(onSelectModel).toHaveBeenCalledWith('gemini-2.5-pro', 'gemini', 'CREDITS')
+            // credits have no model: the server picks it
+            expect(onSelectCredits).toHaveBeenCalledTimes(1)
+            expect(onSelectModel).not.toHaveBeenCalled()
         }))
 
     test('on a phone with no saved key, Your keys opens the keys page', () =>
@@ -680,19 +981,40 @@ describe('model control', () => {
         expect(onSelectModel).toHaveBeenCalledWith('claude-sonnet-5', 'anthropic', 'OWN_KEY')
     })
 
+    test('on a key Fast and Deep stay: the speed is how much the model reasons', () => {
+        const onSelectSpeed = mock((_speed: string) => {})
+        footer(
+            {
+                onSelectSpeed,
+                selectedSource: 'OWN_KEY',
+                selectedModel: 'claude-sonnet-5',
+                selectedProvider: 'anthropic',
+                selectedSpeed: 'deep',
+            },
+            { keys: true }
+        )
+        const speed = within(screen.getByRole('radiogroup', { name: 'Speed' }))
+        expect(speed.getByRole('radio', { name: 'Deep' }).getAttribute('aria-checked')).toBe('true')
+        fireEvent.click(speed.getByRole('radio', { name: 'Fast' }))
+        expect(onSelectSpeed).toHaveBeenCalledWith('fast')
+        // the model button is still there
+        expect(screen.getByRole('button', { name: 'Select Model' })).not.toBeNull()
+    })
+
     test('on a key the model button lists the keys, and the models of a key open beside it', () => {
         const onSelectModel = mock((_m: string, _p?: string, _s?: string) => {})
+        const onSelectCredits = mock(() => {})
         footer(
             {
                 onSelectModel,
+                onSelectCredits,
                 selectedSource: 'OWN_KEY',
                 selectedModel: 'claude-sonnet-5',
                 selectedProvider: 'anthropic',
             },
             { keys: true }
         )
-        // no Fast and Deep on a key, and no star or key icon text on the button
-        expect(screen.queryByRole('radiogroup', { name: 'Speed' })).toBeNull()
+        // no star or key icon text on the button
         const button = screen.getByRole('button', { name: 'Select Model' })
         expect(button.textContent).toBe('claude-sonnet-5')
 
@@ -702,8 +1024,10 @@ describe('model control', () => {
         fireEvent.click(screen.getByText('gpt-5.6-sol'))
         expect(onSelectModel).toHaveBeenCalledWith('gpt-5.6-sol', 'openai', 'OWN_KEY')
 
+        // credits have no model: the server picks it
         fireEvent.click(screen.getByRole('radio', { name: 'December credits' }))
-        expect(onSelectModel).toHaveBeenCalledWith('gemini-2.5-pro', 'gemini', 'CREDITS')
+        expect(onSelectCredits).toHaveBeenCalledTimes(1)
+        expect(onSelectModel).toHaveBeenCalledTimes(1)
     })
 })
 
@@ -720,14 +1044,14 @@ describe('prompt footer menus', () => {
             />
         )
 
-    test('the + menu has Skills, Plugins and MCPs marked Soon', () => {
+    test('the + menu has Skills, Plugins and MCPs, and only Plugins is marked Soon', () => {
         footer()
         fireEvent.click(screen.getByLabelText('Add'))
 
         expect(screen.getByText('Skills')).not.toBeNull()
         expect(screen.getByText('Plugins')).not.toBeNull()
         expect(screen.getByText('MCPs')).not.toBeNull()
-        expect(screen.getAllByText('Soon')).toHaveLength(3)
+        expect(screen.getAllByText('Soon')).toHaveLength(1)
         expect(screen.queryByText('Manage connections')).toBeNull()
 
         // a Soon row does nothing
@@ -776,6 +1100,11 @@ describe('prompt footer menus', () => {
         footer()
         fireEvent.click(screen.getByLabelText('Add'))
         expect(screen.queryByText('Soon')).toBeNull()
+        // each row whose list holds sample values says Demo, and no other row
+        expect(screen.getAllByText('Demo')).toHaveLength(3)
+        for (const name of [/Plugins/, /Skills/, /MCPs/]) {
+            expect(within(screen.getByRole('menuitem', { name })).getByText('Demo')).not.toBeNull()
+        }
 
         fireEvent.click(screen.getByText('Plugins'))
         const toggle = screen.getByLabelText('Use playwright in this session')

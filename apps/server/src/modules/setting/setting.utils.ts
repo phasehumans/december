@@ -1,5 +1,7 @@
 import crypto from 'crypto'
 
+import { DEFAULT_IDLE_STOP_MINUTES, IDLE_STOP_MINUTES } from '@december/shared'
+
 import { env } from '../../env'
 
 import { preferencesSchema } from './setting.schema'
@@ -9,6 +11,7 @@ import type {
     DataExportStatus,
     OnboardingStep,
     Preferences,
+    SandboxSettings,
 } from './setting.types'
 
 export const sanitizeMarkdown = (str: string): string => {
@@ -92,3 +95,26 @@ export const dataExportSessionFileName = (index: number, title: string | null): 
         .slice(0, 60)
     return `sessions/${String(index + 1).padStart(4, '0')}-${slug || 'session'}.json`
 }
+
+const ARCHIVE_AFTER_DAYS = [7, 30] as const
+
+/** the saved sandbox settings of a user; a value that is not a choice becomes the default */
+export const toSandboxSettings = (data: {
+    idleStopMinutes: number
+    archiveAfterDays: number | null
+    repositorySettings: Array<{ repoFullName: string; setupCommands: string }>
+}): SandboxSettings => ({
+    // the choices are the same as in the worker's idle sweep (packages/shared, run-contract.ts)
+    idleStopMinutes:
+        IDLE_STOP_MINUTES.find((value) => value === data.idleStopMinutes) ??
+        DEFAULT_IDLE_STOP_MINUTES,
+    archiveAfterDays: ARCHIVE_AFTER_DAYS.find((value) => value === data.archiveAfterDays) ?? null,
+    setupCommands: data.repositorySettings.map((row) => ({
+        repoFullName: row.repoFullName,
+        commands: row.setupCommands,
+    })),
+})
+
+/** setup commands as they are saved: unix line ends, no empty lines around the text */
+export const cleanSetupCommands = (commands: string): string =>
+    commands.replace(/\r\n?/g, '\n').trim()

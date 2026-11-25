@@ -2,26 +2,24 @@ import { ArrowUpRight, ChevronRight } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { SoonPill } from '@/features/connections/components/ConnectionsUi'
-import { usePreviewOn } from '@/features/profile/components/SettingsUi'
 import { SheetRow, useBottomSheet } from '@/shared/components/ui/BottomSheet'
 import { getWebUrl } from '@/shared/config/env'
 
 // phones only: the Settings level of the menu sheet (A1). a row closes the sheet and opens
 // that settings page. desktop keeps its settings sidebar.
 
-const SETTINGS_ROWS: { slug: string; label: string; soon?: boolean }[] = [
+const SETTINGS_ROWS: { slug: string; label: string }[] = [
     { slug: 'account', label: 'Account' },
-    { slug: 'defaults', label: 'Defaults', soon: true },
+    { slug: 'defaults', label: 'Defaults' },
     { slug: 'repositories', label: 'Repositories' },
-    { slug: 'pull-requests', label: 'Pull requests', soon: true },
-    { slug: 'sandbox', label: 'Sandbox', soon: true },
+    { slug: 'pull-requests', label: 'Pull requests' },
+    { slug: 'sandbox', label: 'Sandbox' },
     { slug: 'connections', label: 'Connections' },
     { slug: 'secrets', label: 'Secrets' },
     { slug: 'models', label: 'API keys' },
     { slug: 'billing', label: 'Billing' },
     { slug: 'usage', label: 'Usage' },
-    { slug: 'members', label: 'Members', soon: true },
+    { slug: 'members', label: 'Members' },
 ]
 
 const EXTERNAL_ROWS = [
@@ -45,7 +43,6 @@ export const MobileSettingsLevel: React.FC<MobileSettingsLevelProps> = ({
     const { closeThen } = useBottomSheet()
     const navigate = useNavigate()
     const path = useLocation().pathname
-    const isPreview = usePreviewOn()
 
     const openPage = (slug: string) =>
         closeThen(isAuthenticated ? () => navigate(`/settings/${slug}`) : onOpenAuth)
@@ -57,13 +54,7 @@ export const MobileSettingsLevel: React.FC<MobileSettingsLevelProps> = ({
                     key={row.slug}
                     label={row.label}
                     active={path.startsWith(`/settings/${row.slug}`)}
-                    trailing={
-                        row.soon && !isPreview ? (
-                            <SoonPill />
-                        ) : (
-                            <ChevronRight className={trailingIconClass} strokeWidth={1.75} />
-                        )
-                    }
+                    trailing={<ChevronRight className={trailingIconClass} strokeWidth={1.75} />}
                     onClick={() => openPage(row.slug)}
                 />
             ))}

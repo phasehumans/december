@@ -12,6 +12,8 @@ export type StartEmailAuth = {
 export type VerifyEmailAuth = {
     email: string
     otp: string
+    // the code of an invite link. it counts only when this sign-in makes the account
+    referralCode?: string
     userAgent?: string
     ipAddress?: string
 }
@@ -26,6 +28,7 @@ export type Google = {
     name: string
     email: string
     sub: string
+    referralCode?: string
     userAgent?: string
     ipAddress?: string
 }
@@ -35,6 +38,7 @@ export type Github = {
     email: string
     sub: string
     username?: string
+    referralCode?: string
     userAgent?: string
     ipAddress?: string
 }
@@ -50,6 +54,12 @@ export type Signout = {
 
 export type SignoutAll = {
     userId: string
+}
+
+export type RemoveSignedOutPush = {
+    userId: string
+    // the sign-in that ended. with none, every sign-in of the user
+    sessionId?: string
 }
 
 export type DeleteAccount = {

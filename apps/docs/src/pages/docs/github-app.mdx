@@ -41,6 +41,19 @@ Each run is a session in December Cloud. December replies on GitHub with a link 
 
 In December Cloud, open **Settings**, then **Pull requests**.
 
+These settings control how December opens a pull request from any session:
+
+| Setting                                          | What it does                                                                                                           |
+| :----------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
+| Branch name starts with                          | The start of each branch name. The default is `december/`.                                                             |
+| Open as                                          | **Draft** or **Ready**. The default is **Ready**.                                                                      |
+| Create the pull request                          | **When the work is done**, or **When I ask**. With **When I ask**, December pushes a branch and opens no pull request. |
+| Author                                           | **December** opens the pull request as the December GitHub App. **You** opens it with your GitHub account.             |
+| Commit author                                    | **You and December**: you are the author, and December is the co-author. **December**: December is the author.         |
+| Archive the session when the pull request merges | December archives the session after the merge.                                                                         |
+
+These settings control what December does from GitHub:
+
 | Setting                                     | What it does                                                                                                                                                                         |
 | :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Work from GitHub comments                   | Turn it off to pause all runs from GitHub comments.                                                                                                                                  |

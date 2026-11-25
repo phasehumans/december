@@ -42,7 +42,10 @@ interface AppContentViewProps {
     view: ViewState
     isHome: boolean
     onHomePromptSubmit: (prompt: string, options?: PromptInputSubmitOptions) => void
-    onOutputPromptSubmit: (prompt: string) => Promise<void> | void
+    onOutputPromptSubmit: (
+        prompt: string,
+        options?: PromptInputSubmitOptions
+    ) => Promise<void> | void
     onPreviewRuntimeError: (error: PreviewRuntimeError) => Promise<void> | void
     onOpenAuth: () => void
     onBackFromOutput: () => void

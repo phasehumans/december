@@ -113,6 +113,15 @@ describe('Secrets Service - Unit Tests', () => {
                     id: 'secret-1',
                     name: 'API_KEY',
                     note: 'test note',
+                    repoFullName: '',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                },
+                {
+                    id: 'secret-2',
+                    name: 'API_KEY',
+                    note: null,
+                    repoFullName: 'acme/web',
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 },
@@ -121,7 +130,11 @@ describe('Secrets Service - Unit Tests', () => {
 
             try {
                 const res = await secretsService.getSecrets({ userId: 'user-1' })
-                expect(res).toEqual(mockSecrets)
+                // "all repositories" is an empty text in the database and null in the answer
+                expect(res).toEqual([
+                    { ...mockSecrets[0], repoFullName: null },
+                    { ...mockSecrets[1], repoFullName: 'acme/web' },
+                ] as any)
             } finally {
                 secretsRepository.findSecretsByUser = originalFind
             }
@@ -257,6 +270,70 @@ describe('Secrets Service - Unit Tests', () => {
                     { key: 'SECRET_ONE', value: plainVal1 },
                     { key: 'SECRET_TWO', value: plainVal2 },
                 ])
+            } finally {
+                secretsRepository.findSecretsWithValuesByUser = originalFind
+            }
+        })
+
+        it('gives the value of the repository when a name is in both (#637)', async () => {
+            const originalFind = secretsRepository.findSecretsWithValuesByUser
+            let askedRepo: string | undefined
+            secretsRepository.findSecretsWithValuesByUser = (async (
+                _userId: string,
+                repoFullName?: string
+            ) => {
+                askedRepo = repoFullName
+                return [
+                    {
+                        name: 'API_URL',
+                        repoFullName: '',
+                        value: secretsService.encrypt({ text: 'https://all.test' }),
+                    },
+                    {
+                        name: 'API_URL',
+                        repoFullName: 'acme/web',
+                        value: secretsService.encrypt({ text: 'https://web.test' }),
+                    },
+                    {
+                        name: 'REGION',
+                        repoFullName: '',
+                        value: secretsService.encrypt({ text: 'eu' }),
+                    },
+                ]
+            }) as any
+
+            try {
+                const res = await secretsService.getAllDecryptedSecrets({
+                    userId: 'user-1',
+                    repoFullName: 'Acme/Web',
+                })
+                expect(askedRepo).toBe('acme/web')
+                expect(res).toEqual([
+                    { key: 'API_URL', value: 'https://web.test' },
+                    { key: 'REGION', value: 'eu' },
+                ])
+            } finally {
+                secretsRepository.findSecretsWithValuesByUser = originalFind
+            }
+        })
+
+        it('does not fall back to the "all" value when the repository value is broken', async () => {
+            const originalFind = secretsRepository.findSecretsWithValuesByUser
+            secretsRepository.findSecretsWithValuesByUser = (async () => [
+                {
+                    name: 'API_URL',
+                    repoFullName: '',
+                    value: secretsService.encrypt({ text: 'https://all.test' }),
+                },
+                { name: 'API_URL', repoFullName: 'acme/web', value: 'invalid:corrupted:text' },
+            ]) as any
+
+            try {
+                const res = await secretsService.getAllDecryptedSecrets({
+                    userId: 'user-1',
+                    repoFullName: 'acme/web',
+                })
+                expect(res).toEqual([])
             } finally {
                 secretsRepository.findSecretsWithValuesByUser = originalFind
             }

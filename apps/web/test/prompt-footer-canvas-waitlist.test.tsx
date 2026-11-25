@@ -113,7 +113,8 @@ describe('PromptFooter & PromptInput: Mention Dropdown & Back Navigation', () =>
         expect(promptValue).toBe('@secrets:')
     })
 
-    test('@ mention in PromptInput filters by search mode', async () => {
+    test('@ mention in PromptInput filters by the text after @', async () => {
+        // search mode was removed (b64e4d64): the list is filtered by what the user types
         render(
             <QueryClientProvider client={queryClient}>
                 <MemoryRouter>
@@ -121,20 +122,21 @@ describe('PromptFooter & PromptInput: Mention Dropdown & Back Navigation', () =>
                         onSubmit={() => {}}
                         isLoading={false}
                         isAuthenticated={true}
-                        value="@"
+                        value="@se"
                         onChange={() => {}}
-                        mode="search"
                     />
                 </MemoryRouter>
             </QueryClientProvider>
         )
 
-        expect(screen.getByText('Repositories')).not.toBeNull()
-        expect(screen.queryByText('Sessions')).toBeNull()
-        expect(screen.queryByText('Skills')).toBeNull()
-        expect(screen.queryByText('Secrets')).toBeNull()
-        expect(screen.queryByText('Codebase files')).toBeNull()
-        expect(screen.queryByText('Send secrets')).toBeNull()
+        // booleans, so a failure does not print the whole page
+        const shown = (text: string) => screen.queryByText(text) !== null
+        expect(shown('Sessions')).toBe(true)
+        expect(shown('Secrets')).toBe(true)
+        expect(shown('Repositories')).toBe(false)
+        expect(shown('Skills')).toBe(false)
+        expect(shown('Codebase files')).toBe(false)
+        expect(shown('Send secrets')).toBe(false)
     })
 
     test('@repos: in PromptInput renders Connect GitHub as a hyperlink when GitHub is not connected', async () => {

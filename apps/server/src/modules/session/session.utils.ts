@@ -1,7 +1,81 @@
+import {
+    joinRepoFullName,
+    SPEND_LIMIT_CONTINUE,
+    SPEND_LIMIT_STOP,
+    spendLimitQuestion,
+} from '@december/shared'
+import { detectGitProvider, getGitProvider } from '@december/shared/git'
+
 import { smartSearchFiltersSchema } from './session.schema'
 
-import type { BuildSmartSearchPrompt, SmartSearchFilters, StoredSessionFile } from './session.types'
+import type {
+    BuildSmartSearchPrompt,
+    DecidePromptRoute,
+    HeldRunParts,
+    LimitQuestionPrompt,
+    MergeHeldRun,
+    MessageWhileWorking,
+    PromptRoute,
+    RepoFilter,
+    SessionFacetRepoRow,
+    SessionFacetRows,
+    SessionFacets,
+    SmartSearchFilters,
+    StoredSessionFile,
+    ToLimitQuestionPrompt,
+} from './session.types'
 import type { SessionEffort } from '@december/shared'
+
+/**
+ * What a new prompt does (#637). With no active run it starts one. During a run it reaches
+ * the running agent ("send now"), or it waits in the web until the run ends ("queue"): two
+ * runs never work on one session.
+ */
+export const decidePromptRoute = (data: DecidePromptRoute): PromptRoute => {
+    const { runActive, mode } = data
+    if (!runActive) return 'run'
+    return mode === 'send' ? 'steer' : 'queued'
+}
+
+/**
+ * True when an answer with this question id is an answer to the spend limit question
+ * (`spend-limit:<kind>`). An answer with no id comes from a client from before question
+ * ids. An answer to another card (an older agent question) is not.
+ */
+export const isLimitQuestionId = (questionId: string | undefined): boolean =>
+    questionId === undefined || questionId.startsWith('spend-limit:')
+
+/** the files and skills of a run that was held at a spend limit, or null when it had none */
+export const toHeldRunParts = (heldRun: unknown): HeldRunParts | null => {
+    if (!heldRun || typeof heldRun !== 'object') return null
+    const { attachments, skills } = heldRun as { attachments?: unknown; skills?: unknown }
+    const parts = {
+        attachments: Array.isArray(attachments) ? attachments : [],
+        skills: Array.isArray(skills)
+            ? skills.filter((name): name is string => typeof name === 'string')
+            : [],
+    }
+    return parts.attachments.length > 0 || parts.skills.length > 0 ? parts : null
+}
+
+/**
+ * The files and skills of the run of a new prompt that replaces a held prompt: the held
+ * ones first, each skill once. The text of the held prompt is saved in the conversation.
+ */
+export const mergeHeldRun = (data: MergeHeldRun): HeldRunParts => {
+    const { heldRun, attachments, skills } = data
+    if (!heldRun) return { attachments, skills }
+    return {
+        attachments: [...heldRun.attachments, ...attachments],
+        skills: [...new Set([...heldRun.skills, ...skills])],
+    }
+}
+
+/** the saved preference, or "queue" when the account has none */
+export const readMessageWhileWorking = (preferences: unknown): MessageWhileWorking =>
+    (preferences as { messageWhileWorking?: unknown } | null)?.messageWhileWorking === 'send'
+        ? 'send'
+        : 'queue'
 
 export const parseStoredSessionFiles = (value: unknown): StoredSessionFile[] => {
     if (!Array.isArray(value)) {
@@ -98,6 +172,60 @@ export const toPullRequestState = (value: unknown): PullRequestState =>
     PULL_REQUEST_STATES.includes(value as PullRequestState) ? (value as PullRequestState) : 'open'
 
 /**
+ * The tags of a list request as one part of its cache key (#641): sorted, so the order in
+ * the request does not matter, and encoded, so a tag cannot look like another key part.
+ */
+export const toTagsCacheKey = (tags: string[] | undefined): string =>
+    tags && tags.length > 0
+        ? `tags=${[...new Set(tags)].sort().map(encodeURIComponent).join(',')}`
+        : 'any-tag'
+
+/**
+ * The repository filter of the sessions list (#641): `owner/name`, or a name alone. The
+ * name is the part after the last slash, because a GitLab owner can be a group path.
+ */
+export const splitRepoFilter = (repo: string): RepoFilter => {
+    const parts = repo.split('/').filter(Boolean)
+    const name = parts.pop() ?? ''
+    return { owner: parts.length > 0 ? parts.join('/') : null, name }
+}
+
+/** a to z without case; the same letters in another case keep a fixed order */
+const byName = (a: string, b: string): number => {
+    const [x, y] = [a.toLowerCase(), b.toLowerCase()]
+    return x < y ? -1 : x > y ? 1 : a < b ? -1 : a > b ? 1 : 0
+}
+
+/** `owner/name`, the name alone when the owner is not known, or the path of an old link */
+const toFacetRepo = (row: SessionFacetRepoRow): string | null => {
+    if (row.githubRepoName) {
+        return joinRepoFullName(row.githubRepoOwner, row.githubRepoName) ?? row.githubRepoName
+    }
+    if (!row.repoUrl) return null
+    const gitProvider = detectGitProvider(row.repoUrl)
+    return gitProvider
+        ? (getGitProvider(gitProvider).parseRepoUrl(row.repoUrl)?.path ?? null)
+        : null
+}
+
+/**
+ * The repositories and tags of a user's sessions for the sort and filter menu (#641),
+ * both sorted by name. The list filter matches a repository without case, so one that
+ * was saved in two spellings is listed once, as the spelling on the most sessions.
+ */
+export const toSessionFacets = (rows: SessionFacetRows): SessionFacets => {
+    const repos = new Map<string, string>()
+    const bySessions = [...rows.repos].sort((a, b) => b.sessions - a.sessions)
+    for (const row of bySessions) {
+        const repo = toFacetRepo(row)
+        if (repo && !repos.has(repo.toLowerCase())) repos.set(repo.toLowerCase(), repo)
+    }
+    const tags = new Set(rows.tags.filter((tag) => tag.trim().length > 0))
+
+    return { repos: [...repos.values()].sort(byName), tags: [...tags].sort(byName) }
+}
+
+/**
  * The models behind fast and deep on december credits. Change them here: the web sends
  * only the tier, so no web release is needed.
  */
@@ -109,3 +237,21 @@ export const CREDIT_TIER_MODELS: Record<SessionEffort, { model: string; provider
 /** the credit tier of a model the web picked before it sent tiers: the fast model, or deep */
 export const toCreditTier = (model: string | undefined): SessionEffort =>
     model === CREDIT_TIER_MODELS.fast.model ? 'fast' : 'deep'
+
+/** the spend limit question (#638), in the shape of the agent's question */
+export const toLimitQuestionPrompt = (data: ToLimitQuestionPrompt): LimitQuestionPrompt => {
+    const { sessionId, kind, limitCents } = data
+    return {
+        type: 'AskQuestionPrompt',
+        source: 'spend-limit',
+        kind,
+        sessionId,
+        questionId: `spend-limit:${kind}`,
+        questions: [
+            {
+                question: spendLimitQuestion({ kind, limitCents }),
+                options: [SPEND_LIMIT_CONTINUE, SPEND_LIMIT_STOP],
+            },
+        ],
+    }
+}

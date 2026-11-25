@@ -47,5 +47,16 @@ export interface WakeUpSweeperOptions {
         userId: string
         prompt: string
         triggerId: string
+        /** the id of the run that claimed the session */
+        runId: string
     }) => Promise<void>
+    /**
+     * Claims the session for the run of a wake-up (#637): the id of the run, or null when a
+     * run is queued or active. The default claims the run mark in redis.
+     */
+    claimRun?: (sessionId: string) => Promise<string | null>
+    /** frees a session whose claimed run was not queued, or ran in this process */
+    releaseRun?: (sessionId: string, runId: string) => Promise<void>
+    /** a wake-up for a session that is not free is tried again after this long */
+    retryMs?: number
 }

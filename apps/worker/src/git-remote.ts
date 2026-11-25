@@ -1,8 +1,23 @@
 import { prisma } from '@december/database'
+import {
+    createGithubAppJwt,
+    createInstallationToken,
+    toPullRequestSettings,
+} from '@december/shared'
 import { getGitProvider, gitlabOAuth, resolveAccessToken } from '@december/shared/git'
 
 import { resolveSecretsEncKey } from './llm-source'
+import {
+    branchToSave,
+    githubRunGit,
+    needsUserIdentity,
+    pickCommitAuthor,
+    pickTaskBranch,
+    toUserIdentity,
+} from './pr-opening'
 
+import type { CommitIdentity } from './pr-opening'
+import type { PullRequestSettingsValues } from '@december/shared'
 import type { GitProviderName, OAuthApp } from '@december/shared/git'
 
 // The clone url with the token in it, for a repo on the provider's own host. Any other url
@@ -81,5 +96,134 @@ export const resolveGitToken = async (data: {
             error instanceof Error ? error.message : String(error)
         )
         return null
+    }
+}
+
+/**
+ * The user as a commit author (#637): the name and email the git host gives for the token.
+ * When the host does not answer, the saved account (id and user name) gives the no-reply
+ * address. null when the account is not known: the commit is December's alone.
+ */
+export const resolveGitUser = async (data: {
+    userId?: string | null
+    provider: GitProviderName
+    token?: string | null
+}): Promise<CommitIdentity | null> => {
+    const { userId, provider, token } = data
+
+    if (token) {
+        // a network error or a refused token gives null: the saved account below is used
+        const hostUser = await getGitProvider(provider).getUser({ token })
+        const fromHost = hostUser ? toUserIdentity({ provider, ...hostUser }) : null
+        if (fromHost) return fromHost
+    }
+
+    if (!userId) return null
+    if (provider === 'GITHUB') {
+        // a database error means the account is not known
+        const user = await prisma.user
+            .findUnique({ where: { id: userId }, select: { githubId: true, githubUsername: true } })
+            .catch(() => null)
+        return toUserIdentity({ provider, id: user?.githubId, login: user?.githubUsername })
+    }
+    const connection = await prisma.gitConnection
+        .findUnique({
+            where: { userId_provider: { userId, provider } },
+            select: { externalId: true, username: true },
+        })
+        .catch(() => null)
+    return toUserIdentity({ provider, id: connection?.externalId, login: connection?.username })
+}
+
+/**
+ * A token of the December GitHub App for one repository, or null when the app is not
+ * installed on it (or the worker has no app key). Opens the pull request as December.
+ */
+export const resolveAppRepoToken = async (repoPath: string): Promise<string | null> => {
+    const appId = process.env.GITHUB_APP_ID?.trim()
+    const privateKey = process.env.GITHUB_APP_PRIVATE_KEY?.trim()
+    if (!appId || !privateKey) return null
+    try {
+        const res = await fetch(`https://api.github.com/repos/${repoPath}/installation`, {
+            headers: {
+                Authorization: `Bearer ${createGithubAppJwt({ appId, privateKey })}`,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'User-Agent': 'December-App',
+            },
+        })
+        // 404: the app is not installed on this repository
+        if (!res.ok) return null
+        const installationId = ((await res.json()) as any)?.id
+        if (!installationId) return null
+        const { token } = await createInstallationToken({
+            appId,
+            privateKey,
+            installationId: String(installationId),
+        })
+        return token
+    } catch (error) {
+        console.warn(
+            `[GIT] no december app token for ${repoPath}:`,
+            error instanceof Error ? error.message : String(error)
+        )
+        return null
+    }
+}
+
+/** the saved pull request settings of a user; every default when there is no row */
+export const loadPullRequestSettings = async (
+    userId?: string | null
+): Promise<PullRequestSettingsValues> => {
+    if (!userId) return toPullRequestSettings(null)
+    // a database error means the defaults
+    const row = await prisma.pullRequestSettings.findUnique({ where: { userId } }).catch(() => null)
+    return toPullRequestSettings(row)
+}
+
+/**
+ * The branch and the commit author of a new sandbox (#637). The branch is saved on the
+ * session the first time, so the session keeps it when the user changes the prefix. A
+ * session the GitHub App started has its own branch and author (github-run.ts).
+ */
+export const resolveSessionGit = async (data: {
+    sessionId: string
+    userId?: string | null
+    provider: GitProviderName
+    isGithubRun?: boolean
+}): Promise<{ taskBranch: string; author: CommitIdentity }> => {
+    const { sessionId, userId, provider, isGithubRun } = data
+    if (isGithubRun) return githubRunGit(sessionId)
+
+    const settings = await loadPullRequestSettings(userId)
+    // a database error means nothing is saved
+    const saved = await prisma.session
+        .findUnique({ where: { id: sessionId }, select: { prBranch: true } })
+        .catch(() => null)
+    const taskBranch = pickTaskBranch({
+        sessionId,
+        branchPrefix: settings.branchPrefix,
+        savedBranch: saved?.prBranch,
+    })
+    // saved once; a saved name git refuses is replaced (review E2)
+    const toSave = saved ? branchToSave({ savedBranch: saved.prBranch, taskBranch }) : null
+    if (toSave) {
+        await prisma.session
+            .update({ where: { id: sessionId }, data: { prBranch: toSave } })
+            .catch((error: unknown) => {
+                console.warn(`[GIT] could not save the branch of session ${sessionId}:`, error)
+            })
+    }
+
+    const user = needsUserIdentity(settings.commitAuthor)
+        ? await resolveGitUser({
+              userId,
+              provider,
+              token: await resolveGitToken({ userId, provider }),
+          })
+        : null
+    return {
+        taskBranch,
+        author: pickCommitAuthor({ commitAuthor: settings.commitAuthor, user }).author,
     }
 }

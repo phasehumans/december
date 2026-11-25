@@ -3,6 +3,8 @@ import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import {
+    importPreviewSchema,
+    importSetupSchema,
     mcpNameParamsSchema,
     saveMcpServerSchema,
     saveSkillSchema,
@@ -104,6 +106,27 @@ const getPromptBoxLists = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'prompt box lists fetched', result)
 })
 
+const previewImport = asyncHandler(async (req: Request, res: Response) => {
+    const userId = requireUser(req)
+    const { repoFullName, provider } = importPreviewSchema.parse(req.body)
+    const result = await connectionService.previewImport({ userId, repoFullName, provider })
+    return sendSuccess(res, 'repository read', result)
+})
+
+const importSetup = asyncHandler(async (req: Request, res: Response) => {
+    const userId = requireUser(req)
+    const { repoFullName, provider, skills, mcps, overwrite } = importSetupSchema.parse(req.body)
+    const result = await connectionService.importSetup({
+        userId,
+        repoFullName,
+        provider,
+        skills,
+        mcps,
+        overwrite,
+    })
+    return sendSuccess(res, 'setup imported', result)
+})
+
 export const connectionController = {
     listSkills,
     saveSkill,
@@ -114,4 +137,6 @@ export const connectionController = {
     updateMcpServer,
     deleteMcpServer,
     getPromptBoxLists,
+    previewImport,
+    importSetup,
 }

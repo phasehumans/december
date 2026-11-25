@@ -582,6 +582,8 @@ describe('GitHubApp Service - Unit Tests', () => {
                 findUserGithubUsername: repo.findUserGithubUsername,
                 findSessionByPullRequest: repo.findSessionByPullRequest,
                 createSession: sessionService.createSession,
+                claimSessionRun: sessionService.claimSessionRun,
+                releaseRun: sessionService.releaseRun,
                 getAllDecryptedSecrets: secretsService.getAllDecryptedSecrets,
                 fetch: globalThis.fetch,
             }
@@ -610,6 +612,9 @@ describe('GitHubApp Service - Unit Tests', () => {
                     calls.sessions.push(data)
                     return { id: 'session-1' }
                 })
+            // the new session is free: its run claims it (the run mark, not in this test)
+            ;(sessionService as any).claimSessionRun = async () => 'run-1'
+            ;(sessionService as any).releaseRun = async () => {}
             ;(secretsService as any).getAllDecryptedSecrets = async () => []
             setAgentQueue({
                 add: (async (name: string, data: any) => {
@@ -679,6 +684,8 @@ describe('GitHubApp Service - Unit Tests', () => {
                     findSessionByPullRequest: saved.findSessionByPullRequest,
                 })
                 ;(sessionService as any).createSession = saved.createSession
+                ;(sessionService as any).claimSessionRun = saved.claimSessionRun
+                ;(sessionService as any).releaseRun = saved.releaseRun
                 ;(secretsService as any).getAllDecryptedSecrets = saved.getAllDecryptedSecrets
                 setAgentQueue(null)
                 globalThis.fetch = saved.fetch
@@ -776,7 +783,12 @@ describe('GitHubApp Service - Unit Tests', () => {
                 baseRef: 'main',
             })
             expect(calls.jobs[0].name).toBe('run_agent')
-            expect(calls.jobs[0].data).toMatchObject({ sessionId: 'session-1', userId: 'user-1' })
+            expect(calls.jobs[0].data).toMatchObject({
+                sessionId: 'session-1',
+                userId: 'user-1',
+                // the run claimed the session: the worker runs only this job on it
+                runId: 'run-1',
+            })
             expect(calls.comments[0]).toContain('/session/session-1')
         })
 

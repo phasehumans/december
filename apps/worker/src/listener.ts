@@ -2,6 +2,8 @@ import { DurableStepKernel, PrismaDurableStepStorage, StaleEpochError } from '@d
 import { prisma } from '@december/database'
 import {
     calculateGenerationCost,
+    crossedLowCreditsAmount,
+    DEFAULT_SESSION_RUN_CONFIG,
     readSessionRunConfig,
     startOfUtcMonth,
     startOfNextUtcMonth,
@@ -11,7 +13,12 @@ import Redis from 'ioredis'
 
 import { detectSandboxListeningPorts, pickWebPreviewPort } from './dynamic-port-detector'
 import { E2BSandboxService } from './e2b-sandbox.service'
-import { resolveGitToken } from './git-remote'
+import {
+    loadPullRequestSettings,
+    resolveAppRepoToken,
+    resolveGitToken,
+    resolveGitUser,
+} from './git-remote'
 import { finishGithubRun } from './github-run'
 import {
     createDefaultSessionPlan,
@@ -20,12 +27,31 @@ import {
     type SessionPlan,
 } from './plan-milestones'
 import {
+    AHEAD_COUNT_COMMAND,
+    branchToSave,
+    gitCommitCommand,
+    gitIdentityCommand,
+    gitStepFailure,
+    hasWorkToPublish,
+    needsUserIdentity,
+    pickCommitAuthor,
+    pickPullRequestTokens,
+    pickTaskBranch,
+    wantsAppToken,
+} from './pr-opening'
+import { publishWhenReady, subscribeWhenReady } from './redis-subscriber'
+import { moveMessagesToEnd } from './run-steering'
+import { closeStoppedTurn, createInterruptHub } from './run-stop'
+import { checkRunSpend, prismaSpendLimitStore, spendLimitEvent } from './spend-limits'
+import {
     isTestExecutionCommand,
     parseTestOutput,
     type SessionTestReport,
 } from './test-runner-parser'
 
 import type { BillingSource } from './llm-source'
+import type { RunSteering } from './run-steering'
+import type { RunStop } from './run-stop'
 
 export const MUTATING_TOOL_NAMES = new Set([
     'write_file',
@@ -109,8 +135,17 @@ export interface AutonomousPrResult {
 export async function handleAutonomousTaskBranchAndPr(options: {
     sessionId: string
     sandbox: any
+    /** a December GitHub App token for the repository, or null. tests pass their own */
+    getAppToken?: (repoPath: string) => Promise<string | null>
+    /** sends the error event of a failed checkout or push. tests pass their own */
+    publish?: PublishRunEvent
 }): Promise<AutonomousPrResult | null> {
-    const { sessionId, sandbox } = options
+    const {
+        sessionId,
+        sandbox,
+        getAppToken = resolveAppRepoToken,
+        publish = publishRunEvent,
+    } = options
     if (!sandbox?.commands?.run) return null
 
     try {
@@ -119,7 +154,13 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             .run('git status --porcelain', { cwd: '/workspace' })
             .catch(() => null)
         const statusOutput = (statusRes?.stdout || '').trim()
-        if (!statusOutput) {
+        // a clean tree can still hold commits the agent made itself: they are pushed too
+        const aheadRes = statusOutput
+            ? null
+            : await sandbox.commands
+                  .run(AHEAD_COUNT_COMMAND, { cwd: '/workspace' })
+                  .catch(() => null)
+        if (!hasWorkToPublish({ statusOutput, aheadCount: aheadRes?.stdout })) {
             return null
         }
 
@@ -137,31 +178,81 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                 githubRepoUrl: true,
                 repoUrl: true,
                 branch: true,
+                prBranch: true,
                 settings: { select: { config: true } },
+                user: { select: { defaultOpenPullRequest: true } },
             },
         })
-        // "open pull request" off (#632): commit and push the branch, open no pull request
-        const { openPullRequest } = readSessionRunConfig(session?.settings?.config)
+        // "open pull request" off (#632): commit and push the branch, open no pull request.
+        // a session with no saved value follows the user's default, which is also "create
+        // the pull request" on the pull requests settings page (#637)
+        const { openPullRequest } = readSessionRunConfig(session?.settings?.config, {
+            ...DEFAULT_SESSION_RUN_CONFIG,
+            openPullRequest: session?.user?.defaultOpenPullRequest ?? true,
+        })
 
-        const taskBranch = `december/${sessionId}`
+        // how this user wants branches, commits and pull requests (#637)
+        const prSettings = await loadPullRequestSettings(session?.userId)
+        const gitProvider = session?.gitProvider ?? 'GITHUB'
+        const effectiveToken = await resolveGitToken({
+            userId: session?.userId,
+            provider: gitProvider,
+        })
+
+        // the branch of this session: the saved one, also after the prefix changes
+        const currentBranchRes = session?.prBranch
+            ? null
+            : await sandbox.commands
+                  .run('git rev-parse --abbrev-ref HEAD', { cwd: '/workspace' })
+                  .catch(() => null)
+        const taskBranch = pickTaskBranch({
+            sessionId,
+            branchPrefix: prSettings.branchPrefix,
+            savedBranch: session?.prBranch,
+            currentBranch: currentBranchRes?.stdout,
+        })
         const baseBranch = session?.branch || 'main'
         const cleanCommitTitle = session?.title
             ? `feat: ${session.title.toLowerCase().replace(/["'`\\]/g, '')}`
             : 'feat: automated task changes'
 
-        // 3. Configure git author identity & switch to task branch (NEVER push to main)
-        await sandbox.commands
-            .run(
-                `git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
-                { cwd: '/workspace' }
+        // "both": the user is the author and December the co-author
+        const { author, coAuthor } = pickCommitAuthor({
+            commitAuthor: prSettings.commitAuthor,
+            user: needsUserIdentity(prSettings.commitAuthor)
+                ? await resolveGitUser({
+                      userId: session?.userId,
+                      provider: gitProvider,
+                      token: effectiveToken,
+                  })
+                : null,
+        })
+
+        // a git step failed when the command throws (the e2b sdk) or ends with an exit code
+        const gitStepOk = (step: Promise<{ exitCode?: number } | null | undefined>) =>
+            step.then(
+                (res) => !res?.exitCode,
+                (error: unknown) => {
+                    console.warn(`[WORKER LISTENER] git step failed for ${taskBranch}:`, error)
+                    return false
+                }
             )
-            .catch(() => {
-                // Intentionally swallowed: git branch/author setup fallback
+
+        // 3. Configure git author identity & switch to task branch (NEVER push to main)
+        const onBranch = await gitStepOk(
+            sandbox.commands.run(`${gitIdentityCommand(author)} && git checkout -B ${taskBranch}`, {
+                cwd: '/workspace',
             })
+        )
+        if (!onBranch) {
+            // not silent (review E2): the chat shows the error, nothing is committed or pushed
+            await publish(sessionId, gitStepFailure({ step: 'checkout', branch: taskBranch }))
+            return null
+        }
 
         // 4. Stage and commit changes cleanly
         await sandbox.commands
-            .run(`git add -A && git commit -m "${cleanCommitTitle}"`, { cwd: '/workspace' })
+            .run(gitCommitCommand({ subject: cleanCommitTitle, coAuthor }), { cwd: '/workspace' })
             .catch(() => {
                 // Intentionally swallowed: git commit fallback
             })
@@ -172,13 +263,8 @@ export async function handleAutonomousTaskBranchAndPr(options: {
         })
 
         // 5. Check if a repo is linked (github* columns hold the repo on any git host)
-        const gitProvider = session?.gitProvider ?? 'GITHUB'
         const repoOwner = session?.githubRepoOwner
         const repoName = session?.githubRepoName
-        const effectiveToken = await resolveGitToken({
-            userId: session?.userId,
-            provider: gitProvider,
-        })
 
         // If repo and token are not present, return local task branch result
         if (!repoOwner || !repoName || !effectiveToken) {
@@ -227,12 +313,30 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                 // Intentionally swallowed: remote set-url fallback
             })
 
-        await sandbox.commands
-            .run(`git push origin ${taskBranch}`, { cwd: '/workspace' })
-            .catch((e: any) => {
-                console.warn(`[WORKER LISTENER] Git push warning for ${taskBranch}:`, e)
-                return null
-            })
+        const pushed = await gitStepOk(
+            sandbox.commands.run(`git push origin ${taskBranch}`, { cwd: '/workspace' })
+        )
+        if (!pushed) {
+            // not silent (review E2): no branch is saved and no pull request is opened
+            await publish(sessionId, gitStepFailure({ step: 'push', branch: taskBranch }))
+            return null
+        }
+
+        // the pushed branch stays the branch of this session, whatever the prefix is later.
+        // a saved name git refuses is replaced here
+        const branchName = session
+            ? branchToSave({ savedBranch: session.prBranch, taskBranch })
+            : null
+        if (branchName) {
+            await prisma.session
+                .update({ where: { id: sessionId }, data: { prBranch: branchName } })
+                .catch((error: unknown) => {
+                    console.error(
+                        '[WORKER LISTENER] could not save the branch on the session',
+                        error
+                    )
+                })
+        }
 
         if (!openPullRequest) {
             const branchResult: AutonomousPrResult = {
@@ -279,18 +383,35 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             `- Task branch \`${taskBranch}\` pushed to origin.`,
         ].join('\n')
 
-        const prData = await provider.createPullRequest({
-            token: effectiveToken,
-            repoPath,
-            title: prTitle,
-            head: taskBranch,
-            base: baseBranch,
-            body: prBody,
-        })
+        // "december": the December GitHub App opens it when the app is on the repository.
+        // the user's token is the fallback, and the only choice on GitLab
+        const appToken = wantsAppToken({ prAuthor: prSettings.prAuthor, provider: gitProvider })
+            ? await getAppToken(repoPath).catch(() => null)
+            : null
+        let prData: Awaited<ReturnType<typeof provider.createPullRequest>> = null
+        let prToken = effectiveToken
+        for (const token of pickPullRequestTokens({
+            prAuthor: prSettings.prAuthor,
+            provider: gitProvider,
+            userToken: effectiveToken,
+            appToken,
+        })) {
+            prToken = token
+            prData = await provider.createPullRequest({
+                token,
+                repoPath,
+                title: prTitle,
+                head: taskBranch,
+                base: baseBranch,
+                body: prBody,
+                draft: prSettings.prDraft,
+            })
+            if (prData) break
+        }
 
         // 8. Query CI status if commit SHA or PR is available
         const ciStatus = prData?.headSha
-            ? await provider.getCiStatus({ token: effectiveToken, repoPath, sha: prData.headSha })
+            ? await provider.getCiStatus({ token: prToken, repoPath, sha: prData.headSha })
             : 'passing'
 
         const prResult: AutonomousPrResult = {
@@ -479,10 +600,25 @@ redisSub.on('error', () => {
     // Intentionally swallowed: Suppress offline Redis sub error noise in test environment
 })
 
-redisSub.psubscribe('session_events:*', (err) => {
-    if (err) {
-        // Intentionally swallowed: Fallback during offline Redis test runs
-    }
+// both connections are lazy and have no offline queue: nothing opens them, and a command
+// sent before "ready" is lost. open them here, so the run events reach the server and the
+// interrupts reach this worker
+for (const client of [redisPub, redisSub]) {
+    client.connect().catch(() => {
+        // Intentionally swallowed: redis is offline (tests) or the connection is already open
+    })
+}
+
+// stop of a running agent (#637): the server publishes on session_interrupts:<sessionId>
+const interruptHub = createInterruptHub(redisSub)
+/** the interrupts this worker gets, for watchRunStop */
+export const subscribeToInterrupts = interruptHub.subscribe
+
+// sent on "ready": a psubscribe sent at load, before the connection is open, is refused
+subscribeWhenReady({
+    client: redisSub,
+    subscribe: () => redisSub.psubscribe('session_events:*'),
+    label: 'WORKER LISTENER',
 })
 
 redisSub.on('pmessage', (pattern, channel, message) => {
@@ -512,7 +648,14 @@ export async function processGrpcStream(
     sessionId: string,
     stream: any,
     sandbox?: any,
-    options?: { kernel?: DurableStepKernel; billingSource?: BillingSource }
+    options?: {
+        kernel?: DurableStepKernel
+        billingSource?: BillingSource
+        /** the stop watch of this run (#637). it ends here, with the run */
+        stop?: RunStop
+        /** the messages sent while this run works (#637). it ends here, with the run */
+        steering?: RunSteering
+    }
 ) {
     const billingSource: BillingSource = options?.billingSource ?? 'CREDITS'
     let hasError = false
@@ -548,12 +691,16 @@ export async function processGrpcStream(
     // the agent's last words: the summary for a pull request, a reply or a review
     let lastAssistantText = ''
     let runFinished = false
+    // the run ended with a stop (#637): its work stays in the sandbox, nothing is pushed
+    let runStopped = false
 
     // the end of the run, once: the github step for sessions the github app started,
     // otherwise the task branch and pull request
     const finishRun = async (runHasError: boolean) => {
         if (runFinished) return
         runFinished = true
+        // no github step, no push and no pull request for a run that was stopped
+        if (runStopped) return
         const activeSandbox = sandbox || E2BSandboxService.getActiveSandbox(sessionId)
         const handled = await finishGithubRun({
             sessionId,
@@ -671,14 +818,19 @@ export async function processGrpcStream(
                 `[WORKER LISTENER -> REDIS] Session '${sessionId}' -> Publishing event '${parsedEvent.type || 'unknown'}'`
             )
 
+            const eventType = parsedEvent.type
+            // the end of a run that failed says so: the server sends no "finished" for it
+            const published =
+                eventType === 'AgentEnd' && hasError && !parsedEvent.stopped
+                    ? JSON.stringify({ ...parsedEvent, failed: true })
+                    : event.data
+
             // publish to socket rooms if redis is connected
             if (redisPub.status === 'ready') {
-                await redisPub.publish(`session_events:${sessionId}`, event.data).catch(() => {
+                await redisPub.publish(`session_events:${sessionId}`, published).catch(() => {
                     // Intentionally swallowed: Suppress Redis publish failure during offline/test execution
                 })
             }
-
-            const eventType = parsedEvent.type
 
             // every agent step counts as sandbox activity (throttled), so a busy sandbox is
             // never paused by the idle sweeper
@@ -784,7 +936,8 @@ export async function processGrpcStream(
                         block?.toolInput?.command ||
                         block?.toolInput?.cmd ||
                         ''
-                    if (rawCommand && isTestExecutionCommand(rawCommand)) {
+                    // a test command that a stop cut short has no result to report
+                    if (rawCommand && isTestExecutionCommand(rawCommand) && !result.stopped) {
                         const exitCode = result.exitCode ?? (result.error ? 1 : 0)
                         const testReport = parseTestOutput(rawCommand, block.output || '', exitCode)
                         void updateSessionTestResults({ sessionId, report: testReport })
@@ -823,7 +976,29 @@ export async function processGrpcStream(
                 }
             } else if (eventType === 'TurnEnd') {
                 await persistTurnMessage()
+            } else if (eventType === 'SteeringDelivered') {
+                // the agent now reads these messages (#637): they go after the turn that
+                // ran while they waited, so the saved order is the order the agent saw
+                await persistTurnMessage()
+                await moveMessagesToEnd({
+                    db: prisma,
+                    sessionId,
+                    sequences: (Array.isArray(parsedEvent.messages) ? parsedEvent.messages : [])
+                        .map((message: any) => message?.sequence)
+                        .filter((sequence: unknown) => Number.isInteger(sequence)),
+                }).catch((error: unknown) => {
+                    console.warn(
+                        `[WORKER LISTENER] could not order the steering messages of ${sessionId}:`,
+                        error
+                    )
+                })
             } else if (eventType === 'AgentEnd') {
+                if (parsedEvent.stopped === true) {
+                    runStopped = true
+                    const closed = closeStoppedTurn(currentTurn)
+                    currentTurn.content = closed.content
+                    currentTurn.blocks = closed.blocks
+                }
                 await persistTurnMessage()
                 await finishRun(hasError)
             } else if (eventType === 'AgentUsage') {
@@ -867,15 +1042,43 @@ export async function processGrpcStream(
             .catch(() => {
                 // Intentionally swallowed: DB fallback during stream cleanup
             })
+        // messages that nobody took start a normal run, unless the run was stopped (#637)
+        await options?.steering?.end({ discard: runStopped })
+        options?.stop?.end()
     }
+}
+
+/** sends one event of a run to the server (redis `session_events:<sessionId>`) */
+export type PublishRunEvent = (sessionId: string, event: Record<string, unknown>) => Promise<void>
+
+const publishRunEvent: PublishRunEvent = async (sessionId, event) => {
+    // waits while the connection opens: CreditsLow and SpendLimitReached are sent once
+    await publishWhenReady({
+        client: redisPub,
+        channel: `session_events:${sessionId}`,
+        message: JSON.stringify(event),
+    }).catch((error: unknown) => {
+        console.warn(`[WORKER LISTENER] could not publish ${String(event.type)}`, error)
+    })
 }
 
 // records token usage. CREDITS runs are charged to the wallet; OWN_KEY runs are paid
 // by the user's provider, so they are recorded for display only.
-// under this balance the user gets a low credits notification ($1). #638 makes it a setting
-const LOW_CREDITS_ALERT_CENTS = 100
-
 async function updateCredits(sessionId: string, event: any, billingSource: BillingSource) {
+    await chargeRunUsage(sessionId, event, billingSource, publishRunEvent)
+}
+
+/**
+ * One AgentUsage event of a run: the usage is saved, a run on credits is charged, and the
+ * charge is checked against the low balance alert and the spend limits (#638). `publish`
+ * sends CreditsLow and SpendLimitReached to the server.
+ */
+export async function chargeRunUsage(
+    sessionId: string,
+    event: any,
+    billingSource: BillingSource,
+    publish: PublishRunEvent
+) {
     try {
         const session = await prisma.session.findUnique({
             where: { id: sessionId },
@@ -902,6 +1105,8 @@ async function updateCredits(sessionId: string, event: any, billingSource: Billi
         )
 
         let balanceAfter: number | null = null
+        // this charge took the balance under the user's alert amount (#638)
+        let creditsLow = false
         await prisma.$transaction(async (tx) => {
             if (session.userId && billingSource === 'CREDITS') {
                 const updated = await tx.user.update({
@@ -911,9 +1116,23 @@ async function updateCredits(sessionId: string, event: any, billingSource: Billi
                             decrement: calculatedCost,
                         },
                     },
-                    select: { creditBalance: true },
+                    select: { creditBalance: true, lowBalanceAlertCents: true },
                 })
                 balanceAfter = updated.creditBalance
+                // the one rule, shared with the server's own charges (@december/shared)
+                creditsLow = crossedLowCreditsAmount({
+                    balanceBefore: updated.creditBalance + calculatedCost,
+                    balanceAfter: updated.creditBalance,
+                    alertCents: updated.lowBalanceAlertCents,
+                })
+                if (creditsLow) {
+                    // a new drop under the amount: the mark of the drop before it (before a
+                    // top-up) is cleared, so the server sends one alert for this one
+                    await tx.user.updateMany({
+                        where: { id: session.userId, lowBalanceAlertedAt: { not: null } },
+                        data: { lowBalanceAlertedAt: null },
+                    })
+                }
             }
 
             await tx.usageEvent.create({
@@ -934,21 +1153,19 @@ async function updateCredits(sessionId: string, event: any, billingSource: Billi
 
         // this charge took the balance under the alert amount: the server tells the user
         // once (#636). it is not sent again until a top-up takes the balance back over
-        if (
-            balanceAfter !== null &&
-            balanceAfter < LOW_CREDITS_ALERT_CENTS &&
-            balanceAfter + calculatedCost >= LOW_CREDITS_ALERT_CENTS &&
-            redisPub.status === 'ready'
-        ) {
-            await redisPub
-                .publish(
-                    `session_events:${sessionId}`,
-                    JSON.stringify({ type: 'CreditsLow', balanceInCents: balanceAfter })
-                )
-                .catch((error: unknown) => {
-                    console.warn('[WORKER LISTENER] could not publish CreditsLow', error)
-                })
+        if (creditsLow && balanceAfter !== null) {
+            await publish(sessionId, { type: 'CreditsLow', balanceInCents: balanceAfter })
         }
+
+        // spend limits (#638): when the session or the day of the user reached its amount,
+        // the server stops this run with reason `limit` and asks the user to continue
+        const reached = await checkRunSpend({
+            userId: session.userId,
+            sessionId,
+            billingSource,
+            store: prismaSpendLimitStore,
+        })
+        if (reached) await publish(sessionId, spendLimitEvent(reached))
     } catch (err) {
         console.error(
             `[WORKER LISTENER] Failed to record token usage and update credits for session ${sessionId}:`,

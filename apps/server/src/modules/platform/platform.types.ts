@@ -58,3 +58,11 @@ export type ResolveRepoToken = {
     gitProvider: 'GITHUB' | 'GITLAB'
     owner?: string
 }
+
+export type CheckRepoBranch = {
+    userId: string
+    gitProvider: 'GITHUB' | 'GITLAB'
+    // the full name of the repository: owner/name, or a gitlab group path
+    repository: string
+    branch: string
+}

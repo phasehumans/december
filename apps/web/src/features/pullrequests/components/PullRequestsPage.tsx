@@ -1,26 +1,22 @@
-import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 
 import { useAppStore } from '@/app/store'
 import { MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { requestWorkspaceTab } from '@/features/preview/lib/workspaceTabRequest'
 import { useGithubConnection } from '@/features/profile/hooks/useGithubConnection'
+import { useInfinitePullRequests } from '@/features/pullrequests/hooks/usePullRequests'
 import {
     PULL_REQUEST_STATE_LABELS,
-    isOpenPullRequest,
-    searchPullRequests,
     toPullRequestRows,
     type PullRequestState,
 } from '@/features/pullrequests/lib/pullRequests'
 import {
     activePullRequestFilters,
-    applyPullRequestsView,
-    pullRequestFacets,
+    pullRequestsViewParams,
     readPullRequestsView,
     writePullRequestsView,
     type PullRequestsView,
 } from '@/features/pullrequests/lib/pullRequestsView'
-import { sessionAPI, type BackendPullRequest } from '@/features/sessions/api/session'
 import {
     ListEmptyState,
     ListErrorState,
@@ -34,30 +30,18 @@ import {
     listRowClass,
 } from '@/features/sessions/components/ListParts'
 import { ViewMenu } from '@/features/sessions/components/ViewMenu'
-import { SESSIONS_SORT_OPTIONS, shortRepoName } from '@/features/sessions/lib/sessionsView'
+import { useSessionCounts, useSessionFacets } from '@/features/sessions/hooks/useSessions'
+import {
+    SESSIONS_SORT_OPTIONS,
+    shortRepoName,
+    withPicked,
+} from '@/features/sessions/lib/sessionsView'
 import { Icons } from '@/shared/components/ui/Icons'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
 
-// the view runs in the browser, so the page loads every row: pages of 100 (the most one
-// request returns), at most 10 of them
-const PAGE_SIZE = 100
-const MAX_PAGES = 10
-
-const fetchAllPullRequests = async (): Promise<BackendPullRequest[]> => {
-    const rows: BackendPullRequest[] = []
-    for (let page = 1; page <= MAX_PAGES; page++) {
-        const result = await sessionAPI.getPullRequests({
-            sortBy: 'updatedAt',
-            sortOrder: 'desc',
-            page,
-            limit: PAGE_SIZE,
-        })
-        rows.push(...result.pullRequests)
-        if (page >= result.pagination.totalPages) break
-    }
-    return rows
-}
+/** ms after the last key before the search goes to the server */
+const SEARCH_DELAY_MS = 250
 
 const STATE_TAG_CLASS: Record<PullRequestState, string> = {
     open: 'bg-emerald-500/10 text-emerald-400',
@@ -66,10 +50,6 @@ const STATE_TAG_CLASS: Record<PullRequestState, string> = {
     closed: 'bg-red-500/10 text-red-400',
 }
 
-/** a saved value stays in its list even when no loaded row has it */
-const withPicked = (values: string[], picked: string | null) =>
-    picked && !values.includes(picked) ? [...values, picked].sort() : values
-
 interface PullRequestsPageProps {
     onOpenProject: (sessionId: string) => void
 }
@@ -77,12 +57,6 @@ interface PullRequestsPageProps {
 /** pull requests that December opened, across all sessions */
 export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProject }) => {
     const isAuthenticated = useAppStore((s) => s.isAuthenticated)
-    // under ['sessions'], so every list write reads the rows again
-    const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ['sessions', 'pull-requests'],
-        queryFn: fetchAllPullRequests,
-        enabled: isAuthenticated,
-    })
 
     const github = useGithubConnection(isAuthenticated)
     // the All | Open switch next to search
@@ -90,6 +64,30 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
     // the sort and filter menu. saved in the browser, like the Sessions page
     const [view, setView] = React.useState<PullRequestsView>(readPullRequestsView)
     const [query, setQuery] = React.useState('')
+    // the server search waits until typing stops, so each letter does not send a request
+    const [serverSearch, setServerSearch] = React.useState('')
+    React.useEffect(() => {
+        const timer = setTimeout(() => setServerSearch(query.trim()), SEARCH_DELAY_MS)
+        return () => clearTimeout(timer)
+    }, [query])
+
+    // the server filters, sorts and pages, so the view also covers rows not loaded yet
+    const params = React.useMemo(
+        () => pullRequestsViewParams(view, onlyOpen, serverSearch),
+        [view, onlyOpen, serverSearch]
+    )
+    const {
+        data,
+        isLoading,
+        isPlaceholderData,
+        error,
+        refetch,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfinitePullRequests(params)
+    // a sort, filter or search is waiting for its rows: the old rows stay on screen
+    const isSwitching = isPlaceholderData || query.trim() !== serverSearch
 
     const changeView = (next: Partial<PullRequestsView>) => {
         const merged = { ...view, ...next }
@@ -107,20 +105,25 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
         }
     }
 
-    const allRows = React.useMemo(() => toPullRequestRows(data || []), [data])
     const rows = React.useMemo(
-        () => searchPullRequests(applyPullRequestsView(allRows, view, onlyOpen), query),
-        [allRows, view, onlyOpen, query]
+        () => toPullRequestRows(data?.pages.flatMap((page) => page.pullRequests) || []),
+        [data]
     )
-    // every row is loaded (archived sessions too), so this counts them all
-    const openCount = React.useMemo(() => allRows.filter(isOpenPullRequest).length, [allRows])
-    const facets = React.useMemo(() => pullRequestFacets(allRows), [allRows])
+    // every open pull request of the user, not only the loaded rows (archived left out)
+    const { data: counts } = useSessionCounts()
+    const openCount = counts?.openPullRequests
+    // every repository and tag of the sessions that opened a pull request, also from
+    // rows that are not loaded
+    const { data: facets } = useSessionFacets({ hasPr: true })
     const activeFilters = activePullRequestFilters(view)
     const filtersOn = onlyOpen || activeFilters.length > 0
     const clearFilters = () => {
         changeView({ merged: false, closed: false, repo: null, tag: null })
         setOnlyOpen(false)
     }
+    // a filter or a search is on, or its rows are on the way: an empty list then means
+    // "none found", not "none yet"
+    const isNarrowed = filtersOn || Boolean(query.trim()) || isSwitching
     // with Newest or Oldest the row shows the created time, like the Sessions rows
     const showCreated = view.sort !== 'updated'
 
@@ -130,10 +133,24 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
         onOpenProject(sessionId)
     }
 
-    const needsGithub = github.isReady && !github.isConnected && allRows.length === 0
+    const needsGithub = github.isReady && !github.isConnected && rows.length === 0 && !isNarrowed
 
     return (
-        <div className="relative h-full w-full flex-1 overflow-y-auto bg-background font-sans no-scrollbar">
+        <div
+            className="relative h-full w-full flex-1 overflow-y-auto bg-background font-sans no-scrollbar"
+            onScroll={(event) => {
+                // near the end of the loaded rows: the next 30 load
+                const target = event.currentTarget
+                if (
+                    target.scrollHeight - target.scrollTop - target.clientHeight < 150 &&
+                    hasNextPage &&
+                    !isFetchingNextPage &&
+                    !isPlaceholderData
+                ) {
+                    void fetchNextPage()
+                }
+            }}
+        >
             {/* the page heading below says Pull requests, so the bar only holds the menu */}
             <MobileTopBar />
 
@@ -189,7 +206,7 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                                 key: 'repo',
                                 label: 'Repository',
                                 value: view.repo,
-                                options: withPicked(facets.repos, view.repo).map((repo) => ({
+                                options: withPicked(facets?.repos ?? [], view.repo).map((repo) => ({
                                     value: repo,
                                     label: shortRepoName(repo),
                                 })),
@@ -199,7 +216,7 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                                 key: 'tag',
                                 label: 'Tag',
                                 value: view.tag,
-                                options: withPicked(facets.tags, view.tag).map((tag) => ({
+                                options: withPicked(facets?.tags ?? [], view.tag).map((tag) => ({
                                     value: tag,
                                     label: tag,
                                 })),
@@ -212,7 +229,7 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                 {/* ?skeleton shows the loading rows, like the Sessions page */}
                 {isLoading || isSkeletonPreviewActive() ? (
                     <ListRowsSkeleton rows={4} />
-                ) : error && allRows.length === 0 ? (
+                ) : error && rows.length === 0 ? (
                     <ListErrorState
                         message="Could not load pull requests"
                         onRetry={() => void refetch()}
@@ -225,12 +242,10 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                     </ListEmptyState>
                 ) : rows.length === 0 ? (
                     <ListEmptyState
-                        art={allRows.length === 0 ? 'pullRequests' : 'noResults'}
-                        title={
-                            allRows.length === 0 ? 'No pull requests yet' : 'No pull requests found'
-                        }
+                        art={isNarrowed ? 'noResults' : 'pullRequests'}
+                        title={isNarrowed ? 'No pull requests found' : 'No pull requests yet'}
                     >
-                        {allRows.length > 0 && filtersOn && (
+                        {filtersOn && (
                             <button
                                 type="button"
                                 onClick={clearFilters}
@@ -241,7 +256,16 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                         )}
                     </ListEmptyState>
                 ) : (
-                    <div className="flex flex-col gap-1 pb-4">
+                    <div
+                        aria-busy={isSwitching || undefined}
+                        className={cn(
+                            'flex flex-col gap-1 pb-4 transition-opacity',
+                            // dims only when the rows take a moment, like the Sessions page
+                            isSwitching
+                                ? 'opacity-50 duration-200 delay-200'
+                                : 'opacity-100 duration-150'
+                        )}
+                    >
                         {rows.map((row) => (
                             <div
                                 key={row.sessionId}

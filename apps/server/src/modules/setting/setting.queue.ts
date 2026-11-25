@@ -34,6 +34,15 @@ const getDataExportQueue = (): DataExportQueue => {
     return _dataExportQueue
 }
 
+/**
+ * True on the attempt after which the queue gives up (the same rule as BullMQ). A failed
+ * attempt before it is tried again, so the user is told only when this one fails.
+ */
+export const isLastDataExportAttempt = (job: {
+    attemptsMade: number
+    opts: { attempts?: number }
+}): boolean => job.attemptsMade + 1 >= (job.opts.attempts ?? 1)
+
 /** for tests: a queue that records jobs instead of using Redis */
 export const setDataExportQueue = (queue: DataExportQueue | null) => {
     _dataExportQueue = queue

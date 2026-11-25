@@ -10,6 +10,7 @@ notificationRouter.use(authMiddleware)
 
 // browser push (#636)
 notificationRouter.get('/push/key', notificationController.getPushConfig)
+notificationRouter.post('/push/status', notificationController.getPushStatus)
 notificationRouter.post('/push/subscribe', notificationController.subscribePush)
 notificationRouter.delete('/push/subscribe', notificationController.unsubscribePush)
 

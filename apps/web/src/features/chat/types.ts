@@ -1,3 +1,5 @@
+import type { PromptInputSubmitOptions } from '@/features/home/types'
+
 export type MessageBlock =
     | { type: 'thinking'; content: string; isStreaming?: boolean }
     | { type: 'compaction'; summary: string }
@@ -36,11 +38,19 @@ export interface Message {
     creditsUsed?: number
     modelName?: string
     appliedFiles?: string[]
+    /** the files the user sent with this message (#634) */
+    attachments?: MessageAttachment[]
+}
+
+export interface MessageAttachment {
+    id?: string
+    name: string
 }
 
 export interface ChatMessageProps {
     role: 'user' | 'assistant'
     content: string
+    attachments?: MessageAttachment[]
     blocks?: MessageBlock[]
     thoughts?: string
     plan?: string
@@ -64,17 +74,16 @@ export interface ChatMessageProps {
 export interface ChatPromptInputProps {
     value: string
     onChange: (value: string) => void
-    onSubmit: () => void
+    /** the options are what the box shows: speed, plan first and the picked skills */
+    onSubmit: (options?: PromptInputSubmitOptions) => void
     isApplyingEdit: boolean
     isAuthenticated?: boolean
     onOpenAuth?: () => void
-    isThinkingMode?: boolean
-    onToggleThinking?: (enabled: boolean) => void
 }
 
 export interface ChatSidebarProps {
     messages: Message[]
-    onPromptSubmit: (prompt: string) => void
+    onPromptSubmit: (prompt: string, options?: PromptInputSubmitOptions) => void
     onBack: () => void
     isGenerating: boolean
     executionTime: number

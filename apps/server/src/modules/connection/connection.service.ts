@@ -1,12 +1,29 @@
-import { checkMcpUrl } from '@december/shared'
+import { RULE_FILE_NAMES, checkMcpUrl, splitRepoFullName } from '@december/shared'
+import { getGitProvider } from '@december/shared/git'
 
 import { AppError } from '../../shared/appError'
+import { platformService } from '../platform/platform.service'
 
 import { connectionRepository } from './connection.repository'
-import { mergeHeaders, toPublicMcpServer } from './connection.utils'
+import {
+    isMissingOnHost,
+    mapInBatches,
+    mergeHeaders,
+    toFoundMcps,
+    toFoundSkill,
+    toPreviewMcp,
+    toPreviewSkill,
+    toPublicMcpServer,
+    toRepoReadError,
+} from './connection.utils'
 
 import type {
     DeleteByName,
+    FoundSetup,
+    FoundSkill,
+    ImportSetup,
+    ImportSkipped,
+    RepoSetupRef,
     SaveMcpServer,
     SaveSkill,
     SetSkillEnabled,
@@ -16,6 +33,17 @@ import type {
 
 const MAX_SKILLS = 100
 const MAX_MCP_SERVERS = 20
+
+// import setup (#637 section 6)
+const MAX_IMPORT_SKILL_FILES = 50
+const MAX_IMPORT_FILE_BYTES = 64 * 1024
+const IMPORT_READS_AT_ONCE = 8
+// the folders the cli reads skills from in a workspace. the cli lets a later folder win,
+// so the folder that wins is first here
+const SKILL_ROOTS = ['.december', '.agents', '.agent', '.claude']
+const SKILL_FILE_NAMES = ['SKILL.md', 'skill.md']
+const MCP_CONFIG_DIR = '.december'
+const MCP_CONFIG_PATH = `${MCP_CONFIG_DIR}/mcp.json`
 
 const toPublicSkill = (skill: {
     name: string
@@ -90,9 +118,6 @@ const saveMcpServer = async (data: SaveMcpServer) => {
 
     const check = checkMcpUrl(url)
     if (!check.ok) throw new AppError(`This mcp server cannot be used: ${check.reason}.`, 400)
-    if (auth === 'header' && headers.length === 0) {
-        throw new AppError('Add the header that signs in to the server.', 400)
-    }
 
     const existing = await connectionRepository.findMcpServer(userId, currentName)
     if (name !== currentName && (await connectionRepository.findMcpServer(userId, name))) {
@@ -102,11 +127,20 @@ const saveMcpServer = async (data: SaveMcpServer) => {
         auth === 'header' ? headers : [],
         existing?.encryptedHeaders ?? null
     )
+    // a header sent empty with no saved value is no header
+    if (auth === 'header' && headerKeys.length === 0) {
+        throw new AppError('Add the header that signs in to the server.', 400)
+    }
+    const sameHeaderNames =
+        !!existing &&
+        existing.headerKeys.length === headerKeys.length &&
+        headerKeys.every((key) => existing.headerKeys.includes(key))
     const changedTarget =
         !existing ||
         existing.url !== url ||
         existing.transport !== transport ||
-        headers.some((header) => header.value)
+        !sameHeaderNames ||
+        (auth === 'header' && headers.some((header) => header.value))
 
     const fields = {
         name,
@@ -173,6 +207,209 @@ const getPromptBoxLists = async (data: UserRef) => {
     }
 }
 
+/**
+ * Reads the default branch of a repository with the user's own git token: the skill
+ * folders the cli knows, the mcp config file and the rules files at the root.
+ */
+const readRepoSetup = async (data: RepoSetupRef): Promise<FoundSetup> => {
+    const { userId, repoFullName, provider } = data
+    const owner = splitRepoFullName(repoFullName)?.owner ?? ''
+    const token = await platformService
+        .resolveRepoToken({ userId, gitProvider: provider, owner })
+        .catch((error) => {
+            // 401 is for the december sign-in: a git host that is not connected is a 400
+            if (error instanceof AppError && error.statusCode === 401) {
+                throw new AppError(error.message, 400)
+            }
+            throw error
+        })
+    const host = getGitProvider(provider)
+    const repo = { token, repoPath: repoFullName }
+
+    // below the root a folder or file that is not there is an empty answer
+    const orNull = <T>(read: Promise<T>): Promise<T | null> =>
+        read.catch((error) => {
+            if (isMissingOnHost(error)) return null
+            throw error
+        })
+
+    try {
+        // the root answers 404 when the user cannot read the repository
+        const root = await host.listDir({ ...repo, path: '' })
+        const rootDirs = new Set(root.filter((e) => e.type === 'dir').map((e) => e.name))
+        const rootFiles = new Set(root.filter((e) => e.type === 'file').map((e) => e.name))
+
+        const listings = await Promise.all(
+            SKILL_ROOTS.filter((dir) => rootDirs.has(dir)).map((dir) =>
+                orNull(host.listDir({ ...repo, path: `${dir}/skills` }))
+            )
+        )
+        const folders = listings.flatMap((entries) =>
+            (entries ?? [])
+                .filter((entry) => entry.type === 'dir')
+                .sort((a, b) => a.name.localeCompare(b.name))
+        )
+
+        const read = await mapInBatches(
+            folders.slice(0, MAX_IMPORT_SKILL_FILES),
+            IMPORT_READS_AT_ONCE,
+            async (folder) => {
+                for (const fileName of SKILL_FILE_NAMES) {
+                    const path = `${folder.path}/${fileName}`
+                    const file = await orNull(
+                        host.readTextFile({ ...repo, path, maxBytes: MAX_IMPORT_FILE_BYTES })
+                    )
+                    if (file) return toFoundSkill(folder.name, path, file)
+                }
+                return null
+            }
+        )
+        const skills = new Map<string, FoundSkill>()
+        for (const skill of read) {
+            if (!skill) continue
+            const first = skills.get(skill.name)
+            // a file that cannot be imported does not hide one that can
+            if (!first || (!first.importable && skill.importable)) skills.set(skill.name, skill)
+        }
+
+        const mcpFile = rootDirs.has(MCP_CONFIG_DIR)
+            ? await orNull(
+                  host.readTextFile({
+                      ...repo,
+                      path: MCP_CONFIG_PATH,
+                      maxBytes: MAX_IMPORT_FILE_BYTES,
+                  })
+              )
+            : null
+
+        return {
+            skills: [...skills.values()].sort((a, b) => a.name.localeCompare(b.name)),
+            mcps: mcpFile?.content ? toFoundMcps(mcpFile.content) : [],
+            // listed only: the account has no place for rules yet
+            rules: RULE_FILE_NAMES.filter((name) => rootFiles.has(name)).map((path) => ({ path })),
+            truncated: folders.length > MAX_IMPORT_SKILL_FILES,
+        }
+    } catch (error) {
+        throw toRepoReadError(error)
+    }
+}
+
+/** what a repository has to import, and which names the account has already */
+const previewImport = async (data: RepoSetupRef) => {
+    const { userId, repoFullName, provider } = data
+    const [found, savedSkills, savedServers] = await Promise.all([
+        readRepoSetup({ userId, repoFullName, provider }),
+        connectionRepository.findSkills(userId),
+        connectionRepository.findMcpServers(userId),
+    ])
+    const skillNames = new Set(savedSkills.map((skill) => skill.name))
+    const serverNames = new Set(savedServers.map((server) => server.name))
+    return {
+        repoFullName,
+        provider,
+        skills: found.skills.map((skill) => toPreviewSkill(skill, skillNames.has(skill.name))),
+        mcps: found.mcps.map((server) => toPreviewMcp(server, serverNames.has(server.name))),
+        rules: found.rules,
+        truncated: found.truncated,
+    }
+}
+
+/**
+ * Imports the ticked names. The repository is read again here: nothing the browser sends
+ * is saved. A name the account has already is skipped unless `overwrite` is set.
+ */
+const importSetup = async (data: ImportSetup) => {
+    const { userId, repoFullName, provider, skills, mcps, overwrite } = data
+    const [found, savedSkills, savedServers] = await Promise.all([
+        readRepoSetup({ userId, repoFullName, provider }),
+        connectionRepository.findSkills(userId),
+        connectionRepository.findMcpServers(userId),
+    ])
+
+    const imported = { skills: [] as string[], mcps: [] as string[] }
+    const skipped: ImportSkipped[] = []
+
+    let skillCount = savedSkills.length
+    for (const name of new Set(skills)) {
+        const skip = (reason: string) => skipped.push({ kind: 'skill', name, reason })
+        const skill = found.skills.find((row) => row.name === name)
+        const saved = savedSkills.find((row) => row.name === name)
+
+        if (!skill) {
+            skip('It is not in the repository.')
+        } else if (!skill.importable || skill.body === null) {
+            skip(skill.reason ?? 'It cannot be imported.')
+        } else if (saved && !overwrite) {
+            skip('A skill with this name exists already.')
+        } else if (saved) {
+            await connectionRepository.updateSkill(saved.id, {
+                description: skill.description,
+                body: skill.body,
+            })
+            imported.skills.push(name)
+        } else if (skillCount >= MAX_SKILLS) {
+            skip(`You can save up to ${MAX_SKILLS} skills.`)
+        } else {
+            await connectionRepository.upsertSkill(userId, name, {
+                name,
+                description: skill.description,
+                body: skill.body,
+                runs: 'agent',
+                enabled: true,
+            })
+            skillCount++
+            imported.skills.push(name)
+        }
+    }
+
+    let serverCount = savedServers.length
+    for (const name of new Set(mcps)) {
+        const skip = (reason: string) => skipped.push({ kind: 'mcp', name, reason })
+        const server = found.mcps.find((row) => row.name === name)
+        const saved = savedServers.find((row) => row.name === name)
+
+        if (!server) {
+            skip('It is not in the repository.')
+        } else if (!server.importable || server.url === null || server.transport === 'stdio') {
+            skip(server.reason ?? 'It cannot be imported.')
+        } else if (saved && !overwrite) {
+            skip('An mcp server with this name exists already.')
+        } else if (saved) {
+            const sameUrl = saved.url === server.url
+            await connectionRepository.updateMcpServer(saved.id, {
+                url: server.url,
+                transport: server.transport,
+                // saved header values are never sent to a new address
+                ...(sameUrl ? {} : { auth: 'none', encryptedHeaders: null, headerKeys: [] }),
+                ...(sameUrl && saved.transport === server.transport
+                    ? {}
+                    : { status: 'unknown', lastError: null, checkedAt: null }),
+            })
+            imported.mcps.push(name)
+        } else if (serverCount >= MAX_MCP_SERVERS) {
+            skip(`You can save up to ${MAX_MCP_SERVERS} mcp servers.`)
+        } else {
+            // no header values: the user adds them, and a run sets the status
+            await connectionRepository.createMcpServer({
+                userId,
+                name,
+                url: server.url,
+                transport: server.transport,
+                auth: 'none',
+                encryptedHeaders: null,
+                headerKeys: [],
+                enabled: true,
+                disabledTools: [],
+                status: 'unknown',
+            })
+            serverCount++
+            imported.mcps.push(name)
+        }
+    }
+
+    return { imported, skipped }
+}
+
 export const connectionService = {
     listSkills,
     saveSkill,
@@ -183,4 +420,6 @@ export const connectionService = {
     updateMcpServer,
     deleteMcpServer,
     getPromptBoxLists,
+    previewImport,
+    importSetup,
 }

@@ -32,12 +32,15 @@ export function startAgentSession(
 export async function executeCommand(
     vmId: string,
     command: string,
-    onData: (chunk: string) => void
+    onData: (chunk: string) => void,
+    // the stop signal of the run (#637): when it aborts, the command is killed
+    signal?: AbortSignal
 ): Promise<number> {
     const result = await E2BSandboxService.executeCommand({
         sandboxId: vmId,
         command,
         onData,
+        signal,
     })
     return result.exitCode
 }

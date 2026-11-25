@@ -16,6 +16,7 @@ import { sessionAPI } from '@/features/sessions/api/session'
 import { useSessionController } from '@/features/sessions/hooks/useSessionController'
 import { ApiError } from '@/shared/api/client'
 import { NEW_SESSION_REQUEST_EVENT, OPEN_SESSION_EVENT } from '@/shared/lib/appEvents'
+import { downloadBlob } from '@/shared/lib/downloadBlob'
 import { clearLoggedInCookie, setLoggedInCookie } from '@/shared/utils/logged-in-cookie'
 
 export const useAppController = () => {
@@ -288,9 +289,6 @@ export const useAppController = () => {
 
         try {
             const result = await sessionAPI.downloadSession(activeProjectId)
-            const url = window.URL.createObjectURL(result.blob)
-            const anchor = document.createElement('a')
-            anchor.href = url
             const username = (profile?.name || 'user')
                 .toLowerCase()
                 .replace(/\s+/g, '-')
@@ -299,11 +297,7 @@ export const useAppController = () => {
                 .toLowerCase()
                 .replace(/\s+/g, '-')
                 .replace(/[^a-z0-9_-]/g, '')
-            anchor.download = `december-${username}-${projectName}.zip`
-            document.body.appendChild(anchor)
-            anchor.click()
-            anchor.remove()
-            window.URL.revokeObjectURL(url)
+            downloadBlob(result.blob, `december-${username}-${projectName}.zip`)
         } catch (error) {
             setProjectLoadError(
                 error instanceof Error ? error.message : 'Failed to download project'

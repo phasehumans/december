@@ -73,6 +73,12 @@ const authed = (token: string) => ({
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', `Bearer ${token}`)
             .send(body),
+    patch: (path: string, body: object) =>
+        request(app)
+            .patch(`/api/v1${path}`)
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${token}`)
+            .send(body),
     delete: (path: string, body: object) =>
         request(app)
             .delete(`/api/v1${path}`)
@@ -393,6 +399,34 @@ describe('notification settings and delivery', () => {
         let busy: { userId: string; token: string }
         let quiet: { userId: string; token: string }
 
+        /** a session December worked on: the worker saves one assistant message for each turn */
+        const workedOn = (data: {
+            userId: string
+            status: 'PARKED' | 'RUNNING' | 'FAILED'
+            messageStatus: 'done' | 'error'
+            at?: Date
+        }) =>
+            prisma.session.create({
+                data: {
+                    userId: data.userId,
+                    title: `A ${data.status} session`,
+                    status: data.status,
+                    messages: {
+                        create: [
+                            {
+                                role: 'ASSISTANT',
+                                content: 'a turn',
+                                status: data.messageStatus,
+                                sequence: 1,
+                                createdAt: data.at ?? new Date('2026-11-25T07:30:00Z'),
+                            },
+                        ],
+                    },
+                },
+            })
+        const summariesTo = (to: string) =>
+            emails.filter((sent) => sent.subject === 'Your December day' && sent.to === to)
+
         beforeAll(async () => {
             busy = await createSignedInUser({ email: `digest-busy-${stamp}@example.com` })
             quiet = await createSignedInUser({ email: `digest-quiet-${stamp}@example.com` })
@@ -400,19 +434,27 @@ describe('notification settings and delivery', () => {
             for (const id of [busy.userId, quiet.userId]) {
                 await prisma.user.update({
                     where: { id },
-                    data: { digestEnabled: true, digestTime: '09:00', timezone: 'UTC' },
+                    data: {
+                        digestEnabled: true,
+                        digestTime: '09:00',
+                        timezone: 'UTC',
+                        // the summary of the day before
+                        lastDigestAt: new Date('2026-11-24T09:00:00Z'),
+                    },
                 })
             }
             const session = await prisma.session.create({
                 data: {
                     userId: busy.userId,
                     title: 'Busy day',
+                    status: 'PARKED',
                     prOpenedAt: new Date('2026-11-25T08:00:00Z'),
                     messages: {
                         create: [
                             {
                                 role: 'ASSISTANT',
                                 content: 'done',
+                                status: 'done',
                                 sequence: 1,
                                 createdAt: new Date('2026-11-25T07:00:00Z'),
                             },
@@ -420,6 +462,9 @@ describe('notification settings and delivery', () => {
                     },
                 },
             })
+            // worked on, not finished: one run is still going and one failed
+            await workedOn({ userId: busy.userId, status: 'RUNNING', messageStatus: 'done' })
+            await workedOn({ userId: busy.userId, status: 'FAILED', messageStatus: 'error' })
             await prisma.usageEvent.create({
                 data: {
                     userId: busy.userId,
@@ -447,7 +492,9 @@ describe('notification settings and delivery', () => {
 
             const summaries = emails.filter((sent) => sent.subject === 'Your December day')
             expect(summaries.map((sent) => sent.to)).toEqual([`digest-busy-${stamp}@example.com`])
-            expect(summaries[0]?.body).toContain('December worked on 1 session.')
+            // three sessions were worked on; one of them finished
+            expect(summaries[0]?.body).toContain('1 session finished.')
+            expect(summaries[0]?.body).not.toContain('worked on')
             expect(summaries[0]?.body).toContain('1 pull request was opened.')
             expect(summaries[0]?.body).toContain('You used $1.23 of credits.')
 
@@ -465,13 +512,136 @@ describe('notification settings and delivery', () => {
             // 09:30 in Kolkata is 04:00 UTC
             await prisma.user.update({
                 where: { id: busy.userId },
-                data: { timezone: 'Asia/Kolkata', digestTime: '09:30', lastDigestAt: null },
+                data: {
+                    timezone: 'Asia/Kolkata',
+                    digestTime: '09:30',
+                    lastDigestAt: new Date('2026-11-25T04:00:00Z'),
+                },
             })
             await notificationService.sendDailyDigests({ now: new Date('2026-11-26T03:59:00Z') })
             expect(emails.filter((sent) => sent.to.startsWith('digest-busy'))).toHaveLength(0)
 
             await notificationService.sendDailyDigests({ now: new Date('2026-11-26T04:00:00Z') })
             expect(emails.filter((sent) => sent.to.startsWith('digest-busy'))).toHaveLength(1)
+        })
+
+        it('a time late in the day goes out at the first tick after midnight', async () => {
+            const to = `digest-late-${stamp}@example.com`
+            const late = await createSignedInUser({ email: to })
+            userIds.push(late.userId)
+            await prisma.user.update({
+                where: { id: late.userId },
+                data: {
+                    digestEnabled: true,
+                    digestTime: '23:50',
+                    timezone: 'UTC',
+                    // the summary of the day before went out at the midnight tick
+                    lastDigestAt: new Date('2026-11-25T00:00:00Z'),
+                },
+            })
+            await workedOn({
+                userId: late.userId,
+                status: 'PARKED',
+                messageStatus: 'done',
+                at: new Date('2026-11-25T12:00:00Z'),
+            })
+
+            // the ticks run on quarter hours: 23:45 is before the time, 00:00 is the next one
+            await notificationService.sendDailyDigests({ now: new Date('2026-11-25T23:45:00Z') })
+            expect(summariesTo(to)).toHaveLength(0)
+
+            await notificationService.sendDailyDigests({ now: new Date('2026-11-26T00:00:00Z') })
+            expect(summariesTo(to)).toHaveLength(1)
+            expect(summariesTo(to)[0]?.body).toContain('1 session finished.')
+
+            await notificationService.sendDailyDigests({ now: new Date('2026-11-26T00:15:00Z') })
+            expect(summariesTo(to)).toHaveLength(1)
+        })
+
+        it('a summary with no saved start begins at the first tick, with no mail for the time before', async () => {
+            const to = `digest-nostart-${stamp}@example.com`
+            const noStart = await createSignedInUser({ email: to })
+            userIds.push(noStart.userId)
+            await prisma.user.update({
+                where: { id: noStart.userId },
+                data: { digestEnabled: true, digestTime: '09:00', timezone: 'UTC' },
+            })
+            await workedOn({
+                userId: noStart.userId,
+                status: 'PARKED',
+                messageStatus: 'done',
+                at: new Date('2026-11-25T07:00:00Z'),
+            })
+
+            await notificationService.sendDailyDigests({ now: new Date('2026-11-25T10:00:00Z') })
+            expect(summariesTo(to)).toHaveLength(0)
+            const row = await prisma.user.findUnique({ where: { id: noStart.userId } })
+            expect(row?.lastDigestAt?.toISOString()).toBe('2026-11-25T10:00:00.000Z')
+
+            await workedOn({
+                userId: noStart.userId,
+                status: 'PARKED',
+                messageStatus: 'done',
+                at: new Date('2026-11-25T12:00:00Z'),
+            })
+            await notificationService.sendDailyDigests({ now: new Date('2026-11-26T09:00:00Z') })
+            expect(summariesTo(to)).toHaveLength(1)
+            expect(summariesTo(to)[0]?.body).toContain('1 session finished.')
+        })
+
+        // this one runs on the real clock (the PATCH saves the moment), so it is the last
+        it('the first summary after the summary was off starts when it was turned on', async () => {
+            const DAY_MS = 24 * 60 * 60 * 1000
+            const to = `digest-back-${stamp}@example.com`
+            const back = await createSignedInUser({ email: to })
+            userIds.push(back.userId)
+            // off for a while: the last summary is 10 days old
+            await prisma.user.update({
+                where: { id: back.userId },
+                data: {
+                    digestEnabled: false,
+                    digestTime: '00:00',
+                    timezone: 'UTC',
+                    lastDigestAt: new Date(Date.now() - 10 * DAY_MS),
+                },
+            })
+            // finished while the summary was off
+            await workedOn({
+                userId: back.userId,
+                status: 'PARKED',
+                messageStatus: 'done',
+                at: new Date(Date.now() - 3 * DAY_MS),
+            })
+
+            const before = Date.now()
+            const res = await authed(back.token).patch('/setting/notifications', {
+                digestEnabled: true,
+            })
+            expect(res.status).toBe(200)
+            const turnedOn = await prisma.user.findUnique({ where: { id: back.userId } })
+            expect(turnedOn?.lastDigestAt?.getTime()).toBeGreaterThanOrEqual(before)
+            expect(turnedOn?.lastDigestAt?.getTime()).toBeLessThanOrEqual(Date.now())
+
+            // saving "on" again does not move the start
+            const again = await authed(back.token).patch('/setting/notifications', {
+                digestEnabled: true,
+                digestTime: '00:00',
+            })
+            expect(again.status).toBe(200)
+            const saved = await prisma.user.findUnique({ where: { id: back.userId } })
+            expect(saved?.lastDigestAt?.toISOString()).toBe(turnedOn?.lastDigestAt?.toISOString())
+
+            // finished after the summary was turned on
+            await workedOn({
+                userId: back.userId,
+                status: 'PARKED',
+                messageStatus: 'done',
+                at: new Date(),
+            })
+
+            await notificationService.sendDailyDigests({ now: new Date(Date.now() + DAY_MS) })
+            expect(summariesTo(to)).toHaveLength(1)
+            expect(summariesTo(to)[0]?.body).toContain('1 session finished.')
         })
     })
 })

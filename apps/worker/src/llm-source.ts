@@ -3,6 +3,7 @@ import { BYOK_PROVIDERS, ByokError, createByokProvider } from '@december/provide
 import { decryptText } from '@december/shared/crypto'
 
 import type { LLMProvider } from '@december/providers'
+import type { SessionEffort } from '@december/shared'
 
 /**
  * How a cloud run pays for model tokens. CREDITS uses december's env keys and the
@@ -133,5 +134,27 @@ export async function* tagOwnKeyErrors(
                 billingSource: 'OWN_KEY',
             }),
         }
+    }
+}
+
+export interface RunModelConfig {
+    model: string
+    /** the effort of the session (fast | deep). runs started without one have none */
+    effort?: SessionEffort
+}
+
+/**
+ * The model and the reasoning level of a run, for the agent. The effort of the session is
+ * the agent's own `thinkingLevel`: the agent loop sets the level of each model call from
+ * it, so a level that is only in `modelOptions` never reaches the model. A model with no
+ * reasoning control runs in standard mode (the loop turns the level off), as in the cli.
+ */
+export const runModelConfig = (data: RunModelConfig) => {
+    const { model, effort } = data
+    // the agent has the same level names: fast and deep
+    const thinkingLevel = effort ?? 'fast'
+    return {
+        modelOptions: { model, thinkingLevel },
+        thinkingLevel,
     }
 }

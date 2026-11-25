@@ -18,5 +18,8 @@ connectionRouter.get('/mcps', connectionController.listMcpServers)
 connectionRouter.put('/mcps/:name', connectionController.saveMcpServer)
 connectionRouter.patch('/mcps/:name', connectionController.updateMcpServer)
 connectionRouter.delete('/mcps/:name', connectionController.deleteMcpServer)
+// import setup from a repository (#637 section 6)
+connectionRouter.post('/import/preview', connectionController.previewImport)
+connectionRouter.post('/import', connectionController.importSetup)
 
 export default connectionRouter

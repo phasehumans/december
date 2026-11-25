@@ -1,7 +1,5 @@
 import type { BackendSession, SessionFilters } from '@/features/sessions/api/session'
 
-import { repoNameOf } from '@/features/pullrequests/lib/pullRequests'
-
 // the Sessions page view: one sort and the filters of the "sort and filter" menu.
 // the All | Running switch in the toolbar is not part of it.
 
@@ -78,6 +76,15 @@ export const writeSessionsView = (view: SessionsView): void => {
 /** the last part of owner/name, which is what the rows show */
 export const shortRepoName = (repo: string): string => repo.split('/').pop() || repo
 
+/**
+ * the values of a Repository or Tag menu list. a saved pick stays in the list even when
+ * the server no longer has it, so the user sees what is on and can take it off
+ */
+export const withPicked = (values: string[], picked: string | null): string[] =>
+    picked && !values.includes(picked)
+        ? [...values, picked].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+        : values
+
 /** names of the filters that are on, in menu order */
 export const activeViewFilters = (view: SessionsView): string[] => {
     const names: string[] = []
@@ -102,18 +109,11 @@ export const sessionsViewLabel = (
 })
 
 /**
- * the list API is not ready for the Repository and Tag filters: it does not accept
- * repoName, and tags is missing from its cache key, so a tag request can return or leave
- * behind the wrong cached list. until the server part ships, these two are not sent and
- * the page filters the rows that are loaded (the rows only show with the preview flag).
- * web follow-up: set this to true and remove the preview gate in SessionList.tsx.
+ * the view as list API filters. the server filters by repository and tag too (#641):
+ * the repository goes as the menu has it, owner/name from GET /session/facets
  */
-export const SERVER_FILTERS_REPO_AND_TAG = false
-
-/** the view as list API filters */
 export const sessionsViewFilters = (
-    view: SessionsView,
-    sendRepoAndTag: boolean = SERVER_FILTERS_REPO_AND_TAG
+    view: SessionsView
 ): Pick<
     SessionFilters,
     'sortBy' | 'sortOrder' | 'hasPr' | 'needsAnswer' | 'isArchived' | 'tags' | 'repoName'
@@ -123,8 +123,8 @@ export const sessionsViewFilters = (
     hasPr: view.hasPr || undefined,
     needsAnswer: view.needsAnswer || undefined,
     isArchived: view.archived,
-    tags: sendRepoAndTag && view.tag ? [view.tag] : undefined,
-    repoName: sendRepoAndTag && view.repo ? shortRepoName(view.repo) : undefined,
+    tags: view.tag ? [view.tag] : undefined,
+    repoName: view.repo || undefined,
 })
 
 const sortTime = (session: BackendSession, sort: SessionsSort): number =>
@@ -134,7 +134,9 @@ const sortTime = (session: BackendSession, sort: SessionsSort): number =>
 
 /**
  * the same view on rows that are already loaded. the server filters and sorts too; this
- * keeps the list right between an action (archive, tag) and the next fetch.
+ * keeps the list right between an action (archive, tag) and the next fetch. the
+ * repository is not checked here: no action changes it, and only the server reads the
+ * repository of every row (the browser knows github.com links only).
  */
 export const applySessionsView = (sessions: BackendSession[], view: SessionsView) =>
     sessions
@@ -142,7 +144,6 @@ export const applySessionsView = (sessions: BackendSession[], view: SessionsView
             if (Boolean(session.isArchived) !== view.archived) return false
             if (view.hasPr && !session.prNumber) return false
             if (view.needsAnswer && !session.needsAnswer) return false
-            if (view.repo && repoNameOf(session) !== view.repo) return false
             if (view.tag && !(session.tags || []).includes(view.tag)) return false
             return true
         })
@@ -151,19 +152,3 @@ export const applySessionsView = (sessions: BackendSession[], view: SessionsView
                 ? sortTime(a, view.sort) - sortTime(b, view.sort)
                 : sortTime(b, view.sort) - sortTime(a, view.sort)
         )
-
-/** repositories and tags seen on loaded sessions, for the menu lists */
-export const collectSessionFacets = (
-    sessions: BackendSession[],
-    previous: { repos: string[]; tags: string[] }
-): { repos: string[]; tags: string[] } => {
-    const repos = new Set(previous.repos)
-    const tags = new Set(previous.tags)
-    for (const session of sessions) {
-        const repo = repoNameOf(session)
-        if (repo) repos.add(repo)
-        for (const tag of session.tags || []) tags.add(tag)
-    }
-    if (repos.size === previous.repos.length && tags.size === previous.tags.length) return previous
-    return { repos: [...repos].sort(), tags: [...tags].sort() }
-}

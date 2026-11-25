@@ -25,13 +25,32 @@ import {
 import { Sandbox } from 'e2b'
 import Redis from 'ioredis'
 
-import { resolveGitToken, withGitToken } from './git-remote'
+import { readJobAttachments, writeTurnAttachments } from './attachments'
+import {
+    buildSkillRules,
+    connectAgentMcpServers,
+    disconnectAgentMcpServers,
+    loadUserConnections,
+    pickTurnSkills,
+} from './connections'
+import { resolveGitToken, resolveSessionGit, withGitToken } from './git-remote'
 import { getGithubRunToken, prepareGithubWorkspace } from './github-run'
 import { notifyAgentQuestion } from './inbox-notify'
+import { runModelConfig } from './llm-source'
 import { clearPendingQuestion } from './pending-question'
+import { gitIdentityCommand } from './pr-opening'
+import { publishWhenReady } from './redis-subscriber'
 import { RemotePlatformAdapter } from './remote-operations'
-import { reserveSandboxSlot, touchSandboxActivity } from './sandbox-limits'
+import { failedRunEvents, runKillableCommand, stoppableRun } from './run-stop'
+import { E2B_SANDBOX_TIMEOUT_MS, reserveSandboxSlot, touchSandboxActivity } from './sandbox-limits'
+import { applySecretsToSandbox, secretEnvsOf } from './sandbox-secrets'
 import { buildDenyRulesHook, buildTurnPrompt, createTurnCheckpoint } from './session-commands'
+import {
+    SETUP_TIMEOUT_MS,
+    runSetupCommands,
+    setupRepoFullName,
+    withSetupFailure,
+} from './setup-commands'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { archiveWorkspaceState } from './workspace'
 
@@ -43,6 +62,7 @@ import type {
     RunAgentSessionInput,
     DestroySandboxInput,
     EmitSessionEventInput,
+    EmitRunFailureInput,
     PauseSandboxInput,
     ResumeSandboxInput,
     AcquireSessionSandboxInput,
@@ -51,7 +71,9 @@ import type {
     HandleDisconnectInput,
     EphemeralTaskInput,
     EphemeralTaskResult,
+    RunRepositorySetupInput,
 } from './e2b-sandbox.types'
+import type { SteeringItem } from './run-steering'
 import type { AgentMessage } from '@december/shared'
 
 let redisPub: Redis | null = null
@@ -71,17 +93,26 @@ const getRedisPub = (): Redis => {
         redisPub.on('error', () => {
             // Intentionally swallowed: Suppress unhandled redis connection error noise in test environment
         })
+        // lazy with no offline queue: nothing opens it by itself, and an event sent before
+        // "ready" is lost. open it now
+        redisPub.connect().catch(() => {
+            // Intentionally swallowed: redis is offline (tests); the client tries again
+        })
     }
     return redisPub
 }
 
 // E2B lifetime without activity; keepSandboxAlive pushes it forward while the sandbox is busy
-const SANDBOX_TIMEOUT_MS = 30 * 60 * 1000
+const SANDBOX_TIMEOUT_MS = E2B_SANDBOX_TIMEOUT_MS
 const KEEP_ALIVE_THROTTLE_MS = 60 * 1000
 const lastKeepAliveAt = new Map<string, number>()
 
 // Active sandboxes cache in worker memory
 const activeSandboxes = new Map<string, any>()
+
+// sessions whose repository was cloned into a new sandbox by this worker: the run that
+// follows runs the setup commands of the repository once (#637). a resume is never here
+const sessionsAwaitingSetup = new Set<string>()
 
 // Active platform adapters tracking for graceful detach
 const activeAdapters = new Set<RemotePlatformAdapter>()
@@ -104,12 +135,25 @@ const emitSessionEvent = async (data: EmitSessionEventInput): Promise<void> => {
     const { sessionId, event } = data
     const payload = JSON.stringify(event)
     try {
-        const client = getRedisPub()
-        if (client.status === 'ready') {
-            await client.publish(`session_events:${sessionId}`, payload)
-        }
+        // waits while the connection opens, so the first event is not lost
+        await publishWhenReady({
+            client: getRedisPub(),
+            channel: `session_events:${sessionId}`,
+            message: payload,
+        })
     } catch {
         // Intentionally swallowed: Redis pub connection fallback in test environment
+    }
+}
+
+/**
+ * A run that fails before the agent starts (no key, no credits, no sandbox): the error,
+ * then the end of the run, so the server does not keep the run marked as failed (#637).
+ */
+const emitRunFailure = async (data: EmitRunFailureInput): Promise<void> => {
+    const { sessionId, error } = data
+    for (const event of failedRunEvents(error)) {
+        await emitSessionEvent({ sessionId, event })
     }
 }
 
@@ -166,6 +210,8 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                             vmId: sId,
                             vmStatus: 'RUNNING',
                             sandboxStatus: 'RUNNING',
+                            // the start of this sandbox: a new one, or a resume
+                            sandboxStartedAt: new Date(),
                             vmLastActivityAt: new Date(),
                         },
                     })
@@ -197,14 +243,16 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                     (gitProvider === 'GITHUB' ? gitToken || envsMap['GITHUB_TOKEN'] : undefined) ||
                     (await resolveGitToken({ userId: effectiveUserId, provider: gitProvider }))
 
-                const taskBranch = `december/${sessionId}`
+                // the branch and the commit author from the user's settings (#637)
+                const { taskBranch, author } = await resolveSessionGit({
+                    sessionId,
+                    userId: effectiveUserId,
+                    provider: gitProvider,
+                })
 
                 if (mockSandbox?.commands?.run) {
                     await mockSandbox.commands
-                        .run(
-                            'git config --global user.name "December Agent" && git config --global user.email "agent@trydecember.com"',
-                            { cwd: '/workspace' }
-                        )
+                        .run(gitIdentityCommand(author, true), { cwd: '/workspace' })
                         .catch(() => {
                             // Intentionally swallowed: Git config mock fallback
                         })
@@ -225,17 +273,16 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                             })
 
                         await mockSandbox.commands
-                            .run(
-                                `git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
-                                { cwd: '/workspace' }
-                            )
+                            .run(`${gitIdentityCommand(author)} && git checkout -B ${taskBranch}`, {
+                                cwd: '/workspace',
+                            })
                             .catch(() => {
                                 // Intentionally swallowed: Git task branch checkout mock fallback
                             })
                     } else {
                         await mockSandbox.commands
                             .run(
-                                `git init && git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
+                                `git init && ${gitIdentityCommand(author)} && git checkout -B ${taskBranch}`,
                                 { cwd: '/workspace' }
                             )
                             .catch(() => {
@@ -312,17 +359,9 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         { cwd: '/home/user' }
                     )
 
+                    // the secrets go into a file that the shell loads; no value is in a command
                     if (Object.keys(envsMap).length > 0) {
-                        const exportStatements = Object.entries(envsMap)
-                            .map(([k, v]) => `export ${k}=${JSON.stringify(v)}`)
-                            .join('\n')
-                        await sandbox.commands
-                            .run(`cat << 'EOF' >> /home/user/.bashrc\n${exportStatements}\nEOF`, {
-                                cwd: '/home/user',
-                            })
-                            .catch(() => {
-                                // Intentionally swallowed: Shell environment export fallback
-                            })
+                        await applySecretsToSandbox({ sandbox, secrets, envs })
                     }
                 }
             } catch (initErr) {
@@ -354,14 +393,17 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                     (gitProvider === 'GITHUB' ? gitToken || envsMap['GITHUB_TOKEN'] : undefined) ||
                     (await resolveGitToken({ userId: effectiveUserId, provider: gitProvider }))
 
-                const taskBranch = `december/${sessionId}`
+                // the branch and the commit author from the user's settings (#637)
+                const { taskBranch, author } = await resolveSessionGit({
+                    sessionId,
+                    userId: effectiveUserId,
+                    provider: gitProvider,
+                    isGithubRun: Boolean(githubRun),
+                })
 
                 if (sandbox?.commands && typeof sandbox.commands.run === 'function') {
                     await sandbox.commands
-                        .run(
-                            'git config --global user.name "December Agent" && git config --global user.email "agent@trydecember.com"',
-                            { cwd: '/workspace' }
-                        )
+                        .run(gitIdentityCommand(author, true), { cwd: '/workspace' })
                         .catch(() => {
                             // Intentionally swallowed: Global git config fallback
                         })
@@ -400,12 +442,15 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                                 })
                         }
 
+                        // a new clone: the run that follows runs the setup commands (#637)
+                        sessionsAwaitingSetup.add(sessionId)
+
                         if (githubRun) {
                             await prepareGithubWorkspace({ sandbox, sessionId, run: githubRun })
                         } else {
                             await sandbox.commands
                                 .run(
-                                    `git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
+                                    `${gitIdentityCommand(author)} && git checkout -B ${taskBranch}`,
                                     { cwd: '/workspace' }
                                 )
                                 .catch((e: any) => {
@@ -419,7 +464,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         // Greenfield workspace: initialize local repo and checkout task branch
                         await sandbox.commands
                             .run(
-                                `git init && git config user.name "December Agent" && git config user.email "agent@trydecember.com" && git checkout -B ${taskBranch}`,
+                                `git init && ${gitIdentityCommand(author)} && git checkout -B ${taskBranch}`,
                                 { cwd: '/workspace' }
                             )
                             .catch(() => {
@@ -438,6 +483,8 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         vmId: sandboxId,
                         vmStatus: 'RUNNING',
                         sandboxStatus: 'RUNNING',
+                        // the start of this sandbox: a new one, or a resume
+                        sandboxStartedAt: new Date(),
                         vmLastActivityAt: new Date(),
                     },
                 })
@@ -471,9 +518,9 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
         .catch(() => {})
 
     const errorMessage = lastError?.message || 'Sandbox provisioning failed after 3 attempts'
-    await emitSessionEvent({
+    await emitRunFailure({
         sessionId,
-        event: {
+        error: {
             type: 'AgentError',
             code: 'SANDBOX_PROVISION_FAILED',
             error: errorMessage,
@@ -568,6 +615,8 @@ const resumeSandbox = async (data: ResumeSandboxInput): Promise<ProvisionSandbox
                         vmId: sId,
                         vmStatus: 'RUNNING',
                         sandboxStatus: 'RUNNING',
+                        // the start of this sandbox: a new one, or a resume
+                        sandboxStartedAt: new Date(),
                         vmLastActivityAt: new Date(),
                     },
                 })
@@ -584,6 +633,8 @@ const resumeSandbox = async (data: ResumeSandboxInput): Promise<ProvisionSandbox
             })
             activeSandboxes.set(sessionId, sandbox)
             activeSandboxes.set(sandbox.sandboxId, sandbox)
+            // the sandbox kept the secrets of the day it was made: write the ones of this run
+            await applySecretsToSandbox({ sandbox, secrets })
             void TerminalBridgeService.onSandboxReady({ sessionId, sandbox })
 
             await prisma.session
@@ -593,6 +644,8 @@ const resumeSandbox = async (data: ResumeSandboxInput): Promise<ProvisionSandbox
                         vmId: sandbox.sandboxId,
                         vmStatus: 'RUNNING',
                         sandboxStatus: 'RUNNING',
+                        // the start of this sandbox: a new one, or a resume
+                        sandboxStartedAt: new Date(),
                         vmLastActivityAt: new Date(),
                     },
                 })
@@ -647,6 +700,8 @@ const acquireSessionSandbox = async (
     }
     if (local && localIsLive) {
         const sandboxId = local.sandboxId || previous?.vmId || `mock-sandbox-${sessionId}`
+        // a secret that was added or changed after the last prompt reaches the sandbox here
+        await applySecretsToSandbox({ sandbox: local, secrets })
         await prisma.session
             .update({
                 where: { id: sessionId },
@@ -756,7 +811,7 @@ const destroySandbox = async (data: DestroySandboxInput): Promise<boolean> => {
 const executeCommand = async (
     data: ExecuteSandboxCommandInput
 ): Promise<ExecuteSandboxCommandResult> => {
-    const { sandboxId, command, cwd, timeoutMs, onData } = data
+    const { sandboxId, command, cwd, timeoutMs, onData, signal } = data
     console.log(`[E2BSandboxService] Executing command on sandbox ${sandboxId}: ${command}`)
 
     const sandbox = activeSandboxes.get(sandboxId)
@@ -768,7 +823,10 @@ const executeCommand = async (
 
     if (sandbox.commands && typeof sandbox.commands.run === 'function') {
         let output = ''
-        const result = await sandbox.commands.run(command, {
+        // the secrets of this run, so a reused or resumed sandbox uses today's values
+        const secretEnvs = secretEnvsOf(sandbox)
+        const runOptions = {
+            ...(secretEnvs ? { envs: secretEnvs } : {}),
             cwd: cwd || '/workspace',
             timeoutMs: timeoutMs || 600000, // 10 minute safety cap per command execution
             onStdout: (chunk: any) => {
@@ -781,8 +839,17 @@ const executeCommand = async (
                 output += text
                 if (onData) onData(text)
             },
-        })
-        return { exitCode: result.exitCode ?? 0, output }
+        }
+        // a run that can be stopped (#637): the command runs as a handle, so the stop kills it
+        const result = signal
+            ? await runKillableCommand({
+                  start: () => sandbox.commands.run(command, { ...runOptions, background: true }),
+                  signal,
+                  // the time limit kills the process: the wait alone would leave it running
+                  timeoutMs: runOptions.timeoutMs,
+              })
+            : await sandbox.commands.run(command, runOptions)
+        return { exitCode: result?.exitCode ?? 0, output }
     }
 
     if (typeof sandbox.executeCommand === 'function') {
@@ -796,6 +863,65 @@ const executeCommand = async (
         output = `Mock output for ${command}\n`
     }
     return { exitCode: 0, output }
+}
+
+/**
+ * Setup commands (#637): after the clone of a new sandbox, the commands the user saved for
+ * the repository run once in the workspace, with a time limit and the stop of the run. The
+ * chat shows them as a command. Gives the text for the agent when setup failed, or null.
+ */
+async function* runRepositorySetup(
+    data: RunRepositorySetupInput
+): AsyncGenerator<{ data: string }, string | null, undefined> {
+    const { sessionId, userId, sandboxId, stop } = data
+    if (!userId || !sessionsAwaitingSetup.has(sessionId) || stop?.signal.aborted) return null
+
+    const session = await prisma.session
+        .findUnique({
+            where: { id: sessionId },
+            select: { githubRepoOwner: true, githubRepoName: true },
+        })
+        .catch(() => null)
+    const repoFullName = session ? setupRepoFullName(session) : null
+    const setting = repoFullName
+        ? await prisma.repositorySetting
+              .findUnique({
+                  where: { userId_repoFullName: { userId, repoFullName } },
+                  select: { setupCommands: true },
+              })
+              .catch(() => null)
+        : null
+    const commands = setting?.setupCommands.trim()
+    if (!commands) {
+        // nothing to run for this sandbox
+        sessionsAwaitingSetup.delete(sessionId)
+        return null
+    }
+
+    const setup = runSetupCommands({
+        toolCallId: `setup-${sessionId}-${Date.now()}`,
+        commands,
+        execute: (script, onData) =>
+            executeCommand({
+                sandboxId,
+                command: script,
+                cwd: '/workspace',
+                timeoutMs: SETUP_TIMEOUT_MS,
+                onData,
+                signal: stop?.signal,
+            }),
+        stopped: () => stop?.signal.aborted === true,
+    })
+    for (;;) {
+        const step = await setup.next()
+        if (step.done) {
+            // done only when setup ran to the end. after a stop it is still to do: the
+            // next run of this sandbox starts it again
+            if (step.value.completed) sessionsAwaitingSetup.delete(sessionId)
+            return step.value.note
+        }
+        yield { data: JSON.stringify(step.value) }
+    }
 }
 
 export const getLlmProvider = (providerName?: string, apiKey?: string) => {
@@ -847,6 +973,9 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         effort,
         planFirst,
         userMessageSequence,
+        skills: pickedSkillNames,
+        disabledMcps,
+        attachments: jobAttachments,
     } = data
     console.log(`[E2BSandboxService] Starting in-sandbox agent runner session for ${sessionId}`)
 
@@ -900,6 +1029,8 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
                 redis: getRedisPub(),
             }),
         onQuestionSettled: () => clearPendingQuestion(sessionId, getRedisPub()),
+        // a stop (#637) kills the sandbox command in flight and ends a wait for an answer
+        signal: data.stop?.signal,
     })
     activeAdapters.add(adapter)
     // an own-key client never falls back to december keys
@@ -923,6 +1054,13 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
 
     const secretKeys = Array.isArray(secrets) ? secrets.map((s) => s.key).filter(Boolean) : []
 
+    // the user's saved skills and mcp servers (#632): the skills the agent may run by
+    // itself go into the rules, the mcp servers connect when the run starts
+    const connections = await loadUserConnections(userId)
+    const rulesWithSkills = [effectiveUserRules, buildSkillRules(connections.skills)]
+        .filter(Boolean)
+        .join('\n\n')
+
     const harness = new AgentHarness({
         llm,
         tools,
@@ -930,14 +1068,15 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         workspaceDir: workspaceDir || '/workspace',
         sessionId,
         userId,
-        userRules: effectiveUserRules,
+        userRules: rulesWithSkills || undefined,
         runtime: 'cloud',
         availableSecrets: secretKeys,
-        modelOptions: {
+        // the session's effort is the agent's reasoning level; runs started without one
+        // (github app) stay on fast
+        ...runModelConfig({
             model: model || process.env.DEFAULT_MODEL || 'gemini-3.6-flash',
-            // the session's effort; runs started without one (github app) stay on fast
-            thinkingLevel: effort ?? 'fast',
-        },
+            effort,
+        }),
     })
 
     const agent = harness.getAgent()
@@ -954,6 +1093,50 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         agent.hooks = {
             ...agent.hooks,
             beforeToolCall: async (toolCall) => (await denyHook(toolCall)) ?? ownHook?.(toolCall),
+        }
+    }
+
+    // a new message while December works (#637): the agent reads it at its next turn, with
+    // its files and picked skills like the prompt of a run
+    const steering = data.steering
+    if (steering) {
+        const toSteeringPrompt = async (item: SteeringItem) => {
+            try {
+                const sandbox =
+                    activeSandboxes.get(sessionId) || activeSandboxes.get(effectiveSandboxId)
+                const files = readJobAttachments({ sessionId, value: item.attachments })
+                const attachments =
+                    files.length > 0
+                        ? await writeTurnAttachments({
+                              sandbox,
+                              folder: item.userMessageSequence ?? 'steering',
+                              attachments: files,
+                          })
+                        : []
+                return await buildTurnPrompt({
+                    prompt: item.prompt,
+                    planFirst: false,
+                    sandbox,
+                    attachments,
+                    skills: pickTurnSkills({
+                        skills: connections.skills,
+                        names: item.skills ?? [],
+                    }),
+                })
+            } catch (error) {
+                console.warn(`[AGENT EXECUTION] steering files skipped for '${sessionId}':`, error)
+                return item.prompt
+            }
+        }
+        agent.hooks = {
+            ...agent.hooks,
+            getSteeringMessages: async () => {
+                const messages: AgentMessage[] = []
+                for (const item of await steering.take()) {
+                    messages.push({ role: 'user', content: await toSteeringPrompt(item) })
+                }
+                return messages
+            },
         }
     }
 
@@ -1041,12 +1224,53 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
                 activeSandboxes.get(sessionId) || activeSandboxes.get(effectiveSandboxId)
             // the files before this turn, for /rewind
             await createTurnCheckpoint({ sandbox: activeSandbox, sequence: userMessageSequence })
+            // the user's mcp servers (#632): a server that fails never fails the run
+            await connectAgentMcpServers({
+                agent,
+                servers: connections.mcpServers,
+                disabledMcps: disabledMcps ?? [],
+            }).catch((error: unknown) => {
+                console.warn(`[AGENT EXECUTION] mcp servers skipped for '${sessionId}':`, error)
+            })
+            // the files sent with this message (#634) go into the sandbox, outside the
+            // repository. the agent takes text only, so an image goes as a path too
+            const turnAttachments =
+                jobAttachments && jobAttachments.length > 0
+                    ? await writeTurnAttachments({
+                          sandbox: activeSandbox,
+                          folder: userMessageSequence ?? 'prompt',
+                          attachments: jobAttachments,
+                      })
+                    : []
             const turnPrompt = await buildTurnPrompt({
                 prompt,
                 planFirst: Boolean(planFirst),
                 sandbox: activeSandbox,
+                attachments: turnAttachments,
+                skills: pickTurnSkills({
+                    skills: connections.skills,
+                    names: pickedSkillNames ?? [],
+                }),
             })
-            for await (const event of runAgentLoop(agent, turnPrompt)) {
+            // the setup commands of the repository (#637): once, after the clone of a new
+            // sandbox. a failed setup does not stop the run: the agent is told
+            const setupFailure = yield* runRepositorySetup({
+                sessionId,
+                userId,
+                sandboxId: effectiveSandboxId,
+                stop: data.stop,
+            })
+            // the loop starts at its first read. with a stop watch (#637), a stop ends the
+            // run at once, and a stop that came before this point never starts the agent
+            const agentLoop = runAgentLoop(agent, withSetupFailure(turnPrompt, setupFailure))
+            const runEvents = data.stop
+                ? stoppableRun({ events: agentLoop, stop: data.stop, abort: () => agent.abort() })
+                : agentLoop
+            for await (const event of runEvents) {
+                // the messages the agent reads at this turn (#637), before the turn starts
+                for (const delivered of steering?.eventsBefore(event) ?? []) {
+                    yield { data: JSON.stringify(delivered) }
+                }
                 if (event.type === 'AgentStatus') {
                     console.log(`[AGENT STATUS] Session '${sessionId}': ${event.message}`)
                 } else if (event.type === 'StreamChunk') {
@@ -1089,6 +1313,8 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
             yield { data: JSON.stringify({ type: 'AgentEnd' }) }
         } finally {
             activeAdapters.delete(adapter)
+            // the mcp connections belong to this run: the next run connects again
+            await disconnectAgentMcpServers(agent)
             // a run that ends (or is stopped) no longer waits for an answer
             await clearPendingQuestion(sessionId, getRedisPub())
         }
@@ -1200,6 +1426,7 @@ export const E2BSandboxService = {
     setMockClient,
     resetMockClient,
     emitSessionEvent,
+    emitRunFailure,
     provisionSandbox,
     pauseSandbox,
     resumeSandbox,

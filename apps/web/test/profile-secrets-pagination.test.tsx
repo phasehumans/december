@@ -105,6 +105,56 @@ describe('ProfileSecretsSettings Pagination & Visibility', () => {
         expect(valueInput.type).toBe('password')
     })
 
+    // a name can exist for all repositories and for one repository: the menu lists it once
+    test('the @secrets: menu shows a name once when two secrets have it', async () => {
+        const at = new Date().toISOString()
+        spyOn(secretsAPI, 'getSecrets').mockImplementation(async () => ({
+            secrets: [
+                {
+                    id: 'a',
+                    name: 'API_KEY',
+                    note: null,
+                    repoFullName: null,
+                    createdAt: at,
+                    updatedAt: at,
+                },
+                {
+                    id: 'b',
+                    name: 'API_KEY',
+                    note: null,
+                    repoFullName: 'acme/web',
+                    createdAt: at,
+                    updatedAt: at,
+                },
+                {
+                    id: 'c',
+                    name: 'DB_URL',
+                    note: null,
+                    repoFullName: null,
+                    createdAt: at,
+                    updatedAt: at,
+                },
+            ],
+        }))
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter>
+                    <ChatPromptInput
+                        value="@secrets:"
+                        onChange={() => {}}
+                        onSubmit={() => {}}
+                        isAuthenticated={true}
+                    />
+                </MemoryRouter>
+            </QueryClientProvider>
+        )
+
+        expect(await screen.findByText('DB_URL')).not.toBeNull()
+        expect(screen.getAllByText('API_KEY')).toHaveLength(1)
+    })
+
     test('ChatPromptInput supports @secrets: mention dropdown and secret selection', async () => {
         spyOn(secretsAPI, 'getSecrets').mockImplementation(async () => ({
             secrets: [

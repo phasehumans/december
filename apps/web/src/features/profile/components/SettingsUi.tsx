@@ -5,13 +5,16 @@ import { create } from 'zustand'
 import { SettingsPageHeader, SettingsSectionHeading } from './SettingsPageHeader'
 import { sectionBoxClass } from './settingsStyles'
 
+export { blueButtonClass, outlineButtonClass } from './settingsStyles'
+
 import { EmptyRow, ListBox } from '@/features/connections/components/ConnectionsUi'
 import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { cn } from '@/shared/lib/utils'
 
-// shared parts for the settings pages that are ui only today. the server part is in
-// issues 636 to 640. until it exists these pages run on sample values in memory, behind
-// the same preview flag as the connections tabs (?demo). normal users see "coming soon".
+// shared parts for the settings pages. the pages are connected to the server. a few parts
+// are not yet (a model for each step, machine size, auto top-up, single sign-on): they run
+// on sample values in memory, behind the same preview flag as the connections tabs (?demo),
+// and show the Demo pill. normal users do not see them, or see "Soon".
 
 /** true when the preview is on for this browser (see connectionsDemo.ts) */
 export const usePreviewOn = (): boolean => React.useState(isConnectionsDemoActive)[0]
@@ -38,11 +41,6 @@ export function usePreviewValue<T>(key: string, initial: T): [T, (value: T) => v
     return [value, set]
 }
 
-export const outlineButtonClass =
-    'shrink-0 px-4 py-1.5 rounded-lg border border-[#383736] text-[13px] text-[#D6D5C9] hover:bg-[#242323] transition-colors cursor-pointer'
-export const blueButtonClass =
-    'shrink-0 px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] text-[13px] font-medium transition-colors cursor-pointer'
-
 /**
  * One section of a settings page: a heading with one grey line, above a rounded box that
  * holds the rows. `bare` leaves the box out, for content that is a list box already.
@@ -66,22 +64,26 @@ export const SettingsSection: React.FC<{
 export const SettingsPage: React.FC<{
     title: string
     subtitle: React.ReactNode
+    className?: string
     children: React.ReactNode
-}> = ({ title, subtitle, children }) => (
-    <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9]">
+}> = ({ title, subtitle, className, children }) => (
+    <div className={cn('flex flex-col w-full max-w-[772px] text-[#D6D5C9]', className)}>
         <SettingsPageHeader title={title} subtitle={subtitle} />
         <div className="flex flex-col gap-5">{children}</div>
     </div>
 )
 
-/** label on the left, control on the right. the control drops under the label when it is wide */
+/**
+ * label on the left, control on the right. a long label wraps and a short control (a switch,
+ * a button) stays on its line; only a wide control drops under the label
+ */
 export const SettingsRow: React.FC<{
     label: React.ReactNode
     hint?: React.ReactNode
     children?: React.ReactNode
 }> = ({ label, hint, children }) => (
     <div className="flex items-center justify-between gap-x-3 gap-y-2 min-h-8 flex-wrap">
-        <div className="flex flex-col min-w-0">
+        <div className="flex flex-col flex-1 basis-0 min-w-[6.5rem]">
             <span className="text-[14px] text-[#D6D5C9]">{label}</span>
             {hint && <span className="text-[13px] text-[#7B7A79]">{hint}</span>}
         </div>

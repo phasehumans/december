@@ -17,4 +17,24 @@ In December Cloud, your project runs in a sandbox. The sandbox is a cloud machin
 
 ## Sandbox limits
 
-Each December Cloud session runs in its own sandbox. You can have 3 active sandboxes at a time. If you start a fourth, December pauses the sandbox you used least recently.
+Each December Cloud session runs in its own sandbox. You can have 10 running sandboxes at a time. If you start one more, December pauses the sandbox you used least recently.
+
+## Sandbox settings
+
+Open **Settings > Sandbox** to see and control your sandboxes.
+
+- Running now: The list shows each sandbox that runs, with its repository, its run time, and its cost so far. Select **Stop** to pause a sandbox.
+- Stop when idle for: December pauses a sandbox when nothing happens in it for this time. Pick 10 minutes, 30 minutes, or 1 hour. The default is 10 minutes.
+
+A paused sandbox starts again when you send a message in its session.
+
+## Setup commands
+
+Setup commands prepare a repository before December starts work, for example `bun install`. December runs them in the sandbox after it clones the repository.
+
+1. Open **Settings > Sandbox**.
+2. In **Setup commands**, pick a repository.
+3. Type the commands, one on each line.
+4. Select **Save**.
+
+Each repository has its own setup commands.

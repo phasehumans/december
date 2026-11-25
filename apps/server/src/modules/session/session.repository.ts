@@ -1,9 +1,45 @@
-import { prisma } from '@december/database'
+import { Prisma, prisma } from '@december/database'
 
 import { AppError } from '../../shared/appError'
 
-import type { PullRequestFilters, RemovedPin, SessionFilters } from './session.types'
-import type { Prisma } from '@december/database'
+import { splitRepoFilter } from './session.utils'
+
+import type {
+    PullRequestFilters,
+    RemovedPin,
+    SessionFacetRepoRow,
+    SessionFacetRows,
+    SessionFilters,
+} from './session.types'
+
+/**
+ * The sessions of one repository, for the repository filter of the sessions list and of
+ * the pull requests list. `owner/name` matches that repository, a name alone matches it
+ * under every owner. A row that knows its repository only by its link matches by the
+ * end of the link.
+ */
+const repoFilterWhere = (repo: string): Prisma.SessionWhereInput => {
+    const { owner, name } = splitRepoFilter(repo)
+    return {
+        OR: owner
+            ? [
+                  {
+                      githubRepoOwner: { equals: owner, mode: 'insensitive' },
+                      githubRepoName: { equals: name, mode: 'insensitive' },
+                  },
+                  // an old row has only the link: the owner and name are its end
+                  ...[`/${owner}/${name}`, `/${owner}/${name}.git`].map((end) => ({
+                      githubRepoName: null,
+                      repoUrl: { endsWith: end, mode: 'insensitive' as const },
+                  })),
+              ]
+            : [
+                  { githubRepoName: { equals: name, mode: 'insensitive' } },
+                  { repoUrl: { endsWith: `/${name}`, mode: 'insensitive' } },
+                  { repoUrl: { endsWith: `/${name}.git`, mode: 'insensitive' } },
+              ],
+    }
+}
 
 export async function findManySessions(userId: string, filters?: SessionFilters) {
     const where: Prisma.SessionWhereInput = {
@@ -56,15 +92,7 @@ export async function findManySessions(userId: string, filters?: SessionFilters)
             })),
         })
     }
-    if (filters?.repoName) {
-        and.push({
-            OR: [
-                { githubRepoName: { equals: filters.repoName, mode: 'insensitive' } },
-                { repoUrl: { endsWith: `/${filters.repoName}`, mode: 'insensitive' } },
-                { repoUrl: { endsWith: `/${filters.repoName}.git`, mode: 'insensitive' } },
-            ],
-        })
-    }
+    if (filters?.repoName) and.push(repoFilterWhere(filters.repoName))
     if (filters?.updatedAfter) where.updatedAt = { gte: filters.updatedAfter }
     if (and.length > 0) where.AND = and
 
@@ -215,11 +243,100 @@ export async function setPendingQuestion(sessionId: string) {
     return findSessionOwner(sessionId)
 }
 
-/** clears the waiting state of a session of this user; returns true when it changed */
+/**
+ * clears the waiting state of a session of this user; returns true when it changed. a
+ * session that asks about a spend limit keeps waiting: only takeLimitQuestion ends that
+ */
 export async function clearPendingQuestion(sessionId: string, userId: string) {
     const result = await prisma.session.updateMany({
-        where: { id: sessionId, userId, pendingQuestionAt: { not: null } },
+        where: { id: sessionId, userId, pendingQuestionAt: { not: null }, limitQuestionKind: null },
         data: { pendingQuestionAt: null },
+    })
+    return result.count > 0
+}
+
+/** the open spend limit question of a session of this user (#638) */
+export async function findLimitQuestion(sessionId: string, userId: string) {
+    return prisma.session.findFirst({
+        where: { id: sessionId, userId },
+        select: {
+            id: true,
+            limitQuestionKind: true,
+            limitQuestionCents: true,
+            limitHeldRun: true,
+        },
+    })
+}
+
+/**
+ * saves the spend limit question and marks the session as waiting. true for the first
+ * caller only, so one server node asks and notifies
+ */
+export async function setLimitQuestion(data: {
+    sessionId: string
+    kind: 'session' | 'day'
+    limitCents: number
+}) {
+    const { sessionId, kind, limitCents } = data
+    const result = await prisma.session.updateMany({
+        where: { id: sessionId, limitQuestionKind: null },
+        data: {
+            limitQuestionKind: kind,
+            limitQuestionCents: limitCents,
+            pendingQuestionAt: new Date(),
+        },
+    })
+    return result.count > 0
+}
+
+/**
+ * ends the spend limit question (an answer, a stop, a new prompt). true for the first
+ * caller only, so an answer that arrives twice continues the run once
+ */
+export async function takeLimitQuestion(sessionId: string, userId: string) {
+    const result = await prisma.session.updateMany({
+        where: { id: sessionId, userId, limitQuestionKind: { not: null } },
+        data: {
+            limitQuestionKind: null,
+            limitQuestionCents: null,
+            limitHeldRun: Prisma.DbNull,
+            pendingQuestionAt: null,
+        },
+    })
+    return result.count > 0
+}
+
+/**
+ * puts back a spend limit question that takeLimitQuestion ended, with its held run: the
+ * "Continue" could not queue the run. only a session with no open question changes
+ */
+export async function restoreLimitQuestion(data: {
+    sessionId: string
+    kind: 'session' | 'day'
+    limitCents: number | null
+    heldRun: Record<string, unknown> | null
+}) {
+    const { sessionId, kind, limitCents, heldRun } = data
+    const result = await prisma.session.updateMany({
+        where: { id: sessionId, limitQuestionKind: null },
+        data: {
+            limitQuestionKind: kind,
+            limitQuestionCents: limitCents,
+            limitHeldRun: heldRun ? (heldRun as Prisma.InputJsonValue) : Prisma.DbNull,
+            pendingQuestionAt: new Date(),
+        },
+    })
+    return result.count > 0
+}
+
+/**
+ * clears a held run that no question asks about: nothing would ever continue it, and it
+ * must not start with the answer to a later question
+ */
+export async function clearStaleHeldRun(sessionId: string) {
+    const result = await prisma.session.updateMany({
+        where: { id: sessionId, limitQuestionKind: null, limitHeldRun: { not: Prisma.DbNull } },
+        data: { limitHeldRun: Prisma.DbNull },
     })
     return result.count > 0
 }
@@ -291,6 +408,27 @@ export async function unarchiveSessions(
     })
 }
 
+// a state that was never saved reads as open
+const OPEN_PULL_REQUEST: Prisma.SessionWhereInput = {
+    OR: [{ prState: null }, { prState: { in: ['open', 'draft'] } }],
+}
+
+/**
+ * the rows of the Pull requests page. the list and its Open count use this one rule, so
+ * the count is never different from the rows. `isArchived` not given: an open or draft
+ * pull request of an archived session is left out. a merged or closed one stays, because
+ * a merge archives its session ("archive on merge", #637)
+ */
+const pullRequestRowsWhere = (userId: string, isArchived?: boolean): Prisma.SessionWhereInput => ({
+    userId,
+    deletedAt: null,
+    prNumber: { not: null },
+    type: { not: 'SEARCH' },
+    ...(isArchived === undefined
+        ? { OR: [{ isArchived: false }, { NOT: OPEN_PULL_REQUEST }] }
+        : { isArchived }),
+})
+
 /** counts for the list switches and menus; archived sessions left out */
 export async function countSessions(userId: string) {
     const active = { userId, isArchived: false }
@@ -299,16 +437,36 @@ export async function countSessions(userId: string) {
             where: { ...active, vmStatus: { in: [...ACTIVE_VM_STATUSES] } },
         }),
         prisma.session.count({
-            where: {
-                ...active,
-                prNumber: { not: null },
-                // a state that was never saved reads as open
-                OR: [{ prState: null }, { prState: { in: ['open', 'draft'] } }],
-            },
+            where: { AND: [pullRequestRowsWhere(userId), OPEN_PULL_REQUEST] },
         }),
         prisma.session.count({ where: mergedIdleWhere(userId) }),
     ])
     return { running, openPullRequests, merged }
+}
+
+/**
+ * every repository spelling and every tag on the user's sessions that are not deleted,
+ * archived ones included (#641). the database makes the lists short, so a user with many
+ * sessions does not load them all. hasPr keeps only the sessions that opened a pull request
+ */
+export async function findSessionFacets(userId: string, hasPr: boolean): Promise<SessionFacetRows> {
+    const [repos, tags] = await Promise.all([
+        prisma.$queryRaw<SessionFacetRepoRow[]>`
+            SELECT "githubRepoOwner", "githubRepoName",
+                CASE WHEN "githubRepoName" IS NULL THEN "repoUrl" END AS "repoUrl",
+                COUNT(*)::int AS "sessions"
+            FROM "Session"
+            WHERE "userId" = ${userId} AND "deletedAt" IS NULL
+                AND (${hasPr}::boolean = false OR "prNumber" IS NOT NULL)
+                AND ("githubRepoName" IS NOT NULL OR "repoUrl" IS NOT NULL)
+            GROUP BY 1, 2, 3`,
+        prisma.$queryRaw<{ tag: string }[]>`
+            SELECT DISTINCT unnest("tags") AS "tag"
+            FROM "Session"
+            WHERE "userId" = ${userId} AND "deletedAt" IS NULL
+                AND (${hasPr}::boolean = false OR "prNumber" IS NOT NULL)`,
+    ])
+    return { repos, tags: tags.map((row) => row.tag) }
 }
 
 /**
@@ -363,6 +521,44 @@ export async function touchSandboxActivity(sessionId: string) {
         })
 }
 
+/** the agent run and the sandbox of a session of this user, for a stop (#637) */
+export async function findSessionRunState(sessionId: string, userId: string) {
+    return prisma.session.findFirst({
+        where: { id: sessionId, userId },
+        select: { id: true, vmId: true, vmStatus: true, sandboxStatus: true },
+    })
+}
+
+/** the sessions of this user whose sandbox starts or runs, newest first (#637) */
+export async function findRunningSandboxes(userId: string) {
+    return prisma.session.findMany({
+        where: { userId, sandboxStatus: { in: ['STARTING', 'RUNNING'] } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        // far over the 10 running sandboxes a user can have (#624)
+        take: 100,
+        select: {
+            id: true,
+            title: true,
+            githubRepoOwner: true,
+            githubRepoName: true,
+            createdAt: true,
+            sandboxStartedAt: true,
+            sandboxStatus: true,
+        },
+    })
+}
+
+/** the cost of each session on december credits, in cents. own-key runs are not counted */
+export async function sumCreditCostBySession(sessionIds: string[]) {
+    if (sessionIds.length === 0) return new Map<string, number>()
+    const rows = await prisma.usageEvent.groupBy({
+        by: ['sessionId'],
+        where: { sessionId: { in: sessionIds }, billingSource: 'CREDITS' },
+        _sum: { costInCents: true },
+    })
+    return new Map(rows.map((row) => [row.sessionId, row._sum.costInCents ?? 0]))
+}
+
 const PULL_REQUEST_SELECT = {
     id: true,
     title: true,
@@ -392,9 +588,7 @@ const PULL_REQUEST_SELECT = {
 export async function findPullRequests(userId: string, filters: PullRequestFilters) {
     const page = filters.page ?? 1
     const limit = filters.limit ?? 50
-    const and: Prisma.SessionWhereInput[] = [
-        { userId, deletedAt: null, prNumber: { not: null }, type: { not: 'SEARCH' } },
-    ]
+    const and: Prisma.SessionWhereInput[] = [pullRequestRowsWhere(userId, filters.isArchived)]
 
     if (filters.states && filters.states.length > 0) {
         const states = new Set(filters.states)
@@ -406,16 +600,7 @@ export async function findPullRequests(userId: string, filters: PullRequestFilte
             ],
         })
     }
-    if (filters.isArchived !== undefined) and.push({ isArchived: filters.isArchived })
-    if (filters.repo) {
-        const [owner, name] = filters.repo.includes('/')
-            ? [filters.repo.split('/').slice(0, -1).join('/'), filters.repo.split('/').pop()]
-            : [undefined, filters.repo]
-        and.push({
-            githubRepoName: { equals: name, mode: 'insensitive' },
-            ...(owner ? { githubRepoOwner: { equals: owner, mode: 'insensitive' } } : {}),
-        })
-    }
+    if (filters.repo) and.push(repoFilterWhere(filters.repo))
     if (filters.tag) and.push({ tags: { has: filters.tag } })
     if (filters.search && filters.search.trim()) {
         const needle = filters.search.trim().replace(/^#/, '')
@@ -433,11 +618,16 @@ export async function findPullRequests(userId: string, filters: PullRequestFilte
 
     const where: Prisma.SessionWhereInput = { AND: and }
     const sortOrder = filters.sortOrder ?? 'desc'
-    // an old row has no opened date: it sorts by the session date after the dated rows
+    // an old row has no opened date: it sorts by the session date after the dated rows.
+    // the id breaks ties, so pages do not repeat or skip rows with the same time
     const orderBy: Prisma.SessionOrderByWithRelationInput[] =
         filters.sortBy === 'prOpenedAt'
-            ? [{ prOpenedAt: { sort: sortOrder, nulls: 'last' } }, { createdAt: sortOrder }]
-            : [{ [filters.sortBy ?? 'updatedAt']: sortOrder }]
+            ? [
+                  { prOpenedAt: { sort: sortOrder, nulls: 'last' } },
+                  { createdAt: sortOrder },
+                  { id: 'desc' },
+              ]
+            : [{ [filters.sortBy ?? 'updatedAt']: sortOrder }, { id: 'desc' }]
 
     const [rows, total] = await Promise.all([
         prisma.session.findMany({
@@ -490,7 +680,7 @@ export async function updatePullRequestFields(
 ) {
     const sessions = await prisma.session.findMany({
         where,
-        select: { id: true, userId: true, updatedAt: true },
+        select: { id: true, userId: true, updatedAt: true, prState: true },
     })
     await Promise.all(
         sessions.map((session) =>
@@ -500,7 +690,40 @@ export async function updatePullRequestFields(
             })
         )
     )
-    return sessions.map(({ id, userId }) => ({ id, userId }))
+    // previousState: the state before this write, so the caller sees a change to merged
+    return sessions.map(({ id, userId, prState }) => ({ id, userId, previousState: prState }))
+}
+
+/**
+ * "Archive the session when the pull request merges" (#637): archives the given sessions,
+ * but not those of a user who turned the setting off (no saved row means on) and not a
+ * session that works right now, like "Archive merged". returns the archived ids
+ */
+export async function archiveSessionsOnMerge(sessionIds: string[]) {
+    if (sessionIds.length === 0) return []
+    return prisma.$transaction(async (tx) => {
+        const rows = await tx.session.findMany({
+            where: {
+                id: { in: sessionIds },
+                isArchived: false,
+                deletedAt: null,
+                vmStatus: { notIn: [...ACTIVE_VM_STATUSES] },
+                user: {
+                    OR: [
+                        { pullRequestSettings: { is: null } },
+                        { pullRequestSettings: { is: { archiveOnMerge: true } } },
+                    ],
+                },
+            },
+            select: { id: true },
+        })
+        const ids = rows.map((row) => row.id)
+        if (ids.length > 0) {
+            // raw SQL keeps updatedAt, so the list order does not change. archive drops the pin
+            await tx.$executeRaw`UPDATE "Session" SET "isArchived" = true, "pinnedAt" = NULL WHERE "id" = ANY(${ids})`
+        }
+        return ids
+    })
 }
 
 /** the sequence of the user message for this prompt; reuses an unanswered same prompt */
@@ -518,11 +741,26 @@ export async function saveUserPrompt(sessionId: string, prompt: string) {
     })
 }
 
-/** the user's defaults for a new session (#632) */
+/** the saved web preferences of a user (#636), for `messageWhileWorking` (#637) */
+export async function findUserPreferences(userId: string) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { preferences: true },
+    })
+    return user?.preferences ?? null
+}
+
+/** the user's defaults for a new session (#632, #637) */
 export async function findUserRunDefaults(userId: string) {
     return prisma.user.findUnique({
         where: { id: userId },
-        select: { defaultPlanFirst: true, defaultEffort: true, defaultOpenPullRequest: true },
+        select: {
+            defaultPlanFirst: true,
+            defaultEffort: true,
+            defaultOpenPullRequest: true,
+            defaultOwnKeyProvider: true,
+            defaultOwnKeyModel: true,
+        },
     })
 }
 
@@ -556,24 +794,35 @@ export async function saveSessionRunConfig(
 
 export const sessionRepository = {
     saveUserPrompt,
+    findUserPreferences,
     findSessionsForDeleteAll,
     deleteSessionsByIds,
     findPullRequests,
     findStalePullRequests,
     updatePullRequestFields,
+    archiveSessionsOnMerge,
     findUserRunDefaults,
     findSessionRunConfig,
     saveSessionRunConfig,
     countWorkingSessions,
     touchSandboxActivity,
+    findSessionRunState,
+    findRunningSandboxes,
+    sumCreditCostBySession,
     findManySessions,
     findUserRepoNames,
     pinSessionWithinLimit,
     archiveMergedSessions,
     unarchiveSessions,
     countSessions,
+    findSessionFacets,
     setPendingQuestion,
     clearPendingQuestion,
+    findLimitQuestion,
+    setLimitQuestion,
+    takeLimitQuestion,
+    restoreLimitQuestion,
+    clearStaleHeldRun,
     createSession,
     findSessionById,
     findMessagesBySessionId,

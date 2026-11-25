@@ -1,6 +1,14 @@
-import { GitProviderError } from './types'
+import { GitProviderError, decodeRepoFile } from './types'
 
-import type { CiStatus, GitProvider, GitRepo, OAuthApp, PullRequest, TokenSet } from './types'
+import type {
+    CiStatus,
+    GitProvider,
+    GitRepo,
+    OAuthApp,
+    PullRequest,
+    RepoDirEntry,
+    TokenSet,
+} from './types'
 
 // gitlab.com only for now; self-managed hosts come later (#627)
 const HOST = 'https://gitlab.com'
@@ -140,7 +148,10 @@ const listRepos: GitProvider['listRepos'] = async (data) => {
 }
 
 const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
-    const { token, repoPath, title, head, base, body } = data
+    const { token, repoPath, title, head, base, body, draft } = data
+    // gitlab has no draft field: a title that starts with "Draft:" makes the draft
+    const mrTitle =
+        draft && !/^\s*(\[draft\]|draft:|\(draft\))/i.test(title) ? `Draft: ${title}` : title
 
     // a network error is handled like a refused request: the caller gets null
     const createRes = await fetch(`${projectUrl(repoPath)}/merge_requests`, {
@@ -149,7 +160,7 @@ const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
         body: JSON.stringify({
             source_branch: head,
             target_branch: base,
-            title,
+            title: mrTitle,
             description: body,
         }),
     }).catch(() => null)
@@ -215,6 +226,73 @@ const comment: GitProvider['comment'] = async (data) => {
     }
 }
 
+// a folder with more entries than this is cut off
+const TREE_PAGE_SIZE = 100
+const TREE_MAX_PAGES = 5
+
+const listDir: GitProvider['listDir'] = async (data) => {
+    const { token, repoPath, path } = data
+    const entries: RepoDirEntry[] = []
+
+    for (let page = 1; page <= TREE_MAX_PAGES; page++) {
+        // no ref: gitlab answers for the default branch
+        const params = new URLSearchParams({
+            ...(path ? { path } : {}),
+            per_page: String(TREE_PAGE_SIZE),
+            page: String(page),
+        })
+        const res = await fetch(`${projectUrl(repoPath)}/repository/tree?${params}`, {
+            headers: headers(token),
+        })
+        if (!res.ok) {
+            throw new GitProviderError(`Failed to list ${path || 'the repository'}`, res.status)
+        }
+        const items = (await res.json()) as any[]
+        if (!Array.isArray(items)) break
+        for (const item of items) {
+            // a commit is a submodule
+            if (item?.type !== 'blob' && item?.type !== 'tree') continue
+            entries.push({
+                name: String(item.name),
+                path: String(item.path),
+                type: item.type === 'tree' ? 'dir' : 'file',
+            })
+        }
+        if (items.length < TREE_PAGE_SIZE) break
+    }
+
+    return entries
+}
+
+const readTextFile: GitProvider['readTextFile'] = async (data) => {
+    const { token, repoPath, path, maxBytes } = data
+    // HEAD is the default branch
+    const res = await fetch(
+        `${projectUrl(repoPath)}/repository/files/${encodeURIComponent(path)}?ref=HEAD`,
+        { headers: headers(token) }
+    )
+    if (!res.ok) {
+        throw new GitProviderError(`Failed to read ${path}`, res.status)
+    }
+    const body = (await res.json()) as any
+    const size = Number(body?.size) || 0
+    if (size > maxBytes || body?.encoding !== 'base64') return { size, content: null }
+    return decodeRepoFile(String(body.content ?? ''), maxBytes)
+}
+
+const hasBranch: GitProvider['hasBranch'] = async (data) => {
+    const { token, repoPath, branch } = data
+    const res = await fetch(
+        `${projectUrl(repoPath)}/repository/branches/${encodeURIComponent(branch)}`,
+        { headers: headers(token) }
+    )
+    if (res.status === 404) return false
+    if (!res.ok) {
+        throw new GitProviderError(`Failed to read the branch ${branch}`, res.status)
+    }
+    return true
+}
+
 const refreshToken: GitProvider['refreshToken'] = async (data) => {
     const { refreshToken: token, clientId, clientSecret, redirectUri } = data
     return requestToken(
@@ -229,8 +307,25 @@ const refreshToken: GitProvider['refreshToken'] = async (data) => {
     )
 }
 
+const getHostUser: GitProvider['getUser'] = async (data) => {
+    const { token } = data
+    // a network error is handled like a refused token
+    const res = await fetch(`${API}/user`, { headers: headers(token) }).catch(() => null)
+    if (!res?.ok) return null
+    // a body that is not json is handled like no answer
+    const user = (await res.json().catch(() => null)) as any
+    if (!user?.username) return null
+    return {
+        id: String(user.id ?? ''),
+        login: user.username,
+        name: user.name ?? null,
+        email: user.commit_email || user.email || null,
+    }
+}
+
 export const gitlabProvider: GitProvider = {
     name: 'GITLAB',
+    getUser: getHostUser,
     parseRepoUrl,
     getCloneUrl,
     listRepos,
@@ -238,6 +333,9 @@ export const gitlabProvider: GitProvider = {
     getPullRequest,
     getCiStatus,
     comment,
+    listDir,
+    readTextFile,
+    hasBranch,
     refreshToken,
 }
 

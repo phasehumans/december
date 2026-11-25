@@ -1,14 +1,12 @@
 import { ArrowUpRight, Eye, EyeOff, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
-import { ModelSourceControl } from './ModelSourceControl'
-import { SettingsPageHeader, SettingsSectionHeading } from './SettingsPageHeader'
-import { PAGE_SUBTITLES, sectionBoxClass } from './settingsStyles'
-import { usePreviewOn } from './SettingsUi'
+import { PAGE_SUBTITLES, blueButtonClass, listEmptyClass } from './settingsStyles'
+import { SettingsPage, SettingsSection } from './SettingsUi'
 
 import type { ByokCredential, ByokProvider } from '../api/byok'
 
-import { ModalActions } from '@/features/connections/components/ConnectionsUi'
+import { ListBox, ListRows, ModalActions } from '@/features/connections/components/ConnectionsUi'
 import { useByokList, useByokMutations } from '@/features/profile/hooks/useByokData'
 import { useSettingsTopBarAction } from '@/features/profile/lib/settingsTopBar'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
@@ -30,7 +28,6 @@ const formatDate = (value: string | null) =>
 export const ProfileModelKeysSettings: React.FC = () => {
     const { data, isLoading, error: listError } = useByokList(true)
     const { saveKey, refreshKey, removeKey } = useByokMutations()
-    const isPreview = usePreviewOn()
 
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [providerQuery, setProviderQuery] = useState('')
@@ -101,39 +98,24 @@ export const ProfileModelKeysSettings: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col w-full max-w-[772px] text-[#D6D5C9]">
-            <SettingsPageHeader title="API keys" subtitle={PAGE_SUBTITLES.yourKeys} />
-            <div className="flex flex-col gap-4">
-                {/* one row with the segmented control that Usage has (U6). with the preview on,
-                    the row lives on the Defaults page (N2-B) */}
-                {!isPreview && (
-                    <div
-                        className={cn(
-                            sectionBoxClass,
-                            'flex-row items-center justify-between gap-3'
-                        )}
-                    >
-                        <span className="text-[14px] text-[#D6D5C9]">Start with</span>
-                        <ModelSourceControl />
-                    </div>
-                )}
-
-                <div className="flex flex-col mt-1">
-                    <SettingsSectionHeading
-                        title="Saved keys"
-                        description="Keys December can run on."
-                        action={
-                            <button
-                                type="button"
-                                onClick={() => openAdd()}
-                                className="hidden md:flex px-4 py-1.5 rounded-lg bg-[#87B2F4] text-[#100E12] hover:bg-[#A3C7FF] text-[13px] font-medium transition-colors items-center gap-1.5 cursor-pointer"
-                            >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>Add key</span>
-                            </button>
-                        }
-                    />
-
+        <>
+            <SettingsPage title="API keys" subtitle={PAGE_SUBTITLES.yourKeys}>
+                {/* the model source row lives on the Defaults page (N2-B) */}
+                <SettingsSection
+                    title="Saved keys"
+                    description="Keys December can run on."
+                    bare
+                    action={
+                        <button
+                            type="button"
+                            onClick={() => openAdd()}
+                            className={cn(blueButtonClass, 'hidden md:flex items-center gap-1.5')}
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add key</span>
+                        </button>
+                    }
+                >
                     <ErrorAlert
                         message={
                             rowError ||
@@ -143,61 +125,61 @@ export const ProfileModelKeysSettings: React.FC = () => {
                         }
                     />
 
-                    <div className="bg-[#191919] border border-[#242323] rounded-xl overflow-hidden">
+                    <ListBox>
                         {isLoading ? (
-                            <div className="px-4 py-6 text-[13px] text-[#7B7A79]">
-                                Loading keys...
-                            </div>
+                            <div className={listEmptyClass}>Loading keys...</div>
                         ) : credentials.length === 0 ? (
-                            <div className="px-4 py-6 text-[13px] text-[#7B7A79]">No keys yet</div>
+                            <div className={listEmptyClass}>No keys yet</div>
                         ) : (
-                            credentials.map((credential) => (
-                                <div
-                                    key={credential.provider}
-                                    data-testid={`byok-row-${credential.provider}`}
-                                    className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#242323] last:border-b-0"
-                                >
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="text-[13px] font-medium">
-                                            {nameOf(credential.provider)}
-                                        </span>
-                                        <span className="text-[12px] text-[#7B7A79] truncate">
-                                            {credential.keyHint
-                                                ? `••••${credential.keyHint}`
-                                                : '••••'}{' '}
-                                            · {credential.models.length} models · checked{' '}
-                                            {formatDate(credential.verifiedAt)} · last used{' '}
-                                            {formatDate(credential.lastUsedAt)}
-                                        </span>
+                            <ListRows>
+                                {credentials.map((credential) => (
+                                    <div
+                                        key={credential.provider}
+                                        data-testid={`byok-row-${credential.provider}`}
+                                        className="flex items-center justify-between gap-3 px-3.5 md:px-4 py-3"
+                                    >
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[13px] font-medium">
+                                                {nameOf(credential.provider)}
+                                            </span>
+                                            <span className="text-[12px] text-[#7B7A79] truncate">
+                                                {credential.keyHint
+                                                    ? `••••${credential.keyHint}`
+                                                    : '••••'}{' '}
+                                                · {credential.models.length} models · checked{' '}
+                                                {formatDate(credential.verifiedAt)} · last used{' '}
+                                                {formatDate(credential.lastUsedAt)}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRefresh(credential)}
+                                                disabled={refreshKey.isPending}
+                                                aria-label={`Check ${nameOf(credential.provider)} key again`}
+                                                title="Check the key again and update its models"
+                                                className="p-1.5 rounded-lg text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-white/5 disabled:opacity-40 cursor-pointer"
+                                            >
+                                                <RefreshCw className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemove(credential)}
+                                                disabled={removeKey.isPending}
+                                                aria-label={`Remove ${nameOf(credential.provider)} key`}
+                                                title="Remove key"
+                                                className="p-1.5 rounded-lg text-[#7B7A79] hover:text-red-400 hover:bg-white/5 disabled:opacity-40 cursor-pointer"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRefresh(credential)}
-                                            disabled={refreshKey.isPending}
-                                            aria-label={`Check ${nameOf(credential.provider)} key again`}
-                                            title="Check the key again and update its models"
-                                            className="p-1.5 rounded-lg text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-white/5 disabled:opacity-40 cursor-pointer"
-                                        >
-                                            <RefreshCw className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemove(credential)}
-                                            disabled={removeKey.isPending}
-                                            aria-label={`Remove ${nameOf(credential.provider)} key`}
-                                            title="Remove key"
-                                            className="p-1.5 rounded-lg text-[#7B7A79] hover:text-red-400 hover:bg-white/5 disabled:opacity-40 cursor-pointer"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
+                                ))}
+                            </ListRows>
                         )}
-                    </div>
-                </div>
-            </div>
+                    </ListBox>
+                </SettingsSection>
+            </SettingsPage>
 
             <Modal
                 isOpen={isAddOpen}
@@ -327,6 +309,6 @@ export const ProfileModelKeysSettings: React.FC = () => {
                     </form>
                 )}
             </Modal>
-        </div>
+        </>
     )
 }

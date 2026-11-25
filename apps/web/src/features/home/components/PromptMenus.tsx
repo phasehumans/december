@@ -6,9 +6,9 @@ import type { SlashCommand } from '@/features/home/slash/commands'
 import type { GithubRepo } from '@/features/profile/api/profile'
 import type { BackendSession } from '@/features/sessions/api/session'
 
-import { useConnectionsStore } from '@/features/connections/hooks/useConnectionsStore'
+import { usePromptBoxConnections } from '@/features/home/api/promptBoxConnections'
 import { isPromptConfigChanged, usePromptConfig } from '@/features/home/promptConfig'
-import { secretsAPI } from '@/features/profile/api/secrets'
+import { SECRETS_MENTION_KEY, secretsAPI, uniqueSecretNames } from '@/features/profile/api/secrets'
 import { repoKey, useConnectedRepos } from '@/features/profile/hooks/useConnectedRepos'
 import { useGithubConnection } from '@/features/profile/hooks/useGithubConnection'
 import { sessionAPI } from '@/features/sessions/api/session'
@@ -39,7 +39,7 @@ export const SoonTag: React.FC = () => (
 )
 
 /** the small switch from the sidebar "Archived" filter */
-export const MiniSwitch: React.FC<{
+const MiniSwitch: React.FC<{
     checked: boolean
     onChange: (checked: boolean) => void
     label: string
@@ -272,12 +272,12 @@ export const SecretSideList: React.FC<{ onPick: (secret: { name: string }) => vo
     onPick,
 }) => {
     const { data, isLoading } = useQuery({
-        queryKey: ['secrets', 'mention'],
+        queryKey: SECRETS_MENTION_KEY,
         queryFn: secretsAPI.getSecrets,
     })
 
     if (isLoading) return <div className={emptyClass}>Loading...</div>
-    const secrets = data?.secrets || []
+    const secrets = uniqueSecretNames(data?.secrets || [])
     if (secrets.length === 0) return <div className={emptyClass}>No secrets found.</div>
 
     return (
@@ -326,8 +326,9 @@ export const SkillSideList: React.FC<{
     onPick: (name: string) => void
     onManage: () => void
 }> = ({ onPick, onManage }) => {
-    const skills = useConnectionsStore((s) => s.skills).filter((skill) => skill.enabled)
+    const { skills, isLoading } = usePromptBoxConnections()
 
+    if (isLoading) return <div className={emptyClass}>Loading...</div>
     if (skills.length === 0) {
         return (
             <>
@@ -358,12 +359,11 @@ export const SkillSideList: React.FC<{
 
 /** installed plugins, each with a switch that turns it off for this session only */
 export const PluginSessionList: React.FC<{ onBrowse: () => void }> = ({ onBrowse }) => {
-    const plugins = useConnectionsStore((s) => s.plugins).filter(
-        (plugin) => plugin.installed && plugin.enabled
-    )
+    const { plugins, isLoading } = usePromptBoxConnections()
     const pluginsOff = usePromptConfig((s) => s.pluginsOff)
     const setPluginOff = usePromptConfig((s) => s.setPluginOff)
 
+    if (isLoading) return <div className={emptyClass}>Loading...</div>
     if (plugins.length === 0) {
         return (
             <>
@@ -394,10 +394,11 @@ export const PluginSessionList: React.FC<{ onBrowse: () => void }> = ({ onBrowse
 
 /** MCP servers, each with a switch that turns it off for this session only */
 export const McpSessionList: React.FC<{ onManage: () => void }> = ({ onManage }) => {
-    const mcps = useConnectionsStore((s) => s.mcps).filter((mcp) => mcp.enabled)
+    const { mcps, isLoading } = usePromptBoxConnections()
     const mcpsOff = usePromptConfig((s) => s.mcpsOff)
     const setMcpOff = usePromptConfig((s) => s.setMcpOff)
 
+    if (isLoading) return <div className={emptyClass}>Loading...</div>
     if (mcps.length === 0) {
         return (
             <>

@@ -7,7 +7,8 @@ if (!globalThis.document) {
     GlobalRegistrator.register()
 }
 
-const { render, screen, cleanup, fireEvent, waitFor } = await import('@testing-library/react')
+const { render, screen, cleanup, fireEvent, waitFor, within } =
+    await import('@testing-library/react')
 
 const { setConnectionsDemo } = await import('../src/features/connections/lib/connectionsDemo')
 const { profileAPI } = await import('../src/features/profile/api/profile')
@@ -68,13 +69,12 @@ describe('pull requests settings page (#568)', () => {
         mock.restore()
     })
 
-    test('shows the real settings to everyone, without the opening section', async () => {
+    test('shows the real settings to everyone', async () => {
         wrap(<ProfilePullRequestSettings />)
         expect(
             await screen.findByRole('switch', { name: 'Work from GitHub comments' })
         ).toBeDefined()
         expect(screen.queryByText('Pull request settings are coming soon')).toBeNull()
-        expect(screen.queryByRole('textbox', { name: 'Branch name starts with' })).toBeNull()
         expect(screen.getByRole('radio', { name: 'Only @trydecember' })).toBeDefined()
         expect(screen.getByRole('radio', { name: 'When asked' }).getAttribute('aria-checked')).toBe(
             'true'
@@ -98,11 +98,72 @@ describe('pull requests settings page (#568)', () => {
         await waitFor(() => expect(saved[2]).toEqual({ reviewRepos: ['acme/web'] }))
     })
 
-    test('the opening section shows with the preview on', async () => {
-        setConnectionsDemo(true)
+    test('the opening section shows the saved values without the preview flag (#637)', async () => {
+        spyOn(profileAPI, 'getPullRequestSettings').mockImplementation(async () => ({
+            ...defaults,
+            branchPrefix: 'feat/ai-',
+            prDraft: true,
+            prCreate: 'ask',
+            prAuthor: 'user',
+            commitAuthor: 'december',
+            archiveOnMerge: false,
+        }))
         wrap(<ProfilePullRequestSettings />)
+
+        const prefix = (await screen.findByRole('textbox', {
+            name: 'Branch name starts with',
+        })) as HTMLInputElement
+        expect(prefix.value).toBe('feat/ai-')
+        const checked = (group: string) =>
+            screen.getByRole('radiogroup', { name: group }).querySelector('[aria-checked="true"]')
+                ?.textContent
+        expect(checked('Open as')).toBe('Draft')
+        expect(checked('Create the pull request')).toBe('When I ask')
+        expect(checked('Author')).toBe('You')
+        expect(checked('Commit author')).toBe('December')
         expect(
-            await screen.findByRole('textbox', { name: 'Branch name starts with' })
-        ).toBeDefined()
+            screen
+                .getByRole('switch', { name: 'Archive the session when the pull request merges' })
+                .getAttribute('aria-checked')
+        ).toBe('false')
+    })
+
+    test('a change in the opening section saves to the server (#637)', async () => {
+        wrap(<ProfilePullRequestSettings />)
+
+        fireEvent.click(await screen.findByRole('radio', { name: 'Draft' }))
+        await waitFor(() => expect(saved).toEqual([{ prDraft: true }]))
+
+        fireEvent.click(screen.getByRole('radio', { name: 'When I ask' }))
+        await waitFor(() => expect(saved[1]).toEqual({ prCreate: 'ask' }))
+
+        fireEvent.click(screen.getByRole('radio', { name: 'You' }))
+        await waitFor(() => expect(saved[2]).toEqual({ prAuthor: 'user' }))
+
+        fireEvent.click(
+            within(screen.getByRole('radiogroup', { name: 'Commit author' })).getByRole('radio', {
+                name: 'December',
+            })
+        )
+        await waitFor(() => expect(saved[3]).toEqual({ commitAuthor: 'december' }))
+
+        fireEvent.click(
+            screen.getByRole('switch', { name: 'Archive the session when the pull request merges' })
+        )
+        await waitFor(() => expect(saved[4]).toEqual({ archiveOnMerge: false }))
+    })
+
+    test('the branch prefix saves when the field is left, not on every key (#637)', async () => {
+        wrap(<ProfilePullRequestSettings />)
+        const prefix = await screen.findByRole('textbox', { name: 'Branch name starts with' })
+
+        fireEvent.change(prefix, { target: { value: 'feat/' } })
+        expect(saved).toEqual([])
+        fireEvent.blur(prefix)
+        await waitFor(() => expect(saved).toEqual([{ branchPrefix: 'feat/' }]))
+
+        // no change, no request
+        fireEvent.blur(prefix)
+        expect(saved).toHaveLength(1)
     })
 })

@@ -1,12 +1,14 @@
 import './env'
 import { prisma } from '@december/database'
-import { isSessionEffort } from '@december/shared'
-import { Worker, Job } from 'bullmq'
+import { isSessionEffort, pausesAfterStop, readStopRequest, runMarkKey } from '@december/shared'
+import { Queue, Worker, Job } from 'bullmq'
 import Redis from 'ioredis'
 import jwt from 'jsonwebtoken'
 
+import { readJobAttachments } from './attachments'
+import { readNameList } from './connections'
 import { E2BSandboxService } from './e2b-sandbox.service'
-import { processGrpcStream } from './listener'
+import { processGrpcStream, subscribeToInterrupts } from './listener'
 import {
     loadOwnKeyProvider,
     normalizeBillingSource,
@@ -14,10 +16,21 @@ import {
     resolveSecretsEncKey,
     tagOwnKeyErrors,
 } from './llm-source'
+import { createRedisSteeringStore, joinRun, watchRunSteering } from './run-steering'
+import { stoppedRunEnd, stoppedRunEvents, watchRunStop } from './run-stop'
 import { IdleSandboxSweeper } from './sandbox-limits'
+import {
+    checkRunSpend,
+    clearStaleHeldRun,
+    prismaSpendLimitStore,
+    spendLimitEvent,
+    toHeldRun,
+} from './spend-limits'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { WakeUpSweeper } from './wake-up-sweeper'
 
+import type { RunSteering } from './run-steering'
+import type { RunStop } from './run-stop'
 import type { LLMProvider } from '@december/providers'
 
 if (process.env.NODE_ENV === 'production' && !process.env.REDIS_URL) {
@@ -39,6 +52,14 @@ const redisConnection: any = new Redis(REDIS_URL, {
 redisConnection.on('error', (err: any) => {
     console.error('[Worker Redis Connection Error]', err?.message || err)
 })
+
+// a new message while December works (#637): the waiting messages and the run mark
+const steeringStore = createRedisSteeringStore(() => redisConnection)
+let agentJobsQueue: Queue | null = null
+const getAgentJobsQueue = () => {
+    agentJobsQueue ??= new Queue('agent_jobs', { connection: redisConnection })
+    return agentJobsQueue
+}
 
 console.log("Worker started, waiting for jobs on 'agent_jobs'...")
 
@@ -68,6 +89,24 @@ export const worker = new Worker(
                         // Intentionally swallowed: the session may be gone
                     })
                 return { status: 'STOPPED' }
+            }
+            // the pause that follows a stop (#637) must not pause the sandbox under an agent
+            // that is still going to run: a prompt sent after the stop holds the session
+            if (job.data.afterStop === true && sessionId) {
+                const markOwner = await redisConnection
+                    .get(runMarkKey(sessionId))
+                    .catch((error: unknown) => {
+                        console.warn('[WORKER ENGINE] could not read the run mark', error)
+                        return null
+                    })
+                const stoppedRunId =
+                    typeof job.data.stoppedRunId === 'string' ? job.data.stoppedRunId : null
+                if (!pausesAfterStop({ markOwner, stoppedRunId })) {
+                    console.log(
+                        `[WORKER ENGINE] Session '${sessionId}' has a new run. Leaving its sandbox as it is.`
+                    )
+                    return { status: 'SKIPPED', reason: 'a run holds the session' }
+                }
             }
             await E2BSandboxService.pauseSandbox({ sessionId, sandboxId })
             return { status: 'PAUSED' }
@@ -143,6 +182,31 @@ export const worker = new Worker(
             return result
         }
 
+        // the stop watch of this run (#637), from the sandbox start until the run ends
+        let stop: RunStop | undefined
+        // the messages sent while this run works (#637). the listener ends it with the run;
+        // a job that ends before the run starts ends it here
+        let steering: RunSteering | undefined
+        let runStarted = false
+        // the run was stopped before the agent started (a stop while the job waited in the
+        // queue or ran its checks): the run ends as stopped, and no sandbox is started for it
+        const endStoppedBeforeStart = async (reason: 'user' | 'limit') => {
+            console.log(
+                `[WORKER ENGINE] Session '${sessionId}' was stopped before job #${job.id} started. The agent does not start.`
+            )
+            await prisma.session
+                .updateMany({
+                    where: { id: sessionId, vmStatus: { in: ['PROVISIONING', 'RUNNING'] } },
+                    data: { vmStatus: 'STOPPED' },
+                })
+                .catch(() => {
+                    // Intentionally swallowed: the events below still end the run for the web
+                })
+            for (const event of stoppedRunEvents({ runningToolCallIds: [], reason })) {
+                await E2BSandboxService.emitSessionEvent({ sessionId, event })
+            }
+            return { status: 'STOPPED', reason }
+        }
         try {
             console.log(
                 `[WORKER ENGINE] Picked up job #${job.id} (type: ${effectiveTaskType}) for session '${sessionId}'`
@@ -159,6 +223,84 @@ export const worker = new Worker(
                     )
                     return { status: 'DISCARDED', error: 'Session not found' }
                 }
+                // one run for a session: the id of this run owns the run mark. a job whose
+                // run does not own it must not work; its prompt goes to the run that does
+                const runId =
+                    typeof job.data.runId === 'string' && job.data.runId
+                        ? job.data.runId
+                        : `job:${job.id}`
+                const joined = await joinRun({
+                    store: steeringStore,
+                    sessionId,
+                    runId,
+                    item: {
+                        prompt: String(job.data.prompt ?? ''),
+                        ...(Number.isInteger(job.data.userMessageSequence)
+                            ? { userMessageSequence: job.data.userMessageSequence }
+                            : {}),
+                        ...(Array.isArray(job.data.attachments)
+                            ? { attachments: job.data.attachments }
+                            : {}),
+                        skills: readNameList(job.data.skills),
+                    },
+                }).catch((error: unknown) => {
+                    // redis failed: the run still works, as it did before marks had an owner
+                    console.warn(`[WORKER ENGINE] could not join the run of '${sessionId}'`, error)
+                    return 'owner' as const
+                })
+                if (joined === 'handed-off') {
+                    console.warn(
+                        `[WORKER ENGINE] Another run works on session '${sessionId}'. Job #${job.id} gave it its prompt.`
+                    )
+                    return { status: 'DISCARDED', error: 'another run works on the session' }
+                }
+
+                // from here the session counts as working. a message that nobody took
+                // before the run ended starts a run like this one, with its own prompt
+                steering = watchRunSteering({
+                    sessionId,
+                    runId,
+                    store: steeringStore,
+                    // the session is free again: the web sends its next queued message
+                    onClosed: ({ runFollows }) =>
+                        E2BSandboxService.emitSessionEvent({
+                            sessionId,
+                            event: { type: 'RunClosed', sessionId, runFollows },
+                        }),
+                    startRun: async (items, nextRunId) => {
+                        const last = items[items.length - 1]
+                        if (!last) return
+                        const {
+                            userMessageSequence: _sequence,
+                            attachments: _attachments,
+                            ...sameRun
+                        } = job.data
+                        await getAgentJobsQueue().add('run_agent', {
+                            ...sameRun,
+                            // the session is already marked for this run
+                            runId: nextRunId,
+                            prompt: last.prompt,
+                            // the plan of this run stands: the agent goes on with the work
+                            planFirst: false,
+                            skills: last.skills ?? [],
+                            ...(last.userMessageSequence
+                                ? { userMessageSequence: last.userMessageSequence }
+                                : {}),
+                            ...(last.attachments ? { attachments: last.attachments } : {}),
+                        })
+                    },
+                })
+
+                // a stop can arrive from here on. a stop that came earlier (while the job
+                // waited in the queue) left a request in redis: the watch reads it now
+                stop = watchRunStop({
+                    sessionId,
+                    subscribe: subscribeToInterrupts,
+                    readStopRequest: () => readStopRequest(redisConnection, { sessionId, runId }),
+                })
+                await stop.ready
+                const stoppedBy = stop.stoppedBy()
+                if (stoppedBy) return await endStoppedBeforeStart(stoppedBy)
             }
 
             // own key: load and decrypt it before a sandbox is provisioned. it stays in memory.
@@ -177,9 +319,9 @@ export const worker = new Worker(
                         .catch(() => {
                             // Intentionally swallowed: DB fallback on own key failure
                         })
-                    await E2BSandboxService.emitSessionEvent({
+                    await E2BSandboxService.emitRunFailure({
                         sessionId,
-                        event: {
+                        error: {
                             type: 'AgentError',
                             code: 'BYOK_KEY_FAILED',
                             keyFailure: 'missing_key',
@@ -210,9 +352,9 @@ export const worker = new Worker(
                         .catch(() => {
                             // Intentionally swallowed: DB fallback on credit check failure
                         })
-                    await E2BSandboxService.emitSessionEvent({
+                    await E2BSandboxService.emitRunFailure({
                         sessionId,
-                        event: {
+                        error: {
                             type: 'AgentError',
                             code: 'INSUFFICIENT_CREDITS',
                             error: 'Insufficient wallet credits',
@@ -224,6 +366,45 @@ export const worker = new Worker(
                 }
             }
 
+            // spend limits (#638): a run on credits that would start at or over the session
+            // limit or the day limit is asked first. it waits on the session row (with no
+            // secrets) until the user answers "Continue"; the server then queues it again
+            if (sessionId) {
+                const reached = await checkRunSpend({
+                    userId,
+                    sessionId,
+                    billingSource,
+                    store: prismaSpendLimitStore,
+                })
+                if (reached) {
+                    console.warn(
+                        `[WORKER ENGINE] Session '${sessionId}' is at its ${reached.kind} spend limit. Holding job #${job.id}.`
+                    )
+                    await prisma.session.update({
+                        where: { id: sessionId },
+                        data: { limitHeldRun: toHeldRun(job.data) as any },
+                    })
+                    await E2BSandboxService.emitSessionEvent({
+                        sessionId,
+                        event: spendLimitEvent(reached),
+                    })
+                    // the open session stops waiting for this run
+                    await E2BSandboxService.emitSessionEvent({
+                        sessionId,
+                        event: stoppedRunEnd('limit'),
+                    })
+                    return { status: 'HELD', reason: reached.kind }
+                }
+                // this run starts: a held run that no question asks about is left over, and
+                // must not start with the answer to a later question
+                await clearStaleHeldRun({ db: prisma, sessionId }).catch((error: unknown) => {
+                    console.warn(
+                        `[WORKER ENGINE] could not clear the held run of '${sessionId}'`,
+                        error
+                    )
+                })
+            }
+
             // generate short-lived jwt
             const agentTokenSecret = process.env.AGENT_TOKEN_SECRET
             if (process.env.NODE_ENV === 'production' && !agentTokenSecret) {
@@ -233,6 +414,13 @@ export const worker = new Worker(
             const token = jwt.sign({ userId, sessionId }, agentTokenSecret || 'secret', {
                 expiresIn: '15m',
             })
+
+            // a stop during the checks: no sandbox is started for an agent that never starts.
+            // a stop while the sandbox starts cancels the start of the agent: the run then
+            // ends as stopped, with the sandbox left as it is
+            stop ??= watchRunStop({ sessionId, subscribe: subscribeToInterrupts })
+            const stoppedInChecks = stop.stoppedBy()
+            if (stoppedInChecks) return await endStoppedBeforeStart(stoppedInChecks)
 
             // reuse, resume or provision the session's sandbox; past 10 running sandboxes
             // per user the least recently used one is paused first
@@ -273,6 +461,13 @@ export const worker = new Worker(
                 ...(Number.isInteger(job.data.userMessageSequence)
                     ? { userMessageSequence: job.data.userMessageSequence }
                     : {}),
+                // skills picked for this message, mcp servers off for this session (#632)
+                skills: readNameList(job.data.skills),
+                disabledMcps: readNameList(job.data.disabledMcps),
+                // the files sent with this message (#634)
+                attachments: readJobAttachments({ sessionId, value: job.data.attachments }),
+                stop,
+                steering,
             })
 
             console.log(
@@ -283,9 +478,14 @@ export const worker = new Worker(
                 billingSource === 'OWN_KEY' && provider ? tagOwnKeyErrors(stream, provider) : stream
 
             // start listening in the background without blocking the worker pool
-            processGrpcStream(sessionId, eventStream, undefined, { billingSource }).catch(
-                (e: any) =>
-                    console.error(`[WORKER ENGINE] Stream failed for session ${sessionId}`, e)
+            // the listener ends the stop watch and the steering when the run ends
+            runStarted = true
+            processGrpcStream(sessionId, eventStream, undefined, {
+                billingSource,
+                stop,
+                steering,
+            }).catch((e: any) =>
+                console.error(`[WORKER ENGINE] Stream failed for session ${sessionId}`, e)
             )
 
             return { status: 'RUNNING', sandboxId: provisionResult.sandboxId, token }
@@ -294,6 +494,8 @@ export const worker = new Worker(
                 `[WORKER ENGINE] Failed to process job #${job.id} for session ${sessionId}`,
                 e
             )
+            // no run started: nothing is left to stop
+            stop?.end()
             await prisma.session
                 .update({
                     where: { id: sessionId },
@@ -303,6 +505,13 @@ export const worker = new Worker(
                     // Intentionally swallowed: DB fallback on job processing error
                 })
             throw e
+        } finally {
+            // no run started (no key, no credits, held at a limit, an error): the session
+            // no longer counts as working, and a waiting message starts no run
+            if (!runStarted) {
+                stop?.end()
+                await steering?.end({ discard: true })
+            }
         }
     },
     {

@@ -1,7 +1,8 @@
 import React from 'react'
 
+import { connectionErrorMessage, useSkills } from '../hooks/useConnectionsData'
 import { useConnectionsNav } from '../hooks/useConnectionsNav'
-import { isPluginOff, useConnectionsStore } from '../hooks/useConnectionsStore'
+import { isPluginOff } from '../hooks/useConnectionsStore'
 import { useUnsavedGuard } from '../hooks/useUnsavedGuard'
 
 import {
@@ -17,6 +18,7 @@ import {
     ListHeader,
     ListRow,
     ListRows,
+    ListSkeleton,
     MoreMenu,
     Pill,
     PrimaryButton,
@@ -50,12 +52,16 @@ export const SkillsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
 
 const SkillsList: React.FC = () => {
     const { navigate, toItem } = useConnectionsNav()
-    const skills = useConnectionsStore((s) => s.skills)
-    const plugins = useConnectionsStore((s) => s.plugins)
-    const setSkillEnabled = useConnectionsStore((s) => s.setSkillEnabled)
-    const deleteSkill = useConnectionsStore((s) => s.deleteSkill)
+    const { skills, plugins, isLoading, loadFailed, setSkillEnabled, deleteSkill } = useSkills()
     const [query, setQuery] = React.useState('')
     const [deleting, setDeleting] = React.useState<string | null>(null)
+    const [actionError, setActionError] = React.useState<string | null>(null)
+
+    /** runs a change from a row. a change the server refuses shows above the list */
+    const run = (change: Promise<unknown>, fallback: string) => {
+        setActionError(null)
+        change.catch((error) => setActionError(connectionErrorMessage(error, fallback)))
+    }
 
     const visible = skills.filter(
         (skill) => !skill.plugin || plugins.some((p) => p.name === skill.plugin && p.installed)
@@ -73,6 +79,7 @@ const SkillsList: React.FC = () => {
                     </PrimaryButton>
                 </div>
             )}
+            <FormError>{actionError}</FormError>
             <ListBox>
                 <ListHeader>
                     <span className="flex-1">Name</span>
@@ -80,7 +87,11 @@ const SkillsList: React.FC = () => {
                     <span className="w-[110px]">Runs</span>
                     <span className="w-[104px]" />
                 </ListHeader>
-                {visible.length === 0 ? (
+                {isLoading ? (
+                    <ListSkeleton />
+                ) : loadFailed ? (
+                    <EmptyRow>Could not load skills</EmptyRow>
+                ) : visible.length === 0 ? (
                     <EmptyRow
                         action={
                             <SecondaryButton
@@ -131,7 +142,12 @@ const SkillsList: React.FC = () => {
                                             disabled={locked}
                                             disabledReason="Plugin is off"
                                             label={`Turn ${skill.name} on or off`}
-                                            onChange={(on) => setSkillEnabled(skill.name, on)}
+                                            onChange={(on) =>
+                                                run(
+                                                    setSkillEnabled(skill.name, on),
+                                                    'Could not update the skill'
+                                                )
+                                            }
                                         />
                                         {isOwn && (
                                             <MoreMenu
@@ -159,7 +175,7 @@ const SkillsList: React.FC = () => {
                 confirmLabel="Delete"
                 onClose={() => setDeleting(null)}
                 onConfirm={() => {
-                    if (deleting) deleteSkill(deleting)
+                    if (deleting) run(deleteSkill(deleting), 'Could not delete the skill')
                     setDeleting(null)
                 }}
             />
@@ -175,13 +191,44 @@ const emptySkill: ConnectionsSkill = {
     enabled: true,
 }
 
+/** true when the editor has a change to save. the switch saves `enabled` by itself */
+const hasEdits = (draft: ConnectionsSkill, saved: ConnectionsSkill) =>
+    draft.name !== saved.name ||
+    draft.description !== saved.description ||
+    draft.runs !== saved.runs ||
+    draft.body !== saved.body
+
+/** a name for a copy that no other skill has */
+const copyName = (name: string, taken: string[]) => {
+    let candidate = `${name}-copy`
+    for (let n = 2; taken.includes(candidate); n++) candidate = `${name}-copy-${n}`
+    return candidate
+}
+
 const SkillEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
+    const { toTab } = useConnectionsNav()
+    const data = useSkills()
+
+    // the form starts from the saved skill, so it waits for the list
+    if (data.isLoading) {
+        return (
+            <div className="flex flex-col">
+                <BackLink label="Skills" onClick={() => toTab('skills')} />
+                <ListBox className="mt-4">
+                    <ListSkeleton />
+                </ListBox>
+            </div>
+        )
+    }
+    return <SkillForm itemId={itemId} data={data} />
+}
+
+const SkillForm: React.FC<{ itemId: string; data: ReturnType<typeof useSkills> }> = ({
+    itemId,
+    data,
+}) => {
     const { toTab, toItem } = useConnectionsNav()
-    const skills = useConnectionsStore((s) => s.skills)
-    const plugins = useConnectionsStore((s) => s.plugins)
-    const saveSkill = useConnectionsStore((s) => s.saveSkill)
-    const deleteSkill = useConnectionsStore((s) => s.deleteSkill)
-    const setSkillEnabled = useConnectionsStore((s) => s.setSkillEnabled)
+    const { isDemo, skills, plugins, loadFailed, saveSkill, deleteSkill, setSkillEnabled } = data
 
     const isNew = itemId === 'new'
     const existing = skills.find((s) => s.name === itemId)
@@ -189,6 +236,8 @@ const SkillEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
     const [mode, setMode] = React.useState<'write' | 'preview'>('write')
     const [touched, setTouched] = React.useState(false)
     const [isDeleting, setIsDeleting] = React.useState(false)
+    const [isSaving, setIsSaving] = React.useState(false)
+    const [actionError, setActionError] = React.useState<string | null>(null)
     const [saved, flashSaved] = useFlash()
 
     const readOnly = Boolean(existing?.plugin)
@@ -197,7 +246,7 @@ const SkillEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
         !readOnly &&
         (isNew
             ? Boolean(draft.name || draft.description || draft.body)
-            : JSON.stringify(draft) !== JSON.stringify(existing))
+            : Boolean(existing && hasEdits(draft, existing)))
     const { guard, modal } = useUnsavedGuard(isDirty)
 
     if (!isNew && !existing) {
@@ -205,7 +254,7 @@ const SkillEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
             <div className="flex flex-col">
                 <BackLink label="Skills" onClick={() => toTab('skills')} />
                 <ListBox className="mt-4">
-                    <EmptyRow>Skill not found</EmptyRow>
+                    <EmptyRow>{loadFailed ? 'Could not load skills' : 'Skill not found'}</EmptyRow>
                 </ListBox>
             </div>
         )
@@ -219,16 +268,39 @@ const SkillEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
           : nameTaken
             ? 'You already have a skill with this name'
             : null
-    const canSave = Boolean(draft.name && draft.description.trim() && !nameError && isDirty)
+    // the server refuses a skill with no instructions. the sample skills have no such rule
+    const hasBody = isDemo || Boolean(draft.body.trim())
+    const canSave = Boolean(
+        draft.name && draft.description.trim() && hasBody && !nameError && isDirty && !isSaving
+    )
 
-    const handleSave = () => {
+    /** runs a change. a change the server refuses shows in the form */
+    const run = async (change: () => Promise<void>, fallback: string) => {
+        setActionError(null)
+        try {
+            await change()
+        } catch (error) {
+            setActionError(connectionErrorMessage(error, fallback))
+        }
+    }
+
+    const handleSave = async () => {
         setTouched(true)
         if (!canSave) return
-        saveSkill(draft, existing?.name)
-        flashSaved()
-        if (isNew || draft.name !== existing?.name) {
-            toItem('skills', draft.name, { replace: true })
-        }
+        setIsSaving(true)
+        await run(async () => {
+            // the switch owns `enabled`, so a save keeps the saved value
+            const result = await saveSkill(
+                { ...draft, enabled: existing?.enabled ?? draft.enabled },
+                existing?.name
+            )
+            setDraft(result)
+            flashSaved()
+            if (isNew || result.name !== existing?.name) {
+                toItem('skills', result.name, { replace: true })
+            }
+        }, 'Could not save the skill')
+        setIsSaving(false)
     }
 
     const update = (patch: Partial<ConnectionsSkill>) => setDraft((d) => ({ ...d, ...patch }))
@@ -255,7 +327,12 @@ const SkillEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
                         disabled={locked}
                         disabledReason="Plugin is off"
                         label="Turn this skill on or off"
-                        onChange={(on) => setSkillEnabled(existing.name, on)}
+                        onChange={(on) =>
+                            run(
+                                () => setSkillEnabled(existing.name, on),
+                                'Could not update the skill'
+                            )
+                        }
                     />
                 )}
                 {existing?.plugin && <Pill>{existing.plugin}</Pill>}
@@ -279,15 +356,18 @@ const SkillEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
                                 items={[
                                     {
                                         label: 'Duplicate',
-                                        onClick: () => {
-                                            const copy = {
-                                                ...existing,
-                                                name: `${existing.name}-copy`,
-                                            }
-                                            saveSkill(copy)
-                                            setDraft(copy)
-                                            toItem('skills', copy.name)
-                                        },
+                                        onClick: () =>
+                                            run(async () => {
+                                                const copy = await saveSkill({
+                                                    ...existing,
+                                                    name: copyName(
+                                                        existing.name,
+                                                        skills.map((s) => s.name)
+                                                    ),
+                                                })
+                                                setDraft(copy)
+                                                toItem('skills', copy.name)
+                                            }, 'Could not copy the skill'),
                                     },
                                     {
                                         label: 'Delete skill',
@@ -302,6 +382,7 @@ const SkillEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
             </DetailHeader>
 
             <div className="flex flex-col gap-4">
+                <FormError>{actionError}</FormError>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                         <label htmlFor="skill-name" className={fieldLabelClass}>
@@ -389,9 +470,12 @@ const SkillEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
                 confirmLabel="Delete"
                 onClose={() => setIsDeleting(false)}
                 onConfirm={() => {
-                    if (existing) deleteSkill(existing.name)
                     setIsDeleting(false)
-                    toTab('skills')
+                    if (!existing) return
+                    run(async () => {
+                        await deleteSkill(existing.name)
+                        toTab('skills')
+                    }, 'Could not delete the skill')
                 }}
             />
         </form>

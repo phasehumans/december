@@ -1,12 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { billingAPI } from '../api/billing'
+
+import type { CreditsHistoryParams } from '../api/billing'
 
 export const billingQueryKeys = {
     overview: ['billing-overview'] as const,
     freeCredits: ['free-credit-request'] as const,
-    history: (limit?: number, offset?: number, periodStart?: string, periodEnd?: string) =>
-        ['credits-history', { limit, offset, periodStart, periodEnd }] as const,
+    limits: ['billing-limits'] as const,
+    referral: ['billing-referral'] as const,
+    history: (params: CreditsHistoryParams = {}) => ['credits-history', params] as const,
 }
 
 export const useBillingOverview = (enabled: boolean = true) => {
@@ -18,18 +21,13 @@ export const useBillingOverview = (enabled: boolean = true) => {
     })
 }
 
-export const useCreditsHistory = (
-    params: { limit?: number; offset?: number; periodStart?: string; periodEnd?: string } = {}
-) => {
+export const useCreditsHistory = (params: CreditsHistoryParams = {}) => {
     return useQuery({
-        queryKey: billingQueryKeys.history(
-            params.limit,
-            params.offset,
-            params.periodStart,
-            params.periodEnd
-        ),
+        queryKey: billingQueryKeys.history(params),
         queryFn: () => billingAPI.getCreditsHistory(params),
         staleTime: 30 * 1000, // 30 seconds stale time
+        // the page before stays on screen while the next page or range loads
+        placeholderData: keepPreviousData,
     })
 }
 

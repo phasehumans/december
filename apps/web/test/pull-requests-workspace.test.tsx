@@ -101,10 +101,37 @@ describe('Functional Pull Requests Workspace (Ticket #587)', () => {
         expect(sessionAPI.getSessionPullRequests).toHaveBeenCalledWith('sess-mount-99')
     })
 
-    test('renders pending/empty fallback with task branch details when no PR exists', () => {
+    test('names no branch before a pull request when the session has no saved branch', () => {
         render(<PullRequestsWorkspace sessionId="sess-no-pr" />)
 
         expect(screen.getByText(/no pull request created yet/i)).not.toBeNull()
-        expect(screen.getByText('december/sess-no-pr')).not.toBeNull()
+        // the branch prefix is a setting: the name is not `december/<id>` for every user
+        expect(screen.queryByText(/december\/sess-no-pr/)).toBeNull()
+    })
+
+    test('names the saved branch of the session before a pull request', () => {
+        render(<PullRequestsWorkspace sessionId="sess-no-pr" branch="feat/ai-sess-no-pr" />)
+
+        expect(screen.getByText('feat/ai-sess-no-pr')).not.toBeNull()
+    })
+
+    test('shows the real branch and no fixed commit author', () => {
+        useAppStore.setState({
+            pullRequest: {
+                prNumber: 7,
+                title: 'Rename the settings page',
+                state: 'open',
+                baseRef: 'main',
+                diffSummary: { additions: 1, deletions: 1, changedFiles: 1 },
+                ciStatus: 'passing' as const,
+            } as any,
+        })
+
+        render(<PullRequestsWorkspace sessionId="sess-7" branch="feat/ai-sess-7" />)
+
+        expect(screen.getAllByText('feat/ai-sess-7').length).toBeGreaterThan(0)
+        expect(screen.queryByText(/december\/sess-7/)).toBeNull()
+        // the commit author is a setting (December, or the user with December as co-author)
+        expect(screen.queryByText(/December Agent/)).toBeNull()
     })
 })

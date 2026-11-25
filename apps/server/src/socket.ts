@@ -6,9 +6,10 @@ import jwt from 'jsonwebtoken'
 import { Server, Socket } from 'socket.io'
 
 import { env } from './env'
-import { byokService } from './modules/byok/byok.service'
+import { attachmentService } from './modules/attachment/attachment.service'
 import { secretsService } from './modules/secrets/secrets.service'
 import { sessionService } from './modules/session/session.service'
+import { mergeHeldRun } from './modules/session/session.utils'
 import { usageService } from './modules/usage/usage.service'
 import { AppError } from './shared/appError'
 
@@ -107,7 +108,9 @@ export function initSocket(httpServer: any) {
                 } else if (
                     event?.type === 'AgentError' ||
                     event?.type === 'AgentEnd' ||
-                    event?.type === 'CreditsLow'
+                    event?.type === 'CreditsLow' ||
+                    // a charge or a run start reached a spend limit: the session pauses (#638)
+                    event?.type === 'SpendLimitReached'
                 ) {
                     // failed, finished and low credits reach the inbox, email and push (#636)
                     sessionService.handleRunEvent({ sessionId, event }).catch((error: unknown) => {
@@ -160,7 +163,8 @@ export function initSocket(httpServer: any) {
             socket.join(`user:${socket.data.userId}`)
         }
 
-        socket.on('join_session', (sessionId: string) => {
+        socket.on('join_session', async (sessionId: string) => {
+            if (!(await canUseSession(socket, sessionId))) return
             console.log(`[Socket] User ${socket.data.userId} joined session ${sessionId}`)
             socket.data.activeSessionId = sessionId
             socket.join(`session:${sessionId}`)
@@ -175,7 +179,7 @@ export function initSocket(httpServer: any) {
 
         socket.on('join_session_terminal', async (data: { sessionId: string } | string) => {
             const sId = typeof data === 'string' ? data : data?.sessionId
-            if (sId) {
+            if (sId && (await canUseSession(socket, sId))) {
                 console.log(
                     `[Socket] User ${socket.data.userId} joined terminal room for session ${sId}`
                 )
@@ -197,7 +201,8 @@ export function initSocket(httpServer: any) {
 
         socket.on('leave_session_terminal', async (data: { sessionId: string } | string) => {
             const sId = typeof data === 'string' ? data : data?.sessionId
-            if (sId) {
+            // only a terminal this socket joined is left: the join checked the owner
+            if (sId && socket.data.terminalSessions?.has(sId)) {
                 socket.leave(`session_terminal:${sId}`)
                 if (socket.data.terminalSessions) {
                     socket.data.terminalSessions.delete(sId)
@@ -214,7 +219,7 @@ export function initSocket(httpServer: any) {
         })
 
         socket.on('TERMINAL_INPUT', async (data: { sessionId: string; data: string }) => {
-            if (data?.sessionId && data?.data) {
+            if (data?.sessionId && data?.data && (await canUseSession(socket, data.sessionId))) {
                 await pubClient
                     .publish(`session_terminal_input:${data.sessionId}`, data.data)
                     .catch(() => {
@@ -226,7 +231,12 @@ export function initSocket(httpServer: any) {
         socket.on(
             'TERMINAL_RESIZE',
             async (data: { sessionId: string; cols: number; rows: number }) => {
-                if (data?.sessionId && data?.cols && data?.rows) {
+                if (
+                    data?.sessionId &&
+                    data?.cols &&
+                    data?.rows &&
+                    (await canUseSession(socket, data.sessionId))
+                ) {
                     await pubClient
                         .publish(
                             `session_terminal_resize:${data.sessionId}`,
@@ -242,7 +252,27 @@ export function initSocket(httpServer: any) {
         socket.on(
             'QUESTION_ANSWER',
             async (data: { sessionId: string; questionId?: string; answer: string | string[] }) => {
-                if (data?.sessionId && data?.answer !== undefined) {
+                if (
+                    data?.sessionId &&
+                    data?.answer !== undefined &&
+                    (await canUseSession(socket, data.sessionId))
+                ) {
+                    // the answer to a spend limit question (#638) goes to the server, not to
+                    // the agent: "Continue" starts the run again
+                    const limitAnswer = await sessionService
+                        .answerLimitQuestion({
+                            userId: socket.data.userId,
+                            sessionId: data.sessionId,
+                            // an answer to another question card goes to the agent
+                            questionId:
+                                typeof data.questionId === 'string' ? data.questionId : undefined,
+                            answer: data.answer,
+                        })
+                        .catch((error: unknown) => {
+                            console.error('[Socket] could not answer the limit question', error)
+                            return null
+                        })
+                    if (limitAnswer?.handled) return
                     await sessionService
                         .clearPendingQuestion({
                             userId: socket.data.userId,
@@ -309,15 +339,40 @@ export function initSocket(httpServer: any) {
                 skills?: string[]
                 disabledPlugins?: string[]
                 disabledMcps?: string[]
+                // the ids of the files uploaded for this prompt (#634)
+                attachments?: string[]
+                // the id the web gave this message (#637), sent back with its events
+                clientMessageId?: string
             }) => {
                 const targetSessionId = data.sessionId || data.projectId
                 if (!targetSessionId) {
                     socket.emit('error', { message: 'sessionId is required' })
                     return
                 }
+                // a prompt goes only to a session of this user
+                if (!(await canUseSession(socket, targetSessionId))) {
+                    socket.emit('error', { message: 'Session not found' })
+                    return
+                }
+
+                // a prompt with no text starts no run and is never given to a running agent
+                if (isBlankPrompt(data.prompt)) {
+                    socket.emit('error', { message: 'prompt is required' })
+                    return
+                }
 
                 socket.data.activeSessionId = targetSessionId
                 socket.join(`session:${targetSessionId}`)
+
+                // a new message while December works (#637): `run` starts a run, `steer`
+                // reaches the running agent, `queued` stays with the web
+                let route: 'run' | 'steer' | 'queued' | null = null
+                // the run this prompt claimed: the owner of the session's run mark
+                let runId: string | null = null
+                const clientMessageId =
+                    typeof data.clientMessageId === 'string'
+                        ? data.clientMessageId.slice(0, 64)
+                        : undefined
 
                 try {
                     console.log(
@@ -327,6 +382,7 @@ export function initSocket(httpServer: any) {
                     const userId = socket.data.userId
                     const billingSource = data.billingSource === 'OWN_KEY' ? 'OWN_KEY' : 'CREDITS'
                     let model = data.model
+                    let provider = data.provider
 
                     // own key: the user's key pays, so no credits are needed. the key itself is
                     // never put in the job: the worker loads and decrypts it.
@@ -343,13 +399,16 @@ export function initSocket(httpServer: any) {
                             return
                         }
                         try {
-                            const credential = await byokService.assertOwnKeyUsable({
+                            // no model picked: the model saved for the session, then the
+                            // key's own default, never a december model
+                            const ownKey = await sessionService.resolveOwnKeyTurnModel({
                                 userId,
+                                sessionId: targetSessionId,
                                 provider: data.provider,
                                 model: data.model,
                             })
-                            // no model picked: use the key's own default, never a december model
-                            model = data.model || credential.defaultModel
+                            model = ownKey.model
+                            provider = ownKey.provider
                         } catch (keyErr: any) {
                             // only our own errors carry a message meant for the user; anything
                             // else (a database error, say) gets the generic message
@@ -391,12 +450,31 @@ export function initSocket(httpServer: any) {
                     let decryptedSecrets: Array<{ key: string; value: string }> = []
                     if (socket.data.userId) {
                         try {
+                            // "all repositories" secrets plus the ones of this session's repository
                             decryptedSecrets = await secretsService.getAllDecryptedSecrets({
                                 userId: socket.data.userId,
+                                sessionId: targetSessionId,
                             })
                         } catch (secErr) {
                             console.warn('[Socket] Failed to fetch secrets for user:', secErr)
                         }
+                    }
+
+                    // one run for a session: a prompt that arrives during a run never starts a
+                    // second job. on "queue" the web keeps it and sends it when the run ends
+                    const routed = await sessionService.routePrompt({
+                        userId,
+                        sessionId: targetSessionId,
+                    })
+                    route = routed.route
+                    runId = routed.runId
+                    if (route === 'queued') {
+                        socket.emit('prompt_queued', {
+                            sessionId: targetSessionId,
+                            prompt: data.prompt,
+                            ...(clientMessageId ? { clientMessageId } : {}),
+                        })
+                        return
                     }
 
                     // plan first and effort for this turn; on credits also the model of the tier
@@ -405,13 +483,23 @@ export function initSocket(httpServer: any) {
                         sessionId: targetSessionId,
                         billingSource,
                         model,
-                        provider: data.provider,
+                        provider,
                         tier: isSessionEffort(data.tier) ? data.tier : undefined,
                         planFirst: typeof data.planFirst === 'boolean' ? data.planFirst : undefined,
                         effort: isSessionEffort(data.effort) ? data.effort : undefined,
                         disabledPlugins: toNameList(data.disabledPlugins),
                         disabledMcps: toNameList(data.disabledMcps),
                     })
+
+                    // a new prompt counts as "Continue" for a spend limit question (#638).
+                    // a prompt that was held at the limit gives its files and skills to
+                    // this run; its text is saved in the conversation
+                    const atLimit = await sessionService
+                        .promptAtLimit({ userId, sessionId: targetSessionId, billingSource })
+                        .catch((error: unknown) => {
+                            console.error('[SERVER CORE] could not check the spend limit', error)
+                            return null
+                        })
 
                     // the prompt is saved first, so the agent's history and /rewind have it
                     const userMessageSequence = await sessionService
@@ -425,6 +513,50 @@ export function initSocket(httpServer: any) {
                             return null
                         })
 
+                    // the files of this prompt (#634): the client sends ids only. the
+                    // server ties them to the saved message and names their stored bytes
+                    const attachments = await attachmentService
+                        .attachToPrompt({
+                            userId,
+                            sessionId: targetSessionId,
+                            attachmentIds: toNameList(data.attachments) ?? [],
+                            sequence: userMessageSequence,
+                        })
+                        .catch((error: unknown) => {
+                            console.error('[SERVER CORE] could not attach the files', error)
+                            return []
+                        })
+                    const runParts = mergeHeldRun({
+                        heldRun: atLimit?.heldRun ?? null,
+                        attachments,
+                        skills: toNameList(data.skills) ?? [],
+                    })
+
+                    // "send now" during a run: the saved message goes to the running agent,
+                    // with no new job. when the run ended in between, a normal run follows
+                    if (route === 'steer') {
+                        const delivery = await sessionService.deliverSteering({
+                            sessionId: targetSessionId,
+                            message: {
+                                prompt: data.prompt,
+                                skills: runParts.skills,
+                                ...(userMessageSequence ? { userMessageSequence } : {}),
+                                ...(runParts.attachments.length > 0
+                                    ? { attachments: runParts.attachments }
+                                    : {}),
+                                ...(clientMessageId ? { clientMessageId } : {}),
+                            },
+                        })
+                        if (delivery.delivery === 'steered') {
+                            console.log(
+                                `[SERVER CORE] Prompt sent to the running agent of session '${targetSessionId}'`
+                            )
+                            return
+                        }
+                        route = 'run'
+                        runId = delivery.runId
+                    }
+
                     // enqueue to worker
                     console.log(
                         `[SERVER CORE] Enqueuing job 'run_agent' to BullMQ queue 'agent_jobs'...`
@@ -433,6 +565,8 @@ export function initSocket(httpServer: any) {
                         sessionId: targetSessionId,
                         projectId: targetSessionId,
                         userId: socket.data.userId,
+                        // the owner of the session's run mark: the worker runs only this job
+                        ...(runId ? { runId } : {}),
                         prompt: data.prompt,
                         secrets: decryptedSecrets,
                         model: turn.model,
@@ -440,9 +574,12 @@ export function initSocket(httpServer: any) {
                         billingSource,
                         planFirst: turn.planFirst,
                         effort: turn.effort,
-                        skills: toNameList(data.skills) ?? [],
+                        skills: runParts.skills,
                         disabledMcps: turn.disabledMcps,
                         ...(userMessageSequence ? { userMessageSequence } : {}),
+                        ...(runParts.attachments.length > 0
+                            ? { attachments: runParts.attachments }
+                            : {}),
                     })
 
                     console.log(
@@ -450,28 +587,68 @@ export function initSocket(httpServer: any) {
                     )
                 } catch (err: any) {
                     console.error('[SERVER CORE] Failed to enqueue agent job:', err)
+                    if (route === 'steer') {
+                        // the run of the session still works: an `error` would end it in
+                        // the web. the web keeps the message, and sends it after the run
+                        socket.emit('prompt_queued', {
+                            sessionId: targetSessionId,
+                            prompt: data.prompt,
+                            ...(clientMessageId ? { clientMessageId } : {}),
+                        })
+                        return
+                    }
+                    // the run this prompt marked was not queued: the session is free again
+                    if (route === 'run' && runId) {
+                        await sessionService.releaseRun({ sessionId: targetSessionId, runId })
+                    }
                     socket.emit('error', { message: 'Failed to start agent: ' + err.message })
                 }
             }
         )
 
+        // the stop button: ends the agent run, the sandbox keeps running (#637). only the
+        // owner's stop is sent to the worker
         socket.on('stop_session', async (data: { sessionId: string }) => {
-            console.log(`[Socket] Received STOP signal for session ${data.sessionId}`)
-            if (data?.sessionId) {
-                await sessionService
-                    .clearPendingQuestion({ userId: socket.data.userId, sessionId: data.sessionId })
-                    .catch((error: unknown) => {
-                        console.error('[Socket] could not clear the pending question', error)
-                    })
-            }
-            await pubClient.publish(
-                `session_interrupts:${data.sessionId}`,
-                JSON.stringify({ type: 'INTERRUPT' })
-            )
+            const sessionId = data?.sessionId
+            console.log(`[Socket] Received STOP signal for session ${sessionId}`)
+            if (typeof sessionId !== 'string' || !sessionId || !socket.data.userId) return
+            await sessionService
+                .requestRunStop({ sessionId, userId: socket.data.userId, reason: 'user' })
+                .catch((error: unknown) => {
+                    console.error('[Socket] could not stop the run', error)
+                })
         })
     })
 
     return io
+}
+
+/**
+ * True when the session named by a socket event is a session of the signed-in user.
+ * A session that passed once is kept on the socket, so terminal input does not read
+ * the database for each key.
+ */
+export async function canUseSession(
+    socket: { data: { userId?: string; ownedSessions?: Set<string> } },
+    sessionId: unknown
+): Promise<boolean> {
+    if (typeof sessionId !== 'string' || !sessionId) return false
+    if (socket.data.ownedSessions?.has(sessionId)) return true
+    const owned = await sessionService
+        .ownsSession({ userId: socket.data.userId, sessionId })
+        .catch((error: unknown) => {
+            console.error('[Socket] could not check the session owner', error)
+            return false
+        })
+    if (!owned) return false
+    if (!socket.data.ownedSessions) socket.data.ownedSessions = new Set<string>()
+    socket.data.ownedSessions.add(sessionId)
+    return true
+}
+
+/** true for a prompt with no text: not a string, empty, or only spaces and line breaks */
+export function isBlankPrompt(prompt: unknown): boolean {
+    return typeof prompt !== 'string' || prompt.trim().length === 0
 }
 
 /** a list of names from the client: strings only, at most 50, or undefined */

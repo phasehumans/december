@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
     buildSlashItems,
-    formatTokenCount,
     listSlashCommands,
     parseArgCommand,
     parseOpenCommand,
@@ -19,8 +18,8 @@ import type { SlashCommand, SlashScope } from './commands'
 import type { PromptInputSubmitOptions } from '@/features/home/types'
 
 import { useAppStore } from '@/app/store'
-import { isPluginOff, useConnectionsStore } from '@/features/connections/hooks/useConnectionsStore'
 import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
+import { usePromptBoxConnections } from '@/features/home/api/promptBoxConnections'
 import { saveHomeDraft } from '@/features/home/draft'
 import { usePromptConfig } from '@/features/home/promptConfig'
 import {
@@ -38,6 +37,7 @@ import {
     OPEN_SESSION_EVENT,
     TOGGLE_VOICE_EVENT,
 } from '@/shared/lib/appEvents'
+import { formatTokenCount } from '@/shared/lib/format'
 
 /** one row of a list that a command shows in the menu (/model, /effort, /switch, /check) */
 export interface SlashPickOption {
@@ -45,11 +45,13 @@ export interface SlashPickOption {
     label: string
     hint?: string
     selected?: boolean
+    /** the row shows a sample value (preview only), so it carries the Demo pill */
+    demo?: boolean
     /** what Enter or a click does. a row with no pick only shows a fact */
     pick?: () => void
 }
 
-export interface SlashSubMenu {
+interface SlashSubMenu {
     title: string
     options: SlashPickOption[]
     emptyLabel?: string
@@ -88,7 +90,26 @@ const formatElapsed = (seconds: number) =>
           ? `${Math.floor(seconds / 60)}m`
           : `${Math.floor(seconds / 3600)}h`
 
-export interface SlashChip {
+/** an MCP server in /check, with what the last session found when it connected */
+interface CheckMcpServer {
+    name: string
+    status: string
+    lastError?: string | null
+    toolCount?: number
+}
+
+const mcpCheckHint = (server: CheckMcpServer) => {
+    if (server.status === 'connected') {
+        const tools = server.toolCount ?? 0
+        return tools > 0 ? `Connected · ${tools} ${tools === 1 ? 'tool' : 'tools'}` : 'Connected'
+    }
+    if (server.status === 'needs-signin') return 'Sign in'
+    if (server.status === 'error') return server.lastError || 'Error'
+    // no session has used the server yet
+    return 'Not used yet'
+}
+
+interface SlashChip {
     id: string
     label: string
 }
@@ -104,8 +125,6 @@ interface UseSlashMenuArgs {
     onOpenAuth?: () => void
     /** writes the prompt text and puts the caret at the given position */
     setInput: (value: string, cursor: number) => void
-    /** true while the run is paid with December credits */
-    onCredits: boolean
     /** choices for /model, /effort and /switch, built by the prompt controller */
     modelOptions: SlashPickOption[]
     effortOptions: SlashPickOption[]
@@ -129,7 +148,7 @@ const hasSpeechRecognition = () =>
 
 /**
  * The slash menu of a prompt box: which rows show, which one is selected, and what a
- * pick does. Skills and /plan need server work, so they only show in demo mode.
+ * pick does. The skills are the ones turned on for the account.
  */
 export const useSlashMenu = ({
     input,
@@ -138,7 +157,6 @@ export const useSlashMenu = ({
     isAuthenticated,
     onOpenAuth,
     setInput,
-    onCredits,
     modelOptions,
     effortOptions,
     sourceOptions,
@@ -147,29 +165,22 @@ export const useSlashMenu = ({
     const queryClient = useQueryClient()
     const [demo] = useState(isConnectionsDemoActive)
 
-    const allSkills = useConnectionsStore((s) => s.skills)
-    const plugins = useConnectionsStore((s) => s.plugins)
-    const mcps = useConnectionsStore((s) => s.mcps)
+    const connections = usePromptBoxConnections(Boolean(isAuthenticated))
+    // the preview has no server behind it: /check reads its sample MCP servers
+    const demoMcps = connections.mcps
     const pluginsOff = usePromptConfig((s) => s.pluginsOff)
     const planFirst = usePromptConfig((s) => s.values.planFirst)
     const setConfigValue = usePromptConfig((s) => s.setValue)
     const previewState = useAppStore((s) => s.previewSession?.state)
 
-    const skills = useMemo<SlashSkill[]>(() => {
-        if (!demo) return []
-        return allSkills
-            .filter(
-                (skill) =>
-                    skill.enabled &&
-                    !isPluginOff(plugins, skill.plugin) &&
-                    !(skill.plugin && pluginsOff.includes(skill.plugin))
-            )
-            .map((skill) => ({
-                name: skill.name,
-                description: skill.description,
-                plugin: skill.plugin,
-            }))
-    }, [demo, allSkills, plugins, pluginsOff])
+    // a plugin switched off for this session takes its skills out of the list
+    const skills = useMemo<SlashSkill[]>(
+        () =>
+            connections.skills.filter(
+                (skill) => !(skill.plugin && pluginsOff.includes(skill.plugin))
+            ),
+        [connections.skills, pluginsOff]
+    )
 
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [subKind, setSubKind] = useState<SubKind | null>(null)
@@ -192,12 +203,12 @@ export const useSlashMenu = ({
 
     const items = useMemo<SlashItem[]>(() => {
         if (!token) return []
-        return buildSlashItems({ token, scope, demo, onCredits, skills }).filter(
+        return buildSlashItems({ token, scope, skills }).filter(
             // the microphone needs a browser that can listen
             (item) =>
                 item.type !== 'command' || item.command.name !== 'voice' || hasSpeechRecognition()
         )
-    }, [token, scope, demo, onCredits, skills])
+    }, [token, scope, skills])
 
     // the checks only run while the /check list is open: one answer from the server
     const isChecking = subKind === 'check' && Boolean(isAuthenticated)
@@ -253,16 +264,24 @@ export const useSlashMenu = ({
         if (check?.gitlab.connected) {
             rows.push({ id: 'gitlab', label: 'GitLab', hint: 'Connected' })
         }
-        if (demo) {
-            mcps.filter((mcp) => mcp.enabled && mcp.status !== 'connected').forEach((mcp) =>
-                rows.push({
-                    id: `mcp:${mcp.name}`,
-                    label: `MCP: ${mcp.name}`,
-                    hint: mcp.status === 'needs-signin' ? 'Sign in' : mcp.lastError || 'Error',
-                    pick: () => onNavigate?.('/settings/connections/mcps'),
-                })
-            )
-        }
+        // the MCP servers that are turned on. the preview has no server behind it, so it
+        // lists its sample servers
+        const mcpServers: CheckMcpServer[] = demo
+            ? demoMcps
+            : (check?.mcpServers ?? []).filter((server) => server.enabled)
+        mcpServers.forEach((server) =>
+            rows.push({
+                id: `mcp:${server.name}`,
+                label: `MCP: ${server.name}`,
+                hint: mcpCheckHint(server),
+                ...(demo ? { demo: true } : {}),
+                // a server that needs a fix opens the MCP servers page
+                pick:
+                    server.status === 'error' || server.status === 'needs-signin'
+                        ? () => onNavigate?.('/settings/connections/mcps')
+                        : undefined,
+            })
+        )
         const machine = check?.machine
         const machineState = machine?.sandboxStatus ?? machine?.vmStatus ?? previewState
         if (scope === 'session' && machineState) {
@@ -274,7 +293,7 @@ export const useSlashMenu = ({
             })
         }
         return rows
-    }, [subKind, check, github.connectUrl, demo, mcps, scope, previewState, onNavigate])
+    }, [subKind, check, github.connectUrl, demo, demoMcps, scope, previewState, onNavigate])
 
     const sub = useMemo<SlashSubMenu | null>(() => {
         if (result) return result
@@ -901,10 +920,10 @@ export const useSlashMenu = ({
     /** the commands this box can run, for the help panel */
     const commands = useMemo(
         () =>
-            listSlashCommands({ scope, demo, onCredits }).filter(
+            listSlashCommands({ scope }).filter(
                 (command) => command.name !== 'voice' || hasSpeechRecognition()
             ),
-        [scope, demo, onCredits]
+        [scope]
     )
 
     return {
@@ -924,6 +943,8 @@ export const useSlashMenu = ({
         onKeyDown,
         trySubmitCommand,
         chips,
+        /** the names of the skill chips, sent with the prompt */
+        pickedSkills: skillChips,
         removeChip,
         popChip,
         clearChips,

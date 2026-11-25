@@ -5,7 +5,13 @@ import { BrandIcon } from './BrandIcons'
 
 import type { BrandKey } from '../types'
 
+import {
+    listBoxClass,
+    listHeaderClass,
+    listRowsClass,
+} from '@/features/profile/components/settingsStyles'
 import { Modal, ModalSheetContext } from '@/shared/components/ui/Modal'
+import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { cn } from '@/shared/lib/utils'
 
@@ -24,25 +30,14 @@ const whiteButtonClass =
 export const ListBox: React.FC<{ children: React.ReactNode; className?: string }> = ({
     children,
     className,
-}) => (
-    <div
-        className={cn(
-            'bg-[#191919] border border-[#242323] rounded-xl overflow-hidden flex flex-col',
-            className
-        )}
-    >
-        {children}
-    </div>
-)
+}) => <div className={cn(listBoxClass, className)}>{children}</div>
 
 export const ListHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="hidden md:flex items-center gap-3 bg-[#202020] border-b border-[#242323] px-4 py-2.5 text-[12px] font-medium text-[#7B7A79]">
-        {children}
-    </div>
+    <div className={cn('hidden md:flex items-center gap-3', listHeaderClass)}>{children}</div>
 )
 
 export const ListRows: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="flex flex-col divide-y divide-[#242323]">{children}</div>
+    <div className={listRowsClass}>{children}</div>
 )
 
 export const ListRow: React.FC<{
@@ -63,7 +58,7 @@ export const ListRow: React.FC<{
         }}
         className={cn(
             'group flex items-center gap-3 px-3.5 md:px-4 py-3 text-[13px] min-w-0 transition-colors outline-none',
-            onClick && 'cursor-pointer hover:bg-[#1C1C1C] focus-visible:bg-[#1C1C1C]',
+            onClick && 'cursor-pointer hover:bg-[#242424] focus-visible:bg-[#242424]',
             dim && 'opacity-50',
             className
         )}
@@ -80,6 +75,17 @@ export const EmptyRow: React.FC<{ children: React.ReactNode; action?: React.Reac
         <h3 className="text-[14px] font-medium text-[#D6D5C9]">{children}</h3>
         {action}
     </div>
+)
+
+/** rows that stand in for a list while it loads, like the Apps tab */
+export const ListSkeleton: React.FC = () => (
+    <ListRows>
+        {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3 px-3.5 md:px-4 py-3">
+                <Skeleton className="h-3 w-32 rounded bg-white/[0.04]" />
+            </div>
+        ))}
+    </ListRows>
 )
 
 /** facts box on a detail page: label on the left, value on the right */
@@ -166,6 +172,13 @@ export const SoonPill: React.FC = () => (
     </span>
 )
 
+/** marks a part that runs on sample values: there is no server behind it yet */
+export const DemoPill: React.FC = () => (
+    <span className="text-[10px] font-medium text-[#919191] border border-[#383735] rounded-full px-1.5 leading-4 shrink-0">
+        Demo
+    </span>
+)
+
 export const LogoTile: React.FC<{ brand?: BrandKey; name: string; large?: boolean }> = ({
     brand,
     name,
@@ -199,10 +212,11 @@ export const SearchInput: React.FC<{
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7B7A79]" />
         <input
             type="text"
+            aria-label={placeholder}
             placeholder={placeholder}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-[#202020] border border-[#282828] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none focus:border-[#5A5A5A] transition-colors"
+            className="w-full pl-9 pr-3 py-1.5 bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none focus:border-[#5A5A5A] transition-colors"
         />
     </div>
 )

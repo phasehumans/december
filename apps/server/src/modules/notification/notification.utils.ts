@@ -1,3 +1,5 @@
+import { zoneClock } from '@december/shared'
+
 import { env } from '../../env'
 
 import type {
@@ -13,6 +15,7 @@ const IMPORTANT_EVENTS = new Set<NotifyEventKind>([
     'SESSION_NEEDS_INPUT',
     'SESSION_FAILED',
     'LOW_CREDITS',
+    'SPEND_LIMIT',
 ])
 
 export const levelAllows = (level: NotifyLevel, kind: NotifyEventKind): boolean => {
@@ -68,6 +71,17 @@ export const eventMessage = (data: {
                 path: '/settings/billing',
                 emailSubject: 'Your December credits are low',
                 emailBody: `Add credits so your sessions keep running.${balance}`,
+            }
+        }
+        case 'SPEND_LIMIT': {
+            const question = detail || 'Reached your spend limit. Continue?'
+            return {
+                title: question,
+                message: `${name} is paused. Open it to continue or stop.`,
+                type: 'WARNING',
+                path: sessionPath,
+                emailSubject: `${question} ${name}`,
+                emailBody: `${name} is paused at your spend limit. ${question}`,
             }
         }
         case 'SESSION_FINISHED':
@@ -128,45 +142,43 @@ export const isValidTimezone = (timezone: string): boolean => {
     }
 }
 
-/** the date (YYYY-MM-DD) and the minute of the day in a time zone */
-export const localClock = (now: Date, timezone: string) => {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-        timeZone: isValidTimezone(timezone) ? timezone : 'UTC',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23',
-    }).formatToParts(now)
-    const part = (type: string) => parts.find((item) => item.type === type)?.value ?? '00'
-    return {
-        date: `${part('year')}-${part('month')}-${part('day')}`,
-        minutes: Number(part('hour')) * 60 + Number(part('minute')),
-    }
+/**
+ * The summary day of a moment (YYYY-MM-DD). A summary day starts at digestTime, not at
+ * midnight, so 00:10 belongs to the day before for a 23:50 summary.
+ */
+const digestDay = (at: Date, timezone: string, digestMinutes: number): string => {
+    const clock = zoneClock(at, timezone)
+    if (clock.minutes >= digestMinutes) return clock.date
+    const dayBefore = new Date(`${clock.date}T00:00:00Z`)
+    dayBefore.setUTCDate(dayBefore.getUTCDate() - 1)
+    return dayBefore.toISOString().slice(0, 10)
 }
 
-/** the summary is due once a local day, at or after digestTime */
+/**
+ * The summary is due once a summary day, at the first tick at or after digestTime. The
+ * ticks run on quarter hours, so a 23:50 summary goes out at the tick after midnight.
+ * lastDigestAt is the start of the window: the last summary, or when the user turned it on.
+ */
 export const isDigestDue = (data: {
     now: Date
     timezone: string
     digestTime: string
-    lastDigestAt: Date | null
+    lastDigestAt: Date
 }): boolean => {
     const { now, timezone, digestTime, lastDigestAt } = data
     const [hours = 9, minutes = 0] = digestTime.split(':').map(Number)
-    const clock = localClock(now, timezone)
-    if (clock.minutes < hours * 60 + minutes) return false
-    if (!lastDigestAt) return true
-    return localClock(lastDigestAt, timezone).date !== clock.date
+    const digestMinutes = hours * 60 + minutes
+    return (
+        digestDay(lastDigestAt, timezone, digestMinutes) < digestDay(now, timezone, digestMinutes)
+    )
 }
 
 /** the text of the daily summary, or null when nothing happened */
 export const digestBody = (summary: DigestSummary): string | null => {
     const lines: string[] = []
-    if (summary.sessionsWorkedOn > 0) {
-        const noun = summary.sessionsWorkedOn === 1 ? 'session' : 'sessions'
-        lines.push(`December worked on ${summary.sessionsWorkedOn} ${noun}.`)
+    if (summary.sessionsFinished > 0) {
+        const noun = summary.sessionsFinished === 1 ? 'session' : 'sessions'
+        lines.push(`${summary.sessionsFinished} ${noun} finished.`)
     }
     if (summary.pullRequestsOpened > 0) {
         const verb = summary.pullRequestsOpened === 1 ? 'pull request was' : 'pull requests were'

@@ -15,7 +15,9 @@ import type { WorkspaceScreenProps } from '@/features/preview/types'
 import { useAppStore } from '@/app/store'
 import { OutOfCreditsModal } from '@/features/billing/components/OutOfCreditsModal'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { isBlockedByCredits, isLowOnCredits } from '@/features/billing/lib/creditsBlock'
 import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
+import { useModelSelection } from '@/features/home/model-selection'
 import { MobileIconButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { useWorkspaceScreenController } from '@/features/preview/hooks/useWorkspaceScreenController'
 import { sessionAPI } from '@/features/sessions/api/session'
@@ -176,10 +178,20 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
         (overview ? 0 : 100)
     const unlimited = (overview as any)?.credits?.unlimited ?? false
 
+    // a session on the user's own key is not blocked by the credit balance
+    const billingSource = useModelSelection((state) => state.source)
     const isOutOfCredits =
-        showOutOfCreditsModal || (!unlimited && overview !== undefined && remainingInCents <= 0)
-    const showLowCreditsWarning =
-        !unlimited && overview !== undefined && remainingInCents > 0 && remainingInCents < 10
+        showOutOfCreditsModal ||
+        isBlockedByCredits({
+            source: billingSource,
+            unlimited,
+            remainingInCents: overview !== undefined ? remainingInCents : undefined,
+        })
+    const showLowCreditsWarning = isLowOnCredits({
+        source: billingSource,
+        unlimited,
+        remainingInCents: overview !== undefined ? remainingInCents : undefined,
+    })
 
     const {
         activeTab,
@@ -451,9 +463,9 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                         <ChatSidebar
                             mode="mobile"
                             messages={messages}
-                            onPromptSubmit={(prompt) => {
+                            onPromptSubmit={(prompt, options) => {
                                 if (isOutOfCredits) return
-                                void onPromptSubmit(prompt)
+                                void onPromptSubmit(prompt, options)
                             }}
                             onBack={handleTriggerExit}
                             isGenerating={isGenerating}
@@ -594,9 +606,9 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                 <div className="flex-1 flex w-full min-h-0 overflow-hidden relative">
                     <ChatSidebar
                         messages={messages}
-                        onPromptSubmit={(prompt) => {
+                        onPromptSubmit={(prompt, options) => {
                             if (isOutOfCredits) return
-                            void onPromptSubmit(prompt)
+                            void onPromptSubmit(prompt, options)
                         }}
                         onBack={handleTriggerExit}
                         isGenerating={isGenerating}
@@ -659,6 +671,7 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                             showStructureOnly={showStructureOnly}
                             projectName={projectName}
                             projectId={projectId}
+                            sessionBranch={currentSession?.prBranch}
                             versions={versions}
                             activeVersionId={activeVersionId}
                             isVersionLoading={isVersionLoading}

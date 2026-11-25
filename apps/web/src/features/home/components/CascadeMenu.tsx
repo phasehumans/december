@@ -11,6 +11,8 @@ export interface CascadeItem {
     hint?: string
     /** no backend yet: the row shows "Soon" and cannot be used */
     soon?: boolean
+    /** a small pill at the right of the row, such as "Demo" */
+    tag?: React.ReactNode
     checked?: boolean
     /** the list that opens beside the menu for this row */
     side?: React.ReactNode
@@ -347,6 +349,7 @@ export const CascadeMenu: React.FC<CascadeMenuProps> = ({
                             {item.hint}
                         </span>
                     )}
+                    {item.tag}
                     {item.soon ? (
                         <span className="text-[10px] font-medium text-[#919191] border border-[#383735] rounded-full px-1.5 leading-4 shrink-0">
                             Soon

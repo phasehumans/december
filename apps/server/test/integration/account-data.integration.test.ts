@@ -6,9 +6,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { ensureStorageBucket } from '../../src/config/s3'
+import { ensureStorageBucket, s3 } from '../../src/config/s3'
 import { emailService } from '../../src/modules/email/email.service'
-import { setDataExportQueue } from '../../src/modules/setting/setting.queue'
+import {
+    isLastDataExportAttempt,
+    setDataExportQueue,
+} from '../../src/modules/setting/setting.queue'
 import { settingService } from '../../src/modules/setting/setting.service'
 import { getBinaryFile } from '../../src/shared/project-storage'
 import { cleanupTestUser, createSignedInUser, getRandomIP } from '../helpers'
@@ -231,7 +234,7 @@ describe('account data api', () => {
                 .set('x-forwarded-for', getRandomIP())
             expect(res.status).toBe(410)
 
-            const { deleted } = await settingService.purgeDataExports()
+            const { deleted } = await settingService.purgeDataExports({})
             expect(deleted).toBeGreaterThanOrEqual(1)
             expect(await prisma.dataExport.findUnique({ where: { id: exportId } })).toBeNull()
             expect(await getBinaryFile(`exports/${user.userId}/${exportId}.zip`)).toBeNull()
@@ -272,6 +275,156 @@ describe('account data api', () => {
             } as any)
             const retry = await authed(other.token).post('/setting/export')
             expect(retry.status).toBe(202)
+        })
+    })
+
+    describe('a data export that fails', () => {
+        const realSend = s3.send.bind(s3)
+        let storageDown = false
+        let count = 0
+
+        /** a new user (one export a day), with an export in the queue */
+        const queuedExport = async () => {
+            count += 1
+            const email = `export-retry-${count}-${stamp}@example.com`
+            const user = await createSignedInUser({ email })
+            userIds.push(user.userId)
+            const res = await authed(user.token).post('/setting/export')
+            expect(res.status).toBe(202)
+            return { ...user, email, exportId: res.body.data.export.id as string }
+        }
+        const statusOf = async (token: string) =>
+            (await authed(token).get('/setting/export')).body.data.export.status
+        const inboxOf = async (token: string) =>
+            (await authed(token).get('/notification')).body.data.notifications as Array<{
+                title: string
+                message: string
+                type: string
+                link: string | null
+            }>
+        const subjectsTo = (email: string) =>
+            sentEmails.filter((sent) => sent.to === email).map((sent) => sent.subject)
+
+        beforeAll(() => {
+            // the file store is an outside service: it fails while storageDown is set
+            s3.send = ((...args: unknown[]) =>
+                storageDown
+                    ? Promise.reject(new Error('storage is down'))
+                    : (realSend as (...rest: unknown[]) => unknown)(...args)) as typeof s3.send
+        })
+
+        afterAll(async () => {
+            s3.send = realSend as typeof s3.send
+            await prisma.notification.deleteMany({ where: { userId: { in: userIds } } })
+        })
+
+        beforeEach(() => {
+            storageDown = false
+        })
+
+        it('the retry after a failed attempt builds the file and mails the link', async () => {
+            const user = await queuedExport()
+
+            storageDown = true
+            await expect(
+                settingService.processDataExport({ exportId: user.exportId, isLastAttempt: false })
+            ).rejects.toThrow('storage is down')
+            // the queue tries again, so the export is not failed and the user hears nothing yet
+            expect(await statusOf(user.token)).toBe('PENDING')
+            expect(await inboxOf(user.token)).toEqual([])
+            expect(subjectsTo(user.email)).toEqual([])
+
+            storageDown = false
+            const retry = await settingService.processDataExport({
+                exportId: user.exportId,
+                isLastAttempt: true,
+            })
+            expect(retry).toMatchObject({ status: 'READY', sessions: 0 })
+            expect(await statusOf(user.token)).toBe('READY')
+            expect(subjectsTo(user.email)).toEqual(['Your December data export'])
+            // the inbox always has the link too (review C5)
+            const inbox = await inboxOf(user.token)
+            expect(inbox).toHaveLength(1)
+            expect(inbox[0]).toMatchObject({ title: 'Your data export is ready', type: 'SUCCESS' })
+            expect(inbox[0].link).toContain(`/api/v1/setting/export/${user.exportId}/download?t=`)
+        })
+
+        // review C5: sendMessageEmail gives null when the mail could not be sent
+        it('a ready export whose mail could not be sent is still in the inbox with the link', async () => {
+            const user = await queuedExport()
+            const working = emailService.sendMessageEmail
+            emailService.sendMessageEmail = (async () => null) as any
+            try {
+                const result = await settingService.processDataExport({
+                    exportId: user.exportId,
+                    isLastAttempt: true,
+                })
+                expect(result).toMatchObject({ status: 'READY' })
+            } finally {
+                emailService.sendMessageEmail = working
+            }
+
+            expect(await statusOf(user.token)).toBe('READY')
+            const inbox = await inboxOf(user.token)
+            expect(inbox.map((row: any) => row.title)).toEqual(['Your data export is ready'])
+            expect(inbox[0].link).toContain(`/api/v1/setting/export/${user.exportId}/download?t=`)
+            expect(inbox[0].message).toContain('The link works until')
+        })
+
+        it('tells the user in the inbox and by mail when the last attempt fails', async () => {
+            const user = await queuedExport()
+
+            storageDown = true
+            await expect(
+                settingService.processDataExport({ exportId: user.exportId, isLastAttempt: false })
+            ).rejects.toThrow('storage is down')
+            await expect(
+                settingService.processDataExport({ exportId: user.exportId, isLastAttempt: true })
+            ).rejects.toThrow('storage is down')
+
+            expect(await statusOf(user.token)).toBe('FAILED')
+            const inbox = await inboxOf(user.token)
+            expect(inbox).toHaveLength(1)
+            expect(inbox[0]).toMatchObject({
+                title: 'Your data export failed',
+                message: 'We could not build your data export. You can ask for it again now.',
+                type: 'ERROR',
+                link: '/settings/account',
+            })
+            expect(subjectsTo(user.email)).toEqual(['Your December data export failed'])
+            const mail = sentEmails.find((sent) => sent.to === user.email)
+            expect(mail?.body).toContain('We could not build your data export.')
+            expect(mail?.body).toContain('/settings/account')
+
+            // a failed export does not count for the day
+            storageDown = false
+            const again = await authed(user.token).post('/setting/export')
+            expect(again.status).toBe(202)
+        })
+
+        it('with email off, the failed export is in the inbox only', async () => {
+            const user = await queuedExport()
+            await prisma.user.update({
+                where: { id: user.userId },
+                data: { notifyEmail: false },
+            })
+
+            storageDown = true
+            await expect(
+                settingService.processDataExport({ exportId: user.exportId, isLastAttempt: true })
+            ).rejects.toThrow('storage is down')
+
+            expect((await inboxOf(user.token)).map((row) => row.title)).toEqual([
+                'Your data export failed',
+            ])
+            expect(subjectsTo(user.email)).toEqual([])
+        })
+
+        it('knows the last attempt of the queue job', () => {
+            // the queue gives a job 2 attempts (setting.queue.ts)
+            expect(isLastDataExportAttempt({ attemptsMade: 0, opts: { attempts: 2 } })).toBe(false)
+            expect(isLastDataExportAttempt({ attemptsMade: 1, opts: { attempts: 2 } })).toBe(true)
+            expect(isLastDataExportAttempt({ attemptsMade: 0, opts: {} })).toBe(true)
         })
     })
 

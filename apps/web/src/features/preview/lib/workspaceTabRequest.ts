@@ -3,7 +3,7 @@
  * (a pull request row, the /diff, /tasks and /open commands). The workspace may not be
  * mounted yet, so the request waits here until the workspace reads it.
  */
-export type RequestedWorkspaceTab = 'changes' | 'pull_requests' | 'shell' | 'file'
+type RequestedWorkspaceTab = 'changes' | 'pull_requests' | 'shell' | 'file'
 
 const REQUEST_EVENT = 'december:workspace-tab'
 // a request for a session that never loads must not land on the next session opened

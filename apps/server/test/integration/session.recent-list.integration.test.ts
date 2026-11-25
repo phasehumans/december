@@ -4,6 +4,7 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { sessionService } from '../../src/modules/session/session.service'
+import { appCache } from '../../src/shared/cache'
 import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 import type { Prisma } from '@december/database'
@@ -344,6 +345,46 @@ describe('Session recent list (pin, needs answer, archive merged)', () => {
             const res = await as(ownerToken).get('/counts')
             expect(res.status).toBe(200)
             expect(res.body.data).toEqual({ running: 2, openPullRequests: 2, merged: 0 })
+        })
+
+        it('counts every session of a user with more than 100, not one page of them', async () => {
+            await clearOwnerSessions()
+            // the rows change without the service, so the counts cached above are old
+            await appCache.delPattern(appCache.key('sessions', 'recent', ownerId, '*'))
+
+            const rows = (count: number, data: Partial<Prisma.SessionCreateManyInput>) =>
+                Array.from({ length: count }, (_, index) => ({
+                    userId: ownerId,
+                    title: `many ${index}`,
+                    ...data,
+                }))
+            let prNumber = 0
+            const withPr = (count: number, data: Partial<Prisma.SessionCreateManyInput>) =>
+                rows(count, data).map((row) => ({ ...row, prNumber: (prNumber += 1) }))
+
+            await prisma.session.createMany({
+                data: [
+                    // running: 120 + 15 + the 4 merged ones below = 139
+                    ...rows(120, { vmStatus: 'RUNNING' }),
+                    ...rows(15, { vmStatus: 'PROVISIONING' }),
+                    ...rows(7, { vmStatus: 'RUNNING', isArchived: true }),
+                    // open pull requests: 101 + 12 + 5 = 118
+                    ...withPr(101, { prState: 'open' }),
+                    ...withPr(12, { prState: 'draft' }),
+                    ...withPr(5, { prState: null }),
+                    ...withPr(9, { prState: 'open', isArchived: true }),
+                    ...withPr(6, { prState: 'closed' }),
+                    // merged and not running: 103
+                    ...withPr(103, { prState: 'merged' }),
+                    ...withPr(4, { prState: 'merged', vmStatus: 'RUNNING' }),
+                    ...withPr(8, { prState: 'merged', isArchived: true }),
+                    ...rows(110, {}),
+                ],
+            })
+
+            const res = await as(ownerToken).get('/counts')
+            expect(res.status).toBe(200)
+            expect(res.body.data).toEqual({ running: 139, openPullRequests: 118, merged: 103 })
         })
     })
 })

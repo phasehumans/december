@@ -1,6 +1,7 @@
 import Redis from 'ioredis'
 
 import { E2BSandboxService } from './e2b-sandbox.service'
+import { subscribeWhenReady } from './redis-subscriber'
 
 import type {
     DestroyPtySessionInput,
@@ -43,6 +44,11 @@ const getRedisPub = (): Redis => {
         })
         redisPub.on('error', () => {
             // Intentionally swallowed: Suppress unhandled redis pub connection noise in test environment
+        })
+        // lazy with no offline queue: nothing opens it by itself, and the terminal output
+        // is only sent on a ready connection. open it now
+        redisPub.connect().catch(() => {
+            // Intentionally swallowed: redis is offline (tests); the client tries again
         })
     }
     return redisPub
@@ -312,16 +318,19 @@ const destroyPtySession = async (data: DestroyPtySessionInput): Promise<void> =>
 
 const start = async (): Promise<void> => {
     const sub = getRedisSub()
-    await sub
-        .psubscribe(
-            'session_terminal_input:*',
-            'session_terminal_resize:*',
-            'session_terminal_attach:*',
-            'session_terminal_detach:*'
-        )
-        .catch(() => {
-            // Intentionally swallowed: Offline Redis fallback during test runs
-        })
+    // the subscriber is lazy and has no offline queue: a psubscribe sent before "ready" is
+    // refused, and no terminal input would ever reach this worker
+    subscribeWhenReady({
+        client: sub,
+        subscribe: () =>
+            sub.psubscribe(
+                'session_terminal_input:*',
+                'session_terminal_resize:*',
+                'session_terminal_attach:*',
+                'session_terminal_detach:*'
+            ),
+        label: 'TerminalBridgeService',
+    })
 
     sub.on('pmessage', async (pattern, channel, message) => {
         try {

@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 
 import { PAGE_SUBTITLES } from './settingsStyles'
@@ -5,7 +6,7 @@ import {
     SettingsPage,
     SettingsRow,
     SettingsSection,
-    SettingsSoon,
+    SettingsSelect,
     outlineButtonClass,
     usePreviewOn,
     usePreviewValue,
@@ -13,37 +14,32 @@ import {
 
 import {
     ChoiceGroup,
+    DemoPill,
     FormError,
     ListBox,
     ListRows,
     ModalActions,
+    SecondaryButton,
     fieldLabelClass,
-    inputClass,
     textareaClass,
 } from '@/features/connections/components/ConnectionsUi'
+import { profileAPI } from '@/features/profile/api/profile'
+import {
+    sandboxAPI,
+    type ArchiveAfterDays,
+    type IdleStopMinutes,
+    type RunningSandbox,
+    type SandboxSettings,
+} from '@/features/profile/api/sandbox'
+import { useConnectedRepos } from '@/features/profile/hooks/useConnectedRepos'
 import { Modal } from '@/shared/components/ui/Modal'
 
-interface RunningSandbox {
-    id: string
-    title: string
-    repo: string
-    detail: string
-}
-
-interface SetupCommand {
-    repo: string
-    commands: string
-}
-
-// sample rows for the ui-only page. the real lists come with the server part (issue 637)
-const SAMPLE_RUNNING: RunningSandbox[] = [
-    { id: 's1', title: 'fix-login-redirect', repo: 'acme/web', detail: '38 min · $0.21' },
-    { id: 's2', title: 'add-csv-export', repo: 'acme/api', detail: '6 min · $0.03' },
-]
-const SAMPLE_SETUP: SetupCommand[] = [
-    { repo: 'acme/web', commands: 'bun install' },
-    { repo: 'acme/api', commands: 'pip install -r requirements.txt' },
-]
+const SETTINGS_KEY = ['sandbox-settings']
+const RUNNING_KEY = ['sandbox-running']
+// the same limit as the server
+const SETUP_COMMANDS_MAX_LENGTH = 4000
+// the value of the repository select before a repository is picked
+const NO_REPOSITORY = ''
 
 const pick = <T extends string>(...pairs: [T, string][]) =>
     pairs.map(([value, label]) => ({ value, label }))
@@ -51,56 +47,138 @@ const IDLE = pick(['10', '10 min'], ['30', '30 min'], ['60', '1 hour'])
 const ARCHIVE = pick(['7', '7 days'], ['30', '30 days'], ['never', 'Never'])
 const SIZE = pick(['standard', 'Standard'], ['large', 'Large'])
 
+/** "38 min" or "2 h 5 min": how long ago the session started */
+const formatRunTime = (startedAt: string, now: number): string => {
+    const minutes = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 60000))
+    if (minutes < 60) return `${minutes} min`
+    return `${Math.floor(minutes / 60)} h ${minutes % 60} min`
+}
+
+/** the grey line of a running row: repository, time (or Starting) and cost so far */
+const runningDetail = (sandbox: RunningSandbox, now: number): string =>
+    [
+        sandbox.repoFullName,
+        sandbox.sandboxStatus === 'STARTING' ? 'Starting' : formatRunTime(sandbox.startedAt, now),
+        `$${(sandbox.costInCents / 100).toFixed(2)}`,
+    ]
+        .filter(Boolean)
+        .join(' · ')
+
 /**
- * Sandbox (N3-A): what runs now with Stop, the idle time, when to archive, the machine
- * size, and setup commands for each repository. Ui only (issue 637).
+ * Sandbox (N3-A, issue 637): what runs now with Stop, the idle time, when to archive, and
+ * setup commands for each repository. The machine size is ui only: it shows with the
+ * preview on.
  */
 export const ProfileSandboxSettings: React.FC = () => {
     const isPreview = usePreviewOn()
-    const [running, setRunning] = usePreviewValue('sandbox.running', SAMPLE_RUNNING)
-    const [idle, setIdle] = usePreviewValue<'10' | '30' | '60'>('sandbox.idle', '10')
-    const [archive, setArchive] = usePreviewValue<'7' | '30' | 'never'>('sandbox.archive', '30')
+    const queryClient = useQueryClient()
     const [size, setSize] = usePreviewValue<'standard' | 'large'>('sandbox.size', 'standard')
-    const [setup, setSetup] = usePreviewValue('sandbox.setup', SAMPLE_SETUP)
 
-    // the setup dialog: null is closed, an index edits that row, -1 adds a row
-    const [editing, setEditing] = React.useState<number | null>(null)
-    const [repo, setRepo] = React.useState('')
+    const settingsQuery = useQuery({ queryKey: SETTINGS_KEY, queryFn: sandboxAPI.getSettings })
+    const settings = settingsQuery.data
+    const runningQuery = useQuery({ queryKey: RUNNING_KEY, queryFn: sandboxAPI.getRunning })
+    const running = runningQuery.data?.items ?? []
+    const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: profileAPI.getProfile })
+    const { repos } = useConnectedRepos({
+        enabled: Boolean(profile),
+        isGithubConnected: Boolean(profile?.githubAppInstall || profile?.githubConnected),
+    })
+
+    const save = useMutation({
+        mutationFn: (
+            patch: Partial<Pick<SandboxSettings, 'idleStopMinutes' | 'archiveAfterDays'>>
+        ) => sandboxAPI.updateSettings(patch),
+        onMutate: async (patch) => {
+            await queryClient.cancelQueries({ queryKey: SETTINGS_KEY })
+            const previous = queryClient.getQueryData<SandboxSettings>(SETTINGS_KEY)
+            if (previous) queryClient.setQueryData(SETTINGS_KEY, { ...previous, ...patch })
+            return { previous }
+        },
+        onError: (_error, _patch, context) => {
+            if (context?.previous) queryClient.setQueryData(SETTINGS_KEY, context.previous)
+        },
+        onSuccess: (saved) => queryClient.setQueryData(SETTINGS_KEY, saved),
+    })
+
+    // the answer of the stop is the state it leads to: the list is not read again at once
+    const stop = useMutation({
+        mutationFn: (sessionId: string) => sandboxAPI.stop(sessionId),
+        onSuccess: (stopped) => {
+            const current = queryClient.getQueryData<{ items: RunningSandbox[] }>(RUNNING_KEY)
+            if (!current) return
+            const status = stopped.sandboxStatus
+            queryClient.setQueryData(RUNNING_KEY, {
+                items: current.items.flatMap((item) => {
+                    if (item.sessionId !== stopped.sessionId) return [item]
+                    // a sandbox that still starts or runs stays in the list
+                    return status === 'RUNNING' || status === 'STARTING'
+                        ? [{ ...item, sandboxStatus: status }]
+                        : []
+                }),
+            })
+        },
+    })
+
+    // the setup dialog: null is closed, a repository name edits that row, '' adds a row
+    const [editing, setEditing] = React.useState<string | null>(null)
+    const [repo, setRepo] = React.useState(NO_REPOSITORY)
     const [commands, setCommands] = React.useState('')
     const [formError, setFormError] = React.useState<string | null>(null)
 
-    if (!isPreview) {
+    const saveSetup = useMutation({
+        mutationFn: (data: { repoFullName: string; commands: string }) =>
+            sandboxAPI.setSetupCommands(data),
+        onSuccess: (saved) => {
+            queryClient.setQueryData(SETTINGS_KEY, saved)
+            setEditing(null)
+        },
+        onError: (error: Error) => setFormError(error.message || 'Could not save.'),
+    })
+
+    if (!settings) {
         return (
-            <SettingsSoon
-                title="Sandbox"
-                subtitle={PAGE_SUBTITLES.sandbox}
-                text="Sandbox settings are coming soon"
-            />
+            <SettingsPage title="Sandbox" subtitle={PAGE_SUBTITLES.sandbox}>
+                {settingsQuery.isError && (
+                    <p className="text-[13px] text-[#7B7A79]">Could not load the settings.</p>
+                )}
+            </SettingsPage>
         )
     }
 
-    const openSetup = (index: number) => {
-        const row = index >= 0 ? setup[index] : undefined
-        setRepo(row?.repo ?? '')
+    const setup = settings.setupCommands
+    // the server keeps a repository in lower case: show the name as the git host writes it
+    const repoLabel = (repoFullName: string) =>
+        repos.find((item) => item.fullName.toLowerCase() === repoFullName.toLowerCase())
+            ?.fullName ?? repoFullName
+    // a new row picks from the repositories that have no setup commands yet
+    const repoOptions = [
+        { value: NO_REPOSITORY, label: 'Pick a repository' },
+        ...repos
+            .filter(
+                (item) => !setup.some((row) => row.repoFullName === item.fullName.toLowerCase())
+            )
+            .map((item) => ({ value: item.fullName, label: item.fullName })),
+    ]
+    const now = Date.now()
+
+    const openSetup = (repoFullName: string) => {
+        const row = setup.find((item) => item.repoFullName === repoFullName)
+        setRepo(row?.repoFullName ?? NO_REPOSITORY)
         setCommands(row?.commands ?? '')
         setFormError(null)
-        setEditing(index)
+        setEditing(repoFullName)
     }
 
-    const saveSetup = (event: React.FormEvent) => {
+    const submitSetup = (event: React.FormEvent) => {
         event.preventDefault()
         // the modal is portaled, so stop the submit reaching a form behind it
         event.stopPropagation()
-        if (editing === null) return
-        const next: SetupCommand = { repo: repo.trim(), commands: commands.trim() }
-        if (!/^[\w.-]+\/[\w.-]+$/.test(next.repo)) {
-            setFormError('Enter the repository as owner/name.')
+        if (editing === null || !repo) return
+        if (commands.length > SETUP_COMMANDS_MAX_LENGTH) {
+            setFormError(`Use at most ${SETUP_COMMANDS_MAX_LENGTH} characters.`)
             return
         }
-        setSetup(
-            editing >= 0 ? setup.map((row, i) => (i === editing ? next : row)) : [...setup, next]
-        )
-        setEditing(null)
+        saveSetup.mutate({ repoFullName: repo, commands: commands.trim() })
     }
 
     return (
@@ -126,23 +204,24 @@ export const ProfileSandboxSettings: React.FC = () => {
                         <ListRows>
                             {running.map((sandbox) => (
                                 <div
-                                    key={sandbox.id}
+                                    key={sandbox.sessionId}
                                     className="flex items-center gap-3 px-3.5 md:px-4 py-3 text-[13px]"
                                 >
                                     <div className="flex flex-col min-w-0 flex-1">
                                         <span className="text-[#D6D5C9] font-medium truncate">
-                                            {sandbox.title}
+                                            {sandbox.title || 'Untitled session'}
                                         </span>
                                         <span className="text-[12px] text-[#7B7A79] truncate">
-                                            {sandbox.repo} · {sandbox.detail}
+                                            {runningDetail(sandbox, now)}
                                         </span>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            setRunning(running.filter((r) => r.id !== sandbox.id))
+                                        onClick={() => stop.mutate(sandbox.sessionId)}
+                                        disabled={
+                                            stop.isPending && stop.variables === sandbox.sessionId
                                         }
-                                        aria-label={`Stop ${sandbox.title}`}
+                                        aria-label={`Stop ${sandbox.title || 'Untitled session'}`}
                                         className={outlineButtonClass}
                                     >
                                         Stop
@@ -159,26 +238,49 @@ export const ProfileSandboxSettings: React.FC = () => {
                     <ChoiceGroup
                         label="Stop when idle for"
                         options={IDLE}
-                        value={idle}
-                        onChange={setIdle}
+                        value={String(settings.idleStopMinutes) as (typeof IDLE)[number]['value']}
+                        onChange={(value) =>
+                            save.mutate({ idleStopMinutes: Number(value) as IdleStopMinutes })
+                        }
                     />
                 </SettingsRow>
                 <SettingsRow label="Archive sessions after">
                     <ChoiceGroup
                         label="Archive sessions after"
                         options={ARCHIVE}
-                        value={archive}
-                        onChange={setArchive}
+                        value={
+                            (settings.archiveAfterDays === null
+                                ? 'never'
+                                : String(
+                                      settings.archiveAfterDays
+                                  )) as (typeof ARCHIVE)[number]['value']
+                        }
+                        onChange={(value) =>
+                            save.mutate({
+                                archiveAfterDays:
+                                    value === 'never' ? null : (Number(value) as ArchiveAfterDays),
+                            })
+                        }
                     />
                 </SettingsRow>
-                <SettingsRow label="Machine size">
-                    <ChoiceGroup
-                        label="Machine size"
-                        options={SIZE}
-                        value={size}
-                        onChange={setSize}
-                    />
-                </SettingsRow>
+                {/* ui only: a second machine size needs its own E2B template and a price */}
+                {isPreview && (
+                    <SettingsRow
+                        label={
+                            <span className="inline-flex items-center gap-2">
+                                Machine size
+                                <DemoPill />
+                            </span>
+                        }
+                    >
+                        <ChoiceGroup
+                            label="Machine size"
+                            options={SIZE}
+                            value={size}
+                            onChange={setSize}
+                        />
+                    </SettingsRow>
+                )}
             </SettingsSection>
 
             <SettingsSection
@@ -188,7 +290,7 @@ export const ProfileSandboxSettings: React.FC = () => {
                 action={
                     <button
                         type="button"
-                        onClick={() => openSetup(-1)}
+                        onClick={() => openSetup(NO_REPOSITORY)}
                         className={outlineButtonClass}
                     >
                         Add repository
@@ -202,14 +304,14 @@ export const ProfileSandboxSettings: React.FC = () => {
                         </div>
                     ) : (
                         <ListRows>
-                            {setup.map((row, index) => (
+                            {setup.map((row) => (
                                 <div
-                                    key={row.repo}
+                                    key={row.repoFullName}
                                     className="flex items-center gap-3 px-3.5 md:px-4 py-3 text-[13px]"
                                 >
                                     <div className="flex flex-col min-w-0 flex-1">
                                         <span className="text-[#D6D5C9] font-medium truncate">
-                                            {row.repo}
+                                            {repoLabel(row.repoFullName)}
                                         </span>
                                         <span className="text-[12px] text-[#7B7A79] font-mono truncate">
                                             {row.commands}
@@ -217,8 +319,8 @@ export const ProfileSandboxSettings: React.FC = () => {
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => openSetup(index)}
-                                        aria-label={`Edit setup commands of ${row.repo}`}
+                                        onClick={() => openSetup(row.repoFullName)}
+                                        aria-label={`Edit setup commands of ${repoLabel(row.repoFullName)}`}
                                         className={outlineButtonClass}
                                     >
                                         Edit
@@ -239,20 +341,20 @@ export const ProfileSandboxSettings: React.FC = () => {
                 showLogo={false}
                 sheetOnPhone
             >
-                <form onSubmit={saveSetup} className="flex flex-col gap-4">
+                <form onSubmit={submitSetup} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
-                        <label htmlFor="setup-repo-input" className={fieldLabelClass}>
-                            Repository
-                        </label>
-                        <input
-                            id="setup-repo-input"
-                            type="text"
-                            autoFocus
-                            value={repo}
-                            onChange={(e) => setRepo(e.target.value)}
-                            placeholder="owner/name"
-                            className={inputClass}
-                        />
+                        <span className={fieldLabelClass}>Repository</span>
+                        {editing ? (
+                            <span className="text-[13px] text-[#D6D5C9]">{repoLabel(editing)}</span>
+                        ) : (
+                            <SettingsSelect
+                                label="Repository"
+                                value={repo}
+                                options={repoOptions}
+                                onChange={setRepo}
+                                className="w-full"
+                            />
+                        )}
                     </div>
                     <div className="flex flex-col gap-1.5">
                         <label htmlFor="setup-commands-input" className={fieldLabelClass}>
@@ -264,6 +366,7 @@ export const ProfileSandboxSettings: React.FC = () => {
                             value={commands}
                             onChange={(e) => setCommands(e.target.value)}
                             placeholder="bun install"
+                            maxLength={SETUP_COMMANDS_MAX_LENGTH}
                             className={textareaClass}
                         />
                     </div>
@@ -271,7 +374,20 @@ export const ProfileSandboxSettings: React.FC = () => {
                     <ModalActions
                         onCancel={() => setEditing(null)}
                         submitLabel="Save"
-                        submitDisabled={!repo.trim() || !commands.trim()}
+                        submitDisabled={!repo || !commands.trim()}
+                        isPending={saveSetup.isPending}
+                        leading={
+                            editing ? (
+                                <SecondaryButton
+                                    onClick={() =>
+                                        saveSetup.mutate({ repoFullName: editing, commands: '' })
+                                    }
+                                    disabled={saveSetup.isPending}
+                                >
+                                    Remove
+                                </SecondaryButton>
+                            ) : undefined
+                        }
                     />
                 </form>
             </Modal>

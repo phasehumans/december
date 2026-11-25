@@ -16,6 +16,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import App from './App'
 import { DeviceActivate } from './features/auth/components/DeviceActivate'
 import { GithubCallback } from './features/auth/components/GithubCallback'
+import { ReferralLanding } from './features/auth/components/ReferralLanding'
+import { InviteAccept } from './features/profile/components/InviteAccept'
 import { getGoogleClientId, getWebUrl } from './shared/config/env'
 import { QueryProvider } from './shared/providers/query-provider'
 
@@ -44,7 +46,9 @@ const app = (
             <GoogleOAuthProvider clientId={getGoogleClientId()}>
                 <Routes>
                     <Route path="/activate" element={<DeviceActivate />} />
+                    <Route path="/invite/:token" element={<InviteAccept />} />
                     <Route path="/github/callback" element={<GithubCallback />} />
+                    <Route path="/r/:code" element={<ReferralLanding />} />
                     <Route path="/pricing" element={<Navigate to="/settings/billing" replace />} />
                     <Route path="/privacy" element={<ExternalRedirect targetPath="/privacy" />} />
                     <Route path="/terms" element={<ExternalRedirect targetPath="/terms" />} />

@@ -9,6 +9,8 @@ export const getSessionsSchema = z.object({
         )
         .optional(),
     tags: z.string().optional(),
+    // one repository: owner/name, or a name alone for that name under any owner (#641)
+    repoName: z.string().trim().min(1).max(200).optional(),
     sortBy: z.enum(['updatedAt', 'createdAt']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
     search: z.string().optional(),
@@ -29,6 +31,13 @@ export const getSessionsSchema = z.object({
         .preprocess((val) => (val === 'true' ? true : undefined), z.boolean().optional())
         .optional(),
     needsAnswer: z
+        .preprocess((val) => (val === 'true' ? true : undefined), z.boolean().optional())
+        .optional(),
+})
+
+export const getSessionFacetsSchema = z.object({
+    // only the repositories and tags of sessions that opened a pull request
+    hasPr: z
         .preprocess((val) => (val === 'true' ? true : undefined), z.boolean().optional())
         .optional(),
 })
@@ -178,6 +187,10 @@ export const disconnectSessionParamsSchema = z.object({
 })
 
 export const previewActivityParamsSchema = z.object({
+    id: z.string().uuid('Invalid session ID'),
+})
+
+export const stopSessionParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
 

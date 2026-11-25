@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client'
 
-import type { BillingSource } from '@/features/home/model-selection'
-import type { PromptRunConfig } from '@/features/home/types'
+import type { BillingSource, Speed } from '@/features/home/model-selection'
+import type { PromptRunConfig, UploadedAttachment } from '@/features/home/types'
 import type {
     BackendProject,
     BackendMessage,
@@ -9,7 +9,7 @@ import type {
 } from '@/features/sessions/api/session'
 
 import { useAppStore } from '@/app/store'
-import { getCreditTier, getModelSelection } from '@/features/home/model-selection'
+import { getModelSelection } from '@/features/home/model-selection'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { ApiError, refreshAuthSession } from '@/shared/api/client'
 import { getWebSocketUrl } from '@/shared/config/env'
@@ -162,6 +162,13 @@ export type GenerationStreamEvent =
     | {
           type: 'AgentInterrupt'
           data?: any
+      }
+    | {
+          // the running agent now reads these messages, sent while it worked (#637)
+          type: 'SteeringDelivered'
+          data?: {
+              messages?: Array<{ prompt?: string; sequence?: number; clientMessageId?: string }>
+          }
       }
     | {
           type: 'TurnEnd'
@@ -579,26 +586,62 @@ export class OwnKeyError extends ApiError {
 
 export const isOwnKeyError = (error: unknown): error is OwnKeyError => error instanceof OwnKeyError
 
-// the model a prompt runs on. callers that pass no model use the model picked in the
-// prompt box (the shared selection). a caller's model only keeps the picked payment
-// source when it is that same picked model; otherwise it runs on december credits.
+type PromptSelection =
+    // december credits: the server picks the model from the tier (#632)
+    | { billingSource: 'CREDITS'; tier: Speed }
+    | { billingSource: 'OWN_KEY'; model?: string; provider?: string }
+
+/**
+ * Who pays for a prompt, and what the server needs to pick the model: the tier on
+ * December credits, the model and its provider on the user's own key. A caller that
+ * names no source (the automatic fix of a preview error) gets what the prompt box shows.
+ */
 const resolvePromptSelection = (options?: {
     model?: string
     provider?: string
     billingSource?: BillingSource
-}) => {
+    runConfig?: PromptRunConfig
+}): PromptSelection => {
     const picked = getModelSelection()
-    if (!options?.model) {
-        return { model: picked.model, provider: picked.provider, billingSource: picked.source }
-    }
     const billingSource: BillingSource =
-        options.billingSource ??
-        (picked.model === options.model && picked.provider === options.provider
-            ? picked.source
-            : 'CREDITS')
-    return { model: options.model, provider: options.provider, billingSource }
+        options?.billingSource ??
+        (options?.model
+            ? // a model with no source: its source in the prompt box, or credits
+              picked.model === options.model && picked.provider === options.provider
+                ? picked.source
+                : 'CREDITS'
+            : picked.source)
+
+    if (billingSource !== 'OWN_KEY') {
+        return { billingSource: 'CREDITS', tier: options?.runConfig?.effort ?? picked.speed }
+    }
+    return options?.model
+        ? { billingSource, model: options.model, provider: options.provider }
+        : { billingSource, model: picked.model, provider: picked.provider }
 }
 
+/** the session configuration that `POST /session` reads. skills go with each message */
+const toSessionConfig = (runConfig?: PromptRunConfig) => ({
+    ...(runConfig?.planFirst !== undefined ? { planFirst: runConfig.planFirst } : {}),
+    ...(runConfig?.effort ? { effort: runConfig.effort } : {}),
+    ...(runConfig?.openPullRequest !== undefined
+        ? { openPullRequest: runConfig.openPullRequest }
+        : {}),
+    ...(runConfig?.disabledPlugins ? { disabledPlugins: runConfig.disabledPlugins } : {}),
+    ...(runConfig?.disabledMcps ? { disabledMcps: runConfig.disabledMcps } : {}),
+})
+
+type CreatePromptSessionInput = {
+    prompt: string
+    model?: string
+    provider?: string
+    billingSource?: BillingSource
+    runConfig?: PromptRunConfig
+    repoUrl?: string
+    branch?: string
+    gitRef?: string
+    issueNumber?: number
+}
 type GenerateProjectInput = {
     prompt: string
     sessionId?: string | null
@@ -607,6 +650,10 @@ type GenerateProjectInput = {
     provider?: string
     billingSource?: BillingSource
     runConfig?: PromptRunConfig
+    /** the stored files of this prompt (#634) */
+    attachments?: UploadedAttachment[]
+    /** the session the prompt box made to store the files of this first prompt */
+    session?: { id: string }
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
     repoUrl?: string
@@ -623,6 +670,10 @@ type ApplyProjectEditInput = {
     provider?: string
     billingSource?: BillingSource
     runConfig?: PromptRunConfig
+    /** the stored files of this prompt (#634) */
+    attachments?: UploadedAttachment[]
+    /** the id of this message in the chat (#637) */
+    clientMessageId?: string
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
@@ -639,6 +690,32 @@ type ApplyProjectFixInput = {
 
 let sharedSocket: ReturnType<typeof io> | null = null
 
+// the listeners of `prompt_queued` (#637). they are kept here, because the socket object
+// is made again after a disconnect
+const promptQueuedListeners = new Set<(event: any) => void>()
+const dispatchPromptQueued = (event: any) => {
+    for (const listener of [...promptQueuedListeners]) listener(event)
+}
+
+// `RunClosed`: the worker is done with a run, and the session takes the next one (#637).
+// it comes after AgentEnd, when the stream of the run no longer listens
+const runClosedListeners = new Set<(event: RunClosedEvent) => void>()
+const dispatchRunClosed = (raw: any) => {
+    let event = raw
+    if (typeof raw === 'string') {
+        try {
+            event = JSON.parse(raw)
+        } catch {
+            // Intentionally swallowed: an event that is not json is not RunClosed
+            return
+        }
+    }
+    if (event?.type !== 'RunClosed' || typeof event.sessionId !== 'string') return
+    for (const listener of [...runClosedListeners]) {
+        listener({ sessionId: event.sessionId, runFollows: event.runFollows === true })
+    }
+}
+
 export const getSharedSocket = (): ReturnType<typeof io> => {
     if (!sharedSocket || sharedSocket.disconnected) {
         const baseUrl = getWebSocketUrl()
@@ -651,7 +728,41 @@ export const getSharedSocket = (): ReturnType<typeof io> => {
             transports: ['websocket', 'polling'],
         })
     }
+    // bound again on each use: `off` with no listener (a test, a reset) removes them
+    sharedSocket.off('prompt_queued', dispatchPromptQueued)
+    sharedSocket.on('prompt_queued', dispatchPromptQueued)
+    sharedSocket.off('agent_event', dispatchRunClosed)
+    sharedSocket.on('agent_event', dispatchRunClosed)
     return sharedSocket
+}
+
+/** the `send_prompt` message of the socket */
+const toPromptPayload = (data: {
+    sessionId: string
+    prompt: string
+    selection: PromptSelection
+    runConfig?: PromptRunConfig
+    attachmentIds?: string[]
+    clientMessageId?: string
+}) => {
+    const { sessionId, prompt, selection, runConfig, attachmentIds, clientMessageId } = data
+    return {
+        sessionId: sessionId,
+        projectId: sessionId,
+        prompt: prompt,
+        ...(selection.billingSource === 'OWN_KEY'
+            ? { model: selection.model, provider: selection.provider }
+            : { tier: selection.tier }),
+        billingSource: selection.billingSource,
+        ...(runConfig?.planFirst !== undefined ? { planFirst: runConfig.planFirst } : {}),
+        ...(runConfig?.effort ? { effort: runConfig.effort } : {}),
+        // the skills picked for this message, and the + menu switches
+        ...(runConfig?.skills?.length ? { skills: runConfig.skills } : {}),
+        ...(runConfig?.disabledPlugins ? { disabledPlugins: runConfig.disabledPlugins } : {}),
+        ...(runConfig?.disabledMcps ? { disabledMcps: runConfig.disabledMcps } : {}),
+        ...(attachmentIds?.length ? { attachments: attachmentIds } : {}),
+        ...(clientMessageId ? { clientMessageId } : {}),
+    }
 }
 
 const runOverSocket = async (
@@ -665,11 +776,13 @@ const runOverSocket = async (
         provider?: string
         billingSource?: BillingSource
         runConfig?: PromptRunConfig
+        /** the ids of the files uploaded for this prompt (#634) */
+        attachmentIds?: string[]
+        /** the id of this message in the chat (#637) */
+        clientMessageId?: string
     }
 ): Promise<any> => {
     const selection = resolvePromptSelection(options)
-    // on december credits the server picks the model from the tier (#632)
-    const tier = selection.billingSource === 'OWN_KEY' ? undefined : getCreditTier(selection.model)
     const runConfig = options?.runConfig
     return new Promise((resolve, reject) => {
         const socket = getSharedSocket()
@@ -695,19 +808,17 @@ const runOverSocket = async (
 
             if (!hasSentPrompt && prompt) {
                 hasSentPrompt = true
-                socket.emit('send_prompt', {
-                    sessionId: sessionId,
-                    projectId: sessionId,
-                    prompt: prompt,
-                    model: selection.model,
-                    provider: selection.provider,
-                    billingSource: selection.billingSource,
-                    ...(tier ? { tier } : {}),
-                    ...(runConfig?.planFirst !== undefined
-                        ? { planFirst: runConfig.planFirst }
-                        : {}),
-                    ...(runConfig?.effort ? { effort: runConfig.effort } : {}),
-                })
+                socket.emit(
+                    'send_prompt',
+                    toPromptPayload({
+                        sessionId,
+                        prompt,
+                        selection,
+                        runConfig,
+                        attachmentIds: options?.attachmentIds,
+                        clientMessageId: options?.clientMessageId,
+                    })
+                )
             }
         }
 
@@ -865,6 +976,35 @@ const runOverSocket = async (
     })
 }
 
+/** the ids a prompt names for its stored files */
+const toAttachmentIds = (attachments?: UploadedAttachment[]) =>
+    attachments?.length ? attachments.map((attachment) => attachment.id) : undefined
+
+/**
+ * Makes the session of a first prompt. An own-key session tells the server which key
+ * pays, so it does not ask for credits.
+ */
+const createPromptSession = async (data: CreatePromptSessionInput) => {
+    const { prompt, repoUrl, branch, gitRef, issueNumber, runConfig } = data
+    const selection = resolvePromptSelection(data)
+    return sessionAPI.createSession({
+        prompt,
+        type: 'WEB',
+        repoUrl,
+        branch,
+        gitRef,
+        issueNumber,
+        ...(selection.billingSource === 'OWN_KEY'
+            ? {
+                  billingSource: 'OWN_KEY' as const,
+                  provider: selection.provider,
+                  model: selection.model,
+              }
+            : { tier: selection.tier }),
+        ...toSessionConfig(runConfig),
+    })
+}
+
 /**
  * @deprecated Legacy generation wrapper. Use standard session socket communication instead.
  */
@@ -876,6 +1016,8 @@ const generateProjectStream = async ({
     provider,
     billingSource,
     runConfig,
+    attachments,
+    session,
     signal,
     onEvent,
     repoUrl,
@@ -884,29 +1026,26 @@ const generateProjectStream = async ({
     issueNumber,
 }: GenerateProjectInput) => {
     let targetSessionId = sessionId || projectId
-    const selection = resolvePromptSelection({ model, provider, billingSource })
+    const selection = resolvePromptSelection({ model, provider, billingSource, runConfig })
 
     if (!targetSessionId) {
-        // create new session if no session id provided. an own-key session tells the
-        // server which key pays, so it does not ask for credits.
-        let newSession: Awaited<ReturnType<typeof sessionAPI.createSession>>
+        // create new session if no session id provided. the prompt box made it already
+        // when it had files to store.
+        let newSession: { id: string }
         try {
-            newSession = await sessionAPI.createSession({
-                prompt,
-                type: 'WEB',
-                repoUrl,
-                branch,
-                gitRef,
-                issueNumber,
-                ...(selection.billingSource === 'OWN_KEY'
-                    ? {
-                          billingSource: 'OWN_KEY' as const,
-                          provider: selection.provider,
-                          model: selection.model,
-                      }
-                    : { tier: getCreditTier(selection.model) }),
-                ...(runConfig ?? {}),
-            })
+            newSession =
+                session ??
+                (await createPromptSession({
+                    prompt,
+                    repoUrl,
+                    branch,
+                    gitRef,
+                    issueNumber,
+                    model,
+                    provider,
+                    billingSource,
+                    runConfig,
+                }))
         } catch (error) {
             // the server checks the own key before it creates the session (400, for example
             // "add your OpenAI key in settings first"). show it the same way as a key failure
@@ -937,9 +1076,13 @@ const generateProjectStream = async ({
         })
     }
 
+    // the prompt box stored the files before it sent the prompt. the prompt names their ids
     return await runOverSocket(targetSessionId, prompt, onEvent, signal, {
-        ...selection,
+        model,
+        provider,
+        billingSource: selection.billingSource,
         runConfig,
+        attachmentIds: toAttachmentIds(attachments),
     })
 }
 
@@ -949,11 +1092,14 @@ const generateProjectStream = async ({
 const applyProjectEdit = async (data: ApplyProjectEditInput) => {
     const targetSessionId = data.sessionId || data.projectId
     if (!targetSessionId) throw new Error('sessionId is required for edit')
+    const attachmentIds = toAttachmentIds(data.attachments)
     return await runOverSocket(targetSessionId, data.prompt, data.onEvent, data.signal, {
         model: data.model,
         provider: data.provider,
         ...(data.billingSource ? { billingSource: data.billingSource } : {}),
         runConfig: data.runConfig,
+        attachmentIds,
+        clientMessageId: data.clientMessageId,
     })
 }
 
@@ -975,6 +1121,67 @@ const listenToSessionStream = async (
     return await runOverSocket(sessionId, '', onEvent, signal, { attachOnly: true })
 }
 
+/**
+ * A message for a session whose run works (#637, "send now"). It opens no new stream: the
+ * stream of the run shows what the agent does with it.
+ */
+const sendMessageToRun = async (data: {
+    sessionId: string
+    prompt: string
+    clientMessageId: string
+    model?: string
+    provider?: string
+    billingSource?: BillingSource
+    runConfig?: PromptRunConfig
+    attachments?: UploadedAttachment[]
+}) => {
+    const attachmentIds = toAttachmentIds(data.attachments)
+    getSharedSocket().emit(
+        'send_prompt',
+        toPromptPayload({
+            sessionId: data.sessionId,
+            prompt: data.prompt,
+            selection: resolvePromptSelection(data),
+            runConfig: data.runConfig,
+            attachmentIds,
+            clientMessageId: data.clientMessageId,
+        })
+    )
+}
+
+export interface PromptQueuedEvent {
+    sessionId: string
+    prompt?: string
+    clientMessageId?: string
+}
+
+/**
+ * The server did not take a prompt, because a run works in the session and new messages
+ * are queued (#637). The web holds the message until the run ends. Returns the unsubscribe.
+ */
+const onPromptQueued = (listener: (event: PromptQueuedEvent) => void) => {
+    getSharedSocket()
+    promptQueuedListeners.add(listener)
+    return () => {
+        promptQueuedListeners.delete(listener)
+    }
+}
+
+export interface RunClosedEvent {
+    sessionId: string
+    /** the server queued a run for a message the ended run did not read */
+    runFollows: boolean
+}
+
+/** The session is free for its next run (#637). Returns the unsubscribe. */
+const onRunClosed = (listener: (event: RunClosedEvent) => void) => {
+    getSharedSocket()
+    runClosedListeners.add(listener)
+    return () => {
+        runClosedListeners.delete(listener)
+    }
+}
+
 const stopSessionStream = (sessionId: string) => {
     const socket = getSharedSocket()
     socket.emit('stop_session', { sessionId })
@@ -984,9 +1191,13 @@ const stopSessionStream = (sessionId: string) => {
  * @deprecated Legacy generation wrappers. Use standard session socket communication instead.
  */
 export const generationAPI = {
+    createPromptSession,
     generateProjectStream,
     applyProjectEdit,
     applyProjectFix,
     listenToSessionStream,
     stopSessionStream,
+    sendMessageToRun,
+    onPromptQueued,
+    onRunClosed,
 }

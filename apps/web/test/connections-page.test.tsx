@@ -8,7 +8,7 @@ if (!globalThis.document) {
 }
 
 // load react-dom and the app only after the dom exists, or react skips its input events
-const { render, screen, fireEvent, cleanup, act } = await import('@testing-library/react')
+const { render, screen, fireEvent, cleanup, act, waitFor } = await import('@testing-library/react')
 const { MemoryRouter, useLocation } = await import('react-router-dom')
 const { getViewForPath } = await import('../src/app/types')
 const { ConnectionsPage } = await import('../src/features/connections/components/ConnectionsPage')
@@ -130,9 +130,10 @@ describe('without demo mode', () => {
     })
 
     test('tabs without a backend say they are coming soon', () => {
-        renderAt('/settings/connections/skills')
-        expect(screen.getByText('Skills are coming soon')).toBeDefined()
-        expect(screen.queryByText('write-tests')).toBeNull()
+        // the skills and mcps tabs read the api now: see connections-api-tabs.test.tsx
+        renderAt('/settings/connections/rules')
+        expect(screen.getByText('Rules are coming soon')).toBeDefined()
+        expect(screen.queryByText('code-style') === null).toBe(true)
         cleanup()
         renderAt('/settings/connections/memory')
         expect(screen.getByText('Memory is coming soon')).toBeDefined()
@@ -158,7 +159,7 @@ describe('demo mode', () => {
         ).toBe(false)
     })
 
-    test('new skill checks the name and saves', () => {
+    test('new skill checks the name and saves', async () => {
         renderAt('/settings/connections/skills/new')
         const save = screen.getByRole('button', { name: 'Save skill' }) as HTMLButtonElement
         expect(save.disabled).toBe(true)
@@ -175,7 +176,7 @@ describe('demo mode', () => {
         fireEvent.click(save)
 
         expect(useConnectionsStore.getState().skills.some((s) => s.name === 'lint-fix')).toBe(true)
-        expect(location()).toBe('/settings/connections/skills/lint-fix')
+        await waitFor(() => expect(location()).toBe('/settings/connections/skills/lint-fix'))
         expect(screen.getByText('Saved')).toBeDefined()
     })
 
@@ -194,7 +195,7 @@ describe('demo mode', () => {
         expect(screen.queryByText('release-notes')).toBeNull()
     })
 
-    test('mcp list shows each status, and remove asks first', () => {
+    test('mcp list shows each status, and remove asks first', async () => {
         renderAt('/settings/connections/mcps')
         expect(screen.getAllByText('Connected').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Needs sign-in').length).toBeGreaterThan(0)
@@ -208,10 +209,10 @@ describe('demo mode', () => {
         expect(screen.getByText('Remove sentry?')).toBeDefined()
         fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
         expect(useConnectionsStore.getState().mcps.some((m) => m.name === 'sentry')).toBe(false)
-        expect(location()).toBe('/settings/connections/mcps')
+        await waitFor(() => expect(location()).toBe('/settings/connections/mcps'))
     })
 
-    test('add mcp modal opens from ?add and checks the url', () => {
+    test('add mcp modal opens from ?add and checks the url', async () => {
         renderAt('/settings/connections/mcps?add=1')
         expect(screen.getByText('Add MCP', { selector: 'h2' })).toBeDefined()
         typeInto(screen.getByLabelText('Name'), 'vercel')
@@ -220,7 +221,7 @@ describe('demo mode', () => {
         typeInto(screen.getByLabelText('Server URL'), 'https://mcp.vercel.com')
         fireEvent.click(screen.getByText('Add MCP', { selector: 'button[type="submit"]' }))
         expect(useConnectionsStore.getState().mcps.some((m) => m.name === 'vercel')).toBe(true)
-        expect(location()).toBe('/settings/connections/mcps/vercel')
+        await waitFor(() => expect(location()).toBe('/settings/connections/mcps/vercel'))
     })
 
     test('hooks json view rejects invalid json', () => {

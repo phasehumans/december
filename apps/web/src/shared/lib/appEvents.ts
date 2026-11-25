@@ -14,3 +14,10 @@ export const TOGGLE_VOICE_EVENT = 'december:toggle-voice'
 
 /** opens a session again, or another one, with its messages loaded (/rewind, /fork) */
 export const OPEN_SESSION_EVENT = 'december:open-session'
+
+/**
+ * The server started a run for the open session with no prompt from this tab ("Continue"
+ * at a spend limit). The detail is `{ sessionId }`. The chat of that session shows the run
+ * and cancels the event, so the sender knows that the run is followed.
+ */
+export const FOLLOW_RUN_EVENT = 'december:follow-run'

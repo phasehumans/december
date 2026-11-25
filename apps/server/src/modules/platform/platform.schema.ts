@@ -1,3 +1,4 @@
+import { isRepoFullName } from '@december/shared'
 import { z } from 'zod'
 
 export const createGithubRepoSchema = z.object({
@@ -28,4 +29,17 @@ export const listReposQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(30),
     search: z.string().trim().min(1).optional(),
+})
+
+// does a branch exist in a repository (#637): the prompt box asks before it uses the
+// default base branch
+export const checkRepoBranchQuerySchema = z.object({
+    provider: z.enum(['GITHUB', 'GITLAB']).default('GITHUB'),
+    repository: z.string().trim().max(200).refine(isRepoFullName, 'repository must be owner/name'),
+    branch: z
+        .string()
+        .trim()
+        .min(1, 'branch is required')
+        .max(100)
+        .regex(/^[\w./-]+$/, 'branch has characters git does not allow'),
 })

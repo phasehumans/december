@@ -44,22 +44,34 @@ const renderUsage = () =>
         </QueryClientProvider>
     )
 
+const original = {
+    getProfile: profileAPI.getProfile,
+    getOverview: billingAPI.getOverview,
+    getCreditsHistory: billingAPI.getCreditsHistory,
+}
+
 afterEach(() => {
     cleanup()
+    // the other test files get the real api client back
+    profileAPI.getProfile = original.getProfile
+    billingAPI.getOverview = original.getOverview
+    billingAPI.getCreditsHistory = original.getCreditsHistory
 })
 
 describe('usage page and own-key runs', () => {
     test('own-key runs show "your key" and are left out of the December total', async () => {
         profileAPI.getProfile = (async () => ({ id: 'user-1' })) as any
         billingAPI.getOverview = (async () => ({ creditBalance: 0 })) as any
-        // The period sum is 0 (own-key runs are not counted), so the page falls back to the
-        // event list: the own-key estimate must not be added to the total
+        // The server leaves the own-key estimate out of the cost and keeps its tokens. The
+        // page shows that total: it does not add the costs of the rows
         billingAPI.getCreditsHistory = (async () => ({
             events: [event('a', 'OWN_KEY', 42), event('b', 'CREDITS', 0)],
             total: 2,
             limit: 10,
             offset: 0,
             periods: [{ periodStart: '', periodEnd: '', costInCents: 0 }],
+            totals: { costInCents: 0, totalTokens: 300, sessions: 2 },
+            days: [],
         })) as any
 
         const { container } = renderUsage()
@@ -67,6 +79,6 @@ describe('usage page and own-key runs', () => {
 
         expect(container.textContent).toContain('your key')
         expect(container.textContent).not.toContain('$0.42')
-        expect(container.textContent).toContain('$0.00')
+        expect(container.textContent).toContain('Total spent: $0.00')
     })
 })

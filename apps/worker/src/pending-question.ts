@@ -11,7 +11,9 @@ export const clearPendingQuestion = async (
 ) => {
     try {
         const result = await prisma.session.updateMany({
-            where: { id: sessionId, pendingQuestionAt: { not: null } },
+            // a session that asks about a spend limit keeps waiting: the limit stop ends its
+            // run, and only the user's answer ends that question (#638)
+            where: { id: sessionId, pendingQuestionAt: { not: null }, limitQuestionKind: null },
             data: { pendingQuestionAt: null },
         })
         if (result.count === 0 || !redis) return

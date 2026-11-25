@@ -23,7 +23,7 @@ describe('Tool deny rules (#632)', () => {
     })
 
     afterAll(async () => {
-        await cleanupTestUser(email)
+        await cleanupTestUser({ email })
     })
 
     it('starts empty, saves the list without duplicates and replaces it', async () => {
