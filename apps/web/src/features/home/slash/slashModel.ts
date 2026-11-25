@@ -144,6 +144,13 @@ export const replaceSlashToken = (
     cursor: token.start + replacement.length,
 })
 
+/** "/open src/app.ts" typed in a session and sent with Enter */
+export const parseOpenCommand = (text: string): { path: string } | null => {
+    const match = /^\s*\/open(?:\s+([\s\S]*))?$/i.exec(text)
+    if (!match) return null
+    return { path: (match[1] || '').trim().replace(/^\.?\/+/, '') }
+}
+
 /** "/rename new title" typed in a session and sent with Enter */
 export const parseRenameCommand = (text: string): { title: string } | null => {
     const match = /^\s*\/rename(?:\s+([\s\S]*))?$/i.exec(text)

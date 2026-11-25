@@ -3,11 +3,12 @@ import React from 'react'
 
 import { ChangesWorkspace } from './ChangesWorkspace'
 import { DesktopWorkspace } from './DesktopWorkspace'
+import { FileWorkspace } from './FileWorkspace'
 import { PlanChecklistPanel } from './PlanChecklistPanel'
 import { PullRequestsWorkspace } from './PullRequestsWorkspace'
 import { TerminalWorkspace } from './TerminalWorkspace'
 import { TestVerificationPanel } from './TestVerificationPanel'
-import { ALL_TAB_DEFS, WorkspaceHeaderViewTabs } from './WorkspaceHeaderViewTabs'
+import { ALL_TAB_DEFS, FileTabIcon, WorkspaceHeaderViewTabs } from './WorkspaceHeaderViewTabs'
 
 import type { WorkspaceTabId } from './WorkspaceHeaderViewTabs'
 import type { GeneratedProjectFile, PreviewSessionStatus } from '@/features/preview/types'
@@ -17,6 +18,7 @@ import { useAppStore } from '@/app/store'
 import {
     clearWorkspaceTabRequest,
     onWorkspaceTabRequest,
+    peekWorkspaceFilePath,
     peekWorkspaceTabRequest,
 } from '@/features/preview/lib/workspaceTabRequest'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
@@ -73,6 +75,19 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
     const initialMountRef = React.useRef(true)
     const prevFilePathRef = React.useRef<string | null>(activeGeneratedFilePath || null)
     const pullRequest = useAppStore((state) => state.pullRequest)
+    // the file that /open shows in the file tab
+    const [openFilePath, setOpenFilePath] = React.useState<string | null>(null)
+    const fileTab = React.useMemo(
+        () =>
+            openFilePath
+                ? {
+                      id: 'file' as const,
+                      label: openFilePath.split('/').pop() || openFilePath,
+                      icon: <FileTabIcon />,
+                  }
+                : undefined,
+        [openFilePath]
+    )
 
     const availablePrs = React.useMemo(() => {
         if (!pullRequest) return []
@@ -115,6 +130,7 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
 
     const handleCloseTab = (tabId: WorkspaceTabId) => {
         if (openTabs.length <= 1) return
+        if (tabId === 'file') setOpenFilePath(null)
         const nextTabs = openTabs.filter((id) => id !== tabId)
         setOpenTabs(nextTabs)
         if (activeTab === tabId) {
@@ -139,6 +155,11 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
             const requested = peekWorkspaceTabRequest()
             if (!requested) return
             if (requested === 'pull_requests' && !hasPullRequest) return
+            if (requested === 'file') {
+                const path = peekWorkspaceFilePath()
+                if (!path) return
+                setOpenFilePath(path)
+            }
             clearWorkspaceTabRequest()
             setOpenTabs((prev) => (prev.includes(requested) ? prev : [...prev, requested]))
             setActiveTab(requested)
@@ -161,6 +182,7 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
                     onReorderTabs={setOpenTabs}
                     onBack={onBack}
                     availablePrs={availablePrs}
+                    fileTab={fileTab}
                 />
 
                 <Tooltip
@@ -223,6 +245,13 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
                 />
             )}
 
+            {activeTab === 'file' && openFilePath && (
+                <FileWorkspace
+                    sessionId={previewSession?.previewId || projectId || undefined}
+                    path={openFilePath}
+                />
+            )}
+
             {activeTab === 'tests' && (
                 <TestVerificationPanel
                     sessionId={previewSession?.previewId || projectId || undefined}
@@ -234,7 +263,8 @@ export const WorkspaceScreenMainContent: React.FC<WorkspaceScreenMainContentProp
                 activeTab !== 'shell' &&
                 activeTab !== 'pull_requests' &&
                 activeTab !== 'plan' &&
-                activeTab !== 'tests' && (
+                activeTab !== 'tests' &&
+                activeTab !== 'file' && (
                     <div className="flex-1 flex flex-col items-center justify-center bg-[#141414] text-[#8E8D8C] select-none p-6 font-sans w-full h-full">
                         <div className="flex flex-col items-center gap-3 max-w-sm text-center">
                             <div className="w-10 h-10 rounded-xl bg-[#1E1E20] border border-[#2A2A2D] flex items-center justify-center text-[#A1A1AA]">

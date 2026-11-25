@@ -4,7 +4,14 @@ import React from 'react'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { cn } from '@/shared/lib/utils'
 
-export type WorkspaceTabId = 'plan' | 'changes' | 'desktop' | 'shell' | 'pull_requests' | 'tests'
+export type WorkspaceTabId =
+    | 'plan'
+    | 'changes'
+    | 'desktop'
+    | 'shell'
+    | 'pull_requests'
+    | 'tests'
+    | 'file'
 
 export interface WorkspaceTabDef {
     id: WorkspaceTabId
@@ -106,6 +113,20 @@ const TestsIcon: React.FC<{ className?: string }> = ({ className = 'w-3.5 h-3.5'
     </svg>
 )
 
+/** the icon of the file tab that /open adds */
+export const FileTabIcon: React.FC<{ className?: string }> = ({ className = 'w-3.5 h-3.5' }) => (
+    <svg
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        className={className}
+    >
+        <path d="M4 2h5l3 3v8.5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5z" />
+        <path d="M9 2v3h3" strokeLinejoin="round" />
+    </svg>
+)
+
 export const BASE_TAB_DEFS: WorkspaceTabDef[] = [
     { id: 'plan', label: 'Plan', icon: <PlanIcon /> },
     { id: 'changes', label: 'Changes', icon: <ChangesIcon /> },
@@ -127,6 +148,8 @@ interface WorkspaceHeaderViewTabsProps {
     onReorderTabs: (tabs: WorkspaceTabId[]) => void
     onBack?: () => void
     availablePrs?: WorkspaceTabDef[]
+    /** the file tab of /open. it is only in the tab bar, not in the + menu */
+    fileTab?: WorkspaceTabDef
 }
 
 const ViewTabItem: React.FC<{
@@ -209,6 +232,7 @@ export const WorkspaceHeaderViewTabs: React.FC<WorkspaceHeaderViewTabsProps> = (
     onReorderTabs,
     onBack,
     availablePrs = [],
+    fileTab,
 }) => {
     const [isMenuOpen, setIsMenuOpen] = React.useState(false)
     const [isPrSubmenuOpen, setIsPrSubmenuOpen] = React.useState(false)
@@ -218,7 +242,10 @@ export const WorkspaceHeaderViewTabs: React.FC<WorkspaceHeaderViewTabsProps> = (
     const menuRef = React.useRef<HTMLDivElement | null>(null)
     const prCloseTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
-    const allDefs = React.useMemo(() => [...BASE_TAB_DEFS, ...availablePrs], [availablePrs])
+    const allDefs = React.useMemo(
+        () => [...BASE_TAB_DEFS, ...availablePrs, ...(fileTab ? [fileTab] : [])],
+        [availablePrs, fileTab]
+    )
 
     const handlePrMouseEnter = () => {
         if (prCloseTimeoutRef.current) {

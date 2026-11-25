@@ -5,6 +5,7 @@ import {
     buildSlashItems,
     formatTokenCount,
     listSlashCommands,
+    parseOpenCommand,
     parseRenameCommand,
     parseSlashToken,
     replaceSlashToken,
@@ -20,7 +21,10 @@ import { isPluginOff, useConnectionsStore } from '@/features/connections/hooks/u
 import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { saveHomeDraft } from '@/features/home/draft'
 import { usePromptConfig } from '@/features/home/promptConfig'
-import { requestWorkspaceTab } from '@/features/preview/lib/workspaceTabRequest'
+import {
+    requestWorkspaceFile,
+    requestWorkspaceTab,
+} from '@/features/preview/lib/workspaceTabRequest'
 import { useByokList } from '@/features/profile/hooks/useByokData'
 import { useGithubConnection } from '@/features/profile/hooks/useGithubConnection'
 import { sessionAPI } from '@/features/sessions/api/session'
@@ -387,9 +391,9 @@ export const useSlashMenu = ({
             window.open(url, '_blank', 'noopener,noreferrer')
             return
         }
-        if (command.name === 'rename') {
-            // the title is typed after the command and sent with Enter
-            takeToken('/rename ')
+        if (command.name === 'rename' || command.name === 'open') {
+            // the title or the file is typed after the command and sent with Enter
+            takeToken(`/${command.name} `)
             return
         }
         takeToken()
@@ -480,9 +484,9 @@ export const useSlashMenu = ({
             openSub(kind, options)
             return
         }
-        if (name === 'rename') {
-            // the title is typed after the command and sent with Enter
-            typeWord('/rename ')
+        if (name === 'rename' || name === 'open') {
+            // the title or the file is typed after the command and sent with Enter
+            typeWord(`/${name} `)
             return
         }
         selectCommand(command)
@@ -522,11 +526,20 @@ export const useSlashMenu = ({
     }
 
     /**
-     * a command typed in full and sent with Enter (only /rename today).
+     * a command typed in full and sent with Enter (/rename and /open).
      * returns null when the text is a normal prompt.
      */
     const trySubmitCommand = (text: string): { clear: boolean } | null => {
         if (scope !== 'session') return null
+        const open = parseOpenCommand(text)
+        if (open) {
+            if (!open.path) {
+                flash('Add a file after /open.')
+                return { clear: false }
+            }
+            requestWorkspaceFile(open.path)
+            return { clear: true }
+        }
         const rename = parseRenameCommand(text)
         if (!rename) return null
         if (!rename.title) {
