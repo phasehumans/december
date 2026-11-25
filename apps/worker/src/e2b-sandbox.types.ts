@@ -1,4 +1,5 @@
 import type { LLMProvider } from '@december/providers'
+import type { SessionEffort } from '@december/shared'
 
 export interface ProvisionSandboxInput {
     sessionId: string
@@ -45,6 +46,12 @@ export interface RunAgentSessionInput {
     provider?: string
     /** a ready client for the user's own key; when set, no december env key is used */
     llm?: LLMProvider
+    /** reasoning depth of the model for this turn (#632); runs without one keep 'fast' */
+    effort?: SessionEffort
+    /** write a plan and wait for approval before changing files (#632) */
+    planFirst?: boolean
+    /** the saved user message of this turn: history stops before it, /rewind snapshots it */
+    userMessageSequence?: number
 }
 
 export interface DestroySandboxInput {

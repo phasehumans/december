@@ -1,5 +1,6 @@
 import './env'
 import { prisma } from '@december/database'
+import { isSessionEffort } from '@december/shared'
 import { Worker, Job } from 'bullmq'
 import Redis from 'ioredis'
 import jwt from 'jsonwebtoken'
@@ -267,6 +268,11 @@ export const worker = new Worker(
                 model: runModel,
                 provider,
                 ...(ownKeyLlm ? { llm: ownKeyLlm } : {}),
+                ...(isSessionEffort(job.data.effort) ? { effort: job.data.effort } : {}),
+                planFirst: job.data.planFirst === true,
+                ...(Number.isInteger(job.data.userMessageSequence)
+                    ? { userMessageSequence: job.data.userMessageSequence }
+                    : {}),
             })
 
             console.log(

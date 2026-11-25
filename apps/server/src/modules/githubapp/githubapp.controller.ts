@@ -4,7 +4,12 @@ import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import { githubAppService } from './githubapp.service'
-import { resolveInstallReturnUrl, toGithubActivity, toWebhookRepository } from './githubapp.utils'
+import {
+    resolveInstallReturnUrl,
+    toGithubActivity,
+    toPullRequestStateEvent,
+    toWebhookRepository,
+} from './githubapp.utils'
 
 import type { Request, Response } from 'express'
 
@@ -194,6 +199,16 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
                     .map((pr: any) => pr?.number)
                     .filter((n: unknown): n is number => typeof n === 'number'),
             })
+        }
+    }
+
+    // the saved pull request state on december sessions (#632); never fails the webhook
+    const stateEvent = toPullRequestStateEvent(event, payload)
+    if (stateEvent) {
+        try {
+            await githubAppService.syncPullRequestState(stateEvent)
+        } catch (err) {
+            console.error('[GitHubApp Webhook] pull request state sync failed:', err)
         }
     }
 

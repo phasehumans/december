@@ -151,6 +151,13 @@ export const parseOpenCommand = (text: string): { path: string } | null => {
     return { path: (match[1] || '').trim().replace(/^\.?\/+/, '') }
 }
 
+/** "/name text" typed in full and sent with Enter; arg is the text after the name */
+export const parseArgCommand = (text: string, name: string): { arg: string } | null => {
+    const match = new RegExp(`^\\s*\\/${name}(?:\\s+([\\s\\S]*))?$`, 'i').exec(text)
+    if (!match) return null
+    return { arg: (match[1] || '').trim() }
+}
+
 /** "/rename new title" typed in a session and sent with Enter */
 export const parseRenameCommand = (text: string): { title: string } | null => {
     const match = /^\s*\/rename(?:\s+([\s\S]*))?$/i.exec(text)

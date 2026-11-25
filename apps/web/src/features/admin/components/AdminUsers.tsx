@@ -18,6 +18,81 @@ import {
     useAdminAction,
 } from './AdminUi'
 
+// one session of a user, opened under support access. the server logs each open
+const SupportSessionView: React.FC<{ userId: string; sessionId: string }> = ({
+    userId,
+    sessionId,
+}) => {
+    const { data: session, error } = useQuery({
+        queryKey: ['admin', 'user', userId, 'session', sessionId],
+        queryFn: () => adminAPI.openUserSession(userId, sessionId),
+        // every fetch is an open in the audit log, so do not fetch again on focus
+        staleTime: Infinity,
+        refetchOnWindowFocus: false,
+    })
+
+    if (error) return <ErrorLine error={error} />
+    if (!session) return null
+    if (session.messages.length === 0) return <Muted>No messages</Muted>
+
+    return (
+        <div className="flex flex-col gap-2 max-h-[420px] overflow-y-auto rounded-lg border border-[#2A2928] p-2">
+            {session.messages.map((message) => (
+                <div key={message.id} className="flex flex-col gap-0.5">
+                    <Muted>
+                        {message.role.toLowerCase()} · {shortDate(message.createdAt)}
+                        {message.status ? ` · ${message.status}` : ''}
+                    </Muted>
+                    <span className="text-[13px] text-[#D6D5C9] whitespace-pre-wrap break-words">
+                        {message.content}
+                    </span>
+                </div>
+            ))}
+        </div>
+    )
+}
+
+// the sessions of a user, only while the user has support access on (#636)
+const SupportSessions: React.FC<{ userId: string }> = ({ userId }) => {
+    const [openSessionId, setOpenSessionId] = useState<string | null>(null)
+    const { data, error } = useQuery({
+        queryKey: ['admin', 'user', userId, 'sessions'],
+        queryFn: () => adminAPI.listUserSessions(userId),
+    })
+
+    if (error) return <ErrorLine error={error} />
+    if (!data) return null
+    if (data.items.length === 0) return <Muted>No sessions</Muted>
+
+    return (
+        <div className="flex flex-col gap-1">
+            {data.items.map((session) => (
+                <div key={session.id} className="flex flex-col gap-1">
+                    <button
+                        type="button"
+                        onClick={() =>
+                            setOpenSessionId(openSessionId === session.id ? null : session.id)
+                        }
+                        className="flex items-center justify-between gap-3 text-left text-[13px] cursor-pointer"
+                    >
+                        <span className="text-[#B5B4AE] truncate">
+                            {session.title || 'Untitled'}
+                            {session.githubRepoName
+                                ? ` · ${session.githubRepoOwner}/${session.githubRepoName}`
+                                : ''}
+                            {session.isArchived ? ' · archived' : ''}
+                        </span>
+                        <Muted className="shrink-0">{shortDate(session.updatedAt)}</Muted>
+                    </button>
+                    {openSessionId === session.id && (
+                        <SupportSessionView userId={userId} sessionId={session.id} />
+                    )}
+                </div>
+            ))}
+        </div>
+    )
+}
+
 const UserDetail: React.FC<{ userId: string }> = ({ userId }) => {
     const detailKey = ['admin', 'user', userId]
     const { data: user, error } = useQuery({
@@ -39,6 +114,8 @@ const UserDetail: React.FC<{ userId: string }> = ({ userId }) => {
     if (!user) return null
 
     const cents = Math.round(Number(amount) * 100)
+    const hasSupportAccess =
+        user.supportAccessUntil !== null && new Date(user.supportAccessUntil).getTime() > Date.now()
     const canAdjust = Number.isFinite(cents) && cents !== 0 && reason.trim().length > 0
 
     return (
@@ -46,6 +123,11 @@ const UserDetail: React.FC<{ userId: string }> = ({ userId }) => {
             <div className="flex flex-wrap gap-1.5">
                 <Tag>{user.notifyProductUpdates ? 'product emails on' : 'product emails off'}</Tag>
                 <Tag>{user.githubAppInstall ? 'github app installed' : 'no github app'}</Tag>
+                <Tag tone={hasSupportAccess ? 'ok' : 'plain'}>
+                    {hasSupportAccess
+                        ? `support access until ${shortDate(user.supportAccessUntil)}`
+                        : 'no support access'}
+                </Tag>
                 {user.providerCredentials.map((key) => (
                     <Tag key={key.provider}>
                         {key.provider} {key.keyHint}
@@ -100,6 +182,8 @@ const UserDetail: React.FC<{ userId: string }> = ({ userId }) => {
                 )}
             </form>
             <ErrorLine error={adjust.error || restore.error} />
+
+            {hasSupportAccess && <SupportSessions userId={userId} />}
 
             <div className="flex flex-col gap-1">
                 {user.walletTransactions.length === 0 ? (

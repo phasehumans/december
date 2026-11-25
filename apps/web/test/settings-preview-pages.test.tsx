@@ -62,39 +62,21 @@ describe('settings pages that are ui only', () => {
         expect(screen.queryAllByRole('radiogroup').length).toBe(0)
     })
 
-    test('account notifications: one level, and the real product and security switches', () => {
-        setConnectionsDemo(true)
-        const calls: [string, boolean][] = []
-        wrap(
-            <AccountNotificationsSection
-                productUpdates={false}
-                securityAlerts={true}
-                onNotificationToggle={(field, value) => calls.push([field, value])}
-                showPreviewRows
-            />
-        )
-        const important = screen.getByRole('radio', { name: 'Important' })
-        expect(important.getAttribute('aria-checked')).toBe('true')
-        fireEvent.click(screen.getByRole('radio', { name: 'Everything' }))
-        expect(screen.getByRole('radio', { name: 'Everything' }).getAttribute('aria-checked')).toBe(
+    // notifications are on the server now (#636): every row shows without the preview
+    test('account notifications: all rows without the preview, security alerts stay on', () => {
+        const calls: Record<string, unknown>[] = []
+        wrap(<AccountNotificationsSection onNotificationChange={(value) => calls.push(value)} />)
+
+        expect(screen.getByRole('radio', { name: 'Important' }).getAttribute('aria-checked')).toBe(
             'true'
         )
+        expect(screen.getByRole('switch', { name: 'Email' })).toBeDefined()
+        expect(screen.getByRole('switch', { name: 'Daily summary' })).toBeDefined()
+        const security = screen.getByRole('switch', { name: 'Security alerts' })
+        expect(security.hasAttribute('disabled')).toBe(true)
 
         fireEvent.click(screen.getByRole('switch', { name: 'Product updates' }))
-        expect(calls).toEqual([['notifyProductUpdates', true]])
-    })
-
-    test('account notifications without the preview: only the real switches', () => {
-        wrap(
-            <AccountNotificationsSection
-                productUpdates={true}
-                securityAlerts={true}
-                onNotificationToggle={() => {}}
-                showPreviewRows={false}
-            />
-        )
-        expect(screen.queryAllByRole('radiogroup').length).toBe(0)
-        expect(screen.getAllByRole('switch').length).toBe(2)
+        expect(calls).toEqual([{ notifyProductUpdates: false }])
     })
 
     test('sandbox: Stop takes the row out of the running list', () => {

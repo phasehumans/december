@@ -303,3 +303,18 @@ export type FindPullRequestOwner = {
     prNumber: number
     prAuthorLogin?: string
 }
+
+/** a pull request changed on github: the state december saves on its sessions (#632) */
+export type PullRequestStateEvent = {
+    gitProvider: 'GITHUB'
+    repoOwner: string
+    repoName: string
+    number: number
+    state: 'open' | 'draft' | 'merged' | 'closed'
+    title?: string
+    additions?: number
+    deletions?: number
+    openedAt?: string | null
+    mergedAt?: string | null
+    closedAt?: string | null
+}

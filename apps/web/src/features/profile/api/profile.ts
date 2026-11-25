@@ -13,9 +13,15 @@ export type Profile = {
     githubConnected: boolean
     githubAppInstall?: boolean
     githubUsername?: string
-    notifyProjectActivity?: boolean
     notifyProductUpdates?: boolean
     notifySecurityAlerts?: boolean
+    // what December tells the user about, and where (#636)
+    notifyLevel?: NotifyLevel
+    notifyEmail?: boolean
+    notifyPush?: boolean
+    digestEnabled?: boolean
+    digestTime?: string
+    timezone?: string
     memories?: string | null
     rules?: string | null
     avatarUrl?: string | null
@@ -23,6 +29,39 @@ export type Profile = {
     onboardingCompletedAt?: string | null
     canvasWaitlist?: boolean
     defaultModelSource?: 'CREDITS' | 'OWN_KEY'
+    // defaults for a new session (#632)
+    defaultPlanFirst?: boolean
+    defaultEffort?: 'fast' | 'deep'
+    defaultOpenPullRequest?: boolean
+    // the admin page can open this user's sessions until this date (#636)
+    supportAccessUntil?: string | null
+    // preferences saved on the account (#636), null when none are saved
+    preferences?: Partial<AccountPreferences> | null
+}
+
+export type AccountPreferences = {
+    sendKey: 'enter' | 'mod-enter'
+    soundOnFinish: boolean
+    messageWhileWorking: 'queue' | 'send'
+}
+
+// one signed-in device on the account page (#636)
+export type SignedInSession = {
+    id: string
+    label: string
+    kind: 'web' | 'cli'
+    lastActiveAt: string
+    createdAt: string
+    isCurrent: boolean
+}
+
+// the latest data export (#636). the link to the file goes out by email
+export type DataExport = {
+    id: string
+    status: 'PENDING' | 'READY' | 'FAILED'
+    createdAt: string
+    expiresAt: string | null
+    nextAllowedAt: string
 }
 
 type BackendProfile = Profile
@@ -46,10 +85,18 @@ type UpdateAvatarUrlInput = {
     avatarUrl: string
 }
 
-type UpdateNotificationInput = {
-    notifyProjectActivity?: boolean
+export type NotifyLevel = 'ALL' | 'IMPORTANT' | 'NONE'
+
+// every field is optional: the page saves one row at a time. security alerts stay on, and
+// push turns on through subscribePush
+export type UpdateNotificationInput = {
     notifyProductUpdates?: boolean
-    notifySecurityAlerts?: boolean
+    notifyLevel?: NotifyLevel
+    notifyEmail?: boolean
+    notifyPush?: false
+    digestEnabled?: boolean
+    digestTime?: string
+    timezone?: string
 }
 
 const buildUrl = (baseUrl: string, params: Record<string, string>) => {
@@ -84,6 +131,28 @@ const updateModelSource = (defaultModelSource: 'CREDITS' | 'OWN_KEY') => {
     return apiRequest<{ defaultModelSource: 'CREDITS' | 'OWN_KEY' }>('/setting/model-source', {
         method: 'PATCH',
         body: JSON.stringify({ defaultModelSource }),
+    })
+}
+
+export type SessionDefaults = {
+    defaultPlanFirst: boolean
+    defaultEffort: 'fast' | 'deep'
+    defaultOpenPullRequest: boolean
+}
+
+// /permissions (#632): tool calls the agent may never make in cloud sessions
+const getToolDenyRules = () => apiRequest<{ rules: string[] }>('/setting/permissions')
+
+const updateToolDenyRules = (rules: string[]) =>
+    apiRequest<{ rules: string[] }>('/setting/permissions', {
+        method: 'PUT',
+        body: JSON.stringify({ rules }),
+    })
+
+const updateSessionDefaults = (defaults: Partial<SessionDefaults>) => {
+    return apiRequest<SessionDefaults>('/setting/defaults', {
+        method: 'PATCH',
+        body: JSON.stringify(defaults),
     })
 }
 
@@ -140,6 +209,57 @@ const signoutAll = () => {
     return apiRequest<void>('/auth/signout/all', {
         method: 'POST',
     })
+}
+
+const listSignedInSessions = () => {
+    return apiRequest<SignedInSession[]>('/auth/sessions')
+}
+
+const revokeSignedInSession = (id: string) => {
+    return apiRequest<{ id: string; isCurrent: boolean }>(`/auth/sessions/${id}`, {
+        method: 'DELETE',
+    })
+}
+
+const updateSupportAccess = (enabled: boolean) => {
+    return apiRequest<{ supportAccessUntil: string | null }>('/setting/support-access', {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled }),
+    })
+}
+
+const updatePreferences = (preferences: Partial<AccountPreferences>) => {
+    return apiRequest<{ preferences: Partial<AccountPreferences> | null }>('/setting/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(preferences),
+    })
+}
+
+// browser push (#636). publicKey is null when the server has no push keys
+const getPushKey = () => {
+    return apiRequest<{ publicKey: string | null }>('/notification/push/key')
+}
+
+const subscribePush = (subscription: PushSubscriptionJSON) => {
+    return apiRequest<{ notifyPush: boolean }>('/notification/push/subscribe', {
+        method: 'POST',
+        body: JSON.stringify({ endpoint: subscription.endpoint, keys: subscription.keys }),
+    })
+}
+
+const unsubscribePush = (endpoint: string) => {
+    return apiRequest<{ notifyPush: boolean; devices: number }>('/notification/push/subscribe', {
+        method: 'DELETE',
+        body: JSON.stringify({ endpoint }),
+    })
+}
+
+const getDataExport = () => {
+    return apiRequest<{ export: DataExport | null }>('/setting/export')
+}
+
+const requestDataExport = () => {
+    return apiRequest<{ export: DataExport }>('/setting/export', { method: 'POST' })
 }
 
 const deleteAccount = () => {
@@ -269,11 +389,23 @@ export const profileAPI = {
     updateAvatarUrl,
     updateNotifications,
     updateModelSource,
+    updateSessionDefaults,
+    getToolDenyRules,
+    updateToolDenyRules,
     getPullRequestSettings,
     updatePullRequestSettings,
     getQuickInfo,
     signout,
     signoutAll,
+    listSignedInSessions,
+    revokeSignedInSession,
+    updateSupportAccess,
+    updatePreferences,
+    getDataExport,
+    requestDataExport,
+    getPushKey,
+    subscribePush,
+    unsubscribePush,
     deleteAccount,
     getMemories,
     updateMemories,

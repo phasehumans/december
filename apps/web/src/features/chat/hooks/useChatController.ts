@@ -210,6 +210,7 @@ export const useChatController = (
                         model: options?.model,
                         provider: options?.provider,
                         billingSource: options?.billingSource,
+                        runConfig: options?.runConfig,
                         signal: abortController.signal,
                         onEvent: (event) => {
                             const activeMessageId = activeAssistantMessageIdRef.current
@@ -666,6 +667,7 @@ export const useChatController = (
             model,
             provider,
             billingSource,
+            runConfig,
         }: {
             kind: 'edit' | 'fix'
             prompt?: string
@@ -676,6 +678,7 @@ export const useChatController = (
             provider?: string
             // the payment source the prompt box shows (December credits or the user's own key)
             billingSource?: PromptInputSubmitOptions['billingSource']
+            runConfig?: PromptInputSubmitOptions['runConfig']
         }) => {
             if (!activeProjectId) {
                 return
@@ -1025,6 +1028,7 @@ export const useChatController = (
                                   model,
                                   provider,
                                   billingSource,
+                                  runConfig,
                                   signal: abortController.signal,
                                   onEvent: handleStreamEvent,
                               })
@@ -1130,6 +1134,7 @@ export const useChatController = (
                     model: options?.model,
                     provider: options?.provider,
                     billingSource: options?.billingSource,
+                    runConfig: options?.runConfig,
                 })
             })
         },

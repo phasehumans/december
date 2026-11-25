@@ -17,6 +17,7 @@ import {
     verifyAccessToken,
     verifyRefreshToken,
     hashRefreshToken,
+    describeUserAgent,
 } from './auth.utils'
 
 import type {
@@ -35,6 +36,9 @@ import type {
     GetDeviceStatus,
     GetDeviceStatusResult,
     PurgeSessions,
+    ListSignedInSessions,
+    RevokeSignedInSession,
+    SignedInSession,
 } from './auth.types'
 
 const OTP_TTL_MS = 10 * 60 * 1000
@@ -514,6 +518,39 @@ const signoutAll = async (data: SignoutAll) => {
     await sessionCache.invalidateUser(userId)
 }
 
+const listSignedInSessions = async (data: ListSignedInSessions): Promise<SignedInSession[]> => {
+    const { userId, currentSessionId } = data
+
+    const sessions = await authRepository.findActiveSessionsByUser(userId)
+
+    const rows = sessions.map((session) => ({
+        id: session.id,
+        ...describeUserAgent(session.userAgent),
+        lastActiveAt: session.rotatedAt ?? session.updatedAt,
+        createdAt: session.createdAt,
+        isCurrent: session.id === currentSessionId,
+    }))
+
+    // this device first, then the others by last use
+    return rows.sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent))
+}
+
+const revokeSignedInSession = async (data: RevokeSignedInSession) => {
+    const { userId, currentSessionId, sessionId } = data
+
+    const session = await authRepository.findSessionById(sessionId)
+
+    // another user's session gets the same answer as a missing one
+    if (!session || session.userId !== userId || session.isRevoked) {
+        throw new AppError('session not found', 404)
+    }
+
+    await authRepository.revokeSession(sessionId)
+    await sessionCache.invalidate(sessionId)
+
+    return { id: sessionId, isCurrent: sessionId === currentSessionId }
+}
+
 const deleteAccount = async (data: DeleteAccount) => {
     const { userId } = data
 
@@ -735,6 +772,8 @@ export const authService = {
     refreshSession,
     signout,
     signoutAll,
+    listSignedInSessions,
+    revokeSignedInSession,
     deleteAccount,
     generateDeviceCode,
     pollDeviceToken,

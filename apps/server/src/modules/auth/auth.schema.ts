@@ -43,3 +43,7 @@ export const verifyUserCodeSchema = z.object({
 export const getDeviceStatusSchema = z.object({
     code: z.string().optional(),
 })
+
+export const signedInSessionParamSchema = z.object({
+    id: z.string({ message: 'session id is required' }).uuid('session id is not valid'),
+})

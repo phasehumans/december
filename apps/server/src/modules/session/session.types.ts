@@ -1,3 +1,5 @@
+import type { SessionEffort, SessionRunConfig, SessionSwitches } from '@december/shared'
+
 export type StoredSessionFile = {
     path: string
     key: string
@@ -29,6 +31,43 @@ export type SessionFilters = {
     needsAnswer?: boolean
 }
 
+export type PullRequestFilters = {
+    /** the states to keep; 'open' also matches a row with no saved state */
+    states?: Array<'open' | 'draft' | 'merged' | 'closed'>
+    isArchived?: boolean
+    /** owner/name, or a name alone */
+    repo?: string
+    tag?: string
+    search?: string
+    sortBy?: 'updatedAt' | 'createdAt' | 'prOpenedAt'
+    sortOrder?: 'asc' | 'desc'
+    page?: number
+    limit?: number
+}
+
+export type GetPullRequests = {
+    userId: string
+    filters: PullRequestFilters
+}
+
+export type RefreshStalePullRequests = {
+    userId: string
+}
+
+export type ApplyPullRequestEvent = {
+    gitProvider: 'GITHUB' | 'GITLAB'
+    repoOwner: string
+    repoName: string
+    number: number
+    state: 'open' | 'draft' | 'merged' | 'closed'
+    title?: string
+    additions?: number
+    deletions?: number
+    openedAt?: string | null
+    mergedAt?: string | null
+    closedAt?: string | null
+}
+
 export type GetUserSessions = {
     userId: string
     filters?: SessionFilters
@@ -48,7 +87,45 @@ export type CreateSession = {
     billingSource?: 'CREDITS' | 'OWN_KEY'
     provider?: string
     model?: string
+    tier?: SessionEffort
+    planFirst?: boolean
+    effort?: SessionEffort
+    openPullRequest?: boolean
+    disabledPlugins?: string[]
+    disabledMcps?: string[]
 }
+
+export type ResolveTurnConfig = {
+    /** empty for a socket that is not signed in: the default config is used */
+    userId?: string
+    sessionId: string
+    billingSource: 'CREDITS' | 'OWN_KEY'
+    model?: string
+    provider?: string
+    tier?: SessionEffort
+    /** sent with a message: changes the session for this turn and the next ones */
+    planFirst?: boolean
+    effort?: SessionEffort
+    /** the + menu switches; a list sent with a message replaces the saved one */
+    disabledPlugins?: string[]
+    disabledMcps?: string[]
+}
+
+export type RecordUserPrompt = {
+    userId?: string
+    sessionId: string
+    prompt: string
+}
+
+export type GetUserRunDefaults = {
+    userId: string
+}
+
+export type TurnConfig = SessionRunConfig &
+    SessionSwitches & {
+        model?: string
+        provider?: string
+    }
 
 export type GetSession = {
     userId: string
@@ -124,6 +201,14 @@ export type GetSessionMessages = {
 export type DeleteSession = {
     userId: string
     sessionId: string
+}
+
+export type DeleteAllSessions = {
+    userId: string
+}
+
+export type EndSessionRuns = {
+    sessionIds: string[]
 }
 
 export type DisconnectSession = {
@@ -287,4 +372,16 @@ export interface SessionDesktopViewportResult {
         networkErrors?: string[]
         timestamp?: number
     } | null
+}
+
+/** one event of a run, relayed from the worker by socket.ts (#636) */
+export type HandleRunEvent = {
+    sessionId: string
+    event: { type?: string; error?: unknown; balanceInCents?: unknown }
+}
+
+export type NotifySessionOwner = {
+    owner: { id: string; userId: string; title: string | null }
+    kind: 'SESSION_FINISHED' | 'SESSION_NEEDS_INPUT' | 'SESSION_FAILED' | 'LOW_CREDITS'
+    detail?: string
 }

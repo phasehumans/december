@@ -29,7 +29,19 @@ describe('Profile Settings Notifications Tab Placement', () => {
     })
 
     test('ProfileSettingsContent (Account tab) renders Notifications section with toggles', () => {
-        const handleNotificationToggle = mock(() => {})
+        const handleNotificationChange = mock((_settings: Record<string, unknown>) => {})
+        // the section reads the saved values from the profile query (#636)
+        queryClient.setQueryData(['profile'], {
+            id: 'test-user',
+            notifyProductUpdates: false,
+            notifySecurityAlerts: true,
+            notifyLevel: 'IMPORTANT',
+            notifyEmail: true,
+            notifyPush: false,
+            digestEnabled: false,
+            digestTime: '09:00',
+            timezone: 'UTC',
+        })
 
         render(
             <QueryClientProvider client={queryClient}>
@@ -50,13 +62,10 @@ describe('Profile Settings Notifications Tab Placement', () => {
                         resolvedName="Test User"
                         hasProfile={true}
                         isGithubConnected={false}
-                        emailNotifications={true}
-                        productUpdates={false}
-                        securityAlerts={true}
                         isNotificationPending={false}
                         onOpenNameModal={() => {}}
                         onOpenUsernameModal={() => {}}
-                        onNotificationToggle={handleNotificationToggle}
+                        onNotificationChange={handleNotificationChange}
                         onConnectGithub={() => {}}
                         onSignOut={() => {}}
                         onOpenSignOutAllSessionsModal={() => {}}
@@ -69,7 +78,15 @@ describe('Profile Settings Notifications Tab Placement', () => {
         // Headings
         expect(screen.getByRole('heading', { name: 'Account' })).toBeDefined()
         expect(screen.getByRole('heading', { name: 'Notifications' })).toBeDefined()
-        expect(screen.getByRole('heading', { name: 'Sign in' })).toBeDefined()
+        // devices, data and support (#636) replace the old sign in box
+        expect(screen.getByRole('heading', { name: 'Devices' })).toBeDefined()
+        expect(screen.getByRole('heading', { name: 'Data' })).toBeDefined()
+        expect(screen.getByRole('heading', { name: 'Support' })).toBeDefined()
+        expect(
+            screen.getByRole('switch', { name: 'Let December support open my sessions' })
+        ).toBeDefined()
+        expect(screen.getByText('Export my data')).toBeDefined()
+        expect(screen.getByText('Delete all sessions')).toBeDefined()
 
         // Account header: name and email, with no username or password rows
         expect(screen.getByText('Test User')).toBeDefined()
@@ -80,7 +97,7 @@ describe('Profile Settings Notifications Tab Placement', () => {
 
         // each button says its action and does not repeat the row label
         expect(screen.getByRole('button', { name: 'Sign out everywhere' })).toBeDefined()
-        expect(screen.getByRole('button', { name: 'Delete' })).toBeDefined()
+        expect(screen.getByRole('button', { name: 'Delete account' })).toBeDefined()
 
         // Notification options (Project activity should not be present)
         expect(screen.queryByText('Project activity')).toBeNull()
@@ -101,14 +118,26 @@ describe('Profile Settings Notifications Tab Placement', () => {
         expect(screen.getByRole('heading', { name: 'Preferences' })).toBeDefined()
         expect(screen.getByRole('radiogroup', { name: 'Send with' })).toBeDefined()
 
-        // Notification switches: Product updates and Security alerts
+        // Notification switches: Product updates, and Security alerts that stay on
         const productUpdates = screen.getByRole('switch', { name: 'Product updates' })
         const securityAlerts = screen.getByRole('switch', { name: 'Security alerts' })
 
         fireEvent.click(productUpdates)
-        expect(handleNotificationToggle).toHaveBeenCalledWith('notifyProductUpdates', true)
+        expect(handleNotificationChange).toHaveBeenCalledWith({ notifyProductUpdates: true })
 
-        fireEvent.click(securityAlerts)
-        expect(handleNotificationToggle).toHaveBeenCalledWith('notifySecurityAlerts', false)
+        expect(securityAlerts.getAttribute('aria-checked')).toBe('true')
+        expect(securityAlerts.hasAttribute('disabled')).toBe(true)
+
+        // the level, email and the daily summary save what changed (#636)
+        fireEvent.click(screen.getByRole('radio', { name: 'Everything' }))
+        expect(handleNotificationChange).toHaveBeenCalledWith({ notifyLevel: 'ALL' })
+
+        fireEvent.click(screen.getByRole('switch', { name: 'Email' }))
+        expect(handleNotificationChange).toHaveBeenCalledWith({ notifyEmail: false })
+
+        fireEvent.click(screen.getByRole('switch', { name: 'Daily summary' }))
+        const lastCall = handleNotificationChange.mock.calls.at(-1)?.[0]
+        expect(lastCall?.digestEnabled).toBe(true)
+        expect(typeof lastCall?.timezone).toBe('string')
     })
 })

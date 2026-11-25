@@ -202,6 +202,12 @@ if (existsSync(assetsDir)) {
     await cp(assetsDir, path.join(outdir, 'assets'), { recursive: true })
 }
 
+// the push service worker must sit at the site root to control every page (#636)
+const pushWorkerPath = path.resolve('assets', 'push-sw.js')
+if (existsSync(pushWorkerPath)) {
+    await Bun.write(path.join(outdir, 'push-sw.js'), Bun.file(pushWorkerPath))
+}
+
 const robotsPath = path.resolve('assets', 'robots.txt')
 if (existsSync(robotsPath)) {
     await Bun.write(path.join(outdir, 'robots.txt'), Bun.file(robotsPath))

@@ -1,12 +1,19 @@
 import { prisma } from '@december/database'
+import {
+    DEFAULT_SESSION_RUN_CONFIG,
+    isSessionEffort,
+    readSessionRunConfig,
+    readSessionSwitches,
+} from '@december/shared'
 import { detectGitProvider, getGitProvider } from '@december/shared/git'
-import { publishEvent } from '@december/shared/queue'
+import { enqueueJob, publishEvent } from '@december/shared/queue'
 import { Queue } from 'bullmq'
 import Redis from 'ioredis'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
+import { claimOnce, setFlag, takeFlag } from '../../shared/claim-once'
 import {
     sessionPrefix,
     sessionWorkspacePrefix,
@@ -16,14 +23,17 @@ import {
 import { getIO } from '../../socket'
 import { byokService } from '../byok/byok.service'
 import { cliDispatcher } from '../cli/cli.dispatcher'
+import { notificationService } from '../notification/notification.service'
 import { runtimeService } from '../runtime/runtime.service'
 import { usageService } from '../usage/usage.service'
 
 import { sessionRepository } from './session.repository'
 import {
     buildSmartSearchPrompt,
+    CREDIT_TIER_MODELS,
     isEmptySmartSearchFilters,
     parseSmartSearchFilters,
+    toCreditTier,
     toPullRequestState,
 } from './session.utils'
 
@@ -45,6 +55,8 @@ import type {
     UpdateSessionTags,
     GetSessionMessages,
     DeleteSession,
+    DeleteAllSessions,
+    EndSessionRuns,
     DisconnectSession,
     RehydrateSession,
     ProxyPreview,
@@ -64,10 +76,20 @@ import type {
     SubmitQuestionAnswer,
     GetPendingQuestion,
     MarkQuestionAsked,
+    HandleRunEvent,
+    NotifySessionOwner,
     ClearPendingQuestion,
     GetSessionDesktopViewport,
     SessionDesktopViewportResult,
+    ResolveTurnConfig,
+    TurnConfig,
+    GetUserRunDefaults,
+    RecordUserPrompt,
+    GetPullRequests,
+    RefreshStalePullRequests,
+    ApplyPullRequestEvent,
 } from './session.types'
+import type { SessionRunConfig } from '@december/shared'
 
 let sessionRedis: Redis | null = null
 
@@ -209,6 +231,12 @@ const createSession = async (data: CreateSession) => {
         billingSource,
         provider,
         model,
+        tier,
+        planFirst,
+        effort,
+        openPullRequest,
+        disabledPlugins,
+        disabledMcps,
     } = data
 
     // a cloud session on the user's own key needs that key, not credits. search
@@ -283,9 +311,124 @@ const createSession = async (data: CreateSession) => {
         })
     }
 
+    // the configuration of the session: a field the request leaves out takes the user's
+    // default. on december credits the picked tier is also the effort.
+    const defaults = await getUserRunDefaults({ userId })
+    const config: SessionRunConfig = {
+        planFirst: planFirst ?? defaults.planFirst,
+        effort: effort ?? (billingSource !== 'OWN_KEY' ? tier : undefined) ?? defaults.effort,
+        openPullRequest: openPullRequest ?? defaults.openPullRequest,
+    }
+    await sessionRepository.saveSessionRunConfig(
+        session.id,
+        {
+            ...config,
+            ...(disabledPlugins ? { disabledPlugins } : {}),
+            ...(disabledMcps ? { disabledMcps } : {}),
+        },
+        null
+    )
+
     await invalidateUserRecentSessions(userId)
 
-    return session
+    return { ...session, config }
+}
+
+const getUserRunDefaults = async (data: GetUserRunDefaults): Promise<SessionRunConfig> => {
+    const { userId } = data
+    const user = await sessionRepository.findUserRunDefaults(userId)
+    if (!user) return DEFAULT_SESSION_RUN_CONFIG
+    return {
+        planFirst: user.defaultPlanFirst,
+        effort: isSessionEffort(user.defaultEffort)
+            ? user.defaultEffort
+            : DEFAULT_SESSION_RUN_CONFIG.effort,
+        openPullRequest: user.defaultOpenPullRequest,
+    }
+}
+
+/**
+ * The configuration and model of one message in a session. `planFirst` and `effort` sent
+ * with the message are saved, so they hold for the next turns too; `openPullRequest` is
+ * fixed when the session starts. On december credits the model comes from the tier (fast
+ * or deep), never from the client, and the tier is also the effort unless one is sent.
+ */
+const resolveTurnConfig = async (data: ResolveTurnConfig): Promise<TurnConfig> => {
+    const {
+        userId,
+        sessionId,
+        billingSource,
+        model,
+        provider,
+        tier,
+        planFirst,
+        effort,
+        disabledPlugins,
+        disabledMcps,
+    } = data
+
+    const saved = userId ? await sessionRepository.findSessionRunConfig(sessionId, userId) : null
+    const defaults = userId ? await getUserRunDefaults({ userId }) : DEFAULT_SESSION_RUN_CONFIG
+    const current = readSessionRunConfig(saved?.config, defaults)
+
+    const isCredits = billingSource === 'CREDITS'
+    // a client from before tiers sends a model: the fast model is fast, any other is deep
+    const creditTier = isCredits
+        ? (tier ?? effort ?? (model ? toCreditTier(model) : current.effort))
+        : undefined
+
+    const next: SessionRunConfig = {
+        planFirst: planFirst ?? current.planFirst,
+        effort: effort ?? creditTier ?? current.effort,
+        openPullRequest: current.openPullRequest,
+    }
+
+    const turnModel = creditTier ? CREDIT_TIER_MODELS[creditTier] : { model, provider }
+    const savedModel = (saved?.config ?? {}) as Record<string, unknown>
+    const savedSwitches = readSessionSwitches(saved?.config)
+    const switches = {
+        disabledPlugins: disabledPlugins ?? savedSwitches.disabledPlugins,
+        disabledMcps: disabledMcps ?? savedSwitches.disabledMcps,
+    }
+
+    // the model is kept for /context, which reads its context window
+    const changed =
+        next.planFirst !== current.planFirst ||
+        next.effort !== current.effort ||
+        saved?.config === null ||
+        savedModel.model !== turnModel.model ||
+        savedModel.provider !== turnModel.provider ||
+        disabledPlugins !== undefined ||
+        disabledMcps !== undefined
+    if (saved && changed) {
+        await sessionRepository.saveSessionRunConfig(
+            sessionId,
+            {
+                ...next,
+                ...switches,
+                ...(turnModel.model ? { model: turnModel.model } : {}),
+                ...(turnModel.provider ? { provider: turnModel.provider } : {}),
+            },
+            saved.config
+        )
+    }
+
+    return { ...next, ...switches, ...turnModel }
+}
+
+/**
+ * Saves a prompt sent to a running session as a user message, so the agent's history,
+ * /rewind and /compact see every turn. The first prompt of a new session is already
+ * saved by createSession: when the last message is that same prompt with no answer
+ * yet, its sequence is used. Returns the sequence, or null for a session that is not
+ * the user's.
+ */
+const recordUserPrompt = async (data: RecordUserPrompt): Promise<number | null> => {
+    const { userId, sessionId, prompt } = data
+    if (!userId) return null
+    const owned = await sessionRepository.findSessionRunConfig(sessionId, userId)
+    if (!owned) return null
+    return sessionRepository.saveUserPrompt(sessionId, prompt)
 }
 
 const getSession = async (data: GetSession) => {
@@ -295,8 +438,11 @@ const getSession = async (data: GetSession) => {
 
     const generatedFiles = {} // Deprecated: Monolithic full-repo JSON payload deprecated
 
+    const saved = await sessionRepository.findSessionRunConfig(sessionId, userId)
+    const config = readSessionRunConfig(saved?.config, await getUserRunDefaults({ userId }))
+
     return {
-        session,
+        session: { ...session, config },
         chatMessages: (session.messages || []).map((message) => ({
             id: message.id,
             role: message.role,
@@ -401,6 +547,155 @@ const unarchiveSessions = async (data: UnarchiveSessions) => {
     return { sessionIds: changed }
 }
 
+// a pull request that is open or draft is read from the host again after an hour, so a
+// missed webhook is repaired when the list is read. at most this many per read
+const PR_REFRESH_AFTER_MS = 60 * 60 * 1000
+const PR_REFRESH_LIMIT = 10
+
+const toDateOrNull = (value: string | null | undefined): Date | null =>
+    value ? new Date(value) : null
+
+/** reads the state of stale open pull requests from GitHub or GitLab; never throws */
+const refreshStalePullRequests = async (data: RefreshStalePullRequests) => {
+    const { userId } = data
+    const stale = await sessionRepository.findStalePullRequests(
+        userId,
+        new Date(Date.now() - PR_REFRESH_AFTER_MS),
+        PR_REFRESH_LIMIT
+    )
+    if (stale.length === 0) return
+
+    // loaded here: the platform module imports the github app module, which imports this one
+    const { platformService } = await import('../platform/platform.service')
+    const tokens = new Map<string, Promise<string | null>>()
+    const tokenFor = (gitProvider: 'GITHUB' | 'GITLAB', owner: string) => {
+        const key = `${gitProvider}:${owner}`
+        if (!tokens.has(key)) {
+            tokens.set(
+                key,
+                platformService.resolveRepoToken({ userId, gitProvider, owner }).catch(() => null)
+            )
+        }
+        return tokens.get(key) as Promise<string | null>
+    }
+
+    let changed = false
+    await Promise.all(
+        stale.map(async (session) => {
+            const owner = session.githubRepoOwner as string
+            const repoPath = `${owner}/${session.githubRepoName}`
+            const token = await tokenFor(session.gitProvider, owner)
+            const pr = token
+                ? await getGitProvider(session.gitProvider)
+                      .getPullRequest({ token, repoPath, number: session.prNumber as number })
+                      .catch(() => null)
+                : null
+            // checked either way, so a pull request the host refuses is not asked every read
+            await sessionRepository.updatePullRequestFields(
+                { id: session.id },
+                {
+                    prCheckedAt: new Date(),
+                    ...(pr
+                        ? {
+                              prState: pr.status,
+                              prTitle: pr.title,
+                              prUrl: pr.url,
+                              ...(session.gitProvider === 'GITHUB'
+                                  ? { prAdditions: pr.additions, prDeletions: pr.deletions }
+                                  : {}),
+                              ...(pr.createdAt ? { prOpenedAt: new Date(pr.createdAt) } : {}),
+                              prMergedAt: toDateOrNull(pr.mergedAt),
+                              prClosedAt: toDateOrNull(pr.closedAt),
+                          }
+                        : {}),
+                }
+            )
+            if (pr) changed = true
+        })
+    )
+    if (changed) await invalidateUserRecentSessions(userId)
+}
+
+/** the pull requests list: one row per session that opened a pull request (#632) */
+const getPullRequests = async (data: GetPullRequests) => {
+    const { userId, filters } = data
+
+    await refreshStalePullRequests({ userId }).catch((error: unknown) => {
+        console.error('[Session] could not refresh pull request states', error)
+    })
+
+    const result = await sessionRepository.findPullRequests(userId, filters)
+    return {
+        pullRequests: result.rows.map((row) => ({
+            sessionId: row.id,
+            title: row.title || 'Untitled session',
+            tags: row.tags,
+            gitProvider: row.gitProvider,
+            repo:
+                row.githubRepoOwner && row.githubRepoName
+                    ? `${row.githubRepoOwner}/${row.githubRepoName}`
+                    : (row.githubRepoName ?? null),
+            prNumber: row.prNumber as number,
+            prState: toPullRequestState(row.prState),
+            prTitle: row.prTitle ?? null,
+            prUrl: row.prUrl ?? null,
+            prBranch: row.prBranch ?? row.branch ?? null,
+            additions: row.prAdditions ?? null,
+            deletions: row.prDeletions ?? null,
+            prOpenedAt: row.prOpenedAt ?? null,
+            prMergedAt: row.prMergedAt ?? null,
+            prClosedAt: row.prClosedAt ?? null,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+        })),
+        pagination: result.pagination,
+    }
+}
+
+/**
+ * A pull request changed on the host (the GitHub App webhook): every session that opened
+ * it gets the new state, and the lists of their users are cleared.
+ */
+const applyPullRequestEvent = async (data: ApplyPullRequestEvent) => {
+    const {
+        gitProvider,
+        repoOwner,
+        repoName,
+        number,
+        state,
+        title,
+        additions,
+        deletions,
+        openedAt,
+        mergedAt,
+        closedAt,
+    } = data
+
+    const sessions = await sessionRepository.updatePullRequestFields(
+        {
+            gitProvider,
+            githubRepoOwner: { equals: repoOwner, mode: 'insensitive' },
+            githubRepoName: { equals: repoName, mode: 'insensitive' },
+            prNumber: number,
+            deletedAt: null,
+        },
+        {
+            prState: state,
+            prCheckedAt: new Date(),
+            ...(title ? { prTitle: title } : {}),
+            ...(additions !== undefined ? { prAdditions: additions } : {}),
+            ...(deletions !== undefined ? { prDeletions: deletions } : {}),
+            ...(openedAt ? { prOpenedAt: new Date(openedAt) } : {}),
+            ...(mergedAt !== undefined ? { prMergedAt: toDateOrNull(mergedAt) } : {}),
+            ...(closedAt !== undefined ? { prClosedAt: toDateOrNull(closedAt) } : {}),
+        }
+    )
+
+    const userIds = [...new Set(sessions.map((session) => session.userId))]
+    await Promise.all(userIds.map((userId) => invalidateUserRecentSessions(userId)))
+    return { updated: sessions.length }
+}
+
 // under the recent list key, so every write that clears the list clears the counts too
 const getSessionCounts = async (data: GetSessionCounts): Promise<SessionCounts> => {
     const { userId } = data
@@ -418,6 +713,96 @@ const updateSessionTags = async (data: UpdateSessionTags) => {
     return updated
 }
 
+// stops the agent runs, closes the sockets and queues the storage wipe of each session
+const endSessionRuns = async (data: EndSessionRuns) => {
+    const { sessionIds } = data
+
+    for (const sessionId of sessionIds) {
+        try {
+            await publishEvent(`session_events:${sessionId}`, { type: 'SIGKILL', data: {} })
+        } catch {
+            // Intentionally swallowed: Redis pubsub event publishing fallback in test or offline environment
+        }
+
+        try {
+            getIO().in(`session:${sessionId}`).disconnectSockets()
+        } catch (e) {
+            console.warn('Socket not connected or io not available', e)
+        }
+    }
+
+    if (env.NODE_ENV === 'test' || sessionIds.length === 0) return
+
+    const redisUrl =
+        env.REDIS_URL || (env.NODE_ENV !== 'production' ? 'redis://localhost:6379' : undefined)
+    if (!redisUrl) return
+
+    let redis: Redis | null = null
+    let minioWipeQueue: Queue | null = null
+    try {
+        redis = new Redis(redisUrl)
+        minioWipeQueue = new Queue('minio_wipe', { connection: redis as any })
+        for (const sessionId of sessionIds) {
+            await minioWipeQueue.add(
+                'wipe',
+                { prefix: sessionPrefix(sessionId) },
+                { attempts: 3, backoff: { type: 'exponential', delay: 1000 } }
+            )
+        }
+    } catch (e) {
+        console.warn('[Session] Failed to enqueue minio_wipe job:', e)
+    } finally {
+        if (minioWipeQueue) {
+            await minioWipeQueue.close().catch(() => {
+                // Intentionally swallowed: queue close error during deletion cleanup
+            })
+        }
+        if (redis) {
+            redis.disconnect()
+        }
+    }
+}
+
+const LIVE_SANDBOX_STATUSES = new Set(['STARTING', 'RUNNING', 'PAUSED'])
+
+// every session of the user (#636): stop the sandboxes first, then delete
+const deleteAllSessions = async (data: DeleteAllSessions) => {
+    const { userId } = data
+
+    const sessions = await sessionRepository.findSessionsForDeleteAll(userId)
+    if (sessions.length === 0) {
+        return { deleted: 0, sandboxesStopped: 0 }
+    }
+
+    // a row without a sandbox status is from before that column: stop it to be safe
+    const withSandbox = sessions.filter(
+        (session) =>
+            session.vmId &&
+            (session.sandboxStatus === null || LIVE_SANDBOX_STATUSES.has(session.sandboxStatus))
+    )
+    try {
+        for (const session of withSandbox) {
+            await enqueueJob('sandbox_control', {
+                taskType: 'sandbox_control',
+                action: 'stop',
+                sessionId: session.id,
+                sandboxId: session.vmId,
+            })
+        }
+    } catch (error) {
+        // nothing is deleted while a sandbox may still run and cost money
+        console.error('[Session] could not queue sandbox stops:', error)
+        throw new AppError('could not stop the sandboxes, nothing was deleted. try again', 503)
+    }
+
+    const sessionIds = sessions.map((session) => session.id)
+    await endSessionRuns({ sessionIds })
+    const { count } = await sessionRepository.deleteSessionsByIds({ userId, sessionIds })
+    await invalidateUserRecentSessions(userId)
+
+    return { deleted: count, sandboxesStopped: withSandbox.length }
+}
+
 const deleteSession = async (data: DeleteSession) => {
     const { userId, sessionId } = data
 
@@ -429,46 +814,7 @@ const deleteSession = async (data: DeleteSession) => {
         throw new AppError('Only the session creator can delete this session', 403)
     }
 
-    try {
-        await publishEvent(`session_events:${sessionId}`, { type: 'SIGKILL', data: {} })
-    } catch {
-        // Intentionally swallowed: Redis pubsub event publishing fallback in test or offline environment
-    }
-
-    try {
-        getIO().in(`session:${sessionId}`).disconnectSockets()
-    } catch (e) {
-        console.warn('Socket not connected or io not available', e)
-    }
-
-    if (env.NODE_ENV !== 'test') {
-        const redisUrl =
-            env.REDIS_URL || (env.NODE_ENV !== 'production' ? 'redis://localhost:6379' : undefined)
-        if (redisUrl) {
-            let redis: Redis | null = null
-            let minioWipeQueue: Queue | null = null
-            try {
-                redis = new Redis(redisUrl)
-                minioWipeQueue = new Queue('minio_wipe', { connection: redis as any })
-                await minioWipeQueue.add(
-                    'wipe',
-                    { prefix: sessionPrefix(sessionId) },
-                    { attempts: 3, backoff: { type: 'exponential', delay: 1000 } }
-                )
-            } catch (e) {
-                console.warn('[Session] Failed to enqueue minio_wipe job:', e)
-            } finally {
-                if (minioWipeQueue) {
-                    await minioWipeQueue.close().catch(() => {
-                        // Intentionally swallowed: queue close error during deletion cleanup
-                    })
-                }
-                if (redis) {
-                    redis.disconnect()
-                }
-            }
-        }
-    }
+    await endSessionRuns({ sessionIds: [sessionId] })
 
     await sessionRepository.deleteSession(sessionId)
     await invalidateUserRecentSessions(userId)
@@ -862,6 +1208,9 @@ const getSessionFileTree = async (data: GetSessionFileTree) => {
     }
 }
 
+// about 1 MB of text: more would freeze the file viewer
+const MAX_OPEN_FILE_CHARS = 1_000_000
+
 const getSessionFileContent = async (data: GetSessionFileContent) => {
     const { userId, sessionId, path } = data
     const session = await sessionRepository.findSessionById(sessionId, userId)
@@ -874,8 +1223,19 @@ const getSessionFileContent = async (data: GetSessionFileContent) => {
     const key = `${prefix}${cleanPath}`
 
     try {
-        const content = await getTextFile(key)
-        return { path: cleanPath, content: content ?? '' }
+        const content = (await getTextFile(key)) ?? ''
+        // /open shows a file in the browser: a binary file or a huge one is not shown whole
+        if (content.includes('\u0000')) {
+            return { path: cleanPath, content: '', binary: true, truncated: false }
+        }
+        const truncated = content.length > MAX_OPEN_FILE_CHARS
+        return {
+            path: cleanPath,
+            content: truncated ? content.slice(0, MAX_OPEN_FILE_CHARS) : content,
+            binary: false,
+            truncated,
+            size: content.length,
+        }
     } catch {
         // Intentionally swallowed: storage fallback if file does not exist or S3 is unreachable
         return { path: cleanPath, content: '' }
@@ -1085,8 +1445,88 @@ const submitQuestionAnswer = async (data: SubmitQuestionAnswer) => {
 /** the worker asked a question (AskQuestionPrompt event): mark the session in the list */
 const markQuestionAsked = async (data: MarkQuestionAsked) => {
     const { sessionId } = data
+    // only the first ask changes the row, so every server node tries and one notifies
     const owner = await sessionRepository.setPendingQuestion(sessionId)
-    if (owner) await invalidateUserRecentSessions(owner.userId)
+    if (!owner) return
+    await invalidateUserRecentSessions(owner.userId)
+    await notifySessionOwner({ owner, kind: 'SESSION_NEEDS_INPUT' })
+}
+
+/** true while the user has this session open in a tab (any server node) */
+const isUserWatchingSession = async (data: { sessionId: string; userId: string }) => {
+    const { sessionId, userId } = data
+    try {
+        const sockets = await getIO().in(`session:${sessionId}`).fetchSockets()
+        return sockets.some((socket) => socket.data.userId === userId)
+    } catch {
+        // Intentionally swallowed: no socket server (tests, scripts) means nobody watches
+        return false
+    }
+}
+
+// email and push wait while the user watches the session; low credits always go out
+const notifySessionOwner = async (data: NotifySessionOwner) => {
+    const { owner, kind, detail } = data
+    const isWatching =
+        kind === 'LOW_CREDITS'
+            ? false
+            : await isUserWatchingSession({ sessionId: owner.id, userId: owner.userId })
+    try {
+        await notificationService.notifyEvent({
+            userId: owner.userId,
+            kind,
+            sessionId: owner.id,
+            sessionTitle: owner.title,
+            detail,
+            isWatching,
+        })
+    } catch (error) {
+        console.error(`[Session] could not notify ${kind} for ${owner.id}:`, error)
+    }
+}
+
+/**
+ * The worker's run events that tell the user something (#636): AgentError (failed),
+ * AgentEnd (finished, unless it failed) and CreditsLow. Every server node gets them, so
+ * each side effect is claimed once.
+ */
+const handleRunEvent = async (data: HandleRunEvent) => {
+    const { sessionId, event } = data
+
+    switch (event.type) {
+        case 'AgentError': {
+            // first, so the AgentEnd right after it sees the mark
+            await setFlag(`run:failed:${sessionId}`, 300)
+            if (!(await claimOnce(`notify:failed:${sessionId}`, 60))) return
+            const owner = await sessionRepository.findSessionOwner(sessionId)
+            if (!owner) return
+            const detail = typeof event.error === 'string' ? event.error : undefined
+            await notifySessionOwner({ owner, kind: 'SESSION_FAILED', detail })
+            return
+        }
+        case 'AgentEnd': {
+            if (!(await claimOnce(`notify:end:${sessionId}`, 30))) return
+            if (await takeFlag(`run:failed:${sessionId}`)) return
+            const owner = await sessionRepository.findSessionOwner(sessionId)
+            if (!owner) return
+            await notifySessionOwner({ owner, kind: 'SESSION_FINISHED' })
+            return
+        }
+        case 'CreditsLow': {
+            const owner = await sessionRepository.findSessionOwner(sessionId)
+            if (!owner) return
+            if (!(await claimOnce(`notify:credits:${owner.userId}`, 600))) return
+            const balance = Number(event.balanceInCents)
+            await notifySessionOwner({
+                owner,
+                kind: 'LOW_CREDITS',
+                detail: Number.isFinite(balance) ? String(Math.round(balance)) : undefined,
+            })
+            return
+        }
+        default:
+            return
+    }
 }
 
 /**
@@ -1262,8 +1702,13 @@ export const sessionService = {
     archiveMergedSessions,
     unarchiveSessions,
     getSessionCounts,
+    resolveTurnConfig,
+    recordUserPrompt,
+    getPullRequests,
+    applyPullRequestEvent,
     updateSessionTags,
     deleteSession,
+    deleteAllSessions,
     rehydrateSession,
     disconnectSession,
     proxyPreview,
@@ -1278,6 +1723,7 @@ export const sessionService = {
     getSessionPreviewPort,
     submitQuestionAnswer,
     getPendingQuestion,
+    handleRunEvent,
     markQuestionAsked,
     markQuestionSettled,
     clearPendingQuestion,

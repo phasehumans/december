@@ -55,7 +55,7 @@ describe('parseSlashToken', () => {
 describe('buildSlashItems', () => {
     test('lists the commands in group order: run, session, customize, help', () => {
         const home = names(build())
-        expect(home.slice(0, 3)).toEqual(['effort', 'model', 'switch'])
+        expect(home.slice(0, 4)).toEqual(['plan', 'effort', 'model', 'switch'])
         expect(home.indexOf('resume')).toBeLessThan(home.indexOf('mcp'))
         expect(home.indexOf('settings')).toBeLessThan(home.indexOf('help'))
         expect(home.slice(-1)).toEqual(['update'])
@@ -63,7 +63,8 @@ describe('buildSlashItems', () => {
 
     test('leaves out what needs the server, and session commands on Home', () => {
         const home = names(build())
-        expect(home).not.toContain('plan')
+        // /plan works for everyone since the server reads plan first (#632)
+        expect(home).toContain('plan')
         expect(home).not.toContain('skills')
         expect(home).not.toContain('compact')
         expect(home).not.toContain('rename')
@@ -80,7 +81,7 @@ describe('buildSlashItems', () => {
         expect(names(build({ onCredits: false }))).not.toContain('effort')
     })
 
-    test('demo mode adds /plan, /skills and the skills, plugin skills last', () => {
+    test('demo mode adds /skills and the skills, plugin skills last', () => {
         const items = build({ demo: true, skills })
         expect(names(items)[0]).toBe('plan')
         expect(names(items)).toContain('skills')

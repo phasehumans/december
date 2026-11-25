@@ -1,3 +1,9 @@
+import pkg from '../../package.json' with { type: 'json' }
+
+// the server labels this sign-in from the user agent: "December CLI on Linux" on the
+// account page. it must keep "cli" in it (see describeUserAgent on the server)
+const CLI_USER_AGENT = `december-cli/${pkg.version} (${process.platform}; ${process.arch})`
+
 export async function loginViaDeviceCode(
     serverUrl: string = process.env.SERVER_URL || 'https://api.trydecember.com',
     onCodeGenerated: (userCode: string, verificationUri: string) => void,
@@ -64,7 +70,10 @@ export async function loginViaDeviceCode(
                 try {
                     const tokenRes = await fetch(`${serverUrl}/api/v1/auth/device/token`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'User-Agent': CLI_USER_AGENT,
+                        },
                         body: JSON.stringify({ deviceCode }),
                         signal,
                     })

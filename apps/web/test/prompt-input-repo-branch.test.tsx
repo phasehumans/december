@@ -83,6 +83,8 @@ describe('usePromptInputController - repository and branch onboarding', () => {
             model: 'gemini-2.5-pro',
             provider: 'gemini',
             billingSource: 'CREDITS',
+            // the session configuration goes with the prompt (#632)
+            runConfig: { planFirst: false, effort: 'deep', openPullRequest: true },
         })
     })
 

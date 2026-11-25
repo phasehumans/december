@@ -60,6 +60,8 @@ const toPullRequest = (mr: any): PullRequest => {
         changedFiles: Number.isNaN(changed) ? undefined : changed,
         createdAt: mr.created_at,
         updatedAt: mr.updated_at,
+        mergedAt: mr.merged_at ?? null,
+        closedAt: mr.closed_at ?? null,
     }
 }
 
@@ -173,6 +175,15 @@ const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
     return null
 }
 
+const getPullRequest: GitProvider['getPullRequest'] = async (data) => {
+    const { token, repoPath, number } = data
+    const res = await fetch(`${projectUrl(repoPath)}/merge_requests/${number}`, {
+        headers: headers(token),
+    }).catch(() => null)
+    if (!res?.ok) return null
+    return toPullRequest(await res.json())
+}
+
 const getCiStatus: GitProvider['getCiStatus'] = async (data) => {
     const { token, repoPath, sha } = data
     // no answer keeps the default status, like the github check runs
@@ -224,6 +235,7 @@ export const gitlabProvider: GitProvider = {
     getCloneUrl,
     listRepos,
     createPullRequest,
+    getPullRequest,
     getCiStatus,
     comment,
     refreshToken,

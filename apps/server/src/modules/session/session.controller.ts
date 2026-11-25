@@ -4,6 +4,7 @@ import { sendSuccess } from '../../shared/response'
 
 import {
     getSessionsSchema,
+    getPullRequestsSchema,
     createSessionSchema,
     getSessionByIdSchema,
     renameSessionParamsSchema,
@@ -16,6 +17,7 @@ import {
     updateSessionTagsParamsSchema,
     updateSessionTagsBodySchema,
     deleteSessionParamsSchema,
+    deleteAllSessionsSchema,
     disconnectSessionParamsSchema,
     rehydrateSessionParamsSchema,
     proxyPreviewParamsSchema,
@@ -88,6 +90,12 @@ export const createSession = asyncHandler(async (req: Request, res: Response) =>
         billingSource,
         provider,
         model,
+        tier,
+        planFirst,
+        effort,
+        openPullRequest,
+        disabledPlugins,
+        disabledMcps,
     } = parsedBody
 
     const session = await sessionService.createSession({
@@ -103,6 +111,12 @@ export const createSession = asyncHandler(async (req: Request, res: Response) =>
         billingSource,
         provider,
         model,
+        tier,
+        planFirst,
+        effort,
+        openPullRequest,
+        disabledPlugins,
+        disabledMcps,
     })
     return sendSuccess(res, 'session created successfully', { session }, 201)
 })
@@ -189,6 +203,19 @@ export const unarchiveSessions = asyncHandler(async (req: Request, res: Response
     return sendSuccess(res, 'sessions unarchived successfully', result)
 })
 
+export const getPullRequests = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    const { state, isArchived, repo, tag, search, sortBy, sortOrder, page, limit } =
+        getPullRequestsSchema.parse(req.query)
+
+    const result = await sessionService.getPullRequests({
+        userId,
+        filters: { states: state, isArchived, repo, tag, search, sortBy, sortOrder, page, limit },
+    })
+    return sendSuccess(res, 'pull requests fetched successfully', result)
+})
+
 export const getSessionCounts = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
     if (!userId) throw new AppError('unauthorized', 401)
@@ -221,6 +248,16 @@ export const deleteSession = asyncHandler(async (req: Request, res: Response) =>
         sessionId: id,
     })
     return sendSuccess(res, result.message, result)
+})
+
+// every session of the user (#636). the body must say { confirm: 'delete' }
+export const deleteAllSessions = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    if (!userId) throw new AppError('unauthorized', 401)
+    deleteAllSessionsSchema.parse(req.body ?? {})
+
+    const result = await sessionService.deleteAllSessions({ userId })
+    return sendSuccess(res, 'all sessions deleted', result)
 })
 
 export const rehydrateSession = asyncHandler(async (req: Request, res: Response) => {
@@ -477,8 +514,10 @@ export const sessionController = {
     archiveMergedSessions,
     unarchiveSessions,
     getSessionCounts,
+    getPullRequests,
     updateSessionTags,
     deleteSession,
+    deleteAllSessions,
     rehydrateSession,
     disconnectSession,
     proxyPreview,

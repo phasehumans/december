@@ -88,6 +88,12 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
                 </button>
             )}
 
+            {sub?.text && (
+                <p className="px-3 pt-1 pb-2 max-h-[220px] overflow-y-auto text-[12.5px] leading-relaxed text-[#D6D5D4] whitespace-pre-wrap">
+                    {sub.text}
+                </p>
+            )}
+
             <div
                 ref={listRef}
                 role="listbox"
@@ -158,7 +164,7 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
                           )
                       })}
 
-                {sub && sub.options.length === 0 && (
+                {sub && sub.options.length === 0 && !sub.text && (
                     <div className="px-3 py-2 text-center text-[12.5px] text-[#8F8E8D]">
                         {sub.emptyLabel || 'Nothing here.'}
                     </div>

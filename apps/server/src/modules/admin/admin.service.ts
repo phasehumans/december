@@ -13,6 +13,7 @@ import { buildUnsubscribeUrl, getSignupMethod, isDisposableEmail, personalize } 
 
 import type {
     AdjustCredits,
+    AssertSupportAccess,
     AssignInstallation,
     CreateRedeemCode,
     DailyUsage,
@@ -23,6 +24,8 @@ import type {
     ListCreditRequests,
     ListFeedback,
     ListUsers,
+    ListUserSessions,
+    OpenUserSession,
     RejectCreditRequest,
     RestoreUser,
     ReviewCreditRequest,
@@ -240,6 +243,7 @@ const getUser = async (data: GetUser) => {
     return {
         ...toUserRow({ user, usage }),
         notifyProductUpdates: user.notifyProductUpdates,
+        supportAccessUntil: user.supportAccessUntil,
         githubAppInstall: user.githubAppInstall,
         onboardingCompletedAt: user.onboardingCompletedAt,
         providerCredentials: user.providerCredentials,
@@ -247,6 +251,43 @@ const getUser = async (data: GetUser) => {
         creditRequests: user.creditRequests,
         unsubscribeUrl: buildUnsubscribeUrl(userId),
     }
+}
+
+// support access (#636)
+
+// the user turns this on from the account page; it ends 7 days later
+const assertSupportAccess = async (data: AssertSupportAccess) => {
+    const { userId } = data
+    const user = await adminRepository.findSupportAccess(userId)
+    if (!user) throw new AppError('user not found', 404)
+    if (!user.supportAccessUntil || user.supportAccessUntil.getTime() <= Date.now()) {
+        throw new AppError('this user has not turned on support access', 403)
+    }
+    return user.supportAccessUntil
+}
+
+const listUserSessions = async (data: ListUserSessions) => {
+    const { userId } = data
+    const supportAccessUntil = await assertSupportAccess({ userId })
+    const items = await adminRepository.listUserSessions(userId)
+    return { supportAccessUntil, items }
+}
+
+// every open is logged: who opened which session, and when (the log row's date)
+const openUserSession = async (data: OpenUserSession) => {
+    const { adminUserId, userId, sessionId } = data
+    await assertSupportAccess({ userId })
+    const session = await adminRepository.findUserSessionWithMessages({ userId, sessionId })
+    if (!session) throw new AppError('session not found', 404)
+
+    await audit({
+        adminUserId,
+        action: 'support.session.open',
+        targetType: 'session',
+        targetId: sessionId,
+        metadata: { userId },
+    })
+    return session
 }
 
 const adjustCredits = async (data: AdjustCredits) => {
@@ -517,6 +558,8 @@ export const adminService = {
     listFeedback,
     listUsers,
     getUser,
+    listUserSessions,
+    openUserSession,
     adjustCredits,
     restoreUser,
     listRedeemCodes,

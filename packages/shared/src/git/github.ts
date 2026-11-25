@@ -52,6 +52,8 @@ const toPullRequest = (pr: any): PullRequest => ({
     changedFiles: pr.changed_files,
     createdAt: pr.created_at,
     updatedAt: pr.updated_at,
+    mergedAt: pr.merged_at ?? null,
+    closedAt: pr.closed_at ?? null,
 })
 
 const parseRepoUrl: GitProvider['parseRepoUrl'] = (url) => {
@@ -138,6 +140,15 @@ const createPullRequest: GitProvider['createPullRequest'] = async (data) => {
     return null
 }
 
+const getPullRequest: GitProvider['getPullRequest'] = async (data) => {
+    const { token, repoPath, number } = data
+    const res = await fetch(`${API}/repos/${repoPath}/pulls/${number}`, {
+        headers: headers(token),
+    }).catch(() => null)
+    if (!res?.ok) return null
+    return toPullRequest(await res.json())
+}
+
 const getCiStatus: GitProvider['getCiStatus'] = async (data) => {
     const { token, repoPath, sha } = data
     // no answer keeps the default status, as before the provider layer
@@ -195,6 +206,7 @@ export const githubProvider: GitProvider = {
     getCloneUrl,
     listRepos,
     createPullRequest,
+    getPullRequest,
     getCiStatus,
     comment,
     refreshToken,

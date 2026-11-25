@@ -59,6 +59,8 @@ export interface AdminUserRow {
 
 export interface AdminUserDetail extends AdminUserRow {
     notifyProductUpdates: boolean
+    // the user lets support open their sessions until this date (#636)
+    supportAccessUntil: string | null
     githubAppInstall: boolean
     providerCredentials: Array<{ provider: string; keyHint: string; verifiedAt: string | null }>
     walletTransactions: Array<{
@@ -70,6 +72,33 @@ export interface AdminUserDetail extends AdminUserRow {
         createdAt: string
     }>
     creditRequests: Array<{ id: string; status: CreditRequestStatus; createdAt: string }>
+}
+
+// support access (#636): the server answers 403 unless the user has it on
+export interface AdminUserSession {
+    id: string
+    title: string | null
+    type: string
+    status: string
+    isArchived: boolean
+    githubRepoOwner: string | null
+    githubRepoName: string | null
+    branch: string | null
+    prUrl: string | null
+    prState: string | null
+    createdAt: string
+    updatedAt: string
+}
+
+export interface AdminUserSessionDetail extends AdminUserSession {
+    messages: Array<{
+        id: string
+        role: string
+        content: string
+        status: string | null
+        sequence: number
+        createdAt: string
+    }>
 }
 
 export interface AdminRedeemCode {
@@ -161,6 +190,13 @@ export const adminAPI = {
     adjustCredits: (id: string, amountInCents: number, reason: string) =>
         post(`/admin/users/${id}/credits`, { amountInCents, reason }),
     restoreUser: (id: string) => post(`/admin/users/${id}/restore`),
+    listUserSessions: (id: string) =>
+        apiRequest<Items<AdminUserSession> & { supportAccessUntil: string }>(
+            `/admin/users/${id}/sessions`
+        ),
+    // each open is written to the audit log on the server
+    openUserSession: (id: string, sessionId: string) =>
+        apiRequest<AdminUserSessionDetail>(`/admin/users/${id}/sessions/${sessionId}`),
 
     listRedeemCodes: () => apiRequest<Items<AdminRedeemCode>>('/admin/redeem-codes'),
     createRedeemCode: (data: {

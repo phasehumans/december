@@ -2,7 +2,7 @@ import { prisma } from '@december/database'
 
 import { AppError } from '../../shared/appError'
 
-import type { RemovedPin, SessionFilters } from './session.types'
+import type { PullRequestFilters, RemovedPin, SessionFilters } from './session.types'
 import type { Prisma } from '@december/database'
 
 export async function findManySessions(userId: string, filters?: SessionFilters) {
@@ -158,7 +158,24 @@ export async function findSessionOwner(sessionId: string) {
         select: {
             id: true,
             userId: true,
+            // the notification names the session (#636)
+            title: true,
         },
+    })
+}
+
+// every session of a user, with what is needed to stop its sandbox first (#636)
+export async function findSessionsForDeleteAll(userId: string) {
+    return prisma.session.findMany({
+        where: { userId },
+        select: { id: true, vmId: true, sandboxStatus: true },
+    })
+}
+
+export async function deleteSessionsByIds(data: { userId: string; sessionIds: string[] }) {
+    const { userId, sessionIds } = data
+    return prisma.session.deleteMany({
+        where: { userId, id: { in: sessionIds } },
     })
 }
 
@@ -346,7 +363,207 @@ export async function touchSandboxActivity(sessionId: string) {
         })
 }
 
+const PULL_REQUEST_SELECT = {
+    id: true,
+    title: true,
+    tags: true,
+    type: true,
+    gitProvider: true,
+    githubRepoOwner: true,
+    githubRepoName: true,
+    repoUrl: true,
+    githubRepoUrl: true,
+    branch: true,
+    prNumber: true,
+    prState: true,
+    prTitle: true,
+    prUrl: true,
+    prBranch: true,
+    prAdditions: true,
+    prDeletions: true,
+    prOpenedAt: true,
+    prMergedAt: true,
+    prClosedAt: true,
+    createdAt: true,
+    updatedAt: true,
+} satisfies Prisma.SessionSelect
+
+/** the pull requests december opened for this user, one row per session (#632) */
+export async function findPullRequests(userId: string, filters: PullRequestFilters) {
+    const page = filters.page ?? 1
+    const limit = filters.limit ?? 50
+    const and: Prisma.SessionWhereInput[] = [
+        { userId, deletedAt: null, prNumber: { not: null }, type: { not: 'SEARCH' } },
+    ]
+
+    if (filters.states && filters.states.length > 0) {
+        const states = new Set(filters.states)
+        // a state that was never saved reads as open
+        and.push({
+            OR: [
+                { prState: { in: [...states] } },
+                ...(states.has('open') ? [{ prState: null }] : []),
+            ],
+        })
+    }
+    if (filters.isArchived !== undefined) and.push({ isArchived: filters.isArchived })
+    if (filters.repo) {
+        const [owner, name] = filters.repo.includes('/')
+            ? [filters.repo.split('/').slice(0, -1).join('/'), filters.repo.split('/').pop()]
+            : [undefined, filters.repo]
+        and.push({
+            githubRepoName: { equals: name, mode: 'insensitive' },
+            ...(owner ? { githubRepoOwner: { equals: owner, mode: 'insensitive' } } : {}),
+        })
+    }
+    if (filters.tag) and.push({ tags: { has: filters.tag } })
+    if (filters.search && filters.search.trim()) {
+        const needle = filters.search.trim().replace(/^#/, '')
+        const asNumber = /^\d+$/.test(needle) ? Number(needle) : null
+        and.push({
+            OR: [
+                { title: { contains: needle, mode: 'insensitive' } },
+                { prTitle: { contains: needle, mode: 'insensitive' } },
+                { prBranch: { contains: needle, mode: 'insensitive' } },
+                { githubRepoName: { contains: needle, mode: 'insensitive' } },
+                ...(asNumber !== null ? [{ prNumber: asNumber }] : []),
+            ],
+        })
+    }
+
+    const where: Prisma.SessionWhereInput = { AND: and }
+    const sortOrder = filters.sortOrder ?? 'desc'
+    // an old row has no opened date: it sorts by the session date after the dated rows
+    const orderBy: Prisma.SessionOrderByWithRelationInput[] =
+        filters.sortBy === 'prOpenedAt'
+            ? [{ prOpenedAt: { sort: sortOrder, nulls: 'last' } }, { createdAt: sortOrder }]
+            : [{ [filters.sortBy ?? 'updatedAt']: sortOrder }]
+
+    const [rows, total] = await Promise.all([
+        prisma.session.findMany({
+            where,
+            orderBy,
+            skip: (page - 1) * limit,
+            take: limit,
+            select: PULL_REQUEST_SELECT,
+        }),
+        prisma.session.count({ where }),
+    ])
+
+    return {
+        rows,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    }
+}
+
+/** open or draft pull requests of this user that were not read from the host lately */
+export async function findStalePullRequests(userId: string, checkedBefore: Date, take: number) {
+    return prisma.session.findMany({
+        where: {
+            userId,
+            deletedAt: null,
+            prNumber: { not: null },
+            githubRepoOwner: { not: null },
+            githubRepoName: { not: null },
+            OR: [{ prState: null }, { prState: { in: ['open', 'draft'] } }],
+            AND: [{ OR: [{ prCheckedAt: null }, { prCheckedAt: { lt: checkedBefore } }] }],
+        },
+        orderBy: { updatedAt: 'desc' },
+        take,
+        select: {
+            id: true,
+            gitProvider: true,
+            githubRepoOwner: true,
+            githubRepoName: true,
+            prNumber: true,
+        },
+    })
+}
+
+/**
+ * The pull request as the host reports it now; only the given fields change. The session
+ * keeps its updatedAt, so a state check does not move it up the sessions list.
+ */
+export async function updatePullRequestFields(
+    where: Prisma.SessionWhereInput,
+    data: Prisma.SessionUpdateInput
+) {
+    const sessions = await prisma.session.findMany({
+        where,
+        select: { id: true, userId: true, updatedAt: true },
+    })
+    await Promise.all(
+        sessions.map((session) =>
+            prisma.session.update({
+                where: { id: session.id },
+                data: { ...data, updatedAt: session.updatedAt },
+            })
+        )
+    )
+    return sessions.map(({ id, userId }) => ({ id, userId }))
+}
+
+/** the sequence of the user message for this prompt; reuses an unanswered same prompt */
+export async function saveUserPrompt(sessionId: string, prompt: string) {
+    return prisma.$transaction(async (tx) => {
+        const last = await tx.message.findFirst({
+            where: { sessionId },
+            orderBy: { sequence: 'desc' },
+            select: { sequence: true, role: true, content: true },
+        })
+        if (last && last.role === 'USER' && last.content === prompt) return last.sequence
+        const sequence = (last?.sequence ?? 0) + 1
+        await tx.message.create({ data: { sessionId, role: 'USER', content: prompt, sequence } })
+        return sequence
+    })
+}
+
+/** the user's defaults for a new session (#632) */
+export async function findUserRunDefaults(userId: string) {
+    return prisma.user.findUnique({
+        where: { id: userId },
+        select: { defaultPlanFirst: true, defaultEffort: true, defaultOpenPullRequest: true },
+    })
+}
+
+/** the saved config of a session of this user; null when the session is not theirs */
+export async function findSessionRunConfig(sessionId: string, userId: string) {
+    const session = await prisma.session.findFirst({
+        where: { id: sessionId, userId },
+        select: { id: true, settings: { select: { config: true } } },
+    })
+    if (!session) return null
+    return { config: session.settings?.config ?? null }
+}
+
+/** merges the run config into the session's settings, keeping any other saved keys */
+export async function saveSessionRunConfig(
+    sessionId: string,
+    config: Prisma.InputJsonObject,
+    previous: unknown
+) {
+    const base =
+        previous && typeof previous === 'object' && !Array.isArray(previous)
+            ? (previous as Prisma.InputJsonObject)
+            : {}
+    const merged = { ...base, ...config }
+    return prisma.sessionSettings.upsert({
+        where: { sessionId },
+        create: { sessionId, config: merged },
+        update: { config: merged },
+    })
+}
+
 export const sessionRepository = {
+    saveUserPrompt,
+    findSessionsForDeleteAll,
+    deleteSessionsByIds,
+    findPullRequests,
+    findStalePullRequests,
+    updatePullRequestFields,
+    findUserRunDefaults,
+    findSessionRunConfig,
+    saveSessionRunConfig,
     countWorkingSessions,
     touchSandboxActivity,
     findManySessions,

@@ -175,6 +175,15 @@ export const usePromptInputController = ({
         }
     }, [byokData, defaultsProfile, initialModel, selectedProvider, selectedSource])
 
+    // the saved session defaults (#632) replace the ones this browser remembered
+    useEffect(() => {
+        if (!defaultsProfile) return
+        usePromptConfig.getState().applyServerDefaults({
+            planFirst: defaultsProfile.defaultPlanFirst,
+            openPullRequest: defaultsProfile.defaultOpenPullRequest,
+        })
+    }, [defaultsProfile])
+
     const isControlled = value !== undefined
     const input = isControlled ? value : internalInput
 
@@ -579,6 +588,15 @@ export const usePromptInputController = ({
                     if (!isControlled) setInternalInput('')
                     onChange?.('')
                 }
+                // /review: a new session runs the review prompt on the picked model
+                if (command.submit && !isLoading) {
+                    onSubmit(command.submit.prompt, {
+                        model: selectedModel,
+                        provider: selectedProvider,
+                        billingSource: selectedSource,
+                        ...command.submit.options,
+                    })
+                }
                 return
             }
 
@@ -614,6 +632,7 @@ export const usePromptInputController = ({
                 issueNumber = parseInt(issueMatch[1], 10)
             }
 
+            const configValues = usePromptConfig.getState().values
             const submitOptions: PromptInputSubmitOptions = {
                 repoUrl,
                 branch,
@@ -621,6 +640,12 @@ export const usePromptInputController = ({
                 model: selectedModel,
                 provider: selectedProvider,
                 billingSource: selectedSource,
+                runConfig: {
+                    planFirst: configValues.planFirst,
+                    // fast or deep: on credits the tier, on a key the reasoning depth
+                    effort: selectedSource === 'OWN_KEY' ? undefined : getCreditTier(selectedModel),
+                    ...(mode !== 'chat' ? { openPullRequest: configValues.openPullRequest } : {}),
+                },
             }
 
             onSubmit(finalPrompt, submitOptions)

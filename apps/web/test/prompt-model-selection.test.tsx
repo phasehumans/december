@@ -75,6 +75,8 @@ describe('Model and provider routing', () => {
             model: 'claude-3-7-sonnet-latest',
             provider: 'anthropic',
             billingSource: 'CREDITS',
+            // any credit model that is not the fast one is deep (#632)
+            runConfig: { planFirst: false, effort: 'deep', openPullRequest: true },
         })
     })
 
@@ -141,6 +143,8 @@ describe('Model and provider routing', () => {
             model: 'claude-3-7-sonnet-latest',
             provider: 'anthropic',
             billingSource: 'CREDITS',
+            // on credits the server picks the model from the tier (#632)
+            tier: 'deep',
         })
     })
 })

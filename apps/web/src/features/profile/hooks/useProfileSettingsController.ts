@@ -2,7 +2,7 @@ import React from 'react'
 
 import { useProfileSettingsData } from './useProfileSettingsData'
 
-import { profileAPI } from '@/features/profile/api/profile'
+import { profileAPI, type UpdateNotificationInput } from '@/features/profile/api/profile'
 
 export const useProfileSettingsController = () => {
     const [nameModalOpen, setNameModalOpen] = React.useState(false)
@@ -27,9 +27,6 @@ export const useProfileSettingsController = () => {
     })
 
     const isGithubConnected = Boolean(profile?.githubAppInstall || profile?.githubConnected)
-    const emailNotifications = profile?.notifyProjectActivity ?? true
-    const productUpdates = profile?.notifyProductUpdates ?? true
-    const securityAlerts = profile?.notifySecurityAlerts ?? true
     const resolvedName = profile?.name ?? 'User'
 
     const openNameModal = () => {
@@ -46,13 +43,10 @@ export const useProfileSettingsController = () => {
         updateNameMutation.mutate({ name: tempName.trim() })
     }
 
-    const handleNotificationToggle = (
-        field: 'notifyProjectActivity' | 'notifyProductUpdates' | 'notifySecurityAlerts',
-        value: boolean
-    ) => {
-        updateNotificationMutation.mutate({
-            [field]: value,
-        })
+    // one or more notification settings (#636); the profile updates at once and rolls back
+    // on an error
+    const handleNotificationChange = (settings: UpdateNotificationInput) => {
+        updateNotificationMutation.mutate(settings)
     }
 
     const redirectToIntegration = (getUrl: (userId: string) => string) => {
@@ -78,13 +72,10 @@ export const useProfileSettingsController = () => {
         updateNameMutation,
         updateNotificationMutation,
         isGithubConnected,
-        emailNotifications,
-        productUpdates,
-        securityAlerts,
         resolvedName,
         openNameModal,
         handleSaveName,
-        handleNotificationToggle,
+        handleNotificationChange,
         connectGithub,
     }
 }

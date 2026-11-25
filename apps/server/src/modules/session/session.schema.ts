@@ -33,6 +33,43 @@ export const getSessionsSchema = z.object({
         .optional(),
 })
 
+const PULL_REQUEST_STATE_VALUES = ['open', 'draft', 'merged', 'closed'] as const
+
+export const getPullRequestsSchema = z.object({
+    // one state or several, comma separated: state=merged,closed
+    state: z
+        .preprocess(
+            (val) =>
+                typeof val === 'string' && val.trim()
+                    ? val
+                          .split(',')
+                          .map((item) => item.trim())
+                          .filter(Boolean)
+                    : undefined,
+            z.array(z.enum(PULL_REQUEST_STATE_VALUES)).max(4).optional()
+        )
+        .optional(),
+    isArchived: z
+        .preprocess(
+            (val) => (val === 'true' ? true : val === 'false' ? false : undefined),
+            z.boolean().optional()
+        )
+        .optional(),
+    repo: z.string().trim().min(1).max(200).optional(),
+    tag: z.string().trim().min(1).max(30).optional(),
+    search: z.string().trim().max(200).optional(),
+    sortBy: z.enum(['updatedAt', 'createdAt', 'prOpenedAt']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).optional(),
+    page: z.preprocess(
+        (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
+        z.number().int().min(1).optional()
+    ),
+    limit: z.preprocess(
+        (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
+        z.number().int().min(1).max(100).optional()
+    ),
+})
+
 export const smartSearchSessionsSchema = z.object({
     q: z.string().trim().min(3).max(200),
 })
@@ -69,6 +106,15 @@ export const createSessionSchema = z.object({
     billingSource: z.enum(['CREDITS', 'OWN_KEY']).optional(),
     provider: z.string().trim().max(64).optional(),
     model: z.string().trim().max(200).optional(),
+    // december credits: the server picks the model for fast and deep
+    tier: z.enum(['fast', 'deep']).optional(),
+    // session configuration; a field left out takes the user's default
+    planFirst: z.boolean().optional(),
+    effort: z.enum(['fast', 'deep']).optional(),
+    openPullRequest: z.boolean().optional(),
+    // plugins and mcp servers switched off for this session only (the + menu)
+    disabledPlugins: z.array(z.string().trim().min(1).max(64)).max(50).optional(),
+    disabledMcps: z.array(z.string().trim().min(1).max(64)).max(50).optional(),
 })
 
 export const getSessionByIdSchema = z.object({
@@ -116,6 +162,11 @@ export const updateSessionTagsParamsSchema = z.object({
 })
 export const updateSessionTagsBodySchema = z.object({
     tags: z.array(z.string().max(30)).max(1, 'Only one tag is allowed per session'),
+})
+
+// the web asks the user to type "delete" first; the server checks it too (#636)
+export const deleteAllSessionsSchema = z.object({
+    confirm: z.literal('delete', { message: 'type delete to confirm' }),
 })
 
 export const deleteSessionParamsSchema = z.object({

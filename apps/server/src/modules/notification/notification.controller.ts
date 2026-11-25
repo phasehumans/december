@@ -2,7 +2,12 @@ import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
-import { NotificationParamsSchema, GetNotificationsQuerySchema } from './notification.schema'
+import {
+    NotificationParamsSchema,
+    GetNotificationsQuerySchema,
+    pushSubscribeSchema,
+    pushUnsubscribeSchema,
+} from './notification.schema'
 import { notificationService } from './notification.service'
 
 import type { Request, Response } from 'express'
@@ -111,7 +116,45 @@ const markAllAsRead = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'notifications marked as read', result)
 })
 
+const getPushConfig = asyncHandler(async (_req: Request, res: Response) => {
+    const result = await notificationService.getPushConfig()
+    return sendSuccess(res, 'push config fetched', result)
+})
+
+const subscribePush = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { endpoint, keys } = pushSubscribeSchema.parse(req.body)
+    const result = await notificationService.subscribePush({
+        userId,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        userAgent: req.get('user-agent'),
+    })
+    return sendSuccess(res, 'push turned on for this browser', result, 201)
+})
+
+const unsubscribePush = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { endpoint } = pushUnsubscribeSchema.parse(req.body)
+    const result = await notificationService.unsubscribePush({ userId, endpoint })
+    return sendSuccess(res, 'push turned off for this browser', result)
+})
+
 export const notificationController = {
+    getPushConfig,
+    subscribePush,
+    unsubscribePush,
     getNotifications,
     getUnreadCount,
     getNotificationById,

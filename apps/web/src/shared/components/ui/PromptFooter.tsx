@@ -114,7 +114,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     const [configMenuPosition, setConfigMenuPosition] = useState<'top' | 'bottom'>('bottom')
     /** phones: the level of the Configuration sheet. the model list is the level under it */
     const [configLevel, setConfigLevel] = useState<'root' | 'models'>('root')
-    // skills, plugins, MCPs and the configuration have no backend yet. they work in demo mode
+    // skills, plugins and MCPs have no backend yet. they work in demo mode
     const [demo] = useState(isConnectionsDemoActive)
     const isConfigChanged = usePromptConfig(isPromptConfigChanged)
     const isPhone = useIsPhone()
@@ -436,7 +436,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                             )}
                         >
                             <SlidersHorizontal className="w-4 h-4" />
-                            {demo && isConfigChanged && (
+                            {isConfigChanged && (
                                 <span
                                     data-testid="config-changed-dot"
                                     className="absolute top-[6px] right-[6px] w-1.5 h-1.5 rounded-full bg-[#87B2F4]"
@@ -461,7 +461,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                         : 'top-[calc(100%+8px)]'
                                 )}
                             >
-                                <PromptConfigRows demo={demo} mode={mode} />
+                                <PromptConfigRows mode={mode} />
                             </div>
                         )}
                     </div>
@@ -614,7 +614,7 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
                                     {...modelProps}
                                     onOpen={() => setConfigLevel('models')}
                                 />
-                                <PromptConfigRows demo={demo} mode={mode} />
+                                <PromptConfigRows mode={mode} />
                             </div>
                         )}
                     </BottomSheet>

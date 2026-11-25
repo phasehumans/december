@@ -11,7 +11,7 @@ import {
 // once, so the view runs in the browser.
 
 export interface PullRequestsView {
-    /** Newest and Oldest go by the created date of the session */
+    /** Newest and Oldest go by the opened date of the pull request */
     sort: SessionsSort
     merged: boolean
     closed: boolean

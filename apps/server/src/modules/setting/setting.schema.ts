@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { isValidTimezone } from '../notification/notification.utils'
+
 export const updateNameSchema = z.object({
     name: z
         .string({ message: 'name is required' })
@@ -7,17 +9,33 @@ export const updateNameSchema = z.object({
         .max(20, 'name must be at most 20 characters'),
 })
 
-export const updateNotificationSchema = z.object({
-    notifyProjectActivity: z
-        .boolean({ message: 'notifyProjectActivity must be a boolean' })
-        .optional(),
-    notifyProductUpdates: z
-        .boolean({ message: 'notifyProductUpdates must be a boolean' })
-        .optional(),
-    notifySecurityAlerts: z
-        .boolean({ message: 'notifySecurityAlerts must be a boolean' })
-        .optional(),
-})
+// every field is optional: the page saves one row at a time (#636)
+export const updateNotificationSchema = z
+    .object({
+        notifyProductUpdates: z.boolean({ message: 'notifyProductUpdates must be a boolean' }),
+        // security alerts stay on: the switch exists, but it cannot be turned off
+        notifySecurityAlerts: z.literal(true, { message: 'security alerts cannot be turned off' }),
+        notifyLevel: z.enum(['ALL', 'IMPORTANT', 'NONE'], {
+            message: 'notifyLevel must be ALL, IMPORTANT or NONE',
+        }),
+        notifyEmail: z.boolean({ message: 'notifyEmail must be a boolean' }),
+        // turning push on goes through POST /notification/push/subscribe; off works here too
+        notifyPush: z.literal(false, { message: 'turn push on from the browser' }),
+        digestEnabled: z.boolean({ message: 'digestEnabled must be a boolean' }),
+        digestTime: z
+            .string()
+            .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'digestTime must be HH:mm, from 00:00 to 23:59'),
+        timezone: z
+            .string()
+            .min(1)
+            .max(64)
+            .refine(isValidTimezone, { message: 'timezone is not a known time zone' }),
+    })
+    .partial()
+    .strict()
+    .refine((value) => Object.keys(value).length > 0, {
+        message: 'at least one notification setting must be provided',
+    })
 
 export const updateOnboardingSchema = z.object({
     step: z.enum(['github', 'start', 'models'], {
@@ -34,6 +52,27 @@ export const updateModelSourceSchema = z.object({
     defaultModelSource: z.enum(['CREDITS', 'OWN_KEY'], {
         message: 'defaultModelSource must be CREDITS or OWN_KEY',
     }),
+})
+
+// defaults for a new session (#632). every field is optional: the menu saves what changed
+export const updateSessionDefaultsSchema = z
+    .object({
+        defaultPlanFirst: z.boolean(),
+        defaultEffort: z.enum(['fast', 'deep'], {
+            message: 'defaultEffort must be fast or deep',
+        }),
+        defaultOpenPullRequest: z.boolean(),
+    })
+    .partial()
+    .refine((value) => Object.keys(value).length > 0, {
+        message: 'send at least one default',
+    })
+
+// /permissions for cloud sessions (#632): tool calls the agent may never make
+export const updateToolDenyRulesSchema = z.object({
+    rules: z
+        .array(z.string().trim().min(1, 'a rule cannot be empty').max(300))
+        .max(100, 'at most 100 rules'),
 })
 
 // every field is optional: the page saves one row at a time
@@ -69,5 +108,31 @@ export const updatePullRequestSettingsSchema = z
 
 export const unsubscribeQuerySchema = z.object({
     u: z.string().trim().min(1).max(100),
+    t: z.string().trim().min(1).max(200),
+})
+
+// web preferences on the account (#636). the page saves one value at a time
+export const preferencesSchema = z
+    .object({
+        sendKey: z.enum(['enter', 'mod-enter'], { message: 'sendKey must be enter or mod-enter' }),
+        soundOnFinish: z.boolean({ message: 'soundOnFinish must be a boolean' }),
+        messageWhileWorking: z.enum(['queue', 'send'], {
+            message: 'messageWhileWorking must be queue or send',
+        }),
+    })
+    .partial()
+    .strict()
+
+export const updatePreferencesSchema = preferencesSchema.refine(
+    (value) => Object.keys(value).length > 0,
+    { message: 'send at least one preference' }
+)
+
+export const updateSupportAccessSchema = z.object({
+    enabled: z.boolean({ message: 'enabled must be a boolean' }),
+})
+
+export const dataExportDownloadSchema = z.object({
+    id: z.string().uuid('export id is not valid'),
     t: z.string().trim().min(1).max(200),
 })

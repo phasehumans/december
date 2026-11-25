@@ -82,16 +82,11 @@ export const ListSearch: React.FC<{
     />
 )
 
-const CONFIG_LABELS = ['Plan first', 'Open pull request']
-
 /**
- * Configuration for one session: Plan first and Open pull request.
- * The server does not read these yet, so outside demo mode the rows show "Soon".
+ * Configuration for one session: Plan first and Open pull request. Both are sent with
+ * the prompt; "Set as default" saves them on the account.
  */
-export const PromptConfigRows: React.FC<{ demo: boolean; mode: 'agent' | 'chat' }> = ({
-    demo,
-    mode,
-}) => {
+export const PromptConfigRows: React.FC<{ mode: 'agent' | 'chat' }> = ({ mode }) => {
     const values = usePromptConfig((s) => s.values)
     const setValue = usePromptConfig((s) => s.setValue)
     const saveAsDefault = usePromptConfig((s) => s.saveAsDefault)
@@ -112,19 +107,6 @@ export const PromptConfigRows: React.FC<{ demo: boolean; mode: 'agent' | 'chat' 
         setIsSaved(true)
         if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
         savedTimerRef.current = setTimeout(() => setIsSaved(false), 2000)
-    }
-
-    if (!demo) {
-        return (
-            <>
-                {CONFIG_LABELS.map((label) => (
-                    <div key={label} className={rowClass} aria-disabled="true">
-                        <span className="opacity-50">{label}</span>
-                        <SoonTag />
-                    </div>
-                ))}
-            </>
-        )
     }
 
     return (

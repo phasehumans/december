@@ -1,7 +1,7 @@
-import type { BackendSession } from '@/features/sessions/api/session'
+import type { BackendPullRequest, BackendSession } from '@/features/sessions/api/session'
 
-// pull requests come from the sessions list: a session keeps the number and state of the
-// pull request it opened. the list has no pull request title, link or line counts yet.
+// pull requests come from GET /session/pull-requests: one row for each session that
+// opened a pull request, with the title, link, line counts and dates the server saved.
 
 export type PullRequestState = 'open' | 'draft' | 'merged' | 'closed'
 
@@ -16,8 +16,11 @@ export interface PullRequestRow {
     branch: string | null
     /** link to the pull request on GitHub, when the repository url is known */
     url: string | null
+    /** added and deleted lines, when the host counts them (GitLab does not) */
+    additions: number | null
+    deletions: number | null
     updatedAt: string
-    /** when the session was created. a pull request has no opened date saved */
+    /** when the pull request was opened; the session date for rows saved before that */
     createdAt: string
     /** tags of the session */
     tags: string[]
@@ -47,18 +50,45 @@ export const pullRequestUrlOf = (session: BackendSession): string | null => {
     return session.repoUrl ? `${cleanRepoUrl(session.repoUrl)}/pull/${session.prNumber}` : null
 }
 
-/** sessions that opened a pull request, newest first */
-export const toPullRequestRows = (sessions: BackendSession[]): PullRequestRow[] =>
+/** rows of the pull requests list, last updated first */
+export const toPullRequestRows = (pullRequests: BackendPullRequest[]): PullRequestRow[] =>
+    pullRequests
+        .map((pr) => ({
+            sessionId: pr.sessionId,
+            title: pr.prTitle || pr.title || 'Untitled session',
+            repo: pr.repo,
+            number: pr.prNumber,
+            state: pr.prState ?? 'open',
+            branch: pr.prBranch,
+            url: pr.prUrl,
+            additions: pr.additions,
+            deletions: pr.deletions,
+            updatedAt: pr.updatedAt,
+            createdAt: pr.prOpenedAt ?? pr.createdAt,
+            tags: pr.tags || [],
+        }))
+        .sort(
+            (a, b) =>
+                (new Date(b.updatedAt).getTime() || 0) - (new Date(a.updatedAt).getTime() || 0)
+        )
+
+/**
+ * rows from the loaded sessions list, for the few rows under the Home prompt box. the
+ * Pull requests page reads GET /session/pull-requests instead
+ */
+export const sessionsToPullRequestRows = (sessions: BackendSession[]): PullRequestRow[] =>
     sessions
         .filter((session) => session.prNumber != null && session.type !== 'SEARCH')
         .map((session) => ({
             sessionId: session.id,
-            title: session.title || session.projectName || 'Untitled session',
+            title: session.prTitle || session.title || session.projectName || 'Untitled session',
             repo: repoNameOf(session),
             number: session.prNumber as number,
             state: session.prState ?? 'open',
             branch: session.prBranch ?? session.branch ?? null,
             url: pullRequestUrlOf(session),
+            additions: null,
+            deletions: null,
             updatedAt: session.updatedAt,
             createdAt: session.createdAt,
             tags: session.tags || [],

@@ -122,6 +122,64 @@ export type PaginatedSessionsResponse = {
 const buildVersionQuery = (versionId?: string | null) =>
     versionId ? `?versionId=${encodeURIComponent(versionId)}` : ''
 
+export interface SessionContextUse {
+    usedTokens: number
+    limitTokens: number | null
+    percent: number | null
+    messages: number
+    model: string | null
+}
+
+export interface SessionUsageTotals {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    costInCents: number
+    byModel: Array<{
+        model: string
+        billingSource: 'CREDITS' | 'OWN_KEY'
+        requests: number
+        totalTokens: number
+        costInCents: number
+    }>
+}
+
+export interface SetupCheck {
+    github: { connected: boolean; appInstalled: boolean; accounts: string[] }
+    gitlab: { connected: boolean; username: string | null }
+    credits: { balanceInCents: number; enoughToStart: boolean }
+    keys: Array<{ provider: string; keyHint: string }>
+    machine: { vmStatus: string; sandboxStatus: string | null } | null
+}
+
+export interface BackendPullRequest {
+    sessionId: string
+    title: string
+    tags: string[]
+    gitProvider: 'GITHUB' | 'GITLAB'
+    /** owner/name */
+    repo: string | null
+    prNumber: number
+    prState: 'open' | 'draft' | 'merged' | 'closed'
+    prTitle: string | null
+    prUrl: string | null
+    prBranch: string | null
+    additions: number | null
+    deletions: number | null
+    prOpenedAt: string | null
+    prMergedAt: string | null
+    prClosedAt: string | null
+    createdAt: string
+    updatedAt: string
+}
+
+export interface PullRequestsPagination {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+}
+
 export const sessionAPI = {
     getSessions: async (filters?: SessionFilters): Promise<PaginatedSessionsResponse> => {
         const queryParams = new URLSearchParams()
@@ -284,6 +342,10 @@ export const sessionAPI = {
         billingSource?: 'CREDITS' | 'OWN_KEY'
         provider?: string
         model?: string
+        tier?: 'fast' | 'deep'
+        planFirst?: boolean
+        effort?: 'fast' | 'deep'
+        openPullRequest?: boolean
     }): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>('/session', {
             method: 'POST',
@@ -399,6 +461,65 @@ export const sessionAPI = {
 
     getSessionCounts: (): Promise<SessionCounts> => apiRequest<SessionCounts>('/session/counts'),
 
+    // the slash commands of a session (#632 section 3)
+    getContext: (id: string) => apiRequest<SessionContextUse>(`/session/${id}/context`),
+    compactSession: (id: string, focus?: string) =>
+        apiRequest<{ summary: string; sequence: number; context: SessionContextUse }>(
+            `/session/${id}/compact`,
+            { method: 'POST', body: JSON.stringify(focus ? { focus } : {}) }
+        ),
+    clearSession: (id: string) =>
+        apiRequest<{ contextStartSequence: number }>(`/session/${id}/clear`, { method: 'POST' }),
+    forkSession: (id: string) =>
+        apiRequest<{ session: BackendSession }>(`/session/${id}/fork`, { method: 'POST' }),
+    getTurns: (id: string) =>
+        apiRequest<{ turns: Array<{ sequence: number; prompt: string; createdAt: string }> }>(
+            `/session/${id}/turns`
+        ),
+    rewindSession: (id: string, sequence: number) =>
+        apiRequest<{ prompt: string; filesRestored: boolean; filesNote: string | null }>(
+            `/session/${id}/rewind`,
+            { method: 'POST', body: JSON.stringify({ sequence }) }
+        ),
+    askSideQuestion: (id: string, question: string) =>
+        apiRequest<{ answer: string }>(`/session/${id}/btw`, {
+            method: 'POST',
+            body: JSON.stringify({ question }),
+        }),
+    generateTitle: (id: string) =>
+        apiRequest<{ title: string }>(`/session/${id}/title`, { method: 'POST' }),
+    searchCode: (id: string, query: string) =>
+        apiRequest<{ matches: Array<{ path: string; line: number; preview: string }> }>(
+            `/session/${id}/code-search?q=${encodeURIComponent(query)}`
+        ),
+    getTasks: (id: string) =>
+        apiRequest<{ tasks: Array<{ pid: number; elapsedSeconds: number; command: string }> }>(
+            `/session/${id}/tasks`
+        ),
+    getSessionUsage: (id: string) => apiRequest<SessionUsageTotals>(`/session/${id}/usage`),
+    getCheck: (sessionId?: string) =>
+        apiRequest<SetupCheck>(
+            `/session/check${sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''}`
+        ),
+
+    // the pull requests list (#632): one row per session that opened a pull request
+    getPullRequests: (params: {
+        state?: string
+        repo?: string
+        tag?: string
+        search?: string
+        sortBy?: 'updatedAt' | 'createdAt' | 'prOpenedAt'
+        sortOrder?: 'asc' | 'desc'
+        page?: number
+        limit?: number
+    }): Promise<{ pullRequests: BackendPullRequest[]; pagination: PullRequestsPagination }> => {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(params)) {
+            if (value !== undefined && value !== '') query.set(key, String(value))
+        }
+        return apiRequest(`/session/pull-requests?${query.toString()}`)
+    },
+
     updateSessionTags: async (id: string, tags: string[]): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/tags`, {
             method: 'PUT',
@@ -412,6 +533,13 @@ export const sessionAPI = {
             method: 'DELETE',
         })
     },
+
+    // every session of the user, after the sandboxes stop (#636). the server checks the confirm
+    deleteAllSessions: async () =>
+        apiRequest<{ deleted: number; sandboxesStopped: number }>('/session', {
+            method: 'DELETE',
+            body: JSON.stringify({ confirm: 'delete' }),
+        }),
 
     streamSearch: async (
         sessionId: string,

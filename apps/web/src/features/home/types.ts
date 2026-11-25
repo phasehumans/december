@@ -29,6 +29,18 @@ export interface PromptInputSubmitOptions {
     model?: string
     provider?: string
     billingSource?: 'CREDITS' | 'OWN_KEY'
+    /** session configuration sent with the prompt (#632) */
+    runConfig?: PromptRunConfig
+}
+
+/**
+ * Plan first and effort hold for this message and the next ones; open pull request is
+ * read only when a session starts. On December credits the effort is also the tier.
+ */
+export interface PromptRunConfig {
+    planFirst?: boolean
+    effort?: 'fast' | 'deep'
+    openPullRequest?: boolean
 }
 
 export interface HomeHeroProps {

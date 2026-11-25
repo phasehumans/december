@@ -82,6 +82,16 @@ const server = serve({
                 (isProd ? 'https://trydecember.com' : 'http://localhost:2000')
             return Response.redirect(`${targetBase}/terms`, 302)
         },
+        // the push service worker, at the root so its scope is the whole app (#636)
+        '/push-sw.js': () => {
+            const file = Bun.file(path.join(import.meta.dir, '../assets/push-sw.js'))
+            return new Response(file, {
+                headers: {
+                    'Content-Type': 'text/javascript; charset=utf-8',
+                    'Cache-Control': 'no-cache',
+                },
+            })
+        },
         '/robots.txt': () => {
             const file = Bun.file(path.join(import.meta.dir, '../assets/robots.txt'))
             return new Response(file, {

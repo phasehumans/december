@@ -8,6 +8,10 @@ interface ProfileDeleteAccountModalProps {
     isPending?: boolean
     onClose: () => void
     onConfirm: () => void
+    // the same type-delete-to-confirm modal serves "delete all sessions" (#636)
+    title?: string
+    description?: string
+    submitLabel?: string
 }
 
 export const ProfileDeleteAccountModal: React.FC<ProfileDeleteAccountModalProps> = ({
@@ -15,6 +19,9 @@ export const ProfileDeleteAccountModal: React.FC<ProfileDeleteAccountModalProps>
     isPending,
     onClose,
     onConfirm,
+    title = 'Delete account',
+    description = 'Your account and all its data are deleted after 90 days. You cannot undo this.',
+    submitLabel = 'Delete account',
 }) => {
     const [confirmText, setConfirmText] = useState('')
     const isConfirmEnabled = confirmText === 'delete'
@@ -38,8 +45,8 @@ export const ProfileDeleteAccountModal: React.FC<ProfileDeleteAccountModalProps>
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Delete account"
-            description="Your account and all its data are deleted after 90 days. You cannot undo this."
+            title={title}
+            description={description}
             variant="premium"
             showLogo={false}
             sheetOnPhone
@@ -61,7 +68,7 @@ export const ProfileDeleteAccountModal: React.FC<ProfileDeleteAccountModalProps>
                 />
                 <ModalActions
                     onCancel={onClose}
-                    submitLabel="Delete account"
+                    submitLabel={submitLabel}
                     submitDisabled={!isConfirmEnabled}
                     isPending={isPending}
                     danger

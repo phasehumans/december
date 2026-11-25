@@ -71,14 +71,37 @@ const sessions = [
     { ...base, id: 's5', title: 'No pull request here', updatedAt: '2026-11-23T10:00:00.000Z' },
 ]
 
+// the rows GET /session/pull-requests returns for these sessions (#632)
+const asPullRequests = (list: any[]) =>
+    list
+        .filter((session) => session.prNumber != null)
+        .map((session) => ({
+            sessionId: session.id,
+            title: session.title,
+            tags: session.tags ?? [],
+            gitProvider: 'GITHUB' as const,
+            repo: session.githubRepoName ?? null,
+            prNumber: session.prNumber,
+            prState: session.prState ?? 'open',
+            prTitle: null,
+            prUrl:
+                session.prUrl ??
+                `https://github.com/${session.githubRepoName}/pull/${session.prNumber}`,
+            prBranch: session.prBranch ?? null,
+            additions: session.additions ?? null,
+            deletions: session.deletions ?? null,
+            prOpenedAt: null,
+            prMergedAt: null,
+            prClosedAt: null,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+        }))
+
 const renderPageWithContainer = (list: unknown[] = sessions, githubConnected = true) => {
     const client = new QueryClient({
         defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
-    client.setQueryData(
-        ['sessions', { limit: 100, sortBy: 'updatedAt', sortOrder: 'desc', hasPr: true }],
-        { sessions: list }
-    )
+    client.setQueryData(['sessions', 'pull-requests'], asPullRequests(list))
     client.setQueryData(['profile'], { id: 'user-1', githubConnected })
     client.setQueryData(['quickinfo'], { fullName: 'Test', githubConnected })
     return render(
@@ -94,12 +117,7 @@ const renderPage = (list: unknown[] = sessions, githubConnected = true) => {
     const client = new QueryClient({
         defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
-    client.setQueryData(
-        ['sessions', { limit: 100, sortBy: 'updatedAt', sortOrder: 'desc', hasPr: true }],
-        {
-            sessions: list,
-        }
-    )
+    client.setQueryData(['sessions', 'pull-requests'], asPullRequests(list))
     client.setQueryData(['profile'], { id: 'user-1', githubConnected })
     client.setQueryData(['quickinfo'], { fullName: 'Test', githubConnected })
     const onOpenProject = mock((_id: string) => {})
@@ -141,7 +159,7 @@ afterEach(() => {
 
 describe('pull request rows', () => {
     test('come from sessions that opened a pull request, newest first', () => {
-        const rows = toPullRequestRows(sessions as never)
+        const rows = toPullRequestRows(asPullRequests(sessions))
         expect(rows.map((row) => row.number)).toEqual([412, 409, 77, 75])
         expect(rows[0]).toMatchObject({
             sessionId: 's1',
@@ -153,25 +171,27 @@ describe('pull request rows', () => {
     })
 
     test('a saved pull request link wins over the one built from the repository', () => {
-        const rows = toPullRequestRows([
-            { ...sessions[1], prUrl: 'https://github.com/acme/other/pull/409' },
-        ] as never)
+        const rows = toPullRequestRows(
+            asPullRequests([{ ...sessions[1], prUrl: 'https://github.com/acme/other/pull/409' }])
+        )
         expect(rows[0].url).toBe('https://github.com/acme/other/pull/409')
     })
 
     test('a draft counts as open', () => {
-        const rows = toPullRequestRows(sessions as never)
+        const rows = toPullRequestRows(asPullRequests(sessions))
         expect(rows.filter(isOpenPullRequest).map((row) => row.number)).toEqual([412, 77])
     })
 })
 
 describe('pull requests view', () => {
-    const rows = toPullRequestRows([
-        { ...sessions[0], createdAt: '2026-11-01T10:00:00.000Z', tags: ['bug'] },
-        { ...sessions[1], createdAt: '2026-11-10T10:00:00.000Z', githubRepoName: 'acme/api' },
-        { ...sessions[2], createdAt: '2026-11-05T10:00:00.000Z' },
-        { ...sessions[3], createdAt: '2026-11-20T10:00:00.000Z' },
-    ] as never)
+    const rows = toPullRequestRows(
+        asPullRequests([
+            { ...sessions[0], createdAt: '2026-11-01T10:00:00.000Z', tags: ['bug'] },
+            { ...sessions[1], createdAt: '2026-11-10T10:00:00.000Z', githubRepoName: 'acme/api' },
+            { ...sessions[2], createdAt: '2026-11-05T10:00:00.000Z' },
+            { ...sessions[3], createdAt: '2026-11-20T10:00:00.000Z' },
+        ])
+    )
     const numbers = (view: object, onlyOpen = false) =>
         applyPullRequestsView(rows, { ...DEFAULT_PULL_REQUESTS_VIEW, ...view }, onlyOpen).map(
             (row) => row.number
@@ -187,7 +207,7 @@ describe('pull requests view', () => {
         expect(numbers({ tag: 'bug' })).toEqual([412])
     })
 
-    test('Newest and Oldest go by the created date of the session', () => {
+    test('Newest and Oldest go by the opened date, the session date for old rows', () => {
         expect(numbers({ sort: 'newest' })).toEqual([75, 409, 77, 412])
         expect(numbers({ sort: 'oldest' })).toEqual([412, 77, 409, 75])
     })
@@ -259,13 +279,13 @@ describe('Pull requests page', () => {
         expect(readPullRequestsView().merged).toBe(false)
     })
 
-    test('the menu sorts, and rows show the created time under Newest and Oldest', () => {
+    test('the menu sorts, and rows show the opened time under Newest and Oldest', () => {
         renderPage()
-        expect(screen.queryByText(/Created/)).toBeNull()
+        expect(screen.queryByText(/Opened/)).toBeNull()
         fireEvent.click(screen.getByRole('button', { name: 'Sort and filter' }))
         fireEvent.click(screen.getByRole('menuitemradio', { name: 'Newest' }))
         // one for each of the 4 rows (the hover text with the full date matches too)
-        expect(screen.getAllByText(/Created/).length).toBeGreaterThanOrEqual(4)
+        expect(screen.getAllByText(/Opened/).length).toBeGreaterThanOrEqual(4)
     })
 
     test('the Repository list filters, and no results offers Clear filters', () => {

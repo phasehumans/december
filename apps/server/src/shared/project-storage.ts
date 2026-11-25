@@ -17,6 +17,19 @@ function normalizePath(filePath: string) {
     return normalized.replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
+// S3 and MinIO name a missing object NoSuchKey; MinIO's message does not say so
+function isMissingObjectError(error: unknown) {
+    if (!(error instanceof Error)) return false
+    const message = error.message.toLowerCase()
+    return (
+        error.name === 'NoSuchKey' ||
+        (error as { Code?: string }).Code === 'NoSuchKey' ||
+        message.includes('nosuchkey') ||
+        message.includes('not found') ||
+        message.includes('does not exist')
+    )
+}
+
 export function sessionWorkspaceKey(sessionId: string, path: string) {
     return `sessions/${sessionId}/workspace/${normalizePath(path)}`
 }
@@ -84,9 +97,7 @@ export async function getTextFile(key: string) {
 
         return await result.Body?.transformToString()
     } catch (error) {
-        const message = error instanceof Error ? error.message.toLowerCase() : ''
-
-        if (message.includes('nosuchkey') || message.includes('not found')) {
+        if (isMissingObjectError(error)) {
             return null
         }
 
@@ -134,9 +145,7 @@ export async function getBinaryFile(key: string) {
             contentType: result.ContentType,
         }
     } catch (error) {
-        const message = error instanceof Error ? error.message.toLowerCase() : ''
-
-        if (message.includes('nosuchkey') || message.includes('not found')) {
+        if (isMissingObjectError(error)) {
             return null
         }
 

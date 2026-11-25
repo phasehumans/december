@@ -1,10 +1,12 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { parsePullRequestUrl, buildReviewPrompt } from '@december/shared/review'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
     buildSlashItems,
     formatTokenCount,
     listSlashCommands,
+    parseArgCommand,
     parseOpenCommand,
     parseRenameCommand,
     parseSlashToken,
@@ -14,9 +16,9 @@ import {
 } from './slashModel'
 
 import type { SlashCommand, SlashScope } from './commands'
+import type { PromptInputSubmitOptions } from '@/features/home/types'
 
 import { useAppStore } from '@/app/store'
-import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { isPluginOff, useConnectionsStore } from '@/features/connections/hooks/useConnectionsStore'
 import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { saveHomeDraft } from '@/features/home/draft'
@@ -25,13 +27,15 @@ import {
     requestWorkspaceFile,
     requestWorkspaceTab,
 } from '@/features/preview/lib/workspaceTabRequest'
-import { useByokList } from '@/features/profile/hooks/useByokData'
+import { profileAPI } from '@/features/profile/api/profile'
 import { useGithubConnection } from '@/features/profile/hooks/useGithubConnection'
 import { sessionAPI } from '@/features/sessions/api/session'
+import { ApiError } from '@/shared/api/client'
 import { getWebUrl } from '@/shared/config/env'
 import {
     NEW_SESSION_REQUEST_EVENT,
     OPEN_SEARCH_EVENT,
+    OPEN_SESSION_EVENT,
     TOGGLE_VOICE_EVENT,
 } from '@/shared/lib/appEvents'
 
@@ -49,7 +53,40 @@ export interface SlashSubMenu {
     title: string
     options: SlashPickOption[]
     emptyLabel?: string
+    /** a longer answer shown above the rows (/btw, /compact) */
+    text?: string
+    loading?: boolean
 }
+
+/** a command typed in full and sent with Enter */
+export interface SlashSubmitResult {
+    /** empty the box */
+    clear: boolean
+    /** send this prompt instead, as a normal prompt (/review on Home) */
+    submit?: { prompt: string; options: Partial<PromptInputSubmitOptions> }
+}
+
+// commands that take text after the name, sent with Enter
+const TYPED_COMMANDS = new Set([
+    'rename',
+    'open',
+    'compact',
+    'btw',
+    'codesearch',
+    'review',
+    'learn',
+    'permissions',
+])
+
+const errorText = (error: unknown, fallback: string) =>
+    error instanceof ApiError && error.message ? error.message : fallback
+
+const formatElapsed = (seconds: number) =>
+    seconds < 60
+        ? `${seconds}s`
+        : seconds < 3600
+          ? `${Math.floor(seconds / 60)}m`
+          : `${Math.floor(seconds / 3600)}h`
 
 export interface SlashChip {
     id: string
@@ -140,6 +177,8 @@ export const useSlashMenu = ({
     const [skillChips, setSkillChips] = useState<string[]>([])
     const [helpTab, setHelpTab] = useState<'commands' | 'shortcuts' | null>(null)
     const [note, setNote] = useState<string | null>(null)
+    // the answer of a command that asked the server (/context, /rewind, /btw ...)
+    const [result, setResult] = useState<SlashSubMenu | null>(null)
     const noteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const token = useMemo(() => parseSlashToken(input.slice(0, cursor)), [input, cursor])
@@ -160,11 +199,16 @@ export const useSlashMenu = ({
         )
     }, [token, scope, demo, onCredits, skills])
 
-    // the checks only run while the /check list is open
+    // the checks only run while the /check list is open: one answer from the server
     const isChecking = subKind === 'check' && Boolean(isAuthenticated)
     const github = useGithubConnection(isChecking)
-    const { data: overview } = useBillingOverview(isChecking)
-    const { data: byokData } = useByokList(isChecking)
+    const checkSessionId = scope === 'session' ? useAppStore.getState().activeProjectId : null
+    const { data: check } = useQuery({
+        queryKey: ['setup-check', checkSessionId],
+        queryFn: () => sessionAPI.getCheck(checkSessionId ?? undefined),
+        enabled: isChecking,
+        staleTime: 10_000,
+    })
 
     const addSkillChip = useCallback(
         (name: string) => setSkillChips((prev) => (prev.includes(name) ? prev : [...prev, name])),
@@ -173,44 +217,42 @@ export const useSlashMenu = ({
 
     const checkOptions = useMemo<SlashPickOption[]>(() => {
         if (subKind !== 'check') return []
+        const checking = 'Checking...'
         const rows: SlashPickOption[] = [
             {
                 id: 'github',
                 label: 'GitHub',
-                hint: !github.isReady
-                    ? 'Checking...'
-                    : github.isConnected
-                      ? 'Connected'
-                      : 'Not connected',
+                hint: !check ? checking : check.github.connected ? 'Connected' : 'Not connected',
                 pick:
-                    github.isReady && !github.isConnected
+                    check && !check.github.connected
                         ? () => window.location.assign(github.connectUrl)
                         : undefined,
             },
             {
                 id: 'credits',
                 label: 'December credits',
-                hint:
-                    overview === undefined
-                        ? 'Checking...'
-                        : `$ ${(Math.max(0, overview.creditBalance ?? 0) / 100).toFixed(2)}`,
+                hint: !check
+                    ? checking
+                    : `$ ${(Math.max(0, check.credits.balanceInCents) / 100).toFixed(2)}`,
                 pick:
-                    overview !== undefined && (overview.creditBalance ?? 0) <= 0
+                    check && !check.credits.enoughToStart
                         ? () => onNavigate?.('/settings/billing')
                         : undefined,
             },
             {
                 id: 'keys',
                 label: 'Your keys',
-                hint:
-                    byokData === undefined
-                        ? 'Checking...'
-                        : byokData.credentials.length === 0
-                          ? 'None saved'
-                          : `${byokData.credentials.length} saved`,
+                hint: !check
+                    ? checking
+                    : check.keys.length === 0
+                      ? 'None saved'
+                      : `${check.keys.length} saved`,
                 pick: () => onNavigate?.('/settings/models'),
             },
         ]
+        if (check?.gitlab.connected) {
+            rows.push({ id: 'gitlab', label: 'GitLab', hint: 'Connected' })
+        }
         if (demo) {
             mcps.filter((mcp) => mcp.enabled && mcp.status !== 'connected').forEach((mcp) =>
                 rows.push({
@@ -221,8 +263,10 @@ export const useSlashMenu = ({
                 })
             )
         }
-        if (scope === 'session' && previewState) {
-            const state = String(previewState).toLowerCase()
+        const machine = check?.machine
+        const machineState = machine?.sandboxStatus ?? machine?.vmStatus ?? previewState
+        if (scope === 'session' && machineState) {
+            const state = String(machineState).toLowerCase()
             rows.push({
                 id: 'machine',
                 label: 'Session machine',
@@ -230,9 +274,10 @@ export const useSlashMenu = ({
             })
         }
         return rows
-    }, [subKind, github, overview, byokData, demo, mcps, scope, previewState, onNavigate])
+    }, [subKind, check, github.connectUrl, demo, mcps, scope, previewState, onNavigate])
 
     const sub = useMemo<SlashSubMenu | null>(() => {
+        if (result) return result
         if (!subKind) return null
         const title = SUB_TITLES[subKind]
         if (subKind === 'model') return { title, options: modelOptions }
@@ -249,13 +294,23 @@ export const useSlashMenu = ({
                 pick: () => addSkillChip(skill.name),
             })),
         }
-    }, [subKind, modelOptions, effortOptions, sourceOptions, checkOptions, skills, addSkillChip])
+    }, [
+        result,
+        subKind,
+        modelOptions,
+        effortOptions,
+        sourceOptions,
+        checkOptions,
+        skills,
+        addSkillChip,
+    ])
 
     // a slash in the middle of a sentence only opens the menu when something matches
     const isOpen =
-        token !== null &&
-        dismissedInput !== input &&
-        (subKind !== null || token.atStart || items.length > 0)
+        result !== null ||
+        (token !== null &&
+            dismissedInput !== input &&
+            (subKind !== null || token.atStart || items.length > 0))
 
     // a command picked from the + menu types its name and selects a choice in one step.
     // the name is a new query, and this flag keeps that choice selected
@@ -322,11 +377,215 @@ export const useSlashMenu = ({
         }
     }
 
-    const showSessionUsage = () => {
-        const tokens = useAppStore
-            .getState()
-            .messages.reduce((sum, message) => sum + (message.tokensUsed || 0), 0)
-        flash(`This session: ${formatTokenCount(tokens)} tokens.`)
+    const activeSessionId = () => useAppStore.getState().activeProjectId
+
+    /** shows a command's answer in the menu: "Loading..." first, then the rows */
+    const showResult = (title: string, load: () => Promise<Omit<SlashSubMenu, 'title'>>) => {
+        setSubKind(null)
+        setSelectedIndex(0)
+        setResult({ title, options: [], loading: true, emptyLabel: 'Loading...' })
+        load()
+            .then((loaded) => setResult({ title, ...loaded }))
+            .catch((error: unknown) => {
+                console.error(`/${title.toLowerCase()} failed:`, error)
+                setResult({
+                    title,
+                    options: [],
+                    emptyLabel: errorText(error, 'Something went wrong. Try again.'),
+                })
+            })
+    }
+
+    /** reloads the session (or opens another one) with its messages */
+    const openSession = (sessionId: string) =>
+        window.dispatchEvent(new CustomEvent(OPEN_SESSION_EVENT, { detail: { sessionId } }))
+
+    const showContext = (sessionId: string) =>
+        showResult('Context', async () => {
+            const context = await sessionAPI.getContext(sessionId)
+            return {
+                options: [
+                    {
+                        id: 'used',
+                        label: 'In use',
+                        hint: context.limitTokens
+                            ? `${formatTokenCount(context.usedTokens)} of ${formatTokenCount(context.limitTokens)} (${context.percent}%)`
+                            : `${formatTokenCount(context.usedTokens)} tokens`,
+                    },
+                    { id: 'messages', label: 'Messages', hint: String(context.messages) },
+                    ...(context.model
+                        ? [{ id: 'model', label: 'Model', hint: context.model }]
+                        : []),
+                    { id: 'compact', label: 'Compact now', pick: () => runCompact(sessionId) },
+                    { id: 'clear', label: 'Clear context', pick: () => runClear(sessionId) },
+                ],
+            }
+        })
+
+    const runCompact = (sessionId: string, focus?: string) =>
+        showResult('Compact', async () => {
+            const done = await sessionAPI.compactSession(sessionId, focus)
+            openSession(sessionId)
+            return {
+                text: done.summary,
+                options: [
+                    {
+                        id: 'used',
+                        label: 'Context in use',
+                        hint: `${formatTokenCount(done.context.usedTokens)} tokens`,
+                    },
+                ],
+            }
+        })
+
+    const runClear = async (sessionId: string) => {
+        try {
+            await sessionAPI.clearSession(sessionId)
+            flash('Context cleared. The next message starts fresh.')
+        } catch (error) {
+            flash(errorText(error, 'Clear failed.'))
+        }
+    }
+
+    const runFork = async (sessionId: string) => {
+        try {
+            const { session } = await sessionAPI.forkSession(sessionId)
+            queryClient.invalidateQueries({ queryKey: ['sessions'] })
+            openSession(session.id)
+            flash('Forked. You are in the copy.')
+        } catch (error) {
+            flash(errorText(error, 'Fork failed.'))
+        }
+    }
+
+    const showRewind = (sessionId: string) =>
+        showResult('Rewind', async () => {
+            const { turns } = await sessionAPI.getTurns(sessionId)
+            return {
+                emptyLabel: 'No messages to go back to.',
+                options: turns.map((turn) => ({
+                    id: `turn:${turn.sequence}`,
+                    label: turn.prompt.replace(/\s+/g, ' '),
+                    pick: () => void runRewind(sessionId, turn.sequence),
+                })),
+            }
+        })
+
+    const runRewind = async (sessionId: string, sequence: number) => {
+        try {
+            const done = await sessionAPI.rewindSession(sessionId, sequence)
+            openSession(sessionId)
+            // the prompt goes back in the box, to edit and send again
+            setInput(done.prompt, done.prompt.length)
+            flash(done.filesRestored ? 'Rewound. Files restored.' : done.filesNote || 'Rewound.')
+        } catch (error) {
+            flash(errorText(error, 'Rewind failed.'))
+        }
+    }
+
+    const showTasks = (sessionId: string) =>
+        showResult('Tasks', async () => {
+            const { tasks } = await sessionAPI.getTasks(sessionId)
+            return {
+                emptyLabel: 'Nothing is running.',
+                options: [
+                    ...tasks.map((task) => ({
+                        id: `task:${task.pid}`,
+                        label: task.command,
+                        hint: formatElapsed(task.elapsedSeconds),
+                    })),
+                    {
+                        id: 'shell',
+                        label: 'Open the shell',
+                        pick: () => requestWorkspaceTab('shell'),
+                    },
+                ],
+            }
+        })
+
+    const showSessionUsage = (sessionId: string) =>
+        showResult('Usage', async () => {
+            const usage = await sessionAPI.getSessionUsage(sessionId)
+            return {
+                options: [
+                    { id: 'tokens', label: 'Tokens', hint: formatTokenCount(usage.totalTokens) },
+                    {
+                        id: 'cost',
+                        label: 'Credits',
+                        hint: `$ ${(usage.costInCents / 100).toFixed(2)}`,
+                    },
+                    ...usage.byModel.map((row) => ({
+                        id: `model:${row.model}:${row.billingSource}`,
+                        label: row.model,
+                        hint: `${formatTokenCount(row.totalTokens)}${row.billingSource === 'OWN_KEY' ? ' · your key' : ''}`,
+                    })),
+                ],
+            }
+        })
+
+    const showPermissions = () =>
+        showResult('Blocked tools', async () => {
+            const { rules } = await profileAPI.getToolDenyRules()
+            return {
+                emptyLabel: 'Nothing is blocked. /permissions <rule> blocks a tool.',
+                options: rules.map((rule) => ({
+                    id: `rule:${rule}`,
+                    label: rule,
+                    hint: 'Remove',
+                    pick: () => void removeDenyRule(rule),
+                })),
+            }
+        })
+
+    const addDenyRule = async (rule: string) => {
+        try {
+            const { rules } = await profileAPI.getToolDenyRules()
+            await profileAPI.updateToolDenyRules([...rules, rule])
+            flash(`Blocked: ${rule}`)
+        } catch (error) {
+            flash(errorText(error, 'Could not save the rule.'))
+        }
+    }
+
+    const removeDenyRule = async (rule: string) => {
+        try {
+            const { rules } = await profileAPI.getToolDenyRules()
+            await profileAPI.updateToolDenyRules(rules.filter((item) => item !== rule))
+            showPermissions()
+        } catch (error) {
+            flash(errorText(error, 'Could not remove the rule.'))
+        }
+    }
+
+    const askSideQuestion = (sessionId: string, question: string) =>
+        showResult('btw', async () => {
+            const { answer } = await sessionAPI.askSideQuestion(sessionId, question)
+            return { text: answer, options: [] }
+        })
+
+    const searchCode = (sessionId: string, query: string) =>
+        showResult('Search code', async () => {
+            const { matches } = await sessionAPI.searchCode(sessionId, query)
+            return {
+                emptyLabel: 'No matches.',
+                options: matches.map((match, index) => ({
+                    id: `match:${index}`,
+                    label: `${match.path}:${match.line}`,
+                    hint: match.preview,
+                    pick: () => requestWorkspaceFile(match.path),
+                })),
+            }
+        })
+
+    const writeTitle = async (sessionId: string) => {
+        try {
+            const { title } = await sessionAPI.generateTitle(sessionId)
+            useAppStore.getState().setActiveProjectName(title)
+            queryClient.invalidateQueries({ queryKey: ['sessions'] })
+            flash(`Renamed: ${title}`)
+        } catch (error) {
+            flash(errorText(error, 'Rename failed.'))
+        }
     }
 
     const runAction = (name: string) => {
@@ -337,8 +596,6 @@ export const useSlashMenu = ({
             window.dispatchEvent(new CustomEvent(NEW_SESSION_REQUEST_EVENT))
         } else if (name === 'diff') {
             requestWorkspaceTab('changes')
-        } else if (name === 'tasks') {
-            requestWorkspaceTab('shell')
         } else if (name === 'copy') {
             void copyLastAnswer()
         } else if (name === 'voice') {
@@ -346,10 +603,19 @@ export const useSlashMenu = ({
         } else if (name === 'update') {
             // the web is always the newest version after a reload
             window.location.reload()
-        } else if (name === 'usage') {
-            if (scope === 'session') showSessionUsage()
-            else onNavigate?.('/settings/usage')
+        } else if (name === 'usage' && scope !== 'session') {
+            onNavigate?.('/settings/usage')
         }
+
+        // the rest work on the open session
+        const sessionId = activeSessionId()
+        if (!sessionId || scope !== 'session') return
+        if (name === 'usage') showSessionUsage(sessionId)
+        else if (name === 'tasks') showTasks(sessionId)
+        else if (name === 'context') showContext(sessionId)
+        else if (name === 'clear') void runClear(sessionId)
+        else if (name === 'fork') void runFork(sessionId)
+        else if (name === 'rewind') showRewind(sessionId)
     }
 
     const openSub = (kind: SubKind, options: SlashPickOption[]) => {
@@ -391,8 +657,8 @@ export const useSlashMenu = ({
             window.open(url, '_blank', 'noopener,noreferrer')
             return
         }
-        if (command.name === 'rename' || command.name === 'open') {
-            // the title or the file is typed after the command and sent with Enter
+        if (TYPED_COMMANDS.has(command.name)) {
+            // the text after the command is typed and sent with Enter
             takeToken(`/${command.name} `)
             return
         }
@@ -416,17 +682,23 @@ export const useSlashMenu = ({
 
     const selectOption = (option: SlashPickOption | undefined) => {
         if (!option?.pick) return
+        // a pick can show a new answer (Remove in /permissions), so the old one goes first
+        setResult(null)
         option.pick()
         setSubKind(null)
         takeToken()
     }
 
     const back = () => {
+        setResult(null)
         setSubKind(null)
         setSelectedIndex(0)
     }
 
-    const dismiss = useCallback(() => setDismissedInput(input), [input])
+    const dismiss = useCallback(() => {
+        setResult(null)
+        setDismissedInput(input)
+    }, [input])
 
     /** types a slash and opens the menu, for the Commands row of the + menu */
     const open = () => {
@@ -484,8 +756,8 @@ export const useSlashMenu = ({
             openSub(kind, options)
             return
         }
-        if (name === 'rename' || name === 'open') {
-            // the title or the file is typed after the command and sent with Enter
+        if (TYPED_COMMANDS.has(name)) {
+            // the text after the command is typed and sent with Enter
             typeWord(`/${name} `)
             return
         }
@@ -526,11 +798,34 @@ export const useSlashMenu = ({
     }
 
     /**
-     * a command typed in full and sent with Enter (/rename and /open).
-     * returns null when the text is a normal prompt.
+     * a command typed in full and sent with Enter (/rename, /open, /compact, /btw,
+     * /codesearch, /permissions, /review). returns null when the text is a normal
+     * prompt; /learn is one: the agent saves the lesson in a turn.
      */
-    const trySubmitCommand = (text: string): { clear: boolean } | null => {
+    const trySubmitCommand = (text: string): SlashSubmitResult | null => {
+        const review = parseArgCommand(text, 'review')
+        if (review) {
+            const parsed = parsePullRequestUrl(review.arg)
+            if (!parsed) {
+                flash('Paste a pull request link after /review.')
+                return { clear: false }
+            }
+            // a new session that reviews the pull request and opens none
+            return {
+                clear: true,
+                submit: {
+                    prompt: buildReviewPrompt(parsed),
+                    options: {
+                        repoUrl: parsed.repoUrl,
+                        runConfig: { openPullRequest: false, planFirst: false },
+                    },
+                },
+            }
+        }
+
         if (scope !== 'session') return null
+        const sessionId = activeSessionId()
+
         const open = parseOpenCommand(text)
         if (open) {
             if (!open.path) {
@@ -541,21 +836,51 @@ export const useSlashMenu = ({
             return { clear: true }
         }
         const rename = parseRenameCommand(text)
-        if (!rename) return null
-        if (!rename.title) {
-            flash('Add a title after /rename.')
-            return { clear: false }
+        if (rename) {
+            if (rename.title) void renameSession(rename.title)
+            else if (sessionId) void writeTitle(sessionId)
+            return { clear: true }
         }
-        void renameSession(rename.title)
-        return { clear: true }
+        if (!sessionId) return null
+
+        const compact = parseArgCommand(text, 'compact')
+        if (compact) {
+            runCompact(sessionId, compact.arg || undefined)
+            return { clear: true }
+        }
+        const btw = parseArgCommand(text, 'btw')
+        if (btw) {
+            if (!btw.arg) {
+                flash('Add a question after /btw.')
+                return { clear: false }
+            }
+            askSideQuestion(sessionId, btw.arg)
+            return { clear: true }
+        }
+        const codesearch = parseArgCommand(text, 'codesearch')
+        if (codesearch) {
+            if (!codesearch.arg) {
+                flash('Add text to search for after /codesearch.')
+                return { clear: false }
+            }
+            searchCode(sessionId, codesearch.arg)
+            return { clear: true }
+        }
+        const permissions = parseArgCommand(text, 'permissions')
+        if (permissions) {
+            if (permissions.arg) void addDenyRule(permissions.arg)
+            else showPermissions()
+            return { clear: true }
+        }
+        return null
     }
 
     const chips = useMemo<SlashChip[]>(
         () => [
-            ...(demo && planFirst ? [{ id: 'plan', label: '/plan' }] : []),
+            ...(planFirst ? [{ id: 'plan', label: '/plan' }] : []),
             ...skillChips.map((name) => ({ id: `skill:${name}`, label: `/${name}` })),
         ],
-        [demo, planFirst, skillChips]
+        [planFirst, skillChips]
     )
 
     const removeChip = (id: string) => {

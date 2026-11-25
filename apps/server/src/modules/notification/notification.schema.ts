@@ -32,3 +32,16 @@ export const GetNotificationsQuerySchema = z.object({
 })
 
 export type Notification = z.infer<typeof NotificationSchema>
+
+// what PushSubscription.toJSON() gives in the browser (#636)
+export const pushSubscribeSchema = z.object({
+    endpoint: z.string().url('endpoint must be a url').max(1000),
+    keys: z.object({
+        p256dh: z.string().min(1).max(200),
+        auth: z.string().min(1).max(100),
+    }),
+})
+
+export const pushUnsubscribeSchema = z.object({
+    endpoint: z.string().url('endpoint must be a url').max(1000),
+})

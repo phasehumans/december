@@ -8,7 +8,9 @@
         ".": "./src/index.ts",
         "./queue": "./src/queue/index.ts",
         "./crypto": "./src/crypto/index.ts",
-        "./git": "./src/git/index.ts"
+        "./git": "./src/git/index.ts",
+        "./commands": "./src/commands/index.ts",
+        "./review": "./src/review-prompt.ts"
     },
     "private": true,
     "scripts": {

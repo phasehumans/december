@@ -31,6 +31,7 @@ import { notifyAgentQuestion } from './inbox-notify'
 import { clearPendingQuestion } from './pending-question'
 import { RemotePlatformAdapter } from './remote-operations'
 import { reserveSandboxSlot, touchSandboxActivity } from './sandbox-limits'
+import { buildDenyRulesHook, buildTurnPrompt, createTurnCheckpoint } from './session-commands'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { archiveWorkspaceState } from './workspace'
 
@@ -843,6 +844,9 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         model,
         provider,
         llm: ownKeyLlm,
+        effort,
+        planFirst,
+        userMessageSequence,
     } = data
     console.log(`[E2BSandboxService] Starting in-sandbox agent runner session for ${sessionId}`)
 
@@ -931,16 +935,45 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         availableSecrets: secretKeys,
         modelOptions: {
             model: model || process.env.DEFAULT_MODEL || 'gemini-3.6-flash',
-            thinkingLevel: 'fast',
+            // the session's effort; runs started without one (github app) stay on fast
+            thinkingLevel: effort ?? 'fast',
         },
     })
 
     const agent = harness.getAgent()
 
+    // /permissions (#632): tool calls that match the user's deny rules are blocked
+    const owner = userId
+        ? await prisma.user
+              .findUnique({ where: { id: userId }, select: { toolDenyRules: true } })
+              .catch(() => null)
+        : null
+    const denyHook = buildDenyRulesHook(owner?.toolDenyRules ?? [])
+    if (denyHook) {
+        const ownHook = agent.hooks?.beforeToolCall
+        agent.hooks = {
+            ...agent.hooks,
+            beforeToolCall: async (toolCall) => (await denyHook(toolCall)) ?? ownHook?.(toolCall),
+        }
+    }
+
     // Rehydrate past conversational history from PostgreSQL
     try {
+        const contextRow = await prisma.session.findUnique({
+            where: { id: sessionId },
+            select: { contextStartSequence: true },
+        })
+        const contextStart = contextRow?.contextStartSequence ?? 0
         const historicalDbMessages = await prisma.message.findMany({
-            where: { sessionId },
+            where: {
+                sessionId,
+                // /clear and /compact move the start; the saved prompt of this turn is
+                // sent by the loop itself, so the history stops before it
+                sequence: {
+                    gte: contextStart,
+                    ...(userMessageSequence ? { lt: userMessageSequence } : {}),
+                },
+            },
             orderBy: { sequence: 'asc' },
         })
 
@@ -1004,7 +1037,16 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
             console.log(
                 `[AGENT EXECUTION] Agent loop started for session '${sessionId}'. Running AgentHarness loop...`
             )
-            for await (const event of runAgentLoop(agent, prompt)) {
+            const activeSandbox =
+                activeSandboxes.get(sessionId) || activeSandboxes.get(effectiveSandboxId)
+            // the files before this turn, for /rewind
+            await createTurnCheckpoint({ sandbox: activeSandbox, sequence: userMessageSequence })
+            const turnPrompt = await buildTurnPrompt({
+                prompt,
+                planFirst: Boolean(planFirst),
+                sandbox: activeSandbox,
+            })
+            for await (const event of runAgentLoop(agent, turnPrompt)) {
                 if (event.type === 'AgentStatus') {
                     console.log(`[AGENT STATUS] Session '${sessionId}': ${event.message}`)
                 } else if (event.type === 'StreamChunk') {

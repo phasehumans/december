@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import { env } from '../../env'
 
 import type {
+    PullRequestStateEvent,
     BuildGithubRunPrompt,
     CanClaimInstallation,
     ClaimInstallationResult,
@@ -360,3 +361,50 @@ export {
     createPullRequest,
     createReviewCommentReaction,
 } from '@december/shared'
+
+// pull_request actions that change the state december saves on a session (#632)
+const PULL_REQUEST_STATE_ACTIONS = [
+    'opened',
+    'closed',
+    'reopened',
+    'converted_to_draft',
+    'ready_for_review',
+    'edited',
+    'synchronize',
+]
+
+/** the new state of a pull request from a pull_request webhook, or null for other events */
+export const toPullRequestStateEvent = (
+    event: unknown,
+    payload: any
+): PullRequestStateEvent | null => {
+    if (event !== 'pull_request' || !PULL_REQUEST_STATE_ACTIONS.includes(payload?.action)) {
+        return null
+    }
+    const pr = payload?.pull_request
+    const repoOwner = payload?.repository?.owner?.login
+    const repoName = payload?.repository?.name
+    if (!pr || typeof pr.number !== 'number' || !repoOwner || !repoName) return null
+
+    const state: PullRequestStateEvent['state'] = pr.merged_at
+        ? 'merged'
+        : pr.state === 'closed'
+          ? 'closed'
+          : pr.draft
+            ? 'draft'
+            : 'open'
+
+    return {
+        gitProvider: 'GITHUB',
+        repoOwner,
+        repoName,
+        number: pr.number,
+        state,
+        ...(typeof pr.title === 'string' ? { title: pr.title } : {}),
+        ...(typeof pr.additions === 'number' ? { additions: pr.additions } : {}),
+        ...(typeof pr.deletions === 'number' ? { deletions: pr.deletions } : {}),
+        openedAt: pr.created_at ?? null,
+        mergedAt: pr.merged_at ?? null,
+        closedAt: pr.closed_at ?? null,
+    }
+}

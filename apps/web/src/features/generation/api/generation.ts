@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client'
 
 import type { BillingSource } from '@/features/home/model-selection'
+import type { PromptRunConfig } from '@/features/home/types'
 import type {
     BackendProject,
     BackendMessage,
@@ -8,7 +9,7 @@ import type {
 } from '@/features/sessions/api/session'
 
 import { useAppStore } from '@/app/store'
-import { getModelSelection } from '@/features/home/model-selection'
+import { getCreditTier, getModelSelection } from '@/features/home/model-selection'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { ApiError, refreshAuthSession } from '@/shared/api/client'
 import { getWebSocketUrl } from '@/shared/config/env'
@@ -605,6 +606,7 @@ type GenerateProjectInput = {
     model?: string
     provider?: string
     billingSource?: BillingSource
+    runConfig?: PromptRunConfig
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
     repoUrl?: string
@@ -620,6 +622,7 @@ type ApplyProjectEditInput = {
     model?: string
     provider?: string
     billingSource?: BillingSource
+    runConfig?: PromptRunConfig
     signal?: AbortSignal
     onEvent: (event: GenerationStreamEvent) => void
 }
@@ -661,9 +664,13 @@ const runOverSocket = async (
         model?: string
         provider?: string
         billingSource?: BillingSource
+        runConfig?: PromptRunConfig
     }
 ): Promise<any> => {
     const selection = resolvePromptSelection(options)
+    // on december credits the server picks the model from the tier (#632)
+    const tier = selection.billingSource === 'OWN_KEY' ? undefined : getCreditTier(selection.model)
+    const runConfig = options?.runConfig
     return new Promise((resolve, reject) => {
         const socket = getSharedSocket()
 
@@ -695,6 +702,11 @@ const runOverSocket = async (
                     model: selection.model,
                     provider: selection.provider,
                     billingSource: selection.billingSource,
+                    ...(tier ? { tier } : {}),
+                    ...(runConfig?.planFirst !== undefined
+                        ? { planFirst: runConfig.planFirst }
+                        : {}),
+                    ...(runConfig?.effort ? { effort: runConfig.effort } : {}),
                 })
             }
         }
@@ -863,6 +875,7 @@ const generateProjectStream = async ({
     model,
     provider,
     billingSource,
+    runConfig,
     signal,
     onEvent,
     repoUrl,
@@ -891,7 +904,8 @@ const generateProjectStream = async ({
                           provider: selection.provider,
                           model: selection.model,
                       }
-                    : {}),
+                    : { tier: getCreditTier(selection.model) }),
+                ...(runConfig ?? {}),
             })
         } catch (error) {
             // the server checks the own key before it creates the session (400, for example
@@ -923,7 +937,10 @@ const generateProjectStream = async ({
         })
     }
 
-    return await runOverSocket(targetSessionId, prompt, onEvent, signal, selection)
+    return await runOverSocket(targetSessionId, prompt, onEvent, signal, {
+        ...selection,
+        runConfig,
+    })
 }
 
 /**
@@ -936,6 +953,7 @@ const applyProjectEdit = async (data: ApplyProjectEditInput) => {
         model: data.model,
         provider: data.provider,
         ...(data.billingSource ? { billingSource: data.billingSource } : {}),
+        runConfig: data.runConfig,
     })
 }
 

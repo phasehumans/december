@@ -142,8 +142,59 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
                 prState: 'open',
                 prTitle: prCreatedBody.title,
                 prBranch: `december/${sessionId}`,
+                prOpenedAt: expect.any(Date),
+                prCheckedAt: expect.any(Date),
+                prAdditions: 35,
+                prDeletions: 4,
             },
         })
+    })
+
+    it('pushes the branch but opens no pull request when "open pull request" is off', async () => {
+        const sessionId = 'sess-no-pr'
+        const executedCommands: string[] = []
+
+        prisma.session.findUnique = mock(async () => ({
+            id: sessionId,
+            userId: 'user-no-pr',
+            title: 'Refactor the cart',
+            githubRepoOwner: 'phasehumans',
+            githubRepoName: 'december',
+            branch: 'main',
+            settings: { config: { planFirst: false, effort: 'deep', openPullRequest: false } },
+        })) as any
+        prisma.user.findUnique = mock(async () => ({
+            id: 'user-no-pr',
+            githubToken: 'ghp_mock_token_abc',
+        })) as any
+
+        const requests: Array<{ url: string; method?: string }> = []
+        globalThis.fetch = mock(async (url: string | URL | Request, init?: RequestInit) => {
+            requests.push({ url: url.toString(), method: init?.method })
+            return new Response('{}', { status: 200 })
+        }) as any
+
+        const mockSandbox = {
+            commands: {
+                run: mock(async (cmd: string) => {
+                    executedCommands.push(cmd)
+                    if (cmd.includes('git status --porcelain')) {
+                        return { stdout: ' M src/cart.ts', exitCode: 0 }
+                    }
+                    return { stdout: '', exitCode: 0 }
+                }),
+            },
+        }
+
+        const result = await handleAutonomousTaskBranchAndPr({ sessionId, sandbox: mockSandbox })
+
+        expect(result?.state).toBe('branch')
+        expect(result?.prNumber).toBeUndefined()
+        expect(
+            executedCommands.some((c) => c.includes(`git push origin december/${sessionId}`))
+        ).toBe(true)
+        expect(requests.some((r) => r.url.includes('/pulls') && r.method === 'POST')).toBe(false)
+        expect(sessionUpdates).toHaveLength(0)
     })
 
     it('returns null and skips push/PR creation if git status is clean', async () => {

@@ -3,7 +3,7 @@ import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useAppStore } from '@/app/store'
-import { getViewForPath, toProjectSlug, type ViewState } from '@/app/types'
+import { getPathForView, getViewForPath, toProjectSlug, type ViewState } from '@/app/types'
 import { githubOAuth } from '@/features/auth/githubOAuth'
 import { useChatController } from '@/features/chat/hooks/useChatController'
 import { useNavigationController } from '@/features/navigation/hooks/useNavigationController'
@@ -11,10 +11,11 @@ import { ONBOARDING_PATH } from '@/features/onboarding/constants'
 import { getOnboardingRedirect } from '@/features/onboarding/gate'
 import { previewAPI } from '@/features/preview/api'
 import { profileAPI } from '@/features/profile/api/profile'
+import { useAccountPreferencesSync } from '@/features/profile/hooks/useAccountPreferencesSync'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { useSessionController } from '@/features/sessions/hooks/useSessionController'
 import { ApiError } from '@/shared/api/client'
-import { NEW_SESSION_REQUEST_EVENT } from '@/shared/lib/appEvents'
+import { NEW_SESSION_REQUEST_EVENT, OPEN_SESSION_EVENT } from '@/shared/lib/appEvents'
 import { clearLoggedInCookie, setLoggedInCookie } from '@/shared/utils/logged-in-cookie'
 
 export const useAppController = () => {
@@ -132,6 +133,8 @@ export const useAppController = () => {
         queryFn: profileAPI.getProfile,
         enabled: isAuthenticated,
     })
+    // preferences saved on the account replace the ones in this browser (#636)
+    useAccountPreferencesSync(isAuthenticated ? profile : undefined)
 
     // every user goes through /onboarding once. A profile that fails to load does not
     // block the app: the gate only acts on a loaded profile with no completion date.
@@ -237,6 +240,18 @@ export const useAppController = () => {
     const handleHomeClick = React.useCallback(() => {
         handleNewThread()
     }, [handleNewThread])
+
+    // /rewind reloads the session, /fork opens the copy (detail: { sessionId })
+    React.useEffect(() => {
+        const onOpenSession = (event: Event) => {
+            const sessionId = (event as CustomEvent<{ sessionId?: string }>).detail?.sessionId
+            if (!sessionId) return
+            navigate(getPathForView('project', { projectSlug: sessionId }))
+            void openProject({ projectId: sessionId, abortActiveGeneration: true })
+        }
+        window.addEventListener(OPEN_SESSION_EVENT, onOpenSession)
+        return () => window.removeEventListener(OPEN_SESSION_EVENT, onOpenSession)
+    }, [navigate, openProject])
 
     // the /new command starts a new session from the prompt box
     React.useEffect(() => {

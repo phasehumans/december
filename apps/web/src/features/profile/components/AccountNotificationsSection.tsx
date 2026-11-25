@@ -1,93 +1,127 @@
+import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 
-import { SettingsInput, SettingsRow, SettingsSection, usePreviewValue } from './SettingsUi'
+import { SettingsInput, SettingsRow, SettingsSection } from './SettingsUi'
 
 import { ChoiceGroup, Switch } from '@/features/connections/components/ConnectionsUi'
-
-type NotifyLevel = 'all' | 'important' | 'none'
+import {
+    profileAPI,
+    type NotifyLevel,
+    type UpdateNotificationInput,
+} from '@/features/profile/api/profile'
+import { useBrowserPush } from '@/features/profile/hooks/useBrowserPush'
 
 const LEVELS: { value: NotifyLevel; label: string }[] = [
-    { value: 'all', label: 'Everything' },
-    { value: 'important', label: 'Important' },
-    { value: 'none', label: 'Nothing' },
+    { value: 'ALL', label: 'Everything' },
+    { value: 'IMPORTANT', label: 'Important' },
+    { value: 'NONE', label: 'Nothing' },
 ]
 
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
+
+/** the time zone of this browser, so the summary comes at the user's local time */
+const browserTimezone = () => {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    } catch {
+        // Intentionally swallowed: an old browser without Intl time zones gets UTC
+        return 'UTC'
+    }
+}
+
 interface AccountNotificationsSectionProps {
-    productUpdates: boolean
-    securityAlerts: boolean
-    onNotificationToggle: (
-        field: 'notifyProjectActivity' | 'notifyProductUpdates' | 'notifySecurityAlerts',
-        value: boolean
-    ) => void
-    /** show the ui-only rows (level, email, push, daily summary, issue 636) */
-    showPreviewRows: boolean
+    onNotificationChange: (settings: UpdateNotificationInput) => void
 }
 
 /**
- * Notifications, a section of the Account page (it was its own page, N1-D). Product updates
- * and security alerts are the real switches. The other rows show only with the preview on.
+ * Notifications, a section of the Account page (N1-D, #636): the level, email, browser push
+ * for this device, the daily summary, then product updates and security alerts (always on).
  */
 export const AccountNotificationsSection: React.FC<AccountNotificationsSectionProps> = ({
-    productUpdates,
-    securityAlerts,
-    onNotificationToggle,
-    showPreviewRows,
+    onNotificationChange,
 }) => {
-    const [level, setLevel] = usePreviewValue<NotifyLevel>('notify.level', 'important')
-    const [email, setEmail] = usePreviewValue('notify.email', true)
-    const [push, setPush] = usePreviewValue('notify.push', false)
-    const [digest, setDigest] = usePreviewValue('notify.digest', true)
-    const [digestTime, setDigestTime] = usePreviewValue('notify.digestTime', '09:00')
+    const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: profileAPI.getProfile })
+    const push = useBrowserPush()
+
+    const level = profile?.notifyLevel ?? 'IMPORTANT'
+    const savedTime = profile?.digestTime ?? '09:00'
+    const [digestTime, setDigestTime] = React.useState(savedTime)
+    React.useEffect(() => setDigestTime(savedTime), [savedTime])
+
+    const showPush = push.state !== 'unsupported' && push.state !== 'unavailable'
 
     return (
         <SettingsSection
             title="Notifications"
-            description={
-                showPreviewRows
-                    ? 'What December tells you about, and where.'
-                    : 'Emails December sends you.'
-            }
+            description="What December tells you about, and where."
         >
-            {showPreviewRows && (
-                <>
-                    <SettingsRow label="Notify me about">
-                        <ChoiceGroup
-                            label="Notify me about"
-                            options={LEVELS}
-                            value={level}
-                            onChange={setLevel}
-                        />
-                    </SettingsRow>
-                    <SettingsRow label="Email">
-                        <Switch label="Email" checked={email} onChange={setEmail} />
-                    </SettingsRow>
-                    <SettingsRow label="Browser push">
-                        <Switch label="Browser push" checked={push} onChange={setPush} />
-                    </SettingsRow>
-                    <SettingsRow label="Daily summary">
-                        <SettingsInput
-                            label="Daily summary time"
-                            type="time"
-                            value={digestTime}
-                            onChange={setDigestTime}
-                            className="w-[136px]"
-                        />
-                        <Switch label="Daily summary" checked={digest} onChange={setDigest} />
-                    </SettingsRow>
-                </>
+            <SettingsRow label="Notify me about">
+                <ChoiceGroup
+                    label="Notify me about"
+                    options={LEVELS}
+                    value={level}
+                    onChange={(value) => onNotificationChange({ notifyLevel: value })}
+                />
+            </SettingsRow>
+            <SettingsRow label="Email">
+                <Switch
+                    label="Email"
+                    checked={profile?.notifyEmail ?? true}
+                    onChange={(value) => onNotificationChange({ notifyEmail: value })}
+                />
+            </SettingsRow>
+            {showPush && (
+                <SettingsRow label="Browser push" hint={push.error ?? undefined}>
+                    <Switch
+                        label="Browser push"
+                        checked={push.state === 'on'}
+                        disabled={
+                            push.isPending || push.state === 'loading' || push.state === 'blocked'
+                        }
+                        disabledReason={
+                            push.state === 'blocked'
+                                ? 'Blocked in your browser settings'
+                                : undefined
+                        }
+                        onChange={(value) => void (value ? push.turnOn() : push.turnOff())}
+                    />
+                </SettingsRow>
             )}
+            <SettingsRow label="Daily summary">
+                <SettingsInput
+                    label="Daily summary time"
+                    type="time"
+                    value={digestTime}
+                    onChange={(value) => {
+                        setDigestTime(value)
+                        if (TIME_PATTERN.test(value) && value !== savedTime) {
+                            onNotificationChange({ digestTime: value, timezone: browserTimezone() })
+                        }
+                    }}
+                    className="w-[136px]"
+                />
+                <Switch
+                    label="Daily summary"
+                    checked={profile?.digestEnabled ?? false}
+                    onChange={(value) =>
+                        onNotificationChange({ digestEnabled: value, timezone: browserTimezone() })
+                    }
+                />
+            </SettingsRow>
             <SettingsRow label="Product updates">
                 <Switch
                     label="Product updates"
-                    checked={productUpdates}
-                    onChange={(value) => onNotificationToggle('notifyProductUpdates', value)}
+                    checked={profile?.notifyProductUpdates ?? true}
+                    onChange={(value) => onNotificationChange({ notifyProductUpdates: value })}
                 />
             </SettingsRow>
             <SettingsRow label="Security alerts">
                 <Switch
                     label="Security alerts"
-                    checked={securityAlerts}
-                    onChange={(value) => onNotificationToggle('notifySecurityAlerts', value)}
+                    checked
+                    disabled
+                    disabledReason="Always on"
+                    onChange={() => undefined}
                 />
             </SettingsRow>
         </SettingsSection>

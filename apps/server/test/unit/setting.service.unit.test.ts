@@ -136,6 +136,7 @@ describe('Setting Service - Unit Tests', () => {
                 await expect(
                     settingService.updateNotifications({
                         userId: 'u1',
+                        settings: {},
                     })
                 ).rejects.toThrow(
                     new AppError('at least one notification setting must be provided', 400)
@@ -159,11 +160,10 @@ describe('Setting Service - Unit Tests', () => {
             try {
                 const res = await settingService.updateNotifications({
                     userId: 'u1',
-                    notifyProjectActivity: true,
-                    notifyProductUpdates: false,
+                    settings: { notifyLevel: 'ALL', notifyProductUpdates: false },
                 })
                 expect(updatePayload).toEqual({
-                    notifyProjectActivity: true,
+                    notifyLevel: 'ALL',
                     notifyProductUpdates: false,
                 })
                 expect(res.id).toBe('u1')

@@ -204,8 +204,8 @@ describe('slash menu on Home', () => {
         expect(list().getByText('Pick a model')).not.toBeNull()
         expect(list().getByText('/effort')).not.toBeNull()
         expect(list().getByText('/help')).not.toBeNull()
-        // these need the server, so they stay out until demo mode
-        expect(list().queryByText('/plan')).toBeNull()
+        // /plan works since the server reads plan first (#632); /skills waits for demo mode
+        expect(list().getByText('/plan')).not.toBeNull()
         expect(list().queryByText('/skills')).toBeNull()
         // session commands are not on Home
         expect(list().queryByText('/rename')).toBeNull()
@@ -320,13 +320,34 @@ describe('slash menu on Home', () => {
         expect(screen.getByText('Check your setup')).not.toBeNull()
     })
 
-    test('/check lists what the web can check', () => {
+    test('/check shows the one answer from the server', async () => {
+        const check = spyOn(sessionAPI, 'getCheck').mockResolvedValue({
+            github: { connected: true, appInstalled: true, accounts: ['acme'] },
+            gitlab: { connected: false, username: null },
+            credits: { balanceInCents: 1250, enoughToStart: true },
+            keys: [],
+            machine: null,
+        })
         wrap(<HomeBox />)
         type('/check')
         press('Enter')
         expect(list().getByText('GitHub')).not.toBeNull()
-        expect(list().getByText('December credits')).not.toBeNull()
+        expect(await list().findByText('Connected')).not.toBeNull()
+        expect(list().getByText('$ 12.50')).not.toBeNull()
         expect(list().getByText('None saved')).not.toBeNull()
+        check.mockRestore()
+    })
+
+    test('/review with a link starts a review session that opens no pull request', () => {
+        const onSubmit = mock((_prompt: string, _options?: unknown) => {})
+        wrap(<HomeBox onSubmit={onSubmit} />)
+        type('/review https://github.com/acme/shop/pull/42')
+        press('Enter')
+        expect(onSubmit).toHaveBeenCalledTimes(1)
+        const [prompt, options] = onSubmit.mock.calls[0] as [string, any]
+        expect(prompt).toContain('git fetch origin pull/42/head:review-42')
+        expect(options.repoUrl).toBe('https://github.com/acme/shop')
+        expect(options.runConfig).toEqual({ openPullRequest: false, planFirst: false })
     })
 
     test('a slash in the middle of a sentence does not open the menu', () => {
@@ -468,18 +489,63 @@ describe('slash menu in a session', () => {
         useAppStore.setState({ activeProjectId: null })
     })
 
-    test('/usage shows the tokens of the session in one line', async () => {
-        useAppStore.setState({
-            messages: [
-                { id: '1', role: 'user', content: 'hi' },
-                { id: '2', role: 'assistant', content: 'done', tokensUsed: 84_000 },
-            ] as never,
+    test('/usage shows the totals of the session from the server', async () => {
+        useAppStore.setState({ activeProjectId: 'session-1' })
+        const usage = spyOn(sessionAPI, 'getSessionUsage').mockResolvedValue({
+            inputTokens: 80_000,
+            outputTokens: 4_000,
+            totalTokens: 84_000,
+            costInCents: 31,
+            byModel: [],
         })
         wrap(<SessionBox />)
         type('/usage')
         press('Enter')
-        expect(await screen.findByText('This session: 84k tokens.')).not.toBeNull()
-        useAppStore.setState({ messages: [] })
+        expect(await screen.findByText('84k')).not.toBeNull()
+        expect(screen.getByText('$ 0.31')).not.toBeNull()
+        expect(usage).toHaveBeenCalledWith('session-1')
+        usage.mockRestore()
+        useAppStore.setState({ activeProjectId: null })
+    })
+
+    test('/btw shows the answer and sends nothing to the agent', async () => {
+        useAppStore.setState({ activeProjectId: 'session-1' })
+        const ask = spyOn(sessionAPI, 'askSideQuestion').mockResolvedValue({
+            answer: 'It uses stripe.',
+        })
+        const onSubmit = mock(() => {})
+        wrap(<SessionBox onSubmit={onSubmit} />)
+        type('/btw which payment provider?')
+        press('Enter')
+        expect(await screen.findByText('It uses stripe.')).not.toBeNull()
+        expect(ask).toHaveBeenCalledWith('session-1', 'which payment provider?')
+        expect(onSubmit).not.toHaveBeenCalled()
+        ask.mockRestore()
+        useAppStore.setState({ activeProjectId: null })
+    })
+
+    test('/rewind lists the prompts, and a pick puts that prompt back in the box', async () => {
+        useAppStore.setState({ activeProjectId: 'session-1' })
+        const turns = spyOn(sessionAPI, 'getTurns').mockResolvedValue({
+            turns: [
+                { sequence: 3, prompt: 'add tests', createdAt: '2026-11-25T10:00:00Z' },
+                { sequence: 1, prompt: 'build the cart', createdAt: '2026-11-25T09:00:00Z' },
+            ],
+        })
+        const rewind = spyOn(sessionAPI, 'rewindSession').mockResolvedValue({
+            prompt: 'add tests',
+            filesRestored: true,
+            filesNote: null,
+        })
+        wrap(<SessionBox />)
+        type('/rewind')
+        press('Enter')
+        fireEvent.click(await screen.findByText('add tests'))
+        await waitFor(() => expect(rewind).toHaveBeenCalledWith('session-1', 3))
+        await waitFor(() => expect(box().value).toBe('add tests'))
+        turns.mockRestore()
+        rewind.mockRestore()
+        useAppStore.setState({ activeProjectId: null })
     })
 })
 
@@ -739,19 +805,18 @@ describe('prompt footer menus', () => {
         expect(screen.queryByText('MCPs')).toBeNull()
     })
 
-    test('configuration shows Soon rows until the server can read the settings', () => {
+    test('configuration shows live switches: the server reads the settings (#632)', () => {
         footer()
         fireEvent.click(screen.getByLabelText('Configuration'))
         const menu = screen.getByRole('group', { name: 'Configuration' })
-        expect(within(menu).getByText('Plan first')).not.toBeNull()
-        expect(within(menu).getByText('Open pull request')).not.toBeNull()
+        expect(within(menu).getByRole('switch', { name: 'Plan first' })).not.toBeNull()
+        expect(within(menu).getByRole('switch', { name: 'Open pull request' })).not.toBeNull()
         // Fast and Deep moved to the footer
         expect(within(menu).queryByText('Effort')).toBeNull()
-        expect(within(menu).getAllByText('Soon')).toHaveLength(2)
+        expect(within(menu).queryByText('Soon')).toBeNull()
     })
 
-    test('demo mode: a changed setting shows a dot, and Set as default saves it', () => {
-        setConnectionsDemo(true)
+    test('a changed setting shows a dot, and Set as default saves it', () => {
         footer()
         fireEvent.click(screen.getByLabelText('Configuration'))
         expect(screen.queryByTestId('config-changed-dot')).toBeNull()

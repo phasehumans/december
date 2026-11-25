@@ -1,3 +1,4 @@
+import { isSessionEffort } from '@december/shared'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { Queue } from 'bullmq'
 import Redis from 'ioredis'
@@ -102,6 +103,15 @@ export function initSocket(httpServer: any) {
                 } else if (event?.type === 'QuestionSettled') {
                     sessionService.markQuestionSettled({ sessionId }).catch((error: unknown) => {
                         console.error('[SERVER CORE] could not clear the pending question', error)
+                    })
+                } else if (
+                    event?.type === 'AgentError' ||
+                    event?.type === 'AgentEnd' ||
+                    event?.type === 'CreditsLow'
+                ) {
+                    // failed, finished and low credits reach the inbox, email and push (#636)
+                    sessionService.handleRunEvent({ sessionId, event }).catch((error: unknown) => {
+                        console.error('[SERVER CORE] could not notify the run event', error)
                     })
                 }
             } catch (err) {
@@ -290,6 +300,15 @@ export function initSocket(httpServer: any) {
                 model?: string
                 provider?: string
                 billingSource?: 'CREDITS' | 'OWN_KEY'
+                // december credits: fast or deep picks the model on the server
+                tier?: 'fast' | 'deep'
+                // session configuration for this turn and the next ones (#632)
+                planFirst?: boolean
+                effort?: 'fast' | 'deep'
+                // skills picked with /name for this message, and the + menu switches
+                skills?: string[]
+                disabledPlugins?: string[]
+                disabledMcps?: string[]
             }) => {
                 const targetSessionId = data.sessionId || data.projectId
                 if (!targetSessionId) {
@@ -380,6 +399,32 @@ export function initSocket(httpServer: any) {
                         }
                     }
 
+                    // plan first and effort for this turn; on credits also the model of the tier
+                    const turn = await sessionService.resolveTurnConfig({
+                        userId,
+                        sessionId: targetSessionId,
+                        billingSource,
+                        model,
+                        provider: data.provider,
+                        tier: isSessionEffort(data.tier) ? data.tier : undefined,
+                        planFirst: typeof data.planFirst === 'boolean' ? data.planFirst : undefined,
+                        effort: isSessionEffort(data.effort) ? data.effort : undefined,
+                        disabledPlugins: toNameList(data.disabledPlugins),
+                        disabledMcps: toNameList(data.disabledMcps),
+                    })
+
+                    // the prompt is saved first, so the agent's history and /rewind have it
+                    const userMessageSequence = await sessionService
+                        .recordUserPrompt({
+                            userId,
+                            sessionId: targetSessionId,
+                            prompt: data.prompt,
+                        })
+                        .catch((error: unknown) => {
+                            console.error('[SERVER CORE] could not save the prompt', error)
+                            return null
+                        })
+
                     // enqueue to worker
                     console.log(
                         `[SERVER CORE] Enqueuing job 'run_agent' to BullMQ queue 'agent_jobs'...`
@@ -390,9 +435,14 @@ export function initSocket(httpServer: any) {
                         userId: socket.data.userId,
                         prompt: data.prompt,
                         secrets: decryptedSecrets,
-                        model,
-                        provider: data.provider,
+                        model: turn.model,
+                        provider: turn.provider,
                         billingSource,
+                        planFirst: turn.planFirst,
+                        effort: turn.effort,
+                        skills: toNameList(data.skills) ?? [],
+                        disabledMcps: turn.disabledMcps,
+                        ...(userMessageSequence ? { userMessageSequence } : {}),
                     })
 
                     console.log(
@@ -422,6 +472,15 @@ export function initSocket(httpServer: any) {
     })
 
     return io
+}
+
+/** a list of names from the client: strings only, at most 50, or undefined */
+function toNameList(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) return undefined
+    return value
+        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        .map((item) => item.trim().slice(0, 64))
+        .slice(0, 50)
 }
 
 export function getIO(): Server {

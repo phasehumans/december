@@ -52,3 +52,9 @@ export type UnlinkSession = {
     userId: string
     sessionId: string
 }
+
+export type ResolveRepoToken = {
+    userId: string
+    gitProvider: 'GITHUB' | 'GITLAB'
+    owner?: string
+}

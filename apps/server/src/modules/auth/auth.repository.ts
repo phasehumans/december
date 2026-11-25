@@ -193,7 +193,27 @@ async function findActiveDeviceSession(userId: string) {
     })
 }
 
+// the devices list: sessions that still work, most recently used first
+async function findActiveSessionsByUser(userId: string) {
+    return prisma.authSession.findMany({
+        where: {
+            userId,
+            isRevoked: false,
+            expiresAt: { gt: new Date() },
+        },
+        select: {
+            id: true,
+            userAgent: true,
+            createdAt: true,
+            updatedAt: true,
+            rotatedAt: true,
+        },
+        orderBy: { updatedAt: 'desc' },
+    })
+}
+
 export const authRepository = {
+    findActiveSessionsByUser,
     claimOtpAttempt,
     clearExhaustedOtp,
     consumeOtp,

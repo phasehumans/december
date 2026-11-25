@@ -5,7 +5,7 @@ import jwt, { type SignOptions } from 'jsonwebtoken'
 import { env } from '../../env'
 import { emailService } from '../email/email.service'
 
-import type { TokenPayload } from './auth.types'
+import type { SignedInSessionKind, TokenPayload } from './auth.types'
 import type { OtpType } from './templates/otp.template'
 
 export const hashRefreshToken = (token: string): string => {
@@ -84,4 +84,44 @@ export const extractToken = (req: {
         }
     }
     return req.cookies?.accessToken
+}
+
+const BROWSERS: [RegExp, string][] = [
+    [/Edg\//, 'Edge'],
+    [/OPR\//, 'Opera'],
+    [/Firefox\/|FxiOS\//, 'Firefox'],
+    [/Chrome\/|CriOS\//, 'Chrome'],
+    [/Safari\//, 'Safari'],
+]
+
+// iPhone and Android come before Linux and macOS: their user agents name those too
+const SYSTEMS: [RegExp, string][] = [
+    [/iPhone/, 'iPhone'],
+    [/iPad/, 'iPad'],
+    [/Android/, 'Android'],
+    [/Windows|win32/i, 'Windows'],
+    [/Mac OS X|Macintosh|darwin/i, 'macOS'],
+    [/Linux|linux/, 'Linux'],
+]
+
+const firstMatch = (value: string, list: [RegExp, string][]) =>
+    list.find(([pattern]) => pattern.test(value))?.[1]
+
+/**
+ * A short name for a signed-in device, from the user agent the session was made with:
+ * "Chrome on Windows", "December CLI on Linux". CLI sessions have "cli" in the user agent
+ * (see pollDeviceToken), the same test as findActiveDeviceSession.
+ */
+export const describeUserAgent = (
+    userAgent: string | null | undefined
+): { label: string; kind: SignedInSessionKind } => {
+    const value = userAgent ?? ''
+    const system = firstMatch(value, SYSTEMS)
+
+    if (value.toLowerCase().includes('cli')) {
+        return { kind: 'cli', label: system ? `December CLI on ${system}` : 'December CLI' }
+    }
+
+    const browser = firstMatch(value, BROWSERS) ?? 'Browser'
+    return { kind: 'web', label: system ? `${browser} on ${system}` : browser }
 }

@@ -1,12 +1,14 @@
+import { useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 
 import { SettingsSectionHeading } from './SettingsPageHeader'
 import { sectionBoxClass } from './settingsStyles'
-import { usePreviewOn, usePreviewValue } from './SettingsUi'
+import { usePreviewOn } from './SettingsUi'
 
 import { ChoiceGroup, Switch } from '@/features/connections/components/ConnectionsUi'
 import { ShortcutRows } from '@/features/home/slash/shortcuts'
-import { usePreferences, type SendKey } from '@/features/profile/lib/preferences'
+import { profileAPI, type Profile } from '@/features/profile/api/profile'
+import { usePreferences, type Preferences, type SendKey } from '@/features/profile/lib/preferences'
 import { Modal } from '@/shared/components/ui/Modal'
 import { playFinishSound } from '@/shared/lib/finishSound'
 
@@ -20,26 +22,43 @@ const SEND_KEY_OPTIONS: { value: SendKey; label: string }[] = [
 
 /**
  * Preferences, a section of the Account page (N10-B): how the app behaves for this person.
- * The values stay in this browser. The shortcut list is the one that /keybindings opens
- * (N12-A).
+ * Each change is saved in this browser and on the account (#636), so every device gets it.
+ * The shortcut list is the one that /keybindings opens (N12-A).
  */
 export const AccountPreferencesSection: React.FC = () => {
     const sendKey = usePreferences((s) => s.sendKey)
     const soundOnFinish = usePreferences((s) => s.soundOnFinish)
+    const whileWorking = usePreferences((s) => s.messageWhileWorking)
     const setPreference = usePreferences((s) => s.setPreference)
+    const queryClient = useQueryClient()
     const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
-    // ui only: the prompt box cannot take a message during a run yet (issue 637)
+    // the prompt box cannot take a message during a run yet, so that row is preview only (#637)
     const isPreview = usePreviewOn()
-    const [whileWorking, setWhileWorking] = usePreviewValue<'queue' | 'send'>(
-        'preferences.whileWorking',
-        'queue'
+
+    const savePreference = React.useCallback(
+        <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
+            setPreference(key, value)
+            profileAPI
+                .updatePreferences({ [key]: value })
+                // the answer has every saved value, so the profile needs no new fetch
+                .then(({ preferences }) =>
+                    queryClient.setQueryData<Profile>(['profile'], (old) =>
+                        old ? { ...old, preferences } : old
+                    )
+                )
+                .catch((error: unknown) => {
+                    // the value stays in this browser; the account keeps the old one
+                    console.error('[preferences] could not save to the account', error)
+                })
+        },
+        [setPreference, queryClient]
     )
 
     return (
         <div className="flex flex-col text-[#D6D5C9]">
             <SettingsSectionHeading
                 title="Preferences"
-                description="How December behaves in this browser."
+                description="How December behaves for you."
             />
             <div className={sectionBoxClass}>
                 <div className={rowClass}>
@@ -48,7 +67,7 @@ export const AccountPreferencesSection: React.FC = () => {
                         label="Send with"
                         options={SEND_KEY_OPTIONS}
                         value={sendKey}
-                        onChange={(value) => setPreference('sendKey', value)}
+                        onChange={(value) => savePreference('sendKey', value)}
                     />
                 </div>
                 {isPreview && (
@@ -61,7 +80,7 @@ export const AccountPreferencesSection: React.FC = () => {
                                 { value: 'send', label: 'Send now' },
                             ]}
                             value={whileWorking}
-                            onChange={setWhileWorking}
+                            onChange={(value) => savePreference('messageWhileWorking', value)}
                         />
                     </div>
                 )}
@@ -71,7 +90,7 @@ export const AccountPreferencesSection: React.FC = () => {
                         label="Sound when a session finishes"
                         checked={soundOnFinish}
                         onChange={(value) => {
-                            setPreference('soundOnFinish', value)
+                            savePreference('soundOnFinish', value)
                             // play it once, so the person hears what they turned on
                             if (value) playFinishSound()
                         }}

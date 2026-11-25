@@ -26,6 +26,10 @@ adminRouter.get('/users/:id', adminController.getUser)
 adminRouter.post('/users/:id/credits', adminController.adjustCredits)
 adminRouter.post('/users/:id/restore', adminController.restoreUser)
 
+// support access (#636): only while the user has it on, and each open is logged
+adminRouter.get('/users/:id/sessions', adminController.listUserSessions)
+adminRouter.get('/users/:id/sessions/:sessionId', adminController.openUserSession)
+
 // a4
 adminRouter.get('/redeem-codes', adminController.listRedeemCodes)
 adminRouter.post('/redeem-codes', adminController.createRedeemCode)

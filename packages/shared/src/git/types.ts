@@ -53,6 +53,12 @@ export interface CreatePullRequestInput {
     body: string
 }
 
+export interface GetPullRequestInput {
+    token: string
+    repoPath: string
+    number: number
+}
+
 // a github pull request or a gitlab merge request
 export interface PullRequest {
     number: number
@@ -67,6 +73,8 @@ export interface PullRequest {
     changedFiles?: number
     createdAt?: string
     updatedAt?: string
+    mergedAt?: string | null
+    closedAt?: string | null
 }
 
 export interface CiStatusInput {
@@ -107,6 +115,8 @@ export interface GitProvider {
     // opens the pull request, or returns the one already open for the head branch.
     // null when the host refused both.
     createPullRequest: (data: CreatePullRequestInput) => Promise<PullRequest | null>
+    // null when the request is refused or the network fails
+    getPullRequest: (data: GetPullRequestInput) => Promise<PullRequest | null>
     getCiStatus: (data: CiStatusInput) => Promise<CiStatus>
     comment: (data: CommentInput) => Promise<void>
     refreshToken: (data: RefreshTokenInput) => Promise<TokenSet>

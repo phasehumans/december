@@ -11,3 +11,6 @@ export const NEW_SESSION_REQUEST_EVENT = 'december:request-new-session'
 
 /** starts or stops the microphone of the prompt box (the /voice command) */
 export const TOGGLE_VOICE_EVENT = 'december:toggle-voice'
+
+/** opens a session again, or another one, with its messages loaded (/rewind, /fork) */
+export const OPEN_SESSION_EVENT = 'december:open-session'

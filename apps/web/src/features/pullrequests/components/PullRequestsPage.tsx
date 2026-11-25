@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 
 import { useAppStore } from '@/app/store'
@@ -19,6 +20,7 @@ import {
     writePullRequestsView,
     type PullRequestsView,
 } from '@/features/pullrequests/lib/pullRequestsView'
+import { sessionAPI, type BackendPullRequest } from '@/features/sessions/api/session'
 import {
     ListEmptyState,
     ListErrorState,
@@ -32,20 +34,30 @@ import {
     listRowClass,
 } from '@/features/sessions/components/ListParts'
 import { ViewMenu } from '@/features/sessions/components/ViewMenu'
-import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { SESSIONS_SORT_OPTIONS, shortRepoName } from '@/features/sessions/lib/sessionsView'
 import { Icons } from '@/shared/components/ui/Icons'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
 
-// the server returns only sessions that opened a pull request (hasPr). 100 is the most
-// one request returns
-const PULL_REQUEST_QUERY = {
-    limit: 100,
-    sortBy: 'updatedAt',
-    sortOrder: 'desc',
-    hasPr: true,
-} as const
+// the view runs in the browser, so the page loads every row: pages of 100 (the most one
+// request returns), at most 10 of them
+const PAGE_SIZE = 100
+const MAX_PAGES = 10
+
+const fetchAllPullRequests = async (): Promise<BackendPullRequest[]> => {
+    const rows: BackendPullRequest[] = []
+    for (let page = 1; page <= MAX_PAGES; page++) {
+        const result = await sessionAPI.getPullRequests({
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
+            page,
+            limit: PAGE_SIZE,
+        })
+        rows.push(...result.pullRequests)
+        if (page >= result.pagination.totalPages) break
+    }
+    return rows
+}
 
 const STATE_TAG_CLASS: Record<PullRequestState, string> = {
     open: 'bg-emerald-500/10 text-emerald-400',
@@ -65,7 +77,13 @@ interface PullRequestsPageProps {
 /** pull requests that December opened, across all sessions */
 export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProject }) => {
     const isAuthenticated = useAppStore((s) => s.isAuthenticated)
-    const { data, isLoading, error, refetch } = useSessions(PULL_REQUEST_QUERY)
+    // under ['sessions'], so every list write reads the rows again
+    const { data, isLoading, error, refetch } = useQuery({
+        queryKey: ['sessions', 'pull-requests'],
+        queryFn: fetchAllPullRequests,
+        enabled: isAuthenticated,
+    })
+
     const github = useGithubConnection(isAuthenticated)
     // the All | Open switch next to search
     const [onlyOpen, setOnlyOpen] = React.useState(false)
@@ -89,11 +107,12 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
         }
     }
 
-    const allRows = React.useMemo(() => toPullRequestRows(data?.sessions || []), [data?.sessions])
+    const allRows = React.useMemo(() => toPullRequestRows(data || []), [data])
     const rows = React.useMemo(
         () => searchPullRequests(applyPullRequestsView(allRows, view, onlyOpen), query),
         [allRows, view, onlyOpen, query]
     )
+    // every row is loaded (archived sessions too), so this counts them all
     const openCount = React.useMemo(() => allRows.filter(isOpenPullRequest).length, [allRows])
     const facets = React.useMemo(() => pullRequestFacets(allRows), [allRows])
     const activeFilters = activePullRequestFilters(view)
@@ -257,14 +276,27 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                                                 </span>
                                             </>
                                         )}
+                                        {row.additions != null && row.deletions != null && (
+                                            <>
+                                                <MetaDot />
+                                                <span className="shrink-0 font-mono text-[11.5px]">
+                                                    <span className="text-emerald-400/80">
+                                                        +{row.additions}
+                                                    </span>{' '}
+                                                    <span className="text-red-400/80">
+                                                        -{row.deletions}
+                                                    </span>
+                                                </span>
+                                            </>
+                                        )}
                                         <MetaDot />
                                         <span className="shrink-0">
                                             {showCreated ? (
                                                 <>
-                                                    Created{' '}
+                                                    Opened{' '}
                                                     <RelativeTime
                                                         iso={row.createdAt}
-                                                        label="Created"
+                                                        label="Opened"
                                                     />
                                                 </>
                                             ) : (

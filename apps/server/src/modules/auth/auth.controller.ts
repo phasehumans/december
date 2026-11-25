@@ -15,6 +15,7 @@ import {
     pollDeviceTokenSchema,
     verifyUserCodeSchema,
     getDeviceStatusSchema,
+    signedInSessionParamSchema,
 } from './auth.schema'
 import { authService } from './auth.service'
 
@@ -253,6 +254,45 @@ const signoutAll = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'signed out from all devices successfully')
 })
 
+const listSignedInSessions = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    const sessionId = req.user?.sessionId
+
+    if (!userId || !sessionId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await authService.listSignedInSessions({
+        userId,
+        currentSessionId: sessionId,
+    })
+
+    return sendSuccess(res, 'signed-in sessions fetched', result)
+})
+
+const revokeSignedInSession = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId
+    const sessionId = req.user?.sessionId
+
+    if (!userId || !sessionId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { id } = signedInSessionParamSchema.parse(req.params)
+    const result = await authService.revokeSignedInSession({
+        userId,
+        currentSessionId: sessionId,
+        sessionId: id,
+    })
+
+    // signing out this device works like sign out
+    if (result.isCurrent) {
+        authCookie.clearAuthCookies(res)
+    }
+
+    return sendSuccess(res, 'session signed out', result)
+})
+
 const deleteAccount = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
 
@@ -322,6 +362,8 @@ export const authController = {
     refreshSession,
     signout,
     signoutAll,
+    listSignedInSessions,
+    revokeSignedInSession,
     deleteAccount,
     generateDeviceCode,
     pollDeviceToken,

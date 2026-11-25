@@ -13,16 +13,41 @@ export type UpdateName = {
     name: string
 }
 
+export type NotificationSettings = {
+    notifyProductUpdates?: boolean
+    notifySecurityAlerts?: true
+    notifyLevel?: 'ALL' | 'IMPORTANT' | 'NONE'
+    notifyEmail?: boolean
+    notifyPush?: false
+    digestEnabled?: boolean
+    digestTime?: string
+    timezone?: string
+}
+
 export type UpdateNotifications = {
     userId: string
-    notifyProjectActivity?: boolean
-    notifyProductUpdates?: boolean
-    notifySecurityAlerts?: boolean
+    settings: NotificationSettings
 }
 
 export type UpdateModelSource = {
     userId: string
     defaultModelSource: 'CREDITS' | 'OWN_KEY'
+}
+
+export type UpdateSessionDefaults = {
+    userId: string
+    defaultPlanFirst?: boolean
+    defaultEffort?: 'fast' | 'deep'
+    defaultOpenPullRequest?: boolean
+}
+
+export type GetToolDenyRules = {
+    userId: string
+}
+
+export type UpdateToolDenyRules = {
+    userId: string
+    rules: string[]
 }
 
 export type OnboardingStep = 'github' | 'start' | 'models'
@@ -73,4 +98,54 @@ export type GetPullRequestSettings = {
 export type UpdatePullRequestSettings = {
     userId: string
     settings: Partial<PullRequestSettingsValues>
+}
+
+/** web preferences kept on the account (#636). messageWhileWorking is the web steeringMode */
+export type Preferences = {
+    sendKey: 'enter' | 'mod-enter'
+    soundOnFinish: boolean
+    messageWhileWorking: 'queue' | 'send'
+}
+
+export type UpdatePreferences = {
+    userId: string
+    preferences: Partial<Preferences>
+}
+
+export type UpdateSupportAccess = {
+    userId: string
+    enabled: boolean
+}
+
+export type DataExportStatus = 'PENDING' | 'READY' | 'FAILED'
+
+export type DataExportJobData = {
+    exportId: string
+}
+
+export type RequestDataExport = {
+    userId: string
+}
+
+export type GetDataExport = {
+    userId: string
+}
+
+export type ProcessDataExport = {
+    exportId: string
+}
+
+export type DownloadDataExport = {
+    exportId: string
+    token: string
+}
+
+/** the latest export, for the account page */
+export type DataExportState = {
+    id: string
+    status: DataExportStatus
+    createdAt: Date
+    expiresAt: Date | null
+    // the next time the user can ask for a new export
+    nextAllowedAt: Date
 }

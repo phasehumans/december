@@ -16,6 +16,10 @@ export interface McpServerSseConfig {
     endpoint?: string
     sse?: string
     headers?: Record<string, string>
+    /** sse (the default) or http: the streamable http transport of newer servers */
+    transport?: 'sse' | 'http'
+    /** tool names of this server the agent does not get */
+    disabledTools?: string[]
     disabled?: boolean
     description?: string
     eager?: boolean
@@ -37,6 +41,8 @@ export interface McpServerInfo {
     }
     capabilities?: Record<string, any>
     tools: Tool[]
+    /** every tool the server lists, also the ones turned off */
+    availableTools?: string[]
     resources?: any[]
     prompts?: any[]
     connectedAt?: number

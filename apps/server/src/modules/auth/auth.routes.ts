@@ -19,6 +19,8 @@ authRouter.post('/github', authRateLimiter, authController.github)
 authRouter.post('/refresh', refreshRateLimiter, authController.refreshSession)
 authRouter.post('/signout', authMiddleware, authController.signout)
 authRouter.post('/signout/all', authMiddleware, authController.signoutAll)
+authRouter.get('/sessions', authMiddleware, authController.listSignedInSessions)
+authRouter.delete('/sessions/:id', authMiddleware, authController.revokeSignedInSession)
 authRouter.delete('/account', authMiddleware, authController.deleteAccount)
 
 authRouter.get('/device/status', authMiddleware, authController.getDeviceStatus)

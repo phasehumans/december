@@ -1,6 +1,7 @@
 import { smartSearchFiltersSchema } from './session.schema'
 
 import type { BuildSmartSearchPrompt, SmartSearchFilters, StoredSessionFile } from './session.types'
+import type { SessionEffort } from '@december/shared'
 
 export const parseStoredSessionFiles = (value: unknown): StoredSessionFile[] => {
     if (!Array.isArray(value)) {
@@ -95,3 +96,16 @@ export type PullRequestState = (typeof PULL_REQUEST_STATES)[number]
 /** the saved GitHub state, or open when it was never set or is unknown */
 export const toPullRequestState = (value: unknown): PullRequestState =>
     PULL_REQUEST_STATES.includes(value as PullRequestState) ? (value as PullRequestState) : 'open'
+
+/**
+ * The models behind fast and deep on december credits. Change them here: the web sends
+ * only the tier, so no web release is needed.
+ */
+export const CREDIT_TIER_MODELS: Record<SessionEffort, { model: string; provider: string }> = {
+    fast: { model: 'gemini-2.5-flash', provider: 'gemini' },
+    deep: { model: 'gemini-2.5-pro', provider: 'gemini' },
+}
+
+/** the credit tier of a model the web picked before it sent tiers: the fast model, or deep */
+export const toCreditTier = (model: string | undefined): SessionEffort =>
+    model === CREDIT_TIER_MODELS.fast.model ? 'fast' : 'deep'

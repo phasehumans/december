@@ -97,15 +97,33 @@ describe('Setting Module Integration Tests', () => {
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', `Bearer ${accessToken}`)
             .send({
-                notifyProjectActivity: false,
-                notifyProductUpdates: true,
-                notifySecurityAlerts: false,
+                notifyProductUpdates: false,
+                notifyLevel: 'ALL',
+                notifyEmail: false,
+                digestEnabled: true,
+                digestTime: '18:30',
+                timezone: 'Asia/Kolkata',
             })
 
         expect(res.status).toBe(200)
-        expect(res.body.data.notifyProjectActivity).toBe(false)
-        expect(res.body.data.notifyProductUpdates).toBe(true)
-        expect(res.body.data.notifySecurityAlerts).toBe(false)
+        expect(res.body.data).toEqual({
+            notifyProductUpdates: false,
+            notifySecurityAlerts: true,
+            notifyLevel: 'ALL',
+            notifyEmail: false,
+            notifyPush: false,
+            digestEnabled: true,
+            digestTime: '18:30',
+            timezone: 'Asia/Kolkata',
+        })
+
+        // security alerts cannot be turned off
+        const off = await request(app)
+            .patch('/api/v1/setting/notifications')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+            .send({ notifySecurityAlerts: false })
+        expect(off.status).toBe(400)
     })
 
     it('7. a new user starts with onboarding not done', async () => {

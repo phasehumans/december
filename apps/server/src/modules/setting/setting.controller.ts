@@ -7,6 +7,11 @@ import {
     updateNotificationSchema,
     updateOnboardingSchema,
     updateModelSourceSchema,
+    updateSessionDefaultsSchema,
+    updateToolDenyRulesSchema,
+    updatePreferencesSchema,
+    updateSupportAccessSchema,
+    dataExportDownloadSchema,
     updatePullRequestSettingsSchema,
     submitFeedbackSchema,
     unsubscribeQuerySchema,
@@ -58,15 +63,8 @@ const updateNotifications = asyncHandler(async (req: Request, res: Response) => 
         throw new AppError('unauthorized', 401)
     }
 
-    const parseData = updateNotificationSchema.parse(req.body)
-    const { notifyProjectActivity, notifyProductUpdates, notifySecurityAlerts } = parseData
-
-    const result = await settingService.updateNotifications({
-        notifyProjectActivity,
-        notifyProductUpdates,
-        notifySecurityAlerts,
-        userId,
-    })
+    const settings = updateNotificationSchema.parse(req.body)
+    const result = await settingService.updateNotifications({ userId, settings })
     return sendSuccess(res, 'notifications preferences updated', result)
 })
 
@@ -80,6 +78,89 @@ const updateModelSource = asyncHandler(async (req: Request, res: Response) => {
     const { defaultModelSource } = updateModelSourceSchema.parse(req.body)
     const result = await settingService.updateModelSource({ userId, defaultModelSource })
     return sendSuccess(res, 'default model source updated', result)
+})
+
+const updateSessionDefaults = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { defaultPlanFirst, defaultEffort, defaultOpenPullRequest } =
+        updateSessionDefaultsSchema.parse(req.body)
+    const result = await settingService.updateSessionDefaults({
+        userId,
+        defaultPlanFirst,
+        defaultEffort,
+        defaultOpenPullRequest,
+    })
+    return sendSuccess(res, 'session defaults updated', result)
+})
+
+const updateSupportAccess = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { enabled } = updateSupportAccessSchema.parse(req.body)
+    const result = await settingService.updateSupportAccess({ userId, enabled })
+    return sendSuccess(res, 'support access updated', result)
+})
+
+const updatePreferences = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const preferences = updatePreferencesSchema.parse(req.body)
+    const result = await settingService.updatePreferences({ userId, preferences })
+    return sendSuccess(res, 'preferences updated', result)
+})
+
+const getDataExport = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await settingService.getDataExport({ userId })
+    return sendSuccess(res, 'data export fetched', result)
+})
+
+const requestDataExport = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const result = await settingService.requestDataExport({ userId })
+    return sendSuccess(res, 'data export requested, a link will be emailed', result, 202)
+})
+
+const getToolDenyRules = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+    const result = await settingService.getToolDenyRules({ userId })
+    return sendSuccess(res, 'permission rules fetched', result)
+})
+
+const updateToolDenyRules = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+    const { rules } = updateToolDenyRulesSchema.parse(req.body)
+    const result = await settingService.updateToolDenyRules({ userId, rules })
+    return sendSuccess(res, 'permission rules updated', result)
 })
 
 const getPullRequestSettings = asyncHandler(async (req: Request, res: Response) => {
@@ -156,8 +237,10 @@ const submitFeedback = asyncHandler(async (req: Request, res: Response) => {
 
 // the link in announcement emails opens a browser page, so these two answer with html,
 // not json. the GET only asks; link scanners that open it change nothing
-const unsubscribePage = (content: string) =>
-    `<!DOCTYPE html><html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Unsubscribe</title></head><body style="font-family: system-ui, sans-serif; background: #141414; color: #ededed; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0;">${content}</body></html>`
+const simplePage = (title: string, content: string) =>
+    `<!DOCTYPE html><html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${title}</title></head><body style="font-family: system-ui, sans-serif; background: #141414; color: #ededed; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0;">${content}</body></html>`
+
+const unsubscribePage = (content: string) => simplePage('Unsubscribe', content)
 
 const escapeAttr = (value: string) => value.replace(/[^A-Za-z0-9-]/g, '')
 
@@ -183,7 +266,43 @@ const unsubscribe = asyncHandler(async (req: Request, res: Response) => {
         .send(unsubscribePage('<p>You will not get product emails from December anymore.</p>'))
 })
 
+// the link in the export email: a browser opens it, so errors are a small page, not json
+const downloadDataExport = async (req: Request, res: Response) => {
+    try {
+        const { id, t } = dataExportDownloadSchema.parse({ id: req.params.id, t: req.query.t })
+        const { body, fileName } = await settingService.downloadDataExport({
+            exportId: id,
+            token: t,
+        })
+        res.setHeader('Content-Type', 'application/zip')
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+        res.setHeader('Cache-Control', 'no-store')
+        return res.status(200).send(Buffer.from(body))
+    } catch (error) {
+        const status = error instanceof AppError ? error.statusCode : 404
+        const message =
+            error instanceof AppError && status < 500
+                ? error.message
+                : 'this download link is not valid'
+        if (!(error instanceof AppError)) {
+            console.error('[Setting] data export download failed:', error)
+        }
+        res.setHeader('Content-Type', 'text/html; charset=utf-8')
+        return res
+            .status(status >= 500 ? 404 : status)
+            .send(
+                simplePage(
+                    'Data export',
+                    `<p>${message.charAt(0).toUpperCase()}${message.slice(1)}. Ask for a new export on the Account page.</p>`
+                )
+            )
+    }
+}
+
 export const settingController = {
+    getDataExport,
+    requestDataExport,
+    downloadDataExport,
     showUnsubscribe,
     unsubscribe,
     getMe,
@@ -191,6 +310,11 @@ export const settingController = {
     updateName,
     updateNotifications,
     updateModelSource,
+    updateSessionDefaults,
+    getToolDenyRules,
+    updateToolDenyRules,
+    updateSupportAccess,
+    updatePreferences,
     getPullRequestSettings,
     updatePullRequestSettings,
     getOnboarding,

@@ -1,3 +1,5 @@
+import { getCommandInfo, type ShortCommandName } from '@december/shared/commands'
+
 export type SlashScope = 'home' | 'session'
 
 /**
@@ -38,112 +40,110 @@ export interface SlashCommand {
     helpTab?: 'commands' | 'shortcuts'
 }
 
+/**
+ * the web fields of a command. the description is the short description from the
+ * shared list in @december/shared/commands. args is set here because the web takes
+ * arguments for fewer commands than the cli, and rename needs a title on the web.
+ */
+type SlashCommandSpec = Omit<SlashCommand, 'name' | 'description'> & { name: ShortCommandName }
+
 const BOTH = ['home', 'session'] as const
 const SESSION = ['session'] as const
 
 export const FEEDBACK_URL = 'https://github.com/phasehumans/december/issues/new/choose'
 
-// names match the cli commands in packages/tui/src/commands/commands.ts. the order is by
-// group: run, session, customize, help. commands that need new server routes are not
-// listed yet: compact, context, fork, rewind, clear, btw, codesearch, learn, permissions,
-// open, review (issues 632 and 633).
-export const SLASH_COMMANDS: readonly SlashCommand[] = [
+// names and descriptions come from the shared list in packages/shared/src/commands, which
+// the cli uses too. the order is by group: run, session, customize, help.
+const SLASH_COMMAND_SPECS: readonly SlashCommandSpec[] = [
     // run
     {
         name: 'plan',
         args: '[goal]',
-        description: 'Plan first',
         scopes: BOTH,
         kind: 'plan',
-        demoOnly: true,
     },
     {
         name: 'effort',
-        description: 'Fast or Deep',
         scopes: BOTH,
         kind: 'effort',
         creditsOnly: true,
     },
-    { name: 'model', description: 'Pick a model', scopes: BOTH, kind: 'model' },
-    { name: 'switch', description: 'Credits or your key', scopes: BOTH, kind: 'switch' },
-    { name: 'voice', description: 'Speak a prompt', scopes: BOTH, kind: 'action' },
+    { name: 'model', scopes: BOTH, kind: 'model' },
+    { name: 'switch', scopes: BOTH, kind: 'switch' },
+    { name: 'voice', scopes: BOTH, kind: 'action' },
+    { name: 'review', args: '<link>', scopes: ['home'] as const, kind: 'action' },
+    { name: 'btw', args: '<question>', scopes: SESSION, kind: 'action' },
 
     // session
-    { name: 'new', description: 'New session', scopes: SESSION, kind: 'action' },
-    { name: 'resume', description: 'Past sessions', scopes: BOTH, kind: 'action' },
-    {
-        name: 'rename',
-        args: '<title>',
-        description: 'Rename session',
-        scopes: SESSION,
-        kind: 'action',
-    },
-    { name: 'copy', description: 'Copy last answer', scopes: SESSION, kind: 'action' },
-    { name: 'diff', description: 'View changes', scopes: SESSION, kind: 'action' },
-    { name: 'tasks', description: 'Open the shell', scopes: SESSION, kind: 'action' },
-    { name: 'usage', description: 'Token usage', scopes: BOTH, kind: 'action' },
-    { name: 'exit', description: 'Leave session', scopes: SESSION, kind: 'action' },
+    { name: 'new', scopes: SESSION, kind: 'action' },
+    { name: 'resume', scopes: BOTH, kind: 'action' },
+    { name: 'rename', args: '[title]', scopes: SESSION, kind: 'action' },
+    { name: 'copy', scopes: SESSION, kind: 'action' },
+    { name: 'diff', scopes: SESSION, kind: 'action' },
+    { name: 'open', args: '<file>', scopes: SESSION, kind: 'action' },
+    { name: 'codesearch', args: '<text>', scopes: SESSION, kind: 'action' },
+    { name: 'tasks', scopes: SESSION, kind: 'action' },
+    { name: 'context', scopes: SESSION, kind: 'action' },
+    { name: 'compact', args: '[focus]', scopes: SESSION, kind: 'action' },
+    { name: 'clear', scopes: SESSION, kind: 'action' },
+    { name: 'rewind', scopes: SESSION, kind: 'action' },
+    { name: 'fork', scopes: SESSION, kind: 'action' },
+    { name: 'usage', scopes: BOTH, kind: 'action' },
+    { name: 'exit', scopes: SESSION, kind: 'action' },
 
     // customize
     {
         name: 'mcp',
-        description: 'MCP servers',
         scopes: BOTH,
         kind: 'navigate',
         to: '/settings/connections/mcps',
     },
     {
         name: 'plugin',
-        description: 'Plugins',
         scopes: BOTH,
         kind: 'navigate',
         to: '/settings/connections/plugins',
     },
     {
         name: 'skills',
-        description: 'Your skills',
         scopes: BOTH,
         kind: 'skills',
         demoOnly: true,
     },
     {
         name: 'hooks',
-        description: 'Hooks',
         scopes: BOTH,
         kind: 'navigate',
         to: '/settings/connections/hooks',
     },
+    { name: 'learn', args: '[lesson]', scopes: SESSION, kind: 'action' },
+    { name: 'permissions', args: '[rule]', scopes: SESSION, kind: 'action' },
     {
         name: 'memory',
-        description: 'Memory',
         scopes: BOTH,
         kind: 'navigate',
         to: '/settings/connections/memory',
     },
     {
         name: 'github',
-        description: 'GitHub setup',
         scopes: BOTH,
         kind: 'navigate',
         to: '/settings/connections/apps/github',
     },
     {
         name: 'settings',
-        description: 'Settings',
         scopes: BOTH,
         kind: 'navigate',
         to: '/settings',
     },
     {
         name: 'login',
-        description: 'API keys',
         scopes: BOTH,
         kind: 'navigate',
         to: '/settings/models',
     },
     {
         name: 'keybindings',
-        description: 'Shortcuts',
         scopes: BOTH,
         kind: 'help',
         helpTab: 'shortcuts',
@@ -152,26 +152,28 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     // help
     {
         name: 'help',
-        description: 'Commands and shortcuts',
         scopes: BOTH,
         kind: 'help',
         helpTab: 'commands',
     },
-    { name: 'check', description: 'Check your setup', scopes: BOTH, kind: 'check' },
-    { name: 'docs', description: 'Docs', scopes: BOTH, kind: 'external', to: '/docs' },
+    { name: 'check', scopes: BOTH, kind: 'check' },
+    { name: 'docs', scopes: BOTH, kind: 'external', to: '/docs' },
     {
         name: 'changelog',
-        description: 'Changelog',
         scopes: BOTH,
         kind: 'external',
         to: '/docs/changelog',
     },
     {
         name: 'feedback',
-        description: 'Report an issue',
         scopes: BOTH,
         kind: 'external',
         to: FEEDBACK_URL,
     },
-    { name: 'update', description: 'Reload the app', scopes: BOTH, kind: 'action' },
+    { name: 'update', scopes: BOTH, kind: 'action' },
 ]
+
+export const SLASH_COMMANDS: readonly SlashCommand[] = SLASH_COMMAND_SPECS.map((spec) => ({
+    ...spec,
+    description: getCommandInfo(spec.name).shortDescription ?? '',
+}))

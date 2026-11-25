@@ -8,6 +8,11 @@ const notificationRouter = Router()
 
 notificationRouter.use(authMiddleware)
 
+// browser push (#636)
+notificationRouter.get('/push/key', notificationController.getPushConfig)
+notificationRouter.post('/push/subscribe', notificationController.subscribePush)
+notificationRouter.delete('/push/subscribe', notificationController.unsubscribePush)
+
 notificationRouter.get('/unread-count', notificationController.getUnreadCount)
 notificationRouter.get('/', notificationController.getNotifications)
 notificationRouter.patch('/read-all', notificationController.markAllAsRead)

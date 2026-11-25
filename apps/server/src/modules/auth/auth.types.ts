@@ -101,3 +101,26 @@ export type CachedSessionData = {
 }
 
 export type PurgeSessions = Record<string, never>
+
+export type ListSignedInSessions = {
+    userId: string
+    currentSessionId: string
+}
+
+export type RevokeSignedInSession = {
+    userId: string
+    currentSessionId: string
+    sessionId: string
+}
+
+export type SignedInSessionKind = 'web' | 'cli'
+
+/** one row of the devices list on the account page (#636) */
+export type SignedInSession = {
+    id: string
+    label: string
+    kind: SignedInSessionKind
+    lastActiveAt: Date
+    createdAt: Date
+    isCurrent: boolean
+}

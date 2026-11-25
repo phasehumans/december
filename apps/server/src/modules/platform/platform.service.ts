@@ -21,6 +21,7 @@ import type {
     UpdateRepo,
     DownloadSession,
     DownloadSessionResult,
+    ResolveRepoToken,
 } from './platform.types'
 
 const resolveUserGithubToken = async (userId: string, owner?: string): Promise<string> => {
@@ -39,6 +40,14 @@ const resolveUserGithubToken = async (userId: string, owner?: string): Promise<s
     }
 
     throw new AppError('GitHub is not connected. Please connect the December GitHub App.', 400)
+}
+
+/** a token that can read the repository on its git host (the github app first on github) */
+const resolveRepoToken = async (data: ResolveRepoToken): Promise<string> => {
+    const { userId, gitProvider, owner } = data
+    return gitProvider === 'GITLAB'
+        ? integrationsService.getGitlabAccessToken({ userId })
+        : resolveUserGithubToken(userId, owner)
 }
 
 const downloadSession = async (data: DownloadSession): Promise<DownloadSessionResult> => {
@@ -274,6 +283,7 @@ const unlinkGithubRepo = async (data: { sessionId: string; userId: string }) => 
 }
 
 export const platformService = {
+    resolveRepoToken,
     downloadSession,
     getUserGithubRepos,
     getUserGitlabRepos,

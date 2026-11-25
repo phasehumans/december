@@ -7,7 +7,7 @@ import { requestWorkspaceTab } from '@/features/preview/lib/workspaceTabRequest'
 import {
     PULL_REQUEST_STATE_CLASS,
     PULL_REQUEST_STATE_LABELS,
-    toPullRequestRows,
+    sessionsToPullRequestRows,
 } from '@/features/pullrequests/lib/pullRequests'
 import { RunStatus } from '@/features/sessions/components/ListParts'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
@@ -97,7 +97,7 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
     )
     const recent = sessions.slice(0, ROW_LIMIT)
     const pullRequests = React.useMemo(
-        () => toPullRequestRows(sessions).slice(0, ROW_LIMIT),
+        () => sessionsToPullRequestRows(sessions).slice(0, ROW_LIMIT),
         [sessions]
     )
 

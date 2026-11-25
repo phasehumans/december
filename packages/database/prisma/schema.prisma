@@ -8,35 +8,56 @@ datasource db {
 }
 
 model User {
-  id                    String        @id @default(uuid())
-  name                  String
-  email                 String        @unique
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-  emailVerified         Boolean       @default(false)
-  googleId              String?
-  otpExpiresAt          DateTime?
-  otpHash               String?
-  otpAttempts           Int           @default(0)
-  githubId              String?       @unique
-  githubToken           String?
-  githubUsername        String?
-  githubConnected       Boolean       @default(false)
-  githubAppInstall      Boolean       @default(false)
-  notifyProductUpdates  Boolean       @default(true)
-  notifyProjectActivity Boolean       @default(true)
-  notifySecurityAlerts  Boolean       @default(true)
-  deletedAt             DateTime?
-  isDeleted             Boolean       @default(false)
-  creditBalance         Float         @default(0)
+  id                     String        @id @default(uuid())
+  name                   String
+  email                  String        @unique
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  emailVerified          Boolean       @default(false)
+  googleId               String?
+  otpExpiresAt           DateTime?
+  otpHash                String?
+  otpAttempts            Int           @default(0)
+  githubId               String?       @unique
+  githubToken            String?
+  githubUsername         String?
+  githubConnected        Boolean       @default(false)
+  githubAppInstall       Boolean       @default(false)
+  notifyProductUpdates   Boolean       @default(true)
+  notifySecurityAlerts   Boolean       @default(true)
+  // what December tells the user about (#636): ALL, IMPORTANT (needs input, failed, low
+  // credits) or NONE, and where: email and browser push
+  notifyLevel            NotifyLevel   @default(IMPORTANT)
+  notifyEmail            Boolean       @default(true)
+  notifyPush             Boolean       @default(false)
+  // one mail a day at digestTime (HH:mm in timezone) with what happened since the last one
+  digestEnabled          Boolean       @default(false)
+  digestTime             String        @default("09:00")
+  timezone               String        @default("UTC")
+  lastDigestAt           DateTime?
+  deletedAt              DateTime?
+  isDeleted              Boolean       @default(false)
+  creditBalance          Float         @default(0)
   // empty until the user finishes the /onboarding flow (finished or skipped through)
-  onboardingCompletedAt DateTime?
+  onboardingCompletedAt  DateTime?
   // last onboarding step the user was on: github | start | models
-  onboardingStep        String?
-  defaultModelSource    BillingSource @default(CREDITS)
+  onboardingStep         String?
+  defaultModelSource     BillingSource @default(CREDITS)
+  // defaults for a new session (#632): plan first, effort (fast | deep), open a pull request
+  defaultPlanFirst       Boolean       @default(false)
+  defaultEffort          String        @default("deep")
+  defaultOpenPullRequest Boolean       @default(true)
+  // tool calls the agent may never make in cloud sessions (/permissions, #632)
+  toolDenyRules          String[]      @default([])
+  // the admin page can open this user's sessions until this date (#636). null means off
+  supportAccessUntil     DateTime?
+  // web preferences kept across devices (#636): sendKey, soundOnFinish, messageWhileWorking
+  preferences            Json?
 
   notifications       Notification[]
   authSessions        AuthSession[]
+  dataExports         DataExport[]
+  pushSubscriptions   PushSubscription[]
   sessions            Session[]
   walletTransactions  WalletTransaction[]
   usageEvents         UsageEvent[]
@@ -51,6 +72,8 @@ model User {
   featureWaitlists    FeatureWaitlist[]
   creditRequests      CreditRequest[]
   pullRequestSettings PullRequestSettings?
+  skills              UserSkill[]
+  mcpServers          UserMcpServer[]
 }
 
 // how a cloud run pays for model tokens
@@ -162,50 +185,60 @@ model AuthSession {
 }
 
 model Session {
-  id                 String         @id @default(uuid())
-  title              String?
-  description        String?
-  userId             String
-  type               SessionType    @default(WEB)
-  vmId               String?
-  vmStatus           VmStatus       @default(STOPPED)
-  isArchived         Boolean        @default(false)
-  tags               String[]
-  githubLastSyncedAt DateTime?
-  githubRepoName     String?
-  githubRepoOwner    String?
-  githubRepoUrl      String?
-  gitProvider        GitProvider    @default(GITHUB)
-  repoUrl            String?
-  branch             String?
-  gitRef             String?
-  issueNumber        Int?
+  id                   String         @id @default(uuid())
+  title                String?
+  description          String?
+  userId               String
+  type                 SessionType    @default(WEB)
+  vmId                 String?
+  vmStatus             VmStatus       @default(STOPPED)
+  isArchived           Boolean        @default(false)
+  tags                 String[]
+  githubLastSyncedAt   DateTime?
+  githubRepoName       String?
+  githubRepoOwner      String?
+  githubRepoUrl        String?
+  gitProvider          GitProvider    @default(GITHUB)
+  repoUrl              String?
+  branch               String?
+  gitRef               String?
+  issueNumber          Int?
   // the pull request December opened for this session (saved by the worker)
-  prNumber           Int?
-  prUrl              String?
-  prState            String?
-  prTitle            String?
-  prBranch           String?
+  prNumber             Int?
+  prUrl                String?
+  prState              String?
+  prTitle              String?
+  prBranch             String?
+  // pull request dates and line counts; the github app webhook keeps the state current (#632)
+  prOpenedAt           DateTime?
+  prMergedAt           DateTime?
+  prClosedAt           DateTime?
+  // last time prState was read from the git host (refresh on read for missed webhooks)
+  prCheckedAt          DateTime?
+  prAdditions          Int?
+  prDeletions          Int?
+  // messages before this sequence are out of the agent's context (/clear, /compact)
+  contextStartSequence Int            @default(0)
   // pinned sessions come first in the recent list; the date orders the pins
-  pinnedAt           DateTime?
+  pinnedAt             DateTime?
   // the agent asked a question and waits for an answer (the question itself lives in Redis)
-  pendingQuestionAt  DateTime?
+  pendingQuestionAt    DateTime?
   // set when the session was started from GitHub by the December GitHub App: the mode
   // (issue | change | review), the installation, the issue or pull request and its refs
-  githubRun          Json?
-  projectId          String?
-  epoch              Int            @default(1)
-  leaseExpiresAt     DateTime?
-  leaseOwner         String?
-  status             String         @default("IDLE")
+  githubRun            Json?
+  projectId            String?
+  epoch                Int            @default(1)
+  leaseExpiresAt       DateTime?
+  leaseOwner           String?
+  status               String         @default("IDLE")
   // the E2B sandbox itself, apart from the agent run (vmStatus). it stays RUNNING after a
   // turn for the preview, terminal and next prompt until the idle sweeper pauses it
-  sandboxStatus      SandboxStatus?
+  sandboxStatus        SandboxStatus?
   // last agent step, terminal input or preview request on the sandbox (idle pause after 10 minutes)
-  vmLastActivityAt   DateTime?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  deletedAt          DateTime?
+  vmLastActivityAt     DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  deletedAt            DateTime?
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   project         Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
@@ -219,6 +252,7 @@ model Session {
 
   @@index([userId])
   @@index([userId, prNumber])
+  @@index([githubRepoOwner, githubRepoName, prNumber])
   @@index([userId, pinnedAt])
   @@index([projectId])
   @@index([userId, sandboxStatus])
@@ -414,6 +448,39 @@ model CreditRequest {
 }
 
 // one row for every admin action. adminUserId is not a relation so the log outlives accounts.
+// one browser that turned on push for the user (#636). keys come from PushManager.subscribe
+model PushSubscription {
+  id         String    @id @default(uuid())
+  userId     String
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// a zip of the user's sessions and messages (#636). the email link works until expiresAt
+model DataExport {
+  id          String    @id @default(uuid())
+  userId      String
+  // PENDING | READY | FAILED
+  status      String    @default("PENDING")
+  fileKey     String?
+  sizeBytes   Int?
+  error       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  expiresAt   DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
 model AdminAuditLog {
   id          String   @id @default(uuid())
   adminUserId String
@@ -486,6 +553,12 @@ enum NotificationType {
   WARNING
   SUCCESS
   ERROR
+}
+
+enum NotifyLevel {
+  ALL
+  IMPORTANT
+  NONE
 }
 
 enum NotificationCategory {
@@ -615,4 +688,51 @@ model Feedback {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// a skill saved on the account (connections, #632 section 2). the agent runs it when the
+// user picks it with /name, or by itself when runs is "agent"
+model UserSkill {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  description String
+  body        String
+  // agent: the agent may run it by itself; user: only when the user picks it
+  runs        String   @default("agent")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+}
+
+// a remote mcp server saved on the account; cloud sessions connect to it for each run
+model UserMcpServer {
+  id               String    @id @default(uuid())
+  userId           String
+  name             String
+  url              String
+  // http (streamable http) or sse
+  transport        String    @default("http")
+  // none or header; oauth sign-in is not supported yet
+  auth             String    @default("none")
+  // the headers as encrypted json; headerKeys shows the names without the values
+  encryptedHeaders String?
+  headerKeys       String[]  @default([])
+  enabled          Boolean   @default(true)
+  disabledTools    String[]  @default([])
+  // what the last run found: unknown, connected or error, and the tools it listed
+  status           String    @default("unknown")
+  lastError        String?
+  tools            String[]  @default([])
+  checkedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
 }

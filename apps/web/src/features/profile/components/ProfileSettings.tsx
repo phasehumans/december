@@ -248,12 +248,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
         setTempName,
         updateNameMutation,
         isGithubConnected,
-        productUpdates,
-        securityAlerts,
         resolvedName,
         openNameModal,
         handleSaveName,
-        handleNotificationToggle,
+        handleNotificationChange,
         connectGithub,
     } = useProfileSettingsController()
 
@@ -313,10 +311,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                     <ProfileSettingsContent
                         profile={profile}
                         resolvedName={resolvedName}
-                        productUpdates={productUpdates}
-                        securityAlerts={securityAlerts}
                         onOpenNameModal={openNameModal}
-                        onNotificationToggle={handleNotificationToggle}
+                        onNotificationChange={handleNotificationChange}
                         onSignOut={onSignOut}
                         onOpenDeleteAccountModal={() => setDeleteAccountModalOpen(true)}
                         onOpenSignOutAllSessionsModal={() => setSignOutAllSessionsModalOpen(true)}

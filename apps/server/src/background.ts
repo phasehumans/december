@@ -5,6 +5,9 @@ import Redis from 'ioredis'
 import { env } from './env'
 import { authService } from './modules/auth/auth.service'
 import { createEmailWorker } from './modules/email/email.worker'
+import { notificationService } from './modules/notification/notification.service'
+import { DATA_EXPORT_QUEUE } from './modules/setting/setting.queue'
+import { settingService } from './modules/setting/setting.service'
 import { fetchLiveModelRates } from './modules/usage/usage.rates'
 import { deletePrefix } from './shared/project-storage'
 
@@ -44,6 +47,8 @@ const sweepQueue = new Queue('sweep_jobs', { connection: redisConnection as any 
 // add repeatable jobs
 sweepQueue.add('daily_sweep', {}, { repeat: { pattern: '0 0 * * *' } })
 sweepQueue.add('refresh_model_rates', {}, { repeat: { pattern: '0 */6 * * *' } })
+// daily summaries (#636): each user picks a time in their zone, so check every 15 minutes
+sweepQueue.add('daily_digest', {}, { repeat: { pattern: '*/15 * * * *' } })
 
 const sweepWorker = new Worker(
     'sweep_jobs',
@@ -53,6 +58,10 @@ const sweepWorker = new Worker(
             await authService.purgeExpiredAndRevokedSessions().catch((err) => {
                 console.error('[Background] Failed to purge expired sessions:', err)
             })
+            // data export files whose emailed link has ended (#636)
+            await settingService.purgeDataExports().catch((err) => {
+                console.error('[Background] Failed to purge data exports:', err)
+            })
             // cleanup sessions older than 30 days or orphaned db records
             await prisma.session.deleteMany({
                 where: {
@@ -61,6 +70,11 @@ const sweepWorker = new Worker(
                     },
                 },
             })
+        } else if (job.name === 'daily_digest') {
+            const result = await notificationService.sendDailyDigests({})
+            if (result.sent > 0) {
+                console.log(`[Background] Sent ${result.sent} daily summaries`)
+            }
         } else if (job.name === 'refresh_model_rates') {
             console.log(`[Background] Refreshing live OpenRouter model rates catalog`)
             await fetchLiveModelRates(true).catch((err) => {
@@ -74,6 +88,17 @@ const sweepWorker = new Worker(
     },
     { connection: redisConnection as any }
 )
+
+// setup data export worker (#636): builds the zip and emails the link
+const dataExportWorker = new Worker(
+    DATA_EXPORT_QUEUE,
+    async (job) => settingService.processDataExport({ exportId: job.data.exportId }),
+    { connection: redisConnection as any, concurrency: 2 }
+)
+
+dataExportWorker.on('failed', (job, err) => {
+    console.error(`[Background] Data export job ${job?.id} failed: ${err.message}`)
+})
 
 // setup email worker
 const emailWorker = createEmailWorker(redisConnection as any)

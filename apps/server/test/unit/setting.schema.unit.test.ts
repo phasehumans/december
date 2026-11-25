@@ -23,30 +23,44 @@ describe('Setting Schema - Unit Tests', () => {
     })
 
     describe('updateNotificationSchema', () => {
-        it('should pass with any combination of optional boolean fields', () => {
+        it('should pass with any combination of the optional fields', () => {
             expect(
                 updateNotificationSchema.safeParse({
-                    notifyProjectActivity: true,
                     notifyProductUpdates: false,
                     notifySecurityAlerts: true,
+                    notifyLevel: 'ALL',
+                    notifyEmail: false,
+                    notifyPush: false,
+                    digestEnabled: true,
+                    digestTime: '18:30',
+                    timezone: 'Asia/Kolkata',
                 }).success
             ).toBe(true)
 
-            expect(
-                updateNotificationSchema.safeParse({
-                    notifyProjectActivity: true,
-                }).success
-            ).toBe(true)
-
-            expect(updateNotificationSchema.safeParse({}).success).toBe(true)
+            expect(updateNotificationSchema.safeParse({ notifyLevel: 'NONE' }).success).toBe(true)
         })
 
-        it('should fail if fields are not booleans', () => {
+        it('should fail on an empty body, a wrong type or an old field', () => {
+            expect(updateNotificationSchema.safeParse({}).success).toBe(false)
+            expect(updateNotificationSchema.safeParse({ notifyEmail: 'true' }).success).toBe(false)
             expect(
-                updateNotificationSchema.safeParse({
-                    notifyProjectActivity: 'true',
-                }).success
+                updateNotificationSchema.safeParse({ notifyProjectActivity: true }).success
             ).toBe(false)
+        })
+
+        it('should keep security alerts on and push on only from the browser', () => {
+            expect(
+                updateNotificationSchema.safeParse({ notifySecurityAlerts: false }).success
+            ).toBe(false)
+            expect(updateNotificationSchema.safeParse({ notifyPush: true }).success).toBe(false)
+        })
+
+        it('should check the summary time and the time zone', () => {
+            expect(updateNotificationSchema.safeParse({ digestTime: '24:00' }).success).toBe(false)
+            expect(updateNotificationSchema.safeParse({ digestTime: '9:00' }).success).toBe(false)
+            expect(updateNotificationSchema.safeParse({ timezone: 'Mars/Base' }).success).toBe(
+                false
+            )
         })
     })
 

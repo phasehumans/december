@@ -12,6 +12,7 @@
         "test:unit": "bun test"
     },
     "dependencies": {
+        "@december/shared": "workspace:*",
         "@react-oauth/google": "^0.13.4",
         "@tanstack/react-query": "^5.90.21",
         "@xterm/addon-fit": "0.11.0",

@@ -33,6 +33,19 @@ export type GetUser = {
     userId: string
 }
 
+export type ListUserSessions = AdminContext & {
+    userId: string
+}
+
+export type OpenUserSession = AdminContext & {
+    userId: string
+    sessionId: string
+}
+
+export type AssertSupportAccess = {
+    userId: string
+}
+
 export type AdjustCredits = AdminContext & {
     userId: string
     amountInCents: number

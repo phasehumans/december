@@ -198,6 +198,7 @@ const findUserDetail = async (userId: string) =>
         select: {
             ...userListSelect,
             notifyProductUpdates: true,
+            supportAccessUntil: true,
             githubAppInstall: true,
             onboardingCompletedAt: true,
             providerCredentials: { select: { provider: true, keyHint: true, verifiedAt: true } },
@@ -218,6 +219,69 @@ const findUserDetail = async (userId: string) =>
             },
         },
     })
+
+// support access (#636): the admin page opens a user's sessions only while it is on
+
+const findSupportAccess = async (userId: string) =>
+    prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, supportAccessUntil: true },
+    })
+
+const listUserSessions = async (userId: string) =>
+    prisma.session.findMany({
+        where: { userId },
+        orderBy: { updatedAt: 'desc' },
+        take: 100,
+        select: {
+            id: true,
+            title: true,
+            type: true,
+            status: true,
+            isArchived: true,
+            githubRepoOwner: true,
+            githubRepoName: true,
+            branch: true,
+            prUrl: true,
+            prState: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    })
+
+const findUserSessionWithMessages = async (data: { userId: string; sessionId: string }) => {
+    const { userId, sessionId } = data
+    return prisma.session.findFirst({
+        where: { id: sessionId, userId },
+        select: {
+            id: true,
+            title: true,
+            type: true,
+            status: true,
+            isArchived: true,
+            githubRepoOwner: true,
+            githubRepoName: true,
+            branch: true,
+            prUrl: true,
+            prState: true,
+            createdAt: true,
+            updatedAt: true,
+            messages: {
+                orderBy: { sequence: 'asc' },
+                take: 1000,
+                select: {
+                    id: true,
+                    role: true,
+                    content: true,
+                    status: true,
+                    sequence: true,
+                    blocks: true,
+                    createdAt: true,
+                },
+            },
+        },
+    })
+}
 
 /** Add or remove credits with a reason. Returns null when the balance would go below 0. */
 const adjustCredits = async (data: {
@@ -420,6 +484,9 @@ export const adminRepository = {
     searchUsers,
     sumUsageByUser,
     findUserDetail,
+    findSupportAccess,
+    listUserSessions,
+    findUserSessionWithMessages,
     adjustCredits,
     restoreUser,
     listRedeemCodes,

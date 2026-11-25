@@ -13,6 +13,7 @@ import authRouter from './modules/auth/auth.routes'
 import billingRouter from './modules/billing/billing.routes'
 import byokRouter from './modules/byok/byok.routes'
 import cliRouter from './modules/cli/cli.routes'
+import connectionRouter from './modules/connection/connection.routes'
 import githubAppRouter from './modules/githubapp/githubapp.routes'
 import integrationsRouter from './modules/integration/integration.routes'
 import notificationRouter from './modules/notification/notification.routes'
@@ -20,6 +21,7 @@ import platformRouter from './modules/platform/platform.routes'
 import runtimeRouter from './modules/runtime/runtime.routes'
 import secretsRouter from './modules/secrets/secrets.routes'
 import sessionRouter from './modules/session/session.routes'
+import sessionCommandRouter from './modules/sessioncommand/sessioncommand.routes'
 import settingRouter from './modules/setting/setting.routes'
 import usageRouter from './modules/usage/usage.routes'
 import waitlistRouter from './modules/waitlist/waitlist.routes'
@@ -111,9 +113,13 @@ app.use('/api/v1/waitlist', waitlistRouter)
 app.use('/api/v1/billing', billingRouter)
 app.use('/api/v1/platform', platformRouter)
 app.use('/api/v1/cli', cliRateLimiter, cliRouter)
+// the slash commands first: their /check and /review must not reach the /:id route
+app.use('/api/v1/session', sessionCommandRouter)
+app.use('/api/v1/sessions', sessionCommandRouter)
 app.use('/api/v1/session', sessionRouter)
 app.use('/api/v1/sessions', sessionRouter)
 app.use('/api/v1/secrets', secretsRouter)
+app.use('/api/v1/connections', connectionRouter)
 app.use('/api/v1/byok', byokRouter)
 app.use('/api/v1/githubapp', githubAppRouter)
 app.use('/api/v1/admin', adminRouter)

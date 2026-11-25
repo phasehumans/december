@@ -88,3 +88,8 @@ export const dailyUsageQuerySchema = z.object({
 export const auditLogQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(200).default(50),
 })
+
+export const userSessionParamsSchema = z.object({
+    id: z.string().trim().min(1).max(100),
+    sessionId: z.string().trim().min(1).max(100),
+})

@@ -25,6 +25,11 @@ const envSchema = z
         APP_URL: z.string().url().default('http://localhost:3000'),
         SERVER_URL: z.string().url().default('http://localhost:4000'),
         RESEND_API_KEY: emptyAsUndefined,
+        // browser push (#636): a P-256 key pair in base64url (65-byte public, 32-byte private).
+        // without them, push is off and the account page hides its switch
+        VAPID_PUBLIC_KEY: emptyAsUndefined,
+        VAPID_PRIVATE_KEY: emptyAsUndefined,
+        VAPID_SUBJECT: emptyAsUndefined,
         SENDER_EMAIL: z.preprocess(
             (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
             z.string().email().optional()

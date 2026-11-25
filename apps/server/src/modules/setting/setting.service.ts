@@ -2,10 +2,25 @@ import { toPullRequestSettings } from '@december/shared'
 
 import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
+import { deleteObject, getBinaryFile, putBinaryFile } from '../../shared/project-storage'
+import { buildZip, type ZipEntry } from '../../shared/zip'
 import { isAdminEmail, isValidUnsubscribeToken } from '../admin/admin.utils'
+import { emailService } from '../email/email.service'
 
+import { enqueueDataExport } from './setting.queue'
 import { settingRepository } from './setting.repository'
-import { toOnboardingStep } from './setting.utils'
+import {
+    DATA_EXPORT_COOLDOWN_MS,
+    DATA_EXPORT_LINK_MS,
+    SUPPORT_ACCESS_MS,
+    buildDataExportUrl,
+    dataExportFileKey,
+    dataExportSessionFileName,
+    isValidDataExportToken,
+    toDataExportState,
+    toOnboardingStep,
+    toPreferences,
+} from './setting.utils'
 
 export const settingSelect = {
     id: true,
@@ -18,14 +33,24 @@ export const settingSelect = {
     githubConnected: true,
     githubAppInstall: true,
     githubUsername: true,
-    notifyProjectActivity: true,
     notifyProductUpdates: true,
     notifySecurityAlerts: true,
+    notifyLevel: true,
+    notifyEmail: true,
+    notifyPush: true,
+    digestEnabled: true,
+    digestTime: true,
+    timezone: true,
 
     creditBalance: true,
     isDeleted: true,
     onboardingCompletedAt: true,
     defaultModelSource: true,
+    defaultPlanFirst: true,
+    defaultEffort: true,
+    defaultOpenPullRequest: true,
+    supportAccessUntil: true,
+    preferences: true,
 }
 
 import type {
@@ -39,9 +64,18 @@ import type {
     CompleteOnboarding,
     OnboardingState,
     UpdateModelSource,
+    UpdateSessionDefaults,
+    GetToolDenyRules,
+    UpdateToolDenyRules,
     SubmitFeedback,
     GetPullRequestSettings,
     UpdatePullRequestSettings,
+    UpdatePreferences,
+    UpdateSupportAccess,
+    RequestDataExport,
+    GetDataExport,
+    ProcessDataExport,
+    DownloadDataExport,
 } from './setting.types'
 
 const invalidateUserSettingCache = async (userId: string) => {
@@ -77,7 +111,11 @@ const getProfile = async (data: GetProfile) => {
         }
 
         // for the web app only; every /admin route checks ADMIN_EMAILS again on the server
-        return { ...profile, isAdmin: profile.emailVerified && isAdminEmail(profile.email) }
+        return {
+            ...profile,
+            preferences: toPreferences(profile.preferences),
+            isAdmin: profile.emailVerified && isAdminEmail(profile.email),
+        }
     })
 }
 
@@ -131,8 +169,223 @@ const updateModelSource = async (data: UpdateModelSource) => {
     return updatedUser
 }
 
+const updateSessionDefaults = async (data: UpdateSessionDefaults) => {
+    const { userId, defaultPlanFirst, defaultEffort, defaultOpenPullRequest } = data
+
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    const updated = await settingRepository.updateSessionDefaults(userId, {
+        ...(defaultPlanFirst !== undefined ? { defaultPlanFirst } : {}),
+        ...(defaultEffort !== undefined ? { defaultEffort } : {}),
+        ...(defaultOpenPullRequest !== undefined ? { defaultOpenPullRequest } : {}),
+    })
+    await invalidateUserSettingCache(userId)
+
+    return updated
+}
+
+// on: the admin page can open this user's sessions for 7 days. off: right away
+const updateSupportAccess = async (data: UpdateSupportAccess) => {
+    const { userId, enabled } = data
+
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
+    if (!existingUser) {
+        throw new AppError('user not found', 404)
+    }
+
+    const supportAccessUntil = enabled ? new Date(Date.now() + SUPPORT_ACCESS_MS) : null
+    const updated = await settingRepository.updateSupportAccess(userId, supportAccessUntil)
+    await invalidateUserSettingCache(userId)
+
+    return updated
+}
+
+// merges the sent values into the saved ones, so each device can save one value at a time
+const updatePreferences = async (data: UpdatePreferences) => {
+    const { userId, preferences } = data
+
+    const existing = await settingRepository.findPreferences(userId)
+    if (!existing) {
+        throw new AppError('user not found', 404)
+    }
+
+    const merged = { ...toPreferences(existing.preferences), ...preferences }
+    const updated = await settingRepository.updatePreferences(userId, merged)
+    await invalidateUserSettingCache(userId)
+
+    return { preferences: toPreferences(updated.preferences) }
+}
+
+// data export (#636)
+
+const getDataExport = async (data: GetDataExport) => {
+    const { userId } = data
+    const latest = await settingRepository.findLatestDataExport(userId)
+    return { export: latest ? toDataExportState(latest) : null }
+}
+
+// one a day. the zip is built in the background, then a link is emailed
+const requestDataExport = async (data: RequestDataExport) => {
+    const { userId } = data
+
+    const latest = await settingRepository.findLatestDataExport(userId)
+    // a failed export does not count, so the user can ask again right away
+    if (
+        latest &&
+        latest.status !== 'FAILED' &&
+        Date.now() - latest.createdAt.getTime() < DATA_EXPORT_COOLDOWN_MS
+    ) {
+        throw new AppError('you can export your data once a day', 429)
+    }
+
+    const created = await settingRepository.createDataExport(userId)
+    try {
+        await enqueueDataExport({ exportId: created.id })
+    } catch (error) {
+        // no job means no file: remove the row so the user can try again now
+        console.error('[Setting] could not queue the data export:', error)
+        await settingRepository.deleteDataExport(created.id)
+        throw new AppError('could not start the export, try again in a few minutes', 503)
+    }
+
+    return { export: toDataExportState(created) }
+}
+
+// the background job: a json file per session in a zip, stored, then emailed as a link
+const processDataExport = async (data: ProcessDataExport) => {
+    const { exportId } = data
+
+    const record = await settingRepository.findDataExport(exportId)
+    if (!record || record.status !== 'PENDING') return { status: record?.status ?? 'MISSING' }
+
+    try {
+        const user = await settingRepository.findUserForDataExport(record.userId)
+        if (!user || record.user.isDeleted) {
+            await settingRepository.markDataExportFailed(exportId, 'account deleted')
+            return { status: 'FAILED' }
+        }
+
+        const exportedAt = new Date()
+        const entries: ZipEntry[] = [
+            {
+                name: 'account.json',
+                content: JSON.stringify(
+                    {
+                        ...user,
+                        preferences: toPreferences(user.preferences),
+                        exportedAt,
+                    },
+                    null,
+                    2
+                ),
+            },
+        ]
+
+        const sessionIds = await settingRepository.findSessionIdsForDataExport(record.userId)
+        for (const [index, { id }] of sessionIds.entries()) {
+            const session = await settingRepository.findSessionForDataExport(id)
+            if (!session) continue
+            entries.push({
+                name: dataExportSessionFileName(index, session.title),
+                content: JSON.stringify(session, null, 2),
+            })
+        }
+
+        const zip = buildZip(entries, exportedAt)
+        const fileKey = dataExportFileKey(record.userId, exportId)
+        await putBinaryFile({ key: fileKey, content: zip, contentType: 'application/zip' })
+
+        const expiresAt = new Date(Date.now() + DATA_EXPORT_LINK_MS)
+        await settingRepository.markDataExportReady(exportId, {
+            fileKey,
+            sizeBytes: zip.length,
+            expiresAt,
+        })
+
+        const until = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+        await emailService.sendMessageEmail({
+            to: user.email,
+            subject: 'Your December data export',
+            body: [
+                'Your data export is ready. It has your account and every session with its messages, as JSON files in a zip.',
+                `Download it here: ${buildDataExportUrl(exportId)}`,
+                `The link works until ${until}.`,
+            ].join('\n\n'),
+        })
+
+        return { status: 'READY', sessions: sessionIds.length, sizeBytes: zip.length }
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        await settingRepository.markDataExportFailed(exportId, message)
+        throw error
+    }
+}
+
+// the emailed link: no sign in, the token opens only this export until it expires
+const downloadDataExport = async (data: DownloadDataExport) => {
+    const { exportId, token } = data
+
+    if (!isValidDataExportToken(exportId, token)) {
+        throw new AppError('this download link is not valid', 404)
+    }
+    const record = await settingRepository.findDataExport(exportId)
+    if (!record || record.status !== 'READY' || !record.fileKey || record.user.isDeleted) {
+        throw new AppError('this download link is not valid', 404)
+    }
+    if (!record.expiresAt || record.expiresAt.getTime() <= Date.now()) {
+        throw new AppError('this download link has expired', 410)
+    }
+
+    const file = await getBinaryFile(record.fileKey)
+    if (!file) {
+        throw new AppError('this download link has expired', 410)
+    }
+
+    const day = record.createdAt.toISOString().slice(0, 10)
+    return { body: file.body, fileName: `december-export-${day}.zip` }
+}
+
+// the daily sweep: files whose link ended, and exports that never finished
+const purgeDataExports = async () => {
+    const now = new Date()
+    const stale = await settingRepository.findStaleDataExports(
+        now,
+        new Date(now.getTime() - DATA_EXPORT_LINK_MS)
+    )
+    for (const item of stale) {
+        if (!item.fileKey) continue
+        await deleteObject(item.fileKey).catch((error: unknown) => {
+            // Intentionally swallowed: the row goes anyway; a missing file is the goal
+            console.warn('[Setting] could not delete export file', item.fileKey, error)
+        })
+    }
+    if (stale.length > 0) {
+        await settingRepository.deleteDataExports(stale.map((item) => item.id))
+    }
+    return { deleted: stale.length }
+}
+
+const getToolDenyRules = async (data: GetToolDenyRules) => {
+    const { userId } = data
+    const user = await settingRepository.findToolDenyRules(userId)
+    if (!user) throw new AppError('user not found', 404)
+    return { rules: user.toolDenyRules }
+}
+
+/** the whole list is saved at once; duplicates are dropped, the order is kept */
+const updateToolDenyRules = async (data: UpdateToolDenyRules) => {
+    const { userId, rules } = data
+    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
+    if (!existingUser) throw new AppError('user not found', 404)
+    const updated = await settingRepository.updateToolDenyRules(userId, [...new Set(rules)])
+    return { rules: updated.toolDenyRules }
+}
+
 const updateNotifications = async (data: UpdateNotifications) => {
-    const { userId, notifyProductUpdates, notifyProjectActivity, notifySecurityAlerts } = data
+    const { userId, settings } = data
 
     const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
 
@@ -140,24 +393,10 @@ const updateNotifications = async (data: UpdateNotifications) => {
         throw new AppError('user not found', 404)
     }
 
-    const updateData: {
-        notifyProjectActivity?: boolean
-        notifyProductUpdates?: boolean
-        notifySecurityAlerts?: boolean
-    } = {}
-
-    if (notifyProjectActivity !== undefined) {
-        updateData.notifyProjectActivity = notifyProjectActivity
-    }
-
-    if (notifyProductUpdates !== undefined) {
-        updateData.notifyProductUpdates = notifyProductUpdates
-    }
-
-    if (notifySecurityAlerts !== undefined) {
-        updateData.notifySecurityAlerts = notifySecurityAlerts
-    }
-
+    // only the fields that were sent change
+    const updateData = Object.fromEntries(
+        Object.entries(settings).filter(([, value]) => value !== undefined)
+    )
     if (Object.keys(updateData).length === 0) {
         throw new AppError('at least one notification setting must be provided', 400)
     }
@@ -271,6 +510,16 @@ export const settingService = {
     updateName,
     updateNotifications,
     updateModelSource,
+    updateSessionDefaults,
+    getToolDenyRules,
+    updateToolDenyRules,
+    updateSupportAccess,
+    updatePreferences,
+    getDataExport,
+    requestDataExport,
+    processDataExport,
+    downloadDataExport,
+    purgeDataExports,
     getOnboarding,
     updateOnboarding,
     completeOnboarding,

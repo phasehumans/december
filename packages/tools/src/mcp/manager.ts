@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 
 import { createMcpTool, formatMcpContent } from './tool-adapter'
 
@@ -94,9 +95,11 @@ export class McpClientManager {
                         `MCP server "${name}" has neither a command nor a URL configured`
                     )
                 }
-                transport = new SSEClientTransport(new URL(urlStr), {
-                    requestInit: sseConfig.headers ? { headers: sseConfig.headers } : undefined,
-                })
+                const requestInit = sseConfig.headers ? { headers: sseConfig.headers } : undefined
+                transport =
+                    sseConfig.transport === 'http'
+                        ? new StreamableHTTPClientTransport(new URL(urlStr), { requestInit })
+                        : new SSEClientTransport(new URL(urlStr), { requestInit })
             }
 
             return await this.connectWithTransport(name, config, transport)
@@ -158,7 +161,12 @@ export class McpClientManager {
                     config.eager === true || (config.eager !== false && mcpTools.length <= 5)
 
                 const convertedTools: Tool[] = []
+                info.availableTools = mcpTools.map((mTool) => mTool.name)
+                const disabledTools = new Set(
+                    'disabledTools' in config ? (config.disabledTools ?? []) : []
+                )
                 for (const mTool of mcpTools) {
+                    if (disabledTools.has(mTool.name)) continue
                     const decTool = createMcpTool({
                         serverName: name,
                         mcpTool: mTool,

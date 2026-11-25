@@ -16,6 +16,7 @@ import {
     sandboxActionParamsSchema,
     sendAnnouncementSchema,
     testAnnouncementSchema,
+    userSessionParamsSchema,
 } from './admin.schema'
 import { adminService } from './admin.service'
 
@@ -74,6 +75,22 @@ const getUser = asyncHandler(async (req: Request, res: Response) => {
     const { id } = idParamSchema.parse(req.params)
     const result = await adminService.getUser({ userId: id })
     return sendSuccess(res, 'user fetched', result)
+})
+
+const listUserSessions = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = idParamSchema.parse(req.params)
+    const result = await adminService.listUserSessions({ adminUserId: adminId(req), userId: id })
+    return sendSuccess(res, 'user sessions fetched', result)
+})
+
+const openUserSession = asyncHandler(async (req: Request, res: Response) => {
+    const { id, sessionId } = userSessionParamsSchema.parse(req.params)
+    const result = await adminService.openUserSession({
+        adminUserId: adminId(req),
+        userId: id,
+        sessionId,
+    })
+    return sendSuccess(res, 'user session fetched', result)
 })
 
 const adjustCredits = asyncHandler(async (req: Request, res: Response) => {
@@ -172,6 +189,8 @@ export const adminController = {
     listFeedback,
     listUsers,
     getUser,
+    listUserSessions,
+    openUserSession,
     adjustCredits,
     restoreUser,
     listRedeemCodes,

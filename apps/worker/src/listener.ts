@@ -1,6 +1,11 @@
 import { DurableStepKernel, PrismaDurableStepStorage, StaleEpochError } from '@december/agent'
 import { prisma } from '@december/database'
-import { calculateGenerationCost, startOfUtcMonth, startOfNextUtcMonth } from '@december/shared'
+import {
+    calculateGenerationCost,
+    readSessionRunConfig,
+    startOfUtcMonth,
+    startOfNextUtcMonth,
+} from '@december/shared'
 import { getGitProvider } from '@december/shared/git'
 import Redis from 'ioredis'
 
@@ -132,8 +137,11 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                 githubRepoUrl: true,
                 repoUrl: true,
                 branch: true,
+                settings: { select: { config: true } },
             },
         })
+        // "open pull request" off (#632): commit and push the branch, open no pull request
+        const { openPullRequest } = readSessionRunConfig(session?.settings?.config)
 
         const taskBranch = `december/${sessionId}`
         const baseBranch = session?.branch || 'main'
@@ -226,6 +234,38 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                 return null
             })
 
+        if (!openPullRequest) {
+            const branchResult: AutonomousPrResult = {
+                title: session?.title || 'Automated task changes',
+                state: 'branch',
+                headRef: taskBranch,
+                baseRef: baseBranch,
+                diffSummary: {
+                    additions: 0,
+                    deletions: 0,
+                    changedFiles: statusOutput.split('\n').filter(Boolean).length,
+                },
+                ciStatus: 'pending',
+            }
+            const branchPayload = JSON.stringify({
+                type: 'PullRequestUpdate',
+                sessionId,
+                pullRequest: branchResult,
+                updatedAt: Date.now(),
+            })
+            if (redisPub && redisPub.status === 'ready') {
+                await redisPub
+                    .set(`session_pull_requests:${sessionId}`, branchPayload)
+                    .catch(() => {
+                        // Intentionally swallowed: Redis set fallback
+                    })
+                await redisPub.publish(`session_events:${sessionId}`, branchPayload).catch(() => {
+                    // Intentionally swallowed: Redis publish fallback
+                })
+            }
+            return branchResult
+        }
+
         // 7. Create or fetch the pull request (merge request on GitLab)
         const prTitle = session?.title
             ? `feat: ${session.title}`
@@ -284,6 +324,10 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                         prState,
                         prTitle: prResult.title,
                         prBranch: taskBranch,
+                        prOpenedAt: prData?.createdAt ? new Date(prData.createdAt) : new Date(),
+                        prCheckedAt: new Date(),
+                        prAdditions: prData?.additions ?? null,
+                        prDeletions: prData?.deletions ?? null,
                     },
                 })
                 .catch((error: unknown) => {
@@ -828,6 +872,9 @@ export async function processGrpcStream(
 
 // records token usage. CREDITS runs are charged to the wallet; OWN_KEY runs are paid
 // by the user's provider, so they are recorded for display only.
+// under this balance the user gets a low credits notification ($1). #638 makes it a setting
+const LOW_CREDITS_ALERT_CENTS = 100
+
 async function updateCredits(sessionId: string, event: any, billingSource: BillingSource) {
     try {
         const session = await prisma.session.findUnique({
@@ -854,16 +901,19 @@ async function updateCredits(sessionId: string, event: any, billingSource: Billi
             `[WORKER LISTENER] Recording UsageEvent for session '${sessionId}': model=${model}, promptTokens=${promptTokens}, completionTokens=${completionTokens}, costInCents=${calculatedCost}`
         )
 
+        let balanceAfter: number | null = null
         await prisma.$transaction(async (tx) => {
             if (session.userId && billingSource === 'CREDITS') {
-                await tx.user.update({
+                const updated = await tx.user.update({
                     where: { id: session.userId },
                     data: {
                         creditBalance: {
                             decrement: calculatedCost,
                         },
                     },
+                    select: { creditBalance: true },
                 })
+                balanceAfter = updated.creditBalance
             }
 
             await tx.usageEvent.create({
@@ -881,6 +931,24 @@ async function updateCredits(sessionId: string, event: any, billingSource: Billi
                 },
             })
         })
+
+        // this charge took the balance under the alert amount: the server tells the user
+        // once (#636). it is not sent again until a top-up takes the balance back over
+        if (
+            balanceAfter !== null &&
+            balanceAfter < LOW_CREDITS_ALERT_CENTS &&
+            balanceAfter + calculatedCost >= LOW_CREDITS_ALERT_CENTS &&
+            redisPub.status === 'ready'
+        ) {
+            await redisPub
+                .publish(
+                    `session_events:${sessionId}`,
+                    JSON.stringify({ type: 'CreditsLow', balanceInCents: balanceAfter })
+                )
+                .catch((error: unknown) => {
+                    console.warn('[WORKER LISTENER] could not publish CreditsLow', error)
+                })
+        }
     } catch (err) {
         console.error(
             `[WORKER LISTENER] Failed to record token usage and update credits for session ${sessionId}:`,

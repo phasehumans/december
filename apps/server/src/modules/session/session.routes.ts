@@ -19,9 +19,11 @@ sessionRouter.use(authMiddleware)
 
 sessionRouter.get('/', sessionController.getSessions)
 sessionRouter.post('/', sessionController.createSession)
-// before '/:id', so "smart-search" and "counts" are not read as a session id
+sessionRouter.delete('/', sessionController.deleteAllSessions)
+// before '/:id', so "smart-search", "counts" and "pull-requests" are not read as a session id
 sessionRouter.get('/smart-search', smartSearchLimiter, sessionController.smartSearchSessions)
 sessionRouter.get('/counts', sessionController.getSessionCounts)
+sessionRouter.get('/pull-requests', sessionController.getPullRequests)
 sessionRouter.post('/archive-merged', sessionController.archiveMergedSessions)
 sessionRouter.post('/unarchive', sessionController.unarchiveSessions)
 sessionRouter.get('/:id', sessionController.getSessionById)

@@ -37,6 +37,15 @@ describe('Session Service - Unit Tests', () => {
     })
 
     describe('createSession', () => {
+        // the sessions here are not in the database: saving their config is mocked
+        const originalSaveRunConfig = sessionRepository.saveSessionRunConfig
+        beforeEach(() => {
+            sessionRepository.saveSessionRunConfig = mock(async () => ({}) as any) as any
+        })
+        afterEach(() => {
+            sessionRepository.saveSessionRunConfig = originalSaveRunConfig
+        })
+
         it('should throw AppError 402 if user has insufficient balance (< $0.50)', async () => {
             const originalBalance = usageService.hasMinimumBalance
             usageService.hasMinimumBalance = mock(async () => false) as any
@@ -677,7 +686,7 @@ describe('Session Service - Unit Tests', () => {
                 sessionId: testSessionId,
                 path: 'src/app.ts',
             })
-            expect(res).toEqual({
+            expect(res).toMatchObject({
                 path: 'src/app.ts',
                 content: '',
             })

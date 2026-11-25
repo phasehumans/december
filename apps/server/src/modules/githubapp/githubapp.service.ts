@@ -31,6 +31,7 @@ import {
 } from './githubapp.utils'
 
 import type {
+    PullRequestStateEvent,
     ClaimInstallation,
     ClaimInstallationResult,
     FindInstallationOwner,
@@ -1005,7 +1006,21 @@ const notifyGithubActivity = async (data: NotifyGithubActivity) => {
     }
 }
 
+/** a pull request changed on github: every december session that opened it follows */
+const syncPullRequestState = async (data: PullRequestStateEvent) => {
+    const { gitProvider, repoOwner, repoName, number, state, ...details } = data
+    return sessionService.applyPullRequestEvent({
+        gitProvider,
+        repoOwner,
+        repoName,
+        number,
+        state,
+        ...details,
+    })
+}
+
 export const githubAppService = {
+    syncPullRequestState,
     claimInstallation,
     findInstallationOwner,
     processInstallation,
