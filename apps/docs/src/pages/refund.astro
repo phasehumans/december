@@ -1,0 +1,124 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Refund and Cancellation Policy Page
+---
+
+<BaseLayout
+  title="Refund and Cancellation Policy | December"
+  description="When December refunds a payment for December credits, and how to cancel."
+  canonicalUrl="https://trydecember.com/refund"
+  activePath="/refund"
+  hideHeader={false}
+  hideFooter={false}
+>
+  <!-- Page Blueprint Chassis: 1280px wide column with side rails on desktop -->
+  <div class="relative w-full overflow-hidden flex-1 flex flex-col">
+    <!-- Main Container: 1280px wide centered content -->
+    <div class="relative z-10 mx-auto max-w-[1280px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24 min-w-0 bg-white border-x border-transparent lg:border-[#cbd5e1] flex-1 w-full">
+    <!-- Breadcrumb Navigation Bar -->
+    <nav class="flex items-center flex-wrap font-mono text-xs text-[#64748b] mb-8">
+      <div class="flex items-center flex-wrap gap-2">
+        <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
+        <span class="text-[#cbd5e1]">/</span>
+        <span class="text-[#64748b]">legal</span>
+        <span class="text-[#cbd5e1]">/</span>
+        <span class="text-[#090a0f] font-medium">[refund]</span>
+      </div>
+    </nav>
+
+    <article class="w-full min-w-0">
+      <!-- Document Header -->
+      <header class="mb-8 max-w-3xl min-w-0">
+        <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] leading-snug">
+          Refund and Cancellation Policy
+        </h1>
+        <p class="mt-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+          This policy tells you when December refunds a payment for December credits, and how to cancel.
+        </p>
+      </header>
+
+      <!-- Markdown / Body Content -->
+      <div class="docs-prose min-w-0 max-w-full text-[#52525b] text-sm sm:text-[15px] leading-relaxed">
+        <section>
+          <h2>What You Buy</h2>
+          <p>
+            You buy December credits in US dollars, from $1 to $50 for each payment. Razorpay processes the payment and charges it in Indian rupees. You use December credits for model calls in December Cloud.
+          </p>
+        </section>
+
+        <section>
+          <h2>Refunds</h2>
+          <p>
+            December credits are not refundable. This applies to used and unused credits.
+          </p>
+        </section>
+
+        <section>
+          <h2>Duplicate or Failed Payments</h2>
+          <p>
+            If Razorpay charges you two times for one purchase, or charges you but December does not add the credits, email us at
+            <!--email_off--><a href="mailto:team@trydecember.com">team@trydecember.com</a><!--/email_off-->.
+            Include the Razorpay payment ID and the email address of your December account.
+          </p>
+          <p>
+            We check the payment and refund the extra or failed charge to the original payment method. Your bank can take 5 to 7 working days to show the refund.
+          </p>
+        </section>
+
+        <section>
+          <h2>Bank and Currency Fees</h2>
+          <p>
+            Your bank can charge a fee, or use its own exchange rate, for a payment in Indian rupees. December does not refund these fees.
+          </p>
+        </section>
+
+        <section>
+          <h2>Free Credits and Redeem Codes</h2>
+          <p>
+            Free credits and credits from redeem codes have no cash value. December does not refund them or exchange them for money.
+          </p>
+        </section>
+
+        <section>
+          <h2>Cancellation</h2>
+          <p>
+            December Cloud has no subscription, so there is nothing to cancel. You pay only when you buy credits. If you delete your account, you cannot use your unused credits, and December does not refund them.
+          </p>
+        </section>
+
+        <section>
+          <h2>Your Own Keys and Plans</h2>
+          <p>
+            If you use your own API keys or a plan, such as a Claude Code or Codex subscription, you pay that provider directly. Ask that provider about refunds.
+          </p>
+        </section>
+
+        <section>
+          <h2>Contact</h2>
+          <p>
+            For questions about a payment, email us at
+            <!--email_off--><a href="mailto:team@trydecember.com">team@trydecember.com</a><!--/email_off-->.
+          </p>
+        </section>
+      </div>
+
+      <!-- Navigation & Contact -->
+      <div class="mt-14 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
+        <span class="text-[#64748b]">
+          Questions? <!--email_off--><a href="mailto:team@trydecember.com" class="text-[#87b2f4] hover:underline">team@trydecember.com</a><!--/email_off-->
+        </span>
+        <a
+          href="/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="group inline-flex items-center gap-1.5 p-2.5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all"
+        >
+          <span>Terms of Service</span>
+          <span class="text-[#94a3b8] group-hover:text-[#87b2f4] transition-colors">→</span>
+        </a>
+      </div>
+    </article>
+  </div>
+  </div>
+</BaseLayout>

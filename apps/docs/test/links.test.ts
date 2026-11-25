@@ -26,6 +26,8 @@ describe('apps/docs link integrity verification', () => {
         '/',
         '/privacy',
         '/terms',
+        '/refund',
+        '/contact',
         '/docs',
         '/docs/quickstart',
         '/docs/architecture',

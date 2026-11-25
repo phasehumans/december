@@ -1,0 +1,66 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Contact Page
+---
+
+<BaseLayout
+  title="Contact | December"
+  description="How to contact December about your account, payments, or the product."
+  canonicalUrl="https://trydecember.com/contact"
+  activePath="/contact"
+  hideHeader={false}
+  hideFooter={false}
+>
+  <!-- Page Blueprint Chassis: 1280px wide column with side rails on desktop -->
+  <div class="relative w-full overflow-hidden flex-1 flex flex-col">
+    <!-- Main Container: 1280px wide centered content -->
+    <div class="relative z-10 mx-auto max-w-[1280px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24 min-w-0 bg-white border-x border-transparent lg:border-[#cbd5e1] flex-1 w-full">
+    <!-- Breadcrumb Navigation Bar -->
+    <nav class="flex items-center flex-wrap font-mono text-xs text-[#64748b] mb-8">
+      <div class="flex items-center flex-wrap gap-2">
+        <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
+        <span class="text-[#cbd5e1]">/</span>
+        <span class="text-[#090a0f] font-medium">[contact]</span>
+      </div>
+    </nav>
+
+    <article class="w-full min-w-0">
+      <!-- Document Header -->
+      <header class="mb-8 max-w-3xl min-w-0">
+        <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] leading-snug">
+          Contact
+        </h1>
+        <p class="mt-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
+          Use this page to contact December about your account, a payment, or the product.
+        </p>
+      </header>
+
+      <!-- Markdown / Body Content -->
+      <div class="docs-prose min-w-0 max-w-full text-[#52525b] text-sm sm:text-[15px] leading-relaxed">
+        <section>
+          <h2>Email</h2>
+          <p>
+            Email us at
+            <!--email_off--><a href="mailto:team@trydecember.com">team@trydecember.com</a><!--/email_off-->.
+          </p>
+        </section>
+
+        <section>
+          <h2>Payments</h2>
+          <p>
+            For a problem with a payment, include the Razorpay payment ID and the email address of your December account. Read the <a href="/refund">Refund and Cancellation Policy</a>.
+          </p>
+        </section>
+
+        <section>
+          <h2>Bugs and Feature Requests</h2>
+          <p>
+            Open an issue on <a href="https://github.com/phasehumans/december/issues" target="_blank" rel="noopener noreferrer">GitHub</a>.
+          </p>
+        </section>
+      </div>
+    </article>
+  </div>
+  </div>
+</BaseLayout>

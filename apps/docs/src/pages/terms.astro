@@ -68,9 +68,18 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </section>
 
         <section>
-          <h2>Subscriptions & Bring Your Own Key (BYOK)</h2>
+          <h2>Billing, Credits & Your Own Keys</h2>
           <p>
-            When you use your own API keys (Anthropic, OpenAI, Google, DeepSeek), you pay your AI provider directly at standard token rates with zero markup from December. Cloud sandbox features are billed according to your subscription plan. You can cancel your subscription at any time.
+            December Cloud uses December credits or your own keys. You buy December credits in US dollars. Razorpay processes the payment and charges it in Indian rupees. December Cloud takes credits for each model call, based on the tokens that the call uses.
+          </p>
+          <p>
+            When you use your own API keys (December supports 42 providers, such as Anthropic, OpenAI, Google and DeepSeek), you pay your AI provider directly at standard token rates. December takes no credits for those model calls.
+          </p>
+          <p>
+            In the CLI, you can also use a plan, such as a Claude Code or Codex subscription that you already pay for. You pay the plan provider, not December. December does not sell subscriptions.
+          </p>
+          <p>
+            December credits are not refundable, except for duplicate or failed payments. Read the <a href="/refund">Refund and Cancellation Policy</a>.
           </p>
         </section>
 
@@ -102,7 +111,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <section>
           <h2>Governing Law & Contact</h2>
           <p>
-            These Terms are governed by the laws of the State of Delaware. If you have any questions about these terms or custom agreements, email us at
+            These Terms are governed by the laws of India. If you have any questions about these terms or custom agreements, email us at
             <!--email_off--><a href="mailto:team@trydecember.com">team@trydecember.com</a><!--/email_off-->.
           </p>
         </section>
@@ -113,15 +122,35 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <span class="text-[#64748b]">
           Questions? <!--email_off--><a href="mailto:team@trydecember.com" class="text-[#87b2f4] hover:underline">team@trydecember.com</a><!--/email_off-->
         </span>
-        <a
-          href="/privacy"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="group inline-flex items-center gap-1.5 p-2.5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all"
-        >
-          <span>Privacy Policy</span>
-          <span class="text-[#94a3b8] group-hover:text-[#87b2f4] transition-colors">→</span>
-        </a>
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group inline-flex items-center gap-1.5 p-2.5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all"
+          >
+            <span>Privacy Policy</span>
+            <span class="text-[#94a3b8] group-hover:text-[#87b2f4] transition-colors">→</span>
+          </a>
+          <a
+            href="/refund"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group inline-flex items-center gap-1.5 p-2.5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all"
+          >
+            <span>Refund Policy</span>
+            <span class="text-[#94a3b8] group-hover:text-[#87b2f4] transition-colors">→</span>
+          </a>
+          <a
+            href="/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group inline-flex items-center gap-1.5 p-2.5 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all"
+          >
+            <span>Contact</span>
+            <span class="text-[#94a3b8] group-hover:text-[#87b2f4] transition-colors">→</span>
+          </a>
+        </div>
       </div>
     </article>
   </div>

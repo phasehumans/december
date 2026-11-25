@@ -65,5 +65,5 @@ Reference gold standard modules: `auth`, `notification`, `session`.
 
 ## Announcement & Product Marketing Standards
 
-- **Template & Users**: Draft in `scripts/announcement.html` / `.txt`, users in `scripts/users.txt`.
-- **Engine**: Run `python3 scripts/announce.py` (`--test <email>` or `--send`, 20s pacing, auto-logged history).
+- **Admin page (primary)**: Send announcements and feedback-request emails from `app.trydecember.com/admin` (Announcements). Write, send a test, then send to users from the database. It skips users with `receiveNotification = false`, adds an unsubscribe link, and keeps the history in the database.
+- **Fallback script**: Only if `/admin` fails: draft in `scripts/announcement.html` / `.txt`, users in `scripts/users.txt`, then run `python3 scripts/announce.py` (`--test <email>` or `--send`, 20s pacing, auto-logged history).
