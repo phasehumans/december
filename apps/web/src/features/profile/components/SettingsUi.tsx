@@ -12,7 +12,7 @@ import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsD
 import { cn } from '@/shared/lib/utils'
 
 // shared parts for the settings pages. the pages are connected to the server. a few parts
-// are not yet (a model for each step, machine size, auto top-up, single sign-on): they run
+// are not yet (a model for each step, machine size, single sign-on): they run
 // on sample values in memory, behind the same preview flag as the connections tabs (?demo),
 // and show the Demo pill. normal users do not see them, or see "Soon".
 

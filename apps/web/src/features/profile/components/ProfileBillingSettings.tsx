@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import React, { useState } from 'react'
 
 import { AddCreditsModal } from './AddCreditsModal'
-import { BillingLimitsSection, BillingPreviewSections, ReferralRow } from './BillingPreviewSections'
+import { BillingLimitsSection, ReferralRow } from './BillingPreviewSections'
 import { FreeCreditsSection } from './FreeCreditsSection'
 import { ProfileBillingSkeleton } from './ProfileSettingsSkeleton'
 import { RedeemCodeModal } from './RedeemCodeModal'
@@ -15,7 +15,7 @@ import {
     outlineButtonClass,
     textLinkClass,
 } from './settingsStyles'
-import { SettingsPage, SettingsSection, usePreviewOn } from './SettingsUi'
+import { SettingsPage, SettingsSection } from './SettingsUi'
 
 import { billingAPI } from '@/features/billing/api/billing'
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
@@ -58,8 +58,6 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
         error: overviewError,
     } = useBillingOverview()
 
-    // auto top-up is ui only (issue 638)
-    const isPreview = usePreviewOn()
     const [showRedeemModal, setShowRedeemModal] = useState(false)
     const [showAddCreditsModal, setShowAddCreditsModal] = useState(false)
     const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null)
@@ -189,9 +187,6 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                 <FreeCreditsSection />
 
                 <BillingLimitsSection />
-
-                {/* auto top-up is ui only: it shows with the preview flag, with a Demo pill */}
-                {isPreview && <BillingPreviewSections />}
 
                 {/* history: the same list box as Secrets and Usage */}
                 <SettingsSection title="History" description="Payments and codes you added." bare>

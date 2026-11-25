@@ -1,17 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 
-import {
-    SettingsInput,
-    SettingsRow,
-    SettingsSection,
-    outlineButtonClass,
-    usePreviewValue,
-} from './SettingsUi'
+import { SettingsInput, SettingsRow, SettingsSection, outlineButtonClass } from './SettingsUi'
 
 import { billingAPI, type SpendLimits } from '@/features/billing/api/billing'
 import { billingQueryKeys } from '@/features/billing/hooks/useBillingData'
-import { DemoPill, SoonPill, Switch } from '@/features/connections/components/ConnectionsUi'
+import { Switch } from '@/features/connections/components/ConnectionsUi'
 import { formatCredit } from '@/shared/lib/format'
 
 // the server takes $1 to $1000 for each amount
@@ -164,57 +158,5 @@ export const ReferralRow: React.FC = () => {
                 {isCopied ? 'Copied' : 'Copy link'}
             </button>
         </SettingsRow>
-    )
-}
-
-/**
- * Auto top-up (N22) on Billing. Ui only: it needs saved payment methods (issue 638 section
- * 4). The values stay in memory and nothing is charged, so it shows only with the preview
- * flag on, with the Demo pill.
- */
-export const BillingPreviewSections: React.FC = () => {
-    const [autoTopUp, setAutoTopUp] = usePreviewValue('billing.autoTopUp.on', false)
-    const [topUpAmount, setTopUpAmount] = usePreviewValue('billing.autoTopUp.amount', '10')
-    const [topUpUnder, setTopUpUnder] = usePreviewValue('billing.autoTopUp.under', '2')
-    const digits = (value: string) => value.replace(/[^\d]/g, '')
-
-    return (
-        <>
-            <SettingsSection
-                title="Auto top-up"
-                description="Add credits by itself when the balance is low."
-                action={<DemoPill />}
-            >
-                <SettingsRow label="Add credits when the balance is low">
-                    <Switch
-                        label="Add credits when the balance is low"
-                        checked={autoTopUp}
-                        onChange={setAutoTopUp}
-                    />
-                </SettingsRow>
-                <SettingsRow label="Add">
-                    <SettingsInput
-                        label="Amount to add, in dollars"
-                        value={topUpAmount}
-                        onChange={(value) => setTopUpAmount(digits(value))}
-                        prefix="$"
-                        mono
-                        className="w-[76px]"
-                    />
-                    <span className="text-[13px] text-[#7B7A79]">when under</span>
-                    <SettingsInput
-                        label="Balance that starts a top-up, in dollars"
-                        value={topUpUnder}
-                        onChange={(value) => setTopUpUnder(digits(value))}
-                        prefix="$"
-                        mono
-                        className="w-[76px]"
-                    />
-                </SettingsRow>
-                <SettingsRow label="Pay with" hint="No saved payment method">
-                    <SoonPill />
-                </SettingsRow>
-            </SettingsSection>
-        </>
     )
 }

@@ -285,16 +285,6 @@ describe('with the preview flag on, each part on sample values shows the Demo pi
         expect(writes()).toEqual([])
     })
 
-    test('billing: auto top-up', async () => {
-        page(<ProfileBillingSettings profile={{ name: 'Asha', email: 'asha@example.com' }} />)
-        await screen.findByText('Limits')
-
-        expect(shows('Auto top-up')).toBe(true)
-        expect(count('Demo')).toBe(1)
-        fireEvent.click(screen.getByRole('switch', { name: 'Add credits when the balance is low' }))
-        expect(writes()).toEqual([])
-    })
-
     test('members: single sign-on has no sample control, so it keeps "Soon"', async () => {
         page(<ProfileMembersSettings ownerName="Asha Rao" ownerEmail="asha@example.com" />)
         await screen.findByText('Audit log')
@@ -402,7 +392,7 @@ describe('with the preview flag off, the same parts show nothing or "Soon"', () 
         expect(shows('Soon')).toBe(false)
     })
 
-    test('billing: no auto top-up', async () => {
+    test('billing: no auto top-up, with the flag on or off', async () => {
         page(<ProfileBillingSettings profile={{ name: 'Asha', email: 'asha@example.com' }} />)
         await screen.findByText('Limits')
 

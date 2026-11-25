@@ -179,16 +179,16 @@ describe('the limits section on billing', () => {
         expect(view.queryByText('Auto top-up')).toBeNull()
     })
 
-    test('with the preview flag on, auto top-up shows with the Demo pill, and limits stay real', async () => {
+    test('auto top-up is not shown with the preview flag on, and limits stay real', async () => {
         setConnectionsDemo(true)
         const view = renderBilling()
 
-        await view.findByText('Auto top-up')
-        expect(view.getAllByText('Demo')).toHaveLength(1)
         const session = (await view.findByLabelText(
             'Pause a session when it reaches, in dollars'
         )) as HTMLInputElement
         expect(session.value).toBe('5')
+        expect(view.queryByText('Auto top-up')).toBeNull()
+        expect(view.queryByText('Demo')).toBeNull()
     })
 })
 
