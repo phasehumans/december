@@ -10,6 +10,13 @@ import { version } from '../lib/version';
 import { latestHighlight } from '../lib/changelog';
 import { landingFaq, faqParagraphHtml, landingFaqJsonLd } from '../lib/landing-faq';
 
+// Short quotes from people who use December, shown under the cards in "Built in public"
+const userQuotes = [
+  { name: 'sachin chaudhari', text: 'Demo was going on, report was not ready. December did the full LaTeX report with citations in 15 min.' },
+  { name: 'bhavesh sonawane', text: 'One coding agent, all models, even my local ones. Sorted.' },
+  { name: 'pranav jadhav', text: 'Used December for one week. Uninstalled Codex. Not going back.' },
+];
+
 const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://app.trydecember.com');
 ---
 
@@ -685,6 +692,16 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- What people say: plain quotes, no boxes -->
+      <div class="mt-9 sm:mt-10 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
+        {userQuotes.map((quote) => (
+          <figure class="flex flex-col gap-2 min-w-0">
+            <blockquote class="text-[15px] leading-relaxed tracking-[-0.005em] text-[#090a0f]">"{quote.text}"</blockquote>
+            <figcaption class="font-mono text-xs text-[#64748b]">- {quote.name}</figcaption>
+          </figure>
+        ))}
       </div>
     </section>
 
